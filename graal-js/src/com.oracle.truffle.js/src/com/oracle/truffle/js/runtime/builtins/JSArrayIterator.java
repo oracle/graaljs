@@ -62,8 +62,11 @@ public final class JSArrayIterator extends JSNonProxy implements JSConstructorFa
     }
 
     public static JSArrayIteratorObject create(JSContext context, JSRealm realm, Object iteratedObject, long nextIndex, int iterationKind) {
-        var obj = JSArrayIteratorObject.create(realm, context.getArrayIteratorFactory(), iteratedObject, nextIndex, iterationKind);
-        return context.trackAllocation(obj);
+        JSObjectFactory factory = context.getArrayIteratorFactory();
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSArrayIteratorObject(shape, proto, iteratedObject, nextIndex, iterationKind), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     /**

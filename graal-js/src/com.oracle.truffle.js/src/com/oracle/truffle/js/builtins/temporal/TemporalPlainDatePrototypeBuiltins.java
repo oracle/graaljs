@@ -91,6 +91,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
@@ -107,7 +108,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthO
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalTime;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -296,11 +296,13 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.execute(temporalDurationLike, TemporalUtil.listEmpty);
             JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode,
+            JSRealm realm = getRealm();
+            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), realm, namesNode,
                             duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
-            JSTemporalDurationObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(), duration.getMonths(), duration.getWeeks(),
-                            balanceResult.getDays(), 0, 0, 0, 0, 0, 0, this, errorBranch);
+            JSTemporalDurationObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), realm,
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(),
+                            0, 0, 0, 0, 0, 0, this, errorBranch);
             return TemporalUtil.calendarDateAdd(date.getCalendar(), date, balancedDuration, options, Undefined.instance);
         }
 
@@ -325,11 +327,13 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.execute(temporalDurationLike, TemporalUtil.listEmpty);
             JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), namesNode,
+            JSRealm realm = getRealm();
+            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), realm, namesNode,
                             duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
-            JSTemporalDurationObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), -duration.getYears(), -duration.getMonths(), -duration.getWeeks(),
-                            -balanceResult.getDays(), 0, 0, 0, 0, 0, 0, this, errorBranch);
+            JSTemporalDurationObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), realm,
+                            -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -balanceResult.getDays(),
+                            0, 0, 0, 0, 0, 0, this, errorBranch);
             return TemporalUtil.calendarDateAdd(date.getCalendar(), date, balancedDuration, options);
         }
 
@@ -374,7 +378,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             JSDynamicObject partialDate = TemporalUtil.preparePartialTemporalFields(getContext(), temporalDateLikeObject, fieldNames);
             JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.listEmpty);
-            fields = TemporalUtil.calendarMergeFields(getContext(), calendar, fields,
+            fields = TemporalUtil.calendarMergeFields(getContext(), getRealm(), calendar, fields,
                             partialDate, namesNode, this, errorBranch);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listEmpty);
             return dateFromFieldsNode.execute(calendar, fields, options);
@@ -398,7 +402,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar,
                         @Cached InlinedBranchProfile errorBranch) {
             JSDynamicObject calendar = toTemporalCalendar.execute(calendarParam);
-            return JSTemporalPlainDate.create(getContext(), date.getYear(), date.getMonth(), date.getDay(), calendar, this, errorBranch);
+            return JSTemporalPlainDate.create(getContext(), getRealm(), date.getYear(), date.getMonth(), date.getDay(), calendar, this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -440,11 +444,13 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (smallestUnit != Unit.DAY || (roundingIncrement != 1)) {
                 JSTemporalDurationRecord result2 = roundDurationNode.execute(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(), 0, 0, 0, 0,
                                 0, 0, (long) roundingIncrement, smallestUnit, roundingMode, temporalDate);
-                return JSTemporalDuration.createTemporalDuration(getContext(), sign * result2.getYears(), sign * result2.getMonths(), sign * result2.getWeeks(), sign * result2.getDays(), 0, 0, 0, 0,
-                                0, 0, node, errorBranch);
+                return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
+                                sign * result2.getYears(), sign * result2.getMonths(), sign * result2.getWeeks(), sign * result2.getDays(),
+                                0, 0, 0, 0, 0, 0, node, errorBranch);
             }
-            return JSTemporalDuration.createTemporalDuration(getContext(), sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(), 0, 0, 0, 0, 0, 0,
-                            node, errorBranch);
+            return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
+                            sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(),
+                            0, 0, 0, 0, 0, 0, node, errorBranch);
         }
     }
 
@@ -590,10 +596,13 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
                         @Cached InlinedBranchProfile errorBranch) {
             if (temporalTimeObj == Undefined.instance) {
-                return JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar(), this, errorBranch);
+                return JSTemporalPlainDateTime.create(getContext(), getRealm(),
+                                date.getYear(), date.getMonth(), date.getDay(),
+                                0, 0, 0, 0, 0, 0, date.getCalendar(), this, errorBranch);
             }
-            TemporalTime time = toTemporalTime.execute(temporalTimeObj, null);
-            return JSTemporalPlainDateTime.create(getContext(), date.getYear(), date.getMonth(), date.getDay(),
+            JSTemporalPlainTimeObject time = toTemporalTime.execute(temporalTimeObj, null);
+            return JSTemporalPlainDateTime.create(getContext(), getRealm(),
+                            date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
                             time.getNanosecond(), date.getCalendar(), this, errorBranch);
         }
@@ -711,17 +720,21 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.execute(item);
                 temporalTime = Undefined.instance;
             }
+            JSRealm realm = getRealm();
             if (timeIsUndefined.profile(this, temporalTime == Undefined.instance)) {
-                temporalDateTime = JSTemporalPlainDateTime.create(getContext(), td.getYear(), td.getMonth(), td.getDay(), 0, 0, 0, 0, 0, 0,
-                                td.getCalendar(), this, errorBranch);
+                temporalDateTime = JSTemporalPlainDateTime.create(getContext(), realm,
+                                td.getYear(), td.getMonth(), td.getDay(),
+                                0, 0, 0, 0, 0, 0, td.getCalendar(),
+                                this, errorBranch);
             } else {
                 JSTemporalPlainTimeObject tt = toTemporalTime.execute(temporalTime, null);
-                temporalDateTime = JSTemporalPlainDateTime.create(getContext(), td.getYear(), td.getMonth(), td.getDay(),
-                                tt.getHour(), tt.getMinute(), tt.getSecond(), tt.getMillisecond(), tt.getMicrosecond(),
-                                tt.getNanosecond(), td.getCalendar(), this, errorBranch);
+                temporalDateTime = JSTemporalPlainDateTime.create(getContext(), realm,
+                                td.getYear(), td.getMonth(), td.getDay(),
+                                tt.getHour(), tt.getMinute(), tt.getSecond(), tt.getMillisecond(), tt.getMicrosecond(), tt.getNanosecond(), td.getCalendar(),
+                                this, errorBranch);
             }
-            JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
-            return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, td.getCalendar());
+            JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
+            return JSTemporalZonedDateTime.create(getContext(), realm, instant.getNanoseconds(), timeZone, td.getCalendar());
         }
 
         @SuppressWarnings("unused")

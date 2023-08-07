@@ -46,9 +46,9 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
@@ -104,8 +105,9 @@ public abstract class JSObject extends JSDynamicObject {
     public static final TruffleString NO_SUCH_METHOD_NAME = Strings.constant("__noSuchMethod__");
     protected static final String[] EMPTY_STRING_ARRAY = new String[0];
 
-    protected JSObject(Shape shape) {
+    protected JSObject(Shape shape, JSDynamicObject proto) {
         super(shape);
+        assert proto != null && (JSObjectFactory.hasInObjectProto(shape) || JSObjectFactory.verifyPrototype(shape, proto));
     }
 
     protected JSObject copyWithoutProperties(@SuppressWarnings("unused") Shape shape) {

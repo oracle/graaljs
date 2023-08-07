@@ -45,6 +45,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JobCallback;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSFinalizationRegistryObject extends JSNonProxyObject {
@@ -52,8 +53,8 @@ public final class JSFinalizationRegistryObject extends JSNonProxyObject {
     List<FinalizationRecord> cells;
     ReferenceQueue<Object> referenceQueue;
 
-    protected JSFinalizationRegistryObject(Shape shape, JobCallback cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
-        super(shape);
+    protected JSFinalizationRegistryObject(Shape shape, JSDynamicObject proto, JobCallback cleanupCallback, List<FinalizationRecord> cells, ReferenceQueue<Object> referenceQueue) {
+        super(shape, proto);
         this.cleanupCallback = cleanupCallback;
         this.cells = cells;
         this.referenceQueue = referenceQueue;

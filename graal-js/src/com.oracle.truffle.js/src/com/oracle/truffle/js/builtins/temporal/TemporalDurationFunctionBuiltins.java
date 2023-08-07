@@ -50,6 +50,7 @@ import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDurationRelativeNod
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
@@ -105,10 +106,10 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                         @Cached InlinedBranchProfile errorBranch) {
             if (isObject(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
-                return JSTemporalDuration.createTemporalDuration(getContext(), duration.getYears(),
-                                duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
-                                duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
-                                duration.getMicroseconds(), duration.getNanoseconds(), this, errorBranch);
+                return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
+                                duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
+                                duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                                duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), this, errorBranch);
             }
             return toTemporalDurationNode.execute(item);
         }
@@ -131,10 +132,11 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationObject two = toTemporalDurationNode.execute(twoParam);
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
-            double shift1 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
+            JSRealm realm = getRealm();
+            double shift1 = TemporalUtil.calculateOffsetShift(getContext(), realm, relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
                             0, 0, 0, 0, 0, 0);
-            double shift2 = TemporalUtil.calculateOffsetShift(getContext(), relativeTo,
+            double shift2 = TemporalUtil.calculateOffsetShift(getContext(), realm, relativeTo,
                             two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
                             0, 0, 0, 0, 0, 0);
             double days1;

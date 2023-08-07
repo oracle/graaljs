@@ -85,8 +85,23 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         return CLASS_NAME;
     }
 
-    public static JSTemporalPlainDateTimeObject create(JSContext context, int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
-                    JSDynamicObject calendar, Node node, InlinedBranchProfile errorBranch) {
+    public static JSTemporalPlainDateTimeObject create(JSContext context, JSRealm realm,
+                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm),
+                        y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
+    }
+
+    public static JSTemporalPlainDateTimeObject create(JSContext context, JSRealm realm,
+                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm),
+                        y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar,
+                        node, errorBranch);
+    }
+
+    public static JSTemporalPlainDateTimeObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar,
+                    Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isValidISODate(y, m, d)) {
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
@@ -99,20 +114,20 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
-        return createIntl(context, JSRealm.get(node), y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
+        return createIntl(context, realm, proto, y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
     }
 
-    public static JSTemporalPlainDateTimeObject create(JSContext context, int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
-                    JSDynamicObject calendar) {
-        return create(context, y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar, null, InlinedBranchProfile.getUncached());
+    public static JSTemporalPlainDateTimeObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar) {
+        return create(context, realm, proto, y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar, null, InlinedBranchProfile.getUncached());
     }
 
-    private static JSTemporalPlainDateTimeObject createIntl(JSContext context, JSRealm realm,
+    private static JSTemporalPlainDateTimeObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,
                     int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateTimeFactory();
-        JSTemporalPlainDateTimeObject object = factory.initProto(new JSTemporalPlainDateTimeObject(factory.getShape(realm),
-                        y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar), realm);
-        return context.trackAllocation(object);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalPlainDateTimeObject(shape, proto, y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
@@ -147,10 +162,10 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
     public static TruffleString temporalDateTimeToString(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
                     JSDynamicObject calendar, Object precision, ShowCalendar showCalendar) {
         TruffleString yearString = TemporalUtil.padISOYear(year);
-        TruffleString monthString = Strings.format("%1$02d", month);
-        TruffleString dayString = Strings.format("%1$02d", day);
-        TruffleString hourString = Strings.format("%1$02d", hour);
-        TruffleString minuteString = Strings.format("%1$02d", minute);
+        TruffleString monthString = TemporalUtil.toZeroPaddedDecimalString(month, 2);
+        TruffleString dayString = TemporalUtil.toZeroPaddedDecimalString(day, 2);
+        TruffleString hourString = TemporalUtil.toZeroPaddedDecimalString(hour, 2);
+        TruffleString minuteString = TemporalUtil.toZeroPaddedDecimalString(minute, 2);
         TruffleString secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
         TruffleString calendarID = JSRuntime.toString(calendar);
         TruffleString calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

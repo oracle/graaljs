@@ -75,7 +75,6 @@ import com.oracle.truffle.js.builtins.helper.GCNodeGen;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
@@ -96,9 +95,9 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncFromSyncIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -364,22 +363,18 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
      * Calls CreateAsyncFromSyncIterator, used by v8mockup.js.
      */
     public abstract static class TestV8CreateAsyncFromSyncIterator extends JSBuiltinNode {
-        @Child private PropertySetNode setState;
         @Child private PropertyGetNode getNextMethodNode;
 
         public TestV8CreateAsyncFromSyncIterator(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.setState = PropertySetNode.createSetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
             this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
         }
 
         @Specialization
         protected Object createAsyncFromSyncIterator(JSObject syncIterator) {
-            JSContext context = getContext();
-            JSObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
-            IteratorRecord syncIteratorRecord = IteratorRecord.create(syncIterator, getNextMethodNode.getValue(syncIterator), false);
-            setState.setValue(obj, syncIteratorRecord);
-            return obj;
+            Object nextMethod = getNextMethodNode.getValue(syncIterator);
+            IteratorRecord syncIteratorRecord = IteratorRecord.create(syncIterator, nextMethod, false);
+            return JSAsyncFromSyncIteratorObject.create(getContext(), getRealm(), syncIteratorRecord);
         }
 
         @Specialization(guards = "!isJSObject(syncIterator)")

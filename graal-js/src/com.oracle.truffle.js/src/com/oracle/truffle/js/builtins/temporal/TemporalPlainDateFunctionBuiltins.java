@@ -109,7 +109,7 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
             if (isObject(item) && JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
                 JSTemporalPlainDateObject dtItem = (JSTemporalPlainDateObject) item;
                 TemporalUtil.toTemporalOverflow(options, getOptionNode);
-                return JSTemporalPlainDate.create(getContext(),
+                return JSTemporalPlainDate.create(getContext(), getRealm(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(), dtItem.getCalendar(), this, errorBranch);
             }
             return toTemporalDate.execute(item, options);

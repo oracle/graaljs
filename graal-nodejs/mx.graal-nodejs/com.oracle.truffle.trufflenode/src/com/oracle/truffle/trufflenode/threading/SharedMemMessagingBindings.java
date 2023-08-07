@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
  * JS Builtins used by Node.s workers to send Java object references via message passing (@see
@@ -101,7 +102,7 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
     public static final class Instance extends JSNonProxyObject {
 
         protected Instance(Shape shape) {
-            super(shape);
+            super(shape, Null.instance);
         }
     }
 }

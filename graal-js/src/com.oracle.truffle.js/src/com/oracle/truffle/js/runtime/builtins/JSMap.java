@@ -70,8 +70,19 @@ public final class JSMap extends JSNonProxy implements JSConstructorFactory.Defa
 
     public static JSMapObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getMapFactory();
-        JSMapObject obj = factory.initProto(new JSMapObject(factory.getShape(realm), new JSHashMap()), realm);
-        return context.trackAllocation(obj);
+        return create(factory, realm, factory.getPrototype(realm));
+    }
+
+    public static JSMapObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        JSObjectFactory factory = context.getMapFactory();
+        return create(factory, realm, proto);
+    }
+
+    private static JSMapObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
+        JSHashMap internalMap = new JSHashMap();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSMapObject(shape, proto, internalMap), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static JSHashMap getInternalMap(JSDynamicObject obj) {

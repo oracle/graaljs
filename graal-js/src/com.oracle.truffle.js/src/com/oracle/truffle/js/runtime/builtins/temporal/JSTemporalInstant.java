@@ -57,7 +57,6 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public final class JSTemporalInstant extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -71,10 +70,19 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
     }
 
     public static JSTemporalInstantObject create(JSContext context, JSRealm realm, BigInt nanoseconds) {
-        assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         JSObjectFactory factory = context.getTemporalInstantFactory();
-        JSTemporalInstantObject obj = factory.initProto(new JSTemporalInstantObject(factory.getShape(realm), nanoseconds), realm);
-        return context.trackAllocation(obj);
+        return create(factory, realm, factory.getPrototype(realm), nanoseconds);
+    }
+
+    public static JSTemporalInstantObject create(JSContext context, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds) {
+        JSObjectFactory factory = context.getTemporalInstantFactory();
+        return create(factory, realm, proto, nanoseconds);
+    }
+
+    private static JSTemporalInstantObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalInstantObject(shape, proto, nanoseconds), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

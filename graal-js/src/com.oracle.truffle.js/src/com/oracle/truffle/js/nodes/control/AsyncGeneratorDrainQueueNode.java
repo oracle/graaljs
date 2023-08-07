@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,10 @@ import java.util.ArrayDeque;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public class AsyncGeneratorDrainQueueNode extends AsyncGeneratorAwaitReturnNode {
 
@@ -62,22 +61,21 @@ public class AsyncGeneratorDrainQueueNode extends AsyncGeneratorAwaitReturnNode 
     }
 
     @SuppressWarnings("unchecked")
-    public final void asyncGeneratorCompleteStepAndDrainQueue(VirtualFrame frame, Object generator, Completion.Type resultType, Object resultValue) {
-        ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getGeneratorQueue.getValue(generator);
-        setGeneratorState.setValue(generator, JSFunction.AsyncGeneratorState.Completed);
+    public final void asyncGeneratorCompleteStepAndDrainQueue(VirtualFrame frame, JSAsyncGeneratorObject generator, Completion.Type resultType, Object resultValue) {
+        ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
+        generator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.Completed);
         asyncGeneratorCompleteStep(frame, resultType, resultValue, true, queue);
         if (!queue.isEmpty()) {
             asyncGeneratorDrainQueue(frame, generator, queue);
         }
     }
 
-    public final void asyncGeneratorDrainQueue(VirtualFrame frame, Object generator, ArrayDeque<AsyncGeneratorRequest> queue) {
-        Object state;
-        assert (state = JSObjectUtil.getHiddenProperty((JSDynamicObject) generator, JSFunction.ASYNC_GENERATOR_STATE_ID)) == JSFunction.AsyncGeneratorState.Completed : state;
+    public final void asyncGeneratorDrainQueue(VirtualFrame frame, JSAsyncGeneratorObject generator, ArrayDeque<AsyncGeneratorRequest> queue) {
+        assert generator.getAsyncGeneratorState() == JSFunction.AsyncGeneratorState.Completed : generator.getAsyncGeneratorState();
         while (!queue.isEmpty()) {
             AsyncGeneratorRequest next = queue.peekFirst();
             if (next.getCompletionType() == Completion.Type.Return) {
-                setGeneratorState.setValue(generator, JSFunction.AsyncGeneratorState.AwaitingReturn);
+                generator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.AwaitingReturn);
                 try {
                     asyncGeneratorAwaitReturn(generator, queue);
                     break;

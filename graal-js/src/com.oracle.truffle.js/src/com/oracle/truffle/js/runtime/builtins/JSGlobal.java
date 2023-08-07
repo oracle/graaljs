@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Null;
 
 public final class JSGlobal extends JSNonProxy {
 
@@ -66,8 +67,8 @@ public final class JSGlobal extends JSNonProxy {
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = realm.getContext();
         JSObjectFactory factory = context.getGlobalObjectFactory();
-        JSObject global = new JSGlobalObject(factory.getShape(realm));
-        factory.initProto(global, objectPrototype);
+        JSObject global = new JSGlobalObject(factory.getShape(realm), objectPrototype);
+        factory.initProto(global, realm, objectPrototype);
 
         JSObjectUtil.putToStringTag(global, CLASS_NAME);
         return global;
@@ -85,7 +86,7 @@ public final class JSGlobal extends JSNonProxy {
 
     public static JSObject createGlobalScope(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        return new JSGlobalObject(context.getGlobalScopeShape());
+        return new JSGlobalObject(context.getGlobalScopeShape(), Null.instance);
     }
 
     public static boolean isJSGlobalObject(Object obj) {

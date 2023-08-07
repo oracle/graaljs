@@ -64,17 +64,25 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     private JSSharedArrayBuffer() {
     }
 
-    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, int length) {
-        return createSharedArrayBuffer(context, realm, DirectByteBufferHelper.allocateDirect(length));
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, int length) {
+        return createSharedArrayBuffer(context, realm, proto, DirectByteBufferHelper.allocateDirect(length));
     }
 
     public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
-        assert buffer != null;
         JSObjectFactory factory = context.getSharedArrayBufferFactory();
-        JSArrayBufferObject obj = JSArrayBufferObject.createSharedArrayBuffer(factory.getShape(realm), buffer, new JSAgentWaiterList());
-        factory.initProto(obj, realm);
-        assert isJSSharedArrayBuffer(obj);
-        return context.trackAllocation(obj);
+        return createSharedArrayBuffer(realm, factory.getPrototype(realm), buffer, factory);
+    }
+
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, ByteBuffer buffer) {
+        JSObjectFactory factory = context.getSharedArrayBufferFactory();
+        return createSharedArrayBuffer(realm, proto, buffer, factory);
+    }
+
+    private static JSArrayBufferObject createSharedArrayBuffer(JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, JSObjectFactory factory) {
+        assert buffer != null;
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSArrayBufferObject.Shared(shape, proto, buffer, new JSAgentWaiterList()), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

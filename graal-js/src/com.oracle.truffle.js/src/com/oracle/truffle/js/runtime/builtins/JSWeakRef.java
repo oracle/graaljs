@@ -63,13 +63,15 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     private JSWeakRef() {
     }
 
-    public static JSWeakRefObject create(JSContext context, JSRealm realm, Object referent) {
+    public static JSWeakRefObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object referent) {
         TruffleWeakReference<Object> weakReference = new TruffleWeakReference<>(referent);
         JSObjectFactory factory = context.getWeakRefFactory();
-        JSWeakRefObject obj = factory.initProto(new JSWeakRefObject(factory.getShape(realm), weakReference), realm);
+        var shape = factory.getShape(realm, proto);
+        var weakRefObj = factory.initProto(new JSWeakRefObject(shape, proto, weakReference), realm, proto);
+        factory.trackAllocation(weakRefObj);
         // Used for KeepDuringJob(target) in the specification
         context.addWeakRefTargetToSet(referent);
-        return context.trackAllocation(obj);
+        return factory.trackAllocation(weakRefObj);
     }
 
     public static TruffleWeakReference<?> getInternalWeakRef(JSDynamicObject obj) {

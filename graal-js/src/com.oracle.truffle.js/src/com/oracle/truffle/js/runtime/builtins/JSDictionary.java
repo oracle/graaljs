@@ -415,6 +415,10 @@ public final class JSDictionary extends JSNonProxy {
 
         lib.resetShape(obj, newRootShape);
 
+        if (newRootShape.getFlags() != currentShape.getFlags()) {
+            lib.setShapeFlags(obj, currentShape.getFlags());
+        }
+
         EconomicMap<Object, PropertyDescriptor> hashMap = EconomicMap.create();
         for (int i = 0; i < archive.size(); i++) {
             Property p = allProperties.get(i);
@@ -472,7 +476,7 @@ public final class JSDictionary extends JSNonProxy {
 
     public static JSObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getDictionaryObjectFactory();
-        JSObject obj = JSOrdinaryObject.create(factory.getShape(realm));
+        JSObject obj = JSOrdinaryObject.create(factory.getShape(realm), factory.getPrototype(realm));
         factory.initProto(obj, realm);
         JSObjectUtil.putHiddenProperty(obj, HASHMAP_PROPERTY_NAME, newHashMap());
         return context.trackAllocation(obj);

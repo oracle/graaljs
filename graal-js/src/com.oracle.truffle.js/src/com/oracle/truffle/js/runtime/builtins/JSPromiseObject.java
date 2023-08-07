@@ -41,7 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -53,8 +53,8 @@ public final class JSPromiseObject extends JSNonProxyObject {
     private SimpleArrayList<PromiseReactionRecord> promiseFulfillReactions;
     private SimpleArrayList<PromiseReactionRecord> promiseRejectReactions;
 
-    protected JSPromiseObject(Shape shape, int promiseState) {
-        super(shape);
+    protected JSPromiseObject(Shape shape, JSDynamicObject proto, int promiseState) {
+        super(shape, proto);
         this.promiseState = promiseState;
     }
 
@@ -100,11 +100,7 @@ public final class JSPromiseObject extends JSNonProxyObject {
         promiseRejectReactions = null;
     }
 
-    public static JSPromiseObject create(JSRealm realm, JSObjectFactory factory, int promiseState) {
-        return factory.initProto(new JSPromiseObject(factory.getShape(realm), promiseState), realm);
-    }
-
-    public static JSPromiseObject create(Shape shape, int promiseState) {
-        return new JSPromiseObject(shape, promiseState);
+    public static JSPromiseObject create(Shape shape, JSDynamicObject proto, int promiseState) {
+        return new JSPromiseObject(shape, proto, promiseState);
     }
 }

@@ -261,13 +261,13 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
             return BuildGroupsObjectNodeGen.create();
         }
 
-        public abstract JSDynamicObject execute(JSContext context, JSDynamicObject regExp, Object regexResult, Object input, boolean isIndices);
+        public abstract JSDynamicObject execute(JSDynamicObject regExp, Object regexResult, Object input, boolean isIndices);
 
         // We can reuse the cachedGroupsFactory even if the new groups factory is different, as long
         // as the compiledRegex is the same. This can happen if a new RegExp instance is repeatedly
         // created for the same regular expression.
         @Specialization(guards = "getGroupsFactory(regExp) == cachedGroupsFactory || getCompiledRegex(regExp) == cachedCompiledRegex", limit = "LIMIT")
-        final JSDynamicObject doCachedGroupsFactory(JSContext context,
+        final JSDynamicObject doCachedGroupsFactory(
                         @SuppressWarnings("unused") JSDynamicObject regExp,
                         Object regexResult,
                         TruffleString input,
@@ -275,20 +275,20 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                         @Cached("getCompiledRegex(regExp)") @SuppressWarnings("unused") Object cachedCompiledRegex,
                         @Cached("getGroupsFactory(regExp)") JSObjectFactory cachedGroupsFactory,
                         @Cached("createIsJSRegExpNode()") @SuppressWarnings("unused") IsJSClassNode isJSRegExpNode) {
-            return doIt(context, getRealm(), cachedGroupsFactory, regexResult, input, isIndices);
+            return doIt(getRealm(), cachedGroupsFactory, regexResult, input, isIndices);
         }
 
         @Specialization
         @TruffleBoundary
-        final JSDynamicObject doVaryingGroupsFactory(JSContext context, JSDynamicObject regExp, Object regexResult, TruffleString input, boolean isIndices) {
-            return doIt(context, getRealm(), JSRegExp.getGroupsFactory(regExp), regexResult, input, isIndices);
+        final JSDynamicObject doVaryingGroupsFactory(JSDynamicObject regExp, Object regexResult, TruffleString input, boolean isIndices) {
+            return doIt(getRealm(), JSRegExp.getGroupsFactory(regExp), regexResult, input, isIndices);
         }
 
-        private static JSDynamicObject doIt(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
+        private static JSDynamicObject doIt(JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
             if (groupsFactory == null) {
                 return Undefined.instance;
             } else {
-                return JSRegExp.createGroupsObject(context, realm, groupsFactory, regexResult, input, isIndices);
+                return JSRegExp.createGroupsObject(realm, groupsFactory, regexResult, input, isIndices);
             }
         }
     }
@@ -466,7 +466,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 groupsBuilder = insert(BuildGroupsObjectNode.create());
             }
-            return groupsBuilder.execute(context, regExp, result, input, isIndices);
+            return groupsBuilder.execute(regExp, result, input, isIndices);
         }
 
         private long getLastIndex(JSDynamicObject regExp) {

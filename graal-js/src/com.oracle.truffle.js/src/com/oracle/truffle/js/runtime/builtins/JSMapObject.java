@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -62,8 +63,8 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 public final class JSMapObject extends JSNonProxyObject {
     private final JSHashMap map;
 
-    protected JSMapObject(Shape shape, JSHashMap map) {
-        super(shape);
+    protected JSMapObject(Shape shape, JSDynamicObject proto, JSHashMap map) {
+        super(shape, proto);
         this.map = map;
     }
 

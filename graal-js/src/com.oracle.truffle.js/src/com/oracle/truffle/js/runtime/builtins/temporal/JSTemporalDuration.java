@@ -88,28 +88,41 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     private JSTemporalDuration() {
     }
 
-    public static JSTemporalDurationObject createTemporalDuration(JSContext context, double years, double months, double weeks, double days, double hours,
-                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds,
+    public static JSTemporalDurationObject createTemporalDuration(JSContext context, JSRealm realm,
+                    double years, double months, double weeks, double days,
+                    double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return createTemporalDuration(context, realm, INSTANCE.getIntrinsicDefaultProto(realm),
+                        years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds,
+                        node, errorBranch);
+    }
+
+    public static JSTemporalDurationObject createTemporalDuration(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    double years, double months, double weeks, double days,
+                    double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds,
                     Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isValidDuration(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             errorBranch.enter(node);
             throw TemporalErrors.createTypeErrorDurationOutsideRange();
         }
-        return createIntl(context, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        return createIntl(context, realm, proto, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
-    public static JSTemporalDurationObject createTemporalDuration(JSContext context, double years, double months, double weeks, double days, double hours,
-                    double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
-        return createTemporalDuration(context, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, null, InlinedBranchProfile.getUncached());
+    public static JSTemporalDurationObject createTemporalDuration(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    double years, double months, double weeks, double days,
+                    double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
+        return createTemporalDuration(context, realm, proto, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds,
+                        null, InlinedBranchProfile.getUncached());
     }
 
-    private static JSTemporalDurationObject createIntl(JSContext context, double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds,
-                    double microseconds, double nanoseconds) {
-        JSRealm realm = JSRealm.get(null);
+    private static JSTemporalDurationObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    double years, double months, double weeks, double days,
+                    double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
         JSObjectFactory factory = context.getTemporalDurationFactory();
-        JSTemporalDurationObject obj = factory.initProto(new JSTemporalDurationObject(factory.getShape(realm),
-                        nnz(years), nnz(months), nnz(weeks), nnz(days), nnz(hours), nnz(minutes), nnz(seconds), nnz(milliseconds), nnz(microseconds), nnz(nanoseconds)), realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalDurationObject(shape, proto,
+                        nnz(years), nnz(months), nnz(weeks), nnz(days), nnz(hours), nnz(minutes), nnz(seconds), nnz(milliseconds), nnz(microseconds), nnz(nanoseconds)), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     private static double nnz(double d) {

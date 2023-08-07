@@ -86,9 +86,10 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
 
     public static JavaImporterObject create(JSContext context, JSRealm realm, Object[] value) {
         JSObjectFactory factory = context.getJavaImporterFactory();
-        JavaImporterObject obj = new JavaImporterObject(factory.getShape(realm), value);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JavaImporterObject(shape, proto, value), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static boolean isJavaImporter(Object obj) {

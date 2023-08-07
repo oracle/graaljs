@@ -62,8 +62,11 @@ public final class JSStringIterator extends JSNonProxy implements JSConstructorF
     }
 
     public static JSStringIteratorObject create(JSContext context, JSRealm realm, TruffleString iteratedString, int nextIndex) {
-        var obj = JSStringIteratorObject.create(realm, context.getStringIteratorFactory(), iteratedString, nextIndex);
-        return context.trackAllocation(obj);
+        JSObjectFactory factory = context.getStringIteratorFactory();
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSStringIteratorObject(shape, proto, iteratedString, nextIndex), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     /**

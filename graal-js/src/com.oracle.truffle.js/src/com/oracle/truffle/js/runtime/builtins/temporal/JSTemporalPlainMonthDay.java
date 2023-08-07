@@ -74,7 +74,12 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainMonthDay.prototype");
     public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainYearMonth");
 
-    public static JSTemporalPlainMonthDayObject create(JSContext context, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear,
+    public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), isoMonth, isoDay, calendar, referenceISOYear, node, errorBranch);
+    }
+
+    public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear,
                     Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(referenceISOYear, isoMonth, isoDay)) {
             errorBranch.enter(node);
@@ -85,11 +90,10 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
         }
-        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainMonthDayFactory();
-        JSTemporalPlainMonthDayObject obj = factory.initProto(new JSTemporalPlainMonthDayObject(factory.getShape(realm), isoMonth,
-                        isoDay, calendar, referenceISOYear), realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalPlainMonthDayObject(shape, proto, isoMonth, isoDay, calendar, referenceISOYear), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
@@ -132,8 +136,8 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     @TruffleBoundary
     public static TruffleString temporalMonthDayToString(JSTemporalPlainMonthDayObject md, ShowCalendar showCalendar) {
-        TruffleString monthString = Strings.format("%1$02d", md.getMonth());
-        TruffleString dayString = Strings.format("%1$02d", md.getDay());
+        TruffleString monthString = TemporalUtil.toZeroPaddedDecimalString(md.getMonth(), 2);
+        TruffleString dayString = TemporalUtil.toZeroPaddedDecimalString(md.getDay(), 2);
 
         TruffleString calendarID = JSRuntime.toString(md.getCalendar());
         TruffleString result = Strings.format("%s-%s", monthString, dayString);

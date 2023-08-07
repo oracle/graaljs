@@ -77,18 +77,26 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     private JSTemporalPlainTime() {
     }
 
-    public static JSTemporalPlainTimeObject create(JSContext context, int hours, int minutes, int seconds, int milliseconds,
-                    int microseconds, int nanoseconds, Node node, InlinedBranchProfile errorBranch) {
+    public static JSTemporalPlainTimeObject create(JSContext context, JSRealm realm,
+                    int hours, int minutes, int seconds, int milliseconds, int microseconds, int nanoseconds,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm),
+                        hours, minutes, seconds, milliseconds, microseconds, nanoseconds,
+                        node, errorBranch);
+    }
+
+    public static JSTemporalPlainTimeObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    int hours, int minutes, int seconds, int milliseconds, int microseconds, int nanoseconds,
+                    Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isValidTime(hours, minutes, seconds, milliseconds, microseconds, nanoseconds)) {
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
-        JSRealm realm = JSRealm.get(node);
-        JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm, node, errorBranch);
+        JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(context, realm);
         JSObjectFactory factory = context.getTemporalPlainTimeFactory();
-        JSTemporalPlainTimeObject obj = factory.initProto(new JSTemporalPlainTimeObject(factory.getShape(realm),
-                        hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalPlainTimeObject(shape, proto, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, calendar), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
@@ -157,8 +165,8 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     @TruffleBoundary
     public static TruffleString temporalTimeToString(long hour, long minute, long second, long millisecond, long microsecond,
                     long nanosecond, Object precision) {
-        TruffleString hourString = Strings.format("%1$02d", hour);
-        TruffleString minuteString = Strings.format("%1$02d", minute);
+        TruffleString hourString = TemporalUtil.toZeroPaddedDecimalString(hour, 2);
+        TruffleString minuteString = TemporalUtil.toZeroPaddedDecimalString(minute, 2);
         TruffleString secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
         return Strings.format("%s:%s%s", hourString, minuteString, secondString);
     }

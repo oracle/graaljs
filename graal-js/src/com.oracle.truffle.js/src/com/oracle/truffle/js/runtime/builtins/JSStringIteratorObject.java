@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSStringIteratorObject extends JSNonProxyObject {
@@ -50,8 +50,8 @@ public final class JSStringIteratorObject extends JSNonProxyObject {
     private TruffleString iteratedString;
     private int nextIndex;
 
-    protected JSStringIteratorObject(Shape shape, TruffleString iteratedString, int nextIndex) {
-        super(shape);
+    protected JSStringIteratorObject(Shape shape, JSDynamicObject proto, TruffleString iteratedString, int nextIndex) {
+        super(shape, proto);
         this.iteratedString = iteratedString;
         this.nextIndex = nextIndex;
     }
@@ -75,9 +75,5 @@ public final class JSStringIteratorObject extends JSNonProxyObject {
     @Override
     public TruffleString getClassName() {
         return JSStringIterator.CLASS_NAME;
-    }
-
-    public static JSStringIteratorObject create(JSRealm realm, JSObjectFactory factory, TruffleString iteratedString, int nextIndex) {
-        return factory.initProto(new JSStringIteratorObject(factory.getShape(realm), iteratedString, nextIndex), realm);
     }
 }

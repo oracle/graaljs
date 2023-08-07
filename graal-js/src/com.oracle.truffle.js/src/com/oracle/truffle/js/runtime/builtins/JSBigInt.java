@@ -68,8 +68,14 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     }
 
     public static JSBigIntObject create(JSContext context, JSRealm realm, BigInt value) {
-        JSBigIntObject obj = JSBigIntObject.create(realm, context.getBigIntFactory(), value);
-        return context.trackAllocation(obj);
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), value);
+    }
+
+    public static JSBigIntObject create(JSContext context, JSRealm realm, JSDynamicObject proto, BigInt value) {
+        JSObjectFactory factory = context.getBigIntFactory();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSBigIntObject(shape, proto, value), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     private static BigInt getBigIntegerField(JSDynamicObject obj) {

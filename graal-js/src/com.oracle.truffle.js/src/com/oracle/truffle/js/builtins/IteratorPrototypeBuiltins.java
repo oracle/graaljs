@@ -43,20 +43,21 @@ package com.oracle.truffle.js.builtins;
 import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorDirectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
-import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
@@ -66,7 +67,6 @@ import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -87,7 +87,9 @@ import com.oracle.truffle.js.runtime.SuppressFBWarnings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
+import com.oracle.truffle.js.runtime.builtins.JSIteratorHelperObject;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -214,10 +216,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     private abstract static class IteratorFromGeneratorNode<T extends IteratorArgs> extends IteratorMethodWithCallableNode {
-        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
-        @Child private PropertySetNode setArgsNode;
-        @Child private PropertySetNode setNextNode;
-        @Child private PropertySetNode setGeneratorStateNode;
 
         private final BuiltinFunctionKey nextKey;
         private final Function<JSContext, JSFunctionData> nextFactory;
@@ -225,33 +223,24 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         IteratorFromGeneratorNode(JSContext context, JSBuiltin builtin, BuiltinFunctionKey nextKey, Function<JSContext, JSFunctionData> nextFactory) {
             super(context, builtin);
 
-            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            this.setArgsNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
-            this.setNextNode = PropertySetNode.createSetHidden(IteratorHelperPrototypeBuiltins.NEXT_ID, context);
-            this.setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
             this.nextKey = nextKey;
             this.nextFactory = nextFactory;
         }
 
+        @GenerateCached(false)
+        @ImportStatic({IteratorHelperPrototypeBuiltins.class})
         protected abstract static class IteratorFromGeneratorImplNode<T extends IteratorArgs> extends JavaScriptBaseNode {
-            @Child private PropertyGetNode getArgsNode;
-            @Child private HasHiddenKeyCacheNode hasArgsNode;
             @Child private CreateIterResultObjectNode createIterResultObjectNode;
 
             @Child private IteratorStepNode iteratorStepNode;
             @Child private IteratorValueNode iteratorValueNode;
-            @Child private PropertySetNode setGeneratorStateNode;
             @Child private LongToIntOrDoubleNode indexToNumber = LongToIntOrDoubleNode.create();
 
-            private final BranchProfile hasNoArgsProfile = BranchProfile.create();
             protected final JSContext context;
 
             public IteratorFromGeneratorImplNode(JSContext context) {
                 this.context = context;
 
-                this.setGeneratorStateNode = PropertySetNode.createSetHidden(JSFunction.GENERATOR_STATE_ID, context);
-                this.getArgsNode = PropertyGetNode.createGetHidden(IteratorHelperPrototypeBuiltins.ARGS_ID, context);
-                this.hasArgsNode = HasHiddenKeyCacheNode.create(IteratorHelperPrototypeBuiltins.ARGS_ID);
                 this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
                 this.iteratorValueNode = IteratorValueNode.create();
                 this.iteratorStepNode = IteratorStepNode.create();
@@ -267,7 +256,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return iteratorValueNode.execute(next);
             }
 
-            protected final Object getNextValue(VirtualFrame frame, Object thisObj, IteratorRecord iterated) {
+            protected final Object getNextValue(VirtualFrame frame, JSIteratorHelperObject thisObj, IteratorRecord iterated) {
                 Object next = iteratorStep(iterated);
                 if (next == Boolean.FALSE) {
                     return createResultDone(frame, thisObj);
@@ -275,27 +264,25 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return createResultContinue(frame, thisObj, iteratorValue(next));
             }
 
-            protected final Object createResultContinue(VirtualFrame frame, Object thisObj, Object value) {
-                setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.SuspendedYield);
+            protected final Object createResultContinue(VirtualFrame frame, JSIteratorHelperObject thisObj, Object value) {
+                thisObj.setGeneratorState(JSFunction.GeneratorState.SuspendedYield);
                 return createIterResultObjectNode.execute(frame, value, false);
             }
 
-            protected final Object createResultDone(VirtualFrame frame, Object thisObj) {
-                setGeneratorStateNode.setValue(thisObj, JSFunction.GeneratorState.Completed);
+            protected final Object createResultDone(VirtualFrame frame, JSIteratorHelperObject thisObj) {
+                thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
             @SuppressWarnings("unchecked")
-            protected final T getArgs(Object thisObj) {
-                if (!hasArgsNode.executeHasHiddenKey(thisObj)) {
-                    hasNoArgsProfile.enter();
-                    throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
-                }
-                return (T) getArgsNode.getValue(thisObj);
+            protected final T getArgs(JSIteratorHelperObject thisObj) {
+                return (T) thisObj.getIteratorArgs();
             }
 
-            public JSContext getContext() {
-                return context;
+            @TruffleBoundary(transferToInterpreterOnException = false)
+            @Fallback
+            protected static Object incompatibleReceiver(Object thisObj) {
+                throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
             }
 
             public abstract IteratorFromGeneratorImplNode<T> copyUninitialized();
@@ -342,20 +329,17 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
         }
 
-        protected final JSDynamicObject createIterator(T args) {
-            JSDynamicObject iterator = createObjectNode.execute(getIteratorHelperPrototype());
-            setArgsNode.setValue(iterator, args);
-            setNextNode.setValue(iterator, JSFunction.create(getRealm(), getContext().getOrCreateBuiltinFunctionData(nextKey, nextFactory)));
-            setGeneratorStateNode.setValue(iterator, JSFunction.GeneratorState.SuspendedStart);
-            return iterator;
+        protected final JSIteratorHelperObject createIteratorHelperObject(T args) {
+            return JSIteratorHelperObject.create(getContext().getIteratorHelperObjectFactory(), getRealm(),
+                            JSFunction.GeneratorState.SuspendedStart, args, createNextImplFunction());
         }
 
         protected static JSFunctionData createIteratorFromGeneratorFunctionImpl(JSContext context, IteratorFromGeneratorImplNode<?> implNode) {
             return JSFunctionData.createCallOnly(context, IteratorRootNode.create(implNode).getCallTarget(), 0, Strings.EMPTY);
         }
 
-        private JSDynamicObject getIteratorHelperPrototype() {
-            return getRealm().getIteratorHelperPrototype();
+        private JSFunctionObject createNextImplFunction() {
+            return JSFunction.create(getRealm(), getContext().getOrCreateBuiltinFunctionData(nextKey, nextFactory));
         }
     }
 
@@ -376,7 +360,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(mapper)")
         public JSDynamicObject map(Object thisObj, Object mapper) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            return createIterator(new IteratorMapArgs(iterated, mapper));
+            return createIteratorHelperObject(new IteratorMapArgs(iterated, mapper));
         }
 
         @Specialization(guards = "!isCallable(mapper)")
@@ -396,7 +380,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
+            protected Object next(VirtualFrame frame, JSIteratorHelperObject thisObj) {
                 IteratorMapArgs args = getArgs(thisObj);
                 Object next = iteratorStep(args.iterated);
                 if (next == Boolean.FALSE) {
@@ -444,7 +428,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(filterer)")
         public JSDynamicObject filter(Object thisObj, Object filterer) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            return createIterator(new IteratorFilterArgs(iterated, filterer));
+            return createIteratorHelperObject(new IteratorFilterArgs(iterated, filterer));
         }
 
         @Specialization(guards = "!isCallable(filterer)")
@@ -466,7 +450,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
+            protected Object next(VirtualFrame frame, JSIteratorHelperObject thisObj) {
                 IteratorFilterArgs args = getArgs(thisObj);
                 while (true) {
                     Object next = iteratorStep(args.iterated);
@@ -547,7 +531,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
-            return createIterator(new IteratorTakeArgs(iterated, integerLimit));
+            return createIteratorHelperObject(new IteratorTakeArgs(iterated, integerLimit));
         }
 
         protected abstract static class IteratorTakeNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<IteratorTakeArgs> {
@@ -562,7 +546,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
+            protected Object next(VirtualFrame frame, JSIteratorHelperObject thisObj) {
                 IteratorTakeArgs args = getArgs(thisObj);
                 double remaining = args.remaining;
 
@@ -633,7 +617,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             IteratorRecord iterated = getIteratorDirect(thisObj);
 
-            return createIterator(new IteratorDropArgs(iterated, integerLimit));
+            return createIteratorHelperObject(new IteratorDropArgs(iterated, integerLimit));
         }
 
         protected abstract static class IteratorDropNextNode extends IteratorFromGeneratorNode.IteratorFromGeneratorImplNode<IteratorDropArgs> {
@@ -646,7 +630,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
             @SuppressFBWarnings(value = "FL_FLOATS_AS_LOOP_COUNTERS", justification = "intentional use of floating-point variable as loop counter")
             @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
+            protected Object next(VirtualFrame frame, JSIteratorHelperObject thisObj) {
                 IteratorDropArgs args = getArgs(thisObj);
                 double remaining = args.remaining;
                 while (remaining > 0) {
@@ -694,7 +678,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization(guards = "isCallable(mapper)")
         public JSDynamicObject flatMap(Object thisObj, Object mapper) {
             IteratorRecord iterated = getIteratorDirect(thisObj);
-            return createIterator(new IteratorFlatMapArgs(iterated, mapper));
+            return createIteratorHelperObject(new IteratorFlatMapArgs(iterated, mapper));
         }
 
         @Specialization(guards = "!isCallable(mapper)")
@@ -721,7 +705,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             }
 
             @Specialization
-            public Object next(VirtualFrame frame, Object thisObj) {
+            protected Object next(VirtualFrame frame, JSIteratorHelperObject thisObj) {
                 IteratorFlatMapArgs args = getArgs(thisObj);
                 boolean innerAlive = args.innerAlive;
                 while (true) {

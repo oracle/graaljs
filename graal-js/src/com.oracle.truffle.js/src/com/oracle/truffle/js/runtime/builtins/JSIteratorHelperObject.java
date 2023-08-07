@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,18 +38,47 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins.temporal;
+package com.oracle.truffle.js.runtime.builtins;
 
-public interface TemporalTime extends TemporalCalendar {
-    int getHour();
+import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorArgs;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-    int getMinute();
+public final class JSIteratorHelperObject extends JSNonProxyObject {
 
-    int getSecond();
+    private JSFunction.GeneratorState generatorState;
+    private final IteratorArgs iteratorArgs;
+    private final JSFunctionObject nextImpl;
 
-    int getMillisecond();
+    protected JSIteratorHelperObject(Shape shape, JSDynamicObject proto, JSFunction.GeneratorState initialState, IteratorArgs iteratorArgs, JSFunctionObject nextImpl) {
+        super(shape, proto);
+        this.generatorState = initialState;
+        this.iteratorArgs = iteratorArgs;
+        this.nextImpl = nextImpl;
+    }
 
-    int getMicrosecond();
+    public JSFunction.GeneratorState getGeneratorState() {
+        return generatorState;
+    }
 
-    int getNanosecond();
+    public void setGeneratorState(JSFunction.GeneratorState generatorState) {
+        this.generatorState = generatorState;
+    }
+
+    public IteratorArgs getIteratorArgs() {
+        return iteratorArgs;
+    }
+
+    public JSFunctionObject getNextImpl() {
+        return nextImpl;
+    }
+
+    public static JSIteratorHelperObject create(JSObjectFactory factory, JSRealm realm, JSFunction.GeneratorState initialState, IteratorArgs iteratorArgs, JSFunctionObject nextImpl) {
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSIteratorHelperObject(shape, proto, initialState, iteratorArgs, nextImpl), realm, proto);
+        return factory.trackAllocation(newObj);
+    }
 }

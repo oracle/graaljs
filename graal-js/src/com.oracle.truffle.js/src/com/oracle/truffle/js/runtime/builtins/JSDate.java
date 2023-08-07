@@ -140,7 +140,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         JSObject datePrototype;
         if (ctx.getEcmaScriptVersion() < 6) {
             Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-            datePrototype = JSDateObject.create(protoShape, Double.NaN);
+            datePrototype = JSDateObject.create(protoShape, realm.getObjectPrototype(), Double.NaN);
             JSObjectUtil.setOrVerifyPrototype(ctx, datePrototype, realm.getObjectPrototype());
         } else {
             datePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
@@ -563,9 +563,18 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
     public static JSDateObject create(JSContext context, JSRealm realm, double timeMillis) {
         JSObjectFactory factory = context.getDateFactory();
-        JSDateObject obj = JSDateObject.create(factory.getShape(realm), timeMillis);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return create(factory, realm, factory.getPrototype(realm), timeMillis);
+    }
+
+    public static JSDateObject create(JSContext context, JSRealm realm, JSDynamicObject proto, double timeMillis) {
+        JSObjectFactory factory = context.getDateFactory();
+        return create(factory, realm, proto, timeMillis);
+    }
+
+    private static JSDateObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, double timeMillis) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSDateObject(shape, proto, timeMillis), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static double setTime(JSDateObject thisDate, double time) {

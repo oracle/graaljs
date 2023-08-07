@@ -53,8 +53,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncFromSyncIteratorObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -64,7 +63,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public abstract class GetAsyncIteratorNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode objectNode;
-    @Child private PropertySetNode setState;
     @Child private GetMethodNode getAsyncIteratorMethodNode;
     @Child private PropertyGetNode getNextMethodNode;
     private final JSContext context;
@@ -72,7 +70,6 @@ public abstract class GetAsyncIteratorNode extends JavaScriptNode {
     protected GetAsyncIteratorNode(JSContext context, JavaScriptNode objectNode) {
         this.objectNode = objectNode;
         this.context = context;
-        this.setState = PropertySetNode.createSetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
         this.getAsyncIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ASYNC_ITERATOR);
         this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
     }
@@ -96,9 +93,7 @@ public abstract class GetAsyncIteratorNode extends JavaScriptNode {
     }
 
     private JSObject createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord) {
-        JSObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
-        setState.setValue(obj, syncIteratorRecord);
-        return obj;
+        return JSAsyncFromSyncIteratorObject.create(context, getRealm(), syncIteratorRecord);
     }
 
     @Override

@@ -148,11 +148,20 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     public static JSDateTimeFormatObject create(JSContext context, JSRealm realm) {
-        InternalState state = new InternalState();
         JSObjectFactory factory = context.getDateTimeFormatFactory();
-        JSDateTimeFormatObject obj = new JSDateTimeFormatObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return create(factory, realm, factory.getPrototype(realm));
+    }
+
+    public static JSDateTimeFormatObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        JSObjectFactory factory = context.getDateTimeFormatFactory();
+        return create(factory, realm, proto);
+    }
+
+    private static JSDateTimeFormatObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
+        InternalState state = new InternalState();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSDateTimeFormatObject(shape, proto, state), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @TruffleBoundary

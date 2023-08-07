@@ -163,9 +163,9 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
                         @Cached("prototype") @SuppressWarnings("unused") JSDynamicObject cachedPrototype,
                         @Cached("getProtoChildShape(cachedPrototype)") Shape protoChildShape) {
             if (isPromiseObject()) {
-                return JSPromise.create(context, protoChildShape);
+                return JSPromise.create(context, protoChildShape, cachedPrototype);
             } else if (isOrdinaryObject()) {
-                return JSOrdinary.create(context, protoChildShape);
+                return JSOrdinary.create(context, protoChildShape, cachedPrototype);
             } else {
                 throw Errors.unsupported("unsupported object type");
             }
@@ -174,7 +174,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         @Specialization(guards = {"isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
         final JSObject doOrdinaryInstancePrototype(JSDynamicObject prototype,
                         @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
-            JSObject object = JSOrdinary.createWithoutPrototype(context);
+            JSObject object = JSOrdinary.createWithoutPrototype(context, prototype);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
@@ -182,7 +182,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         @Specialization(guards = {"isPromiseObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
         final JSObject doPromiseInstancePrototype(JSDynamicObject prototype,
                         @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
-            JSObject object = JSPromise.createWithoutPrototype(context);
+            JSObject object = JSPromise.createWithoutPrototype(context, prototype);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }

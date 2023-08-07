@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIteratorObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class WrapForValidIteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<WrapForValidIteratorPrototypeBuiltins.WrapForIterator> {
@@ -114,8 +113,8 @@ public final class WrapForValidIteratorPrototypeBuiltins extends JSBuiltinsConta
         }
 
         @Specialization(guards = "!isWrapForIterator(thisObj)")
-        protected JSDynamicObject incompatible(Object thisObj) {
-            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        protected final Object incompatible(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
         }
     }
 
@@ -140,8 +139,8 @@ public final class WrapForValidIteratorPrototypeBuiltins extends JSBuiltinsConta
         }
 
         @Specialization(guards = "!isWrapForIterator(thisObj)")
-        protected JSDynamicObject incompatible(Object thisObj) {
-            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        protected final Object incompatible(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
         }
     }
 }

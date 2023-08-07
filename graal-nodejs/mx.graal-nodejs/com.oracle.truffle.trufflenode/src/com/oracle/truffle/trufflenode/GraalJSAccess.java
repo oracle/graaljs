@@ -224,6 +224,7 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSMapIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
@@ -781,7 +782,7 @@ public final class GraalJSAccess {
     }
 
     public boolean valueIsGeneratorObject(Object object) {
-        return (object instanceof JSDynamicObject) && DynamicObjectLibrary.getUncached().containsKey((JSDynamicObject) object, JSFunction.GENERATOR_STATE_ID);
+        return object instanceof JSGeneratorObject;
     }
 
     public boolean valueIsModuleNamespaceObject(Object object) {
@@ -1480,7 +1481,7 @@ public final class GraalJSAccess {
 
     private Object typedArrayNew(Object arrayBuffer, int offset, int length, TypedArrayFactory factory) {
         TypedArray arrayType = factory.createArrayType(true, offset != 0);
-        JSDynamicObject dynamicObject = (JSDynamicObject) arrayBuffer;
+        JSArrayBufferObject dynamicObject = (JSArrayBufferObject) arrayBuffer;
         JSContext context = JSObject.getJSContext(dynamicObject);
         JSRealm realm = getCurrentRealm();
         boolean detached = JSArrayBuffer.isDetachedBuffer(dynamicObject);
@@ -1539,7 +1540,7 @@ public final class GraalJSAccess {
     }
 
     public Object dataViewNew(Object arrayBuffer, int offset, int length) {
-        JSDynamicObject dynamicObject = (JSDynamicObject) arrayBuffer;
+        JSArrayBufferObject dynamicObject = (JSArrayBufferObject) arrayBuffer;
         JSRealm realm = getCurrentRealm();
         return JSDataView.createDataView(realm.getContext(), realm, dynamicObject, offset, length);
     }

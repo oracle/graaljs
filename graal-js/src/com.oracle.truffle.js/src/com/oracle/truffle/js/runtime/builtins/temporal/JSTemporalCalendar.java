@@ -40,9 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins;
@@ -58,8 +56,6 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public final class JSTemporalCalendar extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -72,18 +68,20 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     private JSTemporalCalendar() {
     }
 
-    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id, Node node, InlinedBranchProfile errorBranch) {
-        if (!TemporalUtil.isBuiltinCalendar(id)) {
-            errorBranch.enter(node);
-            throw TemporalErrors.createRangeErrorCalendarNotSupported();
-        }
-        return createIntl(context, realm, id);
+    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id) {
+        JSObjectFactory factory = context.getTemporalCalendarFactory();
+        return create(factory, realm, factory.getPrototype(realm), id);
     }
 
-    private static JSTemporalCalendarObject createIntl(JSContext context, JSRealm realm, TruffleString id) {
+    public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, JSDynamicObject proto, TruffleString id) {
         JSObjectFactory factory = context.getTemporalCalendarFactory();
-        JSTemporalCalendarObject obj = factory.initProto(new JSTemporalCalendarObject(factory.getShape(realm), id), realm);
-        return context.trackAllocation(obj);
+        return create(factory, realm, proto, id);
+    }
+
+    private static JSTemporalCalendarObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, TruffleString id) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalCalendarObject(shape, proto, id), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

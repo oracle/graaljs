@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,23 +66,26 @@ import com.oracle.truffle.js.runtime.array.dyn.AbstractObjectArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JSArrayObject extends JSArrayBase implements JSCopyableObject {
-    protected JSArrayObject(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
-        super(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+
+    protected JSArrayObject(Shape shape, JSDynamicObject proto, ScriptArray arrayType,
+                    Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+        super(shape, proto, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    public static JSArrayObject create(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site,
-                    long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
-        return new JSArrayObject(shape, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+    public static JSArrayObject create(Shape shape, JSDynamicObject proto, ScriptArray arrayType,
+                    Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+        return new JSArrayObject(shape, proto, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    public static JSArrayObject createEmpty(Shape shape, ScriptArray arrayType) {
+    public static JSArrayObject createEmpty(Shape shape, JSDynamicObject proto, ScriptArray arrayType) {
         assert arrayType instanceof AbstractConstantEmptyArray || arrayType instanceof ConstantObjectArray || arrayType instanceof AbstractObjectArray;
-        return new JSArrayObject(shape, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
+        return new JSArrayObject(shape, proto, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
     }
 
     @Override
@@ -93,7 +96,7 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
     @Override
     protected JSObject copyWithoutProperties(Shape shape) {
         Object clonedArray = ((DynamicArray) getArrayType()).cloneArray(this);
-        return new JSArrayObject(shape, getArrayType(), clonedArray, null, length, usedLength, indexOffset, arrayOffset, holeCount);
+        return new JSArrayObject(shape, getPrototypeOf(), getArrayType(), clonedArray, null, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
     @SuppressWarnings("unused")

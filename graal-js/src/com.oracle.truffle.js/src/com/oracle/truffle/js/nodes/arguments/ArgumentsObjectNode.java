@@ -106,7 +106,7 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         assert realm == JSFunction.getRealm(getFunctionObject(frame));
 
         JSObjectFactory factory = context.getStrictArgumentsFactory();
-        JSArgumentsObject argumentsObject = JSArgumentsArray.createUnmapped(factory.getShape(realm), arguments);
+        JSArgumentsObject argumentsObject = JSArgumentsArray.createUnmapped(factory.getShape(realm), factory.getPrototype(realm), arguments);
         factory.initProto(argumentsObject, realm);
 
         Properties.putWithFlags(putLengthNode, argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
@@ -131,7 +131,7 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         assert realm == JSFunction.getRealm(callee);
 
         JSObjectFactory factory = context.getNonStrictArgumentsFactory();
-        JSArgumentsObject argumentsObject = JSArgumentsArray.createMapped(factory.getShape(realm), arguments);
+        JSArgumentsObject argumentsObject = JSArgumentsArray.createMapped(factory.getShape(realm), factory.getPrototype(realm), arguments);
         factory.initProto(argumentsObject, realm);
 
         Properties.putWithFlags(putLengthNode, argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());

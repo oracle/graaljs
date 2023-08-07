@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -60,8 +61,9 @@ public class JSTemporalInstantObject extends JSNonProxyObject {
 
     private final BigInt nanoseconds; // 8.4 A BigInt value
 
-    protected JSTemporalInstantObject(Shape shape, BigInt nanoseconds) {
-        super(shape);
+    protected JSTemporalInstantObject(Shape shape, JSDynamicObject proto, BigInt nanoseconds) {
+        super(shape, proto);
+        assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         this.nanoseconds = nanoseconds;
     }
 

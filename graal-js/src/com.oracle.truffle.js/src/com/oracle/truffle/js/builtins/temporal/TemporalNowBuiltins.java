@@ -178,11 +178,10 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public JSTemporalPlainDateTimeObject plainDateTimeISO(Object temporalTimeZoneLike,
-                        @Cached InlinedBranchProfile errorBranch,
                         @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSRealm realm = getRealm();
-            JSTemporalCalendarObject iso8601Calendar = TemporalUtil.getISO8601Calendar(getContext(), realm, this, errorBranch);
+            JSTemporalCalendarObject iso8601Calendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
             return TemporalUtil.systemDateTime(temporalTimeZoneLike, iso8601Calendar, getContext(), realm, toTemporalCalendar, toTemporalTimeZone);
         }
     }
@@ -209,11 +208,10 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
 
         @Specialization
         public JSTemporalZonedDateTimeObject zonedDateTimeISO(Object temporalTimeZoneLike,
-                        @Cached InlinedBranchProfile errorBranch,
                         @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSRealm realm = getRealm();
-            JSTemporalCalendarObject iso8601Calendar = TemporalUtil.getISO8601Calendar(getContext(), realm, this, errorBranch);
+            JSTemporalCalendarObject iso8601Calendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
             return TemporalUtil.systemZonedDateTime(temporalTimeZoneLike, iso8601Calendar, getContext(), realm, toTemporalCalendar, toTemporalTimeZone);
         }
     }
@@ -230,7 +228,8 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
                         @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext(), getRealm(), toTemporalCalendar, toTemporalTimeZone);
-            return JSTemporalPlainDate.create(getContext(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar(), this, errorBranch);
+            return JSTemporalPlainDate.create(getContext(), getRealm(),
+                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar(), this, errorBranch);
         }
     }
 
@@ -246,9 +245,10 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
                         @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSRealm realm = getRealm();
-            JSTemporalCalendarObject calendar = TemporalUtil.getISO8601Calendar(getContext(), realm, this, errorBranch);
+            JSTemporalCalendarObject calendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
             JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext(), realm, toTemporalCalendar, toTemporalTimeZone);
-            return JSTemporalPlainDate.create(getContext(), dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar(), this, errorBranch);
+            return JSTemporalPlainDate.create(getContext(), getRealm(),
+                            dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar(), this, errorBranch);
         }
     }
 
@@ -264,10 +264,10 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
                         @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar,
                         @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
             JSRealm realm = getRealm();
-            JSTemporalCalendarObject calendar = TemporalUtil.getISO8601Calendar(getContext(), realm, this, errorBranch);
+            JSTemporalCalendarObject calendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
             JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext(), realm, toTemporalCalendar, toTemporalTimeZone);
-            return JSTemporalPlainTime.create(getContext(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(),
-                            dateTime.getNanosecond(), this, errorBranch);
+            return JSTemporalPlainTime.create(getContext(), getRealm(),
+                            dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), this, errorBranch);
         }
     }
 }

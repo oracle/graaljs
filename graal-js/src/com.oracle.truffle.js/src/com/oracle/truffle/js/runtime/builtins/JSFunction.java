@@ -100,11 +100,9 @@ public final class JSFunction extends JSNonProxy {
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Function.prototype");
     public static final TruffleString GENERATOR_FUNCTION_NAME = Strings.constant("GeneratorFunction");
     public static final TruffleString GENERATOR_NAME = Strings.constant("Generator");
-    public static final TruffleString GENERATOR_PROTOTYPE_NAME = Strings.constant("Generator.prototype");
     public static final TruffleString ASYNC_FUNCTION_NAME = Strings.constant("AsyncFunction");
     public static final TruffleString ASYNC_GENERATOR_FUNCTION_NAME = Strings.constant("AsyncGeneratorFunction");
     public static final TruffleString ASYNC_GENERATOR_NAME = Strings.constant("AsyncGenerator");
-    public static final TruffleString ASYNC_GENERATOR_PROTOTYPE_NAME = Strings.constant("AsyncGenerator.prototype");
     public static final TruffleString ENUMERATE_ITERATOR_PROTOTYPE_NAME = Strings.constant("[[Enumerate]].prototype");
     public static final TruffleString CALLER = Strings.constant("caller");
     public static final TruffleString ARGUMENTS = Strings.ARGUMENTS;
@@ -117,7 +115,6 @@ public final class JSFunction extends JSNonProxy {
     public static final TruffleString TS_BUILTIN_SOURCE_NAME = Strings.constant(BUILTIN_SOURCE_NAME);
     public static final SourceSection BUILTIN_SOURCE_SECTION = createBuiltinSourceSection(BUILTIN_SOURCE_NAME);
 
-    public static final HiddenKey ASYNC_FROM_SYNC_ITERATOR_KEY = new HiddenKey("SyncIterator");
     public static final TruffleString ASYNC_FROM_SYNC_ITERATOR_PROTOTYPE_NAME = Strings.constant("%AsyncFromSyncIteratorPrototype%");
 
     public static final PropertyProxy PROTOTYPE_PROXY = new ClassPrototypeProxyProperty();
@@ -179,15 +176,6 @@ public final class JSFunction extends JSNonProxy {
     public static final HiddenKey CLASS_ELEMENTS_ID = new HiddenKey("Elements");
     public static final HiddenKey CLASS_INITIALIZERS_ID = new HiddenKey("Initializers");
     public static final HiddenKey PRIVATE_BRAND_ID = new HiddenKey("PrivateBrand");
-
-    public static final HiddenKey GENERATOR_STATE_ID = new HiddenKey("GeneratorState");
-    public static final HiddenKey GENERATOR_CONTEXT_ID = new HiddenKey("GeneratorContext");
-    public static final HiddenKey GENERATOR_TARGET_ID = new HiddenKey("GeneratorTarget");
-
-    public static final HiddenKey ASYNC_GENERATOR_STATE_ID = new HiddenKey("AsyncGeneratorState");
-    public static final HiddenKey ASYNC_GENERATOR_CONTEXT_ID = new HiddenKey("AsyncGeneratorContext");
-    public static final HiddenKey ASYNC_GENERATOR_QUEUE_ID = new HiddenKey("AsyncGeneratorQueue");
-    public static final HiddenKey ASYNC_GENERATOR_TARGET_ID = new HiddenKey("AsyncGeneratorTarget");
 
     /** Marker property to ensure generator function shapes are distinct from normal functions. */
     private static final HiddenKey GENERATOR_FUNCTION_MARKER_ID = new HiddenKey("generator function");
@@ -490,9 +478,9 @@ public final class JSFunction extends JSNonProxy {
         } else {
             assert functionData.isGenerator();
             if (functionData.isAsync()) {
-                return JSOrdinary.createWithRealm(context, context.getAsyncGeneratorObjectFactory(), realm);
+                return JSOrdinary.createWithRealm(context, context.getAsyncGeneratorObjectPrototypeFactory(), realm);
             } else {
-                return JSOrdinary.createWithRealm(context, context.getGeneratorObjectFactory(), realm);
+                return JSOrdinary.createWithRealm(context, context.getGeneratorObjectPrototypeFactory(), realm);
             }
         }
     }
@@ -628,7 +616,7 @@ public final class JSFunction extends JSNonProxy {
     public static JSFunctionObject createFunctionPrototype(JSRealm realm, JSDynamicObject objectPrototype) {
         JSContext context = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(context, INSTANCE, objectPrototype);
-        JSFunctionObject proto = JSFunctionObject.create(protoShape, createEmptyFunctionData(context), JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, CLASS_PROTOTYPE_PLACEHOLDER);
+        JSFunctionObject proto = JSFunctionObject.create(protoShape, objectPrototype, createEmptyFunctionData(context), JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, CLASS_PROTOTYPE_PLACEHOLDER);
         JSObjectUtil.setOrVerifyPrototype(context, proto, objectPrototype);
         JSObjectUtil.putDataProperty(proto, LENGTH, 0, JSAttributes.configurableNotEnumerableNotWritable());
         JSObjectUtil.putDataProperty(proto, NAME, Strings.EMPTY_STRING, JSAttributes.configurableNotEnumerableNotWritable());

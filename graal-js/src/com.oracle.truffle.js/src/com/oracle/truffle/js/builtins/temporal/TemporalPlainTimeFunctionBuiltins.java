@@ -109,7 +109,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
             Overflow overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, getOptionNode);
             if (isObject(item) && JSTemporalPlainTime.isJSTemporalPlainTime(item)) {
                 JSTemporalPlainTimeObject timeItem = (JSTemporalPlainTimeObject) item;
-                return JSTemporalPlainTime.create(getContext(),
+                return JSTemporalPlainTime.create(getContext(), getRealm(),
                                 timeItem.getHour(), timeItem.getMinute(), timeItem.getSecond(), timeItem.getMillisecond(),
                                 timeItem.getMicrosecond(), timeItem.getNanosecond(), this, errorBranch);
             }

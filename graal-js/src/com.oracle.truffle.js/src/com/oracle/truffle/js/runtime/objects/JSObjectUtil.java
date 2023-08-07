@@ -110,7 +110,7 @@ public final class JSObjectUtil {
             obj = JSOrdinary.createInitWithInstancePrototype(prototype, context);
         } else {
             Shape initialShape = prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.INSTANCE, context);
-            obj = JSOrdinaryObject.create(initialShape);
+            obj = JSOrdinaryObject.create(initialShape, prototype);
         }
         return obj;
     }
@@ -357,6 +357,10 @@ public final class JSObjectUtil {
         }
 
         lib.resetShape(object, newRootShape);
+
+        if (newRootShape.getFlags() != oldShape.getFlags()) {
+            lib.setShapeFlags(object, oldShape.getFlags());
+        }
 
         for (int i = 0; i < allProperties.size(); i++) {
             Property property = allProperties.get(i);

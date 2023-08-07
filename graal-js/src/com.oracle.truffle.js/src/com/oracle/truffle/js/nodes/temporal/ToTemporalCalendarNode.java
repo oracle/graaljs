@@ -106,7 +106,7 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
                 throw TemporalErrors.createRangeErrorCalendarUnknown();
             }
         }
-        return JSTemporalCalendar.create(context, getRealm(), identifier, this, errorBranch);
+        return JSTemporalCalendar.create(context, getRealm(), identifier);
     }
 
     private Object getCalendarProperty(JSDynamicObject obj) {

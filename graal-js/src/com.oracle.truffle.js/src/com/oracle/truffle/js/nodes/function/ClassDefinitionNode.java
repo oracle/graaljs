@@ -47,6 +47,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -66,13 +67,16 @@ import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
@@ -104,6 +108,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     @Child private SetFunctionNameNode setFunctionName;
     @Child private IsConstructorNode isConstructorNode;
     @Child private JSFunctionCallNode staticExtraInitializersCallNode;
+
+    @Child private DynamicObjectLibrary protoFlagsNode;
 
     private final JSContext context;
     private final TruffleString className;
@@ -185,7 +191,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         int startIndex;
         JSRealm realm = getRealm();
         if (resumptionRecord == null) {
-            Object protoParent = realm.getObjectPrototype();
+            JSDynamicObject protoParent = realm.getObjectPrototype();
             Object constructorParent = realm.getFunctionPrototype();
             if (classHeritageNode != null) {
                 Object superclass = classHeritageNode.execute(frame);
@@ -200,11 +206,12 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                     errorBranch.enter();
                     throw Errors.createTypeError("class cannot extend a generator function", this);
                 } else {
-                    protoParent = getPrototypeNode.getValue(superclass);
-                    if (protoParent != Null.instance && !JSRuntime.isObject(protoParent)) {
+                    var uncheckedProtoParent = getPrototypeNode.getValue(superclass);
+                    if (uncheckedProtoParent != Null.instance && !JSRuntime.isObject(uncheckedProtoParent)) {
                         errorBranch.enter();
                         throw Errors.createTypeError("protoParent is neither Object nor Null", this);
                     }
+                    protoParent = (JSDynamicObject) uncheckedProtoParent;
                     constructorParent = superclass;
                 }
             }
@@ -213,7 +220,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
 
             /* Let proto be ObjectCreate(protoParent). */
             assert protoParent == Null.instance || JSRuntime.isObject(protoParent);
-            proto = createPrototypeNode.execute((JSDynamicObject) protoParent);
+            proto = createPrototypeNode.execute(protoParent);
+
+            // Mark prototypes derived from Array.prototype.
+            handleArrayPrototype(proto, protoParent);
 
             /*
              * Let constructorInfo be the result of performing DefineMethod for constructor with
@@ -259,6 +269,21 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         staticElementIndex,
                         stateSlot,
                         realm);
+    }
+
+    private void handleArrayPrototype(JSDynamicObject proto, JSDynamicObject protoParent) {
+        if (JSShape.isArrayPrototypeOrDerivative(protoParent)) {
+            markAsArrayPrototype(proto);
+        }
+    }
+
+    private void markAsArrayPrototype(JSDynamicObject proto) {
+        if (protoFlagsNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            protoFlagsNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
+        }
+        assert JSOrdinary.isJSOrdinaryObject(proto);
+        protoFlagsNode.setShapeFlags(proto, protoFlagsNode.getShapeFlags(proto) | JSShape.ARRAY_PROTOTYPE_FLAG);
     }
 
     private Object defineClassElements(VirtualFrame frame, JSDynamicObject proto, JSObject constructor, Object[] decorators, ClassElementDefinitionRecord[] instanceElements,

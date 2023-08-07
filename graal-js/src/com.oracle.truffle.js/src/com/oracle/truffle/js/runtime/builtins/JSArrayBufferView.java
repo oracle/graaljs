@@ -317,35 +317,34 @@ public final class JSArrayBufferView extends JSNonProxy {
         return d < JSArrayBufferView.typedArrayGetLength(thisObj);
     }
 
-    public static JSTypedArrayObject createArrayBufferView(JSContext context, JSRealm realm, JSDynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
+    public static JSTypedArrayObject createArrayBufferView(JSContext context, JSRealm realm, JSArrayBufferObject arrayBuffer, TypedArray arrayType, int offset, int length) {
         CompilerAsserts.partialEvaluationConstant(arrayType);
         assert JSArrayBuffer.isJSAbstractBuffer(arrayBuffer);
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
             throw Errors.createTypeErrorDetachedBuffer();
         }
         JSObjectFactory objectFactory = context.getArrayBufferViewFactory(arrayType.getFactory());
-        return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length);
+        return createArrayBufferView(objectFactory, realm, arrayBuffer, arrayType, offset, length);
     }
 
-    public static JSTypedArrayObject createArrayBufferView(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
-                    JSDynamicObject arrayBuffer, TypedArray arrayType, int offset, int length) {
-        return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length, objectFactory.getPrototype(realm));
+    public static JSTypedArrayObject createArrayBufferView(JSObjectFactory objectFactory, JSRealm realm, JSArrayBufferObject arrayBuffer,
+                    TypedArray arrayType, int offset, int length) {
+        return createArrayBufferView(objectFactory, realm, arrayBuffer, arrayType, offset, length, objectFactory.getPrototype(realm));
     }
 
-    public static JSTypedArrayObject createArrayBufferViewWithProto(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
-                    JSDynamicObject arrayBuffer, TypedArray arrayType, int offset, int length, JSDynamicObject prototype) {
-        return createArrayBufferView(context, realm, objectFactory, arrayBuffer, arrayType, offset, length, prototype);
+    public static JSTypedArrayObject createArrayBufferViewWithProto(JSObjectFactory objectFactory, JSRealm realm, JSArrayBufferObject arrayBuffer,
+                    TypedArray arrayType, int offset, int length, JSDynamicObject prototype) {
+        return createArrayBufferView(objectFactory, realm, arrayBuffer, arrayType, offset, length, prototype);
     }
 
-    private static JSTypedArrayObject createArrayBufferView(JSContext context, JSRealm realm, JSObjectFactory objectFactory,
-                    JSDynamicObject arrayBuffer, TypedArray arrayType, int offset, int length, JSDynamicObject prototype) {
+    private static JSTypedArrayObject createArrayBufferView(JSObjectFactory objectFactory, JSRealm realm, JSArrayBufferObject arrayBuffer,
+                    TypedArray arrayType, int offset, int length, JSDynamicObject prototype) {
         assert !JSArrayBuffer.isDetachedBuffer(arrayBuffer);
-        assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= ((JSArrayBufferObject) arrayBuffer).getByteLength();
+        assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= arrayBuffer.getByteLength();
         assert offset != 0 == arrayType.hasOffset();
-
-        JSTypedArrayObject obj = JSTypedArrayObject.create(objectFactory.getShape(realm), arrayType, (JSArrayBufferObject) arrayBuffer, length, offset);
-        objectFactory.initProto(obj, prototype);
-        return context.trackAllocation(obj);
+        var shape = objectFactory.getShape(realm, prototype);
+        var newObj = objectFactory.initProto(new JSTypedArrayObject(shape, prototype, arrayType, arrayBuffer, length, offset), realm, prototype);
+        return objectFactory.trackAllocation(newObj);
     }
 
     private static JSObject createArrayBufferViewPrototype(JSRealm realm, JSDynamicObject ctor, int bytesPerElement, TypedArrayFactory factory, JSDynamicObject taPrototype) {
@@ -362,10 +361,10 @@ public final class JSArrayBufferView extends JSNonProxy {
         JSContext context = realm.getContext();
         byte[] byteArray = new byte[0];
         JSObjectFactory bufferFactory = context.getArrayBufferFactory();
-        JSArrayBufferObject emptyArrayBuffer = bufferFactory.initProto(JSArrayBufferObject.createHeapArrayBuffer(bufferFactory.getShape(realm), byteArray), realm);
+        JSArrayBufferObject emptyArrayBuffer = bufferFactory.initProto(JSArrayBufferObject.createHeapArrayBuffer(bufferFactory.getShape(realm), bufferFactory.getPrototype(realm), byteArray), realm);
         TypedArray arrayType = factory.createArrayType(false, false);
         Shape shape = JSShape.createPrototypeShape(context, INSTANCE, taPrototype);
-        JSObject prototype = JSTypedArrayObject.create(shape, arrayType, emptyArrayBuffer, 0, 0);
+        JSObject prototype = JSTypedArrayObject.create(shape, taPrototype, arrayType, emptyArrayBuffer, 0, 0);
         JSObjectUtil.setOrVerifyPrototype(context, prototype, taPrototype);
         return prototype;
     }

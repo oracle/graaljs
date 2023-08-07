@@ -112,12 +112,12 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         return INSTANCE.createConstructorAndPrototype(realm, DisplayNamesFunctionBuiltins.BUILTINS);
     }
 
-    public static JSDisplayNamesObject create(JSContext context, JSRealm realm) {
+    public static JSDisplayNamesObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getDisplayNamesFactory();
-        JSDisplayNamesObject obj = new JSDisplayNamesObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return obj;
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSDisplayNamesObject(shape, proto, state), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static class InternalState {

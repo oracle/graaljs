@@ -205,6 +205,13 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
+    public static JSRegExpObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object compiledRegex, JSObjectFactory groupsFactory) {
+        return create(context, realm, proto, compiledRegex, groupsFactory, true);
+    }
+
+    /**
+     * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
+     */
     public static JSRegExpObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory) {
         return create(context, realm, compiledRegex, groupsFactory, true);
     }
@@ -212,9 +219,23 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
+    public static JSRegExpObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+        JSObjectFactory factory = context.getRegExpFactory();
+        return create(factory, realm, proto, compiledRegex, groupsFactory, legacyFeaturesEnabled);
+    }
+
+    /**
+     * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
+     */
     public static JSRegExpObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
-        JSRegExpObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
-        return context.trackAllocation(regExp);
+        JSObjectFactory factory = context.getRegExpFactory();
+        return create(factory, realm, factory.getPrototype(realm), compiledRegex, groupsFactory, legacyFeaturesEnabled);
+    }
+
+    private static JSRegExpObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSRegExpObject(shape, proto, compiledRegex, groupsFactory, realm, legacyFeaturesEnabled), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     private static void initialize(JSContext ctx, JSDynamicObject regExp, Object regex) {
@@ -227,9 +248,11 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         initialize(ctx, thisObj, regex);
     }
 
-    public static JSDynamicObject createGroupsObject(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
-        JSDynamicObject obj = JSRegExpGroupsObject.create(realm, groupsFactory, regexResult, input, isIndices);
-        return context.trackAllocation(obj);
+    public static JSDynamicObject createGroupsObject(JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
+        var proto = groupsFactory.getPrototype(realm);
+        var shape = groupsFactory.getShape(realm, proto);
+        var newObj = groupsFactory.initProto(new JSRegExpGroupsObject(shape, proto, regexResult, input, isIndices), realm, proto);
+        return groupsFactory.trackAllocation(newObj);
     }
 
     @TruffleBoundary
@@ -292,7 +315,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         JSDynamicObject prototype;
         if (ctx.getEcmaScriptVersion() < 6) {
             Shape shape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-            prototype = JSRegExpObject.create(shape, es5GetEmptyRegexEarly(realm), realm);
+            prototype = JSRegExpObject.create(shape, realm.getObjectPrototype(), es5GetEmptyRegexEarly(realm), realm);
             JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
             JSObjectUtil.putDataProperty(prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         } else {

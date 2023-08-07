@@ -57,7 +57,6 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -70,11 +69,11 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     private JSTemporalTimeZone() {
     }
 
-    public static JSTemporalTimeZoneObject create(JSContext context, JSRealm realm, BigInt nanoseconds, TruffleString identifier) {
-        assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
+    public static JSTemporalTimeZoneObject create(JSContext context, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds, TruffleString identifier) {
         JSObjectFactory factory = context.getTemporalTimeZoneFactory();
-        JSTemporalTimeZoneObject obj = factory.initProto(new JSTemporalTimeZoneObject(factory.getShape(realm), nanoseconds, identifier), realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalTimeZoneObject(shape, proto, nanoseconds, identifier), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

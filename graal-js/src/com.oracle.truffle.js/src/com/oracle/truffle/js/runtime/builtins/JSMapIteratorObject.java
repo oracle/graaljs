@@ -42,21 +42,17 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
 public final class JSMapIteratorObject extends JSCollectionIteratorObject {
 
-    protected JSMapIteratorObject(Shape shape, Object iteratedObject, JSHashMap.Cursor nextIndex, int iterationKind) {
-        super(shape, iteratedObject, nextIndex, iterationKind);
+    protected JSMapIteratorObject(Shape shape, JSDynamicObject proto, Object iteratedObject, JSHashMap.Cursor nextIndex, int iterationKind) {
+        super(shape, proto, iteratedObject, nextIndex, iterationKind);
     }
 
     @Override
     public TruffleString getClassName() {
         return JSMapIterator.CLASS_NAME;
-    }
-
-    public static JSMapIteratorObject create(JSRealm realm, JSObjectFactory factory, Object iteratedObject, JSHashMap.Cursor nextIndex, int iterationKind) {
-        return factory.initProto(new JSMapIteratorObject(factory.getShape(realm), iteratedObject, nextIndex, iterationKind), realm);
     }
 }

@@ -52,6 +52,7 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -68,9 +69,11 @@ public final class JSAsyncContextVariable extends JSNonProxy implements JSConstr
     private JSAsyncContextVariable() {
     }
 
-    public static JSAsyncContextVariableObject create(JSContext context, JSRealm realm, Symbol asyncContextKey, Object asyncContextDefaultValue) {
-        JSAsyncContextVariableObject obj = JSAsyncContextVariableObject.create(realm, context.getAsyncContextVariableFactory(), asyncContextKey, asyncContextDefaultValue);
-        return context.trackAllocation(obj);
+    public static JSAsyncContextVariableObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Symbol asyncContextKey, Object asyncContextDefaultValue) {
+        JSObjectFactory factory = context.getAsyncContextVariableFactory();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSAsyncContextVariableObject(shape, proto, asyncContextKey, asyncContextDefaultValue), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

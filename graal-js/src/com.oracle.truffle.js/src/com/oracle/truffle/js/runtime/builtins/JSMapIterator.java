@@ -63,8 +63,11 @@ public final class JSMapIterator extends JSNonProxy implements JSConstructorFact
     }
 
     public static JSMapIteratorObject create(JSContext context, JSRealm realm, Object iteratedObject, JSHashMap.Cursor nextIndex, int iterationKind) {
-        var obj = JSMapIteratorObject.create(realm, context.getMapIteratorFactory(), iteratedObject, nextIndex, iterationKind);
-        return context.trackAllocation(obj);
+        JSObjectFactory factory = context.getMapIteratorFactory();
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSMapIteratorObject(shape, proto, iteratedObject, nextIndex, iterationKind), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     /**

@@ -90,7 +90,7 @@ public final class JavaPackage extends JSNonProxy {
 
     private static JavaPackageObject createInstance(JSContext context, JSRealm realm, TruffleString packageName) {
         JSObjectFactory factory = context.getJavaPackageFactory();
-        JavaPackageObject obj = new JavaPackageObject(factory.getShape(realm), packageName);
+        JavaPackageObject obj = new JavaPackageObject(factory.getShape(realm), factory.getPrototype(realm), packageName);
         factory.initProto(obj, realm);
         JSObjectUtil.putDataProperty(obj, Symbol.SYMBOL_TO_PRIMITIVE, realm.getJavaPackageToPrimitiveFunction(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         return obj;

@@ -72,8 +72,8 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     public static final TruffleString CLASS_NAME = Strings.constant("ArrayBuffer");
     public static final Object PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
 
-    protected JSArrayBufferObject(Shape shape) {
-        super(shape);
+    protected JSArrayBufferObject(Shape shape, JSDynamicObject proto) {
+        super(shape, proto);
     }
 
     @Override
@@ -128,8 +128,8 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     public static final class Heap extends JSArrayBufferObject {
         byte[] byteArray;
 
-        protected Heap(Shape shape, byte[] byteArray) {
-            super(shape);
+        protected Heap(Shape shape, JSDynamicObject proto, byte[] byteArray) {
+            super(shape, proto);
             this.byteArray = byteArray;
         }
 
@@ -299,8 +299,8 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     public abstract static class DirectBase extends JSArrayBufferObject {
         ByteBuffer byteBuffer;
 
-        protected DirectBase(Shape shape, ByteBuffer byteBuffer) {
-            super(shape);
+        protected DirectBase(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer) {
+            super(shape, proto);
             this.byteBuffer = byteBuffer;
         }
 
@@ -464,8 +464,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     }
 
     public static final class Direct extends DirectBase {
-        protected Direct(Shape shape, ByteBuffer byteBuffer) {
-            super(shape, byteBuffer);
+
+        protected Direct(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer) {
+            super(shape, proto, byteBuffer);
         }
 
         @Override
@@ -482,8 +483,8 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     public static final class Shared extends DirectBase {
         JSAgentWaiterList waiterList;
 
-        protected Shared(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
-            super(shape, byteBuffer);
+        protected Shared(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
+            super(shape, proto, byteBuffer);
             this.waiterList = waiterList;
         }
 
@@ -514,8 +515,9 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     public static final class Interop extends JSArrayBufferObject {
         Object interopBuffer;
 
-        protected Interop(Shape shape, Object interopBuffer) {
-            super(shape);
+        protected Interop(Shape shape, JSDynamicObject proto, Object interopBuffer) {
+            super(shape, proto);
+            assert InteropLibrary.getUncached().hasBufferElements(interopBuffer);
             this.interopBuffer = interopBuffer;
         }
 
@@ -715,20 +717,20 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
     }
 
-    public static JSArrayBufferObject createHeapArrayBuffer(Shape shape, byte[] byteArray) {
-        return new Heap(shape, byteArray);
+    public static JSArrayBufferObject createHeapArrayBuffer(Shape shape, JSDynamicObject proto, byte[] byteArray) {
+        return new Heap(shape, proto, byteArray);
     }
 
-    public static JSArrayBufferObject createDirectArrayBuffer(Shape shape, ByteBuffer byteBuffer) {
-        return new Direct(shape, byteBuffer);
+    public static JSArrayBufferObject createDirectArrayBuffer(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer) {
+        return new Direct(shape, proto, byteBuffer);
     }
 
-    public static JSArrayBufferObject createSharedArrayBuffer(Shape shape, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
-        return new Shared(shape, byteBuffer, waiterList);
+    public static JSArrayBufferObject createSharedArrayBuffer(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
+        return new Shared(shape, proto, byteBuffer, waiterList);
     }
 
-    public static JSArrayBufferObject createInteropArrayBuffer(Shape shape, Object interopBuffer) {
-        return new Interop(shape, interopBuffer);
+    public static JSArrayBufferObject createInteropArrayBuffer(Shape shape, JSDynamicObject proto, Object interopBuffer) {
+        return new Interop(shape, proto, interopBuffer);
     }
 
     @SuppressWarnings("serial")

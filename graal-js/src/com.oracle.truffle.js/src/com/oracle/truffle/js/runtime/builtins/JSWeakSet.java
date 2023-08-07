@@ -66,10 +66,12 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     private JSWeakSet() {
     }
 
-    public static JSWeakSetObject create(JSContext context, JSRealm realm) {
+    public static JSWeakSetObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        var weakHashMap = newWeakHashMap();
         JSObjectFactory factory = context.getWeakSetFactory();
-        JSWeakSetObject obj = factory.initProto(new JSWeakSetObject(factory.getShape(realm), newWeakHashMap()), realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSWeakSetObject(shape, proto, weakHashMap), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @TruffleBoundary

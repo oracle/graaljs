@@ -76,12 +76,15 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     private JSFinalizationRegistry() {
     }
 
-    public static JSFinalizationRegistryObject create(JSContext context, JSRealm realm, JobCallback cleanupCallback) {
+    public static JSFinalizationRegistryObject create(JSContext context, JSRealm realm, JSDynamicObject proto, JobCallback cleanupCallback) {
+        ArrayList<FinalizationRecord> cells = new ArrayList<>();
+        ReferenceQueue<Object> referenceQueue = createReferenceQueue();
         JSObjectFactory factory = context.getFinalizationRegistryFactory();
-        JSFinalizationRegistryObject obj = factory.initProto(new JSFinalizationRegistryObject(factory.getShape(realm), cleanupCallback, new ArrayList<>(), createReferenceQueue()), realm);
-        context.registerFinalizationRegistry(obj);
-        context.trackAllocation(obj);
-        return obj;
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSFinalizationRegistryObject(shape, proto, cleanupCallback, cells, referenceQueue), realm, proto);
+        JSFinalizationRegistryObject registryObj = factory.trackAllocation(newObj);
+        context.registerFinalizationRegistry(registryObj);
+        return registryObj;
     }
 
     @TruffleBoundary

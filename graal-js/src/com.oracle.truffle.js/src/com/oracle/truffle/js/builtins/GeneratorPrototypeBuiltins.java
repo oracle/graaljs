@@ -41,9 +41,8 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltinsFactory.GeneratorResumeNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.InternalCallNode;
@@ -53,10 +52,9 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSGenerator;
+import com.oracle.truffle.js.runtime.builtins.JSGeneratorObject;
 import com.oracle.truffle.js.runtime.objects.Completion;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains built-in methods of Generator.prototype.
@@ -65,7 +63,7 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
     public static final JSBuiltinsContainer BUILTINS = new GeneratorPrototypeBuiltins();
 
     protected GeneratorPrototypeBuiltins() {
-        super(JSFunction.GENERATOR_PROTOTYPE_NAME, GeneratorPrototype.class);
+        super(JSGenerator.PROTOTYPE_NAME, GeneratorPrototype.class);
     }
 
     public enum GeneratorPrototype implements BuiltinEnum<GeneratorPrototype> {
@@ -114,26 +112,18 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
         public GeneratorResumeNode(JSContext context, JSBuiltin builtin, Completion.Type resumeType) {
             super(context, builtin);
             this.resumeType = resumeType;
-            this.getGeneratorTarget = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_TARGET_ID, context);
-            this.getGeneratorContext = PropertyGetNode.createGetHidden(JSFunction.GENERATOR_CONTEXT_ID, context);
             this.callNode = InternalCallNode.create();
         }
 
         @Specialization
-        protected Object resume(JSObject generator, Object value,
-                        @Cached InlinedBranchProfile errorBranch) {
-            Object generatorTarget = getGeneratorTarget.getValue(generator);
-            if (generatorTarget != Undefined.instance) {
-                Object generatorContext = getGeneratorContext.getValue(generator);
-                return callNode.execute((CallTarget) generatorTarget, JSArguments.createResumeArguments(generatorContext, generator, resumeType, value));
-            } else {
-                errorBranch.enter(this);
-                throw Errors.createTypeErrorGeneratorObjectExpected();
-            }
+        protected Object resume(JSGeneratorObject generator, Object value) {
+            CallTarget generatorTarget = generator.getGeneratorTarget();
+            Object generatorContext = generator.getGeneratorContext();
+            return callNode.execute(generatorTarget, JSArguments.createResumeArguments(generatorContext, generator, resumeType, value));
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSObject(thisObj)")
+        @Fallback
         protected Object resume(Object thisObj, Object value) {
             throw Errors.createTypeErrorGeneratorObjectExpected();
         }

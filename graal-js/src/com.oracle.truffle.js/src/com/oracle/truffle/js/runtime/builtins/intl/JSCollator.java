@@ -47,6 +47,7 @@ import java.util.Locale;
 import org.graalvm.shadowed.com.ibm.icu.text.Collator;
 import org.graalvm.shadowed.com.ibm.icu.text.RuleBasedCollator;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -211,11 +212,20 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     }
 
     public static JSCollatorObject create(JSContext context, JSRealm realm) {
-        InternalState state = new InternalState();
         JSObjectFactory factory = context.getCollatorFactory();
-        JSCollatorObject obj = new JSCollatorObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return create(factory, realm, factory.getPrototype(realm));
+    }
+
+    public static JSCollatorObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        JSObjectFactory factory = context.getCollatorFactory();
+        return create(factory, realm, proto);
+    }
+
+    private static JSCollatorObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
+        InternalState state = new InternalState();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSCollatorObject(shape, proto, state), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static Collator getCollatorProperty(JSDynamicObject obj) {

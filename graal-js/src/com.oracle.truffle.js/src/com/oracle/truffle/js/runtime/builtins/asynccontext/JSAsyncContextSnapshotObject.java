@@ -42,17 +42,16 @@ package com.oracle.truffle.js.runtime.builtins.asynccontext;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.objects.AsyncContext;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSAsyncContextSnapshotObject extends JSNonProxyObject {
 
     private final AsyncContext asyncContextMapping;
 
-    protected JSAsyncContextSnapshotObject(Shape shape, AsyncContext asyncContextMapping) {
-        super(shape);
+    protected JSAsyncContextSnapshotObject(Shape shape, JSDynamicObject proto, AsyncContext asyncContextMapping) {
+        super(shape, proto);
         this.asyncContextMapping = asyncContextMapping;
     }
 
@@ -63,9 +62,5 @@ public final class JSAsyncContextSnapshotObject extends JSNonProxyObject {
 
     public AsyncContext getAsyncSnapshotMapping() {
         return asyncContextMapping;
-    }
-
-    public static JSAsyncContextSnapshotObject create(JSRealm realm, JSObjectFactory factory, AsyncContext asyncContextMapping) {
-        return factory.initProto(new JSAsyncContextSnapshotObject(factory.getShape(realm), asyncContextMapping), realm);
     }
 }

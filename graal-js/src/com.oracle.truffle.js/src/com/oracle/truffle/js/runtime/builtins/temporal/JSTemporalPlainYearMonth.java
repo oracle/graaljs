@@ -77,7 +77,13 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     private JSTemporalPlainYearMonth() {
     }
 
-    public static JSTemporalPlainYearMonthObject create(JSContext context, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
+    public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), isoYear, isoMonth, calendar, referenceISODay,
+                        node, errorBranch);
+    }
+
+    public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
                     Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
             errorBranch.enter(node);
@@ -87,15 +93,14 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorYearMonthOutsideRange();
         }
-        return createIntl(context, isoYear, isoMonth, calendar, referenceISODay);
+        return createIntl(context, realm, proto, isoYear, isoMonth, calendar, referenceISODay);
     }
 
-    private static JSTemporalPlainYearMonthObject createIntl(JSContext context, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay) {
-        JSRealm realm = JSRealm.get(null);
+    private static JSTemporalPlainYearMonthObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay) {
         JSObjectFactory factory = context.getTemporalPlainYearMonthFactory();
-        JSTemporalPlainYearMonthObject obj = factory.initProto(new JSTemporalPlainYearMonthObject(factory.getShape(realm), isoYear,
-                        isoMonth, referenceISODay, calendar), realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalPlainYearMonthObject(shape, proto, isoYear, isoMonth, referenceISODay, calendar), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
@@ -139,11 +144,11 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     @TruffleBoundary
     public static TruffleString temporalYearMonthToString(JSTemporalPlainYearMonthObject ym, ShowCalendar showCalendar) {
         TruffleString year = TemporalUtil.padISOYear(ym.getYear());
-        TruffleString month = Strings.format("%1$02d", ym.getMonth());
+        TruffleString month = TemporalUtil.toZeroPaddedDecimalString(ym.getMonth(), 2);
         TruffleString result = Strings.concatAll(year, Strings.DASH, month);
         TruffleString calendarID = JSRuntime.toString(ym.getCalendar());
         if (showCalendar == ShowCalendar.ALWAYS || !ISO8601.equals(calendarID)) {
-            TruffleString day = Strings.format("%1$02d", ym.getDay());
+            TruffleString day = TemporalUtil.toZeroPaddedDecimalString(ym.getDay(), 2);
             result = Strings.concatAll(result, Strings.DASH, day);
         }
         TruffleString calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

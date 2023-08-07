@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.factory.processor;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 import javax.annotation.processing.AbstractProcessor;
 import javax.lang.model.SourceVersion;
@@ -53,12 +54,20 @@ import javax.lang.model.type.DeclaredType;
 import javax.lang.model.type.NoType;
 import javax.lang.model.type.TypeKind;
 import javax.lang.model.type.TypeMirror;
+import javax.lang.model.type.WildcardType;
 import javax.lang.model.util.ElementFilter;
 
 public abstract class AbstractFactoryProcessor extends AbstractProcessor {
     @Override
     public final SourceVersion getSupportedSourceVersion() {
         return SourceVersion.latest();
+    }
+
+    protected final TypeElement asTypeElement(TypeMirror type) {
+        if (type instanceof DeclaredType declaredType) {
+            return (TypeElement) declaredType.asElement();
+        }
+        return (TypeElement) processingEnv.getTypeUtils().asElement(type);
     }
 
     protected final List<ExecutableElement> getOverridableMethods(TypeElement typeElement) {
@@ -69,9 +78,9 @@ public abstract class AbstractFactoryProcessor extends AbstractProcessor {
 
     private void collectOverridableMethods(TypeElement typeElement, List<ExecutableElement> list) {
         if (!(typeElement.getSuperclass() instanceof NoType || typeElement.getSuperclass().toString().equals("java.lang.Object"))) {
-            collectOverridableMethods((TypeElement) processingEnv.getTypeUtils().asElement(typeElement.getSuperclass()), list);
+            collectOverridableMethods(asTypeElement(typeElement.getSuperclass()), list);
         }
-        typeElement.getInterfaces().forEach(intf -> collectOverridableMethods((TypeElement) processingEnv.getTypeUtils().asElement(intf), list));
+        typeElement.getInterfaces().forEach(intf -> collectOverridableMethods(asTypeElement(intf), list));
         ElementFilter.methodsIn(typeElement.getEnclosedElements()).stream().filter(m -> isOverridable(m)).forEach(list::add);
     }
 
@@ -88,15 +97,11 @@ public abstract class AbstractFactoryProcessor extends AbstractProcessor {
     }
 
     protected static String getErasedTypeName(TypeMirror type) {
-        String qualifiedName;
-        if (type.getKind() == TypeKind.DECLARED) {
-            qualifiedName = ((TypeElement) ((DeclaredType) type).asElement()).getQualifiedName().toString();
-        } else if (type.getKind() == TypeKind.ARRAY) {
-            qualifiedName = getErasedTypeName(((ArrayType) type).getComponentType()) + "[]";
-        } else {
-            qualifiedName = type.toString();
-        }
-        return qualifiedName;
+        return switch (type.getKind()) {
+            case DECLARED -> ((TypeElement) ((DeclaredType) type).asElement()).getQualifiedName().toString();
+            case ARRAY -> getErasedTypeName(((ArrayType) type).getComponentType()) + "[]";
+            default -> type.toString();
+        };
     }
 
     protected final TypeMirror erasure(TypeMirror type) {
@@ -108,5 +113,31 @@ public abstract class AbstractFactoryProcessor extends AbstractProcessor {
 
     protected final String getPackageName(TypeElement typeElement) {
         return processingEnv.getElementUtils().getPackageOf(typeElement).getQualifiedName().toString();
+    }
+
+    protected static String getDeclaredTypeName(TypeMirror type) {
+        return switch (type.getKind()) {
+            case DECLARED -> {
+                var declaredType = (DeclaredType) type;
+                var qualifiedName = ((TypeElement) declaredType.asElement()).getQualifiedName().toString();
+                if (!declaredType.getTypeArguments().isEmpty()) {
+                    yield qualifiedName + declaredType.getTypeArguments().stream().map(t -> getDeclaredTypeName(t)).collect(Collectors.joining(", ", "<", ">"));
+                } else {
+                    yield qualifiedName;
+                }
+            }
+            case ARRAY -> getDeclaredTypeName(((ArrayType) type).getComponentType()) + "[]";
+            case WILDCARD -> {
+                var wildcardType = (WildcardType) type;
+                if (wildcardType.getExtendsBound() != null) {
+                    yield "? extends " + getDeclaredTypeName(wildcardType.getExtendsBound());
+                } else if (wildcardType.getSuperBound() != null) {
+                    yield "? super " + getDeclaredTypeName(wildcardType.getSuperBound());
+                } else {
+                    yield "?";
+                }
+            }
+            default -> type.toString();
+        };
     }
 }

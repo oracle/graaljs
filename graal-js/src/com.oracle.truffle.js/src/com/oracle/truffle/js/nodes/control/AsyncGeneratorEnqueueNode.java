@@ -45,45 +45,32 @@ import java.util.ArrayDeque;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
-    @Child private PropertyGetNode getGeneratorStateNode;
-    @Child private PropertyGetNode getAsyncGeneratorQueueNode;
-    @Child private HasHiddenKeyCacheNode hasAsyncGeneratorInternalSlotsNode;
     @Child private JSFunctionCallNode callPromiseRejectNode;
     @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private AsyncGeneratorResumeNextNode asyncGeneratorResumeNextNode;
     private final ConditionProfile notExecutingProf = ConditionProfile.create();
 
     protected AsyncGeneratorEnqueueNode(JSContext context) {
-        this.getGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
-        this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
-        this.hasAsyncGeneratorInternalSlotsNode = HasHiddenKeyCacheNode.create(JSFunction.ASYNC_GENERATOR_TARGET_ID);
         this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
         this.asyncGeneratorResumeNextNode = AsyncGeneratorResumeNextNode.create(context);
     }
 
     protected AsyncGeneratorEnqueueNode(JSContext context, AsyncGeneratorResumeNextNode impl) {
-        this.getGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
-        this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
-        this.hasAsyncGeneratorInternalSlotsNode = HasHiddenKeyCacheNode.create(JSFunction.ASYNC_GENERATOR_TARGET_ID);
         this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
         this.asyncGeneratorResumeNextNode = impl;
     }
@@ -99,16 +86,17 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
     @SuppressWarnings("unchecked")
     public Object execute(VirtualFrame frame, Object generator, Completion completion) {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
-        if (!JSGuards.isJSObject(generator) || !hasAsyncGeneratorInternalSlotsNode.executeHasHiddenKey(generator)) {
+        if (!(generator instanceof JSAsyncGeneratorObject asyncGeneratorObject) || asyncGeneratorObject.hasGeneratorBrand()) {
             enterErrorBranch();
             return badGeneratorError(promiseCapability);
         }
-        ArrayDeque<AsyncGeneratorRequest> queue = (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(generator);
+        assert asyncGeneratorObject.getAsyncGeneratorContext() != null;
+        ArrayDeque<AsyncGeneratorRequest> queue = asyncGeneratorObject.getAsyncGeneratorQueue();
         AsyncGeneratorRequest request = AsyncGeneratorRequest.create(completion, promiseCapability);
         Boundaries.queueAdd(queue, request);
-        AsyncGeneratorState state = (AsyncGeneratorState) getGeneratorStateNode.getValue(generator);
+        AsyncGeneratorState state = asyncGeneratorObject.getAsyncGeneratorState();
         if (notExecutingProf.profile(state != AsyncGeneratorState.Executing)) {
-            asyncGeneratorResumeNextNode.execute(frame, (JSDynamicObject) generator);
+            asyncGeneratorResumeNextNode.execute(frame, asyncGeneratorObject);
         }
         return promiseCapability.getPromise();
     }

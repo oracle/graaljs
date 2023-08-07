@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorAwaitReturnNode;
@@ -67,13 +66,14 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncGenerator;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -89,6 +89,8 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     private static final HiddenKey ITERATED_ID = new HiddenKey("Iterated");
     public static final HiddenKey IMPL_ID = new HiddenKey("ResumptionTarget");
+
+    static final HiddenKey GENERATOR_BRAND = new HiddenKey("Async Iterator Helper");
 
     protected AsyncIteratorHelperPrototypeBuiltins() {
         super(PROTOTYPE_NAME, AsyncIteratorHelperPrototypeBuiltins.HelperIteratorPrototype.class);
@@ -122,29 +124,26 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected static class CreateAsyncIteratorHelperNode extends JavaScriptBaseNode {
-        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
+        private final JSContext context;
         @Child private PropertySetNode setIteratedNode;
         @Child private PropertySetNode setGeneratorResumptionTargetNode;
-        @Child private PropertySetNode setGeneratorState;
-        @Child private PropertySetNode setGeneratorQueue;
         @Child private PropertySetNode setThisNode;
 
         public CreateAsyncIteratorHelperNode(JSContext context) {
-            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
+            this.context = context;
             this.setIteratedNode = PropertySetNode.createSetHidden(ITERATED_ID, context);
             this.setGeneratorResumptionTargetNode = PropertySetNode.createSetHidden(IMPL_ID, context);
 
-            this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
-            this.setGeneratorQueue = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
             this.setThisNode = PropertySetNode.createSetHidden(AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.THIS_ID, context);
         }
 
         public JSDynamicObject execute(IteratorRecord iterated, JSFunctionObject start) {
-            JSDynamicObject iterator = createObjectNode.execute(getRealm().getAsyncIteratorHelperPrototype());
+            JSAsyncGeneratorObject iterator = JSAsyncGenerator.create(context.getAsyncIteratorHelperObjectFactory(), getRealm());
             setIteratedNode.setValue(iterator, iterated);
             setGeneratorResumptionTargetNode.setValue(iterator, start);
-            setGeneratorState.setValue(iterator, JSFunction.AsyncGeneratorState.SuspendedStart);
-            setGeneratorQueue.setValue(iterator, new ArrayDeque<AsyncGeneratorRequest>(4));
+            iterator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.SuspendedStart);
+            iterator.setAsyncGeneratorQueue(new ArrayDeque<>(4));
+            iterator.setGeneratorBrand(GENERATOR_BRAND);
 
             setThisNode.setValue(start, iterator);
             return iterator;
@@ -158,8 +157,6 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
     protected abstract static class AsyncIteratorHelperResumeNode extends JSBuiltinNode {
         @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
         @Child private PropertyGetNode getGeneratorResumptionTargetNode;
-        @Child protected PropertyGetNode getAsyncGeneratorStateNode;
-        @Child private PropertyGetNode getAsyncGeneratorQueueNode;
         @Child private InternalCallNode internalCallNode;
         @Child private JSFunctionCallNode callNode;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
@@ -169,8 +166,6 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
             this.getGeneratorResumptionTargetNode = PropertyGetNode.createGetHidden(IMPL_ID, context);
-            this.getAsyncGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
-            this.getAsyncGeneratorQueueNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
             this.internalCallNode = InternalCallNode.create();
             this.callNode = JSFunctionCallNode.createCall();
         }
@@ -178,12 +173,11 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
         protected Object validateAndResume(VirtualFrame frame, Object thisObj) {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
             try {
-                // AsyncGeneratorValidate(generator, brand)
-                // We assume that the 'brand' field being there implies all the fields are there.
-                if (!JSObject.isJSObject(thisObj) || getGeneratorResumptionTargetNode.getValue(thisObj) == Undefined.instance) {
-                    throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+                // AsyncGeneratorValidate(generator, brand = "Async Iterator Helper")
+                // We assume that the correct 'brand' implies all the required slots are there.
+                if (!(thisObj instanceof JSAsyncGeneratorObject generator) || generator.getGeneratorBrand() != GENERATOR_BRAND) {
+                    throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getName(), thisObj);
                 }
-                JSObject generator = (JSObject) thisObj;
                 performNextOrReturn(frame, generator, promiseCapability);
             } catch (AbstractTruffleException ex) {
                 if (getErrorObjectNode == null) {
@@ -196,21 +190,16 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
             return promiseCapability.getPromise();
         }
 
-        protected abstract void performNextOrReturn(VirtualFrame frame, JSObject generator, PromiseCapabilityRecord promiseCapability);
+        protected abstract void performNextOrReturn(VirtualFrame frame, JSAsyncGeneratorObject generator, PromiseCapabilityRecord promiseCapability);
 
-        protected final void performResumeNext(JSDynamicObject iterator, Completion completion, JSFunction.AsyncGeneratorState state) {
+        protected final void performResumeNext(JSAsyncGeneratorObject iterator, Completion completion, JSFunction.AsyncGeneratorState state) {
             assert state == JSFunction.AsyncGeneratorState.SuspendedStart || state == JSFunction.AsyncGeneratorState.SuspendedYield : state;
             JSFunctionObject resumptionClosure = (JSFunctionObject) getGeneratorResumptionTargetNode.getValue(iterator);
-            ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(iterator);
+            ArrayDeque<AsyncGeneratorRequest> queue = iterator.getAsyncGeneratorQueue();
             assert !queue.isEmpty();
 
             CallTarget resumptionTarget = JSFunction.getCallTarget(resumptionClosure);
             internalCallNode.execute(resumptionTarget, JSArguments.createOneArg(iterator, resumptionClosure, completion));
-        }
-
-        @SuppressWarnings("unchecked")
-        protected final ArrayDeque<AsyncGeneratorRequest> getAsyncGeneratorQueue(JSDynamicObject iterator) {
-            return (ArrayDeque<AsyncGeneratorRequest>) getAsyncGeneratorQueueNode.getValue(iterator);
         }
     }
 
@@ -231,13 +220,13 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Override
-        protected final void performNextOrReturn(VirtualFrame frame, JSObject generator, PromiseCapabilityRecord promiseCapability) {
+        protected final void performNextOrReturn(VirtualFrame frame, JSAsyncGeneratorObject generator, PromiseCapabilityRecord promiseCapability) {
             Completion completion = Completion.forReturn(Undefined.instance);
             // Perform AsyncGeneratorEnqueue(generator, completion, promiseCapability).
-            ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
+            ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
             AsyncGeneratorRequest request = AsyncGeneratorRequest.create(completion, promiseCapability);
             Boundaries.queueAdd(queue, request);
-            JSFunction.AsyncGeneratorState state = (JSFunction.AsyncGeneratorState) getAsyncGeneratorStateNode.getValue(generator);
+            JSFunction.AsyncGeneratorState state = generator.getAsyncGeneratorState();
             if (state == JSFunction.AsyncGeneratorState.SuspendedStart || state == JSFunction.AsyncGeneratorState.Completed) {
                 // Perform ! AsyncGeneratorAwaitReturn(generator).
                 asyncGeneratorAwaitReturnNode.executeAsyncGeneratorAwaitReturn(frame, generator, queue);
@@ -259,7 +248,6 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
             super(context, builtin);
 
             this.callResolveNode = JSFunctionCallNode.createCall();
-            this.getAsyncGeneratorStateNode = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
@@ -270,14 +258,14 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Override
-        protected final void performNextOrReturn(VirtualFrame frame, JSObject generator, PromiseCapabilityRecord promiseCapability) {
-            JSFunction.AsyncGeneratorState state = (JSFunction.AsyncGeneratorState) getAsyncGeneratorStateNode.getValue(generator);
+        protected final void performNextOrReturn(VirtualFrame frame, JSAsyncGeneratorObject generator, PromiseCapabilityRecord promiseCapability) {
+            JSFunction.AsyncGeneratorState state = generator.getAsyncGeneratorState();
             if (state == JSFunction.AsyncGeneratorState.Completed) {
                 Object iteratorResult = createIterResultObjectNode.execute(frame, Undefined.instance, true);
                 callResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), iteratorResult));
             } else {
                 Completion completion = Completion.forNormal(Undefined.instance);
-                ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
+                ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
                 AsyncGeneratorRequest request = AsyncGeneratorRequest.create(completion, promiseCapability);
                 Boundaries.queueAdd(queue, request);
                 if (state == JSFunction.AsyncGeneratorState.SuspendedStart || state == JSFunction.AsyncGeneratorState.SuspendedYield) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,8 +72,8 @@ public final class JSProxyObject extends JSClassObject {
     private Object proxyTarget;
     private JSDynamicObject proxyHandler;
 
-    protected JSProxyObject(Shape shape, Object proxyTarget, JSDynamicObject proxyHandler) {
-        super(shape);
+    protected JSProxyObject(Shape shape, JSDynamicObject proto, Object proxyTarget, JSDynamicObject proxyHandler) {
+        super(shape, proto);
         this.proxyTarget = proxyTarget;
         this.proxyHandler = proxyHandler;
     }
@@ -89,10 +89,6 @@ public final class JSProxyObject extends JSClassObject {
     public void revoke(boolean isCallable, boolean isConstructor) {
         this.proxyHandler = Null.instance;
         this.proxyTarget = RevokedTarget.lookup(isCallable, isConstructor);
-    }
-
-    public static JSProxyObject create(JSRealm realm, JSObjectFactory factory, Object target, JSDynamicObject handler) {
-        return factory.initProto(new JSProxyObject(factory.getShape(realm), target, handler), realm);
     }
 
     @ExportMessage

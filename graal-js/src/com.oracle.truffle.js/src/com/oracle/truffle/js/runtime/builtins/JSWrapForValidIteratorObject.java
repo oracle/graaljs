@@ -42,21 +42,17 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class JSWrapForValidIteratorObject extends JSIteratorRecordObject {
 
-    protected JSWrapForValidIteratorObject(Shape shape, IteratorRecord iterated) {
-        super(shape, iterated);
+    protected JSWrapForValidIteratorObject(Shape shape, JSDynamicObject proto, IteratorRecord iterated) {
+        super(shape, proto, iterated);
     }
 
     @Override
     public TruffleString getClassName() {
         return JSIterator.CLASS_NAME;
-    }
-
-    public static JSWrapForValidIteratorObject create(JSRealm realm, JSObjectFactory factory, IteratorRecord iterated) {
-        return factory.initProto(new JSWrapForValidIteratorObject(factory.getShape(realm), iterated), realm);
     }
 }

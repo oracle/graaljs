@@ -1148,7 +1148,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
         traceRewriteMegamorphic(newNode, reason);
         if (JSConfig.TraceMegamorphicPropertyAccess) {
-            System.out.printf("MEGAMORPHIC PROPERTY ACCESS key='%s' %s\n%s\n---\n", key, getEncapsulatingSourceSection(), currentHead.debugString());
+            System.out.printf("MEGAMORPHIC PROPERTY ACCESS key='%s' reason='%s' %s\n%s\n---\n",
+                            key, reason, getEncapsulatingSourceSection(), currentHead == null ? "(empty)" : currentHead.debugString());
         }
         return newNode;
     }

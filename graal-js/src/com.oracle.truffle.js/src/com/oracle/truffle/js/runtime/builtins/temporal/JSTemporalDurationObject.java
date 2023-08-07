@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
@@ -65,9 +66,10 @@ public class JSTemporalDurationObject extends JSNonProxyObject {
     private final double microseconds;
     private final double nanoseconds;
 
-    public JSTemporalDurationObject(Shape shape, double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds, double microseconds,
-                    double nanoseconds) {
-        super(shape);
+    public JSTemporalDurationObject(Shape shape, JSDynamicObject proto,
+                    double years, double months, double weeks, double days,
+                    double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
+        super(shape, proto);
         this.years = years;
         this.months = months;
         this.weeks = weeks;

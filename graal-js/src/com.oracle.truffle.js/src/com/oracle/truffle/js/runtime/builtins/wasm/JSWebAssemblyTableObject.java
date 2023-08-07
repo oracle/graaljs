@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSWebAssemblyTableObject extends JSNonProxyObject {
@@ -49,8 +50,8 @@ public final class JSWebAssemblyTableObject extends JSNonProxyObject {
 
     private final TruffleString elementKind;
 
-    protected JSWebAssemblyTableObject(Shape shape, Object wasmTable, TruffleString elementKind) {
-        super(shape);
+    protected JSWebAssemblyTableObject(Shape shape, JSDynamicObject proto, Object wasmTable, TruffleString elementKind) {
+        super(shape, proto);
         this.wasmTable = wasmTable;
         this.elementKind = elementKind;
     }

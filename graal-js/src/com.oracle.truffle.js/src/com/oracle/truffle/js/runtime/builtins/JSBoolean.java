@@ -71,15 +71,21 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
     }
 
     public static JSBooleanObject create(JSContext context, JSRealm realm, boolean value) {
-        JSBooleanObject obj = JSBooleanObject.create(realm, context.getBooleanFactory(), value);
-        return context.trackAllocation(obj);
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), value);
+    }
+
+    public static JSBooleanObject create(JSContext context, JSRealm realm, JSDynamicObject proto, boolean value) {
+        JSObjectFactory factory = context.getBooleanFactory();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSBooleanObject(shape, proto, value), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-        JSObject booleanPrototype = JSBooleanObject.create(protoShape, false);
+        JSObject booleanPrototype = JSBooleanObject.create(protoShape, realm.getObjectPrototype(), false);
         JSObjectUtil.setOrVerifyPrototype(ctx, booleanPrototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(booleanPrototype, ctor);
