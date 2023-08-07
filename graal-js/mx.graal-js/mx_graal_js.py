@@ -400,7 +400,9 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'Truffle',
         'TRegex',
         'ICU4J',
-    ],
+    ] + [
+        'tflm', # Truffle Macro
+    ] if mx.suite('substratevm', fatalIfMissing=False) else [],
     truffle_jars=[
         'graal-js:GRAALJS',
     ],

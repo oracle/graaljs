@@ -104,5 +104,13 @@ class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
 
 add_bm_suite(JMHDistGraalJsBenchmarkSuite())
 
-mx_sdk_vm.register_vm_config('ce', ['cmp', 'icu4j', 'js', 'jsl', 'jss', 'rgx', 'sdk', 'sdkl', 'svm', 'svmsl', 'tfl', 'tfla', 'tflm'], _suite)
-mx_sdk_vm.register_vm_config('ee', ['cmp', 'cmpee', 'icu4j', 'js', 'jsl', 'jss', 'rgx', 'sdk', 'sdkl', 'svm', 'svmee', 'svmeegc', 'svmsl', 'tfl', 'tfla', 'tflllm', 'tflm'], _suite)
+# --components=Graal.js,SubstrateVM
+ce_components = ['cmp', 'icu4j', 'js', 'jsl', 'jss', 'rgx', 'sdk', 'sdkl', 'svm', 'svmsl', 'svmt', 'tfl', 'tfla', 'tflc', 'tflm']
+# --components=Graal.js,SubstrateVM Enterprise,SubstrateVM Enterprise GC
+ee_components = ['cmp', 'cmpee', 'icu4j', 'js', 'jsl', 'jss', 'rgx', 'sdk', 'sdkl', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tfl', 'tfla', 'tflc', 'tfle', 'tflllm', 'tflm']
+# svmeegc is only available on linux
+if not mx.is_linux():
+    ee_components.remove('svmeegc')
+
+mx_sdk_vm.register_vm_config('ce', ce_components, _suite)
+mx_sdk_vm.register_vm_config('ee', ee_components, _suite)
