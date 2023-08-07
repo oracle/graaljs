@@ -1129,7 +1129,7 @@ void GraalIsolate::InternalErrorCheck() {
 
 void GraalIsolate::InitStackOverflowCheck(intptr_t stack_bottom) {
     char* stack_size_str = getenv("NODE_STACK_SIZE");
-    size_t stack_size = 0;
+    ptrdiff_t stack_size = 0;
     if (stack_size_str != nullptr) {
         stack_size = strtol(stack_size_str, nullptr, 10);
     }
