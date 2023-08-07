@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.27.1",
+  "mxversion" : "6.37.0",
 
   "name" : "graal-js",
 
@@ -444,15 +444,31 @@ suite = {
       ],
       "exclude" : [
       ],
-      "description" : "Graal JavaScript engine",
+      "description" : "Graal JavaScript implementation",
       "maven" : {
-        "artifactId" : "js",
+        "artifactId" : "js-language",
       },
       "license": [
         "UPL",  # Main code
         "MIT",  # JONI regexp engine
       ],
       "allowsJavadocWarnings": True,
+    },
+
+    "GRAALJS_COMMUNITY" : {
+      "type":"pom",
+      "runtimeDependencies" : [
+        "GRAALJS",
+        "truffle:TRUFFLE_RUNTIME",
+      ],
+      "description" : "Graal JavaScript engine.",
+      "maven" : {
+        "artifactId" : "js-community",
+      },
+      "license": [
+        "UPL",  # Main code
+        "MIT",  # JONI regexp engine
+      ],
     },
 
     "GRAALJS_LAUNCHER" : {
