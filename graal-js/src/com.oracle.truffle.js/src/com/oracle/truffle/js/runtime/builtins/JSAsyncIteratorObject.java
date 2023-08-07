@@ -42,14 +42,13 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSAsyncIteratorObject extends JSNonProxyObject {
 
-    @GenerateObjectFactory
-    protected JSAsyncIteratorObject(Shape shape) {
-        super(shape);
+    protected JSAsyncIteratorObject(Shape shape, JSDynamicObject proto) {
+        super(shape, proto);
     }
 
     @Override

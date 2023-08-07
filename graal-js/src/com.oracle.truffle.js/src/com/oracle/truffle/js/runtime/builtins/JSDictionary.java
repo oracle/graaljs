@@ -476,7 +476,7 @@ public final class JSDictionary extends JSNonProxy {
 
     public static JSObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getDictionaryObjectFactory();
-        JSObject obj = JSOrdinaryObject.create(factory.getShape(realm));
+        JSObject obj = JSOrdinaryObject.create(factory.getShape(realm), factory.getPrototype(realm));
         factory.initProto(obj, realm);
         JSObjectUtil.putHiddenProperty(obj, HASHMAP_PROPERTY_NAME, newHashMap());
         return context.trackAllocation(obj);

@@ -114,8 +114,9 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         }
         realm.getWebAssemblyMemoryGrowCallback().attachToMemory(wasmMemory);
         JSObjectFactory factory = context.getWebAssemblyMemoryFactory();
-        JSWebAssemblyMemoryObject object = JSWebAssemblyMemoryObjectFactory.create(factory, realm, proto, wasmMemory);
+        var shape = factory.getShape(realm, proto);
+        var object = factory.initProto(new JSWebAssemblyMemoryObject(shape, proto, wasmMemory), realm, proto);
         JSWebAssembly.setEmbedderData(realm, wasmMemory, object);
-        return object;
+        return factory.trackAllocation(object);
     }
 }

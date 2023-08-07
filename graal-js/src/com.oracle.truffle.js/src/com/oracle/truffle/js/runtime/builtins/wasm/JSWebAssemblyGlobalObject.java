@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSWebAssemblyGlobalObject extends JSNonProxyObject {
@@ -50,9 +50,8 @@ public final class JSWebAssemblyGlobalObject extends JSNonProxyObject {
     private final TruffleString valueType;
     private final boolean mutable;
 
-    @GenerateObjectFactory
-    protected JSWebAssemblyGlobalObject(Shape shape, Object wasmGlobal, TruffleString valueType, boolean mutable) {
-        super(shape);
+    protected JSWebAssemblyGlobalObject(Shape shape, JSDynamicObject proto, Object wasmGlobal, TruffleString valueType, boolean mutable) {
+        super(shape, proto);
         this.wasmGlobal = wasmGlobal;
         this.valueType = valueType;
         this.mutable = mutable;

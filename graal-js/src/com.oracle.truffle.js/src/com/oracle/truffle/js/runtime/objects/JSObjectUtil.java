@@ -110,7 +110,7 @@ public final class JSObjectUtil {
             obj = JSOrdinary.createInitWithInstancePrototype(prototype, context);
         } else {
             Shape initialShape = prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, JSOrdinary.INSTANCE, context);
-            obj = JSOrdinaryObject.create(initialShape);
+            obj = JSOrdinaryObject.create(initialShape, prototype);
         }
         return obj;
     }

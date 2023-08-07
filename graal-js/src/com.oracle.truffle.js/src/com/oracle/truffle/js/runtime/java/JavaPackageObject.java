@@ -42,15 +42,14 @@ package com.oracle.truffle.js.runtime.java;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JavaPackageObject extends JSNonProxyObject {
     private final TruffleString packageName;
 
-    @GenerateObjectFactory
-    protected JavaPackageObject(Shape shape, TruffleString packageName) {
-        super(shape);
+    protected JavaPackageObject(Shape shape, JSDynamicObject proto, TruffleString packageName) {
+        super(shape, proto);
         this.packageName = packageName;
     }
 

@@ -41,19 +41,18 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSAsyncFromSyncIteratorObject extends JSNonProxyObject {
 
     private final IteratorRecord syncIterator;
 
-    @GenerateObjectFactory
-    protected JSAsyncFromSyncIteratorObject(Shape shape, IteratorRecord syncIterator) {
-        super(shape);
+    protected JSAsyncFromSyncIteratorObject(Shape shape, JSDynamicObject proto, IteratorRecord syncIterator) {
+        super(shape, proto);
         this.syncIterator = syncIterator;
     }
 
@@ -62,6 +61,10 @@ public final class JSAsyncFromSyncIteratorObject extends JSNonProxyObject {
     }
 
     public static JSAsyncFromSyncIteratorObject create(JSContext context, JSRealm realm, IteratorRecord syncIteratorRecord) {
-        return JSAsyncFromSyncIteratorObjectFactory.create(context.getAsyncFromSyncIteratorFactory(), realm, syncIteratorRecord);
+        JSObjectFactory factory = context.getAsyncFromSyncIteratorFactory();
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSAsyncFromSyncIteratorObject(shape, proto, syncIteratorRecord), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 }

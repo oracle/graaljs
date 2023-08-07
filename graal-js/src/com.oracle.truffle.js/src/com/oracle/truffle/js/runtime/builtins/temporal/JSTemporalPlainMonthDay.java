@@ -91,8 +91,9 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
             throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
         }
         JSObjectFactory factory = context.getTemporalPlainMonthDayFactory();
-        return JSTemporalPlainMonthDayObjectFactory.create(factory, realm, proto, isoMonth,
-                        isoDay, calendar, referenceISOYear);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalPlainMonthDayObject(shape, proto, isoMonth, isoDay, calendar, referenceISOYear), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

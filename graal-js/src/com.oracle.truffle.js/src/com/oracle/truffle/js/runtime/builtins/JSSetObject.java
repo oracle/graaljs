@@ -41,16 +41,15 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
 public final class JSSetObject extends JSNonProxyObject {
     private final JSHashMap map;
 
-    @GenerateObjectFactory
-    protected JSSetObject(Shape shape, JSHashMap map) {
-        super(shape);
+    protected JSSetObject(Shape shape, JSDynamicObject proto, JSHashMap map) {
+        super(shape, proto);
         this.map = map;
     }
 

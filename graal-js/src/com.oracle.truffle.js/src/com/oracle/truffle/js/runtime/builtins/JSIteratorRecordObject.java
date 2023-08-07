@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 /**
@@ -51,8 +52,8 @@ public abstract class JSIteratorRecordObject extends JSNonProxyObject {
 
     private final IteratorRecord iterated;
 
-    protected JSIteratorRecordObject(Shape shape, IteratorRecord iterated) {
-        super(shape);
+    protected JSIteratorRecordObject(Shape shape, JSDynamicObject proto, IteratorRecord iterated) {
+        super(shape, proto);
         this.iterated = iterated;
     }
 

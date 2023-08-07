@@ -41,16 +41,15 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSSymbolObject extends JSNonProxyObject {
     private final Symbol symbol;
 
-    @GenerateObjectFactory
-    protected JSSymbolObject(Shape shape, Symbol symbol) {
-        super(shape);
+    protected JSSymbolObject(Shape shape, JSDynamicObject proto, Symbol symbol) {
+        super(shape, proto);
         this.symbol = symbol;
     }
 

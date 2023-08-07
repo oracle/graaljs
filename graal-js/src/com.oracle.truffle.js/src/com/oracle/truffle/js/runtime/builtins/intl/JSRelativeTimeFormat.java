@@ -126,7 +126,9 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     public static JSRelativeTimeFormatObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getRelativeTimeFormatFactory();
-        return JSRelativeTimeFormatObjectFactory.create(factory, realm, proto, state);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSRelativeTimeFormatObject(shape, proto, state), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static RelativeDateTimeFormatter getRelativeDateTimeFormatterProperty(JSRelativeTimeFormatObject obj) {

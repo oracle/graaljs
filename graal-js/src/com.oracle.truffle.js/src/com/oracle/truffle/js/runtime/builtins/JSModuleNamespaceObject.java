@@ -44,7 +44,6 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -69,9 +68,8 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
      */
     private final UnmodifiableEconomicMap<TruffleString, ExportResolution> exports;
 
-    @GenerateObjectFactory
     protected JSModuleNamespaceObject(Shape shape, JSModuleRecord module, UnmodifiableEconomicMap<TruffleString, ExportResolution> exports) {
-        super(shape);
+        super(shape, Null.instance);
         this.module = module;
         this.exports = exports;
     }

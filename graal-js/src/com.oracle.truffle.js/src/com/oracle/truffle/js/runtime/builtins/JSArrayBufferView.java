@@ -342,7 +342,9 @@ public final class JSArrayBufferView extends JSNonProxy {
         assert !JSArrayBuffer.isDetachedBuffer(arrayBuffer);
         assert offset >= 0 && offset + length * arrayType.bytesPerElement() <= arrayBuffer.getByteLength();
         assert offset != 0 == arrayType.hasOffset();
-        return JSTypedArrayObjectFactory.create(objectFactory, realm, prototype, arrayType, arrayBuffer, length, offset);
+        var shape = objectFactory.getShape(realm, prototype);
+        var newObj = objectFactory.initProto(new JSTypedArrayObject(shape, prototype, arrayType, arrayBuffer, length, offset), realm, prototype);
+        return objectFactory.trackAllocation(newObj);
     }
 
     private static JSObject createArrayBufferViewPrototype(JSRealm realm, JSDynamicObject ctor, int bytesPerElement, TypedArrayFactory factory, JSDynamicObject taPrototype) {
@@ -359,10 +361,10 @@ public final class JSArrayBufferView extends JSNonProxy {
         JSContext context = realm.getContext();
         byte[] byteArray = new byte[0];
         JSObjectFactory bufferFactory = context.getArrayBufferFactory();
-        JSArrayBufferObject emptyArrayBuffer = bufferFactory.initProto(JSArrayBufferObject.createHeapArrayBuffer(bufferFactory.getShape(realm), byteArray), realm);
+        JSArrayBufferObject emptyArrayBuffer = bufferFactory.initProto(JSArrayBufferObject.createHeapArrayBuffer(bufferFactory.getShape(realm), bufferFactory.getPrototype(realm), byteArray), realm);
         TypedArray arrayType = factory.createArrayType(false, false);
         Shape shape = JSShape.createPrototypeShape(context, INSTANCE, taPrototype);
-        JSObject prototype = JSTypedArrayObject.create(shape, arrayType, emptyArrayBuffer, 0, 0);
+        JSObject prototype = JSTypedArrayObject.create(shape, taPrototype, arrayType, emptyArrayBuffer, 0, 0);
         JSObjectUtil.setOrVerifyPrototype(context, prototype, taPrototype);
         return prototype;
     }

@@ -41,16 +41,15 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSWeakRef.TruffleWeakReference;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSWeakRefObject extends JSNonProxyObject {
     private final TruffleWeakReference<Object> weakReference;
 
-    @GenerateObjectFactory
-    protected JSWeakRefObject(Shape shape, TruffleWeakReference<Object> weakReference) {
-        super(shape);
+    protected JSWeakRefObject(Shape shape, JSDynamicObject proto, TruffleWeakReference<Object> weakReference) {
+        super(shape, proto);
         this.weakReference = weakReference;
     }
 

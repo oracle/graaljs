@@ -146,7 +146,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
         } else if (isGenerator) {
             return JSGenerator.create(factory, realm, (JSObject) cachedPrototype);
         }
-        return JSOrdinary.create(context, factory, realm);
+        return JSOrdinary.create(factory, realm, (JSObject) cachedPrototype);
     }
 
     /** Many different prototypes. */
@@ -160,7 +160,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
             return JSGenerator.create(context, getRealm(), prototype);
         }
         Shape shape = JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context, this, slowBranch);
-        return JSOrdinary.create(context, shape);
+        return JSOrdinary.create(context, shape, prototype);
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "prototypeClass != null", "prototypeClass.isInstance(prototype)"}, limit = "1")
@@ -181,7 +181,7 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
         } else if (isGenerator) {
             return JSGenerator.create(context, realm, prototype);
         }
-        JSDynamicObject object = JSOrdinary.create(context, cachedShape);
+        JSDynamicObject object = JSOrdinary.create(context, cachedShape, prototype);
         setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
         return object;
     }

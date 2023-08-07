@@ -43,15 +43,14 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSDisplayNamesObject extends JSNonProxyObject {
     private final JSDisplayNames.InternalState internalState;
 
-    @GenerateObjectFactory
-    protected JSDisplayNamesObject(Shape shape, JSDisplayNames.InternalState internalState) {
-        super(shape);
+    protected JSDisplayNamesObject(Shape shape, JSDynamicObject proto, JSDisplayNames.InternalState internalState) {
+        super(shape, proto);
         this.internalState = Objects.requireNonNull(internalState);
     }
 

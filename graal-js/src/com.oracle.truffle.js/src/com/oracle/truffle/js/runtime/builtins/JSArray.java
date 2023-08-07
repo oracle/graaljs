@@ -186,7 +186,9 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     private static JSArrayObject createImpl(JSObjectFactory factory, JSRealm realm, JSDynamicObject prototype,
                     ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
-        return JSArrayObjectFactory.create(factory, realm, prototype, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+        var shape = factory.getShape(realm, prototype);
+        var newObj = factory.initProto(new JSArrayObject(shape, prototype, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount), realm, prototype);
+        return factory.trackAllocation(newObj);
     }
 
     public static boolean isJSArray(Object obj) {
@@ -216,7 +218,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         JSContext ctx = realm.getContext();
 
         Shape protoShape = JSShape.createPrototypeShape(ctx, INSTANCE, realm.getObjectPrototype());
-        JSObject arrayPrototype = JSArrayObject.createEmpty(protoShape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
+        JSObject arrayPrototype = JSArrayObject.createEmpty(protoShape, realm.getObjectPrototype(), ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
         JSObjectUtil.setOrVerifyPrototype(ctx, arrayPrototype, realm.getObjectPrototype());
 
         // Mark as an Array prototype

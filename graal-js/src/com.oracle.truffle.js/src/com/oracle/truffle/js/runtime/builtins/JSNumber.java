@@ -72,11 +72,14 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     }
 
     public static JSNumberObject create(JSContext context, JSRealm realm, Number value) {
-        return JSNumberObjectFactory.create(context.getNumberFactory(), realm, value);
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), value);
     }
 
     public static JSNumberObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Number value) {
-        return JSNumberObjectFactory.create(context.getNumberFactory(), realm, proto, value);
+        JSObjectFactory factory = context.getNumberFactory();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSNumberObject(shape, proto, value), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static Number valueOf(JSDynamicObject obj) {
@@ -87,7 +90,7 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-        JSObject numberPrototype = JSNumberObject.create(protoShape, 0);
+        JSObject numberPrototype = JSNumberObject.create(protoShape, realm.getObjectPrototype(), 0);
         JSObjectUtil.setOrVerifyPrototype(context, numberPrototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(numberPrototype, ctor);

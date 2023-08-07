@@ -43,15 +43,14 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSDateTimeFormatObject extends JSNonProxyObject {
     private final JSDateTimeFormat.InternalState internalState;
 
-    @GenerateObjectFactory
-    protected JSDateTimeFormatObject(Shape shape, JSDateTimeFormat.InternalState internalState) {
-        super(shape);
+    protected JSDateTimeFormatObject(Shape shape, JSDynamicObject proto, JSDateTimeFormat.InternalState internalState) {
+        super(shape, proto);
         this.internalState = Objects.requireNonNull(internalState);
     }
 

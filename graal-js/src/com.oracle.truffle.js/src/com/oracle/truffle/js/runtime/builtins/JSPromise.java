@@ -83,21 +83,29 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     }
 
     public static JSPromiseObject create(JSContext context, JSRealm realm) {
-        return JSPromiseObjectFactory.create(context.getPromiseFactory(), realm, PENDING);
+        JSObjectFactory factory = context.getPromiseFactory();
+        return create(factory, realm, factory.getPrototype(realm));
     }
 
     public static JSPromiseObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
-        return JSPromiseObjectFactory.create(context.getPromiseFactory(), realm, proto, PENDING);
+        JSObjectFactory factory = context.getPromiseFactory();
+        return create(factory, realm, proto);
     }
 
-    public static JSPromiseObject create(JSContext context, Shape shape) {
-        JSPromiseObject promise = JSPromiseObject.create(shape, PENDING);
+    private static JSPromiseObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSPromiseObject(shape, proto, PENDING), realm, proto);
+        return factory.trackAllocation(newObj);
+    }
+
+    public static JSPromiseObject create(JSContext context, Shape shape, JSDynamicObject proto) {
+        JSPromiseObject promise = JSPromiseObject.create(shape, proto, PENDING);
         return context.trackAllocation(promise);
     }
 
-    public static JSPromiseObject createWithoutPrototype(JSContext context) {
+    public static JSPromiseObject createWithoutPrototype(JSContext context, JSDynamicObject proto) {
         Shape shape = context.getPromiseShapePrototypeInObject();
-        JSPromiseObject obj = JSPromiseObject.create(shape, PENDING);
+        JSPromiseObject obj = JSPromiseObject.create(shape, proto, PENDING);
         // prototype is set in caller
         return obj;
     }

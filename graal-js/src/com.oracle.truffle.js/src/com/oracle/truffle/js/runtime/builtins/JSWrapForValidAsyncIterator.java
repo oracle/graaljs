@@ -57,7 +57,11 @@ public final class JSWrapForValidAsyncIterator extends JSNonProxy implements JSC
     }
 
     public static JSWrapForValidAsyncIteratorObject create(JSContext context, JSRealm realm, IteratorRecord iteratorRecord) {
-        return JSWrapForValidAsyncIteratorObjectFactory.create(context.getWrapForAsyncIteratorFactory(), realm, iteratorRecord);
+        JSObjectFactory factory = context.getWrapForAsyncIteratorFactory();
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSWrapForValidAsyncIteratorObject(shape, proto, iteratorRecord), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static boolean isWrapForAsyncIterator(Object obj) {

@@ -45,8 +45,8 @@ import java.util.ArrayDeque;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSAsyncGeneratorObject extends JSNonProxyObject {
@@ -57,9 +57,8 @@ public final class JSAsyncGeneratorObject extends JSNonProxyObject {
     private ArrayDeque<AsyncGeneratorRequest> asyncGeneratorQueue;
     private Object generatorBrand;
 
-    @GenerateObjectFactory
-    protected JSAsyncGeneratorObject(Shape shape) {
-        super(shape);
+    protected JSAsyncGeneratorObject(Shape shape, JSDynamicObject proto) {
+        super(shape, proto);
     }
 
     public JSFunction.AsyncGeneratorState getAsyncGeneratorState() {

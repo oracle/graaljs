@@ -141,8 +141,9 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     private static JSTemporalPlainDateObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,
                     int year, int month, int day, JSDynamicObject calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
-        return JSTemporalPlainDateObjectFactory.create(factory, realm, proto,
-                        year, month, day, calendar);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalPlainDateObject(shape, proto, year, month, day, calendar), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static JSTemporalDurationRecord differenceISODate(int y1, int m1, int d1, int y2, int m2, int d2, Unit largestUnit) {

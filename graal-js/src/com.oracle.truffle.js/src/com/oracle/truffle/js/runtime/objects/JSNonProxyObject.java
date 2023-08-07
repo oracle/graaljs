@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,8 +58,8 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 @ExportLibrary(InteropLibrary.class)
 public abstract class JSNonProxyObject extends JSClassObject {
 
-    protected JSNonProxyObject(Shape shape) {
-        super(shape);
+    protected JSNonProxyObject(Shape shape, JSDynamicObject proto) {
+        super(shape, proto);
     }
 
     @ExportMessage

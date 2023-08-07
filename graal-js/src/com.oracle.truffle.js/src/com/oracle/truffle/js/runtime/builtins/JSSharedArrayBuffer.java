@@ -69,13 +69,20 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     }
 
     public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
-        assert buffer != null;
-        return JSArrayBufferObjectFactory.createShared(context.getSharedArrayBufferFactory(), realm, buffer, new JSAgentWaiterList());
+        JSObjectFactory factory = context.getSharedArrayBufferFactory();
+        return createSharedArrayBuffer(realm, factory.getPrototype(realm), buffer, factory);
     }
 
     public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, ByteBuffer buffer) {
+        JSObjectFactory factory = context.getSharedArrayBufferFactory();
+        return createSharedArrayBuffer(realm, proto, buffer, factory);
+    }
+
+    private static JSArrayBufferObject createSharedArrayBuffer(JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, JSObjectFactory factory) {
         assert buffer != null;
-        return JSArrayBufferObjectFactory.createShared(context.getSharedArrayBufferFactory(), realm, proto, buffer, new JSAgentWaiterList());
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSArrayBufferObject.Shared(shape, proto, buffer, new JSAgentWaiterList()), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

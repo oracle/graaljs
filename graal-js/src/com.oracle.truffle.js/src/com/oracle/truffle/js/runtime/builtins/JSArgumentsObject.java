@@ -54,7 +54,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ArrayElementInfoNode;
@@ -64,29 +63,28 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @ExportLibrary(InteropLibrary.class)
 public class JSArgumentsObject extends JSArrayBase {
 
-    protected JSArgumentsObject(Shape shape, ScriptArray arrayType, Object array, int length) {
-        super(shape, arrayType, array, null, length, 0, 0, 0, 0);
+    protected JSArgumentsObject(Shape shape, JSDynamicObject proto, ScriptArray arrayType, Object array, int length) {
+        super(shape, proto, arrayType, array, null, length, 0, 0, 0, 0);
     }
 
     public static final class Unmapped extends JSArgumentsObject {
 
-        @GenerateObjectFactory
-        protected Unmapped(Shape shape, ScriptArray arrayType, Object array, int length) {
-            super(shape, arrayType, array, length);
+        protected Unmapped(Shape shape, JSDynamicObject proto, ScriptArray arrayType, Object array, int length) {
+            super(shape, proto, arrayType, array, length);
         }
     }
 
     public static final class Mapped extends JSArgumentsObject {
 
-        @GenerateObjectFactory
-        protected Mapped(Shape shape, ScriptArray arrayType, Object array, int length) {
-            super(shape, arrayType, array, length);
+        protected Mapped(Shape shape, JSDynamicObject proto, ScriptArray arrayType, Object array, int length) {
+            super(shape, proto, arrayType, array, length);
             this.connectedArgumentCount = length;
         }
 

@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSWebAssemblyTableObject extends JSNonProxyObject {
@@ -50,9 +50,8 @@ public final class JSWebAssemblyTableObject extends JSNonProxyObject {
 
     private final TruffleString elementKind;
 
-    @GenerateObjectFactory
-    protected JSWebAssemblyTableObject(Shape shape, Object wasmTable, TruffleString elementKind) {
-        super(shape);
+    protected JSWebAssemblyTableObject(Shape shape, JSDynamicObject proto, Object wasmTable, TruffleString elementKind) {
+        super(shape, proto);
         this.wasmTable = wasmTable;
         this.elementKind = elementKind;
     }

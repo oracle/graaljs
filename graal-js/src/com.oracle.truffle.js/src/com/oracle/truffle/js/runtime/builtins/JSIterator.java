@@ -64,7 +64,10 @@ public final class JSIterator extends JSNonProxy implements JSConstructorFactory
     }
 
     public static JSIteratorObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
-        return JSIteratorObjectFactory.create(context.getIteratorFactory(), realm, proto);
+        JSObjectFactory factory = context.getIteratorFactory();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSIteratorObject(shape, proto), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

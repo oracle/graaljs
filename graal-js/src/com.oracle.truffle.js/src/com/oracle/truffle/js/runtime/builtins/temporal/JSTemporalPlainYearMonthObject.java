@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -52,10 +51,9 @@ public class JSTemporalPlainYearMonthObject extends JSNonProxyObject implements 
     private final int isoDay;
     private final JSDynamicObject calendar;
 
-    @GenerateObjectFactory
-    protected JSTemporalPlainYearMonthObject(Shape shape, int isoYear, int isoMonth, int isoDay,
+    protected JSTemporalPlainYearMonthObject(Shape shape, JSDynamicObject proto, int isoYear, int isoMonth, int isoDay,
                     JSDynamicObject calendar) {
-        super(shape);
+        super(shape, proto);
         this.isoYear = isoYear;
         this.isoMonth = isoMonth;
         this.isoDay = isoDay;

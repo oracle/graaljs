@@ -135,11 +135,19 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     public static JSProxyObject create(JSContext context, JSRealm realm, Object target, JSDynamicObject handler) {
-        return JSProxyObjectFactory.create(context.getProxyFactory(), realm, target, handler);
+        JSObjectFactory factory = context.getProxyFactory();
+        return create(factory, realm, factory.getPrototype(realm), target, handler);
     }
 
     public static JSProxyObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object target, JSDynamicObject handler) {
-        return JSProxyObjectFactory.create(context.getProxyFactory(), realm, proto, target, handler);
+        JSObjectFactory factory = context.getProxyFactory();
+        return create(factory, realm, proto, target, handler);
+    }
+
+    private static JSProxyObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, Object target, JSDynamicObject handler) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSProxyObject(shape, proto, target, handler), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static Object getTarget(JSDynamicObject obj) {

@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -72,9 +71,8 @@ public final class JSForInIteratorObject extends JSNonProxyObject {
     public int protoDepth;
     public final boolean iterateValues;
 
-    @GenerateObjectFactory
-    protected JSForInIteratorObject(Shape shape, JSDynamicObject obj, boolean iterateValues) {
-        super(shape);
+    protected JSForInIteratorObject(Shape shape, JSDynamicObject proto, JSDynamicObject obj, boolean iterateValues) {
+        super(shape, proto);
         this.object = obj;
         this.iterateValues = iterateValues;
         this.visitedShapes = new Shape[4];

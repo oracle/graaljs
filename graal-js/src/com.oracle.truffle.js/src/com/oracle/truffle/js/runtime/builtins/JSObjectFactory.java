@@ -147,13 +147,13 @@ public abstract class JSObjectFactory {
         this.inObjectProto = inObjectProto;
     }
 
-    static boolean verifyPrototype(Shape shape, JSDynamicObject prototype) {
+    public static boolean verifyPrototype(Shape shape, JSDynamicObject prototype) {
         return JSShape.getPrototypeProperty(shape).getLocation().isConstant() && JSShape.getPrototypeProperty(shape).getLocation().getConstantValue() == prototype;
     }
 
     public abstract JSDynamicObject getPrototype(JSRealm realm);
 
-    static boolean hasInObjectProto(Shape shape) {
+    public static boolean hasInObjectProto(Shape shape) {
         Property prototypeProperty = JSShape.getPrototypeProperty(shape);
         return prototypeProperty == null || !prototypeProperty.getLocation().isConstant();
     }

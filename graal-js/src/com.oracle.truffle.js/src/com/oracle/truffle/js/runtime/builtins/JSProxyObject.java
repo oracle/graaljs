@@ -52,7 +52,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.JSInteropExecuteNode;
@@ -73,9 +72,8 @@ public final class JSProxyObject extends JSClassObject {
     private Object proxyTarget;
     private JSDynamicObject proxyHandler;
 
-    @GenerateObjectFactory
-    protected JSProxyObject(Shape shape, Object proxyTarget, JSDynamicObject proxyHandler) {
-        super(shape);
+    protected JSProxyObject(Shape shape, JSDynamicObject proto, Object proxyTarget, JSDynamicObject proxyHandler) {
+        super(shape, proto);
         this.proxyTarget = proxyTarget;
         this.proxyHandler = proxyHandler;
     }

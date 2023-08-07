@@ -90,7 +90,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSIteratorHelperObject;
-import com.oracle.truffle.js.runtime.builtins.JSIteratorHelperObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -331,7 +330,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected final JSIteratorHelperObject createIteratorHelperObject(T args) {
-            return JSIteratorHelperObjectFactory.create(getContext().getIteratorHelperObjectFactory(), getRealm(),
+            return JSIteratorHelperObject.create(getContext().getIteratorHelperObjectFactory(), getRealm(),
                             JSFunction.GeneratorState.SuspendedStart, args, createNextImplFunction());
         }
 

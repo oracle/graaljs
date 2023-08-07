@@ -41,14 +41,13 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public class JSUncheckedProxyHandlerObject extends JSNonProxyObject {
 
-    @GenerateObjectFactory
-    JSUncheckedProxyHandlerObject(Shape shape) {
-        super(shape);
+    JSUncheckedProxyHandlerObject(Shape shape, JSDynamicObject proto) {
+        super(shape, proto);
     }
 
 }

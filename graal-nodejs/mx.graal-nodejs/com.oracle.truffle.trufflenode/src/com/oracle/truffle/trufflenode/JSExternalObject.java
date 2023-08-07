@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,13 @@ package com.oracle.truffle.trufflenode;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 
 public final class JSExternalObject extends JSNonProxyObject {
     private long pointer;
 
     JSExternalObject(Shape shape, long pointer) {
-        super(shape);
+        super(shape, Null.instance);
         this.pointer = pointer;
     }
 

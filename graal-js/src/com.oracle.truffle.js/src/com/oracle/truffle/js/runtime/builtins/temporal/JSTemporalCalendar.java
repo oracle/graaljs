@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -68,11 +69,19 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id) {
-        return JSTemporalCalendarObjectFactory.create(context.getTemporalCalendarFactory(), realm, id);
+        JSObjectFactory factory = context.getTemporalCalendarFactory();
+        return create(factory, realm, factory.getPrototype(realm), id);
     }
 
     public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, JSDynamicObject proto, TruffleString id) {
-        return JSTemporalCalendarObjectFactory.create(context.getTemporalCalendarFactory(), realm, proto, id);
+        JSObjectFactory factory = context.getTemporalCalendarFactory();
+        return create(factory, realm, proto, id);
+    }
+
+    private static JSTemporalCalendarObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, TruffleString id) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalCalendarObject(shape, proto, id), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

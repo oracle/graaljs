@@ -42,8 +42,8 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 /**
@@ -53,9 +53,8 @@ public final class JSShadowRealmObject extends JSNonProxyObject {
 
     private JSRealm shadowRealm;
 
-    @GenerateObjectFactory
-    protected JSShadowRealmObject(Shape shape, JSRealm shadowRealm) {
-        super(shape);
+    protected JSShadowRealmObject(Shape shape, JSDynamicObject proto, JSRealm shadowRealm) {
+        super(shape, proto);
         this.shadowRealm = shadowRealm;
     }
 

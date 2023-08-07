@@ -83,7 +83,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     }
 
     public static JSObject createWithRealm(JSContext context, JSObjectFactory factory, JSRealm realm) {
-        JSObject obj = JSOrdinaryObject.create(factory.getShape(realm));
+        JSObject obj = JSOrdinaryObject.create(factory.getShape(realm), factory.getPrototype(realm));
         factory.initProto(obj, realm);
         return context.trackAllocation(obj);
     }
@@ -94,9 +94,15 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
     public static JSObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
         JSObjectFactory factory = context.getOrdinaryObjectFactory();
-        JSObject obj = JSOrdinaryObject.create(factory.getShape(realm, proto));
+        JSObject obj = JSOrdinaryObject.create(factory.getShape(realm, proto), proto);
         factory.initProto(obj, realm, proto);
         return context.trackAllocation(obj);
+    }
+
+    public static JSObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
+        JSObject obj = JSOrdinaryObject.create(factory.getShape(realm), proto);
+        factory.initProto(obj, realm);
+        return factory.trackAllocation(obj);
     }
 
     @TruffleBoundary
@@ -105,7 +111,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     }
 
     public static JSObject createWithNullPrototype(JSContext context) {
-        return context.trackAllocation(JSOrdinaryObject.create(context.getEmptyShapeNullPrototype()));
+        return context.trackAllocation(JSOrdinaryObject.create(context.getEmptyShapeNullPrototype(), Null.instance));
     }
 
     @TruffleBoundary
@@ -113,11 +119,11 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
         assert JSObjectUtil.isValidPrototype(prototype);
         JSObject obj;
         if (prototype == Null.instance) {
-            obj = JSOrdinaryObject.create(context.makeEmptyShapeWithNullPrototype(instanceLayout));
+            obj = JSOrdinaryObject.create(context.makeEmptyShapeWithNullPrototype(instanceLayout), prototype);
         } else if (!context.isMultiContext()) {
-            obj = JSOrdinaryObject.create(JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context));
+            obj = JSOrdinaryObject.create(JSObjectUtil.getProtoChildShape(prototype, instanceLayout, context), prototype);
         } else {
-            obj = JSOrdinaryObject.create(context.makeEmptyShapeWithPrototypeInObject(instanceLayout));
+            obj = JSOrdinaryObject.create(context.makeEmptyShapeWithPrototypeInObject(instanceLayout), prototype);
             setProtoSlow(obj, prototype);
         }
         return context.trackAllocation(obj);
@@ -126,7 +132,7 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
     public static JSObject createInitWithInstancePrototype(JSDynamicObject prototype, JSContext context) {
         assert JSObjectUtil.isValidPrototype(prototype);
         Shape shape = context.getEmptyShapePrototypeInObject();
-        JSOrdinaryObject obj = JSOrdinaryObject.create(shape);
+        JSOrdinaryObject obj = JSOrdinaryObject.create(shape, prototype);
         setProtoSlow(obj, prototype);
         return obj;
     }
@@ -135,16 +141,16 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
         JSObjectUtil.putHiddenProperty(obj, JSObject.HIDDEN_PROTO, prototype);
     }
 
-    public static JSObject createWithoutPrototype(JSContext context) {
+    public static JSObject createWithoutPrototype(JSContext context, JSDynamicObject proto) {
         Shape shape = context.getEmptyShapePrototypeInObject();
-        JSObject obj = create(context, shape);
+        JSObject obj = create(context, shape, proto);
         // prototype is set in caller
         return obj;
     }
 
-    public static JSObject create(JSContext context, Shape shape) {
+    public static JSObject create(JSContext context, Shape shape, JSDynamicObject proto) {
         assert JSShape.getJSClass(shape) instanceof JSOrdinary;
-        return context.trackAllocation(JSOrdinaryObject.create(shape));
+        return context.trackAllocation(JSOrdinaryObject.create(shape, proto));
     }
 
     public static JSObject createInit(JSRealm realm) {
@@ -159,13 +165,13 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
         if (context.isMultiContext()) {
             return createInitWithInstancePrototype(prototype, context);
         } else {
-            return JSOrdinaryObject.create(prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context));
+            return JSOrdinaryObject.create(prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context), prototype);
         }
     }
 
     public static JSObject createWithNullPrototypeInit(JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        return JSOrdinaryObject.create(context.getEmptyShapeNullPrototype());
+        return JSOrdinaryObject.create(context.getEmptyShapeNullPrototype(), Null.instance);
     }
 
     public static boolean isJSOrdinaryObject(Object obj) {

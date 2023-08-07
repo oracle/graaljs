@@ -102,11 +102,19 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     public static JSStringObject create(JSContext context, JSRealm realm, TruffleString value) {
-        return JSStringObjectFactory.create(context.getStringFactory(), realm, value);
+        JSObjectFactory factory = context.getStringFactory();
+        return create(factory, realm, factory.getPrototype(realm), value);
     }
 
     public static JSStringObject create(JSContext context, JSRealm realm, JSDynamicObject proto, TruffleString value) {
-        return JSStringObjectFactory.create(context.getStringFactory(), realm, proto, value);
+        JSObjectFactory factory = context.getStringFactory();
+        return create(factory, realm, proto, value);
+    }
+
+    private static JSStringObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, TruffleString value) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSStringObject(shape, proto, value), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @TruffleBoundary
@@ -244,7 +252,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(ctx, INSTANCE, realm.getObjectPrototype());
-        JSObject prototype = JSStringObject.create(protoShape, Strings.EMPTY_STRING);
+        JSObject prototype = JSStringObject.create(protoShape, realm.getObjectPrototype(), Strings.EMPTY_STRING);
         JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
 
         JSObjectUtil.putConstructorProperty(prototype, ctor);

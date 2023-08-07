@@ -225,14 +225,14 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         protected JSOverloadedOperatorsObject doCachedProto(@SuppressWarnings("unused") Object prototype,
                         @Cached("prototype") @SuppressWarnings("unused") Object cachedPrototype,
                         @Cached("getProtoChildShape(prototype)") Shape cachedShape) {
-            return JSOverloadedOperatorsObject.create(getContext(), cachedShape, operatorSet);
+            return JSOverloadedOperatorsObject.create(getContext(), cachedShape, (JSObject) cachedPrototype, operatorSet);
         }
 
         @Specialization
         protected JSOverloadedOperatorsObject createWithProto(JSObject prototype,
                         @CachedLibrary(limit = "3") DynamicObjectLibrary setProtoNode,
                         @Cached("getShapeWithoutProto()") Shape cachedShape) {
-            JSOverloadedOperatorsObject object = JSOverloadedOperatorsObject.create(getContext(), cachedShape, operatorSet);
+            JSOverloadedOperatorsObject object = JSOverloadedOperatorsObject.create(getContext(), cachedShape, prototype, operatorSet);
             setProtoNode.put(object, JSObject.HIDDEN_PROTO, prototype);
             return object;
         }
@@ -240,7 +240,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
         @Specialization(guards = {"!isJSObject(prototype)"})
         public JSOverloadedOperatorsObject createDefaultProto(@SuppressWarnings("unused") Object prototype,
                         @Cached("getShapeWithDefaultProto(getRealm())") Shape cachedShape) {
-            return JSOverloadedOperatorsObject.create(getContext(), cachedShape, operatorSet);
+            return JSOverloadedOperatorsObject.create(getContext(), cachedShape, getRealm().getObjectPrototype(), operatorSet);
         }
     }
 

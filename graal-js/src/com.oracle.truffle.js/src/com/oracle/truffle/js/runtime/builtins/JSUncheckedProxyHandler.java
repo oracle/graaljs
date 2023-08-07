@@ -54,7 +54,11 @@ public class JSUncheckedProxyHandler extends JSNonProxy implements PrototypeSupp
     public static final JSUncheckedProxyHandler INSTANCE = new JSUncheckedProxyHandler();
 
     public static JSDynamicObject create(JSContext context, JSRealm realm) {
-        return JSUncheckedProxyHandlerObjectFactory.create(context.getUncheckedProxyHandlerFactory(), realm);
+        JSObjectFactory factory = context.getUncheckedProxyHandlerFactory();
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSUncheckedProxyHandlerObject(shape, proto), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

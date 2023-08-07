@@ -51,8 +51,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
@@ -61,9 +61,8 @@ public class JSTemporalInstantObject extends JSNonProxyObject {
 
     private final BigInt nanoseconds; // 8.4 A BigInt value
 
-    @GenerateObjectFactory
-    protected JSTemporalInstantObject(Shape shape, BigInt nanoseconds) {
-        super(shape);
+    protected JSTemporalInstantObject(Shape shape, JSDynamicObject proto, BigInt nanoseconds) {
+        super(shape, proto);
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         this.nanoseconds = nanoseconds;
     }

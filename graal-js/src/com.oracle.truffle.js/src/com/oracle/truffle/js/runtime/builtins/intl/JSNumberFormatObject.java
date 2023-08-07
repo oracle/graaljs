@@ -43,15 +43,14 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSNumberFormatObject extends JSNonProxyObject {
     private final JSNumberFormat.InternalState internalState;
 
-    @GenerateObjectFactory
-    protected JSNumberFormatObject(Shape shape, JSNumberFormat.InternalState internalState) {
-        super(shape);
+    protected JSNumberFormatObject(Shape shape, JSDynamicObject proto, JSNumberFormat.InternalState internalState) {
+        super(shape, proto);
         this.internalState = Objects.requireNonNull(internalState);
     }
 

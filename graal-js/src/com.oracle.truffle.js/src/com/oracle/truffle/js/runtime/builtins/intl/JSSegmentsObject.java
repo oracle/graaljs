@@ -42,7 +42,7 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 /**
@@ -54,9 +54,8 @@ public final class JSSegmentsObject extends JSNonProxyObject {
     // [[SegmentsString]] internal slot
     private final TruffleString segmentsString;
 
-    @GenerateObjectFactory
-    protected JSSegmentsObject(Shape shape, JSSegmenterObject segmentsSegmenter, TruffleString segmentsString) {
-        super(shape);
+    protected JSSegmentsObject(Shape shape, JSDynamicObject proto, JSSegmenterObject segmentsSegmenter, TruffleString segmentsString) {
+        super(shape, proto);
         this.segmentsSegmenter = segmentsSegmenter;
         this.segmentsString = segmentsString;
     }

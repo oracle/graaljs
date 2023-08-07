@@ -57,7 +57,11 @@ public final class JSWrapForValidIterator extends JSNonProxy implements JSConstr
     }
 
     public static JSWrapForValidIteratorObject create(JSContext context, JSRealm realm, IteratorRecord iteratorRecord) {
-        return JSWrapForValidIteratorObjectFactory.create(context.getWrapForIteratorFactory(), realm, iteratorRecord);
+        JSObjectFactory factory = context.getWrapForIteratorFactory();
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSWrapForValidIteratorObject(shape, proto, iteratorRecord), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static boolean isWrapForIterator(Object obj) {

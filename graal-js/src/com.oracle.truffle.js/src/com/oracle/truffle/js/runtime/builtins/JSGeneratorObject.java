@@ -43,7 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSGeneratorObject extends JSNonProxyObject {
@@ -52,9 +52,8 @@ public final class JSGeneratorObject extends JSNonProxyObject {
     private MaterializedFrame generatorContext;
     private CallTarget generatorTarget;
 
-    @GenerateObjectFactory
-    protected JSGeneratorObject(Shape shape) {
-        super(shape);
+    protected JSGeneratorObject(Shape shape, JSDynamicObject proto) {
+        super(shape, proto);
     }
 
     public JSFunction.GeneratorState getGeneratorState() {

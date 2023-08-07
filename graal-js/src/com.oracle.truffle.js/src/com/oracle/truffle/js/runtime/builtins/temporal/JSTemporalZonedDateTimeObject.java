@@ -47,7 +47,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -68,9 +67,8 @@ public class JSTemporalZonedDateTimeObject extends JSNonProxyObject implements T
     private final JSDynamicObject timeZone;
     private final JSDynamicObject calendar;
 
-    @GenerateObjectFactory
-    protected JSTemporalZonedDateTimeObject(Shape shape, BigInt nanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar) {
-        super(shape);
+    protected JSTemporalZonedDateTimeObject(Shape shape, JSDynamicObject proto, BigInt nanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar) {
+        super(shape, proto);
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         this.nanoseconds = nanoseconds;
         this.calendar = calendar;

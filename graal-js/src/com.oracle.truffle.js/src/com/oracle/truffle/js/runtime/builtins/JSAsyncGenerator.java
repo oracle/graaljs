@@ -63,19 +63,21 @@ public final class JSAsyncGenerator extends JSNonProxy implements JSConstructorF
     }
 
     public static JSAsyncGeneratorObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
-        return JSAsyncGeneratorObjectFactory.create(context.getAsyncGeneratorObjectFactory(), realm, proto);
+        return create(context.getAsyncGeneratorObjectFactory(), realm, proto);
     }
 
     public static JSAsyncGeneratorObject create(JSContext context, JSRealm realm) {
-        return JSAsyncGeneratorObjectFactory.create(context.getAsyncGeneratorObjectFactory(), realm);
+        return create(context.getAsyncGeneratorObjectFactory(), realm);
     }
 
     public static JSAsyncGeneratorObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
-        return JSAsyncGeneratorObjectFactory.create(factory, realm, proto);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSAsyncGeneratorObject(shape, proto), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static JSAsyncGeneratorObject create(JSObjectFactory factory, JSRealm realm) {
-        return JSAsyncGeneratorObjectFactory.create(factory, realm);
+        return create(factory, realm, factory.getPrototype(realm));
     }
 
     @Override

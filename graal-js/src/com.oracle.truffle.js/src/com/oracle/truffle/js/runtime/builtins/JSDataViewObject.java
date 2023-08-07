@@ -42,13 +42,12 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class JSDataViewObject extends JSArrayBufferViewBase {
 
-    @GenerateObjectFactory
-    protected JSDataViewObject(Shape shape, JSArrayBufferObject arrayBuffer, int length, int offset) {
-        super(shape, arrayBuffer, length, offset);
+    protected JSDataViewObject(Shape shape, JSDynamicObject proto, JSArrayBufferObject arrayBuffer, int length, int offset) {
+        super(shape, proto, arrayBuffer, length, offset);
         assert offset >= 0 && offset + length <= arrayBuffer.getByteLength();
     }
 

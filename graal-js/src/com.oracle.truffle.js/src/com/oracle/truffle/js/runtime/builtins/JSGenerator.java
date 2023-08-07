@@ -63,19 +63,21 @@ public final class JSGenerator extends JSNonProxy implements JSConstructorFactor
     }
 
     public static JSGeneratorObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
-        return JSGeneratorObjectFactory.create(context.getGeneratorObjectFactory(), realm, proto);
+        return create(context.getGeneratorObjectFactory(), realm, proto);
     }
 
     public static JSGeneratorObject create(JSContext context, JSRealm realm) {
-        return JSGeneratorObjectFactory.create(context.getGeneratorObjectFactory(), realm);
+        return create(context.getGeneratorObjectFactory(), realm);
     }
 
     public static JSGeneratorObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
-        return JSGeneratorObjectFactory.create(factory, realm, proto);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSGeneratorObject(shape, proto), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static JSGeneratorObject create(JSObjectFactory factory, JSRealm realm) {
-        return JSGeneratorObjectFactory.create(factory, realm);
+        return create(factory, realm, factory.getPrototype(realm));
     }
 
     @Override

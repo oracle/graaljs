@@ -47,7 +47,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -64,10 +63,9 @@ public class JSTemporalPlainTimeObject extends JSNonProxyObject implements Tempo
     private final int nanosecond;
     private final JSDynamicObject calendar;
 
-    @GenerateObjectFactory
-    protected JSTemporalPlainTimeObject(Shape shape, int hour, int minute, int second, int millisecond,
+    protected JSTemporalPlainTimeObject(Shape shape, JSDynamicObject proto, int hour, int minute, int second, int millisecond,
                     int microsecond, int nanosecond, JSDynamicObject calendar) {
-        super(shape);
+        super(shape, proto);
         this.hour = hour;
         this.minute = minute;
         this.second = second;

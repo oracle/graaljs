@@ -51,11 +51,11 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -63,9 +63,8 @@ import com.oracle.truffle.js.runtime.util.JSHashMap;
 public final class JSMapObject extends JSNonProxyObject {
     private final JSHashMap map;
 
-    @GenerateObjectFactory
-    protected JSMapObject(Shape shape, JSHashMap map) {
-        super(shape);
+    protected JSMapObject(Shape shape, JSDynamicObject proto, JSHashMap map) {
+        super(shape, proto);
         this.map = map;
     }
 

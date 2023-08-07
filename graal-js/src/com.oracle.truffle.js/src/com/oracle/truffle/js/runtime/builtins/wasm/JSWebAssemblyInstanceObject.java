@@ -41,16 +41,15 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSWebAssemblyInstanceObject extends JSNonProxyObject {
     private final Object wasmInstance;
     private final Object exports;
 
-    @GenerateObjectFactory
-    protected JSWebAssemblyInstanceObject(Shape shape, Object wasmInstance, Object exports) {
-        super(shape);
+    protected JSWebAssemblyInstanceObject(Shape shape, JSDynamicObject proto, Object wasmInstance, Object exports) {
+        super(shape, proto);
         this.wasmInstance = wasmInstance;
         this.exports = exports;
     }

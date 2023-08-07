@@ -43,15 +43,14 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSListFormatObject extends JSNonProxyObject {
     private final JSListFormat.InternalState internalState;
 
-    @GenerateObjectFactory
-    protected JSListFormatObject(Shape shape, JSListFormat.InternalState internalState) {
-        super(shape);
+    protected JSListFormatObject(Shape shape, JSDynamicObject proto, JSListFormat.InternalState internalState) {
+        super(shape, proto);
         this.internalState = Objects.requireNonNull(internalState);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,10 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
+import com.oracle.truffle.js.runtime.objects.Null;
 
 public final class JSObjectPrototypeObject extends JSArrayBase {
     protected JSObjectPrototypeObject(Shape shape) {
-        super(shape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray(), ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
+        super(shape, Null.instance, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray(), ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
     }
 }

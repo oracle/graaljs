@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -53,8 +54,8 @@ public abstract class JSCollectionIteratorObject extends JSNonProxyObject {
     private Object iteratedObject;
     private JSHashMap.Cursor nextIndex;
 
-    protected JSCollectionIteratorObject(Shape shape, Object iteratedObject, JSHashMap.Cursor nextIndex, int iterationKind) {
-        super(shape);
+    protected JSCollectionIteratorObject(Shape shape, JSDynamicObject proto, Object iteratedObject, JSHashMap.Cursor nextIndex, int iterationKind) {
+        super(shape, proto);
         this.iterationKind = iterationKind;
         this.iteratedObject = iteratedObject;
         this.nextIndex = nextIndex;

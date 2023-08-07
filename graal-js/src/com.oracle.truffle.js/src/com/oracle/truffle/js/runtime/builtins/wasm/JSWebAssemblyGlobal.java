@@ -112,8 +112,9 @@ public class JSWebAssemblyGlobal extends JSNonProxy implements JSConstructorFact
             return (JSWebAssemblyGlobalObject) embedderData;
         }
         JSObjectFactory factory = context.getWebAssemblyGlobalFactory();
-        JSWebAssemblyGlobalObject object = JSWebAssemblyGlobalObjectFactory.create(factory, realm, proto, wasmGlobal, valueType, mutable);
+        var shape = factory.getShape(realm, proto);
+        var object = factory.initProto(new JSWebAssemblyGlobalObject(shape, proto, wasmGlobal, valueType, mutable), realm, proto);
         JSWebAssembly.setEmbedderData(realm, wasmGlobal, object);
-        return object;
+        return factory.trackAllocation(object);
     }
 }

@@ -77,13 +77,14 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
     }
 
     public static JSDataViewObject createDataView(JSContext context, JSRealm realm, JSArrayBufferObject arrayBuffer, int offset, int length) {
-        JSObjectFactory factory = context.getDataViewFactory();
-        return JSDataViewObjectFactory.create(factory, realm, arrayBuffer, length, offset);
+        return createDataView(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), arrayBuffer, offset, length);
     }
 
     public static JSDataViewObject createDataView(JSContext context, JSRealm realm, JSDynamicObject proto, JSArrayBufferObject arrayBuffer, int offset, int length) {
         JSObjectFactory factory = context.getDataViewFactory();
-        return JSDataViewObjectFactory.create(factory, realm, proto, arrayBuffer, length, offset);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSDataViewObject(shape, proto, arrayBuffer, length, offset), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

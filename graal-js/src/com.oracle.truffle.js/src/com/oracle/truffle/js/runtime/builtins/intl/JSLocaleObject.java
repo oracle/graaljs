@@ -43,15 +43,14 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSLocaleObject extends JSNonProxyObject {
     private final JSLocale.InternalState internalState;
 
-    @GenerateObjectFactory
-    protected JSLocaleObject(Shape shape, JSLocale.InternalState internalState) {
-        super(shape);
+    protected JSLocaleObject(Shape shape, JSDynamicObject proto, JSLocale.InternalState internalState) {
+        super(shape, proto);
         this.internalState = Objects.requireNonNull(internalState);
     }
 

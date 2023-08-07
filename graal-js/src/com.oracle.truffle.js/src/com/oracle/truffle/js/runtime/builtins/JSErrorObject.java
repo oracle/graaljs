@@ -52,7 +52,6 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
@@ -64,18 +63,17 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 @ExportLibrary(InteropLibrary.class)
 public final class JSErrorObject extends JSNonProxyObject implements JSCopyableObject {
 
-    @GenerateObjectFactory
-    protected JSErrorObject(Shape shape) {
-        super(shape);
+    protected JSErrorObject(Shape shape, JSDynamicObject proto) {
+        super(shape, proto);
     }
 
-    public static JSErrorObject create(Shape shape) {
-        return new JSErrorObject(shape);
+    public static JSErrorObject create(Shape shape, JSDynamicObject proto) {
+        return new JSErrorObject(shape, proto);
     }
 
     @Override
     protected JSObject copyWithoutProperties(Shape shape) {
-        return new JSErrorObject(shape);
+        return new JSErrorObject(shape, getPrototypeOf());
     }
 
     public GraalJSException getException() {

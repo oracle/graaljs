@@ -41,8 +41,9 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorArgs;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSIteratorHelperObject extends JSNonProxyObject {
@@ -51,9 +52,8 @@ public final class JSIteratorHelperObject extends JSNonProxyObject {
     private final IteratorArgs iteratorArgs;
     private final JSFunctionObject nextImpl;
 
-    @GenerateObjectFactory
-    protected JSIteratorHelperObject(Shape shape, JSFunction.GeneratorState initialState, IteratorArgs iteratorArgs, JSFunctionObject nextImpl) {
-        super(shape);
+    protected JSIteratorHelperObject(Shape shape, JSDynamicObject proto, JSFunction.GeneratorState initialState, IteratorArgs iteratorArgs, JSFunctionObject nextImpl) {
+        super(shape, proto);
         this.generatorState = initialState;
         this.iteratorArgs = iteratorArgs;
         this.nextImpl = nextImpl;
@@ -73,5 +73,12 @@ public final class JSIteratorHelperObject extends JSNonProxyObject {
 
     public JSFunctionObject getNextImpl() {
         return nextImpl;
+    }
+
+    public static JSIteratorHelperObject create(JSObjectFactory factory, JSRealm realm, JSFunction.GeneratorState initialState, IteratorArgs iteratorArgs, JSFunctionObject nextImpl) {
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSIteratorHelperObject(shape, proto, initialState, iteratorArgs, nextImpl), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 }

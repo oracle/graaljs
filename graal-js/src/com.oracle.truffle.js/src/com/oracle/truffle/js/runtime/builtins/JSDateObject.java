@@ -51,17 +51,16 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
 public final class JSDateObject extends JSNonProxyObject {
     private double value;
 
-    @GenerateObjectFactory
-    protected JSDateObject(Shape shape, double value) {
-        super(shape);
+    protected JSDateObject(Shape shape, JSDynamicObject proto, double value) {
+        super(shape, proto);
         this.value = value;
     }
 
@@ -73,8 +72,8 @@ public final class JSDateObject extends JSNonProxyObject {
         this.value = value;
     }
 
-    public static JSDateObject create(Shape shape, double value) {
-        return new JSDateObject(shape, value);
+    public static JSDateObject create(Shape shape, JSDynamicObject proto, double value) {
+        return new JSDateObject(shape, proto, value);
     }
 
     @Override

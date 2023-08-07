@@ -45,8 +45,8 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
@@ -54,9 +54,8 @@ public final class JSStringObject extends JSNonProxyObject {
 
     private final TruffleString string;
 
-    @GenerateObjectFactory
-    protected JSStringObject(Shape shape, TruffleString string) {
-        super(shape);
+    protected JSStringObject(Shape shape, JSDynamicObject proto, TruffleString string) {
+        super(shape, proto);
         this.string = string;
     }
 
@@ -64,8 +63,8 @@ public final class JSStringObject extends JSNonProxyObject {
         return string;
     }
 
-    public static JSStringObject create(Shape shape, TruffleString value) {
-        return new JSStringObject(shape, value);
+    public static JSStringObject create(Shape shape, JSDynamicObject proto, TruffleString value) {
+        return new JSStringObject(shape, proto, value);
     }
 
     @Override

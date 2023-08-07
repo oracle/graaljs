@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,14 +46,16 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 /**
  * Base class for Array, ArgumentsObject, and %Object.prototype%.
  */
 public abstract class JSArrayBase extends JSNonProxyObject {
-    protected JSArrayBase(Shape shape, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
-        super(shape);
+    protected JSArrayBase(Shape shape, JSDynamicObject proto, ScriptArray arrayType,
+                    Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+        super(shape, proto);
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         this.length = (int) length;
         this.usedLength = usedLength;

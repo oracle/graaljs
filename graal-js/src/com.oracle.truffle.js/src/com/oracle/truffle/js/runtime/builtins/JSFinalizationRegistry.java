@@ -80,7 +80,9 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
         ArrayList<FinalizationRecord> cells = new ArrayList<>();
         ReferenceQueue<Object> referenceQueue = createReferenceQueue();
         JSObjectFactory factory = context.getFinalizationRegistryFactory();
-        JSFinalizationRegistryObject registryObj = JSFinalizationRegistryObjectFactory.create(factory, realm, proto, cleanupCallback, cells, referenceQueue);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSFinalizationRegistryObject(shape, proto, cleanupCallback, cells, referenceQueue), realm, proto);
+        JSFinalizationRegistryObject registryObj = factory.trackAllocation(newObj);
         context.registerFinalizationRegistry(registryObj);
         return registryObj;
     }

@@ -42,8 +42,8 @@ package com.oracle.truffle.js.runtime.builtins.asynccontext;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.annotations.GenerateObjectFactory;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSAsyncContextVariableObject extends JSNonProxyObject {
@@ -51,9 +51,8 @@ public final class JSAsyncContextVariableObject extends JSNonProxyObject {
     private final Symbol asyncContextKey;
     private final Object asyncContextDefaultValue;
 
-    @GenerateObjectFactory
-    protected JSAsyncContextVariableObject(Shape shape, Symbol asyncContextKey, Object asyncContextDefaultValue) {
-        super(shape);
+    protected JSAsyncContextVariableObject(Shape shape, JSDynamicObject proto, Symbol asyncContextKey, Object asyncContextDefaultValue) {
+        super(shape, proto);
         this.asyncContextKey = asyncContextKey;
         this.asyncContextDefaultValue = asyncContextDefaultValue;
     }

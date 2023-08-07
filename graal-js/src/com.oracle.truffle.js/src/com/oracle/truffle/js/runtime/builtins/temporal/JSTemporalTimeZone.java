@@ -69,14 +69,11 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     private JSTemporalTimeZone() {
     }
 
-    public static JSTemporalTimeZoneObject create(JSContext context, JSRealm realm, BigInt nanoseconds, TruffleString identifier) {
-        JSObjectFactory factory = context.getTemporalTimeZoneFactory();
-        return JSTemporalTimeZoneObjectFactory.create(factory, realm, nanoseconds, identifier);
-    }
-
     public static JSTemporalTimeZoneObject create(JSContext context, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds, TruffleString identifier) {
         JSObjectFactory factory = context.getTemporalTimeZoneFactory();
-        return JSTemporalTimeZoneObjectFactory.create(factory, realm, proto, nanoseconds, identifier);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalTimeZoneObject(shape, proto, nanoseconds, identifier), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

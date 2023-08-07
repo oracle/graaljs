@@ -51,6 +51,7 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -69,7 +70,10 @@ public final class JSAsyncContextSnapshot extends JSNonProxy implements JSConstr
     }
 
     public static JSAsyncContextSnapshotObject create(JSContext context, JSRealm realm, JSDynamicObject proto, AsyncContext asyncContextMapping) {
-        return JSAsyncContextSnapshotObjectFactory.create(context.getAsyncContextSnapshotFactory(), realm, proto, asyncContextMapping);
+        JSObjectFactory factory = context.getAsyncContextSnapshotFactory();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSAsyncContextSnapshotObject(shape, proto, asyncContextMapping), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

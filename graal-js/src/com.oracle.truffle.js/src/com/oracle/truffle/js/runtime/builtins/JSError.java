@@ -139,12 +139,18 @@ public final class JSError extends JSNonProxy {
 
     public static JSErrorObject createErrorObject(JSContext context, JSRealm realm, JSErrorType errorType) {
         JSObjectFactory factory = context.getErrorFactory(errorType);
-        return JSErrorObjectFactory.create(factory, realm);
+        return createErrorObject(factory, realm, factory.getPrototype(realm));
     }
 
     public static JSErrorObject createErrorObject(JSContext context, JSRealm realm, JSErrorType errorType, JSDynamicObject proto) {
         JSObjectFactory factory = context.getErrorFactory(errorType);
-        return JSErrorObjectFactory.create(factory, realm, proto);
+        return createErrorObject(factory, realm, proto);
+    }
+
+    private static JSErrorObject createErrorObject(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSErrorObject(shape, proto), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static void setMessage(JSDynamicObject obj, TruffleString message) {
@@ -193,7 +199,7 @@ public final class JSError extends JSNonProxy {
 
         JSObject errorPrototype;
         if (ctx.getEcmaScriptVersion() < 6) {
-            errorPrototype = JSErrorObject.create(JSShape.createPrototypeShape(ctx, INSTANCE, proto));
+            errorPrototype = JSErrorObject.create(JSShape.createPrototypeShape(ctx, INSTANCE, proto), proto);
             JSObjectUtil.setOrVerifyPrototype(ctx, errorPrototype, proto);
         } else {
             errorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm, proto);
