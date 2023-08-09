@@ -697,7 +697,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             return clonedArrayBuffer;
         }
 
-        private JSArrayBufferObject cloneInteropArrayBuffer(JSDynamicObject sourceBuffer, int srcByteLength, int srcByteOffset, InteropLibrary interop) {
+        private JSArrayBufferObject cloneInteropArrayBuffer(JSArrayBufferObject sourceBuffer, int srcByteLength, int srcByteOffset, InteropLibrary interop) {
             assert JSArrayBuffer.isJSInteropArrayBuffer(sourceBuffer);
             boolean direct = getContext().isOptionDirectByteBuffer();
             TypedArray sourceType = TypedArrayFactory.Int8Array.createArrayType(false, false, true);
