@@ -300,7 +300,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         private JSArrayBufferObject constructNewArrayBuffer(JSArrayBufferObject thisObj, int newLen, boolean direct, InlinedBranchProfile errorBranch) {
             JSDynamicObject defaultConstructor = getRealm().getArrayBufferConstructor();
-            JSDynamicObject constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
+            var constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
             var resObj = getArraySpeciesConstructorNode().construct(constr, newLen);
             if ((direct && !JSArrayBuffer.isJSDirectArrayBuffer(resObj)) || (!direct && !JSArrayBuffer.isJSHeapArrayBuffer(resObj))) {
                 errorBranch.enter(this);

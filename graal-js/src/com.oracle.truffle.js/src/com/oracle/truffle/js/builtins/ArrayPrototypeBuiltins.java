@@ -508,14 +508,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         protected final JSTypedArrayObject typedArraySpeciesCreate(JSDynamicObject thisObj, Object... args) {
-            JSDynamicObject constr = speciesConstructor(thisObj, getDefaultConstructor(getRealm(), thisObj));
+            var constr = speciesConstructor(thisObj, getDefaultConstructor(getRealm(), thisObj));
             return typedArrayCreate(constr, args);
         }
 
         /**
          * 22.2.4.6 TypedArrayCreate().
          */
-        public final JSTypedArrayObject typedArrayCreate(JSDynamicObject constr, Object... args) {
+        public final JSTypedArrayObject typedArrayCreate(Object constr, Object... args) {
             Object newObject = construct(constr, args);
             if (!JSArrayBufferView.isJSArrayBufferView(newObject)) {
                 errorBranch.enter();
@@ -588,7 +588,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return arrayCreateNode.execute(length);
         }
 
-        protected Object construct(JSDynamicObject constructor, Object... userArgs) {
+        protected Object construct(Object constructor, Object... userArgs) {
             Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, constructor, userArgs.length);
             System.arraycopy(userArgs, 0, args, JSArguments.RUNTIME_ARGUMENT_COUNT, userArgs.length);
             return constructorCall.executeCall(args);
@@ -603,7 +603,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         /**
          * Implement 7.3.20 SpeciesConstructor.
          */
-        protected final JSDynamicObject speciesConstructor(JSDynamicObject thisObj, JSDynamicObject defaultConstructor) {
+        protected final Object speciesConstructor(JSDynamicObject thisObj, JSDynamicObject defaultConstructor) {
             Object c = getConstructorProperty(thisObj);
             if (c == Undefined.instance) {
                 defaultConstructorBranch.enter();
@@ -622,7 +622,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotAConstructor(speciesConstructor, context);
             }
-            return (JSDynamicObject) speciesConstructor;
+            return speciesConstructor;
         }
 
         private Object getConstructorProperty(Object obj) {

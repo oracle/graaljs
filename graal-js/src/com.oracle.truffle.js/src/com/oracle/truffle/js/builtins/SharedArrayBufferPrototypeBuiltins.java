@@ -111,7 +111,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
 
         private JSArrayBufferObject.Shared constructNewSharedArrayBuffer(JSDynamicObject thisObj, int newLen, InlinedBranchProfile errorBranch) {
             JSDynamicObject defaultConstructor = getRealm().getSharedArrayBufferConstructor();
-            JSDynamicObject constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
+            var constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
             var resObj = getArraySpeciesConstructorNode().construct(constr, newLen);
             if (!JSSharedArrayBuffer.isJSSharedArrayBuffer(resObj)) {
                 errorBranch.enter(this);

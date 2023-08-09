@@ -155,9 +155,9 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             } else {
                 if (isConstructor.profile(JSFunction.isConstructor(thisObj))) {
                     if (provideLengthArg) {
-                        return (JSDynamicObject) getArraySpeciesConstructorNode().construct((JSDynamicObject) thisObj, JSRuntime.longToIntOrDouble(len));
+                        return (JSDynamicObject) getArraySpeciesConstructorNode().construct(thisObj, JSRuntime.longToIntOrDouble(len));
                     } else {
-                        return (JSDynamicObject) getArraySpeciesConstructorNode().construct((JSDynamicObject) thisObj);
+                        return (JSDynamicObject) getArraySpeciesConstructorNode().construct(thisObj);
                     }
                 } else {
                     if (arrayCreateNode == null) {

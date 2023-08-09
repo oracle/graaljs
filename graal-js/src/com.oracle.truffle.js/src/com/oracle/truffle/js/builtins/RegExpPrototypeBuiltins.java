@@ -597,7 +597,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
             checkObject(rx);
             TruffleString str = toString1(input);
-            JSDynamicObject constructor = getSpeciesConstructor(rx);
+            var constructor = getSpeciesConstructor(rx);
             return splitAccordingToSpec.execute(rx, str, limit, constructor, getContext(), this);
         }
 
@@ -614,7 +614,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 limitZeroBranch.enter(node);
                 return JSArray.createEmptyZeroLength(getContext(), getRealm());
             }
-            JSDynamicObject constructor = getSpeciesConstructor(rx);
+            var constructor = getSpeciesConstructor(rx);
             if (constructor == getRealm().getRegExpConstructor() && isPristine(rx)) {
                 return splitInternal.execute((JSRegExpObject) rx, str, limit, getContext(), this);
             }
@@ -627,7 +627,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        private JSDynamicObject getSpeciesConstructor(JSDynamicObject rx) {
+        private Object getSpeciesConstructor(JSDynamicObject rx) {
             JSDynamicObject regexpConstructor = getRealm().getRegExpConstructor();
             return getArraySpeciesConstructorNode().speciesConstructor(rx, regexpConstructor);
         }
@@ -635,17 +635,17 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         /**
          * Call RegExp (default or species) constructor.
          */
-        static Object callRegExpConstructor(JSDynamicObject constructor, JSDynamicObject rx, TruffleString newFlags, JSFunctionCallNode constructorCall) {
+        static Object callRegExpConstructor(Object constructor, JSDynamicObject rx, TruffleString newFlags, JSFunctionCallNode constructorCall) {
             return constructorCall.executeCall(JSArguments.create(JSFunction.CONSTRUCT, constructor, rx, newFlags));
         }
 
         @ImportStatic({JSRegExp.class, Strings.class})
         protected abstract static class SplitAccordingToSpecNode extends JavaScriptBaseNode {
 
-            protected abstract JSDynamicObject execute(JSDynamicObject rx, TruffleString str, Object limit, JSDynamicObject constructor, JSContext context, JSRegExpSplitNode parent);
+            protected abstract JSDynamicObject execute(JSDynamicObject rx, TruffleString str, Object limit, Object constructor, JSContext context, JSRegExpSplitNode parent);
 
             @Specialization
-            protected static JSDynamicObject split(JSDynamicObject rx, TruffleString str, Object limit, JSDynamicObject constructor, JSContext context, JSRegExpSplitNode parent,
+            protected static JSDynamicObject split(JSDynamicObject rx, TruffleString str, Object limit, Object constructor, JSContext context, JSRegExpSplitNode parent,
                             @Bind("this") Node node,
                             @Cached("create(FLAGS, context)") PropertyGetNode getFlags,
                             @Cached("create(LENGTH, context)") PropertyGetNode getLength,
@@ -1710,7 +1710,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached TruffleString.CharIndexOfAnyCharUTF16Node stringIndexOfAnyNode) {
             Object string = toStringNodeForInput.executeString(stringObj);
             JSDynamicObject regExpConstructor = getRealm().getRegExpConstructor();
-            JSDynamicObject constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
+            Object constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
             TruffleString flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(regex));
             Object matcher = speciesConstructNode.construct(constructor, regex, flags);
             long lastIndex = toLengthNode.executeLong(getLastIndexNode.getValue(regex));

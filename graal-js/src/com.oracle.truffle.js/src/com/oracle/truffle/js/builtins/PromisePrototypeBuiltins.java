@@ -131,7 +131,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             this.speciesConstructorNode = ArraySpeciesConstructorNode.create(context, false);
         }
 
-        protected final JSDynamicObject speciesConstructor(JSDynamicObject promise) {
+        protected final Object speciesConstructor(JSDynamicObject promise) {
             return speciesConstructorNode.speciesConstructor(promise, getRealm().getPromiseConstructor());
         }
     }
@@ -148,7 +148,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @Specialization
         protected JSDynamicObject doPromise(JSPromiseObject promise, Object onFulfilled, Object onRejected) {
-            JSDynamicObject constructor = speciesConstructor(promise);
+            var constructor = speciesConstructor(promise);
             getContext().notifyPromiseHook(-1 /* parent info */, promise);
             PromiseCapabilityRecord resultCapability = newPromiseCapability.execute(constructor);
             return performPromiseThen.execute(promise, onFulfilled, onRejected, resultCapability);
@@ -196,7 +196,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
 
         @Specialization
         protected Object doObject(JSObject promise, Object onFinally) {
-            JSDynamicObject constructor = speciesConstructor(promise);
+            var constructor = speciesConstructor(promise);
             assert JSRuntime.isConstructor(constructor);
             Object thenFinally;
             Object catchFinally;
@@ -216,7 +216,7 @@ public final class PromisePrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
 
-        private JSDynamicObject createFinallyFunction(JSDynamicObject constructor, Object onFinally, boolean thenFinally) {
+        private JSDynamicObject createFinallyFunction(Object constructor, Object onFinally, boolean thenFinally) {
             if (setConstructor == null || setOnFinally == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 this.setConstructor = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_FINALLY_CONSTRUCTOR, getContext()));
