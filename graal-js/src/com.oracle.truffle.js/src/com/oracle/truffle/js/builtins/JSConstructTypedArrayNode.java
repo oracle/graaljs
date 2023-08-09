@@ -146,7 +146,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         return integerIndexObjectCreateNode.execute(arrayBuffer, typedArray, offset, length, proto);
     }
 
-    private void checkDetachedBuffer(JSDynamicObject buffer) {
+    private void checkDetachedBuffer(JSArrayBufferObject buffer) {
         if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(buffer)) {
             errorBranch.enter();
             throw Errors.createTypeErrorDetachedBuffer();

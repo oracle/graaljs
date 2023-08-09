@@ -1333,16 +1333,16 @@ public final class GraalJSAccess {
     }
 
     private Object interopArrayBufferGetContents(Object arrayBuffer) {
-        assert JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
-        Object interopBuffer = JSArrayBuffer.getInteropBuffer(arrayBuffer);
+        var interopArrayBuffer = (JSArrayBufferObject.Interop) arrayBuffer;
+        Object interopBuffer = JSArrayBuffer.getInteropBuffer(interopArrayBuffer);
         if (interopBuffer == null) {
-            assert JSArrayBuffer.isDetachedBuffer(arrayBuffer);
+            assert JSArrayBuffer.isDetachedBuffer(interopArrayBuffer);
             return null;
         }
 
         if (unsafeWasmMemory) {
             // Try to get a direct ByteBuffer view of a WebAssembly Memory.
-            ByteBuffer byteBuffer = JSInteropUtil.wasmMemoryAsByteBuffer((JSArrayBufferObject) arrayBuffer, InteropLibrary.getUncached(), mainJSRealm);
+            ByteBuffer byteBuffer = JSInteropUtil.wasmMemoryAsByteBuffer(interopArrayBuffer, InteropLibrary.getUncached(), mainJSRealm);
             if (byteBuffer != null && byteBuffer.isDirect()) {
                 return byteBuffer;
             }
@@ -1388,11 +1388,11 @@ public final class GraalJSAccess {
     }
 
     public void arrayBufferDetach(Object arrayBuffer) {
-        JSArrayBuffer.detachArrayBuffer((JSDynamicObject) arrayBuffer);
+        JSArrayBuffer.detachArrayBuffer((JSArrayBufferObject) arrayBuffer);
     }
 
     public boolean arrayBufferWasDetached(Object arrayBuffer) {
-        return JSArrayBuffer.isDetachedBuffer(arrayBuffer);
+        return JSArrayBuffer.isDetachedBuffer((JSArrayBufferObject) arrayBuffer);
     }
 
     public static int arrayBufferViewByteLength(JSContext context, JSDynamicObject arrayBufferView) {

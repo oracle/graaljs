@@ -44,12 +44,13 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
     private final Object wasmMemory;
-    private JSDynamicObject bufferObject;
+    private JSArrayBufferObject bufferObject;
 
     protected JSWebAssemblyMemoryObject(Shape shape, JSDynamicObject proto, Object wasmMemory) {
         super(shape, proto);

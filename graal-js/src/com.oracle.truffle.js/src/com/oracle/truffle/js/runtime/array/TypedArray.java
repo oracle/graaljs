@@ -150,7 +150,8 @@ public abstract class TypedArray extends ScriptArray {
      * Get ByteBuffer from ArrayBuffer with unspecified byte order.
      */
     protected static ByteBuffer getDirectByteBuffer(Object buffer) {
-        assert !JSArrayBuffer.isDetachedBuffer(buffer); // must be checked by caller
+        // must be checked by caller
+        assert !JSArrayBuffer.isDetachedBuffer((JSArrayBufferObject) buffer);
         return JSArrayBuffer.getDirectByteBuffer(buffer);
     }
 
@@ -158,7 +159,8 @@ public abstract class TypedArray extends ScriptArray {
      * Get byte[] from ArrayBuffer.
      */
     protected static byte[] getByteArray(Object buffer) {
-        assert !JSArrayBuffer.isDetachedBuffer(buffer); // must be checked by caller
+        // must be checked by caller
+        assert !JSArrayBuffer.isDetachedBuffer((JSArrayBufferObject) buffer);
         return JSArrayBuffer.getByteArray(buffer);
     }
 

@@ -104,6 +104,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -661,7 +662,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             if (!(JSArrayBuffer.isJSHeapArrayBuffer(obj) || JSArrayBuffer.isJSDirectArrayBuffer(obj) || JSArrayBuffer.isJSInteropArrayBuffer(obj))) {
                 throw Errors.createTypeError("ArrayBuffer expected");
             }
-            JSArrayBuffer.detachArrayBuffer((JSDynamicObject) obj);
+            JSArrayBuffer.detachArrayBuffer((JSArrayBufferObject) obj);
             return Undefined.instance;
         }
     }
