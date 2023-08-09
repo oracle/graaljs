@@ -352,7 +352,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             throw Errors.createTypeErrorArrayBufferViewExpected();
         }
 
-        protected JSTypedArrayObject subarrayImpl(JSDynamicObject thisObj, TypedArray arrayType, int begin, int end) {
+        protected JSTypedArrayObject subarrayImpl(JSTypedArrayObject thisObj, TypedArray arrayType, int begin, int end) {
             assert arrayType == JSArrayBufferView.typedArrayGetArrayType(thisObj);
             int offset = JSArrayBufferView.typedArrayGetOffset(thisObj);
             JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj);

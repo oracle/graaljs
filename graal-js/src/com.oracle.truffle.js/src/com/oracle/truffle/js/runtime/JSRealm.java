@@ -349,7 +349,7 @@ public class JSRealm {
     private final JSFunctionObject sharedArrayBufferConstructor;
     private final JSDynamicObject sharedArrayBufferPrototype;
 
-    @CompilationFinal(dimensions = 1) private final JSDynamicObject[] typedArrayConstructors;
+    @CompilationFinal(dimensions = 1) private final JSFunctionObject[] typedArrayConstructors;
     @CompilationFinal(dimensions = 1) private final JSDynamicObject[] typedArrayPrototypes;
     private final JSFunctionObject dataViewConstructor;
     private final JSDynamicObject dataViewPrototype;
@@ -721,7 +721,7 @@ public class JSRealm {
         ctor = JSArrayBuffer.createConstructor(this);
         this.arrayBufferConstructor = ctor.getFunctionObject();
         this.arrayBufferPrototype = ctor.getPrototype();
-        this.typedArrayConstructors = new JSDynamicObject[TypedArray.factories(context).length];
+        this.typedArrayConstructors = new JSFunctionObject[TypedArray.factories(context).length];
         this.typedArrayPrototypes = new JSDynamicObject[TypedArray.factories(context).length];
         initializeTypedArrayConstructors();
         ctor = JSDataView.createConstructor(this);
@@ -1441,7 +1441,7 @@ public class JSRealm {
         return sharedArrayBufferPrototype;
     }
 
-    public final JSDynamicObject getArrayBufferViewConstructor(TypedArrayFactory factory) {
+    public final JSFunctionObject getArrayBufferViewConstructor(TypedArrayFactory factory) {
         return typedArrayConstructors[factory.getFactoryIndex()];
     }
 

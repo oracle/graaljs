@@ -484,7 +484,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private final BranchProfile differentRealm = BranchProfile.create();
         private final BranchProfile defaultConstructorBranch = BranchProfile.create();
         private final ConditionProfile arraySpeciesEmpty = ConditionProfile.create();
-        private final BranchProfile notAJSObjectBranch = BranchProfile.create();
         private final JSContext context;
 
         protected ArraySpeciesConstructorNode(JSContext context, boolean isTypedArrayImplementation) {
@@ -501,14 +500,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected final Object createEmptyContainer(Object thisObj, long size) {
             if (isTypedArrayImplementation) {
-                return typedArraySpeciesCreate(JSRuntime.expectJSObject(thisObj, notAJSObjectBranch), JSRuntime.longToIntOrDouble(size));
+                // ValidateTypedArray already performed in the caller.
+                return typedArraySpeciesCreate((JSTypedArrayObject) thisObj, JSRuntime.longToIntOrDouble(size));
             } else {
                 return arraySpeciesCreate(thisObj, size);
             }
         }
 
-        protected final JSTypedArrayObject typedArraySpeciesCreate(JSDynamicObject thisObj, Object... args) {
+        protected final JSTypedArrayObject typedArraySpeciesCreate(JSTypedArrayObject thisObj, Object... args) {
             var constr = speciesConstructor(thisObj, getDefaultConstructor(getRealm(), thisObj));
+            return typedArrayCreate(constr, args);
+        }
+
+        protected final JSTypedArrayObject typedArrayCreateSameType(JSTypedArrayObject thisObj, Object... args) {
+            var constr = getDefaultConstructor(getRealm(), thisObj);
             return typedArrayCreate(constr, args);
         }
 
@@ -594,8 +599,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return constructorCall.executeCall(args);
         }
 
-        protected static final JSDynamicObject getDefaultConstructor(JSRealm realm, JSDynamicObject thisObj) {
-            assert JSArrayBufferView.isJSArrayBufferView(thisObj);
+        protected static final JSFunctionObject getDefaultConstructor(JSRealm realm, JSTypedArrayObject thisObj) {
             TypedArray arrayType = JSArrayBufferView.typedArrayGetArrayType(thisObj);
             return realm.getArrayBufferViewConstructor(arrayType.getFactory());
         }
@@ -775,15 +779,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected final JSObject createEmpty(Object thisObj, long length) {
             if (isTypedArrayImplementation) {
-                return typedArrayCreateSameType((JSDynamicObject) thisObj, length);
+                // ValidateTypedArray already performed in the caller.
+                return typedArrayCreateSameType((JSTypedArrayObject) thisObj, length);
             } else {
                 return arrayCreate(length);
             }
         }
 
-        private JSTypedArrayObject typedArrayCreateSameType(JSDynamicObject thisObj, long length) {
-            JSDynamicObject constr = ArraySpeciesConstructorNode.getDefaultConstructor(getRealm(), thisObj);
-            return getArraySpeciesConstructorNode().typedArrayCreate(constr, length);
+        private JSTypedArrayObject typedArrayCreateSameType(JSTypedArrayObject thisObj, long length) {
+            return getArraySpeciesConstructorNode().typedArrayCreateSameType(thisObj, JSRuntime.longToIntOrDouble(length));
         }
 
         protected JSArrayObject arrayCreate(long length) {
