@@ -151,8 +151,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
                 throw Errors.shouldNotReachHere();
             }
 
-            // JSRegExpExecIntlNode supports DynamicObjects only
-            Object match = regexExecIntl((JSDynamicObject) regex, string);
+            Object match = regexExecIntl(regex, string);
 
             if (noMatchProfile.profile(this, match == Null.instance)) {
                 getSetDoneNode().setValueBoolean(iterator, true);

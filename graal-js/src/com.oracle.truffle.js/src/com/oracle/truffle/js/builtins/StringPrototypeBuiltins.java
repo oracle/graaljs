@@ -504,7 +504,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        protected final Object matchIgnoreLastIndex(JSDynamicObject regExp, TruffleString input, int fromIndex) {
+        protected final Object matchIgnoreLastIndex(JSRegExpObject regExp, TruffleString input, int fromIndex) {
             assert getContext().getEcmaScriptVersion() <= 5;
             return getRegExpIgnoreLastIndexNode().execute(regExp, input, fromIndex);
         }
@@ -1736,7 +1736,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return builderToString(sb);
         }
 
-        private <T> TruffleString replaceAll(JSDynamicObject regExp, TruffleString input, int groupCount, Replacer<T> replacer, T replaceValue, Object tRegexCompiledRegex, Node node,
+        private <T> TruffleString replaceAll(JSRegExpObject regExp, TruffleString input, int groupCount, Replacer<T> replacer, T replaceValue, Object tRegexCompiledRegex, Node node,
                         InlinedCountingConditionProfile ifIsMatch,
                         TRegexUtil.InteropReadBooleanMemberNode readIsMatch) {
             setLastIndex(regExp, 0);
@@ -2201,7 +2201,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             Object searchObj = JSRuntime.getArgOrUndefined(args, 0);
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
-            JSDynamicObject regExp = toRegExpNode.execute(searchObj);
+            JSRegExpObject regExp = toRegExpNode.execute(searchObj);
             Object result = matchIgnoreLastIndex(regExp, thisStr, 0);
             if (TRegexResultAccessor.isMatch(result, this, readIsMatch)) {
                 return TRegexResultAccessor.captureGroupStart(result, 0, this, getStart);
@@ -2416,7 +2416,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return regExpExecNode.execute(regExp, thisStr);
         }
 
-        private JSDynamicObject matchAll(JSDynamicObject regExp, TruffleString input,
+        private JSDynamicObject matchAll(JSRegExpObject regExp, TruffleString input,
                         Node node,
                         InlinedCountingConditionProfile isMatch,
                         @Cached TruffleString.SubstringByteIndexNode substringNode,
