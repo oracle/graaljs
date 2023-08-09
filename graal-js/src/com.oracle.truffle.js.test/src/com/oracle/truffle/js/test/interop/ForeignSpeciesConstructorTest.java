@@ -188,6 +188,74 @@ public class ForeignSpeciesConstructorTest {
     }
 
     @Test
+    public void testArrayOfConstructorReturningForeignObject() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Object[] foreignObjs = {
+                            ProxyArray.fromArray(42, 43),
+                            ProxyObject.fromMap(new HashMap<>(Map.of("length", 2, "0", 42, "1", 43))),
+            };
+            for (var foreignObj : foreignObjs) {
+                ProxyInstantiable foreignArrayConstructor = (args) -> foreignObj;
+                context.getBindings(ID).putMember("foreignArrayConstructor", foreignArrayConstructor);
+                Value result = context.eval(ID, """
+                                Array.of.call(foreignArrayConstructor, 42, 43);
+                                "ok";
+                                """);
+                Assert.assertEquals("ok", result.asString());
+            }
+
+            ProxyInstantiable foreignTypedArrayConstructor = (args) -> ProxyArray.fromArray(42, 43);
+            context.getBindings(ID).putMember("foreignTypedArrayConstructor", foreignTypedArrayConstructor);
+            Value result = context.eval(ID, """
+                            try {
+                                Int8Array.of.call(foreignTypedArrayConstructor, 42, 43);
+                            } catch (e) {
+                                if (!(e instanceof TypeError)) {
+                                    throw e;
+                                }
+                                e.message;
+                            }
+                            """);
+            Assert.assertEquals("TypedArray expected", result.asString());
+        }
+    }
+
+    @Test
+    public void testArrayFromConstructorReturningForeignObject() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Object[] foreignObjs = {
+                            ProxyArray.fromArray(42, 43),
+                            ProxyObject.fromMap(new HashMap<>(Map.of("length", 2, "0", 42, "1", 43))),
+            };
+            for (var foreignObj : foreignObjs) {
+                ProxyInstantiable foreignArrayConstructor = (args) -> foreignObj;
+                context.getBindings(ID).putMember("foreignArray", foreignObj);
+                context.getBindings(ID).putMember("foreignArrayConstructor", foreignArrayConstructor);
+                Value result = context.eval(ID, """
+                                Array.from.call(foreignArrayConstructor, foreignArray);
+                                "ok";
+                                """);
+                Assert.assertEquals("ok", result.asString());
+            }
+
+            ProxyInstantiable foreignTypedArrayConstructor = (args) -> ProxyArray.fromArray(42, 43);
+            context.getBindings(ID).putMember("foreignTypedArrayConstructor", foreignTypedArrayConstructor);
+            Value result = context.eval(ID, """
+                            try {
+                                Int8Array.from.call(foreignTypedArrayConstructor, foreignArray);
+                                "should have thrown a TypeError";
+                            } catch (e) {
+                                if (!(e instanceof TypeError)) {
+                                    throw e;
+                                }
+                                e.message;
+                            }
+                            """);
+            Assert.assertEquals("TypedArray expected", result.asString());
+        }
+    }
+
+    @Test
     public void testPromiseThenForeignSpeciesConstructor() {
         try (Context context = JSTest.newContextBuilder().option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw").build()) {
             ProxyInstantiable speciesConstructor = (args) -> ProxyObject.fromMap(Map.of());
