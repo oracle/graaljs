@@ -115,6 +115,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
@@ -399,7 +400,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached JSToStringNode toStringNode,
                         @Cached("create(getContext())") JSRegExpExecIntlNode regExpNode,
                         @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch) {
-            Object inputStr = toStringNode.executeString(input);
+            TruffleString inputStr = toStringNode.executeString(input);
             Object result = regExpNode.execute(thisObj, inputStr);
             if (getContext().getEcmaScriptVersion() >= 6) {
                 return (result != Null.instance);
@@ -540,7 +541,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return getLastIndexNode.getValue(obj);
         }
 
-        protected Object regexExecIntl(JSDynamicObject regex, Object input) {
+        protected Object regexExecIntl(Object regex, TruffleString input) {
             if (regexExecIntlNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 regexExecIntlNode = insert(JSRegExpExecIntlNode.create(getContext()));
@@ -564,7 +565,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        JSDynamicObject splitIntLimit(JSDynamicObject rx, Object input, int limit,
+        JSArrayObject splitIntLimit(JSDynamicObject rx, Object input, int limit,
                         @Cached @Shared JSToUInt32Node toUInt32,
                         @Cached @Shared InlinedBranchProfile limitZeroBranch,
                         @Cached @Shared SplitInternalNode splitInternal,
@@ -574,7 +575,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        JSDynamicObject splitLongLimit(JSDynamicObject rx, Object input, long limit,
+        JSArrayObject splitLongLimit(JSDynamicObject rx, Object input, long limit,
                         @Cached @Shared JSToUInt32Node toUInt32,
                         @Cached @Shared InlinedBranchProfile limitZeroBranch,
                         @Cached @Shared SplitInternalNode splitInternal,
@@ -584,7 +585,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isUndefined(limit)")
-        JSDynamicObject splitUndefinedLimit(JSDynamicObject rx, Object input, @SuppressWarnings("unused") Object limit,
+        JSArrayObject splitUndefinedLimit(JSDynamicObject rx, Object input, @SuppressWarnings("unused") Object limit,
                         @Cached @Shared InlinedBranchProfile limitZeroBranch,
                         @Cached @Shared SplitInternalNode splitInternal,
                         @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
@@ -593,11 +594,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "!isUndefined(limit)")
-        JSDynamicObject splitObjectLimit(JSDynamicObject rx, Object input, Object limit,
+        JSArrayObject splitObjectLimit(JSDynamicObject rx, Object input, Object limit,
                         @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
             checkObject(rx);
             TruffleString str = toString1(input);
-            JSDynamicObject constructor = getSpeciesConstructor(rx);
+            var constructor = getSpeciesConstructor(rx);
             return splitAccordingToSpec.execute(rx, str, limit, constructor, getContext(), this);
         }
 
@@ -606,7 +607,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@split", rx);
         }
 
-        private JSDynamicObject doSplit(JSDynamicObject rx, Object input, long limit,
+        private JSArrayObject doSplit(JSDynamicObject rx, Object input, long limit,
                         Node node, InlinedBranchProfile limitZeroBranch, SplitInternalNode splitInternal, SplitAccordingToSpecNode splitAccordingToSpec) {
             checkObject(rx);
             TruffleString str = toString1(input);
@@ -614,9 +615,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 limitZeroBranch.enter(node);
                 return JSArray.createEmptyZeroLength(getContext(), getRealm());
             }
-            JSDynamicObject constructor = getSpeciesConstructor(rx);
+            var constructor = getSpeciesConstructor(rx);
             if (constructor == getRealm().getRegExpConstructor() && isPristine(rx)) {
-                return splitInternal.execute(rx, str, limit, getContext(), this);
+                return splitInternal.execute((JSRegExpObject) rx, str, limit, getContext(), this);
             }
             return splitAccordingToSpec.execute(rx, str, limit, constructor, getContext(), this);
         }
@@ -627,7 +628,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
         }
 
-        private JSDynamicObject getSpeciesConstructor(JSDynamicObject rx) {
+        private Object getSpeciesConstructor(JSDynamicObject rx) {
             JSDynamicObject regexpConstructor = getRealm().getRegExpConstructor();
             return getArraySpeciesConstructorNode().speciesConstructor(rx, regexpConstructor);
         }
@@ -635,17 +636,17 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         /**
          * Call RegExp (default or species) constructor.
          */
-        static Object callRegExpConstructor(JSDynamicObject constructor, JSDynamicObject rx, TruffleString newFlags, JSFunctionCallNode constructorCall) {
+        static Object callRegExpConstructor(Object constructor, JSDynamicObject rx, TruffleString newFlags, JSFunctionCallNode constructorCall) {
             return constructorCall.executeCall(JSArguments.create(JSFunction.CONSTRUCT, constructor, rx, newFlags));
         }
 
         @ImportStatic({JSRegExp.class, Strings.class})
         protected abstract static class SplitAccordingToSpecNode extends JavaScriptBaseNode {
 
-            protected abstract JSDynamicObject execute(JSDynamicObject rx, TruffleString str, Object limit, JSDynamicObject constructor, JSContext context, JSRegExpSplitNode parent);
+            protected abstract JSArrayObject execute(JSDynamicObject rx, TruffleString str, Object limit, Object constructor, JSContext context, JSRegExpSplitNode parent);
 
             @Specialization
-            protected static JSDynamicObject split(JSDynamicObject rx, TruffleString str, Object limit, JSDynamicObject constructor, JSContext context, JSRegExpSplitNode parent,
+            protected static JSArrayObject split(JSDynamicObject rx, TruffleString str, Object limit, Object constructor, JSContext context, JSRegExpSplitNode parent,
                             @Bind("this") Node node,
                             @Cached("create(FLAGS, context)") PropertyGetNode getFlags,
                             @Cached("create(LENGTH, context)") PropertyGetNode getLength,
@@ -666,8 +667,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 TruffleString flags = toString2.executeString(getFlags.getValue(rx));
                 boolean unicodeMatching = Strings.indexOfAny(indexOfNode, flags, 'u', 'v') >= 0;
                 TruffleString newFlags = ensureSticky.execute(node, flags);
-                JSDynamicObject splitter = (JSDynamicObject) callRegExpConstructor(constructor, rx, newFlags, constructorCall);
-                JSDynamicObject array = JSArray.createEmptyZeroLength(context, JSRealm.get(node));
+                Object splitter = callRegExpConstructor(constructor, rx, newFlags, constructorCall);
+                JSArrayObject array = JSArray.createEmptyZeroLength(context, JSRealm.get(node));
                 long lim;
                 if (limitUndefined.profile(node, limit == Undefined.instance)) {
                     lim = JSRuntime.MAX_SAFE_INTEGER_LONG;
@@ -728,10 +729,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @ImportStatic(JSRegExp.class)
         protected abstract static class SplitInternalNode extends JavaScriptBaseNode {
 
-            protected abstract JSDynamicObject execute(JSDynamicObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent);
+            protected abstract JSArrayObject execute(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent);
 
             @Specialization(guards = {"getCompiledRegex(rx) == tRegexCompiledRegex"}, limit = "1")
-            protected static JSDynamicObject doCached(JSDynamicObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
+            protected static JSArrayObject doCached(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
                             @Bind("this") Node node,
                             @Cached("getCompiledRegex(rx)") Object tRegexCompiledRegex,
                             @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
@@ -755,15 +756,15 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlags);
                 boolean unicodeMatching = TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode) || TRegexFlagsAccessor.unicodeSets(tRegexFlags, node, readUnicodeSets);
                 JSRealm realm = JSRealm.get(node);
-                JSDynamicObject splitter;
+                JSRegExpObject splitter;
                 if (stickyFlagSet.profile(node, TRegexFlagsAccessor.sticky(tRegexFlags, node, readSticky))) {
                     JSDynamicObject regexpConstructor = realm.getRegExpConstructor();
                     TruffleString newFlags = removeStickyFlag.execute(node, tRegexFlags);
-                    splitter = (JSDynamicObject) callRegExpConstructor(regexpConstructor, rx, newFlags, constructorCall);
+                    splitter = (JSRegExpObject) callRegExpConstructor(regexpConstructor, rx, newFlags, constructorCall);
                 } else {
                     splitter = rx;
                 }
-                JSDynamicObject array = JSArray.createEmptyZeroLength(context, realm);
+                JSArrayObject array = JSArray.createEmptyZeroLength(context, realm);
                 int size = Strings.length(str);
                 int arrayLength = 0;
                 int prevMatchEnd = 0;
@@ -822,7 +823,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Specialization(replaces = "doCached")
-            protected static JSDynamicObject doUncached(JSDynamicObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
+            protected static JSArrayObject doUncached(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
                             @Bind("this") Node node,
                             @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,
@@ -995,7 +996,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
             if (isPristine(rx)) {
-                return replaceInternal.execute(rx, searchString, cachedReplaceValue, cachedParsedReplaceValueWithNamedCG, cachedParsedReplaceValueWithoutNamedCG, getContext(), this);
+                return replaceInternal.execute((JSRegExpObject) rx, searchString, cachedReplaceValue, cachedParsedReplaceValueWithNamedCG, cachedParsedReplaceValueWithoutNamedCG, getContext(), this);
             }
             return replaceAccordingToSpec.execute(rx, searchString, cachedReplaceValue, false, getContext(), this);
         }
@@ -1008,7 +1009,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             checkObject(rx);
             TruffleString searchString = toString1Node.executeString(searchValue);
             if (isPristine(rx)) {
-                return replaceInternal.execute(rx, searchString, replaceValue, null, null, getContext(), this);
+                return replaceInternal.execute((JSRegExpObject) rx, searchString, replaceValue, null, null, getContext(), this);
             }
             return replaceAccordingToSpec.execute(rx, searchString, replaceValue, false, getContext(), this);
         }
@@ -1029,7 +1030,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 TruffleString replaceString = toString2(replaceValue);
                 replaceVal = replaceString;
                 if (isPristine(rx)) {
-                    return replaceInternal.execute(rx, searchString, replaceString, null, null, getContext(), this);
+                    return replaceInternal.execute((JSRegExpObject) rx, searchString, replaceString, null, null, getContext(), this);
                 }
             }
             return replaceAccordingToSpec.execute(rx, searchString, replaceVal, functionalReplace, getContext(), this);
@@ -1061,12 +1062,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @ImportStatic(JSRegExp.class)
         protected abstract static class ReplaceInternalNode extends JavaScriptBaseNode {
 
-            protected abstract TruffleString execute(JSDynamicObject rx, TruffleString s, TruffleString replaceString,
+            protected abstract TruffleString execute(JSRegExpObject rx, TruffleString s, TruffleString replaceString,
                             ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
                             JSContext context, JSRegExpReplaceNode parent);
 
             @Specialization(guards = {"getCompiledRegex(rx) == tRegexCompiledRegex"}, limit = "1")
-            protected static TruffleString doCached(JSDynamicObject rx, TruffleString s, TruffleString replaceString,
+            protected static TruffleString doCached(JSRegExpObject rx, TruffleString s, TruffleString replaceString,
                             ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
                             JSContext context, JSRegExpReplaceNode parent,
                             @Bind("this") Node node,
@@ -1154,7 +1155,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Specialization(replaces = "doCached")
-            protected static TruffleString doUncached(JSDynamicObject rx, TruffleString s, TruffleString replaceString,
+            protected static TruffleString doUncached(JSRegExpObject rx, TruffleString s, TruffleString replaceString,
                             ReplaceStringParser.Token[] parsedWithNamedCG, ReplaceStringParser.Token[] parsedWithoutNamedCG,
                             JSContext context, JSRegExpReplaceNode parent,
                             @Bind("this") Node node,
@@ -1663,7 +1664,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object search(JSDynamicObject rx, Object param,
                         @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached JSToStringNode toString1Node) {
-            Object s = toString1Node.executeString(param);
+            TruffleString s = toString1Node.executeString(param);
             Object previousLastIndex = getLastIndex(rx);
             if (!sameValueNode.executeBoolean(previousLastIndex, 0)) {
                 setLastIndex(rx, 0);
@@ -1710,7 +1711,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached TruffleString.CharIndexOfAnyCharUTF16Node stringIndexOfAnyNode) {
             Object string = toStringNodeForInput.executeString(stringObj);
             JSDynamicObject regExpConstructor = getRealm().getRegExpConstructor();
-            JSDynamicObject constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
+            Object constructor = speciesConstructNode.speciesConstructor(regex, regExpConstructor);
             TruffleString flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(regex));
             Object matcher = speciesConstructNode.construct(constructor, regex, flags);
             long lastIndex = toLengthNode.executeLong(getLastIndexNode.getValue(regex));

@@ -58,23 +58,20 @@ import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -123,7 +120,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             case of:
                 return JSArrayOfNodeGen.create(context, builtin, false, args().withThis().varArgs().createArgumentNodes(context));
             case from:
-                return JSArrayFromNodeGen.create(context, builtin, false, args().withThis().varArgs().createArgumentNodes(context));
+                return JSArrayFromNodeGen.create(context, builtin, false, args().withThis().fixedArgs(3).createArgumentNodes(context));
         }
         return null;
     }
@@ -143,21 +140,21 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
     public abstract static class JSArrayFunctionOperation extends JSArrayOperation {
         @Child private ArrayCreateNode arrayCreateNode;
-        private final ConditionProfile isConstructor = ConditionProfile.create();
+        @Child protected IsConstructorNode isConstructor = IsConstructorNode.create();
 
         public JSArrayFunctionOperation(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);
         }
 
-        protected JSDynamicObject constructOrArray(Object thisObj, long len, boolean provideLengthArg) {
+        protected Object constructOrArray(Object thisObj, long len, boolean provideLengthArg) {
             if (isTypedArrayImplementation) {
-                return getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, JSRuntime.longToIntOrDouble(len));
+                return getArraySpeciesConstructorNode().typedArrayCreate(thisObj, JSRuntime.longToIntOrDouble(len));
             } else {
-                if (isConstructor.profile(JSFunction.isConstructor(thisObj))) {
+                if (isConstructor.executeBoolean(thisObj)) {
                     if (provideLengthArg) {
-                        return (JSDynamicObject) getArraySpeciesConstructorNode().construct((JSDynamicObject) thisObj, JSRuntime.longToIntOrDouble(len));
+                        return getArraySpeciesConstructorNode().construct(thisObj, JSRuntime.longToIntOrDouble(len));
                     } else {
-                        return (JSDynamicObject) getArraySpeciesConstructorNode().construct((JSDynamicObject) thisObj);
+                        return getArraySpeciesConstructorNode().construct(thisObj);
                     }
                 } else {
                     if (arrayCreateNode == null) {
@@ -168,10 +165,6 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 }
             }
         }
-
-        protected boolean isTypedArrayConstructor(Object thisObj) {
-            return JSFunction.isConstructor(thisObj) && thisObj != getRealm().getArrayConstructor();
-        }
     }
 
     public abstract static class JSArrayOfNode extends JSArrayFunctionOperation {
@@ -181,17 +174,17 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected JSDynamicObject arrayOf(Object thisObj, Object[] args) {
+        protected Object arrayOf(Object thisObj, Object[] args) {
             int len = args.length;
-            JSDynamicObject obj = constructOrArray(thisObj, len, true);
+            Object obj = constructOrArray(thisObj, len, true);
 
             int pos = 0;
             for (Object arg : args) {
                 Object value = JSRuntime.nullToUndefined(arg);
-                JSRuntime.createDataPropertyOrThrow(obj, Strings.fromInt(pos), value);
+                writeOwn(obj, pos, value);
                 pos++;
             }
-            JSObject.set(obj, JSAbstractArray.LENGTH, len, true, this);
+            setLength(obj, len);
             return obj;
         }
     }
@@ -205,12 +198,14 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private GetMethodNode getIteratorMethodNode;
         @Child private JSGetLengthNode getSourceLengthNode;
         @Child private IsArrayNode isFastArrayNode;
+        @Child private WriteElementNode createDataPropertyOrThrowNode;
         private final ConditionProfile isIterable = ConditionProfile.create();
 
         public JSArrayFromNode(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);
             this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
             this.isFastArrayNode = isTypedArrayImplementation ? null : IsArrayNode.createIsFastArray();
+            this.createDataPropertyOrThrowNode = WriteElementNode.create(context, THROW_ERROR, true);
         }
 
         protected void iteratorCloseAbrupt(Object iterator) {
@@ -262,16 +257,12 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         @Specialization
-        protected JSDynamicObject arrayFrom(Object thisObj, Object[] args,
+        protected Object arrayFrom(Object thisObj, Object items, Object mapFn, Object thisArg,
                         @Cached InlinedBranchProfile growProfile) {
-            Object items = JSRuntime.getArgOrUndefined(args, 0);
-            Object mapFn = JSRuntime.getArgOrUndefined(args, 1);
-            Object thisArg = JSRuntime.getArgOrUndefined(args, 2);
-
-            return arrayFromIntl(thisObj, items, mapFn, thisArg, true, growProfile);
+            return arrayFromCommon(thisObj, items, mapFn, thisArg, true, growProfile);
         }
 
-        protected JSDynamicObject arrayFromIntl(Object thisObj, Object items, Object mapFn, Object thisArg, boolean setLength, InlinedBranchProfile growProfile) {
+        protected Object arrayFromCommon(Object thisObj, Object items, Object mapFn, Object thisArg, boolean setLength, InlinedBranchProfile growProfile) {
             boolean mapping;
             if (mapFn == Undefined.instance) {
                 mapping = false;
@@ -289,15 +280,15 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping,
+        protected Object arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping,
                         @SuppressWarnings("unused") InlinedBranchProfile growProfile) {
-            JSDynamicObject obj = constructOrArray(thisObj, 0, false);
+            Object obj = constructOrArray(thisObj, 0, false);
 
             IteratorRecord iteratorRecord = getIterator(items, usingIterator);
             return arrayFromIteratorRecord(obj, iteratorRecord, mapFn, thisArg, mapping);
         }
 
-        private JSDynamicObject arrayFromIteratorRecord(JSDynamicObject obj, IteratorRecord iteratorRecord, Object mapFn, Object thisArg, boolean mapping) {
+        private Object arrayFromIteratorRecord(Object obj, IteratorRecord iteratorRecord, Object mapFn, Object thisArg, boolean mapping) {
             long k = 0;
             try {
                 while (true) {
@@ -310,11 +301,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                     if (mapping) {
                         mapped = callMapFn(thisArg, mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
                     }
-                    if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
-                        writeOwn(obj, k, mapped);
-                    } else {
-                        JSRuntime.createDataPropertyOrThrow(obj, Strings.fromLong(k), mapped);
-                    }
+                    writeOwn(obj, k, mapped);
                     k++;
                 }
             } catch (AbstractTruffleException ex) {
@@ -323,10 +310,10 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        protected JSDynamicObject arrayFromArrayLike(Object thisObj, Object items, Object mapFn, Object thisArg, boolean mapping, boolean setLength) {
+        protected Object arrayFromArrayLike(Object thisObj, Object items, Object mapFn, Object thisArg, boolean mapping, boolean setLength) {
             long len = getSourceLength(items);
 
-            JSDynamicObject obj = constructOrArray(thisObj, len, true);
+            Object obj = constructOrArray(thisObj, len, true);
 
             long k = 0;
             while (k < len) {
@@ -335,11 +322,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 if (mapping) {
                     mapped = callMapFn(thisArg, mapFn, mapped, JSRuntime.positiveLongToIntOrDouble(k));
                 }
-                if (isTypedArrayImplementation || isFastArrayNode.execute(obj)) {
-                    writeOwn(obj, k, mapped);
-                } else {
-                    JSRuntime.createDataPropertyOrThrow(obj, Strings.fromLong(k), mapped);
-                }
+                writeOwn(obj, k, mapped);
                 k++;
             }
             if (setLength) {

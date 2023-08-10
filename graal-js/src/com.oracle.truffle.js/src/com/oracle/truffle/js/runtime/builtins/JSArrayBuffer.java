@@ -140,17 +140,17 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
         return JSArrayBufferObject.getInteropBuffer(thisObj);
     }
 
-    public static JSArrayBufferObject createInteropArrayBuffer(JSContext context, JSRealm realm, Object buffer) {
+    public static JSArrayBufferObject.Interop createInteropArrayBuffer(JSContext context, JSRealm realm, Object buffer) {
         JSObjectFactory factory = context.getInteropArrayBufferFactory();
         return createInteropArrayBuffer(factory, realm, factory.getPrototype(realm), buffer);
     }
 
-    public static JSArrayBufferObject createInteropArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, Object buffer) {
+    public static JSArrayBufferObject.Interop createInteropArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, Object buffer) {
         JSObjectFactory factory = context.getInteropArrayBufferFactory();
         return createInteropArrayBuffer(factory, realm, proto, buffer);
     }
 
-    private static JSArrayBufferObject createInteropArrayBuffer(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, Object buffer) {
+    private static JSArrayBufferObject.Interop createInteropArrayBuffer(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, Object buffer) {
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSArrayBufferObject.Interop(shape, proto, buffer), realm, proto);
         return factory.trackAllocation(newObj);
@@ -223,9 +223,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
      * Warning: This is a slow method! Use the assumption provided in
      * getContext().getTypedArrayNotDetachedAssumption() for better performance.
      */
-    @TruffleBoundary
-    public static boolean isDetachedBuffer(Object arrayBuffer) {
-        assert isJSAbstractBuffer(arrayBuffer);
+    public static boolean isDetachedBuffer(JSArrayBufferObject arrayBuffer) {
         if (isJSHeapArrayBuffer(arrayBuffer)) {
             return getByteArray(arrayBuffer) == null;
         } else if (isJSDirectOrSharedArrayBuffer(arrayBuffer)) {
@@ -240,8 +238,7 @@ public final class JSArrayBuffer extends JSAbstractBuffer implements JSConstruct
      * ES2015, 24.1.1.3 DetachArrayBuffer().
      */
     @TruffleBoundary
-    public static void detachArrayBuffer(JSDynamicObject arrayBuffer) {
-        assert isJSAbstractBuffer(arrayBuffer);
+    public static void detachArrayBuffer(JSArrayBufferObject arrayBuffer) {
         JSObject.getJSContext(arrayBuffer).getTypedArrayNotDetachedAssumption().invalidate("no detached array buffer");
         if (isJSDirectArrayBuffer(arrayBuffer)) {
             ((JSArrayBufferObject.Direct) arrayBuffer).detachArrayBuffer();
