@@ -233,7 +233,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                             node, areLegacyFeaturesEnabled, invokeExec, readIsMatch);
         }
 
-        @Specialization
+        @Specialization(replaces = "doCached")
         Object doUncached(JSRegExpObject regExp, TruffleString input, long lastIndex,
                         @Cached @Shared InlinedConditionProfile areLegacyFeaturesEnabled,
                         @Cached(inline = true) @Shared InvokeExecMethodNode invokeExec,
