@@ -55,7 +55,6 @@
 #include <string.h>
 #include <tuple>
 #include <sstream>
-#include <filesystem>
 
 #include "graal_array-inl.h"
 #include "graal_boolean-inl.h"
@@ -66,6 +65,16 @@
 #include "graal_number-inl.h"
 #include "graal_object-inl.h"
 #include "graal_string-inl.h"
+
+#if defined(__cpp_lib_filesystem)
+#include <filesystem>
+#elif defined(__POSIX__)
+// for posix platforms we have fallback implementations based on C functions
+#include <sys/stat.h> // stat
+#include <dirent.h> // opendir,readdir,closedir
+#else
+#error "Missing <filesystem>"
+#endif
 
 #ifdef __POSIX__
 
@@ -217,9 +226,7 @@ jclass findClassExtra(JNIEnv* env, const char* name) {
     return loadedClass;
 }
 
-#ifdef __POSIX__
-#define access access
-#else
+#ifndef __POSIX__
 #define access _access
 #endif
 
@@ -227,22 +234,48 @@ bool file_exists(std::string const& path) {
     return access(path.c_str(), F_OK) == 0;
 }
 
+bool is_directory(std::string const& path) {
+#ifdef __cpp_lib_filesystem
+    return std::filesystem::is_directory(path);
+#else
+    struct stat st;
+    if (stat(path.c_str(), &st) == 0) {
+        return S_ISDIR(st.st_mode);
+    }
+    return false;
+#endif
+}
+
 std::string expand_class_or_module_path(std::string const& modules_dir, bool include_dir = true, bool include_jars = true) {
     std::string sep = "";
     std::stringstream module_path;
-    if (std::filesystem::is_directory(modules_dir)) {
-        std::filesystem::path modules_dir_path = std::filesystem::canonical(modules_dir);
+    if (is_directory(modules_dir)) {
         if (include_dir) {
-            module_path << sep << modules_dir_path;
+            module_path << sep << modules_dir;
             sep = path_separator;
         }
         if (include_jars) {
-            for (auto const& entry : std::filesystem::directory_iterator(modules_dir_path)) {
+#ifdef __cpp_lib_filesystem
+            for (auto const& entry : std::filesystem::directory_iterator(modules_dir)) {
                 if (entry.path().extension().string() == ".jar") {
                     module_path << sep << entry.path().string();
                     sep = path_separator;
                 }
             }
+#else
+            DIR* dir = opendir(modules_dir.c_str());
+            if (dir != nullptr) {
+                dirent* entry;
+                while ((entry = readdir(dir)) != nullptr) {
+                    std::string entry_path = modules_dir + file_separator + entry->d_name;
+                    if (ends_with(entry_path, ".jar")) {
+                        module_path << sep << entry_path;
+                        sep = path_separator;
+                    }
+                }
+                closedir(dir);
+            }
+#endif
         }
     }
     return module_path.str();
@@ -410,7 +443,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         std::string module_path_sep = "";
         if (is_jvm_standalone) {
             std::string standalone_modules_dir = standalone_home + file_separator + "modules";
-            if (std::filesystem::is_directory(standalone_modules_dir)) {
+            if (is_directory(standalone_modules_dir)) {
                 module_path += module_path_sep;
                 module_path += standalone_modules_dir;
                 module_path_sep = path_separator;
