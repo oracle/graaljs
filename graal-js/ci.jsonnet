@@ -58,6 +58,8 @@ local ci = import '../ci.jsonnet';
       ['cd', 'test/maven-demo'],
       ['mvn', '-Dgraalvm.version=GATE', '--batch-mode', 'package'],
       ['mvn', '-Dgraalvm.version=GATE', '--batch-mode', 'exec:exec'],
+      ['mvn', '-Dgraalvm.version=GATE', '--batch-mode', 'jlink:jlink'],
+      ['target/maven-jlink/default/bin/myapp'],
     ],
     timelimit: '30:00',
   },
