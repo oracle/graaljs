@@ -588,6 +588,7 @@ public final class Strings {
     public static final TruffleString ELEMENT = constant("element");
     public static final TruffleString INITIAL = constant("initial");
     public static final TruffleString MAXIMUM = constant("maximum");
+    public static final TruffleString SHARED = constant("shared");
 
     public static final TruffleString STATIC = constant("static");
     public static final TruffleString PRIVATE = constant("private");

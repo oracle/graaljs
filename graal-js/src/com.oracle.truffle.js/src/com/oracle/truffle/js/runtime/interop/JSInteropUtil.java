@@ -71,6 +71,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -463,4 +464,23 @@ public final class JSInteropUtil {
         return null;
     }
 
+    public static ByteBuffer sharedWasmMemoryAsByteBuffer(Object sharedWasmMemory, InteropLibrary interop, JSRealm realm) {
+        Object memAsByteBuffer = realm.getWASMMemAsByteBuffer();
+        if (memAsByteBuffer == null) {
+            return null;
+        }
+        try {
+            Object bufferObject = interop.execute(memAsByteBuffer, sharedWasmMemory);
+            TruffleLanguage.Env env = realm.getEnv();
+            if (env.isHostObject(bufferObject)) {
+                Object buffer = env.asHostObject(bufferObject);
+                if (buffer instanceof ByteBuffer) {
+                    return (ByteBuffer) buffer;
+                }
+            }
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
+        }
+        return null;
+    }
 }
