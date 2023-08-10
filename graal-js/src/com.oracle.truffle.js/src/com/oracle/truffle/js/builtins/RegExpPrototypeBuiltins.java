@@ -115,6 +115,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSRegExpObject;
@@ -564,7 +565,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        JSDynamicObject splitIntLimit(JSDynamicObject rx, Object input, int limit,
+        JSArrayObject splitIntLimit(JSDynamicObject rx, Object input, int limit,
                         @Cached @Shared JSToUInt32Node toUInt32,
                         @Cached @Shared InlinedBranchProfile limitZeroBranch,
                         @Cached @Shared SplitInternalNode splitInternal,
@@ -574,7 +575,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        JSDynamicObject splitLongLimit(JSDynamicObject rx, Object input, long limit,
+        JSArrayObject splitLongLimit(JSDynamicObject rx, Object input, long limit,
                         @Cached @Shared JSToUInt32Node toUInt32,
                         @Cached @Shared InlinedBranchProfile limitZeroBranch,
                         @Cached @Shared SplitInternalNode splitInternal,
@@ -584,7 +585,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "isUndefined(limit)")
-        JSDynamicObject splitUndefinedLimit(JSDynamicObject rx, Object input, @SuppressWarnings("unused") Object limit,
+        JSArrayObject splitUndefinedLimit(JSDynamicObject rx, Object input, @SuppressWarnings("unused") Object limit,
                         @Cached @Shared InlinedBranchProfile limitZeroBranch,
                         @Cached @Shared SplitInternalNode splitInternal,
                         @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
@@ -593,7 +594,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization(guards = "!isUndefined(limit)")
-        JSDynamicObject splitObjectLimit(JSDynamicObject rx, Object input, Object limit,
+        JSArrayObject splitObjectLimit(JSDynamicObject rx, Object input, Object limit,
                         @Cached @Shared SplitAccordingToSpecNode splitAccordingToSpec) {
             checkObject(rx);
             TruffleString str = toString1(input);
@@ -606,7 +607,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@split", rx);
         }
 
-        private JSDynamicObject doSplit(JSDynamicObject rx, Object input, long limit,
+        private JSArrayObject doSplit(JSDynamicObject rx, Object input, long limit,
                         Node node, InlinedBranchProfile limitZeroBranch, SplitInternalNode splitInternal, SplitAccordingToSpecNode splitAccordingToSpec) {
             checkObject(rx);
             TruffleString str = toString1(input);
@@ -642,10 +643,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @ImportStatic({JSRegExp.class, Strings.class})
         protected abstract static class SplitAccordingToSpecNode extends JavaScriptBaseNode {
 
-            protected abstract JSDynamicObject execute(JSDynamicObject rx, TruffleString str, Object limit, Object constructor, JSContext context, JSRegExpSplitNode parent);
+            protected abstract JSArrayObject execute(JSDynamicObject rx, TruffleString str, Object limit, Object constructor, JSContext context, JSRegExpSplitNode parent);
 
             @Specialization
-            protected static JSDynamicObject split(JSDynamicObject rx, TruffleString str, Object limit, Object constructor, JSContext context, JSRegExpSplitNode parent,
+            protected static JSArrayObject split(JSDynamicObject rx, TruffleString str, Object limit, Object constructor, JSContext context, JSRegExpSplitNode parent,
                             @Bind("this") Node node,
                             @Cached("create(FLAGS, context)") PropertyGetNode getFlags,
                             @Cached("create(LENGTH, context)") PropertyGetNode getLength,
@@ -667,7 +668,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 boolean unicodeMatching = Strings.indexOfAny(indexOfNode, flags, 'u', 'v') >= 0;
                 TruffleString newFlags = ensureSticky.execute(node, flags);
                 Object splitter = callRegExpConstructor(constructor, rx, newFlags, constructorCall);
-                JSDynamicObject array = JSArray.createEmptyZeroLength(context, JSRealm.get(node));
+                JSArrayObject array = JSArray.createEmptyZeroLength(context, JSRealm.get(node));
                 long lim;
                 if (limitUndefined.profile(node, limit == Undefined.instance)) {
                     lim = JSRuntime.MAX_SAFE_INTEGER_LONG;
@@ -728,10 +729,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @ImportStatic(JSRegExp.class)
         protected abstract static class SplitInternalNode extends JavaScriptBaseNode {
 
-            protected abstract JSDynamicObject execute(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent);
+            protected abstract JSArrayObject execute(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent);
 
             @Specialization(guards = {"getCompiledRegex(rx) == tRegexCompiledRegex"}, limit = "1")
-            protected static JSDynamicObject doCached(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
+            protected static JSArrayObject doCached(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
                             @Bind("this") Node node,
                             @Cached("getCompiledRegex(rx)") Object tRegexCompiledRegex,
                             @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
@@ -763,7 +764,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 } else {
                     splitter = rx;
                 }
-                JSDynamicObject array = JSArray.createEmptyZeroLength(context, realm);
+                JSArrayObject array = JSArray.createEmptyZeroLength(context, realm);
                 int size = Strings.length(str);
                 int arrayLength = 0;
                 int prevMatchEnd = 0;
@@ -822,7 +823,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             @Specialization(replaces = "doCached")
-            protected static JSDynamicObject doUncached(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
+            protected static JSArrayObject doUncached(JSRegExpObject rx, TruffleString str, long lim, JSContext context, JSRegExpSplitNode parent,
                             @Bind("this") Node node,
                             @Cached(inline = true) @Shared InteropReadMemberNode readFlags,
                             @Cached(inline = true) @Shared InteropReadBooleanMemberNode readSticky,

@@ -243,7 +243,7 @@ public abstract class JSRegExpExecIntlNode extends JavaScriptBaseNode {
                             this, areLegacyFeaturesEnabled, invokeExec, readIsMatch);
         }
 
-        private Object doExec(JSDynamicObject regExp, TruffleString input, long lastIndex, Object compiledRegex,
+        private Object doExec(JSRegExpObject regExp, TruffleString input, long lastIndex, Object compiledRegex,
                         Node node,
                         InlinedConditionProfile areLegacyFeaturesEnabled,
                         InvokeExecMethodNode invokeExec,
