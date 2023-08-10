@@ -14,6 +14,10 @@ function bail(error) {
 
 var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
+function getDefaultExportFromCjs (x) {
+	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
+}
+
 /*!
  * Determine if an object is a Buffer
  *
@@ -24,6 +28,7 @@ var isBuffer = function isBuffer (obj) {
   return obj != null && obj.constructor != null &&
     typeof obj.constructor.isBuffer === 'function' && obj.constructor.isBuffer(obj)
 };
+var buffer$1 = getDefaultExportFromCjs(isBuffer);
 
 var hasOwn = Object.prototype.hasOwnProperty;
 var toStr = Object.prototype.toString;
@@ -108,6 +113,7 @@ var extend$1 = function extend() {
 	}
 	return target;
 };
+var extend$2 = getDefaultExportFromCjs(extend$1);
 
 function isPlainObject(value) {
 	if (typeof value !== 'object' || value === null) {
@@ -431,7 +437,7 @@ function assertPath(path, name) {
   }
 }
 function buffer(value) {
-  return isBuffer(value)
+  return buffer$1(value)
 }
 
 const unified = base().freeze();
@@ -461,7 +467,7 @@ function base() {
     while (++index < attachers.length) {
       destination.use(...attachers[index]);
     }
-    destination.data(extend$1(true, {}, namespace));
+    destination.data(extend$2(true, {}, namespace));
     return destination
   }
   function data(key, value) {
@@ -561,7 +567,7 @@ function base() {
       }
       if (entry) {
         if (isPlainObject(entry[1]) && isPlainObject(value)) {
-          value = extend$1(true, entry[1], value);
+          value = extend$2(true, entry[1], value);
         }
         entry[1] = value;
       } else {
@@ -735,31 +741,42 @@ function looksLikeAVFile$1(value) {
   )
 }
 function looksLikeAVFileValue(value) {
-  return typeof value === 'string' || isBuffer(value)
+  return typeof value === 'string' || buffer$1(value)
 }
 
+const emptyOptions = {};
 function toString(value, options) {
-  const includeImageAlt = (options || {}).includeImageAlt;
-  return one(
-    value,
-    typeof includeImageAlt === 'boolean' ? includeImageAlt : true
-  )
+  const settings = options || emptyOptions;
+  const includeImageAlt =
+    typeof settings.includeImageAlt === 'boolean'
+      ? settings.includeImageAlt
+      : true;
+  const includeHtml =
+    typeof settings.includeHtml === 'boolean' ? settings.includeHtml : true;
+  return one(value, includeImageAlt, includeHtml)
 }
-function one(value, includeImageAlt) {
-  return (
-    (node(value) &&
-      (('value' in value && value.value) ||
-        (includeImageAlt && 'alt' in value && value.alt) ||
-        ('children' in value && all(value.children, includeImageAlt)))) ||
-    (Array.isArray(value) && all(value, includeImageAlt)) ||
-    ''
-  )
+function one(value, includeImageAlt, includeHtml) {
+  if (node(value)) {
+    if ('value' in value) {
+      return value.type === 'html' && !includeHtml ? '' : value.value
+    }
+    if (includeImageAlt && 'alt' in value && value.alt) {
+      return value.alt
+    }
+    if ('children' in value) {
+      return all(value.children, includeImageAlt, includeHtml)
+    }
+  }
+  if (Array.isArray(value)) {
+    return all(value, includeImageAlt, includeHtml)
+  }
+  return ''
 }
-function all(values, includeImageAlt) {
+function all(values, includeImageAlt, includeHtml) {
   const result = [];
   let index = -1;
   while (++index < values.length) {
-    result[index] = one(values[index], includeImageAlt);
+    result[index] = one(values[index], includeImageAlt, includeHtml);
   }
   return result.join('')
 }
@@ -779,14 +796,14 @@ function splice(list, start, remove, items) {
   remove = remove > 0 ? remove : 0;
   if (items.length < 10000) {
     parameters = Array.from(items);
-    parameters.unshift(start, remove)
-    ;[].splice.apply(list, parameters);
+    parameters.unshift(start, remove);
+    list.splice(...parameters);
   } else {
-    if (remove) [].splice.apply(list, [start, remove]);
+    if (remove) list.splice(start, remove);
     while (chunkStart < items.length) {
       parameters = items.slice(chunkStart, chunkStart + 10000);
-      parameters.unshift(start, 0)
-      ;[].splice.apply(list, parameters);
+      parameters.unshift(start, 0);
+      list.splice(...parameters);
       chunkStart += 10000;
       start += 10000;
     }
@@ -816,13 +833,15 @@ function syntaxExtension(all, extension) {
     const left = maybe || (all[hook] = {});
     const right = extension[hook];
     let code;
-    for (code in right) {
-      if (!hasOwnProperty.call(left, code)) left[code] = [];
-      const value = right[code];
-      constructs(
-        left[code],
-        Array.isArray(value) ? value : value ? [value] : []
-      );
+    if (right) {
+      for (code in right) {
+        if (!hasOwnProperty.call(left, code)) left[code] = [];
+        const value = right[code];
+        constructs(
+          left[code],
+          Array.isArray(value) ? value : value ? [value] : []
+        );
+      }
     }
   }
 }
@@ -836,30 +855,30 @@ function constructs(existing, list) {
 }
 
 const unicodePunctuationRegex =
-  /[!-/:-@[-`{-~\u00A1\u00A7\u00AB\u00B6\u00B7\u00BB\u00BF\u037E\u0387\u055A-\u055F\u0589\u058A\u05BE\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061E\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E\u0964\u0965\u0970\u09FD\u0A76\u0AF0\u0C77\u0C84\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14\u0F3A-\u0F3D\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB\u1360-\u1368\u1400\u166E\u169B\u169C\u16EB-\u16ED\u1735\u1736\u17D4-\u17D6\u17D8-\u17DA\u1800-\u180A\u1944\u1945\u1A1E\u1A1F\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E\u1C7F\u1CC0-\u1CC7\u1CD3\u2010-\u2027\u2030-\u2043\u2045-\u2051\u2053-\u205E\u207D\u207E\u208D\u208E\u2308-\u230B\u2329\u232A\u2768-\u2775\u27C5\u27C6\u27E6-\u27EF\u2983-\u2998\u29D8-\u29DB\u29FC\u29FD\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00-\u2E2E\u2E30-\u2E4F\u2E52\u3001-\u3003\u3008-\u3011\u3014-\u301F\u3030\u303D\u30A0\u30FB\uA4FE\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF\uA8F8-\uA8FA\uA8FC\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFD3E\uFD3F\uFE10-\uFE19\uFE30-\uFE52\uFE54-\uFE61\uFE63\uFE68\uFE6A\uFE6B\uFF01-\uFF03\uFF05-\uFF0A\uFF0C-\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3B-\uFF3D\uFF3F\uFF5B\uFF5D\uFF5F-\uFF65]/;
+  /[!-\/:-@\[-`\{-~\xA1\xA7\xAB\xB6\xB7\xBB\xBF\u037E\u0387\u055A-\u055F\u0589\u058A\u05BE\u05C0\u05C3\u05C6\u05F3\u05F4\u0609\u060A\u060C\u060D\u061B\u061D-\u061F\u066A-\u066D\u06D4\u0700-\u070D\u07F7-\u07F9\u0830-\u083E\u085E\u0964\u0965\u0970\u09FD\u0A76\u0AF0\u0C77\u0C84\u0DF4\u0E4F\u0E5A\u0E5B\u0F04-\u0F12\u0F14\u0F3A-\u0F3D\u0F85\u0FD0-\u0FD4\u0FD9\u0FDA\u104A-\u104F\u10FB\u1360-\u1368\u1400\u166E\u169B\u169C\u16EB-\u16ED\u1735\u1736\u17D4-\u17D6\u17D8-\u17DA\u1800-\u180A\u1944\u1945\u1A1E\u1A1F\u1AA0-\u1AA6\u1AA8-\u1AAD\u1B5A-\u1B60\u1B7D\u1B7E\u1BFC-\u1BFF\u1C3B-\u1C3F\u1C7E\u1C7F\u1CC0-\u1CC7\u1CD3\u2010-\u2027\u2030-\u2043\u2045-\u2051\u2053-\u205E\u207D\u207E\u208D\u208E\u2308-\u230B\u2329\u232A\u2768-\u2775\u27C5\u27C6\u27E6-\u27EF\u2983-\u2998\u29D8-\u29DB\u29FC\u29FD\u2CF9-\u2CFC\u2CFE\u2CFF\u2D70\u2E00-\u2E2E\u2E30-\u2E4F\u2E52-\u2E5D\u3001-\u3003\u3008-\u3011\u3014-\u301F\u3030\u303D\u30A0\u30FB\uA4FE\uA4FF\uA60D-\uA60F\uA673\uA67E\uA6F2-\uA6F7\uA874-\uA877\uA8CE\uA8CF\uA8F8-\uA8FA\uA8FC\uA92E\uA92F\uA95F\uA9C1-\uA9CD\uA9DE\uA9DF\uAA5C-\uAA5F\uAADE\uAADF\uAAF0\uAAF1\uABEB\uFD3E\uFD3F\uFE10-\uFE19\uFE30-\uFE52\uFE54-\uFE61\uFE63\uFE68\uFE6A\uFE6B\uFF01-\uFF03\uFF05-\uFF0A\uFF0C-\uFF0F\uFF1A\uFF1B\uFF1F\uFF20\uFF3B-\uFF3D\uFF3F\uFF5B\uFF5D\uFF5F-\uFF65]/;
 
 const asciiAlpha = regexCheck(/[A-Za-z]/);
-const asciiDigit = regexCheck(/\d/);
-const asciiHexDigit = regexCheck(/[\dA-Fa-f]/);
 const asciiAlphanumeric = regexCheck(/[\dA-Za-z]/);
-const asciiPunctuation = regexCheck(/[!-/:-@[-`{-~]/);
 const asciiAtext = regexCheck(/[#-'*+\--9=?A-Z^-~]/);
 function asciiControl(code) {
   return (
     code !== null && (code < 32 || code === 127)
   )
 }
-function markdownLineEndingOrSpace(code) {
-  return code !== null && (code < 0 || code === 32)
-}
+const asciiDigit = regexCheck(/\d/);
+const asciiHexDigit = regexCheck(/[\dA-Fa-f]/);
+const asciiPunctuation = regexCheck(/[!-/:-@[-`{-~]/);
 function markdownLineEnding(code) {
   return code !== null && code < -2
+}
+function markdownLineEndingOrSpace(code) {
+  return code !== null && (code < 0 || code === 32)
 }
 function markdownSpace(code) {
   return code === -2 || code === -1 || code === 32
 }
-const unicodeWhitespace = regexCheck(/\s/);
 const unicodePunctuation = regexCheck(unicodePunctuationRegex);
+const unicodeWhitespace = regexCheck(/\s/);
 function regexCheck(regex) {
   return check
   function check(code) {
@@ -1310,14 +1329,14 @@ function tokenizeAttention(effects, ok) {
   let marker;
   return start
   function start(code) {
-    effects.enter('attentionSequence');
     marker = code;
-    return sequence(code)
+    effects.enter('attentionSequence');
+    return inside(code)
   }
-  function sequence(code) {
+  function inside(code) {
     if (code === marker) {
       effects.consume(code);
-      return sequence
+      return inside
     }
     const token = effects.exit('attentionSequence');
     const after = classifyCharacter(code);
@@ -1341,7 +1360,7 @@ const autolink = {
   tokenize: tokenizeAutolink
 };
 function tokenizeAutolink(effects, ok, nok) {
-  let size = 1;
+  let size = 0;
   return start
   function start(code) {
     effects.enter('autolink');
@@ -1356,16 +1375,19 @@ function tokenizeAutolink(effects, ok, nok) {
       effects.consume(code);
       return schemeOrEmailAtext
     }
-    return asciiAtext(code) ? emailAtext(code) : nok(code)
+    return emailAtext(code)
   }
   function schemeOrEmailAtext(code) {
-    return code === 43 || code === 45 || code === 46 || asciiAlphanumeric(code)
-      ? schemeInsideOrEmailAtext(code)
-      : emailAtext(code)
+    if (code === 43 || code === 45 || code === 46 || asciiAlphanumeric(code)) {
+      size = 1;
+      return schemeInsideOrEmailAtext(code)
+    }
+    return emailAtext(code)
   }
   function schemeInsideOrEmailAtext(code) {
     if (code === 58) {
       effects.consume(code);
+      size = 0;
       return urlInside
     }
     if (
@@ -1375,12 +1397,17 @@ function tokenizeAutolink(effects, ok, nok) {
       effects.consume(code);
       return schemeInsideOrEmailAtext
     }
+    size = 0;
     return emailAtext(code)
   }
   function urlInside(code) {
     if (code === 62) {
       effects.exit('autolinkProtocol');
-      return end(code)
+      effects.enter('autolinkMarker');
+      effects.consume(code);
+      effects.exit('autolinkMarker');
+      effects.exit('autolink');
+      return ok
     }
     if (code === null || code === 32 || code === 60 || asciiControl(code)) {
       return nok(code)
@@ -1391,7 +1418,6 @@ function tokenizeAutolink(effects, ok, nok) {
   function emailAtext(code) {
     if (code === 64) {
       effects.consume(code);
-      size = 0;
       return emailAtSignOrDot
     }
     if (asciiAtext(code)) {
@@ -1411,23 +1437,21 @@ function tokenizeAutolink(effects, ok, nok) {
     }
     if (code === 62) {
       effects.exit('autolinkProtocol').type = 'autolinkEmail';
-      return end(code)
+      effects.enter('autolinkMarker');
+      effects.consume(code);
+      effects.exit('autolinkMarker');
+      effects.exit('autolink');
+      return ok
     }
     return emailValue(code)
   }
   function emailValue(code) {
     if ((code === 45 || asciiAlphanumeric(code)) && size++ < 63) {
+      const next = code === 45 ? emailValue : emailLabel;
       effects.consume(code);
-      return code === 45 ? emailValue : emailLabel
+      return next
     }
     return nok(code)
-  }
-  function end(code) {
-    effects.enter('autolinkMarker');
-    effects.consume(code);
-    effects.exit('autolinkMarker');
-    effects.exit('autolink');
-    return ok
   }
 }
 
@@ -1436,8 +1460,13 @@ const blankLine = {
   partial: true
 };
 function tokenizeBlankLine(effects, ok, nok) {
-  return factorySpace(effects, afterWhitespace, 'linePrefix')
-  function afterWhitespace(code) {
+  return start
+  function start(code) {
+    return markdownSpace(code)
+      ? factorySpace(effects, after, 'linePrefix')(code)
+      : after(code)
+  }
+  function after(code) {
     return code === null || markdownLineEnding(code) ? ok(code) : nok(code)
   }
 }
@@ -1483,12 +1512,24 @@ function tokenizeBlockQuoteStart(effects, ok, nok) {
   }
 }
 function tokenizeBlockQuoteContinuation(effects, ok, nok) {
-  return factorySpace(
-    effects,
-    effects.attempt(blockQuote, ok, nok),
-    'linePrefix',
-    this.parser.constructs.disable.null.includes('codeIndented') ? undefined : 4
-  )
+  const self = this;
+  return contStart
+  function contStart(code) {
+    if (markdownSpace(code)) {
+      return factorySpace(
+        effects,
+        contBefore,
+        'linePrefix',
+        self.parser.constructs.disable.null.includes('codeIndented')
+          ? undefined
+          : 4
+      )(code)
+    }
+    return contBefore(code)
+  }
+  function contBefore(code) {
+    return effects.attempt(blockQuote, ok, nok)(code)
+  }
 }
 function exit$1(effects) {
   effects.exit('blockQuote');
@@ -1505,9 +1546,9 @@ function tokenizeCharacterEscape(effects, ok, nok) {
     effects.enter('escapeMarker');
     effects.consume(code);
     effects.exit('escapeMarker');
-    return open
+    return inside
   }
-  function open(code) {
+  function inside(code) {
     if (asciiPunctuation(code)) {
       effects.enter('characterEscapeValue');
       effects.consume(code);
@@ -3697,9 +3738,8 @@ function tokenizeCharacterReference(effects, ok, nok) {
     return value(code)
   }
   function value(code) {
-    let token;
     if (code === 59 && size) {
-      token = effects.exit('characterReferenceValue');
+      const token = effects.exit('characterReferenceValue');
       if (
         test === asciiAlphanumeric &&
         !decodeNamedCharacterReference(self.sliceSerialize(token))
@@ -3720,6 +3760,10 @@ function tokenizeCharacterReference(effects, ok, nok) {
   }
 }
 
+const nonLazyContinuation = {
+  tokenize: tokenizeNonLazyContinuation,
+  partial: true
+};
 const codeFenced = {
   name: 'codeFenced',
   tokenize: tokenizeCodeFenced,
@@ -3727,43 +3771,49 @@ const codeFenced = {
 };
 function tokenizeCodeFenced(effects, ok, nok) {
   const self = this;
-  const closingFenceConstruct = {
-    tokenize: tokenizeClosingFence,
+  const closeStart = {
+    tokenize: tokenizeCloseStart,
     partial: true
   };
-  const nonLazyLine = {
-    tokenize: tokenizeNonLazyLine,
-    partial: true
-  };
-  const tail = this.events[this.events.length - 1];
-  const initialPrefix =
-    tail && tail[1].type === 'linePrefix'
-      ? tail[2].sliceSerialize(tail[1], true).length
-      : 0;
+  let initialPrefix = 0;
   let sizeOpen = 0;
   let marker;
   return start
   function start(code) {
+    return beforeSequenceOpen(code)
+  }
+  function beforeSequenceOpen(code) {
+    const tail = self.events[self.events.length - 1];
+    initialPrefix =
+      tail && tail[1].type === 'linePrefix'
+        ? tail[2].sliceSerialize(tail[1], true).length
+        : 0;
+    marker = code;
     effects.enter('codeFenced');
     effects.enter('codeFencedFence');
     effects.enter('codeFencedFenceSequence');
-    marker = code;
     return sequenceOpen(code)
   }
   function sequenceOpen(code) {
     if (code === marker) {
-      effects.consume(code);
       sizeOpen++;
+      effects.consume(code);
       return sequenceOpen
     }
+    if (sizeOpen < 3) {
+      return nok(code)
+    }
     effects.exit('codeFencedFenceSequence');
-    return sizeOpen < 3
-      ? nok(code)
-      : factorySpace(effects, infoOpen, 'whitespace')(code)
+    return markdownSpace(code)
+      ? factorySpace(effects, infoBefore, 'whitespace')(code)
+      : infoBefore(code)
   }
-  function infoOpen(code) {
+  function infoBefore(code) {
     if (code === null || markdownLineEnding(code)) {
-      return openAfter(code)
+      effects.exit('codeFencedFence');
+      return self.interrupt
+        ? ok(code)
+        : effects.check(nonLazyContinuation, atNonLazyBreak, after)(code)
     }
     effects.enter('codeFencedFenceInfo');
     effects.enter('chunkString', {
@@ -3772,18 +3822,25 @@ function tokenizeCodeFenced(effects, ok, nok) {
     return info(code)
   }
   function info(code) {
-    if (code === null || markdownLineEndingOrSpace(code)) {
+    if (code === null || markdownLineEnding(code)) {
       effects.exit('chunkString');
       effects.exit('codeFencedFenceInfo');
-      return factorySpace(effects, infoAfter, 'whitespace')(code)
+      return infoBefore(code)
     }
-    if (code === 96 && code === marker) return nok(code)
+    if (markdownSpace(code)) {
+      effects.exit('chunkString');
+      effects.exit('codeFencedFenceInfo');
+      return factorySpace(effects, metaBefore, 'whitespace')(code)
+    }
+    if (code === 96 && code === marker) {
+      return nok(code)
+    }
     effects.consume(code);
     return info
   }
-  function infoAfter(code) {
+  function metaBefore(code) {
     if (code === null || markdownLineEnding(code)) {
-      return openAfter(code)
+      return infoBefore(code)
     }
     effects.enter('codeFencedFenceMeta');
     effects.enter('chunkString', {
@@ -3795,92 +3852,96 @@ function tokenizeCodeFenced(effects, ok, nok) {
     if (code === null || markdownLineEnding(code)) {
       effects.exit('chunkString');
       effects.exit('codeFencedFenceMeta');
-      return openAfter(code)
+      return infoBefore(code)
     }
-    if (code === 96 && code === marker) return nok(code)
+    if (code === 96 && code === marker) {
+      return nok(code)
+    }
     effects.consume(code);
     return meta
   }
-  function openAfter(code) {
-    effects.exit('codeFencedFence');
-    return self.interrupt ? ok(code) : contentStart(code)
+  function atNonLazyBreak(code) {
+    return effects.attempt(closeStart, after, contentBefore)(code)
+  }
+  function contentBefore(code) {
+    effects.enter('lineEnding');
+    effects.consume(code);
+    effects.exit('lineEnding');
+    return contentStart
   }
   function contentStart(code) {
-    if (code === null) {
-      return after(code)
-    }
-    if (markdownLineEnding(code)) {
-      return effects.attempt(
-        nonLazyLine,
-        effects.attempt(
-          closingFenceConstruct,
-          after,
-          initialPrefix
-            ? factorySpace(
-                effects,
-                contentStart,
-                'linePrefix',
-                initialPrefix + 1
-              )
-            : contentStart
-        ),
-        after
-      )(code)
+    return initialPrefix > 0 && markdownSpace(code)
+      ? factorySpace(
+          effects,
+          beforeContentChunk,
+          'linePrefix',
+          initialPrefix + 1
+        )(code)
+      : beforeContentChunk(code)
+  }
+  function beforeContentChunk(code) {
+    if (code === null || markdownLineEnding(code)) {
+      return effects.check(nonLazyContinuation, atNonLazyBreak, after)(code)
     }
     effects.enter('codeFlowValue');
-    return contentContinue(code)
+    return contentChunk(code)
   }
-  function contentContinue(code) {
+  function contentChunk(code) {
     if (code === null || markdownLineEnding(code)) {
       effects.exit('codeFlowValue');
-      return contentStart(code)
+      return beforeContentChunk(code)
     }
     effects.consume(code);
-    return contentContinue
+    return contentChunk
   }
   function after(code) {
     effects.exit('codeFenced');
     return ok(code)
   }
-  function tokenizeNonLazyLine(effects, ok, nok) {
-    const self = this;
-    return start
-    function start(code) {
+  function tokenizeCloseStart(effects, ok, nok) {
+    let size = 0;
+    return startBefore
+    function startBefore(code) {
       effects.enter('lineEnding');
       effects.consume(code);
       effects.exit('lineEnding');
-      return lineStart
+      return start
     }
-    function lineStart(code) {
-      return self.parser.lazy[self.now().line] ? nok(code) : ok(code)
-    }
-  }
-  function tokenizeClosingFence(effects, ok, nok) {
-    let size = 0;
-    return factorySpace(
-      effects,
-      closingSequenceStart,
-      'linePrefix',
-      this.parser.constructs.disable.null.includes('codeIndented')
-        ? undefined
-        : 4
-    )
-    function closingSequenceStart(code) {
+    function start(code) {
       effects.enter('codeFencedFence');
-      effects.enter('codeFencedFenceSequence');
-      return closingSequence(code)
+      return markdownSpace(code)
+        ? factorySpace(
+            effects,
+            beforeSequenceClose,
+            'linePrefix',
+            self.parser.constructs.disable.null.includes('codeIndented')
+              ? undefined
+              : 4
+          )(code)
+        : beforeSequenceClose(code)
     }
-    function closingSequence(code) {
+    function beforeSequenceClose(code) {
       if (code === marker) {
-        effects.consume(code);
-        size++;
-        return closingSequence
+        effects.enter('codeFencedFenceSequence');
+        return sequenceClose(code)
       }
-      if (size < sizeOpen) return nok(code)
-      effects.exit('codeFencedFenceSequence');
-      return factorySpace(effects, closingSequenceEnd, 'whitespace')(code)
+      return nok(code)
     }
-    function closingSequenceEnd(code) {
+    function sequenceClose(code) {
+      if (code === marker) {
+        size++;
+        effects.consume(code);
+        return sequenceClose
+      }
+      if (size >= sizeOpen) {
+        effects.exit('codeFencedFenceSequence');
+        return markdownSpace(code)
+          ? factorySpace(effects, sequenceCloseAfter, 'whitespace')(code)
+          : sequenceCloseAfter(code)
+      }
+      return nok(code)
+    }
+    function sequenceCloseAfter(code) {
       if (code === null || markdownLineEnding(code)) {
         effects.exit('codeFencedFence');
         return ok(code)
@@ -3889,13 +3950,29 @@ function tokenizeCodeFenced(effects, ok, nok) {
     }
   }
 }
+function tokenizeNonLazyContinuation(effects, ok, nok) {
+  const self = this;
+  return start
+  function start(code) {
+    if (code === null) {
+      return nok(code)
+    }
+    effects.enter('lineEnding');
+    effects.consume(code);
+    effects.exit('lineEnding');
+    return lineStart
+  }
+  function lineStart(code) {
+    return self.parser.lazy[self.now().line] ? nok(code) : ok(code)
+  }
+}
 
 const codeIndented = {
   name: 'codeIndented',
   tokenize: tokenizeCodeIndented
 };
-const indentedContent = {
-  tokenize: tokenizeIndentedContent,
+const furtherStart = {
+  tokenize: tokenizeFurtherStart,
   partial: true
 };
 function tokenizeCodeIndented(effects, ok, nok) {
@@ -3903,43 +3980,43 @@ function tokenizeCodeIndented(effects, ok, nok) {
   return start
   function start(code) {
     effects.enter('codeIndented');
-    return factorySpace(effects, afterStartPrefix, 'linePrefix', 4 + 1)(code)
+    return factorySpace(effects, afterPrefix, 'linePrefix', 4 + 1)(code)
   }
-  function afterStartPrefix(code) {
+  function afterPrefix(code) {
     const tail = self.events[self.events.length - 1];
     return tail &&
       tail[1].type === 'linePrefix' &&
       tail[2].sliceSerialize(tail[1], true).length >= 4
-      ? afterPrefix(code)
+      ? atBreak(code)
       : nok(code)
   }
-  function afterPrefix(code) {
+  function atBreak(code) {
     if (code === null) {
       return after(code)
     }
     if (markdownLineEnding(code)) {
-      return effects.attempt(indentedContent, afterPrefix, after)(code)
+      return effects.attempt(furtherStart, atBreak, after)(code)
     }
     effects.enter('codeFlowValue');
-    return content(code)
+    return inside(code)
   }
-  function content(code) {
+  function inside(code) {
     if (code === null || markdownLineEnding(code)) {
       effects.exit('codeFlowValue');
-      return afterPrefix(code)
+      return atBreak(code)
     }
     effects.consume(code);
-    return content
+    return inside
   }
   function after(code) {
     effects.exit('codeIndented');
     return ok(code)
   }
 }
-function tokenizeIndentedContent(effects, ok, nok) {
+function tokenizeFurtherStart(effects, ok, nok) {
   const self = this;
-  return start
-  function start(code) {
+  return furtherStart
+  function furtherStart(code) {
     if (self.parser.lazy[self.now().line]) {
       return nok(code)
     }
@@ -3947,7 +4024,7 @@ function tokenizeIndentedContent(effects, ok, nok) {
       effects.enter('lineEnding');
       effects.consume(code);
       effects.exit('lineEnding');
-      return start
+      return furtherStart
     }
     return factorySpace(effects, afterPrefix, 'linePrefix', 4 + 1)(code)
   }
@@ -3958,7 +4035,7 @@ function tokenizeIndentedContent(effects, ok, nok) {
       tail[2].sliceSerialize(tail[1], true).length >= 4
       ? ok(code)
       : markdownLineEnding(code)
-      ? start(code)
+      ? furtherStart(code)
       : nok(code)
   }
 }
@@ -4028,37 +4105,37 @@ function tokenizeCodeText(effects, ok, nok) {
   function start(code) {
     effects.enter('codeText');
     effects.enter('codeTextSequence');
-    return openingSequence(code)
+    return sequenceOpen(code)
   }
-  function openingSequence(code) {
+  function sequenceOpen(code) {
     if (code === 96) {
       effects.consume(code);
       sizeOpen++;
-      return openingSequence
+      return sequenceOpen
     }
     effects.exit('codeTextSequence');
-    return gap(code)
+    return between(code)
   }
-  function gap(code) {
+  function between(code) {
     if (code === null) {
       return nok(code)
-    }
-    if (code === 96) {
-      token = effects.enter('codeTextSequence');
-      size = 0;
-      return closingSequence(code)
     }
     if (code === 32) {
       effects.enter('space');
       effects.consume(code);
       effects.exit('space');
-      return gap
+      return between
+    }
+    if (code === 96) {
+      token = effects.enter('codeTextSequence');
+      size = 0;
+      return sequenceClose(code)
     }
     if (markdownLineEnding(code)) {
       effects.enter('lineEnding');
       effects.consume(code);
       effects.exit('lineEnding');
-      return gap
+      return between
     }
     effects.enter('codeTextData');
     return data(code)
@@ -4071,16 +4148,16 @@ function tokenizeCodeText(effects, ok, nok) {
       markdownLineEnding(code)
     ) {
       effects.exit('codeTextData');
-      return gap(code)
+      return between(code)
     }
     effects.consume(code);
     return data
   }
-  function closingSequence(code) {
+  function sequenceClose(code) {
     if (code === 96) {
       effects.consume(code);
       size++;
-      return closingSequence
+      return sequenceClose
     }
     if (size === sizeOpen) {
       effects.exit('codeTextSequence');
@@ -4263,15 +4340,15 @@ function resolveContent(events) {
 }
 function tokenizeContent(effects, ok) {
   let previous;
-  return start
-  function start(code) {
+  return chunkStart
+  function chunkStart(code) {
     effects.enter('content');
     previous = effects.enter('chunkContent', {
       contentType: 'content'
     });
-    return data(code)
+    return chunkInside(code)
   }
-  function data(code) {
+  function chunkInside(code) {
     if (code === null) {
       return contentEnd(code)
     }
@@ -4283,7 +4360,7 @@ function tokenizeContent(effects, ok) {
       )(code)
     }
     effects.consume(code);
-    return data
+    return chunkInside
   }
   function contentEnd(code) {
     effects.exit('chunkContent');
@@ -4298,7 +4375,7 @@ function tokenizeContent(effects, ok) {
       previous
     });
     previous = previous.next;
-    return data
+    return chunkInside
   }
 }
 function tokenizeContinuation(effects, ok, nok) {
@@ -4349,9 +4426,9 @@ function factoryDestination(
       effects.enter(literalMarkerType);
       effects.consume(code);
       effects.exit(literalMarkerType);
-      return destinationEnclosedBefore
+      return enclosedBefore
     }
-    if (code === null || code === 41 || asciiControl(code)) {
+    if (code === null || code === 32 || code === 41 || asciiControl(code)) {
       return nok(code)
     }
     effects.enter(type);
@@ -4360,9 +4437,9 @@ function factoryDestination(
     effects.enter('chunkString', {
       contentType: 'string'
     });
-    return destinationRaw(code)
+    return raw(code)
   }
-  function destinationEnclosedBefore(code) {
+  function enclosedBefore(code) {
     if (code === 62) {
       effects.enter(literalMarkerType);
       effects.consume(code);
@@ -4375,69 +4452,67 @@ function factoryDestination(
     effects.enter('chunkString', {
       contentType: 'string'
     });
-    return destinationEnclosed(code)
+    return enclosed(code)
   }
-  function destinationEnclosed(code) {
+  function enclosed(code) {
     if (code === 62) {
       effects.exit('chunkString');
       effects.exit(stringType);
-      return destinationEnclosedBefore(code)
+      return enclosedBefore(code)
     }
     if (code === null || code === 60 || markdownLineEnding(code)) {
       return nok(code)
     }
     effects.consume(code);
-    return code === 92 ? destinationEnclosedEscape : destinationEnclosed
+    return code === 92 ? enclosedEscape : enclosed
   }
-  function destinationEnclosedEscape(code) {
+  function enclosedEscape(code) {
     if (code === 60 || code === 62 || code === 92) {
       effects.consume(code);
-      return destinationEnclosed
+      return enclosed
     }
-    return destinationEnclosed(code)
+    return enclosed(code)
   }
-  function destinationRaw(code) {
-    if (code === 40) {
-      if (++balance > limit) return nok(code)
-      effects.consume(code);
-      return destinationRaw
-    }
-    if (code === 41) {
-      if (!balance--) {
-        effects.exit('chunkString');
-        effects.exit(stringType);
-        effects.exit(rawType);
-        effects.exit(type);
-        return ok(code)
-      }
-      effects.consume(code);
-      return destinationRaw
-    }
-    if (code === null || markdownLineEndingOrSpace(code)) {
-      if (balance) return nok(code)
+  function raw(code) {
+    if (
+      !balance &&
+      (code === null || code === 41 || markdownLineEndingOrSpace(code))
+    ) {
       effects.exit('chunkString');
       effects.exit(stringType);
       effects.exit(rawType);
       effects.exit(type);
       return ok(code)
     }
-    if (asciiControl(code)) return nok(code)
+    if (balance < limit && code === 40) {
+      effects.consume(code);
+      balance++;
+      return raw
+    }
+    if (code === 41) {
+      effects.consume(code);
+      balance--;
+      return raw
+    }
+    if (code === null || code === 32 || code === 40 || asciiControl(code)) {
+      return nok(code)
+    }
     effects.consume(code);
-    return code === 92 ? destinationRawEscape : destinationRaw
+    return code === 92 ? rawEscape : raw
   }
-  function destinationRawEscape(code) {
+  function rawEscape(code) {
     if (code === 40 || code === 41 || code === 92) {
       effects.consume(code);
-      return destinationRaw
+      return raw
     }
-    return destinationRaw(code)
+    return raw(code)
   }
 }
 
 function factoryLabel(effects, ok, nok, type, markerType, stringType) {
   const self = this;
   let size = 0;
-  let data;
+  let seen;
   return start
   function start(code) {
     effects.enter(type);
@@ -4449,13 +4524,13 @@ function factoryLabel(effects, ok, nok, type, markerType, stringType) {
   }
   function atBreak(code) {
     if (
+      size > 999 ||
       code === null ||
       code === 91 ||
-      (code === 93 && !data) ||
+      (code === 93 && !seen) ||
       (code === 94 &&
         !size &&
-        '_hiddenFootnoteSupport' in self.parser.constructs) ||
-      size > 999
+        '_hiddenFootnoteSupport' in self.parser.constructs)
     ) {
       return nok(code)
     }
@@ -4476,9 +4551,9 @@ function factoryLabel(effects, ok, nok, type, markerType, stringType) {
     effects.enter('chunkString', {
       contentType: 'string'
     });
-    return label(code)
+    return labelInside(code)
   }
-  function label(code) {
+  function labelInside(code) {
     if (
       code === null ||
       code === 91 ||
@@ -4490,16 +4565,16 @@ function factoryLabel(effects, ok, nok, type, markerType, stringType) {
       return atBreak(code)
     }
     effects.consume(code);
-    data = data || !markdownSpace(code);
-    return code === 92 ? labelEscape : label
+    if (!seen) seen = !markdownSpace(code);
+    return code === 92 ? labelEscape : labelInside
   }
   function labelEscape(code) {
     if (code === 91 || code === 92 || code === 93) {
       effects.consume(code);
       size++;
-      return label
+      return labelInside
     }
-    return label(code)
+    return labelInside(code)
   }
 }
 
@@ -4507,14 +4582,17 @@ function factoryTitle(effects, ok, nok, type, markerType, stringType) {
   let marker;
   return start
   function start(code) {
-    effects.enter(type);
-    effects.enter(markerType);
-    effects.consume(code);
-    effects.exit(markerType);
-    marker = code === 40 ? 41 : code;
-    return atFirstTitleBreak
+    if (code === 34 || code === 39 || code === 40) {
+      effects.enter(type);
+      effects.enter(markerType);
+      effects.consume(code);
+      effects.exit(markerType);
+      marker = code === 40 ? 41 : code;
+      return begin
+    }
+    return nok(code)
   }
-  function atFirstTitleBreak(code) {
+  function begin(code) {
     if (code === marker) {
       effects.enter(markerType);
       effects.consume(code);
@@ -4523,12 +4601,12 @@ function factoryTitle(effects, ok, nok, type, markerType, stringType) {
       return ok
     }
     effects.enter(stringType);
-    return atTitleBreak(code)
+    return atBreak(code)
   }
-  function atTitleBreak(code) {
+  function atBreak(code) {
     if (code === marker) {
       effects.exit(stringType);
-      return atFirstTitleBreak(marker)
+      return begin(marker)
     }
     if (code === null) {
       return nok(code)
@@ -4537,27 +4615,27 @@ function factoryTitle(effects, ok, nok, type, markerType, stringType) {
       effects.enter('lineEnding');
       effects.consume(code);
       effects.exit('lineEnding');
-      return factorySpace(effects, atTitleBreak, 'linePrefix')
+      return factorySpace(effects, atBreak, 'linePrefix')
     }
     effects.enter('chunkString', {
       contentType: 'string'
     });
-    return title(code)
+    return inside(code)
   }
-  function title(code) {
+  function inside(code) {
     if (code === marker || code === null || markdownLineEnding(code)) {
       effects.exit('chunkString');
-      return atTitleBreak(code)
+      return atBreak(code)
     }
     effects.consume(code);
-    return code === 92 ? titleEscape : title
+    return code === 92 ? escape : inside
   }
-  function titleEscape(code) {
+  function escape(code) {
     if (code === marker || code === 92) {
       effects.consume(code);
-      return title
+      return inside
     }
-    return title(code)
+    return inside(code)
   }
 }
 
@@ -4597,8 +4675,8 @@ const definition$1 = {
   name: 'definition',
   tokenize: tokenizeDefinition
 };
-const titleConstruct = {
-  tokenize: tokenizeTitle,
+const titleBefore = {
+  tokenize: tokenizeTitleBefore,
   partial: true
 };
 function tokenizeDefinition(effects, ok, nok) {
@@ -4607,6 +4685,9 @@ function tokenizeDefinition(effects, ok, nok) {
   return start
   function start(code) {
     effects.enter('definition');
+    return before(code)
+  }
+  function before(code) {
     return factoryLabel.call(
       self,
       effects,
@@ -4625,58 +4706,67 @@ function tokenizeDefinition(effects, ok, nok) {
       effects.enter('definitionMarker');
       effects.consume(code);
       effects.exit('definitionMarker');
-      return factoryWhitespace(
-        effects,
-        factoryDestination(
-          effects,
-          effects.attempt(
-            titleConstruct,
-            factorySpace(effects, after, 'whitespace'),
-            factorySpace(effects, after, 'whitespace')
-          ),
-          nok,
-          'definitionDestination',
-          'definitionDestinationLiteral',
-          'definitionDestinationLiteralMarker',
-          'definitionDestinationRaw',
-          'definitionDestinationString'
-        )
-      )
+      return markerAfter
     }
     return nok(code)
   }
+  function markerAfter(code) {
+    return markdownLineEndingOrSpace(code)
+      ? factoryWhitespace(effects, destinationBefore)(code)
+      : destinationBefore(code)
+  }
+  function destinationBefore(code) {
+    return factoryDestination(
+      effects,
+      destinationAfter,
+      nok,
+      'definitionDestination',
+      'definitionDestinationLiteral',
+      'definitionDestinationLiteralMarker',
+      'definitionDestinationRaw',
+      'definitionDestinationString'
+    )(code)
+  }
+  function destinationAfter(code) {
+    return effects.attempt(titleBefore, after, after)(code)
+  }
   function after(code) {
+    return markdownSpace(code)
+      ? factorySpace(effects, afterWhitespace, 'whitespace')(code)
+      : afterWhitespace(code)
+  }
+  function afterWhitespace(code) {
     if (code === null || markdownLineEnding(code)) {
       effects.exit('definition');
-      if (!self.parser.defined.includes(identifier)) {
-        self.parser.defined.push(identifier);
-      }
+      self.parser.defined.push(identifier);
       return ok(code)
     }
     return nok(code)
   }
 }
-function tokenizeTitle(effects, ok, nok) {
-  return start
-  function start(code) {
+function tokenizeTitleBefore(effects, ok, nok) {
+  return titleBefore
+  function titleBefore(code) {
     return markdownLineEndingOrSpace(code)
-      ? factoryWhitespace(effects, before)(code)
+      ? factoryWhitespace(effects, beforeMarker)(code)
       : nok(code)
   }
-  function before(code) {
-    if (code === 34 || code === 39 || code === 40) {
-      return factoryTitle(
-        effects,
-        factorySpace(effects, after, 'whitespace'),
-        nok,
-        'definitionTitle',
-        'definitionTitleMarker',
-        'definitionTitleString'
-      )(code)
-    }
-    return nok(code)
+  function beforeMarker(code) {
+    return factoryTitle(
+      effects,
+      titleAfter,
+      nok,
+      'definitionTitle',
+      'definitionTitleMarker',
+      'definitionTitleString'
+    )(code)
   }
-  function after(code) {
+  function titleAfter(code) {
+    return markdownSpace(code)
+      ? factorySpace(effects, titleAfterOptionalWhitespace, 'whitespace')(code)
+      : titleAfterOptionalWhitespace(code)
+  }
+  function titleAfterOptionalWhitespace(code) {
     return code === null || markdownLineEnding(code) ? ok(code) : nok(code)
   }
 }
@@ -4689,13 +4779,11 @@ function tokenizeHardBreakEscape(effects, ok, nok) {
   return start
   function start(code) {
     effects.enter('hardBreakEscape');
-    effects.enter('escapeMarker');
     effects.consume(code);
-    return open
+    return after
   }
-  function open(code) {
+  function after(code) {
     if (markdownLineEnding(code)) {
-      effects.exit('escapeMarker');
       effects.exit('hardBreakEscape');
       return ok(code)
     }
@@ -4752,52 +4840,54 @@ function resolveHeadingAtx(events, context) {
   return events
 }
 function tokenizeHeadingAtx(effects, ok, nok) {
-  const self = this;
   let size = 0;
   return start
   function start(code) {
     effects.enter('atxHeading');
-    effects.enter('atxHeadingSequence');
-    return fenceOpenInside(code)
+    return before(code)
   }
-  function fenceOpenInside(code) {
+  function before(code) {
+    effects.enter('atxHeadingSequence');
+    return sequenceOpen(code)
+  }
+  function sequenceOpen(code) {
     if (code === 35 && size++ < 6) {
       effects.consume(code);
-      return fenceOpenInside
+      return sequenceOpen
     }
     if (code === null || markdownLineEndingOrSpace(code)) {
       effects.exit('atxHeadingSequence');
-      return self.interrupt ? ok(code) : headingBreak(code)
+      return atBreak(code)
     }
     return nok(code)
   }
-  function headingBreak(code) {
+  function atBreak(code) {
     if (code === 35) {
       effects.enter('atxHeadingSequence');
-      return sequence(code)
+      return sequenceFurther(code)
     }
     if (code === null || markdownLineEnding(code)) {
       effects.exit('atxHeading');
       return ok(code)
     }
     if (markdownSpace(code)) {
-      return factorySpace(effects, headingBreak, 'whitespace')(code)
+      return factorySpace(effects, atBreak, 'whitespace')(code)
     }
     effects.enter('atxHeadingText');
     return data(code)
   }
-  function sequence(code) {
+  function sequenceFurther(code) {
     if (code === 35) {
       effects.consume(code);
-      return sequence
+      return sequenceFurther
     }
     effects.exit('atxHeadingSequence');
-    return headingBreak(code)
+    return atBreak(code)
   }
   function data(code) {
     if (code === null || code === 35 || markdownLineEndingOrSpace(code)) {
       effects.exit('atxHeadingText');
-      return headingBreak(code)
+      return atBreak(code)
     }
     effects.consume(code);
     return data
@@ -4854,6 +4944,7 @@ const htmlBlockNames = [
   'option',
   'p',
   'param',
+  'search',
   'section',
   'summary',
   'table',
@@ -4875,8 +4966,12 @@ const htmlFlow = {
   resolveTo: resolveToHtmlFlow,
   concrete: true
 };
-const nextBlankConstruct = {
-  tokenize: tokenizeNextBlank,
+const blankLineBefore = {
+  tokenize: tokenizeBlankLineBefore,
+  partial: true
+};
+const nonLazyContinuationStart = {
+  tokenize: tokenizeNonLazyContinuationStart,
   partial: true
 };
 function resolveToHtmlFlow(events) {
@@ -4895,13 +4990,16 @@ function resolveToHtmlFlow(events) {
 }
 function tokenizeHtmlFlow(effects, ok, nok) {
   const self = this;
-  let kind;
-  let startTag;
+  let marker;
+  let closingTag;
   let buffer;
   let index;
-  let marker;
+  let markerB;
   return start
   function start(code) {
+    return before(code)
+  }
+  function before(code) {
     effects.enter('htmlFlow');
     effects.enter('htmlFlowData');
     effects.consume(code);
@@ -4910,41 +5008,40 @@ function tokenizeHtmlFlow(effects, ok, nok) {
   function open(code) {
     if (code === 33) {
       effects.consume(code);
-      return declarationStart
+      return declarationOpen
     }
     if (code === 47) {
       effects.consume(code);
+      closingTag = true;
       return tagCloseStart
     }
     if (code === 63) {
       effects.consume(code);
-      kind = 3;
+      marker = 3;
       return self.interrupt ? ok : continuationDeclarationInside
     }
     if (asciiAlpha(code)) {
       effects.consume(code);
       buffer = String.fromCharCode(code);
-      startTag = true;
       return tagName
     }
     return nok(code)
   }
-  function declarationStart(code) {
+  function declarationOpen(code) {
     if (code === 45) {
       effects.consume(code);
-      kind = 2;
+      marker = 2;
       return commentOpenInside
     }
     if (code === 91) {
       effects.consume(code);
-      kind = 5;
-      buffer = 'CDATA[';
+      marker = 5;
       index = 0;
       return cdataOpenInside
     }
     if (asciiAlpha(code)) {
       effects.consume(code);
-      kind = 4;
+      marker = 4;
       return self.interrupt ? ok : continuationDeclarationInside
     }
     return nok(code)
@@ -4957,13 +5054,13 @@ function tokenizeHtmlFlow(effects, ok, nok) {
     return nok(code)
   }
   function cdataOpenInside(code) {
-    if (code === buffer.charCodeAt(index++)) {
+    const value = 'CDATA[';
+    if (code === value.charCodeAt(index++)) {
       effects.consume(code);
-      return index === buffer.length
-        ? self.interrupt
-          ? ok
-          : continuation
-        : cdataOpenInside
+      if (index === value.length) {
+        return self.interrupt ? ok : continuation
+      }
+      return cdataOpenInside
     }
     return nok(code)
   }
@@ -4982,28 +5079,26 @@ function tokenizeHtmlFlow(effects, ok, nok) {
       code === 62 ||
       markdownLineEndingOrSpace(code)
     ) {
-      if (
-        code !== 47 &&
-        startTag &&
-        htmlRawNames.includes(buffer.toLowerCase())
-      ) {
-        kind = 1;
+      const slash = code === 47;
+      const name = buffer.toLowerCase();
+      if (!slash && !closingTag && htmlRawNames.includes(name)) {
+        marker = 1;
         return self.interrupt ? ok(code) : continuation(code)
       }
       if (htmlBlockNames.includes(buffer.toLowerCase())) {
-        kind = 6;
-        if (code === 47) {
+        marker = 6;
+        if (slash) {
           effects.consume(code);
           return basicSelfClosing
         }
         return self.interrupt ? ok(code) : continuation(code)
       }
-      kind = 7;
+      marker = 7;
       return self.interrupt && !self.parser.lazy[self.now().line]
         ? nok(code)
-        : startTag
-        ? completeAttributeNameBefore(code)
-        : completeClosingTagAfter(code)
+        : closingTag
+        ? completeClosingTagAfter(code)
+        : completeAttributeNameBefore(code)
     }
     if (code === 45 || asciiAlphanumeric(code)) {
       effects.consume(code);
@@ -5077,23 +5172,23 @@ function tokenizeHtmlFlow(effects, ok, nok) {
     }
     if (code === 34 || code === 39) {
       effects.consume(code);
-      marker = code;
+      markerB = code;
       return completeAttributeValueQuoted
     }
     if (markdownSpace(code)) {
       effects.consume(code);
       return completeAttributeValueBefore
     }
-    marker = null;
     return completeAttributeValueUnquoted(code)
   }
   function completeAttributeValueQuoted(code) {
+    if (code === markerB) {
+      effects.consume(code);
+      markerB = null;
+      return completeAttributeValueQuotedAfter
+    }
     if (code === null || markdownLineEnding(code)) {
       return nok(code)
-    }
-    if (code === marker) {
-      effects.consume(code);
-      return completeAttributeValueQuotedAfter
     }
     effects.consume(code);
     return completeAttributeValueQuoted
@@ -5103,6 +5198,7 @@ function tokenizeHtmlFlow(effects, ok, nok) {
       code === null ||
       code === 34 ||
       code === 39 ||
+      code === 47 ||
       code === 60 ||
       code === 61 ||
       code === 62 ||
@@ -5128,80 +5224,70 @@ function tokenizeHtmlFlow(effects, ok, nok) {
     return nok(code)
   }
   function completeAfter(code) {
+    if (code === null || markdownLineEnding(code)) {
+      return continuation(code)
+    }
     if (markdownSpace(code)) {
       effects.consume(code);
       return completeAfter
     }
-    return code === null || markdownLineEnding(code)
-      ? continuation(code)
-      : nok(code)
+    return nok(code)
   }
   function continuation(code) {
-    if (code === 45 && kind === 2) {
+    if (code === 45 && marker === 2) {
       effects.consume(code);
       return continuationCommentInside
     }
-    if (code === 60 && kind === 1) {
+    if (code === 60 && marker === 1) {
       effects.consume(code);
       return continuationRawTagOpen
     }
-    if (code === 62 && kind === 4) {
+    if (code === 62 && marker === 4) {
       effects.consume(code);
       return continuationClose
     }
-    if (code === 63 && kind === 3) {
+    if (code === 63 && marker === 3) {
       effects.consume(code);
       return continuationDeclarationInside
     }
-    if (code === 93 && kind === 5) {
+    if (code === 93 && marker === 5) {
       effects.consume(code);
-      return continuationCharacterDataInside
+      return continuationCdataInside
     }
-    if (markdownLineEnding(code) && (kind === 6 || kind === 7)) {
+    if (markdownLineEnding(code) && (marker === 6 || marker === 7)) {
+      effects.exit('htmlFlowData');
       return effects.check(
-        nextBlankConstruct,
-        continuationClose,
-        continuationAtLineEnding
+        blankLineBefore,
+        continuationAfter,
+        continuationStart
       )(code)
     }
     if (code === null || markdownLineEnding(code)) {
-      return continuationAtLineEnding(code)
+      effects.exit('htmlFlowData');
+      return continuationStart(code)
     }
     effects.consume(code);
     return continuation
   }
-  function continuationAtLineEnding(code) {
-    effects.exit('htmlFlowData');
-    return htmlContinueStart(code)
+  function continuationStart(code) {
+    return effects.check(
+      nonLazyContinuationStart,
+      continuationStartNonLazy,
+      continuationAfter
+    )(code)
   }
-  function htmlContinueStart(code) {
-    if (code === null) {
-      return done(code)
-    }
-    if (markdownLineEnding(code)) {
-      return effects.attempt(
-        {
-          tokenize: htmlLineEnd,
-          partial: true
-        },
-        htmlContinueStart,
-        done
-      )(code)
+  function continuationStartNonLazy(code) {
+    effects.enter('lineEnding');
+    effects.consume(code);
+    effects.exit('lineEnding');
+    return continuationBefore
+  }
+  function continuationBefore(code) {
+    if (code === null || markdownLineEnding(code)) {
+      return continuationStart(code)
     }
     effects.enter('htmlFlowData');
     return continuation(code)
-  }
-  function htmlLineEnd(effects, ok, nok) {
-    return start
-    function start(code) {
-      effects.enter('lineEnding');
-      effects.consume(code);
-      effects.exit('lineEnding');
-      return lineStart
-    }
-    function lineStart(code) {
-      return self.parser.lazy[self.now().line] ? nok(code) : ok(code)
-    }
   }
   function continuationCommentInside(code) {
     if (code === 45) {
@@ -5219,9 +5305,13 @@ function tokenizeHtmlFlow(effects, ok, nok) {
     return continuation(code)
   }
   function continuationRawEndTag(code) {
-    if (code === 62 && htmlRawNames.includes(buffer.toLowerCase())) {
-      effects.consume(code);
-      return continuationClose
+    if (code === 62) {
+      const name = buffer.toLowerCase();
+      if (htmlRawNames.includes(name)) {
+        effects.consume(code);
+        return continuationClose
+      }
+      return continuation(code)
     }
     if (asciiAlpha(code) && buffer.length < 8) {
       effects.consume(code);
@@ -5230,7 +5320,7 @@ function tokenizeHtmlFlow(effects, ok, nok) {
     }
     return continuation(code)
   }
-  function continuationCharacterDataInside(code) {
+  function continuationCdataInside(code) {
     if (code === 93) {
       effects.consume(code);
       return continuationDeclarationInside
@@ -5242,7 +5332,7 @@ function tokenizeHtmlFlow(effects, ok, nok) {
       effects.consume(code);
       return continuationClose
     }
-    if (code === 45 && kind === 2) {
+    if (code === 45 && marker === 2) {
       effects.consume(code);
       return continuationDeclarationInside
     }
@@ -5251,23 +5341,38 @@ function tokenizeHtmlFlow(effects, ok, nok) {
   function continuationClose(code) {
     if (code === null || markdownLineEnding(code)) {
       effects.exit('htmlFlowData');
-      return done(code)
+      return continuationAfter(code)
     }
     effects.consume(code);
     return continuationClose
   }
-  function done(code) {
+  function continuationAfter(code) {
     effects.exit('htmlFlow');
     return ok(code)
   }
 }
-function tokenizeNextBlank(effects, ok, nok) {
+function tokenizeNonLazyContinuationStart(effects, ok, nok) {
+  const self = this;
   return start
   function start(code) {
-    effects.exit('htmlFlowData');
-    effects.enter('lineEndingBlank');
+    if (markdownLineEnding(code)) {
+      effects.enter('lineEnding');
+      effects.consume(code);
+      effects.exit('lineEnding');
+      return after
+    }
+    return nok(code)
+  }
+  function after(code) {
+    return self.parser.lazy[self.now().line] ? nok(code) : ok(code)
+  }
+}
+function tokenizeBlankLineBefore(effects, ok, nok) {
+  return start
+  function start(code) {
+    effects.enter('lineEnding');
     effects.consume(code);
-    effects.exit('lineEndingBlank');
+    effects.exit('lineEnding');
     return effects.attempt(blankLine, ok, nok)
   }
 }
@@ -5279,7 +5384,6 @@ const htmlText = {
 function tokenizeHtmlText(effects, ok, nok) {
   const self = this;
   let marker;
-  let buffer;
   let index;
   let returnState;
   return start
@@ -5311,13 +5415,12 @@ function tokenizeHtmlText(effects, ok, nok) {
   function declarationOpen(code) {
     if (code === 45) {
       effects.consume(code);
-      return commentOpen
+      return commentOpenInside
     }
     if (code === 91) {
       effects.consume(code);
-      buffer = 'CDATA[';
       index = 0;
-      return cdataOpen
+      return cdataOpenInside
     }
     if (asciiAlpha(code)) {
       effects.consume(code);
@@ -5325,28 +5428,12 @@ function tokenizeHtmlText(effects, ok, nok) {
     }
     return nok(code)
   }
-  function commentOpen(code) {
+  function commentOpenInside(code) {
     if (code === 45) {
       effects.consume(code);
-      return commentStart
+      return commentEnd
     }
     return nok(code)
-  }
-  function commentStart(code) {
-    if (code === null || code === 62) {
-      return nok(code)
-    }
-    if (code === 45) {
-      effects.consume(code);
-      return commentStartDash
-    }
-    return comment(code)
-  }
-  function commentStartDash(code) {
-    if (code === null || code === 62) {
-      return nok(code)
-    }
-    return comment(code)
   }
   function comment(code) {
     if (code === null) {
@@ -5358,7 +5445,7 @@ function tokenizeHtmlText(effects, ok, nok) {
     }
     if (markdownLineEnding(code)) {
       returnState = comment;
-      return atLineEnding(code)
+      return lineEndingBefore(code)
     }
     effects.consume(code);
     return comment
@@ -5366,14 +5453,22 @@ function tokenizeHtmlText(effects, ok, nok) {
   function commentClose(code) {
     if (code === 45) {
       effects.consume(code);
-      return end
+      return commentEnd
     }
     return comment(code)
   }
-  function cdataOpen(code) {
-    if (code === buffer.charCodeAt(index++)) {
+  function commentEnd(code) {
+    return code === 62
+      ? end(code)
+      : code === 45
+      ? commentClose(code)
+      : comment(code)
+  }
+  function cdataOpenInside(code) {
+    const value = 'CDATA[';
+    if (code === value.charCodeAt(index++)) {
       effects.consume(code);
-      return index === buffer.length ? cdata : cdataOpen
+      return index === value.length ? cdata : cdataOpenInside
     }
     return nok(code)
   }
@@ -5387,7 +5482,7 @@ function tokenizeHtmlText(effects, ok, nok) {
     }
     if (markdownLineEnding(code)) {
       returnState = cdata;
-      return atLineEnding(code)
+      return lineEndingBefore(code)
     }
     effects.consume(code);
     return cdata
@@ -5415,7 +5510,7 @@ function tokenizeHtmlText(effects, ok, nok) {
     }
     if (markdownLineEnding(code)) {
       returnState = declaration;
-      return atLineEnding(code)
+      return lineEndingBefore(code)
     }
     effects.consume(code);
     return declaration
@@ -5430,7 +5525,7 @@ function tokenizeHtmlText(effects, ok, nok) {
     }
     if (markdownLineEnding(code)) {
       returnState = instruction;
-      return atLineEnding(code)
+      return lineEndingBefore(code)
     }
     effects.consume(code);
     return instruction
@@ -5455,7 +5550,7 @@ function tokenizeHtmlText(effects, ok, nok) {
   function tagCloseBetween(code) {
     if (markdownLineEnding(code)) {
       returnState = tagCloseBetween;
-      return atLineEnding(code)
+      return lineEndingBefore(code)
     }
     if (markdownSpace(code)) {
       effects.consume(code);
@@ -5484,7 +5579,7 @@ function tokenizeHtmlText(effects, ok, nok) {
     }
     if (markdownLineEnding(code)) {
       returnState = tagOpenBetween;
-      return atLineEnding(code)
+      return lineEndingBefore(code)
     }
     if (markdownSpace(code)) {
       effects.consume(code);
@@ -5512,7 +5607,7 @@ function tokenizeHtmlText(effects, ok, nok) {
     }
     if (markdownLineEnding(code)) {
       returnState = tagOpenAttributeNameAfter;
-      return atLineEnding(code)
+      return lineEndingBefore(code)
     }
     if (markdownSpace(code)) {
       effects.consume(code);
@@ -5537,19 +5632,19 @@ function tokenizeHtmlText(effects, ok, nok) {
     }
     if (markdownLineEnding(code)) {
       returnState = tagOpenAttributeValueBefore;
-      return atLineEnding(code)
+      return lineEndingBefore(code)
     }
     if (markdownSpace(code)) {
       effects.consume(code);
       return tagOpenAttributeValueBefore
     }
     effects.consume(code);
-    marker = undefined;
     return tagOpenAttributeValueUnquoted
   }
   function tagOpenAttributeValueQuoted(code) {
     if (code === marker) {
       effects.consume(code);
+      marker = undefined;
       return tagOpenAttributeValueQuotedAfter
     }
     if (code === null) {
@@ -5557,16 +5652,10 @@ function tokenizeHtmlText(effects, ok, nok) {
     }
     if (markdownLineEnding(code)) {
       returnState = tagOpenAttributeValueQuoted;
-      return atLineEnding(code)
+      return lineEndingBefore(code)
     }
     effects.consume(code);
     return tagOpenAttributeValueQuoted
-  }
-  function tagOpenAttributeValueQuotedAfter(code) {
-    if (code === 62 || code === 47 || markdownLineEndingOrSpace(code)) {
-      return tagOpenBetween(code)
-    }
-    return nok(code)
   }
   function tagOpenAttributeValueUnquoted(code) {
     if (
@@ -5579,29 +5668,17 @@ function tokenizeHtmlText(effects, ok, nok) {
     ) {
       return nok(code)
     }
-    if (code === 62 || markdownLineEndingOrSpace(code)) {
+    if (code === 47 || code === 62 || markdownLineEndingOrSpace(code)) {
       return tagOpenBetween(code)
     }
     effects.consume(code);
     return tagOpenAttributeValueUnquoted
   }
-  function atLineEnding(code) {
-    effects.exit('htmlTextData');
-    effects.enter('lineEnding');
-    effects.consume(code);
-    effects.exit('lineEnding');
-    return factorySpace(
-      effects,
-      afterPrefix,
-      'linePrefix',
-      self.parser.constructs.disable.null.includes('codeIndented')
-        ? undefined
-        : 4
-    )
-  }
-  function afterPrefix(code) {
-    effects.enter('htmlTextData');
-    return returnState(code)
+  function tagOpenAttributeValueQuotedAfter(code) {
+    if (code === 47 || code === 62 || markdownLineEndingOrSpace(code)) {
+      return tagOpenBetween(code)
+    }
+    return nok(code)
   }
   function end(code) {
     if (code === 62) {
@@ -5611,6 +5688,29 @@ function tokenizeHtmlText(effects, ok, nok) {
       return ok
     }
     return nok(code)
+  }
+  function lineEndingBefore(code) {
+    effects.exit('htmlTextData');
+    effects.enter('lineEnding');
+    effects.consume(code);
+    effects.exit('lineEnding');
+    return lineEndingAfter
+  }
+  function lineEndingAfter(code) {
+    return markdownSpace(code)
+      ? factorySpace(
+          effects,
+          lineEndingAfterPrefix,
+          'linePrefix',
+          self.parser.constructs.disable.null.includes('codeIndented')
+            ? undefined
+            : 4
+        )(code)
+      : lineEndingAfterPrefix(code)
+  }
+  function lineEndingAfterPrefix(code) {
+    effects.enter('htmlTextData');
+    return returnState(code)
   }
 }
 
@@ -5623,17 +5723,16 @@ const labelEnd = {
 const resourceConstruct = {
   tokenize: tokenizeResource
 };
-const fullReferenceConstruct = {
-  tokenize: tokenizeFullReference
+const referenceFullConstruct = {
+  tokenize: tokenizeReferenceFull
 };
-const collapsedReferenceConstruct = {
-  tokenize: tokenizeCollapsedReference
+const referenceCollapsedConstruct = {
+  tokenize: tokenizeReferenceCollapsed
 };
 function resolveAllLabelEnd(events) {
   let index = -1;
-  let token;
   while (++index < events.length) {
-    token = events[index][1];
+    const token = events[index][1];
     if (
       token.type === 'labelImage' ||
       token.type === 'labelLink' ||
@@ -5741,7 +5840,9 @@ function tokenizeLabelEnd(effects, ok, nok) {
     if (!labelStart) {
       return nok(code)
     }
-    if (labelStart._inactive) return balanced(code)
+    if (labelStart._inactive) {
+      return labelEndNok(code)
+    }
     defined = self.parser.defined.includes(
       normalizeIdentifier(
         self.sliceSerialize({
@@ -5755,49 +5856,62 @@ function tokenizeLabelEnd(effects, ok, nok) {
     effects.consume(code);
     effects.exit('labelMarker');
     effects.exit('labelEnd');
-    return afterLabelEnd
+    return after
   }
-  function afterLabelEnd(code) {
+  function after(code) {
     if (code === 40) {
       return effects.attempt(
         resourceConstruct,
-        ok,
-        defined ? ok : balanced
+        labelEndOk,
+        defined ? labelEndOk : labelEndNok
       )(code)
     }
     if (code === 91) {
       return effects.attempt(
-        fullReferenceConstruct,
-        ok,
-        defined
-          ? effects.attempt(collapsedReferenceConstruct, ok, balanced)
-          : balanced
+        referenceFullConstruct,
+        labelEndOk,
+        defined ? referenceNotFull : labelEndNok
       )(code)
     }
-    return defined ? ok(code) : balanced(code)
+    return defined ? labelEndOk(code) : labelEndNok(code)
   }
-  function balanced(code) {
+  function referenceNotFull(code) {
+    return effects.attempt(
+      referenceCollapsedConstruct,
+      labelEndOk,
+      labelEndNok
+    )(code)
+  }
+  function labelEndOk(code) {
+    return ok(code)
+  }
+  function labelEndNok(code) {
     labelStart._balanced = true;
     return nok(code)
   }
 }
 function tokenizeResource(effects, ok, nok) {
-  return start
-  function start(code) {
+  return resourceStart
+  function resourceStart(code) {
     effects.enter('resource');
     effects.enter('resourceMarker');
     effects.consume(code);
     effects.exit('resourceMarker');
-    return factoryWhitespace(effects, open)
+    return resourceBefore
   }
-  function open(code) {
+  function resourceBefore(code) {
+    return markdownLineEndingOrSpace(code)
+      ? factoryWhitespace(effects, resourceOpen)(code)
+      : resourceOpen(code)
+  }
+  function resourceOpen(code) {
     if (code === 41) {
-      return end(code)
+      return resourceEnd(code)
     }
     return factoryDestination(
       effects,
-      destinationAfter,
-      nok,
+      resourceDestinationAfter,
+      resourceDestinationMissing,
       'resourceDestination',
       'resourceDestinationLiteral',
       'resourceDestinationLiteralMarker',
@@ -5806,25 +5920,33 @@ function tokenizeResource(effects, ok, nok) {
       32
     )(code)
   }
-  function destinationAfter(code) {
+  function resourceDestinationAfter(code) {
     return markdownLineEndingOrSpace(code)
-      ? factoryWhitespace(effects, between)(code)
-      : end(code)
+      ? factoryWhitespace(effects, resourceBetween)(code)
+      : resourceEnd(code)
   }
-  function between(code) {
+  function resourceDestinationMissing(code) {
+    return nok(code)
+  }
+  function resourceBetween(code) {
     if (code === 34 || code === 39 || code === 40) {
       return factoryTitle(
         effects,
-        factoryWhitespace(effects, end),
+        resourceTitleAfter,
         nok,
         'resourceTitle',
         'resourceTitleMarker',
         'resourceTitleString'
       )(code)
     }
-    return end(code)
+    return resourceEnd(code)
   }
-  function end(code) {
+  function resourceTitleAfter(code) {
+    return markdownLineEndingOrSpace(code)
+      ? factoryWhitespace(effects, resourceEnd)(code)
+      : resourceEnd(code)
+  }
+  function resourceEnd(code) {
     if (code === 41) {
       effects.enter('resourceMarker');
       effects.consume(code);
@@ -5835,21 +5957,21 @@ function tokenizeResource(effects, ok, nok) {
     return nok(code)
   }
 }
-function tokenizeFullReference(effects, ok, nok) {
+function tokenizeReferenceFull(effects, ok, nok) {
   const self = this;
-  return start
-  function start(code) {
+  return referenceFull
+  function referenceFull(code) {
     return factoryLabel.call(
       self,
       effects,
-      afterLabel,
-      nok,
+      referenceFullAfter,
+      referenceFullMissing,
       'reference',
       'referenceMarker',
       'referenceString'
     )(code)
   }
-  function afterLabel(code) {
+  function referenceFullAfter(code) {
     return self.parser.defined.includes(
       normalizeIdentifier(
         self.sliceSerialize(self.events[self.events.length - 1][1]).slice(1, -1)
@@ -5858,17 +5980,20 @@ function tokenizeFullReference(effects, ok, nok) {
       ? ok(code)
       : nok(code)
   }
+  function referenceFullMissing(code) {
+    return nok(code)
+  }
 }
-function tokenizeCollapsedReference(effects, ok, nok) {
-  return start
-  function start(code) {
+function tokenizeReferenceCollapsed(effects, ok, nok) {
+  return referenceCollapsedStart
+  function referenceCollapsedStart(code) {
     effects.enter('reference');
     effects.enter('referenceMarker');
     effects.consume(code);
     effects.exit('referenceMarker');
-    return open
+    return referenceCollapsedOpen
   }
-  function open(code) {
+  function referenceCollapsedOpen(code) {
     if (code === 93) {
       effects.enter('referenceMarker');
       effects.consume(code);
@@ -5959,6 +6084,9 @@ function tokenizeThematicBreak(effects, ok, nok) {
   return start
   function start(code) {
     effects.enter('thematicBreak');
+    return before(code)
+  }
+  function before(code) {
     marker = code;
     return atBreak(code)
   }
@@ -5967,14 +6095,11 @@ function tokenizeThematicBreak(effects, ok, nok) {
       effects.enter('thematicBreakSequence');
       return sequence(code)
     }
-    if (markdownSpace(code)) {
-      return factorySpace(effects, atBreak, 'whitespace')(code)
+    if (size >= 3 && (code === null || markdownLineEnding(code))) {
+      effects.exit('thematicBreak');
+      return ok(code)
     }
-    if (size < 3 || (code !== null && !markdownLineEnding(code))) {
-      return nok(code)
-    }
-    effects.exit('thematicBreak');
-    return ok(code)
+    return nok(code)
   }
   function sequence(code) {
     if (code === marker) {
@@ -5983,7 +6108,9 @@ function tokenizeThematicBreak(effects, ok, nok) {
       return sequence
     }
     effects.exit('thematicBreakSequence');
-    return atBreak(code)
+    return markdownSpace(code)
+      ? factorySpace(effects, atBreak, 'whitespace')(code)
+      : atBreak(code)
   }
 }
 
@@ -6220,38 +6347,43 @@ function resolveToSetextUnderline(events, context) {
 }
 function tokenizeSetextUnderline(effects, ok, nok) {
   const self = this;
-  let index = self.events.length;
   let marker;
-  let paragraph;
-  while (index--) {
-    if (
-      self.events[index][1].type !== 'lineEnding' &&
-      self.events[index][1].type !== 'linePrefix' &&
-      self.events[index][1].type !== 'content'
-    ) {
-      paragraph = self.events[index][1].type === 'paragraph';
-      break
-    }
-  }
   return start
   function start(code) {
+    let index = self.events.length;
+    let paragraph;
+    while (index--) {
+      if (
+        self.events[index][1].type !== 'lineEnding' &&
+        self.events[index][1].type !== 'linePrefix' &&
+        self.events[index][1].type !== 'content'
+      ) {
+        paragraph = self.events[index][1].type === 'paragraph';
+        break
+      }
+    }
     if (!self.parser.lazy[self.now().line] && (self.interrupt || paragraph)) {
       effects.enter('setextHeadingLine');
-      effects.enter('setextHeadingLineSequence');
       marker = code;
-      return closingSequence(code)
+      return before(code)
     }
     return nok(code)
   }
-  function closingSequence(code) {
+  function before(code) {
+    effects.enter('setextHeadingLineSequence');
+    return inside(code)
+  }
+  function inside(code) {
     if (code === marker) {
       effects.consume(code);
-      return closingSequence
+      return inside
     }
     effects.exit('setextHeadingLineSequence');
-    return factorySpace(effects, closingSequenceEnd, 'lineSuffix')(code)
+    return markdownSpace(code)
+      ? factorySpace(effects, after, 'lineSuffix')(code)
+      : after(code)
   }
-  function closingSequenceEnd(code) {
+  function after(code) {
     if (code === null || markdownLineEnding(code)) {
       effects.exit('setextHeadingLine');
       return ok(code)
@@ -6516,7 +6648,14 @@ function createTokenizer(parser, initialize, from) {
     return sliceChunks(chunks, token)
   }
   function now() {
-    return Object.assign({}, point)
+    const {line, column, offset, _index, _bufferIndex} = point;
+    return {
+      line,
+      column,
+      offset,
+      _index,
+      _bufferIndex
+    }
   }
   function defineSkip(value) {
     columnStart[value.line] = value.column;
@@ -6594,10 +6733,10 @@ function createTokenizer(parser, initialize, from) {
       let currentConstruct;
       let info;
       return Array.isArray(constructs)
-        ?
-          handleListOfConstructs(constructs)
+        ? handleListOfConstructs(constructs)
         : 'tokenize' in constructs
-        ? handleListOfConstructs([constructs])
+        ?
+          handleListOfConstructs([constructs])
         : handleMapOfConstructs(constructs)
       function handleMapOfConstructs(map) {
         return start
@@ -6707,7 +6846,12 @@ function sliceChunks(chunks, token) {
   } else {
     view = chunks.slice(startIndex, endIndex);
     if (startBufferIndex > -1) {
-      view[0] = view[0].slice(startBufferIndex);
+      const head = view[0];
+      if (typeof head === 'string') {
+        view[0] = head.slice(startBufferIndex);
+      } else {
+        view.shift();
+      }
     }
     if (endBufferIndex > 0) {
       view.push(chunks[endIndex].slice(0, endBufferIndex));
@@ -6832,10 +6976,10 @@ var defaultConstructs = /*#__PURE__*/Object.freeze({
   text: text$2
 });
 
-function parse$1(options = {}) {
-  const constructs = combineExtensions(
-    [defaultConstructs].concat(options.extensions || [])
-  );
+function parse$1(options) {
+  const settings = options || {};
+  const constructs =
+    combineExtensions([defaultConstructs, ...(settings.extensions || [])]);
   const parser = {
     defined: [],
     lazy: {},
@@ -6948,9 +7092,9 @@ function decodeNumericCharacterReference(value, base) {
     (code > 13 && code < 32) ||
     (code > 126 && code < 160) ||
     (code > 55295 && code < 57344) ||
-    (code > 64975 && code < 65008) ||
+    (code > 64975 && code < 65008)  ||
     (code & 65535) === 65535 ||
-    (code & 65535) === 65534 ||
+    (code & 65535) === 65534  ||
     code > 1114111
   ) {
     return '\uFFFD'
@@ -7262,7 +7406,8 @@ function compiler(options) {
           listItem = {
             type: 'listItem',
             _spread: false,
-            start: Object.assign({}, event[1].start)
+            start: Object.assign({}, event[1].start),
+            end: undefined
           };
           events.splice(index, 0, ['enter', listItem, event[2]]);
           index++;
@@ -9327,8 +9472,8 @@ function remarkStringify(options) {
   Object.assign(this, {Compiler: compiler});
 }
 
-const www = {
-  tokenize: tokenizeWww,
+const wwwPrefix = {
+  tokenize: tokenizeWwwPrefix,
   partial: true
 };
 const domain = {
@@ -9339,21 +9484,21 @@ const path = {
   tokenize: tokenizePath,
   partial: true
 };
-const punctuation = {
-  tokenize: tokenizePunctuation,
+const trail = {
+  tokenize: tokenizeTrail,
   partial: true
 };
-const namedCharacterReference = {
-  tokenize: tokenizeNamedCharacterReference,
+const emailDomainDotTrail = {
+  tokenize: tokenizeEmailDomainDotTrail,
   partial: true
 };
 const wwwAutolink = {
   tokenize: tokenizeWwwAutolink,
   previous: previousWww
 };
-const httpAutolink = {
-  tokenize: tokenizeHttpAutolink,
-  previous: previousHttp
+const protocolAutolink = {
+  tokenize: tokenizeProtocolAutolink,
+  previous: previousProtocol
 };
 const emailAutolink = {
   tokenize: tokenizeEmailAutolink,
@@ -9374,19 +9519,19 @@ text[43] = emailAutolink;
 text[45] = emailAutolink;
 text[46] = emailAutolink;
 text[95] = emailAutolink;
-text[72] = [emailAutolink, httpAutolink];
-text[104] = [emailAutolink, httpAutolink];
+text[72] = [emailAutolink, protocolAutolink];
+text[104] = [emailAutolink, protocolAutolink];
 text[87] = [emailAutolink, wwwAutolink];
 text[119] = [emailAutolink, wwwAutolink];
 function tokenizeEmailAutolink(effects, ok, nok) {
   const self = this;
-  let hasDot;
-  let hasDigitInLastSegment;
+  let dot;
+  let data;
   return start
   function start(code) {
     if (
       !gfmAtext(code) ||
-      !previousEmail(self.previous) ||
+      !previousEmail.call(self, self.previous) ||
       previousUnbalanced(self.events)
     ) {
       return nok(code)
@@ -9402,44 +9547,32 @@ function tokenizeEmailAutolink(effects, ok, nok) {
     }
     if (code === 64) {
       effects.consume(code);
-      return label
+      return emailDomain
     }
     return nok(code)
   }
-  function label(code) {
+  function emailDomain(code) {
     if (code === 46) {
-      return effects.check(punctuation, done, dotContinuation)(code)
+      return effects.check(
+        emailDomainDotTrail,
+        emailDomainAfter,
+        emailDomainDot
+      )(code)
     }
-    if (code === 45 || code === 95) {
-      return effects.check(punctuation, nok, dashOrUnderscoreContinuation)(code)
-    }
-    if (asciiAlphanumeric(code)) {
-      if (!hasDigitInLastSegment && asciiDigit(code)) {
-        hasDigitInLastSegment = true;
-      }
+    if (code === 45 || code === 95 || asciiAlphanumeric(code)) {
+      data = true;
       effects.consume(code);
-      return label
+      return emailDomain
     }
-    return done(code)
+    return emailDomainAfter(code)
   }
-  function dotContinuation(code) {
+  function emailDomainDot(code) {
     effects.consume(code);
-    hasDot = true;
-    hasDigitInLastSegment = undefined;
-    return label
+    dot = true;
+    return emailDomain
   }
-  function dashOrUnderscoreContinuation(code) {
-    effects.consume(code);
-    return afterDashOrUnderscore
-  }
-  function afterDashOrUnderscore(code) {
-    if (code === 46) {
-      return effects.check(punctuation, nok, dotContinuation)(code)
-    }
-    return label(code)
-  }
-  function done(code) {
-    if (hasDot && !hasDigitInLastSegment) {
+  function emailDomainAfter(code) {
+    if (data && dot && asciiAlpha(self.previous)) {
       effects.exit('literalAutolinkEmail');
       effects.exit('literalAutolink');
       return ok(code)
@@ -9449,11 +9582,11 @@ function tokenizeEmailAutolink(effects, ok, nok) {
 }
 function tokenizeWwwAutolink(effects, ok, nok) {
   const self = this;
-  return start
-  function start(code) {
+  return wwwStart
+  function wwwStart(code) {
     if (
       (code !== 87 && code !== 119) ||
-      !previousWww(self.previous) ||
+      !previousWww.call(self, self.previous) ||
       previousUnbalanced(self.events)
     ) {
       return nok(code)
@@ -9461,264 +9594,277 @@ function tokenizeWwwAutolink(effects, ok, nok) {
     effects.enter('literalAutolink');
     effects.enter('literalAutolinkWww');
     return effects.check(
-      www,
-      effects.attempt(domain, effects.attempt(path, done), nok),
+      wwwPrefix,
+      effects.attempt(domain, effects.attempt(path, wwwAfter), nok),
       nok
     )(code)
   }
-  function done(code) {
+  function wwwAfter(code) {
     effects.exit('literalAutolinkWww');
     effects.exit('literalAutolink');
     return ok(code)
   }
 }
-function tokenizeHttpAutolink(effects, ok, nok) {
+function tokenizeProtocolAutolink(effects, ok, nok) {
   const self = this;
-  return start
-  function start(code) {
+  let buffer = '';
+  let seen = false;
+  return protocolStart
+  function protocolStart(code) {
     if (
-      (code !== 72 && code !== 104) ||
-      !previousHttp(self.previous) ||
-      previousUnbalanced(self.events)
+      (code === 72 || code === 104) &&
+      previousProtocol.call(self, self.previous) &&
+      !previousUnbalanced(self.events)
     ) {
-      return nok(code)
-    }
-    effects.enter('literalAutolink');
-    effects.enter('literalAutolinkHttp');
-    effects.consume(code);
-    return t1
-  }
-  function t1(code) {
-    if (code === 84 || code === 116) {
+      effects.enter('literalAutolink');
+      effects.enter('literalAutolinkHttp');
+      buffer += String.fromCodePoint(code);
       effects.consume(code);
-      return t2
+      return protocolPrefixInside
     }
     return nok(code)
   }
-  function t2(code) {
-    if (code === 84 || code === 116) {
+  function protocolPrefixInside(code) {
+    if (asciiAlpha(code) && buffer.length < 5) {
+      buffer += String.fromCodePoint(code);
       effects.consume(code);
-      return p
+      return protocolPrefixInside
     }
-    return nok(code)
-  }
-  function p(code) {
-    if (code === 80 || code === 112) {
-      effects.consume(code);
-      return s
-    }
-    return nok(code)
-  }
-  function s(code) {
-    if (code === 83 || code === 115) {
-      effects.consume(code);
-      return colon
-    }
-    return colon(code)
-  }
-  function colon(code) {
     if (code === 58) {
-      effects.consume(code);
-      return slash1
+      const protocol = buffer.toLowerCase();
+      if (protocol === 'http' || protocol === 'https') {
+        effects.consume(code);
+        return protocolSlashesInside
+      }
     }
     return nok(code)
   }
-  function slash1(code) {
+  function protocolSlashesInside(code) {
     if (code === 47) {
       effects.consume(code);
-      return slash2
+      if (seen) {
+        return afterProtocol
+      }
+      seen = true;
+      return protocolSlashesInside
     }
     return nok(code)
   }
-  function slash2(code) {
-    if (code === 47) {
-      effects.consume(code);
-      return after
-    }
-    return nok(code)
-  }
-  function after(code) {
+  function afterProtocol(code) {
     return code === null ||
       asciiControl(code) ||
+      markdownLineEndingOrSpace(code) ||
       unicodeWhitespace(code) ||
       unicodePunctuation(code)
       ? nok(code)
-      : effects.attempt(domain, effects.attempt(path, done), nok)(code)
+      : effects.attempt(domain, effects.attempt(path, protocolAfter), nok)(code)
   }
-  function done(code) {
+  function protocolAfter(code) {
     effects.exit('literalAutolinkHttp');
     effects.exit('literalAutolink');
     return ok(code)
   }
 }
-function tokenizeWww(effects, ok, nok) {
-  return start
-  function start(code) {
-    effects.consume(code);
-    return w2
-  }
-  function w2(code) {
-    if (code === 87 || code === 119) {
+function tokenizeWwwPrefix(effects, ok, nok) {
+  let size = 0;
+  return wwwPrefixInside
+  function wwwPrefixInside(code) {
+    if ((code === 87 || code === 119) && size < 3) {
+      size++;
       effects.consume(code);
-      return w3
+      return wwwPrefixInside
+    }
+    if (code === 46 && size === 3) {
+      effects.consume(code);
+      return wwwPrefixAfter
     }
     return nok(code)
   }
-  function w3(code) {
-    if (code === 87 || code === 119) {
-      effects.consume(code);
-      return dot
-    }
-    return nok(code)
-  }
-  function dot(code) {
-    if (code === 46) {
-      effects.consume(code);
-      return after
-    }
-    return nok(code)
-  }
-  function after(code) {
-    return code === null || markdownLineEnding(code) ? nok(code) : ok(code)
+  function wwwPrefixAfter(code) {
+    return code === null ? nok(code) : ok(code)
   }
 }
 function tokenizeDomain(effects, ok, nok) {
-  let hasUnderscoreInLastSegment;
-  let hasUnderscoreInLastLastSegment;
-  return domain
-  function domain(code) {
-    if (code === 38) {
-      return effects.check(
-        namedCharacterReference,
-        done,
-        punctuationContinuation
-      )(code)
-    }
+  let underscoreInLastSegment;
+  let underscoreInLastLastSegment;
+  let seen;
+  return domainInside
+  function domainInside(code) {
     if (code === 46 || code === 95) {
-      return effects.check(punctuation, done, punctuationContinuation)(code)
+      return effects.check(trail, domainAfter, domainAtPunctuation)(code)
     }
     if (
       code === null ||
-      asciiControl(code) ||
+      markdownLineEndingOrSpace(code) ||
       unicodeWhitespace(code) ||
       (code !== 45 && unicodePunctuation(code))
     ) {
-      return done(code)
+      return domainAfter(code)
+    }
+    seen = true;
+    effects.consume(code);
+    return domainInside
+  }
+  function domainAtPunctuation(code) {
+    if (code === 95) {
+      underscoreInLastSegment = true;
+    }
+    else {
+      underscoreInLastLastSegment = underscoreInLastSegment;
+      underscoreInLastSegment = undefined;
     }
     effects.consume(code);
-    return domain
+    return domainInside
   }
-  function punctuationContinuation(code) {
-    if (code === 46) {
-      hasUnderscoreInLastLastSegment = hasUnderscoreInLastSegment;
-      hasUnderscoreInLastSegment = undefined;
-      effects.consume(code);
-      return domain
+  function domainAfter(code) {
+    if (underscoreInLastLastSegment || underscoreInLastSegment || !seen) {
+      return nok(code)
     }
-    if (code === 95) hasUnderscoreInLastSegment = true;
-    effects.consume(code);
-    return domain
-  }
-  function done(code) {
-    if (!hasUnderscoreInLastLastSegment && !hasUnderscoreInLastSegment) {
-      return ok(code)
-    }
-    return nok(code)
+    return ok(code)
   }
 }
 function tokenizePath(effects, ok) {
-  let balance = 0;
-  return inPath
-  function inPath(code) {
-    if (code === 38) {
-      return effects.check(
-        namedCharacterReference,
-        ok,
-        continuedPunctuation
-      )(code)
-    }
+  let sizeOpen = 0;
+  let sizeClose = 0;
+  return pathInside
+  function pathInside(code) {
     if (code === 40) {
-      balance++;
+      sizeOpen++;
+      effects.consume(code);
+      return pathInside
     }
-    if (code === 41) {
-      return effects.check(
-        punctuation,
-        parenAtPathEnd,
-        continuedPunctuation
-      )(code)
+    if (code === 41 && sizeClose < sizeOpen) {
+      return pathAtPunctuation(code)
     }
-    if (pathEnd(code)) {
+    if (
+      code === 33 ||
+      code === 34 ||
+      code === 38 ||
+      code === 39 ||
+      code === 41 ||
+      code === 42 ||
+      code === 44 ||
+      code === 46 ||
+      code === 58 ||
+      code === 59 ||
+      code === 60 ||
+      code === 63 ||
+      code === 93 ||
+      code === 95 ||
+      code === 126
+    ) {
+      return effects.check(trail, ok, pathAtPunctuation)(code)
+    }
+    if (
+      code === null ||
+      markdownLineEndingOrSpace(code) ||
+      unicodeWhitespace(code)
+    ) {
       return ok(code)
     }
-    if (trailingPunctuation(code)) {
-      return effects.check(punctuation, ok, continuedPunctuation)(code)
+    effects.consume(code);
+    return pathInside
+  }
+  function pathAtPunctuation(code) {
+    if (code === 41) {
+      sizeClose++;
     }
     effects.consume(code);
-    return inPath
-  }
-  function continuedPunctuation(code) {
-    effects.consume(code);
-    return inPath
-  }
-  function parenAtPathEnd(code) {
-    balance--;
-    return balance < 0 ? ok(code) : continuedPunctuation(code)
+    return pathInside
   }
 }
-function tokenizeNamedCharacterReference(effects, ok, nok) {
-  return start
-  function start(code) {
-    effects.consume(code);
-    return inside
-  }
-  function inside(code) {
-    if (asciiAlpha(code)) {
+function tokenizeTrail(effects, ok, nok) {
+  return trail
+  function trail(code) {
+    if (
+      code === 33 ||
+      code === 34 ||
+      code === 39 ||
+      code === 41 ||
+      code === 42 ||
+      code === 44 ||
+      code === 46 ||
+      code === 58 ||
+      code === 59 ||
+      code === 63 ||
+      code === 95 ||
+      code === 126
+    ) {
       effects.consume(code);
-      return inside
+      return trail
     }
-    if (code === 59) {
+    if (code === 38) {
       effects.consume(code);
-      return after
+      return trailCharRefStart
+    }
+    if (code === 93) {
+      effects.consume(code);
+      return trailBracketAfter
+    }
+    if (
+      code === 60 ||
+      code === null ||
+      markdownLineEndingOrSpace(code) ||
+      unicodeWhitespace(code)
+    ) {
+      return ok(code)
     }
     return nok(code)
   }
-  function after(code) {
-    return pathEnd(code) ? ok(code) : nok(code)
+  function trailBracketAfter(code) {
+    if (
+      code === null ||
+      code === 40 ||
+      code === 91 ||
+      markdownLineEndingOrSpace(code) ||
+      unicodeWhitespace(code)
+    ) {
+      return ok(code)
+    }
+    return trail(code)
+  }
+  function trailCharRefStart(code) {
+    return asciiAlpha(code) ? trailCharRefInside(code) : nok(code)
+  }
+  function trailCharRefInside(code) {
+    if (code === 59) {
+      effects.consume(code);
+      return trail
+    }
+    if (asciiAlpha(code)) {
+      effects.consume(code);
+      return trailCharRefInside
+    }
+    return nok(code)
   }
 }
-function tokenizePunctuation(effects, ok, nok) {
+function tokenizeEmailDomainDotTrail(effects, ok, nok) {
   return start
   function start(code) {
     effects.consume(code);
     return after
   }
   function after(code) {
-    if (trailingPunctuation(code)) {
-      effects.consume(code);
-      return after
-    }
-    return pathEnd(code) ? ok(code) : nok(code)
+    return asciiAlphanumeric(code) ? nok(code) : ok(code)
   }
 }
-function trailingPunctuation(code) {
+function previousWww(code) {
   return (
-    code === 33 ||
-    code === 34 ||
-    code === 39 ||
-    code === 41 ||
+    code === null ||
+    code === 40 ||
     code === 42 ||
-    code === 44 ||
-    code === 46 ||
-    code === 58 ||
-    code === 59 ||
-    code === 60 ||
-    code === 63 ||
     code === 95 ||
-    code === 126
+    code === 91 ||
+    code === 93 ||
+    code === 126 ||
+    markdownLineEndingOrSpace(code)
   )
 }
-function pathEnd(code) {
-  return code === null || code === 60 || markdownLineEndingOrSpace(code)
+function previousProtocol(code) {
+  return !asciiAlpha(code)
+}
+function previousEmail(code) {
+  return !(code === 47 || gfmAtext(code))
 }
 function gfmAtext(code) {
   return (
@@ -9728,22 +9874,6 @@ function gfmAtext(code) {
     code === 95 ||
     asciiAlphanumeric(code)
   )
-}
-function previousWww(code) {
-  return (
-    code === null ||
-    code === 40 ||
-    code === 42 ||
-    code === 95 ||
-    code === 126 ||
-    markdownLineEndingOrSpace(code)
-  )
-}
-function previousHttp(code) {
-  return code === null || !asciiAlpha(code)
-}
-function previousEmail(code) {
-  return code !== 47 && previousHttp(code)
 }
 function previousUnbalanced(events) {
   let index = events.length;
@@ -9827,7 +9957,7 @@ function tokenizePotentialGfmFootnoteCall(effects, ok, nok) {
         end: self.now()
       })
     );
-    if (id.charCodeAt(0) !== 94 || !defined.includes(id.slice(1))) {
+    if (id.codePointAt(0) !== 94 || !defined.includes(id.slice(1))) {
       return nok(code)
     }
     effects.enter('gfmFootnoteCallLabelMarker');
@@ -9915,24 +10045,32 @@ function tokenizeGfmFootnoteCall(effects, ok, nok) {
     return callData
   }
   function callData(code) {
-    let token;
-    if (code === null || code === 91 || size++ > 999) {
+    if (
+      size > 999 ||
+      (code === 93 && !data) ||
+      code === null ||
+      code === 91 ||
+      markdownLineEndingOrSpace(code)
+    ) {
       return nok(code)
     }
     if (code === 93) {
-      if (!data) {
+      effects.exit('chunkString');
+      const token = effects.exit('gfmFootnoteCallString');
+      if (!defined.includes(normalizeIdentifier(self.sliceSerialize(token)))) {
         return nok(code)
       }
-      effects.exit('chunkString');
-      token = effects.exit('gfmFootnoteCallString');
-      return defined.includes(normalizeIdentifier(self.sliceSerialize(token)))
-        ? end(code)
-        : nok(code)
+      effects.enter('gfmFootnoteCallLabelMarker');
+      effects.consume(code);
+      effects.exit('gfmFootnoteCallLabelMarker');
+      effects.exit('gfmFootnoteCall');
+      return ok
     }
-    effects.consume(code);
     if (!markdownLineEndingOrSpace(code)) {
       data = true;
     }
+    size++;
+    effects.consume(code);
     return code === 92 ? callEscape : callData
   }
   function callEscape(code) {
@@ -9942,13 +10080,6 @@ function tokenizeGfmFootnoteCall(effects, ok, nok) {
       return callData
     }
     return callData(code)
-  }
-  function end(code) {
-    effects.enter('gfmFootnoteCallLabelMarker');
-    effects.consume(code);
-    effects.exit('gfmFootnoteCallLabelMarker');
-    effects.exit('gfmFootnoteCall');
-    return ok
   }
 }
 function tokenizeDefinitionStart(effects, ok, nok) {
@@ -9964,28 +10095,32 @@ function tokenizeDefinitionStart(effects, ok, nok) {
     effects.enter('gfmFootnoteDefinitionLabelMarker');
     effects.consume(code);
     effects.exit('gfmFootnoteDefinitionLabelMarker');
-    return labelStart
+    return labelAtMarker
   }
-  function labelStart(code) {
+  function labelAtMarker(code) {
     if (code === 94) {
       effects.enter('gfmFootnoteDefinitionMarker');
       effects.consume(code);
       effects.exit('gfmFootnoteDefinitionMarker');
       effects.enter('gfmFootnoteDefinitionLabelString');
-      return atBreak
+      effects.enter('chunkString').contentType = 'string';
+      return labelInside
     }
     return nok(code)
   }
-  function atBreak(code) {
-    let token;
-    if (code === null || code === 91 || size > 999) {
+  function labelInside(code) {
+    if (
+      size > 999 ||
+      (code === 93 && !data) ||
+      code === null ||
+      code === 91 ||
+      markdownLineEndingOrSpace(code)
+    ) {
       return nok(code)
     }
     if (code === 93) {
-      if (!data) {
-        return nok(code)
-      }
-      token = effects.exit('gfmFootnoteDefinitionLabelString');
+      effects.exit('chunkString');
+      const token = effects.exit('gfmFootnoteDefinitionLabelString');
       identifier = normalizeIdentifier(self.sliceSerialize(token));
       effects.enter('gfmFootnoteDefinitionLabelMarker');
       effects.consume(code);
@@ -9993,55 +10128,38 @@ function tokenizeDefinitionStart(effects, ok, nok) {
       effects.exit('gfmFootnoteDefinitionLabel');
       return labelAfter
     }
-    if (markdownLineEnding(code)) {
-      effects.enter('lineEnding');
-      effects.consume(code);
-      effects.exit('lineEnding');
-      size++;
-      return atBreak
-    }
-    effects.enter('chunkString').contentType = 'string';
-    return label(code)
-  }
-  function label(code) {
-    if (
-      code === null ||
-      markdownLineEnding(code) ||
-      code === 91 ||
-      code === 93 ||
-      size > 999
-    ) {
-      effects.exit('chunkString');
-      return atBreak(code)
-    }
     if (!markdownLineEndingOrSpace(code)) {
       data = true;
     }
     size++;
     effects.consume(code);
-    return code === 92 ? labelEscape : label
+    return code === 92 ? labelEscape : labelInside
   }
   function labelEscape(code) {
     if (code === 91 || code === 92 || code === 93) {
       effects.consume(code);
       size++;
-      return label
+      return labelInside
     }
-    return label(code)
+    return labelInside(code)
   }
   function labelAfter(code) {
     if (code === 58) {
       effects.enter('definitionMarker');
       effects.consume(code);
       effects.exit('definitionMarker');
-      return factorySpace(effects, done, 'gfmFootnoteDefinitionWhitespace')
+      if (!defined.includes(identifier)) {
+        defined.push(identifier);
+      }
+      return factorySpace(
+        effects,
+        whitespaceAfter,
+        'gfmFootnoteDefinitionWhitespace'
+      )
     }
     return nok(code)
   }
-  function done(code) {
-    if (!defined.includes(identifier)) {
-      defined.push(identifier);
-    }
+  function whitespaceAfter(code) {
     return ok(code)
   }
 }
@@ -10069,8 +10187,9 @@ function tokenizeIndent(effects, ok, nok) {
   }
 }
 
-function gfmStrikethrough(options = {}) {
-  let single = options.singleTilde;
+function gfmStrikethrough(options) {
+  const options_ = options || {};
+  let single = options_.singleTilde;
   const tokenizer = {
     tokenize: tokenizeStrikethrough,
     resolveAll: resolveAllStrikethrough
@@ -10124,16 +10243,15 @@ function gfmStrikethrough(options = {}) {
               ['exit', events[open][1], context],
               ['enter', text, context]
             ];
-            splice(
-              nextEvents,
-              nextEvents.length,
-              0,
-              resolveAll(
-                context.parser.constructs.insideSpan.null,
-                events.slice(open + 1, index),
-                context
-              )
-            );
+            const insideSpan = context.parser.constructs.insideSpan.null;
+            if (insideSpan) {
+              splice(
+                nextEvents,
+                nextEvents.length,
+                0,
+                resolveAll(insideSpan, events.slice(open + 1, index), context)
+              );
+            }
             splice(nextEvents, nextEvents.length, 0, [
               ['exit', text, context],
               ['enter', events[index][1], context],
@@ -10188,444 +10306,516 @@ function gfmStrikethrough(options = {}) {
   }
 }
 
+class EditMap {
+  constructor() {
+    this.map = [];
+  }
+  add(index, remove, add) {
+    addImpl(this, index, remove, add);
+  }
+  consume(events) {
+    this.map.sort((a, b) => a[0] - b[0]);
+    if (this.map.length === 0) {
+      return
+    }
+    let index = this.map.length;
+    const vecs = [];
+    while (index > 0) {
+      index -= 1;
+      vecs.push(events.slice(this.map[index][0] + this.map[index][1]));
+      vecs.push(this.map[index][2]);
+      events.length = this.map[index][0];
+    }
+    vecs.push([...events]);
+    events.length = 0;
+    let slice = vecs.pop();
+    while (slice) {
+      events.push(...slice);
+      slice = vecs.pop();
+    }
+    this.map.length = 0;
+  }
+}
+function addImpl(editMap, at, remove, add) {
+  let index = 0;
+  if (remove === 0 && add.length === 0) {
+    return
+  }
+  while (index < editMap.map.length) {
+    if (editMap.map[index][0] === at) {
+      editMap.map[index][1] += remove;
+      editMap.map[index][2].push(...add);
+      return
+    }
+    index += 1;
+  }
+  editMap.map.push([at, remove, add]);
+}
+
+function gfmTableAlign(events, index) {
+  let inDelimiterRow = false;
+  const align = [];
+  while (index < events.length) {
+    const event = events[index];
+    if (inDelimiterRow) {
+      if (event[0] === 'enter') {
+        if (event[1].type === 'tableContent') {
+          align.push(
+            events[index + 1][1].type === 'tableDelimiterMarker'
+              ? 'left'
+              : 'none'
+          );
+        }
+      }
+      else if (event[1].type === 'tableContent') {
+        if (events[index - 1][1].type === 'tableDelimiterMarker') {
+          const alignIndex = align.length - 1;
+          align[alignIndex] = align[alignIndex] === 'left' ? 'center' : 'right';
+        }
+      }
+      else if (event[1].type === 'tableDelimiterRow') {
+        break
+      }
+    } else if (event[0] === 'enter' && event[1].type === 'tableDelimiterRow') {
+      inDelimiterRow = true;
+    }
+    index += 1;
+  }
+  return align
+}
+
 const gfmTable = {
   flow: {
     null: {
       tokenize: tokenizeTable,
-      resolve: resolveTable
+      resolveAll: resolveTable
     }
   }
 };
-const nextPrefixedOrBlank = {
-  tokenize: tokenizeNextPrefixedOrBlank,
-  partial: true
-};
+function tokenizeTable(effects, ok, nok) {
+  const self = this;
+  let size = 0;
+  let sizeB = 0;
+  let seen;
+  return start
+  function start(code) {
+    let index = self.events.length - 1;
+    while (index > -1) {
+      const type = self.events[index][1].type;
+      if (
+        type === 'lineEnding' ||
+        type === 'linePrefix'
+      )
+        index--;
+      else break
+    }
+    const tail = index > -1 ? self.events[index][1].type : null;
+    const next =
+      tail === 'tableHead' || tail === 'tableRow' ? bodyRowStart : headRowBefore;
+    if (next === bodyRowStart && self.parser.lazy[self.now().line]) {
+      return nok(code)
+    }
+    return next(code)
+  }
+  function headRowBefore(code) {
+    effects.enter('tableHead');
+    effects.enter('tableRow');
+    return headRowStart(code)
+  }
+  function headRowStart(code) {
+    if (code === 124) {
+      return headRowBreak(code)
+    }
+    seen = true;
+    sizeB += 1;
+    return headRowBreak(code)
+  }
+  function headRowBreak(code) {
+    if (code === null) {
+      return nok(code)
+    }
+    if (markdownLineEnding(code)) {
+      if (sizeB > 1) {
+        sizeB = 0;
+        self.interrupt = true;
+        effects.exit('tableRow');
+        effects.enter('lineEnding');
+        effects.consume(code);
+        effects.exit('lineEnding');
+        return headDelimiterStart
+      }
+      return nok(code)
+    }
+    if (markdownSpace(code)) {
+      return factorySpace(effects, headRowBreak, 'whitespace')(code)
+    }
+    sizeB += 1;
+    if (seen) {
+      seen = false;
+      size += 1;
+    }
+    if (code === 124) {
+      effects.enter('tableCellDivider');
+      effects.consume(code);
+      effects.exit('tableCellDivider');
+      seen = true;
+      return headRowBreak
+    }
+    effects.enter('data');
+    return headRowData(code)
+  }
+  function headRowData(code) {
+    if (code === null || code === 124 || markdownLineEndingOrSpace(code)) {
+      effects.exit('data');
+      return headRowBreak(code)
+    }
+    effects.consume(code);
+    return code === 92 ? headRowEscape : headRowData
+  }
+  function headRowEscape(code) {
+    if (code === 92 || code === 124) {
+      effects.consume(code);
+      return headRowData
+    }
+    return headRowData(code)
+  }
+  function headDelimiterStart(code) {
+    self.interrupt = false;
+    if (self.parser.lazy[self.now().line]) {
+      return nok(code)
+    }
+    effects.enter('tableDelimiterRow');
+    seen = false;
+    if (markdownSpace(code)) {
+      return factorySpace(
+        effects,
+        headDelimiterBefore,
+        'linePrefix',
+        self.parser.constructs.disable.null.includes('codeIndented')
+          ? undefined
+          : 4
+      )(code)
+    }
+    return headDelimiterBefore(code)
+  }
+  function headDelimiterBefore(code) {
+    if (code === 45 || code === 58) {
+      return headDelimiterValueBefore(code)
+    }
+    if (code === 124) {
+      seen = true;
+      effects.enter('tableCellDivider');
+      effects.consume(code);
+      effects.exit('tableCellDivider');
+      return headDelimiterCellBefore
+    }
+    return headDelimiterNok(code)
+  }
+  function headDelimiterCellBefore(code) {
+    if (markdownSpace(code)) {
+      return factorySpace(effects, headDelimiterValueBefore, 'whitespace')(code)
+    }
+    return headDelimiterValueBefore(code)
+  }
+  function headDelimiterValueBefore(code) {
+    if (code === 58) {
+      sizeB += 1;
+      seen = true;
+      effects.enter('tableDelimiterMarker');
+      effects.consume(code);
+      effects.exit('tableDelimiterMarker');
+      return headDelimiterLeftAlignmentAfter
+    }
+    if (code === 45) {
+      sizeB += 1;
+      return headDelimiterLeftAlignmentAfter(code)
+    }
+    if (code === null || markdownLineEnding(code)) {
+      return headDelimiterCellAfter(code)
+    }
+    return headDelimiterNok(code)
+  }
+  function headDelimiterLeftAlignmentAfter(code) {
+    if (code === 45) {
+      effects.enter('tableDelimiterFiller');
+      return headDelimiterFiller(code)
+    }
+    return headDelimiterNok(code)
+  }
+  function headDelimiterFiller(code) {
+    if (code === 45) {
+      effects.consume(code);
+      return headDelimiterFiller
+    }
+    if (code === 58) {
+      seen = true;
+      effects.exit('tableDelimiterFiller');
+      effects.enter('tableDelimiterMarker');
+      effects.consume(code);
+      effects.exit('tableDelimiterMarker');
+      return headDelimiterRightAlignmentAfter
+    }
+    effects.exit('tableDelimiterFiller');
+    return headDelimiterRightAlignmentAfter(code)
+  }
+  function headDelimiterRightAlignmentAfter(code) {
+    if (markdownSpace(code)) {
+      return factorySpace(effects, headDelimiterCellAfter, 'whitespace')(code)
+    }
+    return headDelimiterCellAfter(code)
+  }
+  function headDelimiterCellAfter(code) {
+    if (code === 124) {
+      return headDelimiterBefore(code)
+    }
+    if (code === null || markdownLineEnding(code)) {
+      if (!seen || size !== sizeB) {
+        return headDelimiterNok(code)
+      }
+      effects.exit('tableDelimiterRow');
+      effects.exit('tableHead');
+      return ok(code)
+    }
+    return headDelimiterNok(code)
+  }
+  function headDelimiterNok(code) {
+    return nok(code)
+  }
+  function bodyRowStart(code) {
+    effects.enter('tableRow');
+    return bodyRowBreak(code)
+  }
+  function bodyRowBreak(code) {
+    if (code === 124) {
+      effects.enter('tableCellDivider');
+      effects.consume(code);
+      effects.exit('tableCellDivider');
+      return bodyRowBreak
+    }
+    if (code === null || markdownLineEnding(code)) {
+      effects.exit('tableRow');
+      return ok(code)
+    }
+    if (markdownSpace(code)) {
+      return factorySpace(effects, bodyRowBreak, 'whitespace')(code)
+    }
+    effects.enter('data');
+    return bodyRowData(code)
+  }
+  function bodyRowData(code) {
+    if (code === null || code === 124 || markdownLineEndingOrSpace(code)) {
+      effects.exit('data');
+      return bodyRowBreak(code)
+    }
+    effects.consume(code);
+    return code === 92 ? bodyRowEscape : bodyRowData
+  }
+  function bodyRowEscape(code) {
+    if (code === 92 || code === 124) {
+      effects.consume(code);
+      return bodyRowData
+    }
+    return bodyRowData(code)
+  }
+}
 function resolveTable(events, context) {
   let index = -1;
-  let inHead;
-  let inDelimiterRow;
-  let inRow;
-  let contentStart;
-  let contentEnd;
-  let cellStart;
-  let seenCellInRow;
+  let inFirstCellAwaitingPipe = true;
+  let rowKind = 0;
+  let lastCell = [0, 0, 0, 0];
+  let cell = [0, 0, 0, 0];
+  let afterHeadAwaitingFirstBodyRow = false;
+  let lastTableEnd = 0;
+  let currentTable;
+  let currentBody;
+  let currentCell;
+  const map = new EditMap();
   while (++index < events.length) {
-    const token = events[index][1];
-    if (inRow) {
-      if (token.type === 'temporaryTableCellContent') {
-        contentStart = contentStart || index;
-        contentEnd = index;
-      }
-      if (
-        (token.type === 'tableCellDivider' || token.type === 'tableRow') &&
-        contentEnd
+    const event = events[index];
+    const token = event[1];
+    if (event[0] === 'enter') {
+      if (token.type === 'tableHead') {
+        afterHeadAwaitingFirstBodyRow = false;
+        if (lastTableEnd !== 0) {
+          flushTableEnd(map, context, lastTableEnd, currentTable, currentBody);
+          currentBody = undefined;
+          lastTableEnd = 0;
+        }
+        currentTable = {
+          type: 'table',
+          start: Object.assign({}, token.start),
+          end: Object.assign({}, token.end)
+        };
+        map.add(index, 0, [['enter', currentTable, context]]);
+      } else if (
+        token.type === 'tableRow' ||
+        token.type === 'tableDelimiterRow'
       ) {
-        const content = {
-          type: 'tableContent',
-          start: events[contentStart][1].start,
-          end: events[contentEnd][1].end
-        };
-        const text = {
-          type: 'chunkText',
-          start: content.start,
-          end: content.end,
-          contentType: 'text'
-        };
-        events.splice(
-          contentStart,
-          contentEnd - contentStart + 1,
-          ['enter', content, context],
-          ['enter', text, context],
-          ['exit', text, context],
-          ['exit', content, context]
-        );
-        index -= contentEnd - contentStart - 3;
-        contentStart = undefined;
-        contentEnd = undefined;
+        inFirstCellAwaitingPipe = true;
+        currentCell = undefined;
+        lastCell = [0, 0, 0, 0];
+        cell = [0, index + 1, 0, 0];
+        if (afterHeadAwaitingFirstBodyRow) {
+          afterHeadAwaitingFirstBodyRow = false;
+          currentBody = {
+            type: 'tableBody',
+            start: Object.assign({}, token.start),
+            end: Object.assign({}, token.end)
+          };
+          map.add(index, 0, [['enter', currentBody, context]]);
+        }
+        rowKind = token.type === 'tableDelimiterRow' ? 2 : currentBody ? 3 : 1;
+      }
+      else if (
+        rowKind &&
+        (token.type === 'data' ||
+          token.type === 'tableDelimiterMarker' ||
+          token.type === 'tableDelimiterFiller')
+      ) {
+        inFirstCellAwaitingPipe = false;
+        if (cell[2] === 0) {
+          if (lastCell[1] !== 0) {
+            cell[0] = cell[1];
+            currentCell = flushCell(
+              map,
+              context,
+              lastCell,
+              rowKind,
+              undefined,
+              currentCell
+            );
+            lastCell = [0, 0, 0, 0];
+          }
+          cell[2] = index;
+        }
+      } else if (token.type === 'tableCellDivider') {
+        if (inFirstCellAwaitingPipe) {
+          inFirstCellAwaitingPipe = false;
+        } else {
+          if (lastCell[1] !== 0) {
+            cell[0] = cell[1];
+            currentCell = flushCell(
+              map,
+              context,
+              lastCell,
+              rowKind,
+              undefined,
+              currentCell
+            );
+          }
+          lastCell = cell;
+          cell = [lastCell[1], index, 0, 0];
+        }
       }
     }
-    if (
-      events[index][0] === 'exit' &&
-      cellStart !== undefined &&
-      cellStart + (seenCellInRow ? 0 : 1) < index &&
-      (token.type === 'tableCellDivider' ||
-        (token.type === 'tableRow' &&
-          (cellStart + 3 < index ||
-            events[cellStart][1].type !== 'whitespace')))
+    else if (token.type === 'tableHead') {
+      afterHeadAwaitingFirstBodyRow = true;
+      lastTableEnd = index;
+    } else if (
+      token.type === 'tableRow' ||
+      token.type === 'tableDelimiterRow'
     ) {
-      const cell = {
-        type: inDelimiterRow
-          ? 'tableDelimiter'
-          : inHead
-          ? 'tableHeader'
-          : 'tableData',
-        start: events[cellStart][1].start,
-        end: events[index][1].end
-      };
-      events.splice(index + (token.type === 'tableCellDivider' ? 1 : 0), 0, [
-        'exit',
-        cell,
-        context
-      ]);
-      events.splice(cellStart, 0, ['enter', cell, context]);
-      index += 2;
-      cellStart = index + 1;
-      seenCellInRow = true;
-    }
-    if (token.type === 'tableRow') {
-      inRow = events[index][0] === 'enter';
-      if (inRow) {
-        cellStart = index + 1;
-        seenCellInRow = false;
+      lastTableEnd = index;
+      if (lastCell[1] !== 0) {
+        cell[0] = cell[1];
+        currentCell = flushCell(
+          map,
+          context,
+          lastCell,
+          rowKind,
+          index,
+          currentCell
+        );
+      } else if (cell[1] !== 0) {
+        currentCell = flushCell(map, context, cell, rowKind, index, currentCell);
       }
+      rowKind = 0;
+    } else if (
+      rowKind &&
+      (token.type === 'data' ||
+        token.type === 'tableDelimiterMarker' ||
+        token.type === 'tableDelimiterFiller')
+    ) {
+      cell[3] = index;
     }
-    if (token.type === 'tableDelimiterRow') {
-      inDelimiterRow = events[index][0] === 'enter';
-      if (inDelimiterRow) {
-        cellStart = index + 1;
-        seenCellInRow = false;
-      }
-    }
-    if (token.type === 'tableHead') {
-      inHead = events[index][0] === 'enter';
+  }
+  if (lastTableEnd !== 0) {
+    flushTableEnd(map, context, lastTableEnd, currentTable, currentBody);
+  }
+  map.consume(context.events);
+  index = -1;
+  while (++index < context.events.length) {
+    const event = context.events[index];
+    if (event[0] === 'enter' && event[1].type === 'table') {
+      event[1]._align = gfmTableAlign(context.events, index);
     }
   }
   return events
 }
-function tokenizeTable(effects, ok, nok) {
-  const self = this;
-  const align = [];
-  let tableHeaderCount = 0;
-  let seenDelimiter;
-  let hasDash;
-  return start
-  function start(code) {
-    effects.enter('table')._align = align;
-    effects.enter('tableHead');
-    effects.enter('tableRow');
-    if (code === 124) {
-      return cellDividerHead(code)
-    }
-    tableHeaderCount++;
-    effects.enter('temporaryTableCellContent');
-    return inCellContentHead(code)
+function flushCell(map, context, range, rowKind, rowEnd, previousCell) {
+  const groupName =
+    rowKind === 1
+      ? 'tableHeader'
+      : rowKind === 2
+      ? 'tableDelimiter'
+      : 'tableData';
+  const valueName = 'tableContent';
+  if (range[0] !== 0) {
+    previousCell.end = Object.assign({}, getPoint(context.events, range[0]));
+    map.add(range[0], 0, [['exit', previousCell, context]]);
   }
-  function cellDividerHead(code) {
-    effects.enter('tableCellDivider');
-    effects.consume(code);
-    effects.exit('tableCellDivider');
-    seenDelimiter = true;
-    return cellBreakHead
-  }
-  function cellBreakHead(code) {
-    if (code === null || markdownLineEnding(code)) {
-      return atRowEndHead(code)
-    }
-    if (markdownSpace(code)) {
-      effects.enter('whitespace');
-      effects.consume(code);
-      return inWhitespaceHead
-    }
-    if (seenDelimiter) {
-      seenDelimiter = undefined;
-      tableHeaderCount++;
-    }
-    if (code === 124) {
-      return cellDividerHead(code)
-    }
-    effects.enter('temporaryTableCellContent');
-    return inCellContentHead(code)
-  }
-  function inWhitespaceHead(code) {
-    if (markdownSpace(code)) {
-      effects.consume(code);
-      return inWhitespaceHead
-    }
-    effects.exit('whitespace');
-    return cellBreakHead(code)
-  }
-  function inCellContentHead(code) {
-    if (code === null || code === 124 || markdownLineEndingOrSpace(code)) {
-      effects.exit('temporaryTableCellContent');
-      return cellBreakHead(code)
-    }
-    effects.consume(code);
-    return code === 92 ? inCellContentEscapeHead : inCellContentHead
-  }
-  function inCellContentEscapeHead(code) {
-    if (code === 92 || code === 124) {
-      effects.consume(code);
-      return inCellContentHead
-    }
-    return inCellContentHead(code)
-  }
-  function atRowEndHead(code) {
-    if (code === null) {
-      return nok(code)
-    }
-    effects.exit('tableRow');
-    effects.exit('tableHead');
-    const originalInterrupt = self.interrupt;
-    self.interrupt = true;
-    return effects.attempt(
-      {
-        tokenize: tokenizeRowEnd,
-        partial: true
-      },
-      function (code) {
-        self.interrupt = originalInterrupt;
-        effects.enter('tableDelimiterRow');
-        return atDelimiterRowBreak(code)
-      },
-      function (code) {
-        self.interrupt = originalInterrupt;
-        return nok(code)
+  const now = getPoint(context.events, range[1]);
+  previousCell = {
+    type: groupName,
+    start: Object.assign({}, now),
+    end: Object.assign({}, now)
+  };
+  map.add(range[1], 0, [['enter', previousCell, context]]);
+  if (range[2] !== 0) {
+    const relatedStart = getPoint(context.events, range[2]);
+    const relatedEnd = getPoint(context.events, range[3]);
+    const valueToken = {
+      type: valueName,
+      start: Object.assign({}, relatedStart),
+      end: Object.assign({}, relatedEnd)
+    };
+    map.add(range[2], 0, [['enter', valueToken, context]]);
+    if (rowKind !== 2) {
+      const start = context.events[range[2]];
+      const end = context.events[range[3]];
+      start[1].end = Object.assign({}, end[1].end);
+      start[1].type = 'chunkText';
+      start[1].contentType = 'text';
+      if (range[3] > range[2] + 1) {
+        const a = range[2] + 1;
+        const b = range[3] - range[2] - 1;
+        map.add(a, b, []);
       }
-    )(code)
+    }
+    map.add(range[3] + 1, 0, [['exit', valueToken, context]]);
   }
-  function atDelimiterRowBreak(code) {
-    if (code === null || markdownLineEnding(code)) {
-      return rowEndDelimiter(code)
-    }
-    if (markdownSpace(code)) {
-      effects.enter('whitespace');
-      effects.consume(code);
-      return inWhitespaceDelimiter
-    }
-    if (code === 45) {
-      effects.enter('tableDelimiterFiller');
-      effects.consume(code);
-      hasDash = true;
-      align.push('none');
-      return inFillerDelimiter
-    }
-    if (code === 58) {
-      effects.enter('tableDelimiterAlignment');
-      effects.consume(code);
-      effects.exit('tableDelimiterAlignment');
-      align.push('left');
-      return afterLeftAlignment
-    }
-    if (code === 124) {
-      effects.enter('tableCellDivider');
-      effects.consume(code);
-      effects.exit('tableCellDivider');
-      return atDelimiterRowBreak
-    }
-    return nok(code)
+  if (rowEnd !== undefined) {
+    previousCell.end = Object.assign({}, getPoint(context.events, rowEnd));
+    map.add(rowEnd, 0, [['exit', previousCell, context]]);
+    previousCell = undefined;
   }
-  function inWhitespaceDelimiter(code) {
-    if (markdownSpace(code)) {
-      effects.consume(code);
-      return inWhitespaceDelimiter
-    }
-    effects.exit('whitespace');
-    return atDelimiterRowBreak(code)
-  }
-  function inFillerDelimiter(code) {
-    if (code === 45) {
-      effects.consume(code);
-      return inFillerDelimiter
-    }
-    effects.exit('tableDelimiterFiller');
-    if (code === 58) {
-      effects.enter('tableDelimiterAlignment');
-      effects.consume(code);
-      effects.exit('tableDelimiterAlignment');
-      align[align.length - 1] =
-        align[align.length - 1] === 'left' ? 'center' : 'right';
-      return afterRightAlignment
-    }
-    return atDelimiterRowBreak(code)
-  }
-  function afterLeftAlignment(code) {
-    if (code === 45) {
-      effects.enter('tableDelimiterFiller');
-      effects.consume(code);
-      hasDash = true;
-      return inFillerDelimiter
-    }
-    return nok(code)
-  }
-  function afterRightAlignment(code) {
-    if (code === null || markdownLineEnding(code)) {
-      return rowEndDelimiter(code)
-    }
-    if (markdownSpace(code)) {
-      effects.enter('whitespace');
-      effects.consume(code);
-      return inWhitespaceDelimiter
-    }
-    if (code === 124) {
-      effects.enter('tableCellDivider');
-      effects.consume(code);
-      effects.exit('tableCellDivider');
-      return atDelimiterRowBreak
-    }
-    return nok(code)
-  }
-  function rowEndDelimiter(code) {
-    effects.exit('tableDelimiterRow');
-    if (!hasDash || tableHeaderCount !== align.length) {
-      return nok(code)
-    }
-    if (code === null) {
-      return tableClose(code)
-    }
-    return effects.check(
-      nextPrefixedOrBlank,
-      tableClose,
-      effects.attempt(
-        {
-          tokenize: tokenizeRowEnd,
-          partial: true
-        },
-        factorySpace(effects, bodyStart, 'linePrefix', 4),
-        tableClose
-      )
-    )(code)
-  }
-  function tableClose(code) {
-    effects.exit('table');
-    return ok(code)
-  }
-  function bodyStart(code) {
-    effects.enter('tableBody');
-    return rowStartBody(code)
-  }
-  function rowStartBody(code) {
-    effects.enter('tableRow');
-    if (code === 124) {
-      return cellDividerBody(code)
-    }
-    effects.enter('temporaryTableCellContent');
-    return inCellContentBody(code)
-  }
-  function cellDividerBody(code) {
-    effects.enter('tableCellDivider');
-    effects.consume(code);
-    effects.exit('tableCellDivider');
-    return cellBreakBody
-  }
-  function cellBreakBody(code) {
-    if (code === null || markdownLineEnding(code)) {
-      return atRowEndBody(code)
-    }
-    if (markdownSpace(code)) {
-      effects.enter('whitespace');
-      effects.consume(code);
-      return inWhitespaceBody
-    }
-    if (code === 124) {
-      return cellDividerBody(code)
-    }
-    effects.enter('temporaryTableCellContent');
-    return inCellContentBody(code)
-  }
-  function inWhitespaceBody(code) {
-    if (markdownSpace(code)) {
-      effects.consume(code);
-      return inWhitespaceBody
-    }
-    effects.exit('whitespace');
-    return cellBreakBody(code)
-  }
-  function inCellContentBody(code) {
-    if (code === null || code === 124 || markdownLineEndingOrSpace(code)) {
-      effects.exit('temporaryTableCellContent');
-      return cellBreakBody(code)
-    }
-    effects.consume(code);
-    return code === 92 ? inCellContentEscapeBody : inCellContentBody
-  }
-  function inCellContentEscapeBody(code) {
-    if (code === 92 || code === 124) {
-      effects.consume(code);
-      return inCellContentBody
-    }
-    return inCellContentBody(code)
-  }
-  function atRowEndBody(code) {
-    effects.exit('tableRow');
-    if (code === null) {
-      return tableBodyClose(code)
-    }
-    return effects.check(
-      nextPrefixedOrBlank,
-      tableBodyClose,
-      effects.attempt(
-        {
-          tokenize: tokenizeRowEnd,
-          partial: true
-        },
-        factorySpace(effects, rowStartBody, 'linePrefix', 4),
-        tableBodyClose
-      )
-    )(code)
-  }
-  function tableBodyClose(code) {
-    effects.exit('tableBody');
-    return tableClose(code)
-  }
-  function tokenizeRowEnd(effects, ok, nok) {
-    return start
-    function start(code) {
-      effects.enter('lineEnding');
-      effects.consume(code);
-      effects.exit('lineEnding');
-      return factorySpace(effects, prefixed, 'linePrefix')
-    }
-    function prefixed(code) {
-      if (
-        self.parser.lazy[self.now().line] ||
-        code === null ||
-        markdownLineEnding(code)
-      ) {
-        return nok(code)
-      }
-      const tail = self.events[self.events.length - 1];
-      if (
-        !self.parser.constructs.disable.null.includes('codeIndented') &&
-        tail &&
-        tail[1].type === 'linePrefix' &&
-        tail[2].sliceSerialize(tail[1], true).length >= 4
-      ) {
-        return nok(code)
-      }
-      self._gfmTableDynamicInterruptHack = true;
-      return effects.check(
-        self.parser.constructs.flow,
-        function (code) {
-          self._gfmTableDynamicInterruptHack = false;
-          return nok(code)
-        },
-        function (code) {
-          self._gfmTableDynamicInterruptHack = false;
-          return ok(code)
-        }
-      )(code)
-    }
-  }
+  return previousCell
 }
-function tokenizeNextPrefixedOrBlank(effects, ok, nok) {
-  let size = 0;
-  return start
-  function start(code) {
-    effects.enter('check');
-    effects.consume(code);
-    return whitespace
+function flushTableEnd(map, context, index, table, tableBody) {
+  const exits = [];
+  const related = getPoint(context.events, index);
+  if (tableBody) {
+    tableBody.end = Object.assign({}, related);
+    exits.push(['exit', tableBody, context]);
   }
-  function whitespace(code) {
-    if (code === -1 || code === 32) {
-      effects.consume(code);
-      size++;
-      return size === 4 ? ok : whitespace
-    }
-    if (code === null || markdownLineEndingOrSpace(code)) {
-      return ok(code)
-    }
-    return nok(code)
-  }
+  table.end = Object.assign({}, related);
+  exits.push(['exit', table, context]);
+  map.add(index + 1, 0, exits);
+}
+function getPoint(events, index) {
+  const event = events[index];
+  const side = event[0] === 'enter' ? 'start' : 'end';
+  return event[1][side]
 }
 
 const tasklistCheck = {
@@ -10673,29 +10863,30 @@ function tokenizeTasklistCheck(effects, ok, nok) {
       effects.consume(code);
       effects.exit('taskListCheckMarker');
       effects.exit('taskListCheck');
+      return after
+    }
+    return nok(code)
+  }
+  function after(code) {
+    if (markdownLineEnding(code)) {
+      return ok(code)
+    }
+    if (markdownSpace(code)) {
       return effects.check(
         {
           tokenize: spaceThenNonSpace
         },
         ok,
         nok
-      )
+      )(code)
     }
     return nok(code)
   }
 }
 function spaceThenNonSpace(effects, ok, nok) {
-  const self = this;
   return factorySpace(effects, after, 'whitespace')
   function after(code) {
-    const tail = self.events[self.events.length - 1];
-    return (
-      ((tail && tail[1].type === 'whitespace') ||
-        markdownLineEnding(code)) &&
-        code !== null
-        ? ok(code)
-        : nok(code)
-    )
+    return code === null ? nok(code) : ok(code)
   }
 }
 
@@ -11966,20 +12157,20 @@ function parseParameters(value) {
   const parameters = {};
   return value
     .replace(
-      /\s+([-\w]+)(?:=(?:"((?:\\[\s\S]|[^"])+)"|'((?:\\[\s\S]|[^'])+)'|((?:\\[\s\S]|[^"'\s])+)))?/gi,
+      /\s+([-\w]+)(?:=(?:"((?:\\[\s\S]|[^"])*)"|'((?:\\[\s\S]|[^'])*)'|((?:\\[\s\S]|[^"'\s])+)))?/gi,
       replacer
     )
     .replace(/\s+/g, '')
     ? null
     : parameters
   function replacer(_, $1, $2, $3, $4) {
-    let value = $2 || $3 || $4 || '';
+    let value = $2 === undefined ? ($3 === undefined ? $4 : $3) : $2;
     const number = Number(value);
-    if (value === 'true' || value === '') {
+    if (value === 'true' || value === undefined) {
       value = true;
     } else if (value === 'false') {
       value = false;
-    } else if (!Number.isNaN(number)) {
+    } else if (value.trim() && !Number.isNaN(number)) {
       value = number;
     }
     parameters[$1] = value;
@@ -12009,7 +12200,6 @@ function lintMessageControl() {
   return remarkMessageControl({name: 'lint', source: 'remark-lint'})
 }
 
-const primitives = new Set(['string', 'number', 'boolean']);
 function lintRule(meta, rule) {
   const id = typeof meta === 'string' ? meta : meta.origin;
   const url = typeof meta === 'string' ? undefined : meta.url;
@@ -12018,8 +12208,8 @@ function lintRule(meta, rule) {
   const ruleId = parts[1];
   Object.defineProperty(plugin, 'name', {value: id});
   return plugin
-  function plugin(raw) {
-    const [severity, options] = coerce$1(ruleId, raw);
+  function plugin(config) {
+    const [severity, options] = coerce$1(ruleId, config);
     if (!severity) return
     const fatal = severity === 2;
     return (tree, file, next) => {
@@ -12039,47 +12229,37 @@ function lintRule(meta, rule) {
     }
   }
 }
-function coerce$1(name, value) {
-  let result;
-  if (typeof value === 'boolean') {
-    result = [value];
-  } else if (value === null || value === undefined) {
-    result = [1];
-  } else if (
-    Array.isArray(value) &&
-    primitives.has(typeof value[0])
-  ) {
-    result = [...value];
-  } else {
-    result = [1, value];
-  }
-  let level = result[0];
-  if (typeof level === 'boolean') {
-    level = level ? 1 : 0;
-  } else if (typeof level === 'string') {
-    if (level === 'off') {
-      level = 0;
-    } else if (level === 'on' || level === 'warn') {
-      level = 1;
-    } else if (level === 'error') {
-      level = 2;
-    } else {
-      level = 1;
-      result = [level, result];
+function coerce$1(name, config) {
+  if (!Array.isArray(config)) return [1, config]
+  const [severity, ...options] = config;
+  switch (severity) {
+    case false:
+    case 'off':
+    case 0: {
+      return [0, ...options]
+    }
+    case true:
+    case 'on':
+    case 'warn':
+    case 1: {
+      return [1, ...options]
+    }
+    case 'error':
+    case 2: {
+      return [2, ...options]
+    }
+    default: {
+      if (typeof severity !== 'number') return [1, config]
+      throw new Error(
+        'Incorrect severity `' +
+          severity +
+          '` for `' +
+          name +
+          '`, ' +
+          'expected 0, 1, or 2'
+      )
     }
   }
-  if (typeof level !== 'number' || level < 0 || level > 2) {
-    throw new Error(
-      'Incorrect severity `' +
-        level +
-        '` for `' +
-        name +
-        '`, ' +
-        'expected 0, 1, or 2'
-    )
-  }
-  result[0] = level;
-  return result
 }
 
 /**
@@ -12160,11 +12340,7 @@ function commonjsRequire(path) {
 	throw new Error('Could not dynamically require "' + path + '". Please configure the dynamicRequireTargets or/and ignoreDynamicRequires option of @rollup/plugin-commonjs appropriately for this require call to work.');
 }
 
-var pluralizeExports = {};
-var pluralize = {
-  get exports(){ return pluralizeExports; },
-  set exports(v){ pluralizeExports = v; },
-};
+var pluralize = {exports: {}};
 
 (function (module, exports) {
 	(function (root, pluralize) {
@@ -12490,7 +12666,8 @@ var pluralize = {
 	  return pluralize;
 	});
 } (pluralize));
-var plural = pluralizeExports;
+var pluralizeExports = pluralize.exports;
+var plural = getDefaultExportFromCjs(pluralizeExports);
 
 /**
  * ## When should I use this?
@@ -12695,7 +12872,7 @@ function generated(node) {
  *   ····item.
  *
  * @example
- *   {"name": "ok.md", "setting": "mixed"}
+ *   {"name": "ok.md", "config": "mixed"}
  *
  *   *·List item.
  *
@@ -12712,7 +12889,7 @@ function generated(node) {
  *   ····item.
  *
  * @example
- *   {"name": "ok.md", "setting": "space"}
+ *   {"name": "ok.md", "config": "space"}
  *
  *   *·List item.
  *
@@ -12729,39 +12906,39 @@ function generated(node) {
  *   ··item.
  *
  * @example
- *   {"name": "not-ok.md", "setting": "space", "label": "input"}
+ *   {"name": "not-ok.md", "config": "space", "label": "input"}
  *
  *   *···List
  *   ····item.
  *
  * @example
- *   {"name": "not-ok.md", "setting": "space", "label": "output"}
+ *   {"name": "not-ok.md", "config": "space", "label": "output"}
  *
  *    1:5: Incorrect list-item indent: remove 2 spaces
  *
  * @example
- *   {"name": "not-ok.md", "setting": "tab-size", "label": "input"}
+ *   {"name": "not-ok.md", "config": "tab-size", "label": "input"}
  *
  *   *·List
  *   ··item.
  *
  * @example
- *   {"name": "not-ok.md", "setting": "tab-size", "label": "output"}
+ *   {"name": "not-ok.md", "config": "tab-size", "label": "output"}
  *
  *    1:3: Incorrect list-item indent: add 2 spaces
  *
  * @example
- *   {"name": "not-ok.md", "setting": "mixed", "label": "input"}
+ *   {"name": "not-ok.md", "config": "mixed", "label": "input"}
  *
  *   *···List item.
  *
  * @example
- *   {"name": "not-ok.md", "setting": "mixed", "label": "output"}
+ *   {"name": "not-ok.md", "config": "mixed", "label": "output"}
  *
  *    1:5: Incorrect list-item indent: remove 2 spaces
  *
  * @example
- *   {"name": "not-ok.md", "setting": "💩", "label": "output", "positionless": true}
+ *   {"name": "not-ok.md", "config": "💩", "label": "output", "positionless": true}
  *
  *    1:1: Incorrect list-item indent style `💩`: use either `'tab-size'`, `'space'`, or `'mixed'`
  */
@@ -13025,14 +13202,14 @@ var remarkLintNoLiteralUrls$1 = remarkLintNoLiteralUrls;
  *   * Foo
  *
  * @example
- *   {"name": "ok.md", "setting": "."}
+ *   {"name": "ok.md", "config": "."}
  *
  *   1.  Foo
  *
  *   2.  Bar
  *
  * @example
- *   {"name": "ok.md", "setting": ")"}
+ *   {"name": "ok.md", "config": ")"}
  *
  *   1)  Foo
  *
@@ -13051,7 +13228,7 @@ var remarkLintNoLiteralUrls$1 = remarkLintNoLiteralUrls;
  *   3:1-3:8: Marker style should be `.`
  *
  * @example
- *   {"name": "not-ok.md", "label": "output", "setting": "💩", "positionless": true}
+ *   {"name": "not-ok.md", "label": "output", "config": "💩", "positionless": true}
  *
  *   1:1: Incorrect ordered list item marker style `💩`: use either `'.'` or `')'`
  */
@@ -13546,7 +13723,7 @@ var remarkLintNoShortcutReferenceLink$1 = remarkLintNoShortcutReferenceLink;
  *         default: `[]`)
  *         — text or regex that you want to be allowed between `[` and `]`
  *         even though it’s undefined; regex is provided via a `RegExp` object
- *         or via a `{ source: string }` object where `source` is the source
+ *         or via a `{source: string}` object where `source` is the source
  *         text of a case-insensitive regex
  *
  * ## Recommendation
@@ -13954,7 +14131,7 @@ var remarkPresetLintRecommended$1 = remarkPresetLintRecommended;
  * @copyright 2015 Titus Wormer
  * @license MIT
  * @example
- *   {"name": "ok.md", "setting": 4}
+ *   {"name": "ok.md", "config": 4}
  *
  *   >   Hello
  *
@@ -13962,7 +14139,7 @@ var remarkPresetLintRecommended$1 = remarkPresetLintRecommended;
  *
  *   >   World
  * @example
- *   {"name": "ok.md", "setting": 2}
+ *   {"name": "ok.md", "config": 2}
  *
  *   > Hello
  *
@@ -14063,19 +14240,19 @@ function check$1(node) {
  * @copyright 2015 Titus Wormer
  * @license MIT
  * @example
- *   {"name": "ok.md", "setting": {"checked": "x"}, "gfm": true}
+ *   {"name": "ok.md", "config": {"checked": "x"}, "gfm": true}
  *
  *   - [x] List item
  *   - [x] List item
  *
  * @example
- *   {"name": "ok.md", "setting": {"checked": "X"}, "gfm": true}
+ *   {"name": "ok.md", "config": {"checked": "X"}, "gfm": true}
  *
  *   - [X] List item
  *   - [X] List item
  *
  * @example
- *   {"name": "ok.md", "setting": {"unchecked": " "}, "gfm": true}
+ *   {"name": "ok.md", "config": {"unchecked": " "}, "gfm": true}
  *
  *   - [ ] List item
  *   - [ ] List item
@@ -14083,7 +14260,7 @@ function check$1(node) {
  *   - [ ]
  *
  * @example
- *   {"name": "ok.md", "setting": {"unchecked": "\t"}, "gfm": true}
+ *   {"name": "ok.md", "config": {"unchecked": "\t"}, "gfm": true}
  *
  *   - [»] List item
  *   - [»] List item
@@ -14103,12 +14280,12 @@ function check$1(node) {
  *   4:5: Unchecked checkboxes should use ` ` as a marker
  *
  * @example
- *   {"setting": {"unchecked": "💩"}, "name": "not-ok.md", "label": "output", "positionless": true, "gfm": true}
+ *   {"config": {"unchecked": "💩"}, "name": "not-ok.md", "label": "output", "positionless": true, "gfm": true}
  *
  *   1:1: Incorrect unchecked checkbox marker `💩`: use either `'\t'`, or `' '`
  *
  * @example
- *   {"setting": {"checked": "💩"}, "name": "not-ok.md", "label": "output", "positionless": true, "gfm": true}
+ *   {"config": {"checked": "💩"}, "name": "not-ok.md", "label": "output", "positionless": true, "gfm": true}
  *
  *   1:1: Incorrect checked checkbox marker `💩`: use either `'x'`, or `'X'`
  */
@@ -14275,32 +14452,57 @@ const remarkLintCheckboxContentIndent = lintRule(
 var remarkLintCheckboxContentIndent$1 = remarkLintCheckboxContentIndent;
 
 /**
+ * ## When should I use this?
+ *
+ * You can use this package to check that code blocks are consistent.
+ *
+ * ## API
+ *
+ * The following options (default: `'consistent'`) are accepted:
+ *
+ * *   `'fenced'`
+ *     — prefer fenced code blocks:
+ *     ````markdown
+ *     ```js
+ *     code()
+ *     ```
+ *     ````
+ * *   `'indented'`
+ *     — prefer indented code blocks:
+ *     ```markdown
+ *         code()
+ *     ```
+ * *   `'consistent'`
+ *     — detect the first used style and warn when further code blocks differ
+ *
+ * ## Recommendation
+ *
+ * Indentation in markdown is complex, especially because lists and indented
+ * code can interfere in unexpected ways.
+ * Fenced code has more features than indented code: importantly, specifying a
+ * programming language.
+ * Since CommonMark took the idea of fenced code from GFM, fenced code became
+ * widely supported.
+ * Due to this, it’s recommended to configure this rule with `'fenced'`.
+ *
+ * ## Fix
+ *
+ * [`remark-stringify`](https://github.com/remarkjs/remark/tree/main/packages/remark-stringify)
+ * formats code blocks as fenced code when they have a language flag and as
+ * indented code otherwise.
+ * Pass
+ * [`fences: true`](https://github.com/remarkjs/remark/tree/main/packages/remark-stringify#optionsfences)
+ * to always use fenced code.
+ *
+ * @module code-block-style
+ * @summary
+ *   remark-lint rule to warn when code blocks violate a given style.
  * @author Titus Wormer
  * @copyright 2015 Titus Wormer
  * @license MIT
- * @module code-block-style
- * @fileoverview
- *   Warn when code blocks do not adhere to a given style.
- *
- *   Options: `'consistent'`, `'fenced'`, or `'indented'`, default: `'consistent'`.
- *
- *   `'consistent'` detects the first used code block style and warns when
- *   subsequent code blocks uses different styles.
- *
- *   ## Fix
- *
- *   [`remark-stringify`](https://github.com/remarkjs/remark/tree/HEAD/packages/remark-stringify)
- *   formats code blocks using a fence if they have a language flag and
- *   indentation if not.
- *   Pass
- *   [`fences: true`](https://github.com/remarkjs/remark/tree/HEAD/packages/remark-stringify#optionsfences)
- *   to always use fences for code blocks.
- *
- *   See [Using remark to fix your Markdown](https://github.com/remarkjs/remark-lint#using-remark-to-fix-your-markdown)
- *   on how to automatically fix warnings for this rule.
  *
  * @example
- *   {"setting": "indented", "name": "ok.md"}
+ *   {"config": "indented", "name": "ok.md"}
  *
  *       alpha()
  *
@@ -14309,7 +14511,7 @@ var remarkLintCheckboxContentIndent$1 = remarkLintCheckboxContentIndent;
  *       bravo()
  *
  * @example
- *   {"setting": "indented", "name": "not-ok.md", "label": "input"}
+ *   {"config": "indented", "name": "not-ok.md", "label": "input"}
  *
  *   ```
  *   alpha()
@@ -14322,13 +14524,13 @@ var remarkLintCheckboxContentIndent$1 = remarkLintCheckboxContentIndent;
  *   ```
  *
  * @example
- *   {"setting": "indented", "name": "not-ok.md", "label": "output"}
+ *   {"config": "indented", "name": "not-ok.md", "label": "output"}
  *
  *   1:1-3:4: Code blocks should be indented
  *   7:1-9:4: Code blocks should be indented
  *
  * @example
- *   {"setting": "fenced", "name": "ok.md"}
+ *   {"config": "fenced", "name": "ok.md"}
  *
  *   ```
  *   alpha()
@@ -14341,7 +14543,7 @@ var remarkLintCheckboxContentIndent$1 = remarkLintCheckboxContentIndent;
  *   ```
  *
  * @example
- *   {"setting": "fenced", "name": "not-ok-fenced.md", "label": "input"}
+ *   {"config": "fenced", "name": "not-ok-fenced.md", "label": "input"}
  *
  *       alpha()
  *
@@ -14350,7 +14552,7 @@ var remarkLintCheckboxContentIndent$1 = remarkLintCheckboxContentIndent;
  *       bravo()
  *
  * @example
- *   {"setting": "fenced", "name": "not-ok-fenced.md", "label": "output"}
+ *   {"config": "fenced", "name": "not-ok-fenced.md", "label": "output"}
  *
  *   1:1-1:12: Code blocks should be fenced
  *   5:1-5:12: Code blocks should be fenced
@@ -14372,7 +14574,7 @@ var remarkLintCheckboxContentIndent$1 = remarkLintCheckboxContentIndent;
  *   5:1-7:4: Code blocks should be indented
  *
  * @example
- *   {"setting": "💩", "name": "not-ok-incorrect.md", "label": "output", "positionless": true}
+ *   {"config": "💩", "name": "not-ok-incorrect.md", "label": "output", "positionless": true}
  *
  *   1:1: Incorrect code block style `💩`: use either `'consistent'`, `'fenced'`, or `'indented'`
  */
@@ -14533,47 +14735,47 @@ var remarkLintDefinitionSpacing$1 = remarkLintDefinitionSpacing;
  *   1:1-3:4: Missing code language flag
  *
  * @example
- *   {"name": "ok.md", "setting": {"allowEmpty": true}}
+ *   {"name": "ok.md", "config": {"allowEmpty": true}}
  *
  *   ```
  *   alpha()
  *   ```
  *
  * @example
- *   {"name": "not-ok.md", "setting": {"allowEmpty": false}, "label": "input"}
+ *   {"name": "not-ok.md", "config": {"allowEmpty": false}, "label": "input"}
  *
  *   ```
  *   alpha()
  *   ```
  *
  * @example
- *   {"name": "not-ok.md", "setting": {"allowEmpty": false}, "label": "output"}
+ *   {"name": "not-ok.md", "config": {"allowEmpty": false}, "label": "output"}
  *
  *   1:1-3:4: Missing code language flag
  *
  * @example
- *   {"name": "ok.md", "setting": ["alpha"]}
+ *   {"name": "ok.md", "config": ["alpha"]}
  *
  *   ```alpha
  *   bravo()
  *   ```
  *
  * @example
- *   {"name": "ok.md", "setting": {"flags":["alpha"]}}
+ *   {"name": "ok.md", "config": {"flags":["alpha"]}}
  *
  *   ```alpha
  *   bravo()
  *   ```
  *
  * @example
- *   {"name": "not-ok.md", "setting": ["charlie"], "label": "input"}
+ *   {"name": "not-ok.md", "config": ["charlie"], "label": "input"}
  *
  *   ```alpha
  *   bravo()
  *   ```
  *
  * @example
- *   {"name": "not-ok.md", "setting": ["charlie"], "label": "output"}
+ *   {"name": "not-ok.md", "config": ["charlie"], "label": "output"}
  *
  *   1:1-3:4: Incorrect code language flag
  */
@@ -14661,7 +14863,7 @@ var remarkLintFencedCodeFlag$1 = remarkLintFencedCodeFlag;
  *       bravo()
  *
  * @example
- *   {"name": "ok.md", "setting": "`"}
+ *   {"name": "ok.md", "config": "`"}
  *
  *   ```alpha
  *   bravo()
@@ -14672,7 +14874,7 @@ var remarkLintFencedCodeFlag$1 = remarkLintFencedCodeFlag;
  *   ```
  *
  * @example
- *   {"name": "ok.md", "setting": "~"}
+ *   {"name": "ok.md", "config": "~"}
  *
  *   ~~~alpha
  *   bravo()
@@ -14715,7 +14917,7 @@ var remarkLintFencedCodeFlag$1 = remarkLintFencedCodeFlag;
  *   5:1-7:4: Fenced code should use `~` as a marker
  *
  * @example
- *   {"name": "not-ok-incorrect.md", "setting": "💩", "label": "output", "positionless": true}
+ *   {"name": "not-ok-incorrect.md", "config": "💩", "label": "output", "positionless": true}
  *
  *   1:1: Incorrect fenced code marker `💩`: use either `'consistent'`, `` '`' ``, or `'~'`
  */
@@ -14798,7 +15000,7 @@ var remarkLintFencedCodeMarker$1 = remarkLintFencedCodeMarker;
  *   1:1: Incorrect extension: use `md`
  *
  * @example
- *   {"name": "readme.mkd", "setting": "mkd"}
+ *   {"name": "readme.mkd", "config": "mkd"}
  */
 const remarkLintFileExtension = lintRule(
   {
@@ -14976,44 +15178,44 @@ var remarkLintFinalDefinition$1 = remarkLintFinalDefinition;
  *   1:1-1:17: First heading level should be `1`
  *
  * @example
- *   {"name": "ok.md", "setting": 2}
+ *   {"name": "ok.md", "config": 2}
  *
  *   ## Delta
  *
  *   Paragraph.
  *
  * @example
- *   {"name": "ok-html.md", "setting": 2}
+ *   {"name": "ok-html.md", "config": 2}
  *
  *   <h2>Echo</h2>
  *
  *   Paragraph.
  *
  * @example
- *   {"name": "not-ok.md", "setting": 2, "label": "input"}
+ *   {"name": "not-ok.md", "config": 2, "label": "input"}
  *
  *   # Foxtrot
  *
  *   Paragraph.
  *
  * @example
- *   {"name": "not-ok.md", "setting": 2, "label": "output"}
+ *   {"name": "not-ok.md", "config": 2, "label": "output"}
  *
  *   1:1-1:10: First heading level should be `2`
  *
  * @example
- *   {"name": "not-ok-html.md", "setting": 2, "label": "input"}
+ *   {"name": "not-ok-html.md", "config": 2, "label": "input"}
  *
  *   <h1>Golf</h1>
  *
  *   Paragraph.
  *
  * @example
- *   {"name": "not-ok-html.md", "setting": 2, "label": "output"}
+ *   {"name": "not-ok-html.md", "config": 2, "label": "output"}
  *
  *   1:1-1:14: First heading level should be `2`
  */
-const re$3 = /<h([1-6])/;
+const re$2 = /<h([1-6])/;
 const remarkLintFirstHeadingLevel = lintRule(
   {
     origin: 'remark-lint:first-heading-level',
@@ -15040,7 +15242,7 @@ const remarkLintFirstHeadingLevel = lintRule(
 );
 var remarkLintFirstHeadingLevel$1 = remarkLintFirstHeadingLevel;
 function infer(node) {
-  const results = node.value.match(re$3);
+  const results = node.value.match(re$2);
   return results ? Number(results[1]) : undefined
 }
 
@@ -15108,7 +15310,7 @@ function infer(node) {
  * @copyright 2015 Titus Wormer
  * @license MIT
  * @example
- *   {"name": "ok.md", "setting": "atx"}
+ *   {"name": "ok.md", "config": "atx"}
  *
  *   # Alpha
  *
@@ -15117,7 +15319,7 @@ function infer(node) {
  *   ### Charlie
  *
  * @example
- *   {"name": "ok.md", "setting": "atx-closed"}
+ *   {"name": "ok.md", "config": "atx-closed"}
  *
  *   # Delta ##
  *
@@ -15126,7 +15328,7 @@ function infer(node) {
  *   ### Foxtrot ###
  *
  * @example
- *   {"name": "ok.md", "setting": "setext"}
+ *   {"name": "ok.md", "config": "setext"}
  *
  *   Golf
  *   ====
@@ -15153,7 +15355,7 @@ function infer(node) {
  *   6:1-6:13: Headings should use setext
  *
  * @example
- *   {"name": "not-ok.md", "setting": "💩", "label": "output", "positionless": true}
+ *   {"name": "not-ok.md", "config": "💩", "label": "output", "positionless": true}
  *
  *   1:1: Incorrect heading style type `💩`: use either `'consistent'`, `'atx'`, `'atx-closed'`, or `'setext'`
  */
@@ -15248,7 +15450,7 @@ var remarkLintHeadingStyle$1 = remarkLintHeadingStyle;
  *   [foo]: <http://this-long-url-with-a-long-domain-is-ok.co.uk/a-long-path?query=variables>
  *
  * @example
- *   {"name": "not-ok.md", "setting": 80, "label": "input", "positionless": true}
+ *   {"name": "not-ok.md", "config": 80, "label": "input", "positionless": true}
  *
  *   This line is simply not tooooooooooooooooooooooooooooooooooooooooooooooooooooooo
  *   long.
@@ -15264,7 +15466,7 @@ var remarkLintHeadingStyle$1 = remarkLintHeadingStyle;
  *   `alphaBravoCharlieDeltaEchoFoxtrotGolfHotelIndiaJuliettKiloLimaMikeNovemberOscar.papa()` and such.
  *
  * @example
- *   {"name": "not-ok.md", "setting": 80, "label": "output", "positionless": true}
+ *   {"name": "not-ok.md", "config": 80, "label": "output", "positionless": true}
  *
  *   4:86: Line must be at most 80 characters
  *   6:99: Line must be at most 80 characters
@@ -15273,7 +15475,7 @@ var remarkLintHeadingStyle$1 = remarkLintHeadingStyle;
  *   12:99: Line must be at most 80 characters
  *
  * @example
- *   {"name": "ok-mixed-line-endings.md", "setting": 10, "positionless": true}
+ *   {"name": "ok-mixed-line-endings.md", "config": 10, "positionless": true}
  *
  *   0123456789␍␊
  *   0123456789␊
@@ -15281,7 +15483,7 @@ var remarkLintHeadingStyle$1 = remarkLintHeadingStyle;
  *   01234␊
  *
  * @example
- *   {"name": "not-ok-mixed-line-endings.md", "setting": 10, "label": "input", "positionless": true}
+ *   {"name": "not-ok-mixed-line-endings.md", "config": 10, "label": "input", "positionless": true}
  *
  *   012345678901␍␊
  *   012345678901␊
@@ -15289,7 +15491,7 @@ var remarkLintHeadingStyle$1 = remarkLintHeadingStyle;
  *   01234567890␊
  *
  * @example
- *   {"name": "not-ok-mixed-line-endings.md", "setting": 10, "label": "output", "positionless": true}
+ *   {"name": "not-ok-mixed-line-endings.md", "config": 10, "label": "output", "positionless": true}
  *
  *   1:13: Line must be at most 10 characters
  *   2:13: Line must be at most 10 characters
@@ -15324,8 +15526,7 @@ const remarkLintMaximumLineLength = lintRule(
         allowList(pointStart(node).line - 1, pointEnd(node).line);
       }
     });
-    visit$1(tree, (node, pos, parent_) => {
-      const parent =  (parent_);
+    visit$1(tree, (node, pos, parent) => {
       if (
         (node.type === 'link' ||
           node.type === 'image' ||
@@ -15728,21 +15929,21 @@ var remarkLintNoHeadingIndent$1 = remarkLintNoHeadingIndent;
  * @copyright 2015 Titus Wormer
  * @license MIT
  * @example
- *   {"name": "ok.md", "setting": 1}
+ *   {"name": "ok.md", "config": 1}
  *
  *   # Foo
  *
  *   ## Bar
  *
  * @example
- *   {"name": "not-ok.md", "setting": 1, "label": "input"}
+ *   {"name": "not-ok.md", "config": 1, "label": "input"}
  *
  *   # Foo
  *
  *   # Bar
  *
  * @example
- *   {"name": "not-ok.md", "setting": 1, "label": "output"}
+ *   {"name": "not-ok.md", "config": 1, "label": "output"}
  *
  *   3:1-3:6: Don’t use multiple top level headings (1:1)
  */
@@ -16131,6 +16332,7 @@ var sliced$1 = function (args, slice, sliceEnd) {
   }
   return ret;
 };
+getDefaultExportFromCjs(sliced$1);
 
 var slice = Array.prototype.slice;
 var co_1 = co$1;
@@ -16285,6 +16487,7 @@ function error(err) {
     throw err;
   });
 }
+getDefaultExportFromCjs(co_1);
 
 var sliced = sliced$1;
 var noop = function(){};
@@ -16336,6 +16539,7 @@ function generator(value) {
 function promise(value) {
   return value && 'function' == typeof value.then;
 }
+getDefaultExportFromCjs(wrapped_1);
 
 var wrapped = wrapped_1;
 var unifiedLintRule = factory;
@@ -16425,6 +16629,7 @@ function coerce(name, value) {
   result[0] = level;
   return result
 }
+getDefaultExportFromCjs(unifiedLintRule);
 
 var rule = unifiedLintRule;
 var remarkLintNoTrailingSpaces = rule('remark-lint:no-trailing-spaces', noTrailingSpaces);
@@ -16443,6 +16648,7 @@ function noTrailingSpaces(ast, file) {
     }
   }
 }
+var remarkLintNoTrailingSpaces$1 = getDefaultExportFromCjs(remarkLintNoTrailingSpaces);
 
 function* getLinksRecursively(node) {
   if (node.url) {
@@ -19297,24 +19503,6 @@ var jsYaml = {
 	safeDump: safeDump
 };
 
-const SEMVER_SPEC_VERSION = '2.0.0';
-const MAX_LENGTH$2 = 256;
-const MAX_SAFE_INTEGER$1 = Number.MAX_SAFE_INTEGER ||
- 9007199254740991;
-const MAX_SAFE_COMPONENT_LENGTH = 16;
-var constants = {
-  SEMVER_SPEC_VERSION,
-  MAX_LENGTH: MAX_LENGTH$2,
-  MAX_SAFE_INTEGER: MAX_SAFE_INTEGER$1,
-  MAX_SAFE_COMPONENT_LENGTH,
-};
-
-var reExports = {};
-var re$2 = {
-  get exports(){ return reExports; },
-  set exports(v){ reExports = v; },
-};
-
 const debug$1 = (
   typeof process === 'object' &&
   process.env &&
@@ -19323,6 +19511,34 @@ const debug$1 = (
 ) ? (...args) => console.error('SEMVER', ...args)
   : () => {};
 var debug_1 = debug$1;
+getDefaultExportFromCjs(debug_1);
+
+const SEMVER_SPEC_VERSION = '2.0.0';
+const MAX_LENGTH$1 = 256;
+const MAX_SAFE_INTEGER$1 = Number.MAX_SAFE_INTEGER ||
+ 9007199254740991;
+const MAX_SAFE_COMPONENT_LENGTH = 16;
+const RELEASE_TYPES = [
+  'major',
+  'premajor',
+  'minor',
+  'preminor',
+  'patch',
+  'prepatch',
+  'prerelease',
+];
+var constants = {
+  MAX_LENGTH: MAX_LENGTH$1,
+  MAX_SAFE_COMPONENT_LENGTH,
+  MAX_SAFE_INTEGER: MAX_SAFE_INTEGER$1,
+  RELEASE_TYPES,
+  SEMVER_SPEC_VERSION,
+  FLAG_INCLUDE_PRERELEASE: 0b001,
+  FLAG_LOOSE: 0b010,
+};
+getDefaultExportFromCjs(constants);
+
+var re$1 = {exports: {}};
 
 (function (module, exports) {
 	const { MAX_SAFE_COMPONENT_LENGTH } = constants;
@@ -19416,17 +19632,23 @@ var debug_1 = debug$1;
 	createToken('STAR', '(<|>)?=?\\s*\\*');
 	createToken('GTE0', '^\\s*>=\\s*0\\.0\\.0\\s*$');
 	createToken('GTE0PRE', '^\\s*>=\\s*0\\.0\\.0-0\\s*$');
-} (re$2, reExports));
+} (re$1, re$1.exports));
+var reExports = re$1.exports;
+getDefaultExportFromCjs(reExports);
 
-const opts = ['includePrerelease', 'loose', 'rtl'];
-const parseOptions$2 = options =>
-  !options ? {}
-  : typeof options !== 'object' ? { loose: true }
-  : opts.filter(k => options[k]).reduce((o, k) => {
-    o[k] = true;
-    return o
-  }, {});
-var parseOptions_1 = parseOptions$2;
+const looseOption = Object.freeze({ loose: true });
+const emptyOpts = Object.freeze({ });
+const parseOptions$1 = options => {
+  if (!options) {
+    return emptyOpts
+  }
+  if (typeof options !== 'object') {
+    return looseOption
+  }
+  return options
+};
+var parseOptions_1 = parseOptions$1;
+getDefaultExportFromCjs(parseOptions_1);
 
 const numeric = /^[0-9]+$/;
 const compareIdentifiers$1 = (a, b) => {
@@ -19447,15 +19669,16 @@ var identifiers = {
   compareIdentifiers: compareIdentifiers$1,
   rcompareIdentifiers,
 };
+getDefaultExportFromCjs(identifiers);
 
 const debug = debug_1;
-const { MAX_LENGTH: MAX_LENGTH$1, MAX_SAFE_INTEGER } = constants;
-const { re: re$1, t: t$1 } = reExports;
-const parseOptions$1 = parseOptions_1;
+const { MAX_LENGTH, MAX_SAFE_INTEGER } = constants;
+const { re, t } = reExports;
+const parseOptions = parseOptions_1;
 const { compareIdentifiers } = identifiers;
 let SemVer$2 = class SemVer {
   constructor (version, options) {
-    options = parseOptions$1(options);
+    options = parseOptions(options);
     if (version instanceof SemVer) {
       if (version.loose === !!options.loose &&
           version.includePrerelease === !!options.includePrerelease) {
@@ -19464,18 +19687,18 @@ let SemVer$2 = class SemVer {
         version = version.version;
       }
     } else if (typeof version !== 'string') {
-      throw new TypeError(`Invalid Version: ${version}`)
+      throw new TypeError(`Invalid version. Must be a string. Got type "${typeof version}".`)
     }
-    if (version.length > MAX_LENGTH$1) {
+    if (version.length > MAX_LENGTH) {
       throw new TypeError(
-        `version is longer than ${MAX_LENGTH$1} characters`
+        `version is longer than ${MAX_LENGTH} characters`
       )
     }
     debug('SemVer', version, options);
     this.options = options;
     this.loose = !!options.loose;
     this.includePrerelease = !!options.includePrerelease;
-    const m = version.trim().match(options.loose ? re$1[t$1.LOOSE] : re$1[t$1.FULL]);
+    const m = version.trim().match(options.loose ? re[t.LOOSE] : re[t.FULL]);
     if (!m) {
       throw new TypeError(`Invalid Version: ${version}`)
     }
@@ -19592,31 +19815,31 @@ let SemVer$2 = class SemVer {
       }
     } while (++i)
   }
-  inc (release, identifier) {
+  inc (release, identifier, identifierBase) {
     switch (release) {
       case 'premajor':
         this.prerelease.length = 0;
         this.patch = 0;
         this.minor = 0;
         this.major++;
-        this.inc('pre', identifier);
+        this.inc('pre', identifier, identifierBase);
         break
       case 'preminor':
         this.prerelease.length = 0;
         this.patch = 0;
         this.minor++;
-        this.inc('pre', identifier);
+        this.inc('pre', identifier, identifierBase);
         break
       case 'prepatch':
         this.prerelease.length = 0;
-        this.inc('patch', identifier);
-        this.inc('pre', identifier);
+        this.inc('patch', identifier, identifierBase);
+        this.inc('pre', identifier, identifierBase);
         break
       case 'prerelease':
         if (this.prerelease.length === 0) {
-          this.inc('patch', identifier);
+          this.inc('patch', identifier, identifierBase);
         }
-        this.inc('pre', identifier);
+        this.inc('pre', identifier, identifierBase);
         break
       case 'major':
         if (
@@ -19643,9 +19866,13 @@ let SemVer$2 = class SemVer {
         }
         this.prerelease = [];
         break
-      case 'pre':
+      case 'pre': {
+        const base = Number(identifierBase) ? 1 : 0;
+        if (!identifier && identifierBase === false) {
+          throw new Error('invalid increment argument: identifier is empty')
+        }
         if (this.prerelease.length === 0) {
-          this.prerelease = [0];
+          this.prerelease = [base];
         } else {
           let i = this.prerelease.length;
           while (--i >= 0) {
@@ -19655,19 +19882,27 @@ let SemVer$2 = class SemVer {
             }
           }
           if (i === -1) {
-            this.prerelease.push(0);
+            if (identifier === this.prerelease.join('.') && identifierBase === false) {
+              throw new Error('invalid increment argument: identifier already exists')
+            }
+            this.prerelease.push(base);
           }
         }
         if (identifier) {
+          let prerelease = [identifier, base];
+          if (identifierBase === false) {
+            prerelease = [identifier];
+          }
           if (compareIdentifiers(this.prerelease[0], identifier) === 0) {
             if (isNaN(this.prerelease[1])) {
-              this.prerelease = [identifier, 0];
+              this.prerelease = prerelease;
             }
           } else {
-            this.prerelease = [identifier, 0];
+            this.prerelease = prerelease;
           }
         }
         break
+      }
       default:
         throw new Error(`invalid increment argument: ${release}`)
     }
@@ -19677,42 +19912,35 @@ let SemVer$2 = class SemVer {
   }
 };
 var semver = SemVer$2;
+getDefaultExportFromCjs(semver);
 
-const { MAX_LENGTH } = constants;
-const { re, t } = reExports;
 const SemVer$1 = semver;
-const parseOptions = parseOptions_1;
-const parse = (version, options) => {
-  options = parseOptions(options);
+const parse = (version, options, throwErrors = false) => {
   if (version instanceof SemVer$1) {
     return version
-  }
-  if (typeof version !== 'string') {
-    return null
-  }
-  if (version.length > MAX_LENGTH) {
-    return null
-  }
-  const r = options.loose ? re[t.LOOSE] : re[t.FULL];
-  if (!r.test(version)) {
-    return null
   }
   try {
     return new SemVer$1(version, options)
   } catch (er) {
-    return null
+    if (!throwErrors) {
+      return null
+    }
+    throw er
   }
 };
 var parse_1 = parse;
+var semverParse = getDefaultExportFromCjs(parse_1);
 
 const SemVer = semver;
 const compare$2 = (a, b, loose) =>
   new SemVer(a, loose).compare(new SemVer(b, loose));
 var compare_1 = compare$2;
+getDefaultExportFromCjs(compare_1);
 
 const compare$1 = compare_1;
 const lt = (a, b, loose) => compare$1(a, b, loose) < 0;
 var lt_1 = lt;
+var semverLt = getDefaultExportFromCjs(lt_1);
 
 const allowedKeys = [
   "added",
@@ -19723,7 +19951,7 @@ const allowedKeys = [
 ];
 const changesExpectedKeys = ["version", "pr-url", "description"];
 const VERSION_PLACEHOLDER = "REPLACEME";
-const MAX_SAFE_SEMVER_VERSION = parse_1(
+const MAX_SAFE_SEMVER_VERSION = semverParse(
   Array.from({ length: 3 }, () => Number.MAX_SAFE_INTEGER).join(".")
 );
 const validVersionNumberRegex = /^v\d+\.\d+\.\d+$/;
@@ -19770,7 +19998,7 @@ function areVersionsUnordered(versions) {
   if (!Array.isArray(versions)) return false;
   for (let index = 1; index < versions.length; index++) {
     if (
-      lt_1(
+      semverLt(
         getValidSemver(versions[index - 1]),
         getValidSemver(versions[index])
       )
@@ -20037,14 +20265,14 @@ function prohibitedStrings (ast, file, strings) {
  * @copyright 2015 Titus Wormer
  * @license MIT
  * @example
- *   {"name": "ok.md", "setting": "* * *"}
+ *   {"name": "ok.md", "config": "* * *"}
  *
  *   * * *
  *
  *   * * *
  *
  * @example
- *   {"name": "ok.md", "setting": "_______"}
+ *   {"name": "ok.md", "config": "_______"}
  *
  *   _______
  *
@@ -20063,7 +20291,7 @@ function prohibitedStrings (ast, file, strings) {
  *   3:1-3:6: Rules should use `***`
  *
  * @example
- *   {"name": "not-ok.md", "label": "output", "setting": "💩", "positionless": true}
+ *   {"name": "not-ok.md", "label": "output", "config": "💩", "positionless": true}
  *
  *   1:1: Incorrect preferred rule style: provide a correct markdown rule or `'consistent'`
  */
@@ -20147,12 +20375,12 @@ var remarkLintRuleStyle$1 = remarkLintRuleStyle;
  *   __foo__ and __bar__.
  *
  * @example
- *   {"name": "ok.md", "setting": "*"}
+ *   {"name": "ok.md", "config": "*"}
  *
  *   **foo**.
  *
  * @example
- *   {"name": "ok.md", "setting": "_"}
+ *   {"name": "ok.md", "config": "_"}
  *
  *   __foo__.
  *
@@ -20167,7 +20395,7 @@ var remarkLintRuleStyle$1 = remarkLintRuleStyle;
  *   1:13-1:20: Strong should use `*` as a marker
  *
  * @example
- *   {"name": "not-ok.md", "label": "output", "setting": "💩", "positionless": true}
+ *   {"name": "not-ok.md", "label": "output", "config": "💩", "positionless": true}
  *
  *   1:1: Incorrect strong marker `💩`: use either `'consistent'`, `'*'`, or `'_'`
  */
@@ -20238,14 +20466,14 @@ var remarkLintStrongMarker$1 = remarkLintStrongMarker;
  * @copyright 2015 Titus Wormer
  * @license MIT
  * @example
- *   {"name": "ok.md", "setting": "padded", "gfm": true}
+ *   {"name": "ok.md", "config": "padded", "gfm": true}
  *
  *   | A     | B     |
  *   | ----- | ----- |
  *   | Alpha | Bravo |
  *
  * @example
- *   {"name": "not-ok.md", "label": "input", "setting": "padded", "gfm": true}
+ *   {"name": "not-ok.md", "label": "input", "config": "padded", "gfm": true}
  *
  *   | A    |    B |
  *   | :----|----: |
@@ -20262,27 +20490,27 @@ var remarkLintStrongMarker$1 = remarkLintStrongMarker;
  *   | Echo  | Foxtrot  |  Golf  |  Hotel |
  *
  * @example
- *   {"name": "not-ok.md", "label": "output", "setting": "padded", "gfm": true}
+ *   {"name": "not-ok.md", "label": "output", "config": "padded", "gfm": true}
  *
  *   3:8: Cell should be padded
  *   3:9: Cell should be padded
  *   7:2: Cell should be padded
  *   7:17: Cell should be padded
- *   13:9: Cell should be padded with 1 space, not 2
- *   13:20: Cell should be padded with 1 space, not 2
- *   13:21: Cell should be padded with 1 space, not 2
- *   13:29: Cell should be padded with 1 space, not 2
- *   13:30: Cell should be padded with 1 space, not 2
+ *   13:7: Cell should be padded with 1 space, not 2
+ *   13:18: Cell should be padded with 1 space, not 2
+ *   13:23: Cell should be padded with 1 space, not 2
+ *   13:27: Cell should be padded with 1 space, not 2
+ *   13:32: Cell should be padded with 1 space, not 2
  *
  * @example
- *   {"name": "ok.md", "setting": "compact", "gfm": true}
+ *   {"name": "ok.md", "config": "compact", "gfm": true}
  *
  *   |A    |B    |
  *   |-----|-----|
  *   |Alpha|Bravo|
  *
  * @example
- *   {"name": "not-ok.md", "label": "input", "setting": "compact", "gfm": true}
+ *   {"name": "not-ok.md", "label": "input", "config": "compact", "gfm": true}
  *
  *   |   A    | B    |
  *   |   -----| -----|
@@ -20293,14 +20521,14 @@ var remarkLintStrongMarker$1 = remarkLintStrongMarker;
  *   |Charlie|Delta |
  *
  * @example
- *   {"name": "not-ok.md", "label": "output", "setting": "compact", "gfm": true}
+ *   {"name": "not-ok.md", "label": "output", "config": "compact", "gfm": true}
  *
- *   3:2: Cell should be compact
- *   3:11: Cell should be compact
- *   7:16: Cell should be compact
+ *   3:5: Cell should be compact
+ *   3:12: Cell should be compact
+ *   7:15: Cell should be compact
  *
  * @example
- *   {"name": "ok-padded.md", "setting": "consistent", "gfm": true}
+ *   {"name": "ok-padded.md", "config": "consistent", "gfm": true}
  *
  *   | A     | B     |
  *   | ----- | ----- |
@@ -20311,7 +20539,7 @@ var remarkLintStrongMarker$1 = remarkLintStrongMarker;
  *   | Charlie | Delta |
  *
  * @example
- *   {"name": "not-ok-padded.md", "label": "input", "setting": "consistent", "gfm": true}
+ *   {"name": "not-ok-padded.md", "label": "input", "config": "consistent", "gfm": true}
  *
  *   | A     | B     |
  *   | ----- | ----- |
@@ -20322,12 +20550,12 @@ var remarkLintStrongMarker$1 = remarkLintStrongMarker;
  *   |Charlie | Delta |
  *
  * @example
- *   {"name": "not-ok-padded.md", "label": "output", "setting": "consistent", "gfm": true}
+ *   {"name": "not-ok-padded.md", "label": "output", "config": "consistent", "gfm": true}
  *
  *   7:2: Cell should be padded
  *
  * @example
- *   {"name": "ok-compact.md", "setting": "consistent", "gfm": true}
+ *   {"name": "ok-compact.md", "config": "consistent", "gfm": true}
  *
  *   |A    |B    |
  *   |-----|-----|
@@ -20338,7 +20566,7 @@ var remarkLintStrongMarker$1 = remarkLintStrongMarker;
  *   |Charlie|Delta|
  *
  * @example
- *   {"name": "not-ok-compact.md", "label": "input", "setting": "consistent", "gfm": true}
+ *   {"name": "not-ok-compact.md", "label": "input", "config": "consistent", "gfm": true}
  *
  *   |A    |B    |
  *   |-----|-----|
@@ -20349,17 +20577,17 @@ var remarkLintStrongMarker$1 = remarkLintStrongMarker;
  *   |Charlie|Delta |
  *
  * @example
- *   {"name": "not-ok-compact.md", "label": "output", "setting": "consistent", "gfm": true}
+ *   {"name": "not-ok-compact.md", "label": "output", "config": "consistent", "gfm": true}
  *
- *   7:16: Cell should be compact
+ *   7:15: Cell should be compact
  *
  * @example
- *   {"name": "not-ok.md", "label": "output", "setting": "💩", "positionless": true, "gfm": true}
+ *   {"name": "not-ok.md", "label": "output", "config": "💩", "positionless": true, "gfm": true}
  *
  *   1:1: Incorrect table cell padding style `💩`, expected `'padded'`, `'compact'`, or `'consistent'`
  *
  * @example
- *   {"name": "empty.md", "label": "input", "setting": "padded", "gfm": true}
+ *   {"name": "empty.md", "label": "input", "config": "padded", "gfm": true}
  *
  *   <!-- Empty cells are OK, but those surrounding them may not be. -->
  *
@@ -20368,14 +20596,14 @@ var remarkLintStrongMarker$1 = remarkLintStrongMarker;
  *   | Charlie|       |  Echo|
  *
  * @example
- *   {"name": "empty.md", "label": "output", "setting": "padded", "gfm": true}
+ *   {"name": "empty.md", "label": "output", "config": "padded", "gfm": true}
  *
  *   3:25: Cell should be padded
  *   5:10: Cell should be padded
  *   5:25: Cell should be padded
  *
  * @example
- *   {"name": "missing-body.md", "setting": "padded", "gfm": true}
+ *   {"name": "missing-body.md", "config": "padded", "gfm": true}
  *
  *   <!-- Missing cells are fine as well. -->
  *
@@ -20417,32 +20645,33 @@ const remarkLintTableCellPadding = lintRule(
         let column = -1;
         while (++column < row.children.length) {
           const cell = row.children[column];
-          if (cell.children.length > 0) {
-            const cellStart = pointStart(cell).offset;
-            const cellEnd = pointEnd(cell).offset;
-            const contentStart = pointStart(cell.children[0]).offset;
-            const contentEnd = pointEnd(
-              cell.children[cell.children.length - 1]
-            ).offset;
-            if (
-              typeof cellStart !== 'number' ||
-              typeof cellEnd !== 'number' ||
-              typeof contentStart !== 'number' ||
-              typeof contentEnd !== 'number'
-            ) {
-              continue
-            }
-            entries.push({
-              node: cell,
-              start: contentStart - cellStart - (column ? 0 : 1),
-              end: cellEnd - contentEnd - 1,
-              column
-            });
-            sizes[column] = Math.max(
-              sizes[column] || 0,
-              contentEnd - contentStart
-            );
+          const cellStart = pointStart(cell).offset;
+          const cellEnd = pointEnd(cell).offset;
+          const contentStart = pointStart(cell.children[0]).offset;
+          const contentEnd = pointEnd(
+            cell.children[cell.children.length - 1]
+          ).offset;
+          if (
+            typeof cellStart !== 'number' ||
+            typeof cellEnd !== 'number' ||
+            typeof contentStart !== 'number' ||
+            typeof contentEnd !== 'number'
+          ) {
+            continue
           }
+          entries.push({
+            node: cell,
+            start: contentStart - cellStart - 1,
+            end:
+              cellEnd -
+              contentEnd -
+              (column === row.children.length - 1 ? 1 : 0),
+            column
+          });
+          sizes[column] = Math.max(
+            sizes[column] || 0,
+            contentEnd - contentStart
+          );
         }
       }
       const style =
@@ -20482,23 +20711,12 @@ const remarkLintTableCellPadding = lintRule(
           reason += ' with 1 space, not ' + spacing;
         }
       }
-      let point;
-      if (side === 'start') {
-        point = pointStart(cell);
-        if (!column) {
-          point.column++;
-          if (typeof point.offset === 'number') {
-            point.offset++;
-          }
-        }
-      } else {
-        point = pointEnd(cell);
-        point.column--;
-        if (typeof point.offset === 'number') {
-          point.offset--;
-        }
-      }
-      file.message(reason, point);
+      file.message(
+        reason,
+        side === 'start'
+          ? pointStart(cell.children[0])
+          : pointEnd(cell.children[cell.children.length - 1])
+      );
     }
   }
 );
@@ -20649,17 +20867,17 @@ var remarkLintTablePipes$1 = remarkLintTablePipes;
  *   3. Baz
  *
  * @example
- *   {"name": "ok.md", "setting": "*"}
+ *   {"name": "ok.md", "config": "*"}
  *
  *   * Foo
  *
  * @example
- *   {"name": "ok.md", "setting": "-"}
+ *   {"name": "ok.md", "config": "-"}
  *
  *   - Foo
  *
  * @example
- *   {"name": "ok.md", "setting": "+"}
+ *   {"name": "ok.md", "config": "+"}
  *
  *   + Foo
  *
@@ -20677,7 +20895,7 @@ var remarkLintTablePipes$1 = remarkLintTablePipes;
  *   3:1-3:6: Marker style should be `*`
  *
  * @example
- *   {"name": "not-ok.md", "label": "output", "setting": "💩", "positionless": true}
+ *   {"name": "not-ok.md", "label": "output", "config": "💩", "positionless": true}
  *
  *   1:1: Incorrect unordered list item marker style `💩`: use either `'-'`, `'*'`, or `'+'`
  */
@@ -20770,7 +20988,7 @@ const plugins = [
   remarkLintNoShellDollars$1,
   remarkLintNoTableIndentation$1,
   remarkLintNoTabs$1,
-  remarkLintNoTrailingSpaces,
+  remarkLintNoTrailingSpaces$1,
   remarkLintNodejsLinks,
   remarkLintNodejsYamlComments,
   [
@@ -20810,7 +21028,7 @@ const remarkPresetLintNode = { plugins, settings };
 function toVFile(description) {
   if (typeof description === 'string' || description instanceof URL$1) {
     description = {path: description};
-  } else if (isBuffer(description)) {
+  } else if (buffer$1(description)) {
     description = {path: String(description)};
   }
   return looksLikeAVFile(description)
@@ -20918,18 +21136,15 @@ function ansiRegex({onlyFirst = false} = {}) {
 	return new RegExp(pattern, onlyFirst ? undefined : 'g');
 }
 
+const regex = ansiRegex();
 function stripAnsi(string) {
 	if (typeof string !== 'string') {
 		throw new TypeError(`Expected a \`string\`, got \`${typeof string}\``);
 	}
-	return string.replace(ansiRegex(), '');
+	return string.replace(regex, '');
 }
 
-var eastasianwidthExports = {};
-var eastasianwidth = {
-  get exports(){ return eastasianwidthExports; },
-  set exports(v){ eastasianwidthExports = v; },
-};
+var eastasianwidth = {exports: {}};
 
 (function (module) {
 	var eaw = {};
@@ -21233,11 +21448,13 @@ var eastasianwidth = {
 	  return result;
 	};
 } (eastasianwidth));
-var eastAsianWidth = eastasianwidthExports;
+var eastasianwidthExports = eastasianwidth.exports;
+var eastAsianWidth = getDefaultExportFromCjs(eastasianwidthExports);
 
 var emojiRegex = function () {
   return /\uD83C\uDFF4\uDB40\uDC67\uDB40\uDC62(?:\uDB40\uDC77\uDB40\uDC6C\uDB40\uDC73|\uDB40\uDC73\uDB40\uDC63\uDB40\uDC74|\uDB40\uDC65\uDB40\uDC6E\uDB40\uDC67)\uDB40\uDC7F|(?:\uD83E\uDDD1\uD83C\uDFFF\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFF\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB-\uDFFE])|(?:\uD83E\uDDD1\uD83C\uDFFE\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFE\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB-\uDFFD\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFD\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFD\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFC\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFC\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFB\uDFFD-\uDFFF])|(?:\uD83E\uDDD1\uD83C\uDFFB\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83E\uDDD1|\uD83D\uDC69\uD83C\uDFFB\u200D\uD83E\uDD1D\u200D(?:\uD83D[\uDC68\uDC69]))(?:\uD83C[\uDFFC-\uDFFF])|\uD83D\uDC68(?:\uD83C\uDFFB(?:\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF]))|\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFC-\uDFFF])|[\u2695\u2696\u2708]\uFE0F|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))?|(?:\uD83C[\uDFFC-\uDFFF])\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFF]))|\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D)?\uD83D\uDC68|(?:\uD83D[\uDC68\uDC69])\u200D(?:\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67]))|\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFE])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB-\uDFFD\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFC\uDFFE\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83E\uDD1D\u200D\uD83D\uDC68(?:\uD83C[\uDFFB\uDFFD-\uDFFF])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])\uFE0F|\u200D(?:(?:\uD83D[\uDC68\uDC69])\u200D(?:\uD83D[\uDC66\uDC67])|\uD83D[\uDC66\uDC67])|\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC)?|(?:\uD83D\uDC69(?:\uD83C\uDFFB\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69])|(?:\uD83C[\uDFFC-\uDFFF])\u200D\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69]))|\uD83E\uDDD1(?:\uD83C[\uDFFB-\uDFFF])\u200D\uD83E\uDD1D\u200D\uD83E\uDDD1)(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC69\u200D\uD83D\uDC69\u200D(?:\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67]))|\uD83D\uDC69(?:\u200D(?:\u2764\uFE0F\u200D(?:\uD83D\uDC8B\u200D(?:\uD83D[\uDC68\uDC69])|\uD83D[\uDC68\uDC69])|\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFB\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))|\uD83E\uDDD1(?:\u200D(?:\uD83E\uDD1D\u200D\uD83E\uDDD1|\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFF\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFE\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFD\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFC\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD])|\uD83C\uDFFB\u200D(?:\uD83C[\uDF3E\uDF73\uDF7C\uDF84\uDF93\uDFA4\uDFA8\uDFEB\uDFED]|\uD83D[\uDCBB\uDCBC\uDD27\uDD2C\uDE80\uDE92]|\uD83E[\uDDAF-\uDDB3\uDDBC\uDDBD]))|\uD83D\uDC69\u200D\uD83D\uDC66\u200D\uD83D\uDC66|\uD83D\uDC69\u200D\uD83D\uDC69\u200D(?:\uD83D[\uDC66\uDC67])|\uD83D\uDC69\u200D\uD83D\uDC67\u200D(?:\uD83D[\uDC66\uDC67])|(?:\uD83D\uDC41\uFE0F\u200D\uD83D\uDDE8|\uD83E\uDDD1(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\uD83C\uDFFB\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])|\uD83D\uDC69(?:\uD83C\uDFFF\u200D[\u2695\u2696\u2708]|\uD83C\uDFFE\u200D[\u2695\u2696\u2708]|\uD83C\uDFFD\u200D[\u2695\u2696\u2708]|\uD83C\uDFFC\u200D[\u2695\u2696\u2708]|\uD83C\uDFFB\u200D[\u2695\u2696\u2708]|\u200D[\u2695\u2696\u2708])|\uD83D\uDE36\u200D\uD83C\uDF2B|\uD83C\uDFF3\uFE0F\u200D\u26A7|\uD83D\uDC3B\u200D\u2744|(?:(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])(?:\uD83C[\uDFFB-\uDFFF])|\uD83D\uDC6F|\uD83E[\uDD3C\uDDDE\uDDDF])\u200D[\u2640\u2642]|(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])\u200D[\u2640\u2642]|\uD83C\uDFF4\u200D\u2620|(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])\u200D[\u2640\u2642]|[\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u2328\u23CF\u23ED-\u23EF\u23F1\u23F2\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB\u25FC\u2600-\u2604\u260E\u2611\u2618\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u2692\u2694-\u2697\u2699\u269B\u269C\u26A0\u26A7\u26B0\u26B1\u26C8\u26CF\u26D1\u26D3\u26E9\u26F0\u26F1\u26F4\u26F7\u26F8\u2702\u2708\u2709\u270F\u2712\u2714\u2716\u271D\u2721\u2733\u2734\u2744\u2747\u2763\u27A1\u2934\u2935\u2B05-\u2B07\u3030\u303D\u3297\u3299]|\uD83C[\uDD70\uDD71\uDD7E\uDD7F\uDE02\uDE37\uDF21\uDF24-\uDF2C\uDF36\uDF7D\uDF96\uDF97\uDF99-\uDF9B\uDF9E\uDF9F\uDFCD\uDFCE\uDFD4-\uDFDF\uDFF5\uDFF7]|\uD83D[\uDC3F\uDCFD\uDD49\uDD4A\uDD6F\uDD70\uDD73\uDD76-\uDD79\uDD87\uDD8A-\uDD8D\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA\uDECB\uDECD-\uDECF\uDEE0-\uDEE5\uDEE9\uDEF0\uDEF3])\uFE0F|\uD83C\uDFF3\uFE0F\u200D\uD83C\uDF08|\uD83D\uDC69\u200D\uD83D\uDC67|\uD83D\uDC69\u200D\uD83D\uDC66|\uD83D\uDE35\u200D\uD83D\uDCAB|\uD83D\uDE2E\u200D\uD83D\uDCA8|\uD83D\uDC15\u200D\uD83E\uDDBA|\uD83E\uDDD1(?:\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC|\uD83C\uDFFB)?|\uD83D\uDC69(?:\uD83C\uDFFF|\uD83C\uDFFE|\uD83C\uDFFD|\uD83C\uDFFC|\uD83C\uDFFB)?|\uD83C\uDDFD\uD83C\uDDF0|\uD83C\uDDF6\uD83C\uDDE6|\uD83C\uDDF4\uD83C\uDDF2|\uD83D\uDC08\u200D\u2B1B|\u2764\uFE0F\u200D(?:\uD83D\uDD25|\uD83E\uDE79)|\uD83D\uDC41\uFE0F|\uD83C\uDFF3\uFE0F|\uD83C\uDDFF(?:\uD83C[\uDDE6\uDDF2\uDDFC])|\uD83C\uDDFE(?:\uD83C[\uDDEA\uDDF9])|\uD83C\uDDFC(?:\uD83C[\uDDEB\uDDF8])|\uD83C\uDDFB(?:\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDEE\uDDF3\uDDFA])|\uD83C\uDDFA(?:\uD83C[\uDDE6\uDDEC\uDDF2\uDDF3\uDDF8\uDDFE\uDDFF])|\uD83C\uDDF9(?:\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDED\uDDEF-\uDDF4\uDDF7\uDDF9\uDDFB\uDDFC\uDDFF])|\uD83C\uDDF8(?:\uD83C[\uDDE6-\uDDEA\uDDEC-\uDDF4\uDDF7-\uDDF9\uDDFB\uDDFD-\uDDFF])|\uD83C\uDDF7(?:\uD83C[\uDDEA\uDDF4\uDDF8\uDDFA\uDDFC])|\uD83C\uDDF5(?:\uD83C[\uDDE6\uDDEA-\uDDED\uDDF0-\uDDF3\uDDF7-\uDDF9\uDDFC\uDDFE])|\uD83C\uDDF3(?:\uD83C[\uDDE6\uDDE8\uDDEA-\uDDEC\uDDEE\uDDF1\uDDF4\uDDF5\uDDF7\uDDFA\uDDFF])|\uD83C\uDDF2(?:\uD83C[\uDDE6\uDDE8-\uDDED\uDDF0-\uDDFF])|\uD83C\uDDF1(?:\uD83C[\uDDE6-\uDDE8\uDDEE\uDDF0\uDDF7-\uDDFB\uDDFE])|\uD83C\uDDF0(?:\uD83C[\uDDEA\uDDEC-\uDDEE\uDDF2\uDDF3\uDDF5\uDDF7\uDDFC\uDDFE\uDDFF])|\uD83C\uDDEF(?:\uD83C[\uDDEA\uDDF2\uDDF4\uDDF5])|\uD83C\uDDEE(?:\uD83C[\uDDE8-\uDDEA\uDDF1-\uDDF4\uDDF6-\uDDF9])|\uD83C\uDDED(?:\uD83C[\uDDF0\uDDF2\uDDF3\uDDF7\uDDF9\uDDFA])|\uD83C\uDDEC(?:\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEE\uDDF1-\uDDF3\uDDF5-\uDDFA\uDDFC\uDDFE])|\uD83C\uDDEB(?:\uD83C[\uDDEE-\uDDF0\uDDF2\uDDF4\uDDF7])|\uD83C\uDDEA(?:\uD83C[\uDDE6\uDDE8\uDDEA\uDDEC\uDDED\uDDF7-\uDDFA])|\uD83C\uDDE9(?:\uD83C[\uDDEA\uDDEC\uDDEF\uDDF0\uDDF2\uDDF4\uDDFF])|\uD83C\uDDE8(?:\uD83C[\uDDE6\uDDE8\uDDE9\uDDEB-\uDDEE\uDDF0-\uDDF5\uDDF7\uDDFA-\uDDFF])|\uD83C\uDDE7(?:\uD83C[\uDDE6\uDDE7\uDDE9-\uDDEF\uDDF1-\uDDF4\uDDF6-\uDDF9\uDDFB\uDDFC\uDDFE\uDDFF])|\uD83C\uDDE6(?:\uD83C[\uDDE8-\uDDEC\uDDEE\uDDF1\uDDF2\uDDF4\uDDF6-\uDDFA\uDDFC\uDDFD\uDDFF])|[#\*0-9]\uFE0F\u20E3|\u2764\uFE0F|(?:\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD])(?:\uD83C[\uDFFB-\uDFFF])|(?:\u26F9|\uD83C[\uDFCB\uDFCC]|\uD83D\uDD75)(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])|\uD83C\uDFF4|(?:[\u270A\u270B]|\uD83C[\uDF85\uDFC2\uDFC7]|\uD83D[\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDC8F\uDC91\uDCAA\uDD7A\uDD95\uDD96\uDE4C\uDE4F\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1C\uDD1E\uDD1F\uDD30-\uDD34\uDD36\uDD77\uDDB5\uDDB6\uDDBB\uDDD2\uDDD3\uDDD5])(?:\uD83C[\uDFFB-\uDFFF])|(?:[\u261D\u270C\u270D]|\uD83D[\uDD74\uDD90])(?:\uFE0F|\uD83C[\uDFFB-\uDFFF])|[\u270A\u270B]|\uD83C[\uDF85\uDFC2\uDFC7]|\uD83D[\uDC08\uDC15\uDC3B\uDC42\uDC43\uDC46-\uDC50\uDC66\uDC67\uDC6B-\uDC6D\uDC72\uDC74-\uDC76\uDC78\uDC7C\uDC83\uDC85\uDC8F\uDC91\uDCAA\uDD7A\uDD95\uDD96\uDE2E\uDE35\uDE36\uDE4C\uDE4F\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1C\uDD1E\uDD1F\uDD30-\uDD34\uDD36\uDD77\uDDB5\uDDB6\uDDBB\uDDD2\uDDD3\uDDD5]|\uD83C[\uDFC3\uDFC4\uDFCA]|\uD83D[\uDC6E\uDC70\uDC71\uDC73\uDC77\uDC81\uDC82\uDC86\uDC87\uDE45-\uDE47\uDE4B\uDE4D\uDE4E\uDEA3\uDEB4-\uDEB6]|\uD83E[\uDD26\uDD35\uDD37-\uDD39\uDD3D\uDD3E\uDDB8\uDDB9\uDDCD-\uDDCF\uDDD4\uDDD6-\uDDDD]|\uD83D\uDC6F|\uD83E[\uDD3C\uDDDE\uDDDF]|[\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|\uD83C[\uDC04\uDCCF\uDD8E\uDD91-\uDD9A\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF7C\uDF7E-\uDF84\uDF86-\uDF93\uDFA0-\uDFC1\uDFC5\uDFC6\uDFC8\uDFC9\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF8-\uDFFF]|\uD83D[\uDC00-\uDC07\uDC09-\uDC14\uDC16-\uDC3A\uDC3C-\uDC3E\uDC40\uDC44\uDC45\uDC51-\uDC65\uDC6A\uDC79-\uDC7B\uDC7D-\uDC80\uDC84\uDC88-\uDC8E\uDC90\uDC92-\uDCA9\uDCAB-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDDA4\uDDFB-\uDE2D\uDE2F-\uDE34\uDE37-\uDE44\uDE48-\uDE4A\uDE80-\uDEA2\uDEA4-\uDEB3\uDEB7-\uDEBF\uDEC1-\uDEC5\uDED0-\uDED2\uDED5-\uDED7\uDEEB\uDEEC\uDEF4-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0D\uDD0E\uDD10-\uDD17\uDD1D\uDD20-\uDD25\uDD27-\uDD2F\uDD3A\uDD3F-\uDD45\uDD47-\uDD76\uDD78\uDD7A-\uDDB4\uDDB7\uDDBA\uDDBC-\uDDCB\uDDD0\uDDE0-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6]|(?:[\u231A\u231B\u23E9-\u23EC\u23F0\u23F3\u25FD\u25FE\u2614\u2615\u2648-\u2653\u267F\u2693\u26A1\u26AA\u26AB\u26BD\u26BE\u26C4\u26C5\u26CE\u26D4\u26EA\u26F2\u26F3\u26F5\u26FA\u26FD\u2705\u270A\u270B\u2728\u274C\u274E\u2753-\u2755\u2757\u2795-\u2797\u27B0\u27BF\u2B1B\u2B1C\u2B50\u2B55]|\uD83C[\uDC04\uDCCF\uDD8E\uDD91-\uDD9A\uDDE6-\uDDFF\uDE01\uDE1A\uDE2F\uDE32-\uDE36\uDE38-\uDE3A\uDE50\uDE51\uDF00-\uDF20\uDF2D-\uDF35\uDF37-\uDF7C\uDF7E-\uDF93\uDFA0-\uDFCA\uDFCF-\uDFD3\uDFE0-\uDFF0\uDFF4\uDFF8-\uDFFF]|\uD83D[\uDC00-\uDC3E\uDC40\uDC42-\uDCFC\uDCFF-\uDD3D\uDD4B-\uDD4E\uDD50-\uDD67\uDD7A\uDD95\uDD96\uDDA4\uDDFB-\uDE4F\uDE80-\uDEC5\uDECC\uDED0-\uDED2\uDED5-\uDED7\uDEEB\uDEEC\uDEF4-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0C-\uDD3A\uDD3C-\uDD45\uDD47-\uDD78\uDD7A-\uDDCB\uDDCD-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6])|(?:[#\*0-9\xA9\xAE\u203C\u2049\u2122\u2139\u2194-\u2199\u21A9\u21AA\u231A\u231B\u2328\u23CF\u23E9-\u23F3\u23F8-\u23FA\u24C2\u25AA\u25AB\u25B6\u25C0\u25FB-\u25FE\u2600-\u2604\u260E\u2611\u2614\u2615\u2618\u261D\u2620\u2622\u2623\u2626\u262A\u262E\u262F\u2638-\u263A\u2640\u2642\u2648-\u2653\u265F\u2660\u2663\u2665\u2666\u2668\u267B\u267E\u267F\u2692-\u2697\u2699\u269B\u269C\u26A0\u26A1\u26A7\u26AA\u26AB\u26B0\u26B1\u26BD\u26BE\u26C4\u26C5\u26C8\u26CE\u26CF\u26D1\u26D3\u26D4\u26E9\u26EA\u26F0-\u26F5\u26F7-\u26FA\u26FD\u2702\u2705\u2708-\u270D\u270F\u2712\u2714\u2716\u271D\u2721\u2728\u2733\u2734\u2744\u2747\u274C\u274E\u2753-\u2755\u2757\u2763\u2764\u2795-\u2797\u27A1\u27B0\u27BF\u2934\u2935\u2B05-\u2B07\u2B1B\u2B1C\u2B50\u2B55\u3030\u303D\u3297\u3299]|\uD83C[\uDC04\uDCCF\uDD70\uDD71\uDD7E\uDD7F\uDD8E\uDD91-\uDD9A\uDDE6-\uDDFF\uDE01\uDE02\uDE1A\uDE2F\uDE32-\uDE3A\uDE50\uDE51\uDF00-\uDF21\uDF24-\uDF93\uDF96\uDF97\uDF99-\uDF9B\uDF9E-\uDFF0\uDFF3-\uDFF5\uDFF7-\uDFFF]|\uD83D[\uDC00-\uDCFD\uDCFF-\uDD3D\uDD49-\uDD4E\uDD50-\uDD67\uDD6F\uDD70\uDD73-\uDD7A\uDD87\uDD8A-\uDD8D\uDD90\uDD95\uDD96\uDDA4\uDDA5\uDDA8\uDDB1\uDDB2\uDDBC\uDDC2-\uDDC4\uDDD1-\uDDD3\uDDDC-\uDDDE\uDDE1\uDDE3\uDDE8\uDDEF\uDDF3\uDDFA-\uDE4F\uDE80-\uDEC5\uDECB-\uDED2\uDED5-\uDED7\uDEE0-\uDEE5\uDEE9\uDEEB\uDEEC\uDEF0\uDEF3-\uDEFC\uDFE0-\uDFEB]|\uD83E[\uDD0C-\uDD3A\uDD3C-\uDD45\uDD47-\uDD78\uDD7A-\uDDCB\uDDCD-\uDDFF\uDE70-\uDE74\uDE78-\uDE7A\uDE80-\uDE86\uDE90-\uDEA8\uDEB0-\uDEB6\uDEC0-\uDEC2\uDED0-\uDED6])\uFE0F|(?:[\u261D\u26F9\u270A-\u270D]|\uD83C[\uDF85\uDFC2-\uDFC4\uDFC7\uDFCA-\uDFCC]|\uD83D[\uDC42\uDC43\uDC46-\uDC50\uDC66-\uDC78\uDC7C\uDC81-\uDC83\uDC85-\uDC87\uDC8F\uDC91\uDCAA\uDD74\uDD75\uDD7A\uDD90\uDD95\uDD96\uDE45-\uDE47\uDE4B-\uDE4F\uDEA3\uDEB4-\uDEB6\uDEC0\uDECC]|\uD83E[\uDD0C\uDD0F\uDD18-\uDD1F\uDD26\uDD30-\uDD39\uDD3C-\uDD3E\uDD77\uDDB5\uDDB6\uDDB8\uDDB9\uDDBB\uDDCD-\uDDCF\uDDD1-\uDDDD])/g;
 };
+var emojiRegex$1 = getDefaultExportFromCjs(emojiRegex);
 
 function stringWidth(string, options = {}) {
 	if (typeof string !== 'string' || string.length === 0) {
@@ -21251,7 +21468,7 @@ function stringWidth(string, options = {}) {
 	if (string.length === 0) {
 		return 0;
 	}
-	string = string.replace(emojiRegex(), '  ');
+	string = string.replace(emojiRegex$1(), '  ');
 	const ambiguousCharacterWidth = options.ambiguousIsNarrow ? 1 : 2;
 	let width = 0;
 	for (const character of string) {

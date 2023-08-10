@@ -3,7 +3,6 @@
 const {
   ArrayIsArray,
   ArrayPrototypeJoin,
-  ArrayPrototypePush,
   ArrayPrototypeShift,
   JSONParse,
   JSONStringify,
@@ -57,7 +56,6 @@ const {
   ERR_PACKAGE_PATH_NOT_EXPORTED,
   ERR_UNSUPPORTED_DIR_IMPORT,
   ERR_NETWORK_IMPORT_DISALLOWED,
-  ERR_UNSUPPORTED_ESM_URL_SCHEME,
 } = require('internal/errors').codes;
 
 const { Module: CJSModule } = require('internal/modules/cjs/loader');
@@ -994,16 +992,20 @@ function resolveAsCommonJS(specifier, parentURL) {
 // TODO(@JakobJingleheimer): de-dupe `specifier` & `parsed`
 function checkIfDisallowedImport(specifier, parsed, parsedParentURL) {
   if (parsedParentURL) {
+    // Avoid accessing the `protocol` property due to the lazy getters.
+    const parentProtocol = parsedParentURL.protocol;
     if (
-      parsedParentURL.protocol === 'http:' ||
-      parsedParentURL.protocol === 'https:'
+      parentProtocol === 'http:' ||
+      parentProtocol === 'https:'
     ) {
       if (shouldBeTreatedAsRelativeOrAbsolutePath(specifier)) {
+        // Avoid accessing the `protocol` property due to the lazy getters.
+        const parsedProtocol = parsed?.protocol;
         // data: and blob: disallowed due to allowing file: access via
         // indirection
-        if (parsed &&
-          parsed.protocol !== 'https:' &&
-          parsed.protocol !== 'http:'
+        if (parsedProtocol &&
+          parsedProtocol !== 'https:' &&
+          parsedProtocol !== 'http:'
         ) {
           throw new ERR_NETWORK_IMPORT_DISALLOWED(
             specifier,
@@ -1032,33 +1034,6 @@ function checkIfDisallowedImport(specifier, parsed, parsedParentURL) {
   }
 }
 
-function throwIfUnsupportedURLProtocol(url) {
-  if (url.protocol !== 'file:' && url.protocol !== 'data:' &&
-      url.protocol !== 'node:') {
-    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(url);
-  }
-}
-
-function throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports) {
-  if (
-    parsed &&
-    parsed.protocol !== 'file:' &&
-    parsed.protocol !== 'data:' &&
-    (
-      !experimentalNetworkImports ||
-      (
-        parsed.protocol !== 'https:' &&
-        parsed.protocol !== 'http:'
-      )
-    )
-  ) {
-    const schemes = ['file', 'data'];
-    if (experimentalNetworkImports) {
-      ArrayPrototypePush(schemes, 'https', 'http');
-    }
-    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed, schemes);
-  }
-}
 
 async function defaultResolve(specifier, context = {}) {
   let { parentURL, conditions } = context;
@@ -1104,11 +1079,13 @@ async function defaultResolve(specifier, context = {}) {
       parsed = new URL(specifier);
     }
 
-    if (parsed.protocol === 'data:' ||
+    // Avoid accessing the `protocol` property due to the lazy getters.
+    const protocol = parsed.protocol;
+    if (protocol === 'data:' ||
       (experimentalNetworkImports &&
         (
-          parsed.protocol === 'https:' ||
-          parsed.protocol === 'http:'
+          protocol === 'https:' ||
+          protocol === 'http:'
         )
       )
     ) {
@@ -1132,7 +1109,6 @@ async function defaultResolve(specifier, context = {}) {
   // This must come after checkIfDisallowedImport
   if (parsed && parsed.protocol === 'node:') return { url: specifier };
 
-  throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports);
 
   const isMain = parentURL === undefined;
   if (isMain) {
@@ -1178,8 +1154,6 @@ async function defaultResolve(specifier, context = {}) {
     }
     throw error;
   }
-
-  throwIfUnsupportedURLProtocol(url);
 
   return {
     // Do NOT cast `url` to a string: that will work even when there are real

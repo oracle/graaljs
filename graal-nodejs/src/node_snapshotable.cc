@@ -4,6 +4,7 @@
 #include <sstream>
 #include <vector>
 #include "base_object-inl.h"
+#include "blob_serializer_deserializer-inl.h"
 #include "debug_utils-inl.h"
 #include "env-inl.h"
 #include "node_blob.h"
@@ -17,6 +18,7 @@
 #include "node_metadata.h"
 #include "node_process.h"
 #include "node_snapshot_builder.h"
+#include "node_url.h"
 #include "node_util.h"
 #include "node_v8.h"
 #include "node_v8_platform-inl.h"
@@ -163,22 +165,19 @@ class SnapshotSerializerDeserializer {
   V(std::string)
 
 #define V(TypeName)                                                            \
-  if (std::is_same_v<T, TypeName>) {                                           \
+  if constexpr (std::is_same_v<T, TypeName>) {                                 \
     return #TypeName;                                                          \
-  }
+  } else  // NOLINT(readability/braces)
     TYPE_LIST(V)
 #undef V
 
-    std::string name;
-    if (std::is_arithmetic_v<T>) {
-      if (!std::is_signed_v<T>) {
-        name += "u";
-      }
-      name += std::is_integral_v<T> ? "int" : "float";
-      name += std::to_string(sizeof(T) * 8);
-      name += "_t";
+    if constexpr (std::is_arithmetic_v<T>) {
+      return (std::is_unsigned_v<T>   ? "uint"
+              : std::is_integral_v<T> ? "int"
+                                      : "float") +
+             std::to_string(sizeof(T) * 8) + "_t";
     }
-    return name;
+    return "";
   }
 
   bool is_debug = false;
@@ -1304,11 +1303,10 @@ int SnapshotBuilder::Generate(std::ostream& out,
   return exit_code;
 }
 
-SnapshotableObject::SnapshotableObject(Environment* env,
+SnapshotableObject::SnapshotableObject(Realm* realm,
                                        Local<Object> wrap,
                                        EmbedderObjectType type)
-    : BaseObject(env, wrap), type_(type) {
-}
+    : BaseObject(realm, wrap), type_(type) {}
 
 std::string_view SnapshotableObject::GetTypeName() const {
   switch (type_) {

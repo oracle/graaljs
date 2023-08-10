@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-use-before-define */
-
 const {
   ArrayFrom,
   ArrayIsArray,
@@ -121,13 +119,14 @@ const {
 } = require('internal/errors');
 const {
   isUint32,
+  validateAbortSignal,
+  validateBuffer,
   validateFunction,
   validateInt32,
   validateInteger,
   validateNumber,
   validateString,
   validateUint32,
-  validateAbortSignal,
 } = require('internal/validators');
 const fsPromisesInternal = require('internal/fs/promises');
 const { utcDate } = require('internal/http');
@@ -362,6 +361,7 @@ function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
     }
     // session[kType] can be only one of two possible values
     if (type === NGHTTP2_SESSION_SERVER) {
+      // eslint-disable-next-line no-use-before-define
       stream = new ServerHttp2Stream(session, handle, id, {}, obj);
       if (endOfStream) {
         stream.push(null);
@@ -373,6 +373,7 @@ function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
         stream[kState].flags |= STREAM_FLAGS_HEAD_REQUEST;
       }
     } else {
+      // eslint-disable-next-line no-use-before-define
       stream = new ClientHttp2Stream(session, handle, id, {});
       if (endOfStream) {
         stream.push(null);
@@ -1377,10 +1378,8 @@ class Http2Session extends EventEmitter {
       callback = payload;
       payload = undefined;
     }
-    if (payload && !isArrayBufferView(payload)) {
-      throw new ERR_INVALID_ARG_TYPE('payload',
-                                     ['Buffer', 'TypedArray', 'DataView'],
-                                     payload);
+    if (payload) {
+      validateBuffer(payload, 'payload');
     }
     if (payload && payload.length !== 8) {
       throw new ERR_HTTP2_PING_LENGTH();
@@ -1506,10 +1505,8 @@ class Http2Session extends EventEmitter {
     if (this.destroyed)
       throw new ERR_HTTP2_INVALID_SESSION();
 
-    if (opaqueData !== undefined && !isArrayBufferView(opaqueData)) {
-      throw new ERR_INVALID_ARG_TYPE('opaqueData',
-                                     ['Buffer', 'TypedArray', 'DataView'],
-                                     opaqueData);
+    if (opaqueData !== undefined) {
+      validateBuffer(opaqueData, 'opaqueData');
     }
     validateNumber(code, 'code');
     validateNumber(lastStreamID, 'lastStreamID');
@@ -1791,6 +1788,7 @@ class ClientHttp2Session extends Http2Session {
 
     const headersList = mapToHeaders(headers);
 
+    // eslint-disable-next-line no-use-before-define
     const stream = new ClientHttp2Stream(this, undefined, undefined, {});
     stream[kSentHeaders] = headers;
     stream[kOrigin] = `${headers[HTTP2_HEADER_SCHEME]}://` +
@@ -3415,5 +3413,3 @@ module.exports = {
   Http2ServerRequest,
   Http2ServerResponse,
 };
-
-/* eslint-enable no-use-before-define */

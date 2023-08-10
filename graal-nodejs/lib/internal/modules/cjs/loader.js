@@ -79,7 +79,7 @@ const { BuiltinModule } = require('internal/bootstrap/loaders');
 const {
   maybeCacheSourceMap,
 } = require('internal/source_map/source_map_cache');
-const { pathToFileURL, fileURLToPath, isURLInstance } = require('internal/url');
+const { pathToFileURL, fileURLToPath, isURL } = require('internal/url');
 const {
   deprecate,
   emitExperimentalWarning,
@@ -160,8 +160,8 @@ const isWindows = process.platform === 'win32';
 const relativeResolveCache = ObjectCreate(null);
 
 let requireDepth = 0;
-let statCache = null;
 let isPreloading = false;
+let statCache = null;
 
 function internalRequire(module, id) {
   validateString(id, 'id');
@@ -1363,7 +1363,7 @@ const createRequireError = 'must be a file URL object, file URL string, or ' +
 function createRequire(filename) {
   let filepath;
 
-  if (isURLInstance(filename) ||
+  if (isURL(filename) ||
       (typeof filename === 'string' && !path.isAbsolute(filename))) {
     try {
       filepath = fileURLToPath(filename);
@@ -1446,6 +1446,15 @@ Module.syncBuiltinESMExports = function syncBuiltinESMExports() {
 Module.isBuiltin = function isBuiltin(moduleName) {
   return allBuiltins.has(moduleName);
 };
+
+ObjectDefineProperty(Module.prototype, 'constructor', {
+  __proto__: null,
+  get: function() {
+    return policy ? undefined : Module;
+  },
+  configurable: false,
+  enumerable: false,
+});
 
 // Backwards compatibility
 Module.Module = Module;

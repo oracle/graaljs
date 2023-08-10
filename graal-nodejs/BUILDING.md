@@ -29,7 +29,7 @@ file a new issue.
     * [Running Coverage](#running-coverage)
     * [Building the documentation](#building-the-documentation)
     * [Building a debug build](#building-a-debug-build)
-    * [Building an ASAN build](#building-an-asan-build)
+    * [Building an ASan build](#building-an-asan-build)
     * [Speeding up frequent rebuilds when developing](#speeding-up-frequent-rebuilds-when-developing)
     * [Troubleshooting Unix and macOS builds](#troubleshooting-unix-and-macos-builds)
   * [Windows](#windows)
@@ -118,7 +118,7 @@ platforms. This is true regardless of entries in the table below.
 | macOS            | arm64            | >= 11                             | Tier 1                                          |                                      |
 | SmartOS          | x64              | >= 18                             | Tier 2                                          |                                      |
 | AIX              | ppc64be >=power8 | >= 7.2 TL04                       | Tier 2                                          |                                      |
-| FreeBSD          | x64              | >= 12.2                           | Experimental                                    |                                      |
+| FreeBSD          | x64              | >= 12.4                           | Experimental                                    |                                      |
 
 [^1]: Older kernel versions may work. However official Node.js release
     binaries are [built on RHEL 8 systems](#official-binary-platforms-and-toolchains)
@@ -208,10 +208,9 @@ Supported platforms and toolchains change with each major version of Node.js.
 This document is only valid for the current major version of Node.js.
 Consult previous versions of this document for older versions of Node.js:
 
-* [Node.js 17](https://github.com/nodejs/node/blob/v17.x/BUILDING.md)
+* [Node.js 19](https://github.com/nodejs/node/blob/v19.x/BUILDING.md)
+* [Node.js 18](https://github.com/nodejs/node/blob/v18.x/BUILDING.md)
 * [Node.js 16](https://github.com/nodejs/node/blob/v16.x/BUILDING.md)
-* [Node.js 14](https://github.com/nodejs/node/blob/v14.x/BUILDING.md)
-* [Node.js 12](https://github.com/nodejs/node/blob/v12.x/BUILDING.md)
 
 ## Building Node.js on supported platforms
 
@@ -502,16 +501,16 @@ $ gdb /opt/node-debug/node core.node.8.1535359906
 $ backtrace
 ```
 
-#### Building an ASAN build
+#### Building an ASan build
 
-[ASAN](https://github.com/google/sanitizers) can help detect various memory
-related bugs. ASAN builds are currently only supported on linux.
+[ASan](https://github.com/google/sanitizers) can help detect various memory
+related bugs. ASan builds are currently only supported on linux.
 If you want to check it on Windows or macOS or you want a consistent toolchain
 on Linux, you can try [Docker](https://www.docker.com/products/docker-desktop)
 (using an image like `gengjiawen/node-build:2020-02-14`).
 
 The `--debug` is not necessary and will slow down build and testing, but it can
-show clear stacktrace if ASAN hits an issue.
+show clear stacktrace if ASan hits an issue.
 
 ```console
 $  ./configure --debug --enable-asan && make -j4
@@ -793,246 +792,12 @@ $ ./configure --openssl-conf-name=<some_conf_name>
 
 ## Building Node.js with FIPS-compliant OpenSSL
 
-The current version of Node.js supports FIPS when statically and
-dynamically linking with OpenSSL 3.0.0 by using the configuration flag
-`--openssl-is-fips`.
+Node.js supports FIPS when statically or dynamically linked with OpenSSL 3 via
+[OpenSSL's provider model](https://www.openssl.org/docs/man3.0/man7/crypto.html#OPENSSL-PROVIDERS).
+It is not necessary to rebuild Node.js to enable support for FIPS.
 
-### FIPS support when statically linking OpenSSL
-
-FIPS can be supported by specifying the configuration flag `--openssl-is-fips`:
-
-```console
-$ ./configure --openssl-is-fips
-$ make -j8
-```
-
-The above command will build and install the FIPS module into the out directory.
-This includes building fips.so, running the `installfips` command that generates
-the FIPS configuration file (fipsmodule.cnf), copying and updating openssl.cnf
-to include the correct path to fipsmodule.cnf and finally uncomment the fips
-section.
-
-We can then run node specifying `--enable-fips`:
-
-```console
-$ ./node --enable-fips  -p 'crypto.getFips()'
-1
-```
-
-The above will use the Node.js default locations for OpenSSL 3.0:
-
-```console
-$ ./out/Release/openssl-cli version -m -d
-OPENSSLDIR: "/nodejs/openssl/out/Release/obj.target/deps/openssl"
-MODULESDIR: "/nodejs/openssl/out/Release/obj.target/deps/openssl/lib/openssl-modules"
-```
-
-The OpenSSL configuration files will be found in `OPENSSLDIR` directory above:
-
-```console
-$ ls -w 1 out/Release/obj.target/deps/openssl/*.cnf
-out/Release/obj.target/deps/openssl/fipsmodule.cnf
-out/Release/obj.target/deps/openssl/openssl.cnf
-```
-
-And the FIPS module will be located in the `MODULESDIR` directory:
-
-```console
-$ ls out/Release/obj.target/deps/openssl/lib/openssl-modules/
-fips.so
-```
-
-Running `configure` without `--openssl-is-fips` flag and rebuilding will reset
-the FIPS configuration.
-
-### FIPS support when dynamically linking OpenSSL
-
-For quictls/openssl 3.0 it is possible to enable FIPS when dynamically linking.
-If you want to build Node.js using openssl-3.0.0+quic, you can follow these
-steps:
-
-**clone OpenSSL source and prepare build**
-
-```bash
-git clone git@github.com:quictls/openssl.git
-
-cd openssl
-
-./config \
-  --prefix=/path/to/install/dir/ \
-  shared \
-  enable-fips \
-  linux-x86_64
-```
-
-The `/path/to/install/dir` is the path in which the `make install` instructions
-will publish the OpenSSL libraries and such. We will also use this path
-(and sub-paths) later when compiling Node.js.
-
-**compile and install OpenSSL**
-
-```console
-make -j8
-make install
-make install_ssldirs
-make install_fips
-```
-
-After the OpenSSL (including FIPS) modules have been compiled and installed
-(into the `/path/to/install/dir`) by the above instructions we also need to
-update the OpenSSL configuration file located under
-`/path/to/install/dir/ssl/openssl.cnf`. Right next to this file, you should
-find the `fipsmodule.cnf` file - let's add the following to the end of the
-`openssl.cnf` file.
-
-**alter openssl.cnf**
-
-```text
-.include /absolute/path/to/fipsmodule.cnf
-
-# List of providers to load
-[provider_sect]
-default = default_sect
-# The fips section name should match the section name inside the
-# included /path/to/install/dir/ssl/fipsmodule.cnf.
-fips = fips_sect
-
-[default_sect]
-activate = 1
-```
-
-You can e.g. accomplish this by running the following command - be sure to
-replace `/path/to/install/dir/` with the path you have selected. Please make
-sure that you specify an absolute path for the `.include fipsmodule.cnf` line -
-using relative paths did not work on my system!
-
-**alter openssl.cnf using a script**
-
-```console
-cat <<EOT >> /path/to/install/dir/ssl/openssl.cnf
-.include /path/to/install/dir/ssl/fipsmodule.cnf
-
-# List of providers to load
-[provider_sect]
-default = default_sect
-# The fips section name should match the section name inside the
-# included /path/to/install/dir/ssl/fipsmodule.cnf.
-fips = fips_sect
-
-[default_sect]
-activate = 1
-EOT
-```
-
-As you might have picked a non-custom path for your OpenSSL install dir, we
-have to export the following two environment variables in order for Node.js to
-find our OpenSSL modules we built beforehand:
-
-```console
-export OPENSSL_CONF=/path/to/install/dir/ssl/openssl.cnf
-export OPENSSL_MODULES=/path/to/install/dir/lib/ossl-modules
-```
-
-**build Node.js**
-
-```console
-./configure \
-  --shared-openssl \
-  --shared-openssl-libpath=/path/to/install/dir/lib \
-  --shared-openssl-includes=/path/to/install/dir/include \
-  --shared-openssl-libname=crypto,ssl \
-  --openssl-is-fips
-
-export LD_LIBRARY_PATH=/path/to/install/dir/lib
-
-make -j8
-```
-
-**verify the produced executable**
-
-```console
-ldd ./node
-    linux-vdso.so.1 (0x00007ffd7917b000)
-    libcrypto.so.81.3 => /path/to/install/dir/lib/libcrypto.so.81.3 (0x00007fd911321000)
-    libssl.so.81.3 => /path/to/install/dir/lib/libssl.so.81.3 (0x00007fd91125e000)
-    libdl.so.2 => /usr/lib64/libdl.so.2 (0x00007fd911232000)
-    libstdc++.so.6 => /usr/lib64/libstdc++.so.6 (0x00007fd911039000)
-    libm.so.6 => /usr/lib64/libm.so.6 (0x00007fd910ef3000)
-    libgcc_s.so.1 => /usr/lib64/libgcc_s.so.1 (0x00007fd910ed9000)
-    libpthread.so.0 => /usr/lib64/libpthread.so.0 (0x00007fd910eb5000)
-    libc.so.6 => /usr/lib64/libc.so.6 (0x00007fd910cec000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007fd9117f2000)
-```
-
-If the `ldd` command says that `libcrypto` cannot be found one needs to set
-`LD_LIBRARY_PATH` to point to the directory used above for
-`--shared-openssl-libpath` (see previous step).
-
-**verify the OpenSSL version**
-
-```console
-./node -p process.versions.openssl
-3.0.0-alpha16+quic
-```
-
-**verify that FIPS is available**
-
-```console
-./node -p 'process.config.variables.openssl_is_fips'
-true
-
-./node --enable-fips -p 'crypto.getFips()'
-1
-```
-
-FIPS support can then be enable via the OpenSSL configuration file or
-using `--enable-fips` or `--force-fips` command line options to the Node.js
-executable. See sections
-[Enabling FIPS using Node.js options](#enabling-fips-using-node.js-options) and
-[Enabling FIPS using OpenSSL config](#enabling-fips-using-openssl-config) below.
-
-### Enabling FIPS using Node.js options
-
-This is done using one of the Node.js options `--enable-fips` or
-`--force-fips`, for example:
-
-```console
-$ node --enable-fips -p 'crypto.getFips()'
-```
-
-### Enabling FIPS using OpenSSL config
-
-This example show that using OpenSSL's configuration file, FIPS can be enabled
-without specifying the `--enable-fips` or `--force-fips` options by setting
-`default_properties = fips=yes` in the FIPS configuration file. See
-[link](https://github.com/openssl/openssl/blob/master/README-FIPS.md#loading-the-fips-module-at-the-same-time-as-other-providers)
-for details.
-
-For this to work the OpenSSL configuration file (default openssl.cnf) needs to
-be updated. The following shows an example:
-
-```console
-openssl_conf = openssl_init
-
-.include /path/to/install/dir/ssl/fipsmodule.cnf
-
-[openssl_init]
-providers = prov
-alg_section = algorithm_sect
-
-[prov]
-fips = fips_sect
-default = default_sect
-
-[default_sect]
-activate = 1
-
-[algorithm_sect]
-default_properties = fips=yes
-```
-
-After this change Node.js can be run without the `--enable-fips` or `--force-fips`
-options.
+See [FIPS mode](./doc/api/crypto.md#fips-mode) for more information on how to
+enable FIPS support in Node.js.
 
 ## Building Node.js with external core modules
 

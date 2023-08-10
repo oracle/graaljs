@@ -190,6 +190,12 @@ function lazyInternalUtilInspect() {
   return internalUtilInspect;
 }
 
+let utilColors;
+function lazyUtilColors() {
+  utilColors ??= require('internal/util/colors');
+  return utilColors;
+}
+
 let buffer;
 function lazyBuffer() {
   buffer ??= require('buffer').Buffer;
@@ -499,7 +505,6 @@ const captureLargerStackTrace = hideStackFrames(
  * function UVException using a context object with data assembled in C++.
  * The goal is to migrate them to ERR_* errors later when compatibility is
  * not a concern.
- *
  * @param {object} ctx
  * @returns {Error}
  */
@@ -551,7 +556,6 @@ const uvException = hideStackFrames(function uvException(ctx) {
  * This creates an error compatible with errors produced in the C++
  * This function should replace the deprecated
  * `exceptionWithHostPort()` function.
- *
  * @param {number} err - A libuv error number
  * @param {string} syscall
  * @param {string} address
@@ -591,7 +595,6 @@ const uvExceptionWithHostPort = hideStackFrames(
 
 /**
  * This used to be util._errnoException().
- *
  * @param {number} err - A libuv error number
  * @param {string} syscall
  * @param {string} [original]
@@ -725,7 +728,6 @@ let maxStack_ErrorMessage;
  * Returns true if `err.name` and `err.message` are equal to engine-specific
  * values indicating max call stack size has been exceeded.
  * "Maximum call stack size exceeded" in V8.
- *
  * @param {Error} err
  * @returns {boolean}
  */
@@ -785,7 +787,7 @@ const fatalExceptionStackEnhancers = {
     // However, fatal error are handled differently and we cannot easily
     // highlight them. On Windows, detecting whether a console supports
     // ANSI escape sequences is not reliable.
-    if (process.platform === 'win32') {
+    if (isWindows) {
       const info = internalBinding('os').getOSInformation();
       const ver = ArrayPrototypeMap(StringPrototypeSplit(info[2], '.'),
                                     Number);
@@ -799,10 +801,7 @@ const fatalExceptionStackEnhancers = {
         colors: defaultColors,
       },
     } = lazyInternalUtilInspect();
-    const colors = useColors &&
-                   ((internalBinding('util').guessHandleType(2) === 'TTY' &&
-                   require('internal/tty').hasColors()) ||
-                   defaultColors);
+    const colors = useColors && (lazyUtilColors().shouldColorize(process.stderr) || defaultColors);
     try {
       return inspect(error, {
         colors,
@@ -857,7 +856,6 @@ class AbortError extends Error {
 
 /**
  * This creates a generic Node.js error.
- *
  * @param {string} message The error message.
  * @param {object} errorProperties Object with additional properties to be added to the error.
  * @returns {Error}
@@ -959,6 +957,9 @@ module.exports = {
 //
 // Note: Node.js specific errors must begin with the prefix ERR_
 
+E('ERR_ACCESS_DENIED',
+  'Access to this API has been restricted. Permission: %s',
+  Error);
 E('ERR_AMBIGUOUS_ARGUMENT', 'The "%s" argument is ambiguous. %s', TypeError);
 E('ERR_ARG_NOT_ITERABLE', '%s must be iterable', TypeError);
 E('ERR_ASSERTION', '%s', Error);
@@ -1159,6 +1160,8 @@ E('ERR_HTTP2_TRAILERS_NOT_READY',
   'Trailing headers cannot be sent until after the wantTrailers event is ' +
   'emitted', Error);
 E('ERR_HTTP2_UNSUPPORTED_PROTOCOL', 'protocol "%s" is unsupported.', Error);
+E('ERR_HTTP_BODY_NOT_ALLOWED',
+  'Adding content for this request method or response status is not allowed.', Error);
 E('ERR_HTTP_CONTENT_LENGTH_MISMATCH',
   'Response body\'s content-length of %s byte(s) does not match the content-length of %s byte(s) set in header', Error);
 E('ERR_HTTP_HEADERS_SENT',
@@ -1167,6 +1170,8 @@ E('ERR_HTTP_INVALID_HEADER_VALUE',
   'Invalid value "%s" for header "%s"', TypeError);
 E('ERR_HTTP_INVALID_STATUS_CODE', 'Invalid status code: %s', RangeError);
 E('ERR_HTTP_REQUEST_TIMEOUT', 'Request timeout', Error);
+E('ERR_HTTP_SOCKET_ASSIGNED',
+  'ServerResponse has an already assigned socket', Error);
 E('ERR_HTTP_SOCKET_ENCODING',
   'Changing the socket encoding is not allowed per RFC7230 Section 3.', Error);
 E('ERR_HTTP_TRAILER_INVALID',

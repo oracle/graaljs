@@ -722,12 +722,12 @@ function normalizeSpawnArguments(file, args, options) {
   };
 }
 
-function abortChildProcess(child, killSignal) {
+function abortChildProcess(child, killSignal, reason) {
   if (!child)
     return;
   try {
     if (child.kill(killSignal)) {
-      child.emit('error', new AbortError());
+      child.emit('error', new AbortError(undefined, { cause: reason }));
     }
   } catch (err) {
     child.emit('error', err);
@@ -797,7 +797,7 @@ function spawn(file, args, options) {
     }
 
     function onAbortListener() {
-      abortChildProcess(child, killSignal);
+      abortChildProcess(child, killSignal, options.signal.reason);
     }
   }
 

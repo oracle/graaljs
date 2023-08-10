@@ -61,7 +61,6 @@ const modeDesc = 'must be a 32-bit unsigned integer or an octal string';
  * converted to 32-bit unsigned integers or non-negative signed integers in the
  * C++ land, but any value higher than 0o777 will result in platform-specific
  * behaviors.
- *
  * @param {*} value Values to be validated
  * @param {string} name Name of the argument
  * @param {number} [def] If specified, will be returned for invalid values
@@ -326,6 +325,26 @@ function validateBooleanArray(value, name) {
 }
 
 /**
+ * @callback validateAbortSignalArray
+ * @param {*} value
+ * @param {string} name
+ * @returns {asserts value is AbortSignal[]}
+ */
+
+/** @type {validateAbortSignalArray} */
+function validateAbortSignalArray(value, name) {
+  validateArray(value, name);
+  for (let i = 0; i < value.length; i++) {
+    const signal = value[i];
+    const indexedName = `${name}[${i}]`;
+    if (signal == null) {
+      throw new ERR_INVALID_ARG_TYPE(indexedName, 'AbortSignal', signal);
+    }
+    validateAbortSignal(signal, indexedName);
+  }
+}
+
+/**
  * @param {*} signal
  * @param {string} [name='signal']
  * @returns {asserts signal is keyof signals}
@@ -529,6 +548,7 @@ module.exports = {
   validateArray,
   validateStringArray,
   validateBooleanArray,
+  validateAbortSignalArray,
   validateBoolean,
   validateBuffer,
   validateDictionary,

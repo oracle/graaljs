@@ -52,7 +52,7 @@ to the registry.
 
 ### Files included in package
 
-To see what will be included in your package, run `npx npm-packlist`.  All
+To see what will be included in your package, run `npm pack --dry-run`.  All
 files are included by default, with the following exceptions:
 
 - Certain files that are relevant to package installation and distribution
@@ -199,7 +199,8 @@ This value is not exported to the environment for child processes.
 * Default: false
 * Type: Boolean
 
-Indicates that a provenance statement should be generated.
+When publishing from a supported cloud CI/CD system, the package will be
+publicly linked to where it was built and published from.
 
 ### See Also
 

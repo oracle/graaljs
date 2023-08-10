@@ -31,7 +31,7 @@ const {
   ERR_INVALID_RETURN_VALUE,
   ERR_UNKNOWN_MODULE_FORMAT,
 } = require('internal/errors').codes;
-const { pathToFileURL, isURLInstance, URL } = require('internal/url');
+const { pathToFileURL, isURL, URL } = require('internal/url');
 const { emitExperimentalWarning } = require('internal/util');
 const {
   isAnyArrayBuffer,
@@ -497,7 +497,6 @@ class ESMLoader {
    *
    * This method must NOT be renamed: it functions as a dynamic import on a
    * loader module.
-   *
    * @param {string | string[]} specifiers Path(s) to the module.
    * @param {string} parentURL Path of the parent importing the module.
    * @param {Record<string, string>} importAssertions Validations for the
@@ -548,7 +547,6 @@ class ESMLoader {
    * Internally, this behaves like a backwards iterator, wherein the stack of
    * hooks starts at the top and each call to `nextLoad()` moves down 1 step
    * until it reaches the bottom or short-circuits.
-   *
    * @param {URL['href']} url The URL/path of the module to be loaded
    * @param {object} context Metadata about the module
    * @returns {{ format: ModuleFormat, source: ModuleSource }}
@@ -778,7 +776,6 @@ class ESMLoader {
    * Internally, this behaves like a backwards iterator, wherein the stack of
    * hooks starts at the top and each call to `nextResolve()` moves down 1 step
    * until it reaches the bottom or short-circuits.
-   *
    * @param {string} originalSpecifier The specified URL path of the module to
    *                                   be resolved.
    * @param {string} [parentURL] The URL path of the module's parent.
@@ -792,7 +789,7 @@ class ESMLoader {
     if (
       !isMain &&
       typeof parentURL !== 'string' &&
-      !isURLInstance(parentURL)
+      !isURL(parentURL)
     ) {
       throw new ERR_INVALID_ARG_TYPE(
         'parentURL',

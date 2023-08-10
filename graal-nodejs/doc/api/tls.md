@@ -173,8 +173,8 @@ low-entropy sources is not secure.
 PSK ciphers are disabled by default, and using TLS-PSK thus requires explicitly
 specifying a cipher suite with the `ciphers` option. The list of available
 ciphers can be retrieved via `openssl ciphers -v 'PSK'`. All TLS 1.3
-ciphers are eligible for PSK but currently only those that use SHA256 digest are
-supported they can be retrieved via `openssl ciphers -v -s -tls1_3 -psk`.
+ciphers are eligible for PSK and can be retrieved via
+`openssl ciphers -v -s -tls1_3 -psk`.
 
 According to the [RFC 4279][], PSK identities up to 128 bytes in length and
 PSKs up to 64 bytes in length must be supported. As of OpenSSL 1.1.0
@@ -728,9 +728,10 @@ added: v0.5.3
 -->
 
 * `hostname` {string} A SNI host name or wildcard (e.g. `'*'`)
-* `context` {Object} An object containing any of the possible properties
-  from the [`tls.createSecureContext()`][] `options` arguments (e.g. `key`,
-  `cert`, `ca`, etc).
+* `context` {Object|tls.SecureContext} An object containing any of the possible
+  properties from the [`tls.createSecureContext()`][] `options` arguments
+  (e.g. `key`, `cert`, `ca`, etc), or a TLS context object created with
+  [`tls.createSecureContext()`][] itself.
 
 The `server.addContext()` method adds a secure context that will be used if
 the client request's SNI name matches the supplied `hostname` (or wildcard).

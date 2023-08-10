@@ -15,6 +15,8 @@ NPM="$ROOT/deps/npm/bin/npm-cli.js"
 NEW_VERSION=$("$NODE" "$NPM" view postject dist-tags.latest)
 CURRENT_VERSION=$("$NODE" -p "require('./test/fixtures/postject-copy/node_modules/postject/package.json').version")
 
+echo "Comparing $NEW_VERSION with $CURRENT_VERSION"
+
 if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
   echo "Skipped because Postject is on the latest version."
   exit 0
@@ -27,7 +29,7 @@ cd test/fixtures/postject-copy || exit
 
 "$NODE" "$NPM" init --yes
 
-"$NODE" "$NPM" install --no-bin-links --ignore-scripts postject
+"$NODE" "$NPM" install --no-bin-links --ignore-scripts "postject@$NEW_VERSION"
 
 # TODO(RaisinTen): Replace following with $WORKSPACE
 cd ../../..

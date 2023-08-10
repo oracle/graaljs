@@ -59,9 +59,9 @@ const {
   urlToHttpOptions,
 } = require('internal/url');
 
-const {
-  formatUrl,
-} = internalBinding('url');
+const bindingUrl = internalBinding('url');
+
+const { getOptionValue } = require('internal/options');
 
 // Original url.parse() API
 
@@ -147,7 +147,20 @@ const {
   CHAR_COLON,
 } = require('internal/constants');
 
+let urlParseWarned = false;
+
 function urlParse(url, parseQueryString, slashesDenoteHost) {
+  if (!urlParseWarned && getOptionValue('--pending-deprecation')) {
+    urlParseWarned = true;
+    process.emitWarning(
+      '`url.parse()` behavior is not standardized and prone to ' +
+      'errors that have security implications. Use the WHATWG URL API ' +
+      'instead. CVEs are not issued for `url.parse()` vulnerabilities.',
+      'DeprecationWarning',
+      'DEP0169',
+    );
+  }
+
   if (url instanceof Url) return url;
 
   const urlObject = new Url();
@@ -612,7 +625,7 @@ function urlFormat(urlObject, options) {
       }
     }
 
-    return formatUrl(urlObject.href, fragment, unicode, search, auth);
+    return bindingUrl.format(urlObject.href, fragment, unicode, search, auth);
   }
 
   return Url.prototype.format.call(urlObject);
@@ -632,7 +645,7 @@ const noEscapeAuth = new Int8Array([
   0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x40 - 0x4F
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, // 0x50 - 0x5F
   0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x60 - 0x6F
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0,  // 0x70 - 0x7F
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, // 0x70 - 0x7F
 ]);
 
 Url.prototype.format = function format() {

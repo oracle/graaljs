@@ -439,6 +439,9 @@ define('ci-name', {
     platform.
   `,
   type: [null, String],
+  deprecated: `
+    This config is deprecated and will not be changeable in future version of npm.
+  `,
   description: `
     The name of a continuous integration system.  If not set explicitly, npm
     will detect the current CI environment using the
@@ -1624,7 +1627,8 @@ define('provenance', {
   default: false,
   type: Boolean,
   description: `
-    Indicates that a provenance statement should be generated.
+    When publishing from a supported cloud CI/CD system, the package will be
+    publicly linked to where it was built and published from.
   `,
   flatten,
 })

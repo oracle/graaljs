@@ -814,6 +814,14 @@ TLSSocket.prototype._init = function(socket, wrap) {
     }
   }
 
+  // We can only come here via [kWrapConnectedHandle]() call that happens
+  // if the connection is established with `autoSelectFamily` set to `true`.
+  const connectOptions = this[kConnectOptions];
+  if (!options.isServer && connectOptions) {
+    if (connectOptions.servername) {
+      this.setServername(connectOptions.servername);
+    }
+  }
 
   if (options.handshakeTimeout > 0)
     this.setTimeout(options.handshakeTimeout, this._handleTimeout);
@@ -1458,8 +1466,10 @@ Server.prototype.addContext = function(servername, context) {
     RegExpPrototypeSymbolReplace(/([.^$+?\-\\[\]{}])/g, servername, '\\$1'),
     '*', '[^.]*',
   ) + '$');
-  ArrayPrototypePush(this._contexts,
-                     [re, tls.createSecureContext(context).context]);
+
+  const secureContext =
+    context instanceof common.SecureContext ? context : tls.createSecureContext(context);
+  ArrayPrototypePush(this._contexts, [re, secureContext.context]);
 };
 
 Server.prototype[EE.captureRejectionSymbol] = function(

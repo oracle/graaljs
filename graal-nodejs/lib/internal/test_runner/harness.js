@@ -1,6 +1,7 @@
 'use strict';
 const {
   ArrayPrototypeForEach,
+  FunctionPrototypeBind,
   PromiseResolve,
   SafeMap,
 } = primordials;
@@ -137,9 +138,8 @@ function setup(root) {
   const rejectionHandler =
     createProcessEventHandler('unhandledRejection', root);
   const coverage = configureCoverage(root, globalOptions);
-  const exitHandler = () => {
-    root.harness.coverage = collectCoverage(root, coverage);
-    root.postRun(new ERR_TEST_FAILURE(
+  const exitHandler = async () => {
+    await root.run(new ERR_TEST_FAILURE(
       'Promise resolution is still pending but the event loop has already resolved',
       kCancelledByParent));
 
@@ -148,8 +148,8 @@ function setup(root) {
     process.removeListener('uncaughtException', exceptionHandler);
   };
 
-  const terminationHandler = () => {
-    exitHandler();
+  const terminationHandler = async () => {
+    await exitHandler();
     process.exit();
   };
 
@@ -165,7 +165,19 @@ function setup(root) {
   root.harness = {
     __proto__: null,
     bootstrapComplete: false,
-    coverage: null,
+    coverage: FunctionPrototypeBind(collectCoverage, null, root, coverage),
+    counters: {
+      __proto__: null,
+      all: 0,
+      failed: 0,
+      passed: 0,
+      cancelled: 0,
+      skipped: 0,
+      todo: 0,
+      topLevel: 0,
+      suites: 0,
+    },
+    shouldColorizeTestFiles: false,
   };
   root.startTime = hrtime();
   return root;
@@ -190,7 +202,7 @@ async function startSubtest(subtest) {
   await subtest.start();
 }
 
-function runInParentContext(Factory, addShorthands = true) {
+function runInParentContext(Factory) {
   function run(name, options, fn, overrides) {
     const parent = testResources.get(executionAsyncId()) || getGlobalRoot();
     const subtest = parent.createSubtest(Factory, name, options, fn, overrides);
@@ -201,10 +213,6 @@ function runInParentContext(Factory, addShorthands = true) {
   }
 
   const test = (name, options, fn) => run(name, options, fn);
-  if (!addShorthands) {
-    return test;
-  }
-
   ArrayPrototypeForEach(['skip', 'todo', 'only'], (keyword) => {
     test[keyword] = (name, options, fn) => {
       run(name, options, fn, { [keyword]: true });
@@ -222,7 +230,7 @@ function hook(hook) {
 
 module.exports = {
   createTestTree,
-  test: runInParentContext(Test, false),
+  test: runInParentContext(Test),
   describe: runInParentContext(Suite),
   it: runInParentContext(Test),
   before: hook('before'),

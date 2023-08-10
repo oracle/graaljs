@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.18.0](https://github.com/nodejs/corepack/compare/v0.17.2...v0.18.0) (2023-05-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* remove support for Node.js 14.x
+
+### Features
+
+* update package manager versions ([#256](https://github.com/nodejs/corepack/issues/256)) ([7b61ff6](https://github.com/nodejs/corepack/commit/7b61ff6bc797ec4ed50c2ba1e1f1689264cbf4fc))
+
+
+### Bug Fixes
+
+* **doc:** add a note about troubleshooting network errors ([#259](https://github.com/nodejs/corepack/issues/259)) ([aa3cbdb](https://github.com/nodejs/corepack/commit/aa3cbdb54fb21b8e0adde96dc781cdf750932843))
+
+
+### Miscellaneous Chores
+
+* update supported Node.js versions ([#258](https://github.com/nodejs/corepack/issues/258)) ([74f679d](https://github.com/nodejs/corepack/commit/74f679d8a72cc10a3720fc679b95e9bd086d95be))
+
+## [0.17.2](https://github.com/nodejs/corepack/compare/v0.17.1...v0.17.2) (2023-04-07)
+
+
+### Features
+
+* update package manager versions ([#249](https://github.com/nodejs/corepack/issues/249)) ([2507e9b](https://github.com/nodejs/corepack/commit/2507e9b317eacdeb939aee086de5711218ebd794))
+
+## [0.17.1](https://github.com/nodejs/corepack/compare/v0.17.0...v0.17.1) (2023-03-17)
+
+
+### Features
+
+* update package manager versions ([#245](https://github.com/nodejs/corepack/issues/245)) ([673f3b7](https://github.com/nodejs/corepack/commit/673f3b7f18421a49da1e2c55656666a74ce94474))
+
 ## [0.17.0](https://github.com/nodejs/corepack/compare/v0.16.0...v0.17.0) (2023-02-24)
 
 

@@ -261,9 +261,6 @@ bool BuiltinLoader::Add(const char* id, std::string_view utf8source) {
   return Add(id, UnionBytes(out));
 }
 
-// Returns Local<Function> of the compiled module if return_code_cache
-// is false (we are only compiling the function).
-// Otherwise return a Local<Object> containing the cache.
 MaybeLocal<Function> BuiltinLoader::LookupAndCompileInternal(
     Local<Context> context,
     const char* id,
@@ -368,11 +365,10 @@ MaybeLocal<Function> BuiltinLoader::LookupAndCompileInternal(
   return scope.Escape(fun);
 }
 
-// Returns Local<Function> of the compiled module if return_code_cache
-// is false (we are only compiling the function).
-// Otherwise return a Local<Object> containing the cache.
 MaybeLocal<Function> BuiltinLoader::LookupAndCompile(
-    Local<Context> context, const char* id, Environment* optional_env) {
+    Local<Context> context,
+    const char* id,
+    Environment* optional_env) {
   Result result;
   std::vector<Local<String>> parameters;
   Isolate* isolate = context->GetIsolate();
@@ -565,13 +561,13 @@ void BuiltinLoader::GetCacheUsage(const FunctionCallbackInfo<Value>& args) {
   }
 
   if (!ToV8Value(context, env->builtins_in_snapshot)
-           .ToLocal(&builtins_without_cache_js)) {
+           .ToLocal(&builtins_in_snapshot_js)) {
     return;
   }
   if (result
           ->Set(env->context(),
                 OneByteString(isolate, "compiledInSnapshot"),
-                builtins_without_cache_js)
+                builtins_in_snapshot_js)
           .IsNothing()) {
     return;
   }

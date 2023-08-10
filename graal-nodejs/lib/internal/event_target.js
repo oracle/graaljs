@@ -42,6 +42,7 @@ const {
   kEnumerableProperty,
 } = require('internal/util');
 const { inspect } = require('util');
+const webidl = require('internal/webidl');
 
 const kIsEventTarget = SymbolFor('nodejs.event_target');
 const kIsNodeEventTarget = Symbol('kIsNodeEventTarget');
@@ -119,8 +120,6 @@ class Event {
       isTrustedSet.add(this);
     }
 
-    // isTrusted is special (LegacyUnforgeable)
-    ObjectDefineProperty(this, 'isTrusted', isTrustedDescriptor);
     this[kTarget] = null;
     this[kIsBeingDispatched] = false;
   }
@@ -325,6 +324,11 @@ ObjectDefineProperties(
     eventPhase: kEnumerableProperty,
     cancelBubble: kEnumerableProperty,
     stopPropagation: kEnumerableProperty,
+    // Don't conform to the spec with isTrusted. The spec defines it as
+    // LegacyUnforgeable but defining it in the constructor has a big
+    // performance impact and the property doesn't seem to be useful outside of
+    // browsers.
+    isTrusted: isTrustedDescriptor,
   });
 
 function isCustomEvent(value) {
@@ -574,7 +578,7 @@ class EventTarget {
       process.emitWarning(w);
       return;
     }
-    type = String(type);
+    type = webidl.converters.DOMString(type);
 
     if (signal) {
       if (signal.aborted) {
@@ -640,7 +644,7 @@ class EventTarget {
     if (!validateEventListener(listener))
       return;
 
-    type = String(type);
+    type = webidl.converters.DOMString(type);
     const capture = options?.capture === true;
 
     const root = this[kEvents].get(type);

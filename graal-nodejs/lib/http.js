@@ -53,6 +53,8 @@ let maxHeaderSize;
  *   insecureHTTPParser?: boolean;
  *   maxHeaderSize?: number;
  *   joinDuplicateHeaders?: boolean;
+ *   highWaterMark?: number;
+ *   rejectNonStandardBodyWrites?: boolean;
  *   }} [opts]
  * @param {Function} [requestListener]
  * @returns {Server}

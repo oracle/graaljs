@@ -27,6 +27,7 @@
 const {
   ArrayPrototypePush,
   BigIntPrototypeToString,
+  Boolean,
   MathMax,
   Number,
   ObjectDefineProperties,
@@ -95,6 +96,7 @@ const {
   copyObject,
   Dirent,
   emitRecursiveRmdirWarning,
+  getDirent,
   getDirents,
   getOptions,
   getValidatedFd,
@@ -1400,6 +1402,62 @@ function mkdirSync(path, options) {
 }
 
 /**
+ * An iterative algorithm for reading the entire contents of the `basePath` directory.
+ * This function does not validate `basePath` as a directory. It is passed directly to
+ * `binding.readdir` after a `nullCheck`.
+ * @param {string} basePath
+ * @param {{ encoding: string, withFileTypes: boolean }} options
+ * @returns {string[] | Dirent[]}
+ */
+function readdirSyncRecursive(basePath, options) {
+  nullCheck(basePath, 'path', true);
+
+  const withFileTypes = Boolean(options.withFileTypes);
+  const encoding = options.encoding;
+
+  const readdirResults = [];
+  const pathsQueue = [basePath];
+
+  const ctx = { path: basePath };
+  function read(path) {
+    ctx.path = path;
+    const readdirResult = binding.readdir(
+      pathModule.toNamespacedPath(path),
+      encoding,
+      withFileTypes,
+      undefined,
+      ctx,
+    );
+    handleErrorFromBinding(ctx);
+
+    for (let i = 0; i < readdirResult.length; i++) {
+      if (withFileTypes) {
+        const dirent = getDirent(path, readdirResult[0][i], readdirResult[1][i]);
+        ArrayPrototypePush(readdirResults, dirent);
+        if (dirent.isDirectory()) {
+          ArrayPrototypePush(pathsQueue, pathModule.join(dirent.path, dirent.name));
+        }
+      } else {
+        const resultPath = pathModule.join(path, readdirResult[i]);
+        const relativeResultPath = pathModule.relative(basePath, resultPath);
+        const stat = binding.internalModuleStat(resultPath);
+        ArrayPrototypePush(readdirResults, relativeResultPath);
+        // 1 indicates directory
+        if (stat === 1) {
+          ArrayPrototypePush(pathsQueue, resultPath);
+        }
+      }
+    }
+  }
+
+  for (let i = 0; i < pathsQueue.length; i++) {
+    read(pathsQueue[i]);
+  }
+
+  return readdirResults;
+}
+
+/**
  * Reads the contents of a directory.
  * @param {string | Buffer | URL} path
  * @param {string | {
@@ -1416,6 +1474,14 @@ function readdir(path, options, callback) {
   callback = makeCallback(typeof options === 'function' ? options : callback);
   options = getOptions(options);
   path = getValidatedPath(path);
+  if (options.recursive != null) {
+    validateBoolean(options.recursive, 'options.recursive');
+  }
+
+  if (options.recursive) {
+    callback(null, readdirSyncRecursive(path, options));
+    return;
+  }
 
   const req = new FSReqCallback();
   if (!options.withFileTypes) {
@@ -1439,12 +1505,21 @@ function readdir(path, options, callback) {
  * @param {string | {
  *   encoding?: string;
  *   withFileTypes?: boolean;
+ *   recursive?: boolean;
  *   }} [options]
  * @returns {string | Buffer[] | Dirent[]}
  */
 function readdirSync(path, options) {
   options = getOptions(options);
   path = getValidatedPath(path);
+  if (options.recursive != null) {
+    validateBoolean(options.recursive, 'options.recursive');
+  }
+
+  if (options.recursive) {
+    return readdirSyncRecursive(path, options);
+  }
+
   const ctx = { path };
   const result = binding.readdir(pathModule.toNamespacedPath(path),
                                  options.encoding, !!options.withFileTypes,

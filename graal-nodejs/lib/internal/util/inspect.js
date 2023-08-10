@@ -302,7 +302,6 @@ function getUserOptions(ctx, isCrossContext) {
 /**
  * Echos the value of any input. Tries to print the value out
  * in the best way possible given the different types.
- *
  * @param {any} value The value to print out.
  * @param {object} opts Optional options object that alters the output.
  */
@@ -1244,9 +1243,16 @@ function getStackString(error) {
 function getStackFrames(ctx, err, stack) {
   const frames = StringPrototypeSplit(stack, '\n');
 
+  let cause;
+  try {
+    ({ cause } = err);
+  } catch {
+    // If 'cause' is a getter that throws, ignore it.
+  }
+
   // Remove stack frames identical to frames in cause.
-  if (err.cause && isError(err.cause)) {
-    const causeStack = getStackString(err.cause);
+  if (cause != null && isError(cause)) {
+    const causeStack = getStackString(cause);
     const causeStackStart = StringPrototypeIndexOf(causeStack, '\n    at');
     if (causeStackStart !== -1) {
       const causeFrames = StringPrototypeSplit(StringPrototypeSlice(causeStack, causeStackStart + 1), '\n');

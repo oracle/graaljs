@@ -119,7 +119,7 @@ the path specified by `--snapshot-blob`.
 ```console
 $ echo "globalThis.foo = 'I am from the snapshot'" > snapshot.js
 
-# Run snapshot.js to intialize the application and snapshot the
+# Run snapshot.js to initialize the application and snapshot the
 # state of it into snapshot.blob.
 $ node --snapshot-blob snapshot.blob --build-snapshot snapshot.js
 
@@ -444,6 +444,10 @@ See [customizing ESM specifier resolution][] for example usage.
 
 <!-- YAML
 added: v18.15.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47686
+    description: This option can be used with `--test`.
 -->
 
 When used in conjunction with the `node:test` module, a code coverage report is
@@ -466,6 +470,10 @@ added:
   - v13.3.0
   - v12.16.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47286
+    description: This option is no longer required as WASI is
+                 enabled by default, but can still be passed.
   - version: v13.6.0
     pr-url: https://github.com/nodejs/node/pull/30980
     description: changed from `--experimental-wasi-unstable-preview0` to
@@ -1197,7 +1205,7 @@ path to the blob that is used to restore the application state.
 
 When loading a snapshot, Node.js checks that:
 
-1. The version, architecture and platform of the running Node.js binary
+1. The version, architecture, and platform of the running Node.js binary
    are exactly the same as that of the binary that generates the snapshot.
 2. The V8 flags and CPU features are compatible with that of the binary
    that generates the snapshot.
@@ -1918,6 +1926,8 @@ Node.js options that are allowed are:
 * `--secure-heap`
 * `--snapshot-blob`
 * `--test-only`
+* `--test-reporter-destination`
+* `--test-reporter`
 * `--throw-deprecation`
 * `--title`
 * `--tls-cipher-list`
@@ -2058,6 +2068,12 @@ added: v14.5.0
 If `value` equals `'1'`, the check for a supported platform is skipped during
 Node.js startup. Node.js might not execute correctly. Any issues encountered
 on unsupported platforms will not be fixed.
+
+### `NODE_TEST_CONTEXT=value`
+
+If `value` equals `'child'`, test reporter options will be overridden and test
+output will be sent to stdout in the TAP format. If any other value is provided,
+Node.js makes no guarantees about the reporter format used or its stability.
 
 ### `NODE_TLS_REJECT_UNAUTHORIZED=value`
 
@@ -2315,7 +2331,7 @@ done
 [`--redirect-warnings`]: #--redirect-warningsfile
 [`Atomics.wait()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics/wait
 [`Buffer`]: buffer.md#class-buffer
-[`CRYPTO_secure_malloc_init`]: https://www.openssl.org/docs/man1.1.0/man3/CRYPTO_secure_malloc_init.html
+[`CRYPTO_secure_malloc_init`]: https://www.openssl.org/docs/man3.0/man3/CRYPTO_secure_malloc_init.html
 [`NODE_OPTIONS`]: #node_optionsoptions
 [`NO_COLOR`]: https://no-color.org
 [`SlowBuffer`]: buffer.md#class-slowbuffer

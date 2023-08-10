@@ -1,19 +1,23 @@
 'use strict';
 const {
+  ArrayPrototypeJoin,
   ArrayPrototypeMap,
   ArrayPrototypePush,
   ObjectCreate,
   ObjectGetOwnPropertyDescriptor,
+  NumberPrototypeToFixed,
   SafePromiseAllReturnArrayLike,
   RegExp,
   RegExpPrototypeExec,
   SafeMap,
 } = primordials;
-const { basename } = require('path');
+
+const { basename, relative } = require('path');
 const { createWriteStream } = require('fs');
 const { pathToFileURL } = require('internal/url');
 const { createDeferredPromise } = require('internal/util');
 const { getOptionValue } = require('internal/options');
+const { green, red, white, shouldColorize } = require('internal/util/colors');
 
 const {
   codes: {
@@ -112,9 +116,10 @@ function tryBuiltinReporter(name) {
   return require(builtinPath);
 }
 
-async function getReportersMap(reporters, destinations) {
+async function getReportersMap(reporters, destinations, rootTest) {
   return SafePromiseAllReturnArrayLike(reporters, async (name, i) => {
     const destination = kBuiltinDestinations.get(destinations[i]) ?? createWriteStream(destinations[i]);
+    rootTest.harness.shouldColorizeTestFiles ||= shouldColorize(destination);
 
     // Load the test reporter passed to --test-reporter
     let reporter = tryBuiltinReporter(name);
@@ -151,7 +156,7 @@ async function getReportersMap(reporters, destinations) {
 
 async function setupTestReporters(rootTest) {
   const { reporters, destinations } = parseCommandLine();
-  const reportersMap = await getReportersMap(reporters, destinations);
+  const reportersMap = await getReportersMap(reporters, destinations, rootTest);
   for (let i = 0; i < reportersMap.length; i++) {
     const { reporter, destination } = reportersMap[i];
     compose(rootTest.reporter, reporter).pipe(destination);
@@ -167,25 +172,38 @@ function parseCommandLine() {
 
   const isTestRunner = getOptionValue('--test');
   const coverage = getOptionValue('--experimental-test-coverage');
-  const destinations = getOptionValue('--test-reporter-destination');
-  const reporters = getOptionValue('--test-reporter');
+  const isChildProcess = process.env.NODE_TEST_CONTEXT === 'child';
+  const isChildProcessV8 = process.env.NODE_TEST_CONTEXT === 'child-v8';
+  let destinations;
+  let reporters;
   let testNamePatterns;
   let testOnlyFlag;
 
-  if (reporters.length === 0 && destinations.length === 0) {
-    ArrayPrototypePush(reporters, kDefaultReporter);
-  }
+  if (isChildProcessV8) {
+    kBuiltinReporters.set('v8-serializer', 'internal/test_runner/reporter/v8-serializer');
+    reporters = ['v8-serializer'];
+    destinations = [kDefaultDestination];
+  } else if (isChildProcess) {
+    reporters = ['tap'];
+    destinations = [kDefaultDestination];
+  } else {
+    destinations = getOptionValue('--test-reporter-destination');
+    reporters = getOptionValue('--test-reporter');
+    if (reporters.length === 0 && destinations.length === 0) {
+      ArrayPrototypePush(reporters, kDefaultReporter);
+    }
 
-  if (reporters.length === 1 && destinations.length === 0) {
-    ArrayPrototypePush(destinations, kDefaultDestination);
-  }
+    if (reporters.length === 1 && destinations.length === 0) {
+      ArrayPrototypePush(destinations, kDefaultDestination);
+    }
 
-  if (destinations.length !== reporters.length) {
-    throw new ERR_INVALID_ARG_VALUE(
-      '--test-reporter',
-      reporters,
-      'must match the number of specified \'--test-reporter-destination\'',
-    );
+    if (destinations.length !== reporters.length) {
+      throw new ERR_INVALID_ARG_VALUE(
+        '--test-reporter',
+        reporters,
+        'must match the number of specified \'--test-reporter-destination\'',
+      );
+    }
   }
 
   if (isTestRunner) {
@@ -214,12 +232,84 @@ function parseCommandLine() {
   return globalTestOptions;
 }
 
+function countCompletedTest(test, harness = test.root.harness) {
+  if (test.nesting === 0) {
+    harness.counters.topLevel++;
+  }
+  if (test.reportedType === 'suite') {
+    harness.counters.suites++;
+    return;
+  }
+  // Check SKIP and TODO tests first, as those should not be counted as
+  // failures.
+  if (test.skipped) {
+    harness.counters.skipped++;
+  } else if (test.isTodo) {
+    harness.counters.todo++;
+  } else if (test.cancelled) {
+    harness.counters.cancelled++;
+  } else if (!test.passed) {
+    harness.counters.failed++;
+  } else {
+    harness.counters.passed++;
+  }
+  harness.counters.all++;
+}
+
+
+function coverageThreshold(coverage, color) {
+  coverage = NumberPrototypeToFixed(coverage, 2);
+  if (color) {
+    if (coverage > 90) return `${green}${coverage}${color}`;
+    if (coverage < 50) return `${red}${coverage}${color}`;
+  }
+  return coverage;
+}
+
+function getCoverageReport(pad, summary, symbol, color) {
+  let report = `${color}${pad}${symbol}start of coverage report\n`;
+
+  report += `${pad}${symbol}file | line % | branch % | funcs % | uncovered lines\n`;
+
+  for (let i = 0; i < summary.files.length; ++i) {
+    const {
+      path,
+      coveredLinePercent,
+      coveredBranchPercent,
+      coveredFunctionPercent,
+      uncoveredLineNumbers,
+    } = summary.files[i];
+    const relativePath = relative(summary.workingDirectory, path);
+    const lines = coverageThreshold(coveredLinePercent, color);
+    const branches = coverageThreshold(coveredBranchPercent, color);
+    const functions = coverageThreshold(coveredFunctionPercent, color);
+    const uncovered = ArrayPrototypeJoin(uncoveredLineNumbers, ', ');
+
+    report += `${pad}${symbol}${relativePath} | ${lines} | ${branches} | ` +
+              `${functions} | ${uncovered}\n`;
+  }
+
+  const { totals } = summary;
+  report += `${pad}${symbol}all files | ` +
+            `${coverageThreshold(totals.coveredLinePercent, color)} | ` +
+            `${coverageThreshold(totals.coveredBranchPercent, color)} | ` +
+            `${coverageThreshold(totals.coveredFunctionPercent, color)} |\n`;
+
+  report += `${pad}${symbol}end of coverage report\n`;
+  if (color) {
+    report += white;
+  }
+  return report;
+}
+
 module.exports = {
   convertStringToRegExp,
+  countCompletedTest,
   createDeferredCallback,
   doesPathMatchFilter,
   isSupportedFileType,
   isTestFailureError,
   parseCommandLine,
   setupTestReporters,
+  getCoverageReport,
 };

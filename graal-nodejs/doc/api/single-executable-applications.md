@@ -2,9 +2,15 @@
 
 <!--introduced_in=v18.16.0-->
 
+<!-- YAML
+added:
+  - v19.7.0
+  - v18.16.0
+-->
+
 > Stability: 1 - Experimental: This feature is being designed and will change.
 
-<!-- source_link=lib/internal/main/single_executable_application.js -->
+<!-- source_link=src/node_sea.cc -->
 
 This feature allows the distribution of a Node.js application conveniently to a
 system that does not have Node.js installed.

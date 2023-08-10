@@ -2431,6 +2431,11 @@ await Readable.from([1, 2, 3, 4]).take(2).toArray(); // [1, 2]
 
 <!-- YAML
 added: v17.5.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/48102
+    description: Using the `asIndexedPairs` method emits a runtime warning that
+                  it will be removed in a future version.
 -->
 
 > Stability: 1 - Experimental
@@ -2477,21 +2482,44 @@ This method calls `fn` on each chunk of the stream in order, passing it the
 result from the calculation on the previous element. It returns a promise for
 the final value of the reduction.
 
-The reducer function iterates the stream element-by-element which means that
-there is no `concurrency` parameter or parallelism. To perform a `reduce`
-concurrently, it can be chained to the [`readable.map`][] method.
-
 If no `initial` value is supplied the first chunk of the stream is used as the
 initial value. If the stream is empty, the promise is rejected with a
 `TypeError` with the `ERR_INVALID_ARGS` code property.
 
 ```mjs
 import { Readable } from 'node:stream';
+import { readdir, stat } from 'node:fs/promises';
+import { join } from 'node:path';
 
-const ten = await Readable.from([1, 2, 3, 4]).reduce((previous, data) => {
-  return previous + data;
-});
-console.log(ten); // 10
+const directoryPath = './src';
+const filesInDir = await readdir(directoryPath);
+
+const folderSize = await Readable.from(filesInDir)
+  .reduce(async (totalSize, file) => {
+    const { size } = await stat(join(directoryPath, file));
+    return totalSize + size;
+  }, 0);
+
+console.log(folderSize);
+```
+
+The reducer function iterates the stream element-by-element which means that
+there is no `concurrency` parameter or parallelism. To perform a `reduce`
+concurrently, you can extract the async function to [`readable.map`][] method.
+
+```mjs
+import { Readable } from 'node:stream';
+import { readdir, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+
+const directoryPath = './src';
+const filesInDir = await readdir(directoryPath);
+
+const folderSize = await Readable.from(filesInDir)
+  .map((file) => stat(join(directoryPath, file)), { concurrency: 2 })
+  .reduce((totalSize, { size }) => totalSize + size, 0);
+
+console.log(folderSize);
 ```
 
 ### Duplex and transform streams
@@ -2579,6 +2607,9 @@ further errors except from `_destroy()` may be emitted as `'error'`.
 <!-- YAML
 added: v10.0.0
 changes:
+  - version: v18.14.0
+    pr-url: https://github.com/nodejs/node/pull/46205
+    description: Added support for `ReadableStream` and `WritableStream`.
   - version: v15.11.0
     pr-url: https://github.com/nodejs/node/pull/37354
     description: The `signal` option was added.
@@ -2598,7 +2629,9 @@ changes:
                  finished before the call to `finished(stream, cb)`.
 -->
 
-* `stream` {Stream} A readable and/or writable stream.
+* `stream` {Stream|ReadableStream|WritableStream}
+
+A readable and/or writable stream/webstream.
 
 * `options` {Object}
   * `error` {boolean} If set to `false`, then a call to `emit('error', err)` is
@@ -3022,10 +3055,16 @@ added: v17.0.0
 
 <!-- YAML
 added: v16.8.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/46190
+    description: The `src` argument can now be a `ReadableStream` or
+                 `WritableStream`.
 -->
 
 * `src` {Stream|Blob|ArrayBuffer|string|Iterable|AsyncIterable|
-  AsyncGeneratorFunction|AsyncFunction|Promise|Object}
+  AsyncGeneratorFunction|AsyncFunction|Promise|Object|
+  ReadableStream|WritableStream}
 
 A utility method for creating duplex streams.
 
@@ -3045,6 +3084,8 @@ A utility method for creating duplex streams.
   `writable` into `Stream` and then combines them into `Duplex` where the
   `Duplex` will write to the `writable` and read from the `readable`.
 * `Promise` converts into readable `Duplex`. Value `null` is ignored.
+* `ReadableStream` converts into readable `Duplex`.
+* `WritableStream` converts into writable `Duplex`.
 * Returns: {stream.Duplex}
 
 If an `Iterable` object containing promises is passed as an argument,
@@ -3287,6 +3328,29 @@ reader.read().then(({ value, done }) => {
   controller.abort();
 });
 ```
+
+### `stream.getDefaultHighWaterMark(objectMode)`
+
+<!-- YAML
+added: v18.17.0
+-->
+
+* `objectMode` {boolean}
+* Returns: {integer}
+
+Returns the default highWaterMark used by streams.
+Defaults to `16384` (16 KiB), or `16` for `objectMode`.
+
+### `stream.setDefaultHighWaterMark(objectMode, value)`
+
+<!-- YAML
+added: v18.17.0
+-->
+
+* `objectMode` {boolean}
+* `value` {integer} highWaterMark value
+
+Sets the default highWaterMark used by streams.
 
 ## API for stream implementers
 

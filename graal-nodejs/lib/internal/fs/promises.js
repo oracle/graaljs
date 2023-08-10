@@ -2,6 +2,7 @@
 
 const {
   ArrayPrototypePush,
+  ArrayPrototypePop,
   Error,
   MathMax,
   MathMin,
@@ -14,6 +15,7 @@ const {
   SafePromisePrototypeFinally,
   Symbol,
   Uint8Array,
+  FunctionPrototypeBind,
 } = primordials;
 
 const { fs: constants } = internalBinding('constants');
@@ -107,14 +109,6 @@ const { Interface } = require('internal/readline/interface');
 const {
   JSTransferable, kDeserialize, kTransfer, kTransferList,
 } = require('internal/worker/js_transferable');
-
-const {
-  newReadableStreamFromStreamBase,
-} = require('internal/webstreams/adapters');
-
-const {
-  readableStreamCancel,
-} = require('internal/webstreams/readablestream');
 
 const getDirectoryEntriesPromise = promisify(getDirents);
 const validateRmOptionsPromise = promisify(validateRmOptions);
@@ -252,7 +246,7 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
    * } ReadableStream
    * @returns {ReadableStream}
    */
-  readableWebStream() {
+  readableWebStream(options = kEmptyObject) {
     if (this[kFd] === -1)
       throw new ERR_INVALID_STATE('The FileHandle is closed');
     if (this[kClosePromise])
@@ -261,15 +255,64 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
       throw new ERR_INVALID_STATE('The FileHandle is locked');
     this[kLocked] = true;
 
-    const readable = newReadableStreamFromStreamBase(
-      this[kHandle],
-      undefined,
-      { ondone: () => this[kUnref]() });
+    if (options.type !== undefined) {
+      validateString(options.type, 'options.type');
+    }
 
-    this[kRef]();
-    this.once('close', () => {
-      readableStreamCancel(readable);
-    });
+    let readable;
+
+    if (options.type !== 'bytes') {
+      const {
+        newReadableStreamFromStreamBase,
+      } = require('internal/webstreams/adapters');
+      readable = newReadableStreamFromStreamBase(
+        this[kHandle],
+        undefined,
+        { ondone: () => this[kUnref]() });
+
+      const {
+        readableStreamCancel,
+      } = require('internal/webstreams/readablestream');
+      this[kRef]();
+      this.once('close', () => {
+        readableStreamCancel(readable);
+      });
+    } else {
+      const {
+        readableStreamCancel,
+        ReadableStream,
+      } = require('internal/webstreams/readablestream');
+
+      const readFn = FunctionPrototypeBind(this.read, this);
+      const ondone = FunctionPrototypeBind(this[kUnref], this);
+
+      readable = new ReadableStream({
+        type: 'bytes',
+        autoAllocateChunkSize: 16384,
+
+        async pull(controller) {
+          const view = controller.byobRequest.view;
+          const { bytesRead } = await readFn(view, view.byteOffset, view.byteLength);
+
+          if (bytesRead === 0) {
+            ondone();
+            controller.close();
+          }
+
+          controller.byobRequest.respond(bytesRead);
+        },
+
+        cancel() {
+          ondone();
+        },
+      });
+
+      this[kRef]();
+
+      this.once('close', () => {
+        readableStreamCancel(readable);
+      });
+    }
 
     return readable;
   }
@@ -720,13 +763,81 @@ async function mkdir(path, options) {
                        kUsePromises);
 }
 
+async function readdirRecursive(originalPath, options) {
+  const result = [];
+  const queue = [
+    [
+      originalPath,
+      await binding.readdir(
+        pathModule.toNamespacedPath(originalPath),
+        options.encoding,
+        !!options.withFileTypes,
+        kUsePromises,
+      ),
+    ],
+  ];
+
+
+  if (options.withFileTypes) {
+    while (queue.length > 0) {
+      // If we want to implement BFS make this a `shift` call instead of `pop`
+      const { 0: path, 1: readdir } = ArrayPrototypePop(queue);
+      for (const dirent of getDirents(path, readdir)) {
+        ArrayPrototypePush(result, dirent);
+        if (dirent.isDirectory()) {
+          const direntPath = pathModule.join(path, dirent.name);
+          ArrayPrototypePush(queue, [
+            direntPath,
+            await binding.readdir(
+              direntPath,
+              options.encoding,
+              true,
+              kUsePromises,
+            ),
+          ]);
+        }
+      }
+    }
+  } else {
+    while (queue.length > 0) {
+      const { 0: path, 1: readdir } = ArrayPrototypePop(queue);
+      for (const ent of readdir) {
+        const direntPath = pathModule.join(path, ent);
+        const stat = binding.internalModuleStat(direntPath);
+        ArrayPrototypePush(
+          result,
+          pathModule.relative(originalPath, direntPath),
+        );
+        if (stat === 1) {
+          ArrayPrototypePush(queue, [
+            direntPath,
+            await binding.readdir(
+              pathModule.toNamespacedPath(direntPath),
+              options.encoding,
+              false,
+              kUsePromises,
+            ),
+          ]);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 async function readdir(path, options) {
   options = getOptions(options);
   path = getValidatedPath(path);
-  const result = await binding.readdir(pathModule.toNamespacedPath(path),
-                                       options.encoding,
-                                       !!options.withFileTypes,
-                                       kUsePromises);
+  if (options.recursive) {
+    return readdirRecursive(path, options);
+  }
+  const result = await binding.readdir(
+    pathModule.toNamespacedPath(path),
+    options.encoding,
+    !!options.withFileTypes,
+    kUsePromises,
+  );
   return options.withFileTypes ?
     getDirectoryEntriesPromise(path, result) :
     result;

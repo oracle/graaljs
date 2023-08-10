@@ -76,6 +76,7 @@ const {
   ERR_HTTP_INVALID_STATUS_CODE,
   ERR_HTTP_SOCKET_ENCODING,
   ERR_INVALID_ARG_TYPE,
+  ERR_HTTP_SOCKET_ASSIGNED,
   ERR_INVALID_ARG_VALUE,
   ERR_INVALID_CHAR,
 } = codes;
@@ -190,8 +191,8 @@ class HTTPServerAsyncResource {
   }
 }
 
-function ServerResponse(req) {
-  OutgoingMessage.call(this);
+function ServerResponse(req, options) {
+  OutgoingMessage.call(this, options);
 
   if (req.method === 'HEAD') this._hasBody = false;
 
@@ -279,7 +280,9 @@ function onServerResponseClose() {
 }
 
 ServerResponse.prototype.assignSocket = function assignSocket(socket) {
-  assert(!socket._httpMessage);
+  if (socket._httpMessage) {
+    throw new ERR_HTTP_SOCKET_ASSIGNED();
+  }
   socket._httpMessage = this;
   socket.on('close', onServerResponseClose);
   this.socket = socket;
@@ -480,6 +483,14 @@ function storeHTTPOptions(options) {
     validateBoolean(joinDuplicateHeaders, 'options.joinDuplicateHeaders');
   }
   this.joinDuplicateHeaders = joinDuplicateHeaders;
+
+  const rejectNonStandardBodyWrites = options.rejectNonStandardBodyWrites;
+  if (rejectNonStandardBodyWrites !== undefined) {
+    validateBoolean(rejectNonStandardBodyWrites, 'options.rejectNonStandardBodyWrites');
+    this.rejectNonStandardBodyWrites = rejectNonStandardBodyWrites;
+  } else {
+    this.rejectNonStandardBodyWrites = false;
+  }
 }
 
 function setupConnectionsTracking(server) {
@@ -509,7 +520,8 @@ function Server(options, requestListener) {
     this,
     { allowHalfOpen: true, noDelay: options.noDelay,
       keepAlive: options.keepAlive,
-      keepAliveInitialDelay: options.keepAliveInitialDelay });
+      keepAliveInitialDelay: options.keepAliveInitialDelay,
+      highWaterMark: options.highWaterMark });
 
   if (requestListener) {
     this.on('request', requestListener);
@@ -1014,7 +1026,11 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
     }
   }
 
-  const res = new server[kServerResponse](req);
+  const res = new server[kServerResponse](req,
+                                          {
+                                            highWaterMark: socket.writableHighWaterMark,
+                                            rejectNonStandardBodyWrites: server.rejectNonStandardBodyWrites,
+                                          });
   res._keepAliveTimeout = server.keepAliveTimeout;
   res._maxRequestsPerSocket = server.maxRequestsPerSocket;
   res._onPendingData = updateOutgoingData.bind(undefined,

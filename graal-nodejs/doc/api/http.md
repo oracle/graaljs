@@ -2129,9 +2129,10 @@ it will switch to implicit header mode and flush the implicit headers.
 This sends a chunk of the response body. This method may
 be called multiple times to provide successive parts of the body.
 
-In the `node:http` module, the response body is omitted when the
-request is a HEAD request. Similarly, the `204` and `304` responses
-_must not_ include a message body.
+Writing to the body is not allowed when the request method or response status
+do not support content. If an attempt is made to write to the body for a
+HEAD request or as part of a `204` or `304`response, a synchronous `Error`
+with the code `ERR_HTTP_BODY_NOT_ALLOWED` is thrown.
 
 `chunk` can be a string or a buffer. If `chunk` is a string,
 the second parameter specifies how to encode it into a byte stream.
@@ -3167,6 +3168,9 @@ Found'`.
 <!-- YAML
 added: v0.1.13
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47405
+    description: The `highWaterMark` option is supported now.
   - version: v18.0.0
     pr-url: https://github.com/nodejs/node/pull/41263
     description: The `requestTimeout`, `headersTimeout`, `keepAliveTimeout`, and
@@ -3202,6 +3206,10 @@ changes:
     the complete HTTP headers from the client.
     See [`server.headersTimeout`][] for more information.
     **Default:** `60000`.
+  * `highWaterMark` {number} Optionally overrides all `socket`s'
+    `readableHighWaterMark` and `writableHighWaterMark`. This affects
+    `highWaterMark` property of both `IncomingMessage` and `ServerResponse`.
+    **Default:** See [`stream.getDefaultHighWaterMark()`][].
   * `insecureHTTPParser` {boolean} Use an insecure HTTP parser that accepts
     invalid HTTP headers when `true`. Using the insecure parser should be
     avoided. See [`--insecure-http-parser`][] for more information.
@@ -3606,7 +3614,7 @@ the following events will be emitted in the following order:
 * (connection closed here)
 * `'aborted'` on the `res` object
 * `'error'` on the `res` object with an error with message
-  `'Error: aborted'` and code `'ECONNRESET'`.
+  `'Error: aborted'` and code `'ECONNRESET'`
 * `'close'`
 * `'close'` on the `res` object
 
@@ -3615,7 +3623,7 @@ events will be emitted in the following order:
 
 * (`req.destroy()` called here)
 * `'error'` with an error with message `'Error: socket hang up'` and code
-  `'ECONNRESET'`
+  `'ECONNRESET'`, or the error with which `req.destroy()` was called
 * `'close'`
 
 If `req.destroy()` is called before the connection succeeds, the following
@@ -3624,7 +3632,7 @@ events will be emitted in the following order:
 * `'socket'`
 * (`req.destroy()` called here)
 * `'error'` with an error with message `'Error: socket hang up'` and code
-  `'ECONNRESET'`
+  `'ECONNRESET'`, or the error with which `req.destroy()` was called
 * `'close'`
 
 If `req.destroy()` is called after the response is received, the following
@@ -3635,8 +3643,8 @@ events will be emitted in the following order:
   * `'data'` any number of times, on the `res` object
 * (`req.destroy()` called here)
 * `'aborted'` on the `res` object
-* `'error'` on the `res` object with an error with message
-  `'Error: aborted'` and code `'ECONNRESET'`.
+* `'error'` on the `res` object with an error with message `'Error: aborted'`
+  and code `'ECONNRESET'`, or the error with which `req.destroy()` was called
 * `'close'`
 * `'close'` on the `res` object
 
@@ -3674,9 +3682,11 @@ events will be emitted in the following order:
 Setting the `timeout` option or using the `setTimeout()` function will
 not abort the request or do anything besides add a `'timeout'` event.
 
-Passing an `AbortSignal` and then calling `abort` on the corresponding
+Passing an `AbortSignal` and then calling `abort()` on the corresponding
 `AbortController` will behave the same way as calling `.destroy()` on the
-request itself.
+request. Specifically, the `'error'` event will be emitted with an error with
+the message `'AbortError: The operation was aborted'`, the code `'ABORT_ERR'`
+and the `cause`, if one was provided.
 
 ## `http.validateHeaderName(name[, label])`
 
@@ -3843,6 +3853,7 @@ Set the maximum number of idle HTTP parsers.
 [`socket.setNoDelay()`]: net.md#socketsetnodelaynodelay
 [`socket.setTimeout()`]: net.md#socketsettimeouttimeout-callback
 [`socket.unref()`]: net.md#socketunref
+[`stream.getDefaultHighWaterMark()`]: stream.md#streamgetdefaulthighwatermarkobjectmode
 [`url.parse()`]: url.md#urlparseurlstring-parsequerystring-slashesdenotehost
 [`writable.cork()`]: stream.md#writablecork
 [`writable.destroy()`]: stream.md#writabledestroyerror

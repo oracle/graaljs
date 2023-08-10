@@ -123,7 +123,7 @@ module.exports = {
         docs: {
             description: 'Require or disallow "Yoda" conditions',
             recommended: false,
-            url: "https://eslint.org/docs/rules/yoda"
+            url: "https://eslint.org/docs/latest/rules/yoda"
         },
 
         schema: [
@@ -162,7 +162,7 @@ module.exports = {
         const onlyEquality =
             context.options[1] && context.options[1].onlyEquality;
 
-        const sourceCode = context.getSourceCode();
+        const sourceCode = context.sourceCode;
 
         /**
          * Determines whether node represents a range test.
@@ -343,7 +343,7 @@ module.exports = {
                     ) &&
                     !(!isEqualityOperator(node.operator) && onlyEquality) &&
                     isComparisonOperator(node.operator) &&
-                    !(exceptRange && isRangeTest(context.getAncestors().pop()))
+                    !(exceptRange && isRangeTest(node.parent))
                 ) {
                     context.report({
                         node,

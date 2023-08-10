@@ -75,6 +75,9 @@
 #include "v8-platform.h"  // NOLINT(build/include_order)
 #include "node_version.h"  // NODE_MODULE_VERSION
 
+#define NAPI_EXPERIMENTAL
+#include "node_api.h"
+
 #include <functional>
 #include <memory>
 #include <ostream>
@@ -120,8 +123,6 @@
 
 // Forward-declare libuv loop
 struct uv_loop_s;
-
-struct napi_module;
 
 // Forward-declare these functions now to stop MSVS from becoming
 // terminally confused when it's done in node_internals.h
@@ -361,10 +362,25 @@ inline std::unique_ptr<InitializationResult> InitializeOncePerProcess(
 }
 
 enum OptionEnvvarSettings {
-  kAllowedInEnvironment,
-  kDisallowedInEnvironment
+  // Allow the options to be set via the environment variable, like
+  // `NODE_OPTIONS`.
+  kAllowedInEnvvar = 0,
+  // Disallow the options to be set via the environment variable, like
+  // `NODE_OPTIONS`.
+  kDisallowedInEnvvar = 1,
+  // Deprecated, use kAllowedInEnvvar instead.
+  kAllowedInEnvironment = kAllowedInEnvvar,
+  // Deprecated, use kDisallowedInEnvvar instead.
+  kDisallowedInEnvironment = kDisallowedInEnvvar,
 };
 
+// Process the arguments and set up the per-process options.
+// If the `settings` is set as OptionEnvvarSettings::kAllowedInEnvvar, the
+// options that are allowed in the environment variable are processed. Options
+// that are disallowed to be set via environment variable are processed as
+// errors.
+// Otherwise all the options that are disallowed (and those are allowed) to be
+// set via environment variable are processed.
 NODE_EXTERN int ProcessGlobalArgs(std::vector<std::string>* args,
                       std::vector<std::string>* exec_args,
                       std::vector<std::string>* errors,
@@ -629,7 +645,8 @@ NODE_EXTERN Environment* GetCurrentEnvironment(v8::Local<v8::Context> context);
 NODE_EXTERN IsolateData* GetEnvironmentIsolateData(Environment* env);
 NODE_EXTERN ArrayBufferAllocator* GetArrayBufferAllocator(IsolateData* data);
 
-NODE_EXTERN void OnFatalError(const char* location, const char* message);
+[[noreturn]] NODE_EXTERN void OnFatalError(const char* location,
+                                           const char* message);
 NODE_EXTERN void PromiseRejectCallback(v8::PromiseRejectMessage message);
 NODE_EXTERN bool AllowWasmCodeGenerationCallback(v8::Local<v8::Context> context,
                                             v8::Local<v8::String>);
@@ -1081,6 +1098,11 @@ NODE_EXTERN void AddLinkedBinding(Environment* env,
                                   const char* name,
                                   addon_context_register_func fn,
                                   void* priv);
+NODE_EXTERN void AddLinkedBinding(
+    Environment* env,
+    const char* name,
+    napi_addon_register_func fn,
+    int32_t module_api_version = NODE_API_DEFAULT_MODULE_API_VERSION);
 
 /* Registers a callback with the passed-in Environment instance. The callback
  * is called after the event loop exits, but before the VM is disposed.

@@ -49,7 +49,6 @@ if (process.argv[2] === 'wasi-child') {
       opts.input = options.stdin;
 
     const child = cp.spawnSync(process.execPath, [
-      '--experimental-wasi-unstable-preview1',
       __filename,
       'wasi-child',
       options.test,
@@ -92,6 +91,7 @@ if (process.argv[2] === 'wasi-child') {
     stdout: `hello from input.txt${checkoutEOL}hello from input.txt${checkoutEOL}`,
   });
   runWASI({ test: 'stat' });
+  runWASI({ test: 'sock' });
   runWASI({ test: 'write_file' });
 
   // Tests that are currently unsupported on Windows.

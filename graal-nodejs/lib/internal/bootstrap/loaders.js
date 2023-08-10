@@ -16,7 +16,7 @@
 //   compatibility issues caused by them from time to time.
 // - process._linkedBinding(): intended to be used by embedders to add
 //   additional C++ bindings in their applications. These C++ bindings
-//   can be created using NODE_MODULE_CONTEXT_AWARE_CPP() with the flag
+//   can be created using NODE_BINDING_CONTEXT_AWARE_CPP() with the flag
 //   NM_F_LINKED.
 // - internalBinding(): the private internal C++ binding loader, inaccessible
 //   from user land unless through `require('internal/test/binding')`.
@@ -125,6 +125,7 @@ const legacyWrapperList = new SafeSet([
 // Modules that can only be imported via the node: scheme.
 const schemelessBlockList = new SafeSet([
   'test',
+  'test/reporters',
 ]);
 
 // Set up process.binding() and process._linkedBinding().

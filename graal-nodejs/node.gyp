@@ -51,6 +51,7 @@
       'deps/v8/tools/tickprocessor-driver.mjs',
       'deps/acorn/acorn/dist/acorn.js',
       'deps/acorn/acorn-walk/dist/walk.js',
+      'deps/minimatch/index.js',
       '<@(node_builtin_shareable_builtins)',
     ],
     'node_mksnapshot_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)node_mksnapshot<(EXECUTABLE_SUFFIX)',
@@ -1210,6 +1211,10 @@
         [ 'OS!="linux" or ossfuzz!="true"', {
           'type': 'none',
         }],
+        # Avoid excessive LTO
+        ['enable_lto=="true"', {
+          'ldflags': [ '-fno-lto' ],
+        }],
       ],
     }, # fuzz_env
     {
@@ -1278,6 +1283,7 @@
           'sources': [
             'test/cctest/test_crypto_clienthello.cc',
             'test/cctest/test_node_crypto.cc',
+            'test/cctest/test_node_crypto_env.cc',
           ]
         }],
         ['v8_enable_inspector==1', {
@@ -1311,6 +1317,10 @@
             'winmm.lib',
             'Ws2_32.lib',
           ],
+        }],
+        # Avoid excessive LTO
+        ['enable_lto=="true"', {
+          'ldflags': [ '-fno-lto' ],
         }],
       ],
     }, # cctest
@@ -1368,6 +1378,10 @@
             'Ws2_32.lib',
           ],
         }],
+        # Avoid excessive LTO
+        ['enable_lto=="true"', {
+          'ldflags': [ '-fno-lto' ],
+        }],
       ],
     }, # embedtest
 
@@ -1385,6 +1399,10 @@
           'sources': [
             'test/overlapped-checker/main_unix.c'
           ],
+        }],
+        # Avoid excessive LTO
+        ['enable_lto=="true"', {
+          'ldflags': [ '-fno-lto' ],
         }],
       ]
     }, # overlapped-checker
@@ -1441,6 +1459,10 @@
             'winmm.lib',
             'Ws2_32.lib',
           ],
+        }],
+        # Avoid excessive LTO
+        ['enable_lto=="true"', {
+          'ldflags': [ '-fno-lto' ],
         }],
       ],
     }, # node_mksnapshot

@@ -2,12 +2,12 @@
 
 const {
   Array,
+  ArrayIsArray,
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
   ArrayPrototypePush,
   ArrayPrototypeReduce,
   ArrayPrototypeSlice,
-  FunctionPrototypeBind,
   Int8Array,
   IteratorPrototype,
   Number,
@@ -21,6 +21,7 @@ const {
   ReflectGetOwnPropertyDescriptor,
   ReflectOwnKeys,
   RegExpPrototypeSymbolReplace,
+  SafeMap,
   StringPrototypeCharAt,
   StringPrototypeCharCodeAt,
   StringPrototypeCodePointAt,
@@ -86,12 +87,7 @@ const querystring = require('querystring');
 const { platform } = process;
 const isWindows = platform === 'win32';
 
-const {
-  domainToASCII: _domainToASCII,
-  domainToUnicode: _domainToUnicode,
-  parse,
-  updateUrl,
-} = internalBinding('url');
+const bindingUrl = internalBinding('url');
 
 const {
   storeDataObject,
@@ -102,7 +98,6 @@ const FORWARD_SLASH = /\//g;
 
 const context = Symbol('context');
 const searchParams = Symbol('query');
-const kFormat = Symbol('format');
 
 const updateActions = {
   kProtocol: 0,
@@ -141,16 +136,46 @@ function lazyCryptoRandom() {
 // the C++ binding.
 // Refs: https://url.spec.whatwg.org/#concept-url
 class URLContext {
+  // This is the maximum value uint32_t can get.
+  // Ada uses uint32_t(-1) for declaring omitted values.
+  static #omitted = 4294967295;
+
   href = '';
-  origin = '';
-  protocol = '';
-  hostname = '';
-  pathname = '';
-  search = '';
-  username = '';
-  password = '';
-  port = '';
-  hash = '';
+  protocol_end = 0;
+  username_end = 0;
+  host_start = 0;
+  host_end = 0;
+  pathname_start = 0;
+  search_start = 0;
+  hash_start = 0;
+  port = 0;
+  /**
+   * Refers to `ada::scheme::type`
+   *
+   * enum type : uint8_t {
+   *   HTTP = 0,
+   *   NOT_SPECIAL = 1,
+   *   HTTPS = 2,
+   *   WS = 3,
+   *   FTP = 4,
+   *   WSS = 5,
+   *   FILE = 6
+   * };
+   * @type {number}
+   */
+  scheme_type = 1;
+
+  get hasPort() {
+    return this.port !== URLContext.#omitted;
+  }
+
+  get hasSearch() {
+    return this.search_start !== URLContext.#omitted;
+  }
+
+  get hasHash() {
+    return this.hash_start !== URLContext.#omitted;
+  }
 }
 
 function isURLSearchParams(self) {
@@ -158,13 +183,18 @@ function isURLSearchParams(self) {
 }
 
 class URLSearchParams {
+  [searchParams] = [];
+
+  // "associated url object"
+  [context] = null;
+
   // URL Standard says the default value is '', but as undefined and '' have
   // the same result, undefined is used to prevent unnecessary parsing.
   // Default parameter is necessary to keep URLSearchParams.length === 0 in
   // accordance with Web IDL spec.
   constructor(init = undefined) {
-    if (init === null || init === undefined) {
-      this[searchParams] = [];
+    if (init == null) {
+      // Do nothing
     } else if (typeof init === 'object' || typeof init === 'function') {
       const method = init[SymbolIterator];
       if (method === this[SymbolIterator]) {
@@ -172,38 +202,55 @@ class URLSearchParams {
         // shortcut to avoid having to go through the costly generic iterator.
         const childParams = init[searchParams];
         this[searchParams] = childParams.slice();
-      } else if (method !== null && method !== undefined) {
+      } else if (method != null) {
+        // Sequence<sequence<USVString>>
         if (typeof method !== 'function') {
           throw new ERR_ARG_NOT_ITERABLE('Query pairs');
         }
 
-        // Sequence<sequence<USVString>>
-        // Note: per spec we have to first exhaust the lists then process them
-        const pairs = [];
+        // The following implementationd differs from the URL specification:
+        // Sequences must first be converted from ECMAScript objects before
+        // and operations are done on them, and the operation of converting
+        // the sequences would first exhaust the iterators. If the iterator
+        // returns something invalid in the middle, whether it would be called
+        // after that would be an observable change to the users.
+        // Exhausting the iterator and later converting them to USVString comes
+        // with a significant cost (~40-80%). In order optimize URLSearchParams
+        // creation duration, Node.js merges the iteration and converting
+        // iterations into a single iteration.
         for (const pair of init) {
-          if ((typeof pair !== 'object' && typeof pair !== 'function') ||
-              pair === null ||
-              typeof pair[SymbolIterator] !== 'function') {
+          if (pair == null) {
             throw new ERR_INVALID_TUPLE('Each query pair', '[name, value]');
-          }
-          const convertedPair = [];
-          for (const element of pair)
-            ArrayPrototypePush(convertedPair, toUSVString(element));
-          ArrayPrototypePush(pairs, convertedPair);
-        }
+          } else if (ArrayIsArray(pair)) {
+            // If innerSequence's size is not 2, then throw a TypeError.
+            if (pair.length !== 2) {
+              throw new ERR_INVALID_TUPLE('Each query pair', '[name, value]');
+            }
+            // Append (innerSequence[0], innerSequence[1]) to querys list.
+            ArrayPrototypePush(this[searchParams], toUSVString(pair[0]), toUSVString(pair[1]));
+          } else {
+            if (((typeof pair !== 'object' && typeof pair !== 'function') ||
+                typeof pair[SymbolIterator] !== 'function')) {
+              throw new ERR_INVALID_TUPLE('Each query pair', '[name, value]');
+            }
 
-        this[searchParams] = [];
-        for (const pair of pairs) {
-          if (pair.length !== 2) {
-            throw new ERR_INVALID_TUPLE('Each query pair', '[name, value]');
+            let length = 0;
+
+            for (const element of pair) {
+              length++;
+              ArrayPrototypePush(this[searchParams], toUSVString(element));
+            }
+
+            // If innerSequence's size is not 2, then throw a TypeError.
+            if (length !== 2) {
+              throw new ERR_INVALID_TUPLE('Each query pair', '[name, value]');
+            }
           }
-          ArrayPrototypePush(this[searchParams], pair[0], pair[1]);
         }
       } else {
         // Record<USVString, USVString>
         // Need to use reflection APIs for full spec compliance.
-        const visited = {};
-        this[searchParams] = [];
+        const visited = new SafeMap();
         const keys = ReflectOwnKeys(init);
         for (let i = 0; i < keys.length; i++) {
           const key = keys[i];
@@ -212,26 +259,24 @@ class URLSearchParams {
             const typedKey = toUSVString(key);
             const typedValue = toUSVString(init[key]);
 
-            // Two different key may result same after `toUSVString()`, we only
-            // leave the later one. Refers to WPT.
-            if (visited[typedKey] !== undefined) {
-              this[searchParams][visited[typedKey]] = typedValue;
+            // Two different keys may become the same USVString after normalization.
+            // In that case, we retain the later one. Refer to WPT.
+            const keyIdx = visited.get(typedKey);
+            if (keyIdx !== undefined) {
+              this[searchParams][keyIdx] = typedValue;
             } else {
-              visited[typedKey] = ArrayPrototypePush(this[searchParams],
-                                                     typedKey,
-                                                     typedValue) - 1;
+              visited.set(typedKey, ArrayPrototypePush(this[searchParams],
+                                                       typedKey,
+                                                       typedValue) - 1);
             }
           }
         }
       }
     } else {
-      // USVString
+      // https://url.spec.whatwg.org/#dom-urlsearchparams-urlsearchparams
       init = toUSVString(init);
-      initSearchParams(this, init);
+      this[searchParams] = init ? parseParams(init) : [];
     }
-
-    // "associated url object"
-    this[context] = null;
   }
 
   [inspect.custom](recurseTimes, ctx) {
@@ -537,7 +582,16 @@ ObjectDefineProperties(URLSearchParams.prototype, {
   },
 });
 
-function isURLThis(self) {
+/**
+ * Checks if a value has the shape of a WHATWG URL object.
+ *
+ * Using a symbol or instanceof would not be able to recognize URL objects
+ * coming from other implementations (e.g. in Electron), so instead we are
+ * checking some well known properties for a lack of a better test.
+ * @param {*} self
+ * @returns {self is URL}
+ */
+function isURL(self) {
   return self != null && ObjectPrototypeHasOwnProperty(self, context);
 }
 
@@ -546,19 +600,18 @@ class URL {
     // toUSVString is not needed.
     input = `${input}`;
     this[context] = new URLContext();
-    this.#onParseComplete = FunctionPrototypeBind(this.#onParseComplete, this);
 
     if (base !== undefined) {
       base = `${base}`;
     }
 
-    const isValid = parse(input,
-                          base,
-                          this.#onParseComplete);
+    const href = bindingUrl.parse(input, base);
 
-    if (!isValid) {
+    if (!href) {
       throw new ERR_INVALID_URL(input);
     }
+
+    this.#updateContext(href);
   }
 
   [inspect.custom](depth, opts) {
@@ -593,175 +646,298 @@ class URL {
     return `${constructor.name} ${inspect(obj, opts)}`;
   }
 
-  #onParseComplete = (href, origin, protocol, hostname, pathname,
-                      search, username, password, port, hash) => {
+  #updateContext(href) {
     const ctx = this[context];
     ctx.href = href;
-    ctx.origin = origin;
-    ctx.protocol = protocol;
-    ctx.hostname = hostname;
-    ctx.pathname = pathname;
-    ctx.search = search;
-    ctx.username = username;
-    ctx.password = password;
+
+    const {
+      0: protocol_end,
+      1: username_end,
+      2: host_start,
+      3: host_end,
+      4: port,
+      5: pathname_start,
+      6: search_start,
+      7: hash_start,
+      8: scheme_type,
+    } = bindingUrl.urlComponents;
+
+    ctx.protocol_end = protocol_end;
+    ctx.username_end = username_end;
+    ctx.host_start = host_start;
+    ctx.host_end = host_end;
     ctx.port = port;
-    ctx.hash = hash;
-    if (!this[searchParams]) { // Invoked from URL constructor
-      this[searchParams] = new URLSearchParams();
-      this[searchParams][context] = this;
+    ctx.pathname_start = pathname_start;
+    ctx.search_start = search_start;
+    ctx.hash_start = hash_start;
+    ctx.scheme_type = scheme_type;
+
+    if (this[searchParams]) {
+      if (ctx.hasSearch) {
+        this[searchParams][searchParams] = parseParams(this.search);
+      } else {
+        this[searchParams][searchParams] = [];
+      }
     }
-    initSearchParams(this[searchParams], ctx.search);
-  };
+  }
 
   toString() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
     return this[context].href;
   }
 
   get href() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
     return this[context].href;
   }
 
   set href(value) {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    const valid = updateUrl(this[context].href, updateActions.kHref, `${value}`, this.#onParseComplete);
-    if (!valid) { throw ERR_INVALID_URL(`${value}`); }
+    value = `${value}`;
+    const href = bindingUrl.update(this[context].href, updateActions.kHref, value);
+    if (!href) { throw ERR_INVALID_URL(value); }
+    this.#updateContext(href);
   }
 
   // readonly
   get origin() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    return this[context].origin;
+    const ctx = this[context];
+    const protocol = StringPrototypeSlice(ctx.href, 0, ctx.protocol_end);
+
+    // Check if scheme_type is not `NOT_SPECIAL`
+    if (ctx.scheme_type !== 1) {
+      // Check if scheme_type is `FILE`
+      if (ctx.scheme_type === 6) {
+        return 'null';
+      }
+      return `${protocol}//${this.host}`;
+    }
+
+    if (protocol === 'blob:') {
+      const path = this.pathname;
+      if (path.length > 0) {
+        try {
+          const out = new URL(path);
+          if (out[context].scheme_type !== 1) {
+            return `${out.protocol}//${out.host}`;
+          }
+        } catch {
+          // Do nothing.
+        }
+      }
+    }
+
+    return 'null';
   }
 
   get protocol() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    return this[context].protocol;
+    return StringPrototypeSlice(this[context].href, 0, this[context].protocol_end);
   }
 
   set protocol(value) {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    updateUrl(this[context].href, updateActions.kProtocol, `${value}`, this.#onParseComplete);
+    const href = bindingUrl.update(this[context].href, updateActions.kProtocol, `${value}`);
+    if (href) {
+      this.#updateContext(href);
+    }
   }
 
   get username() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    return this[context].username;
+    const ctx = this[context];
+    if (ctx.protocol_end + 2 < ctx.username_end) {
+      return StringPrototypeSlice(ctx.href, ctx.protocol_end + 2, ctx.username_end);
+    }
+    return '';
   }
 
   set username(value) {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    updateUrl(this[context].href, updateActions.kUsername, `${value}`, this.#onParseComplete);
+    const href = bindingUrl.update(this[context].href, updateActions.kUsername, `${value}`);
+    if (href) {
+      this.#updateContext(href);
+    }
   }
 
   get password() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    return this[context].password;
+    const ctx = this[context];
+    if (ctx.host_start - ctx.username_end > 0) {
+      return StringPrototypeSlice(ctx.href, ctx.username_end + 1, ctx.host_start);
+    }
+    return '';
   }
 
   set password(value) {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    updateUrl(this[context].href, updateActions.kPassword, `${value}`, this.#onParseComplete);
+    const href = bindingUrl.update(this[context].href, updateActions.kPassword, `${value}`);
+    if (href) {
+      this.#updateContext(href);
+    }
   }
 
   get host() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    const port = this[context].port;
-    const suffix = port.length > 0 ? `:${port}` : '';
-    return this[context].hostname + suffix;
+    const ctx = this[context];
+    let startsAt = ctx.host_start;
+    if (ctx.href[startsAt] === '@') {
+      startsAt++;
+    }
+    // If we have an empty host, then the space between components.host_end and
+    // components.pathname_start may be occupied by /.
+    if (startsAt === ctx.host_end) {
+      return '';
+    }
+    return StringPrototypeSlice(ctx.href, startsAt, ctx.pathname_start);
   }
 
   set host(value) {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    updateUrl(this[context].href, updateActions.kHost, `${value}`, this.#onParseComplete);
+    const href = bindingUrl.update(this[context].href, updateActions.kHost, `${value}`);
+    if (href) {
+      this.#updateContext(href);
+    }
   }
 
   get hostname() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    return this[context].hostname;
+    const ctx = this[context];
+    let startsAt = ctx.host_start;
+    // host_start might be "@" if the URL has credentials
+    if (ctx.href[startsAt] === '@') {
+      startsAt++;
+    }
+    return StringPrototypeSlice(ctx.href, startsAt, ctx.host_end);
   }
 
   set hostname(value) {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    updateUrl(this[context].href, updateActions.kHostname, `${value}`, this.#onParseComplete);
+    const href = bindingUrl.update(this[context].href, updateActions.kHostname, `${value}`);
+    if (href) {
+      this.#updateContext(href);
+    }
   }
 
   get port() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    return this[context].port;
+    if (this[context].hasPort) {
+      return `${this[context].port}`;
+    }
+    return '';
   }
 
   set port(value) {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    updateUrl(this[context].href, updateActions.kPort, `${value}`, this.#onParseComplete);
+    const href = bindingUrl.update(this[context].href, updateActions.kPort, `${value}`);
+    if (href) {
+      this.#updateContext(href);
+    }
   }
 
   get pathname() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    return this[context].pathname;
+    const ctx = this[context];
+    let endsAt;
+    if (ctx.hasSearch) {
+      endsAt = ctx.search_start;
+    } else if (ctx.hasHash) {
+      endsAt = ctx.hash_start;
+    }
+    return StringPrototypeSlice(ctx.href, ctx.pathname_start, endsAt);
   }
 
   set pathname(value) {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    updateUrl(this[context].href, updateActions.kPathname, `${value}`, this.#onParseComplete);
+    const href = bindingUrl.update(this[context].href, updateActions.kPathname, `${value}`);
+    if (href) {
+      this.#updateContext(href);
+    }
   }
 
   get search() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    return this[context].search;
+    const ctx = this[context];
+    if (!ctx.hasSearch) { return ''; }
+    let endsAt = ctx.href.length;
+    if (ctx.hasHash) { endsAt = ctx.hash_start; }
+    if (endsAt - ctx.search_start <= 1) { return ''; }
+    return StringPrototypeSlice(ctx.href, ctx.search_start, endsAt);
   }
 
-  set search(search) {
-    if (!isURLThis(this))
+  set search(value) {
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    search = toUSVString(search);
-    updateUrl(this[context].href, updateActions.kSearch, search, this.#onParseComplete);
-    initSearchParams(this[searchParams], this[context].search);
+    const href = bindingUrl.update(this[context].href, updateActions.kSearch, toUSVString(value));
+    if (href) {
+      this.#updateContext(href);
+    }
   }
 
   // readonly
   get searchParams() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
+    if (this[searchParams] == null) {
+      this[searchParams] = new URLSearchParams(this.search);
+      this[searchParams][context] = this;
+    }
     return this[searchParams];
   }
 
   get hash() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    return this[context].hash;
+    const ctx = this[context];
+    if (!ctx.hasHash || (ctx.href.length - ctx.hash_start <= 1)) {
+      return '';
+    }
+    return StringPrototypeSlice(ctx.href, ctx.hash_start);
   }
 
   set hash(value) {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    updateUrl(this[context].href, updateActions.kHash, `${value}`, this.#onParseComplete);
+    const href = bindingUrl.update(this[context].href, updateActions.kHash, `${value}`);
+    if (href) {
+      this.#updateContext(href);
+    }
   }
 
   toJSON() {
-    if (!isURLThis(this))
+    if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
     return this[context].href;
+  }
+
+  static canParse(url, base = undefined) {
+    url = `${url}`;
+
+    if (base !== undefined) {
+      base = `${base}`;
+    }
+
+    return bindingUrl.canParse(url, base);
   }
 
   static createObjectURL(obj) {
@@ -795,7 +971,6 @@ class URL {
 }
 
 ObjectDefineProperties(URL.prototype, {
-  [kFormat]: { __proto__: null, configurable: false, writable: false },
   [SymbolToStringTag]: { __proto__: null, configurable: true, value: 'URL' },
   toString: kEnumerableProperty,
   href: kEnumerableProperty,
@@ -814,17 +989,15 @@ ObjectDefineProperties(URL.prototype, {
 });
 
 ObjectDefineProperties(URL, {
+  canParse: {
+    __proto__: null,
+    configurable: true,
+    writable: true,
+    enumerable: true,
+  },
   createObjectURL: kEnumerableProperty,
   revokeObjectURL: kEnumerableProperty,
 });
-
-function initSearchParams(url, init) {
-  if (!init) {
-    url[searchParams] = [];
-    return;
-  }
-  url[searchParams] = parseParams(init);
-}
 
 // application/x-www-form-urlencoded parser
 // Ref: https://url.spec.whatwg.org/#concept-urlencoded-parser
@@ -1127,7 +1300,7 @@ function domainToASCII(domain) {
     throw new ERR_MISSING_ARGS('domain');
 
   // toUSVString is not needed.
-  return _domainToASCII(`${domain}`);
+  return bindingUrl.domainToASCII(`${domain}`);
 }
 
 function domainToUnicode(domain) {
@@ -1135,30 +1308,35 @@ function domainToUnicode(domain) {
     throw new ERR_MISSING_ARGS('domain');
 
   // toUSVString is not needed.
-  return _domainToUnicode(`${domain}`);
+  return bindingUrl.domainToUnicode(`${domain}`);
 }
 
-// Utility function that converts a URL object into an ordinary
-// options object as expected by the http.request and https.request
-// APIs.
+/**
+ * Utility function that converts a URL object into an ordinary options object
+ * as expected by the `http.request` and `https.request` APIs.
+ * @param {URL} url
+ * @returns {Record<string, unknown>}
+ */
 function urlToHttpOptions(url) {
+  const { hostname, pathname, port, username, password, search } = url;
   const options = {
+    __proto__: null,
+    ...url, // In case the url object was extended by the user.
     protocol: url.protocol,
-    hostname: typeof url.hostname === 'string' &&
-              StringPrototypeStartsWith(url.hostname, '[') ?
-      StringPrototypeSlice(url.hostname, 1, -1) :
-      url.hostname,
+    hostname: hostname && StringPrototypeStartsWith(hostname, '[') ?
+      StringPrototypeSlice(hostname, 1, -1) :
+      hostname,
     hash: url.hash,
-    search: url.search,
-    pathname: url.pathname,
-    path: `${url.pathname || ''}${url.search || ''}`,
+    search: search,
+    pathname: pathname,
+    path: `${pathname || ''}${search || ''}`,
     href: url.href,
   };
-  if (url.port !== '') {
-    options.port = Number(url.port);
+  if (port !== '') {
+    options.port = Number(port);
   }
-  if (url.username || url.password) {
-    options.auth = `${decodeURIComponent(url.username)}:${decodeURIComponent(url.password)}`;
+  if (username || password) {
+    options.auth = `${decodeURIComponent(username)}:${decodeURIComponent(password)}`;
   }
   return options;
 }
@@ -1219,7 +1397,7 @@ function getPathFromURLPosix(url) {
 function fileURLToPath(path) {
   if (typeof path === 'string')
     path = new URL(path);
-  else if (!isURLInstance(path))
+  else if (!isURL(path))
     throw new ERR_INVALID_ARG_TYPE('path', ['string', 'URL'], path);
   if (path.protocol !== 'file:')
     throw new ERR_INVALID_URL_SCHEME('file');
@@ -1295,12 +1473,8 @@ function pathToFileURL(filepath) {
   return outURL;
 }
 
-function isURLInstance(fileURLOrPath) {
-  return fileURLOrPath != null && fileURLOrPath.href && fileURLOrPath.origin;
-}
-
 function toPathIfFileURL(fileURLOrPath) {
-  if (!isURLInstance(fileURLOrPath))
+  if (!isURL(fileURLOrPath))
     return fileURLOrPath;
   return fileURLToPath(fileURLOrPath);
 }
@@ -1310,12 +1484,13 @@ module.exports = {
   fileURLToPath,
   pathToFileURL,
   toPathIfFileURL,
-  isURLInstance,
   URL,
   URLSearchParams,
   domainToASCII,
   domainToUnicode,
   urlToHttpOptions,
-  searchParamsSymbol: searchParams,
   encodeStr,
+  isURL,
+
+  urlUpdateActions: updateActions,
 };

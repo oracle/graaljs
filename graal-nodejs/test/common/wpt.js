@@ -368,7 +368,7 @@ class StatusLoader {
         const list = this.grep(filepath);
         result = result.concat(list);
       } else {
-        if (!(/\.\w+\.js$/.test(filepath))) {
+        if (!(/\.\w+\.js$/.test(filepath)) || filepath.endsWith('.helper.js')) {
           continue;
         }
         result.push(filepath);
@@ -613,10 +613,8 @@ class WPTRunner {
     }
 
     process.on('exit', () => {
-      if (this.inProgress.size > 0) {
-        for (const filename of this.inProgress) {
-          this.fail(filename, { name: 'Unknown' }, kIncomplete);
-        }
+      for (const spec of this.inProgress) {
+        this.fail(spec, { name: 'Incomplete' }, kIncomplete);
       }
       inspect.defaultOptions.depth = Infinity;
       // Sorts the rules to have consistent output
@@ -717,7 +715,6 @@ class WPTRunner {
   /**
    * Report the status of each specific test case (there could be multiple
    * in one test file).
-   *
    * @param {string} filename
    * @param {Test} test  The Test object returned by WPT harness
    */
@@ -737,16 +734,15 @@ class WPTRunner {
 
   /**
    * Report the status of each WPT test (one per file)
-   *
    * @param {string} filename
    * @param {object} harnessStatus - The status object returned by WPT harness.
    */
   completionCallback(filename, harnessStatus) {
+    const status = this.getTestStatus(harnessStatus.status);
+
     // Treat it like a test case failure
-    if (harnessStatus.status === 2) {
-      const title = this.getTestTitle(filename);
-      console.log(`---- ${title} ----`);
-      this.resultCallback(filename, { status: 2, name: 'Unknown' });
+    if (status === kTimeout) {
+      this.fail(filename, { name: 'WPT testharness timeout' }, kTimeout);
     }
     this.inProgress.delete(filename);
     // Always force termination of the worker. Some tests allocate resources

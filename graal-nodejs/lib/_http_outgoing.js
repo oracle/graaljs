@@ -61,6 +61,7 @@ const {
     ERR_HTTP_HEADERS_SENT,
     ERR_HTTP_INVALID_HEADER_VALUE,
     ERR_HTTP_TRAILER_INVALID,
+    ERR_HTTP_BODY_NOT_ALLOWED,
     ERR_INVALID_HTTP_TOKEN,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
@@ -81,12 +82,12 @@ let debug = require('internal/util/debuglog').debuglog('http', (fn) => {
   debug = fn;
 });
 
-const HIGH_WATER_MARK = getDefaultHighWaterMark();
-
 const kCorked = Symbol('corked');
 const kUniqueHeaders = Symbol('kUniqueHeaders');
 const kBytesWritten = Symbol('kBytesWritten');
 const kErrored = Symbol('errored');
+const kHighWaterMark = Symbol('kHighWaterMark');
+const kRejectNonStandardBodyWrites = Symbol('kRejectNonStandardBodyWrites');
 
 const nop = () => {};
 
@@ -103,7 +104,7 @@ function isContentDispositionField(s) {
   return s.length === 19 && StringPrototypeToLowerCase(s) === 'content-disposition';
 }
 
-function OutgoingMessage() {
+function OutgoingMessage(options) {
   Stream.call(this);
 
   // Queue that holds all currently pending data, until the response will be
@@ -151,6 +152,8 @@ function OutgoingMessage() {
   this._onPendingData = nop;
 
   this[kErrored] = null;
+  this[kHighWaterMark] = options?.highWaterMark ?? getDefaultHighWaterMark();
+  this[kRejectNonStandardBodyWrites] = options?.rejectNonStandardBodyWrites ?? false;
 }
 ObjectSetPrototypeOf(OutgoingMessage.prototype, Stream.prototype);
 ObjectSetPrototypeOf(OutgoingMessage, Stream);
@@ -197,7 +200,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, 'writableLength', {
 ObjectDefineProperty(OutgoingMessage.prototype, 'writableHighWaterMark', {
   __proto__: null,
   get() {
-    return this.socket ? this.socket.writableHighWaterMark : HIGH_WATER_MARK;
+    return this.socket ? this.socket.writableHighWaterMark : this[kHighWaterMark];
   },
 });
 
@@ -404,7 +407,7 @@ function _writeRaw(data, encoding, callback, size) {
   this.outputData.push({ data, encoding, callback });
   this.outputSize += data.length;
   this._onPendingData(data.length);
-  return this.outputSize < HIGH_WATER_MARK;
+  return this.outputSize < this[kHighWaterMark];
 }
 
 
@@ -913,10 +916,14 @@ function write_(msg, chunk, encoding, callback, fromEnd) {
   }
 
   if (!msg._hasBody) {
-    debug('This type of response MUST NOT have a body. ' +
-          'Ignoring write() calls.');
-    process.nextTick(callback);
-    return true;
+    if (msg[kRejectNonStandardBodyWrites]) {
+      throw new ERR_HTTP_BODY_NOT_ALLOWED();
+    } else {
+      debug('This type of response MUST NOT have a body. ' +
+        'Ignoring write() calls.');
+      process.nextTick(callback);
+      return true;
+    }
   }
 
   if (!fromEnd && msg.socket && !msg.socket.writableCorked) {
@@ -1167,6 +1174,7 @@ function(err, event) {
 };
 
 module.exports = {
+  kHighWaterMark,
   kUniqueHeaders,
   parseUniqueHeadersOption,
   validateHeaderName,
