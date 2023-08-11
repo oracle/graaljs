@@ -4,7 +4,7 @@ local ci = import '../ci.jsonnet';
 {
   local graalJs = ci.jobtemplate + {
     cd:: 'graal-js',
-    suite_prefix:: 'js',
+    suite_prefix:: 'js', # for build job names
     // increase default timelimit on windows and darwin-amd64
     timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:15:00' else '45:00',
   },
@@ -37,14 +37,22 @@ local ci = import '../ci.jsonnet';
   },
 
   local nativeImageSmokeTest = checkoutJsBenchmarks + {
-    suiteimports+:: ['substratevm'],
-    nativeimages+:: ['lib:jsvm'],
+    suiteimports+:: ['vm', 'substratevm'],
+    nativeimages+:: ['lib:jsvm', 'lib:jvmcicompiler'],
     extraimagebuilderarguments+:: ['-H:+ReportExceptionStackTraces'],
     run+: [
       ['mx', 'build'],
+      ['mx', 'build', '--dependencies', 'GRAALVM_STANDALONES'],
       ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
       ['${GRAALVM_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${GRAALVM_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+      # standalone smoke tests
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'js', '--type=native']],
+      ['${STANDALONE_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
+      ['${STANDALONE_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'js', '--type=jvm']],
+      ['${STANDALONE_HOME}/bin/js', '--jvm', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
+      ['${STANDALONE_HOME}/bin/js', '--jvm', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
     ],
     timelimit: '30:00',
   },

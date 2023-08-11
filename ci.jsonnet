@@ -47,6 +47,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       ['git', '-C', self.graalvmtests, 'checkout', '75b6a9e16ebbfd8b9b0a24e4be7c4378e3281204'],
     ] else [],
     using_artifact:: false,
+    build_standalones:: false,
     setup+: self.graalvm.setup,
     run+: []
       + self.export_envvars
@@ -111,16 +112,19 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     local arch = build.arch;
     local os_arch = os + '_' + arch;
     local artifactName = artifact_name_from_build(build);
+    local mx_base_cmd = ["mx", "-p", build.cd];
     self.jobtemplate + common[jdk] + common[os_arch] + {
     graalvm:: build.graalvm,
     suiteimports:: build.suiteimports,
     nativeimages:: build.nativeimages,
     name: "build-" + artifactName,
     run+: [
-      ["mx", "-p", "graal-nodejs", "sversions"],
-      ["mx", "-p", "graal-nodejs", "graalvm-show"],
-      ["mx", "-p", "graal-nodejs", "build"],
-    ],
+      mx_base_cmd + ["sversions"],
+      mx_base_cmd + ["graalvm-show"],
+      mx_base_cmd + ["build"],
+    ] + (if build.build_standalones then [
+      mx_base_cmd + ["build", "--dependencies", "GRAALVM_STANDALONES"],
+    ] else []),
     publishArtifacts+: [
       {
         name: artifactName,

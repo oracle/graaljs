@@ -4,7 +4,7 @@ local ci = import '../ci.jsonnet';
 {
   local graalNodeJs = ci.jobtemplate + {
     cd:: 'graal-nodejs',
-    suite_prefix:: 'nodejs',
+    suite_prefix:: 'nodejs', # for build job names
     // increase default timelimit on windows and darwin-amd64
     timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:15:00' else '45:00',
   },
@@ -18,6 +18,7 @@ local ci = import '../ci.jsonnet';
     artifact:: if enabled then 'nodejs' else '',
     suiteimports+:: if enabled then ['vm', 'substratevm', 'tools'] else [],
     nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [], // 'js'
+    build_standalones:: true,
   },
 
   local gateTags(tags) = common.gateTags + {
@@ -29,7 +30,9 @@ local ci = import '../ci.jsonnet';
   local build = {
     run+: [
       ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac'], // build only if no artifact is being used
-    ],
+    ] + (if 'build_standalones' in self && self.build_standalones then [
+      ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac', '--dependencies', 'GRAALVM_STANDALONES'],
+    ] else []),
   },
 
   local defaultGateTags = gateTags('all') + {
@@ -39,20 +42,18 @@ local ci = import '../ci.jsonnet';
     }
   },
 
-  local gateSubstrateVmSmokeTest = {
-    run+: [
-      ['mx', '--env', 'svm', 'build'],
-      ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', '--env', 'svm', 'graalvm-home']],
-      ['${GRAALVM_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
-      ['${GRAALVM_HOME}/bin/npm', '--version'],
-    ],
-  },
-
-  local gateVmSmokeTest = build + {
+  local gateVmSmokeTest = {
     run+: [
       ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
       ['${GRAALVM_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
+      # standalone smoke tests
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=native']],
+      ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
+      ['${STANDALONE_HOME}/bin/npm', '--version'],
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=jvm']],
+      ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
+      ['${STANDALONE_HOME}/bin/npm', '--version'],
     ],
   },
 
@@ -133,18 +134,11 @@ local ci = import '../ci.jsonnet';
       promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64, common.jdk21 + common.linux_aarch64, common.jdk21 + common.darwin_aarch64, common.jdk21 + common.windows_amd64]) +
       promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
 
-    graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'substratevm-ce'} +
-      excludePlatforms([ci.mainGatePlatform]) +
+    graalNodeJs + vm_env + build            + gateVmSmokeTest                                                                 + ce + {name: 'graalvm-ce'} +
+      promoteToTarget(common.gate, [ci.mainGatePlatform]) +
       promoteToTarget(common.gate, [common.jdk21 + common.darwin_aarch64, common.jdk21 + common.windows_amd64]) +
       promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
-    graalNodeJs                             + gateSubstrateVmSmokeTest                                                             + {name: 'substratevm-ee'} +
-      excludePlatforms([ci.mainGatePlatform]),
-    # We run either gateSubstrateVmSmokeTest or gateVmSmokeTest, but not both.
-    graalNodeJs + vm_env                    + gateVmSmokeTest                                                                 + ce + {name: 'graalvm-ce'} +
-      includePlatforms([ci.mainGatePlatform]) +
-      promoteToTarget(common.gate, [ci.mainGatePlatform]),
-    graalNodeJs + vm_env                    + gateVmSmokeTest                                                                 + ee + {name: 'graalvm-ee'} +
-      includePlatforms([ci.mainGatePlatform]) +
+    graalNodeJs + vm_env + build            + gateVmSmokeTest                                                                 + ee + {name: 'graalvm-ee'} +
       promoteToTarget(common.gate, [ci.mainGatePlatform]),
 
     graalNodeJs + vm_env + build            + auxEngineCache                                                                  + ee + {name: 'aux-engine-cache'} + gateOnMain +
