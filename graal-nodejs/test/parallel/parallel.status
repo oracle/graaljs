@@ -36,6 +36,11 @@ test-fs-write-buffer-large: FAIL
 test-runner-string-to-regexp: FAIL
 # ports is not iterable versus 0 is not iterable
 test-worker-message-event: FAIL
+# Unexpected number versus expected BindingIdentifier or BindingPattern
+test-node-output-vm: FAIL
+
+# Different stack-traces (for example, different column numbers)
+test-node-output-errors: FAIL
 
 # Suspicious (V8 specific?) test checking whether ArrayBufferView lives on heap
 test-buffer-backing-arraybuffer: FAIL
@@ -75,6 +80,7 @@ test-https-agent-unref-socket: SKIP
 test-source-map-api: FAIL
 
 # missing support for script.sourceMapURL
+test-node-output-sourcemaps: FAIL
 test-vm-source-map-url: FAIL
 
 # Worker resource limits are not supported
@@ -126,6 +132,7 @@ test-vm-timeout-escape-promise-2: FAIL
 
 # run-time user-land snapshots are not supported
 test-snapshot-api: FAIL
+test-snapshot-argv1: FAIL
 test-snapshot-basic: FAIL
 test-snapshot-cjs-main: FAIL
 test-snapshot-dns-lookup-localhost: FAIL
@@ -136,6 +143,7 @@ test-snapshot-error: FAIL
 test-snapshot-eval: FAIL
 test-snapshot-gzip: FAIL
 test-snapshot-incompatible: FAIL
+test-snapshot-namespaced-builtin: FAIL
 test-snapshot-typescript: FAIL
 test-snapshot-umd: FAIL
 test-snapshot-warning: FAIL
@@ -201,9 +209,12 @@ test-net-connect-memleak: FAIL
 test-promise-hook-exceptions: FAIL
 test-promise-hook-on-resolve: FAIL
 test-repl: FAIL
+test-runner-output: FAIL
+test-runner-watch-mode: SKIP
 test-strace-openat-openssl: FAIL
 test-tls-connect-memleak: FAIL
 test-ttywrap-stack: FAIL
+test-vm-global-setter: FAIL
 test-vm-low-stack-space: SKIP
 test-vm-new-script-new-context: FAIL
 test-vm-syntax-error-stderr: FAIL
