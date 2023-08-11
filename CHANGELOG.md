@@ -7,7 +7,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 
 ## Version 23.1.0
 * ECMAScript 2023 mode/features enabled by default.
-* Updated Node.js to version 18.16.1.
+* Updated Node.js to version 18.17.1.
 * Implemented the [Async Context](https://github.com/tc39/proposal-async-context) proposal. It is available behind the experimental option `--js.async-context`.
 * `FinalizationRegistry.prototype.cleanupSome` is not enabled by default any more; it has been moved to ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Added an experimental option `--js.allow-narrow-spaces-in-date-format` (enabled by default). When this option is set to `false` then narrow spaces in date/time formats are replaced by a space (`0x20`).
