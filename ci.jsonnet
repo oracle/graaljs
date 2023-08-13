@@ -135,7 +135,9 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
           "*/*/mxbuild/jdk*",
           "*/mxbuild",
           "*/graal-nodejs/out", # js/graal-nodejs/out
-        ],
+        ] + (if build.build_standalones then [
+          "graal/sdk/mxbuild/" + os + '-' + arch + "/*STANDALONE*",
+        ] else []),
       },
     ],
     timelimit: if std.objectHasAll(self, 'os') && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:00:00' else '40:00',
