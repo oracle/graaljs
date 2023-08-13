@@ -48,13 +48,14 @@ local ci = import '../ci.jsonnet';
       ['${GRAALVM_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${GRAALVM_HOME}/bin/npm', '--version'],
       # standalone smoke tests
-      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=native']],
-      ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
-      ['${STANDALONE_HOME}/bin/npm', '--version'],
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=jvm']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
-    ],
+    ] + (if std.find('substratevm', super.suiteimports) != [] then [
+      ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=native']],
+      ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
+      ['${STANDALONE_HOME}/bin/npm', '--version'],
+    ] else []),
   },
 
   local gateCoverage = {
