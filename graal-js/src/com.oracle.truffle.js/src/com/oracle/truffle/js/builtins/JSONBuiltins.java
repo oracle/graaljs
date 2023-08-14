@@ -53,8 +53,11 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONIsRawJSONNodeGen;
+import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONRawJSONNodeGen;
 import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONParseNodeGen;
 import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONStringifyNodeGen;
+import com.oracle.truffle.js.builtins.helper.TruffleJSONSourceParser;
 import com.oracle.truffle.js.builtins.helper.JSONData;
 import com.oracle.truffle.js.builtins.helper.JSONStringifyStringNode;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
@@ -69,6 +72,7 @@ import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -80,6 +84,10 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.JSONParseSourceNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 
 /**
  * Contains builtins for {@linkplain JSON} function (constructor).
@@ -88,11 +96,15 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
     public static final JSBuiltinsContainer BUILTINS = new JSONBuiltins();
 
+    public static final HiddenKey RAW_KEY = new HiddenKey("IsRawJSON");
+
     protected JSONBuiltins() {
         super(com.oracle.truffle.js.runtime.builtins.JSON.CLASS_NAME, JSON.class);
     }
 
     public enum JSON implements BuiltinEnum<JSON> {
+        rawJSON(1),
+        isRawJSON(1),
         parse(2),
         stringify(3);
 
@@ -111,6 +123,10 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, JSON builtinEnum) {
         switch (builtinEnum) {
+            case rawJSON:
+                return JSONRawJSONNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case isRawJSON:
+                return JSONIsRawJSONNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
             case parse:
                 return JSONParseNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case stringify:
@@ -139,6 +155,45 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
     }
 
+    public abstract static class JSONRawJSONNode extends JSONOperation {
+        
+        @Child private PropertySetNode setRaw;
+
+        public JSONRawJSONNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.setRaw = PropertySetNode.createSetHidden(JSONBuiltins.RAW_KEY, context);
+        }
+
+        @Specialization
+        protected Object rawJSON(Object text) {
+            TruffleString sourceText = toString(text);
+            JSDynamicObject obj = JSOrdinary.create(getContext(), getRealm());
+            JSObjectUtil.putDataProperty(obj, Strings.fromJavaString("rawJSON"), sourceText, JSAttributes.getDefault());
+            setRaw.setValue(obj, sourceText);
+            JSObject.setIntegrityLevel(obj, true);
+            return obj;
+        }
+    }
+
+    public abstract static class JSONIsRawJSONNode extends JSONOperation {
+
+        public JSONIsRawJSONNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object isRawJSON(Object text) {
+            if (JSDynamicObject.isJSDynamicObject(text)) {
+                JSDynamicObject valueObj = (JSDynamicObject) text;
+                if (JSObjectUtil.hasHiddenProperty(valueObj, JSONBuiltins.RAW_KEY)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+    }
+
+
     public abstract static class JSONParseNode extends JSONOperation {
 
         public JSONParseNode(JSContext context, JSBuiltin builtin) {
@@ -148,10 +203,13 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         @Specialization(guards = "isCallable.executeBoolean(reviver)", limit = "1")
         protected Object parse(Object text, Object reviver,
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
-            Object unfiltered = parseIntl(toString(text));
+            Object unfiltered = parseIntlForWalk(toString(text));
             JSObject root = JSOrdinary.create(getContext(), getRealm());
             JSObjectUtil.putDataProperty(root, Strings.EMPTY_STRING, unfiltered, JSAttributes.getDefault());
-            return walk(reviver, root, Strings.EMPTY_STRING);
+
+            List<Object> keyPath = new ArrayList();
+            keyPath.add(Strings.EMPTY_STRING);
+            return walk(reviver, root, Strings.EMPTY_STRING, keyPath, toString(text)); 
         }
 
         @Specialization(guards = "!isCallable.executeBoolean(reviver)", limit = "1")
@@ -166,15 +224,28 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         @TruffleBoundary
-        private Object walk(Object reviverFn, JSObject holder, Object property) {
+        private Object parseIntlForWalk(TruffleString jsonString) {
+            return new TruffleJSONSourceParser(getContext()).parse(jsonString, getRealm());
+        }
+
+        @TruffleBoundary
+        private Object walk(Object reviverFn, JSObject holder, Object property, List<Object> keyPath, TruffleString input) {
             Object value = JSObject.get(holder, property);
+
+            JSObject contextObject = JSOrdinary.create(getContext(), getRealm());
+
             if (JSRuntime.isObject(value)) {
                 JSObject object = (JSObject) value;
                 if (isArray(object)) {
                     int len = (int) JSRuntime.toLength(JSObject.get(object, JSArray.LENGTH));
                     for (int i = 0; i < len; i++) {
                         Object stringIndex = Strings.fromInt(i);
-                        Object newElement = walk(reviverFn, object, stringIndex);
+
+                        List<Object> newKey = new ArrayList();
+                        newKey.addAll(keyPath);
+                        newKey.add(i);
+                        
+                        Object newElement = walk(reviverFn, object, stringIndex, newKey, input);
                         if (newElement == Undefined.instance) {
                             JSObject.delete(object, i);
                         } else {
@@ -183,7 +254,11 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                     }
                 } else {
                     for (Object p : JSObject.enumerableOwnNames(object)) {
-                        Object newElement = walk(reviverFn, object, p);
+                        TruffleString propertyString = (TruffleString) p;
+                        List<Object> newKey = new ArrayList();
+                        newKey.addAll(keyPath);
+                        newKey.add(propertyString);
+                        Object newElement = walk(reviverFn, object, p, newKey, input);
                         if (newElement == Undefined.instance) {
                             JSObject.delete(object, p);
                         } else {
@@ -191,10 +266,34 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                         }
                     }
                 }
+            } else {
+                JSONParseSourceNode sourceNode = (JSONParseSourceNode) value;
+
+                Object sourceKey = Strings.fromJavaString("source");
+                Object sourceValue = sourceNode.getSource();
+
+                Object indexKey = Strings.fromJavaString("index");
+                Object indexValue = sourceNode.getIndex();
+
+                value = sourceNode.getParsedValue();
+
+                JSObjectUtil.putDataProperty(contextObject, sourceKey, sourceValue);
+                JSObjectUtil.putDataProperty(contextObject, indexKey, indexValue);
             }
-            return JSRuntime.call(reviverFn, holder, new Object[]{property, value});
+
+
+            Object keyPathKey = Strings.fromJavaString("keys");
+            JSArrayObject keyPathArray = JSArray.createLazyArray(getContext(), getRealm(), keyPath, keyPath.size());
+
+            Object inputKey = Strings.fromJavaString("input");
+            Object inputValue = input;
+
+            JSObjectUtil.putDataProperty(contextObject, keyPathKey, keyPathArray);
+            JSObjectUtil.putDataProperty(contextObject, inputKey, inputValue);
+
+            return JSRuntime.call(reviverFn, holder, new Object[]{property, value, contextObject});
         }
-    }
+    }        
 
     public abstract static class JSONStringifyNode extends JSONOperation {
 

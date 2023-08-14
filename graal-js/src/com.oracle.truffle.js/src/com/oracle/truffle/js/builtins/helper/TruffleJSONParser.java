@@ -173,7 +173,7 @@ public class TruffleJSONParser {
     }
 
     private Member parseJSONMember(JSRealm realm) {
-        TruffleString jsonString = parseJSONString();
+        TruffleString jsonString = getJSONString();
         expectChar(':');
         skipWhitespace();
         Object jsonValue = parseJSONValue(realm);
@@ -231,7 +231,11 @@ public class TruffleJSONParser {
         return scriptArray;
     }
 
-    protected TruffleString parseJSONString() {
+    protected Object parseJSONString() {
+        return getJSONString();
+    }
+
+    protected TruffleString getJSONString() {
         if (!isStringQuote(get())) {
             if (isDigit(get())) {
                 unexpectedNumber();
@@ -355,8 +359,12 @@ public class TruffleJSONParser {
         Strings.builderAppend(builder, unencodedC);
     }
 
-    protected Number parseJSONNumber() {
-        int sign = 1;
+    protected Object parseJSONNumber() {
+        return getJSONNumber();
+    }
+
+    protected Number getJSONNumber() {
+        int sign = 1;   
         if (get() == '-') {
             skipChar();
             sign = -1;
@@ -473,6 +481,10 @@ public class TruffleJSONParser {
     }
 
     protected Object parseNullLiteral() {
+        return getNullLiteral();
+    }
+
+    protected Object getNullLiteral() {
         assert isNullLiteral(get());
         skipString(Strings.NULL);
         return Null.instance;
@@ -483,6 +495,10 @@ public class TruffleJSONParser {
     }
 
     protected Object parseBooleanLiteral() {
+        return getBooleanLiteral();
+    }
+
+    protected Object getBooleanLiteral() {
         assert isBooleanLiteral(get());
         if (get() == 't') {
             skipString(Strings.TRUE);

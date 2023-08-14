@@ -74,6 +74,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.builtins.JSONBuiltins;
 
 public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
@@ -142,7 +144,10 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         } else if (JSObject.isJSObject(value)) {
             JSObject valueObj = (JSObject) value;
             assert !JSRuntime.isCallableIsJSObject(valueObj);
-            if (JSRuntime.isArray(valueObj)) {
+            if (JSObjectUtil.hasHiddenProperty(valueObj, JSONBuiltins.RAW_KEY)) {
+                TruffleString appendString = JSRuntime.toString(JSObject.get(valueObj, Strings.fromJavaString("rawJSON")));
+                append(builder, appendString);
+            } else if (JSRuntime.isArray(valueObj)) {
                 serializeJSONArray(builder, data, valueObj);
             } else {
                 serializeJSONObject(builder, data, valueObj);
