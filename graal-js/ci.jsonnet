@@ -39,7 +39,7 @@ local ci = import '../ci.jsonnet';
   local nativeImageSmokeTest = checkoutJsBenchmarks + {
     suiteimports+:: ['substratevm'],
     nativeimages+:: ['lib:jsvm'],
-    extraimagebuilderarguments+:: ['-H:+TruffleCheckBlockListMethods', '-H:+ReportExceptionStackTraces'],
+    extraimagebuilderarguments+:: ['-H:+ReportExceptionStackTraces'],
     run+: [
       ['mx', 'build'],
       ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
