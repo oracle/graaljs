@@ -412,7 +412,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             launchers=['bin/<exe:js>'],
             jar_distributions=['graal-js:GRAALJS_LAUNCHER'],
             main_class='com.oracle.truffle.js.shell.JSLauncher',
-            build_args=['-H:+TruffleCheckBlockListMethods'],
+            build_args=[],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
