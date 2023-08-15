@@ -54,7 +54,6 @@
 #include <string>
 #include <string.h>
 #include <tuple>
-#include <sstream>
 
 #include "graal_array-inl.h"
 #include "graal_boolean-inl.h"
@@ -248,17 +247,19 @@ bool is_directory(std::string const& path) {
 
 std::string expand_class_or_module_path(std::string const& modules_dir, bool include_dir = true, bool include_jars = true) {
     std::string sep = "";
-    std::stringstream module_path;
+    std::string module_path;
     if (is_directory(modules_dir)) {
         if (include_dir) {
-            module_path << sep << modules_dir;
+            module_path.append(sep);
+            module_path.append(modules_dir);
             sep = path_separator;
         }
         if (include_jars) {
 #ifdef __cpp_lib_filesystem
             for (auto const& entry : std::filesystem::directory_iterator(modules_dir)) {
                 if (entry.path().extension().string() == ".jar") {
-                    module_path << sep << entry.path().string();
+                    module_path.append(sep);
+                    module_path.append(entry.path().string());
                     sep = path_separator;
                 }
             }
@@ -269,7 +270,8 @@ std::string expand_class_or_module_path(std::string const& modules_dir, bool inc
                 while ((entry = readdir(dir)) != nullptr) {
                     std::string entry_path = modules_dir + file_separator + entry->d_name;
                     if (ends_with(entry_path, ".jar")) {
-                        module_path << sep << entry_path;
+                        module_path.append(sep);
+                        module_path.append(entry_path);
                         sep = path_separator;
                     }
                 }
@@ -278,7 +280,7 @@ std::string expand_class_or_module_path(std::string const& modules_dir, bool inc
 #endif
         }
     }
-    return module_path.str();
+    return module_path;
 }
 
 // Workaround for a bug in SVM's JNI_GetCreatedJavaVMs
