@@ -574,6 +574,9 @@ def _prepare_svm_env():
 def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
 
+def _is_wasm_available():
+    return ('wasm', True) in mx.get_dynamic_imports()
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.nodejs',
@@ -604,6 +607,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 '--tool:all',
                 '--language:nodejs',
                 '-Dgraalvm.libpolyglot=true',  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
+                *(['--language:wasm'] if _is_wasm_available() else []),
             ],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
@@ -618,6 +622,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     standalone_dependencies={
         'GraalVM license files': ('', ['GRAALVM-README.md']),
         'Graal.nodejs license files': ('', []),
+        **({'GraalWasm' : ('', ['LICENSE_WASM.txt'])} if _is_wasm_available() else {}),
     },
     standalone_dependencies_enterprise={
         'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
