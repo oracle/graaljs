@@ -17,6 +17,25 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Deprecated option `js.disable-eval`, superseded by `js.allow-eval`.
 * Implemented the [String.dedent](https://github.com/tc39/proposal-string-dedent) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Duplicate named capture groups are now supported in regular expressions, as per the [duplicate named capturing groups](https://github.com/tc39/proposal-duplicate-named-capturing-groups) proposal.
+* The Maven coordinates for embedding the GraalVM JavaScript have been updated.
+  For consuming the enterprise GraalVM JavaScript, use:
+  ```xml
+  <dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>js</artifactId>
+    <version>${graalvm.version}</version>
+    <type>pom</type>
+  </dependency>
+  ```
+  For consuming the community GraalVM JavaScript, use:
+  ```xml
+  <dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>js-community</artifactId>
+    <version>${graalvm.version}</version>
+    <type>pom</type>
+  </dependency>
+  ```
 
 ## Version 23.0.0
 * Implemented the [WebAssembly reference types](https://github.com/WebAssembly/reference-types) proposal.

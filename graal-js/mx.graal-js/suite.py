@@ -1,5 +1,5 @@
 suite = {
-  "mxversion" : "6.37.0",
+  "mxversion" : "6.41.0",
 
   "name" : "graal-js",
 
@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "5097b1dabf01fd6d2ea1ea3b470060a138d49fa2",
+           "version" : "91267e34e4f58b6484736be6a5e83ebe97c6b44d",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
@@ -447,6 +447,7 @@ suite = {
       "description" : "Graal JavaScript implementation",
       "maven" : {
         "artifactId" : "js-language",
+        "tag": ["default", "public"],
       },
       "license": [
         "UPL",  # Main code
@@ -455,7 +456,7 @@ suite = {
       "allowsJavadocWarnings": True,
     },
 
-    "GRAALJS_COMMUNITY" : {
+    "JS_COMMUNITY" : {
       "type":"pom",
       "runtimeDependencies" : [
         "GRAALJS",
@@ -463,7 +464,9 @@ suite = {
       ],
       "description" : "Graal JavaScript engine.",
       "maven" : {
+        "groupId": "org.graalvm.polyglot",
         "artifactId" : "js-community",
+        "tag": ["default", "public"],
       },
       "license": [
         "UPL",  # Main code
@@ -488,6 +491,7 @@ suite = {
       "description" : "Graal JavaScript Launcher",
       "maven" : {
         "artifactId" : "js-launcher",
+        "tag": ["default", "public"],
       },
       "allowsJavadocWarnings": True,
     },
@@ -508,6 +512,7 @@ suite = {
       "description" : "Graal JavaScript ScriptEngine",
       "maven" : {
         "artifactId" : "js-scriptengine",
+        "tag": ["default", "public"],
       },
       "allowsJavadocWarnings": True,
     },

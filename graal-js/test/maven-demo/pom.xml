@@ -54,8 +54,8 @@
 
     <dependencies>
         <dependency>
-            <groupId>org.graalvm.sdk</groupId>
-            <artifactId>graal-sdk</artifactId>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>polyglot</artifactId>
             <version>${graalvm.version}</version>
         </dependency>
         <dependency>
@@ -65,22 +65,24 @@
         </dependency>
         <!-- runtime -->
         <dependency>
-            <groupId>org.graalvm.js</groupId>
+            <groupId>org.graalvm.polyglot</groupId>
             <artifactId>js-community</artifactId>
             <version>${graalvm.version}</version>
             <type>pom</type>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>org.graalvm.tools</groupId>
-            <artifactId>profiler</artifactId>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>profiler-community</artifactId>
             <version>${graalvm.version}</version>
+            <type>pom</type>
             <scope>runtime</scope>
         </dependency>
         <dependency>
-            <groupId>org.graalvm.tools</groupId>
-            <artifactId>chromeinspector</artifactId>
+            <groupId>org.graalvm.polyglot</groupId>
+            <artifactId>inspect-community</artifactId>
             <version>${graalvm.version}</version>
+            <type>pom</type>
             <scope>runtime</scope>
         </dependency>
         <!-- test -->
