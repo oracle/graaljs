@@ -151,6 +151,8 @@ public class TestV8Runnable extends TestRunnable {
             extraOptions.put(JSContextOptions.WEBASSEMBLY_NAME, Boolean.toString(!flags.contains(NO_EXPOSE_WASM)));
             // TODO: remove after reference types are enabled by default in wasm
             extraOptions.put("wasm.BulkMemoryAndRefTypes", "true");
+            // TODO: remove after threads are enabled by default in wasm
+            extraOptions.put("wasm.Threads", "true");
         }
 
         suite.logVerbose("Starting: " + getName());
