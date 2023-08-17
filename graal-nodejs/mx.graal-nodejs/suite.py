@@ -123,7 +123,7 @@ suite = {
       "moduleInfo" : {
         "name" : "org.graalvm.nodejs",
         "requires" : [
-          "static org.graalvm.launcher",
+          "org.graalvm.launcher",
         ],
       },
       "subdir" : "mx.graal-nodejs",
@@ -131,6 +131,7 @@ suite = {
       "distDependencies" : [
         "graal-js:GRAALJS",
         "sdk:LAUNCHER_COMMON",
+        "sdk:JLINE3",
       ],
       "description" : "Graal Node.js",
       "maven" : {

@@ -812,7 +812,7 @@ private:
     int function_template_count_;
     bool stack_check_enabled_;
     intptr_t stack_bottom_;
-    size_t stack_size_limit_;
+    ptrdiff_t stack_size_limit_;
     bool main_;
     JSExecutionAction js_execution_action_ = kJSExecutionAllowed;
     double return_value_;

@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.ValueType;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.LoopConditionProfile;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.BasicArrayOperation;
@@ -104,6 +105,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
     @Child private IsArrayNode isArrayNode = IsArrayNode.createIsAnyArray();
     protected final JSClassProfile targetClassProfile = JSClassProfile.create();
     protected final LoopConditionProfile loopCond = LoopConditionProfile.create();
+    protected final BranchProfile detachedBufferBranch = BranchProfile.create();
     @Child private CallbackNode callbackNode;
     @Child protected MaybeResultNode maybeResultNode;
 
@@ -232,6 +234,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             long count = 0;
             while (loopCond.profile(index < length && index <= lastElementIndex(target, length))) {
                 if (checkHasProperty && hasDetachedBuffer(target)) {
+                    detachedBufferBranch.enter();
                     break; // detached buffer does not have numeric properties
                 }
                 Object value = readElementInBounds(target, index);
@@ -293,6 +296,7 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             long count = 0;
             while (loopCond.profile(index >= 0 && index >= firstElementIndex(target, length))) {
                 if (checkHasProperty && hasDetachedBuffer(target)) {
+                    detachedBufferBranch.enter();
                     break; // detached buffer does not have numeric properties
                 }
                 Object value = readElementInBounds(target, index);

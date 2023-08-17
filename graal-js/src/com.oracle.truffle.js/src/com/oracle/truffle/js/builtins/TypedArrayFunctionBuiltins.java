@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins.JSArrayFromNode;
@@ -50,10 +51,8 @@ import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltinsFactory.TypedArr
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -92,7 +91,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
             case of:
                 return TypedArrayOfNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case from:
-                return TypedArrayFromNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
+                return TypedArrayFromNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
         }
         return null;
     }
@@ -102,13 +101,10 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
             super(context, builtin, true);
         }
 
-        @Specialization
-        protected JSDynamicObject arrayOf(Object thisObj, Object... args) {
-            if (!isTypedArrayConstructor(thisObj)) {
-                throw Errors.createTypeErrorNotAConstructor(thisObj, getContext());
-            }
+        @Specialization(guards = "isConstructor.executeBoolean(thisObj)")
+        protected JSTypedArrayObject arrayOf(Object thisObj, Object[] args) {
             int len = args.length;
-            JSTypedArrayObject newObj = getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, len);
+            JSTypedArrayObject newObj = getArraySpeciesConstructorNode().typedArrayCreate(thisObj, len);
             int k = 0;
             while (k < len) {
                 Object kValue = args[k];
@@ -116,6 +112,11 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
                 k++;
             }
             return newObj;
+        }
+
+        @Fallback
+        protected Object notConstructor(Object thisObj, @SuppressWarnings("unused") Object args) {
+            throw Errors.createTypeErrorNotAConstructor(thisObj, getContext());
         }
     }
 
@@ -126,17 +127,16 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Override
-        @Specialization
-        protected JSDynamicObject arrayFrom(Object thisObj, Object[] args,
-                        @Cached InlinedBranchProfile growProfile) {
-            Object source = JSRuntime.getArgOrUndefined(args, 0);
-            Object mapFn = JSRuntime.getArgOrUndefined(args, 1);
-            Object thisArg = JSRuntime.getArgOrUndefined(args, 2);
+        @Specialization(guards = "isConstructor.executeBoolean(thisObj)")
+        protected Object arrayFrom(Object thisObj, Object source, Object mapFn, Object thisArg,
+                        @Cached InlinedBranchProfile growBranch) {
+            return arrayFromCommon(thisObj, source, mapFn, thisArg, false, growBranch);
+        }
 
-            if (!JSFunction.isConstructor(thisObj)) {
-                throw Errors.createTypeErrorNotAConstructor(thisObj, getContext());
-            }
-            return arrayFromIntl(thisObj, source, mapFn, thisArg, false, growProfile);
+        @Fallback
+        @SuppressWarnings("unused")
+        protected Object notConstructor(Object thisObj, Object source, Object mapFn, Object thisArg) {
+            throw Errors.createTypeErrorNotAConstructor(thisObj, getContext());
         }
 
         @Override
@@ -153,7 +153,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
                 values.add(nextValue, this, growProfile);
             }
             int len = values.size();
-            JSTypedArrayObject obj = getArraySpeciesConstructorNode().typedArrayCreate((JSDynamicObject) thisObj, len);
+            JSTypedArrayObject obj = getArraySpeciesConstructorNode().typedArrayCreate(thisObj, len);
             for (int k = 0; k < len; k++) {
                 Object mapped = values.get(k);
                 if (mapping) {

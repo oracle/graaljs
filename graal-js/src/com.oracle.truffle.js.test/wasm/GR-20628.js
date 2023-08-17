@@ -6,7 +6,7 @@
  */
 
 /**
- * Allocation of a large Memory should either succeed or throw RangeError
+ * Multithreaded Wasm tests using atomic instructions
  *
  * @option webassembly
  * @option test262-mode

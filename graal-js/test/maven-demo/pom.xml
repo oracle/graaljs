@@ -66,8 +66,9 @@
         <!-- runtime -->
         <dependency>
             <groupId>org.graalvm.js</groupId>
-            <artifactId>js</artifactId>
+            <artifactId>js-community</artifactId>
             <version>${graalvm.version}</version>
+            <type>pom</type>
             <scope>runtime</scope>
         </dependency>
         <dependency>
@@ -117,7 +118,7 @@
                         <artifactId>maven-surefire-plugin</artifactId>
                         <version>3.1.2</version>
                         <configuration>
-                            <argLine>-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI --module-path=${compiler.dir} --upgrade-module-path=${compiler.dir}/compiler.jar${path.separator}${compiler.dir}/compiler-management.jar${path.separator}${compiler.dir}/truffle-compiler.jar</argLine>
+                            <argLine>-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI --upgrade-module-path=${compiler.dir}</argLine>
                         </configuration>
                     </plugin>
                     <plugin>
@@ -139,7 +140,6 @@
                                             <version>${graalvm.version}</version>
                                             <type>jar</type>
                                             <overWrite>true</overWrite>
-                                            <destFileName>compiler.jar</destFileName>
                                         </artifactItem>
                                         <artifactItem>
                                             <groupId>org.graalvm.compiler</groupId>
@@ -147,7 +147,6 @@
                                             <version>${graalvm.version}</version>
                                             <type>jar</type>
                                             <overWrite>true</overWrite>
-                                            <destFileName>compiler-management.jar</destFileName>
                                         </artifactItem>
                                         <artifactItem>
                                             <groupId>org.graalvm.truffle</groupId>
@@ -155,7 +154,6 @@
                                             <version>${graalvm.version}</version>
                                             <type>jar</type>
                                             <overWrite>true</overWrite>
-                                            <destFileName>truffle-api.jar</destFileName>
                                         </artifactItem>
                                         <artifactItem>
                                             <groupId>org.graalvm.truffle</groupId>
@@ -163,7 +161,6 @@
                                             <version>${graalvm.version}</version>
                                             <type>jar</type>
                                             <overWrite>true</overWrite>
-                                            <destFileName>truffle-compiler.jar</destFileName>
                                         </artifactItem>
                                         <artifactItem>
                                             <groupId>org.graalvm.sdk</groupId>
@@ -171,7 +168,6 @@
                                             <version>${graalvm.version}</version>
                                             <type>jar</type>
                                             <overWrite>true</overWrite>
-                                            <destFileName>graal-sdk.jar</destFileName>
                                         </artifactItem>
                                     </artifactItems>
                                     <outputDirectory>${compiler.dir}</outputDirectory>
@@ -196,7 +192,7 @@
                                         <modulepath/>
                                         <argument>-XX:+UnlockExperimentalVMOptions</argument>
                                         <argument>-XX:+EnableJVMCI</argument>
-                                        <argument>--upgrade-module-path=${compiler.dir}/compiler.jar${path.separator}${compiler.dir}/compiler-management.jar${path.separator}${compiler.dir}/truffle-compiler.jar</argument>
+                                        <argument>--upgrade-module-path=${compiler.dir}</argument>
                                         <argument>-m</argument>
                                         <argument>com.mycompany.app/com.mycompany.app.App</argument>
                                     </arguments>
@@ -219,6 +215,32 @@
                         </executions>
                         <configuration>
                             <executable>${JAVA_HOME}/bin/java</executable>
+                        </configuration>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-jlink-plugin</artifactId>
+                        <version>3.1.0</version>
+                        <configuration>
+                            <!-- Note: jlink is only supported beginning with GraalVM 23.1.0. -->
+                            <addModules>
+                                <module>com.mycompany.app</module>
+                                <module>jdk.internal.vm.compiler</module>
+                                <module>jdk.internal.vm.compiler.management</module>
+                                <module>org.graalvm.truffle</module>
+                                <module>org.graalvm.truffle.compiler</module>
+                                <module>org.graalvm.truffle.runtime</module>
+                            </addModules>
+                            <modulePaths>
+                                <!-- Not required if JAVA_HOME contains LibGraal. -->
+                                <modulePath>${compiler.dir}</modulePath>
+                            </modulePaths>
+                            <launcher>
+                                myapp=com.mycompany.app/com.mycompany.app.App
+                            </launcher>
+                            <addOptions>
+                                <addOption>"-XX:+UnlockExperimentalVMOptions -XX:+EnableJVMCI"</addOption>
+                            </addOptions>
                         </configuration>
                     </plugin>
                 </plugins>

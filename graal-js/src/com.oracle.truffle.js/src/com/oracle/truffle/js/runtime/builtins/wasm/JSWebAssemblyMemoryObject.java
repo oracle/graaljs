@@ -46,6 +46,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -55,7 +56,7 @@ import java.nio.ByteBuffer;
 
 public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
     private final Object wasmMemory;
-    private JSDynamicObject bufferObject;
+    private JSArrayBufferObject bufferObject;
     private boolean shared;
 
     protected JSWebAssemblyMemoryObject(Shape shape, JSDynamicObject proto, Object wasmMemory, boolean shared) {
@@ -68,7 +69,7 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
         return wasmMemory;
     }
 
-    public JSDynamicObject getBufferObject(JSContext context, JSRealm realm) {
+    public JSArrayBufferObject getBufferObject(JSContext context, JSRealm realm) {
         if (bufferObject == null) {
             if (!shared) {
                 bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);

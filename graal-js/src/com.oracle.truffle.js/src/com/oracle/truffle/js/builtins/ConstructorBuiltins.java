@@ -2506,10 +2506,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         InteropLibrary bufferInterop) {
             long offset = offsetToIndexNode.executeLong(byteOffset);
 
-            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-                errorBranch.enter(this);
-                throw Errors.createTypeError("detached buffer cannot be used");
-            }
+            checkDetachedBuffer(arrayBuffer, errorBranch);
 
             int bufferByteLength;
             if (isInteropBuffer) {
@@ -2542,11 +2539,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             // GetPrototypeFromConstructor might have detached the ArrayBuffer as a side effect.
+            checkDetachedBuffer(arrayBuffer, errorBranch);
+            return JSDataView.createDataView(getContext(), realm, proto, arrayBuffer, (int) offset, (int) viewByteLength);
+        }
+
+        private void checkDetachedBuffer(JSArrayBufferObject arrayBuffer, InlinedBranchProfile errorBranch) {
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorDetachedBuffer();
             }
-            return JSDataView.createDataView(getContext(), realm, proto, arrayBuffer, (int) offset, (int) viewByteLength);
         }
 
         @Override

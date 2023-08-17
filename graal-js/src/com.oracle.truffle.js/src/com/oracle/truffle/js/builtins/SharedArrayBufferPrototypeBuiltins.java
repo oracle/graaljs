@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
@@ -108,29 +109,28 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             super(context, builtin);
         }
 
-        private JSDynamicObject constructNewSharedArrayBuffer(JSDynamicObject thisObj, int newLen) {
+        private JSArrayBufferObject.Shared constructNewSharedArrayBuffer(JSDynamicObject thisObj, int newLen, InlinedBranchProfile errorBranch) {
             JSDynamicObject defaultConstructor = getRealm().getSharedArrayBufferConstructor();
-            JSDynamicObject constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
-            return (JSDynamicObject) getArraySpeciesConstructorNode().construct(constr, newLen);
-        }
-
-        private void checkErrors(JSDynamicObject resObj, JSDynamicObject thisObj, int newLen, InlinedBranchProfile errorBranch) {
+            var constr = getArraySpeciesConstructorNode().speciesConstructor(thisObj, defaultConstructor);
+            var resObj = getArraySpeciesConstructorNode().construct(constr, newLen);
             if (!JSSharedArrayBuffer.isJSSharedArrayBuffer(resObj)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("SharedArrayBuffer expected");
             }
+            var newBuffer = (JSArrayBufferObject.Shared) resObj;
             if (resObj == thisObj) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("SameValue(new, O) is forbidden");
             }
-            if (JSSharedArrayBuffer.getDirectByteBuffer(resObj).capacity() < newLen) {
+            if (JSSharedArrayBuffer.getDirectByteBuffer(newBuffer).capacity() < newLen) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("insufficient length constructed");
             }
+            return newBuffer;
         }
 
-        @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")
-        protected JSDynamicObject sliceSharedIntInt(JSDynamicObject thisObj, int begin, int end,
+        @Specialization
+        protected JSDynamicObject sliceSharedIntInt(JSArrayBufferObject.Shared thisObj, int begin, int end,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch) {
             ByteBuffer byteBuffer = JSSharedArrayBuffer.getDirectByteBuffer(thisObj);
             int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
@@ -138,16 +138,15 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             int clampedEnd = clampIndex(end, clampedBegin, byteLength);
             int newLen = clampedEnd - clampedBegin;
 
-            JSDynamicObject resObj = constructNewSharedArrayBuffer(thisObj, newLen);
-            checkErrors(resObj, thisObj, newLen, errorBranch);
+            JSArrayBufferObject.Shared resObj = constructNewSharedArrayBuffer(thisObj, newLen, errorBranch);
 
             ByteBuffer resBuffer = JSArrayBuffer.getDirectByteBuffer(resObj);
             Boundaries.byteBufferPutSlice(resBuffer, 0, byteBuffer, clampedBegin, clampedEnd);
             return resObj;
         }
 
-        @Specialization(guards = "isJSSharedArrayBuffer(thisObj)", replaces = "sliceSharedIntInt")
-        protected JSDynamicObject sliceShared(JSDynamicObject thisObj, Object begin0, Object end0,
+        @Specialization(replaces = "sliceSharedIntInt")
+        protected JSDynamicObject sliceShared(JSArrayBufferObject.Shared thisObj, Object begin0, Object end0,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch) {
             int len = JSSharedArrayBuffer.getDirectByteBuffer(thisObj).capacity();
             int begin = getStart(begin0, len);
@@ -168,8 +167,8 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSSharedArrayBuffer(thisObj)")
-        protected static int sharedArrayBuffer(Object thisObj) {
+        @Specialization
+        protected static int sharedArrayBuffer(JSArrayBufferObject.Shared thisObj) {
             return JSArrayBuffer.getDirectByteLength(thisObj);
         }
 

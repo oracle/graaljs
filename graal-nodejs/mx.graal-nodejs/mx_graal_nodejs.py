@@ -330,7 +330,10 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         mx.run(['python3', join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
                cwd=_suite.dir)
         if not (hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac):
-            mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]), '-Dpolyglot.engine.WarnInterpreterOnly=false',
+            mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]),
+                         '-Dpolyglot.engine.WarnInterpreterOnly=false',
+                         # The snapshot tool breaks the polyglot encapsulation
+                         '-Dpolyglotimpl.DisableClassPathIsolation=true',
                     mx.distribution(snapshotToolDistribution).mainClass,
                     '--binary', '--wrapped', '--outdir=' + outputDirBin, '--indir=' + outputDirBin] + ['--file=' + m for m in moduleSet],
                     cwd=outputDirBin)
@@ -574,6 +577,9 @@ def _prepare_svm_env():
 def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
 
+def _is_wasm_available():
+    return ('wasm', True) in mx.get_dynamic_imports()
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.nodejs',
@@ -604,6 +610,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 '--tool:all',
                 '--language:nodejs',
                 '-Dgraalvm.libpolyglot=true',  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
+                *(['--language:wasm'] if _is_wasm_available() else []),
             ],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
@@ -618,6 +625,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     standalone_dependencies={
         'GraalVM license files': ('', ['GRAALVM-README.md']),
         'Graal.nodejs license files': ('', []),
+        **({'GraalWasm' : ('', ['LICENSE_WASM.txt'])} if _is_wasm_available() else {}),
     },
     standalone_dependencies_enterprise={
         'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
