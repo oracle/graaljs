@@ -16,8 +16,8 @@
 load('../js/assert.js');
 load('./wasm-module-builder.js');
 
-(function TestBlockingMutex() {
-    print("TestBlockingMutex");
+(function TestNaiveMutex() {
+    print("TestNaiveMutex");
 
     let memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
     let builder = new WasmModuleBuilder();
@@ -65,7 +65,7 @@ load('./wasm-module-builder.js');
         kExprI32AtomicStore, 2, 0,
         // Notify one agent that is waiting on this lock.
         kExprLocalGet, 0,   // mutex address
-        ...wasmI32Const(0), // notify 1 waiter
+        ...wasmI32Const(1), // notify 1 waiter
         kAtomicPrefix,
         kExprAtomicNotify, 2, 0,
         kExprDrop])
@@ -86,15 +86,14 @@ load('./wasm-module-builder.js');
 
     let agentCode = `
         $262.agent.receiveBroadcast(function(obj) {
-            if (obj === null) {	
-                return;	
+            if (obj === null) {
+                return;
             }
             let moduleBytes = obj.moduleBytes;
             let memory = obj.memory;
             let module = new WebAssembly.Module(moduleBytes);
             let instance = new WebAssembly.Instance(module, {env: {imported_mem: memory}});
-            for (let i = 0; i < 10; i++) {
-                console.log('iteration: ' + i);
+            for (let i = 0; i < 100000000; i++) {
                 instance.exports.lockMutex(0);
                 instance.exports.increment(4);
                 instance.exports.unlockMutex(0);
@@ -123,45 +122,134 @@ load('./wasm-module-builder.js');
 
     let i32a = new Int32Array(memory.buffer);
     assertEqual(0, i32a[0]);  // mutex unlocked
-    assertEqual(20, i32a[1]); // all increments reflected
+    assertEqual(200000000, i32a[1]); // all increments reflected
 })();
 
-(function TestAtomicWaitNotify() {
-    print("TestAtomicNotify");
+(function TestFastMutex() {
+    print("TestFastMutex");
 
     let memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
     let builder = new WasmModuleBuilder();
     builder.addImportedMemory("env", "imported_mem", 1, 1, "shared");
-    builder.addFunction("notify", kSig_i_ii)
+    builder.addFunction("lockMutex", kSig_v_i)
+        .addLocals(kWasmI32, 1)
         .addBody([
-        kExprLocalGet, 0,
-        kExprLocalGet, 1,
-        kAtomicPrefix,
-        kExprAtomicNotify, 2, 0])
+            kExprBlock, kWasmVoid,
+                kExprLocalGet, 0,
+                ...wasmI32Const(0),
+                ...wasmI32Const(1),
+                kAtomicPrefix,
+                kExprI32AtomicCompareExchange, 2, 0,
+                kExprLocalSet, 1,
+                kExprLocalGet, 1,
+                kExprI32Eqz,
+                kExprBrIf, 0,
+                kExprLoop, kWasmVoid,
+                    kExprLocalGet, 1,
+                    ...wasmI32Const(2),
+                    kExprI32Eq,
+                    kExprLocalGet, 0,
+                    ...wasmI32Const(1),
+                    ...wasmI32Const(2),
+                    kAtomicPrefix,
+                    kExprI32AtomicCompareExchange, 2, 0,
+                    kExprI32Eqz,
+                    kExprI32Eqz,
+                    kExprI32Ior,
+                    kExprIf, kWasmVoid,
+                        kExprLocalGet, 0,
+                        ...wasmI32Const(2),
+                        ...wasmI64Const(-1),
+                        kAtomicPrefix,
+                        kExprI32AtomicWait, 2, 0,
+                        kExprDrop,
+                    kExprEnd,
+                    kExprLocalGet, 0,
+                    ...wasmI32Const(0),
+                    ...wasmI32Const(2),
+                    kAtomicPrefix,
+                    kExprI32AtomicCompareExchange, 2, 0,
+                    kExprLocalSet, 1,
+                    kExprLocalGet, 1,
+                    kExprI32Eqz,
+                    kExprI32Eqz,
+                    kExprBrIf, 0,
+                kExprEnd,
+            kExprEnd])
         .exportFunc();
-    builder.addFunction("wait32", makeSig([kWasmI32, kWasmI32, kWasmI64], [kWasmI32]))
+    builder.addFunction("unlockMutex", kSig_v_i)
         .addBody([
-        kExprLocalGet, 0,
-        kExprLocalGet, 1,
-        kExprLocalGet, 2,
-        kAtomicPrefix,
-        kExprI32AtomicWait, 2, 0])
+            kExprLocalGet, 0,
+            ...wasmI32Const(1),
+            kAtomicPrefix,
+            kExprI32AtomicSub, 2, 0,
+            ...wasmI32Const(1),
+            kExprI32Eq,
+            kExprI32Eqz,
+            kExprIf, kWasmVoid,
+                kExprLocalGet, 0,
+                ...wasmI32Const(0),
+                kAtomicPrefix,
+                kExprI32AtomicStore, 2, 0,
+                kExprLocalGet, 0,
+                ...wasmI32Const(1),
+                kAtomicPrefix,
+                kExprAtomicNotify, 2, 0,
+                kExprDrop,
+            kExprEnd])
         .exportFunc();
-    builder.addFunction("wait64", makeSig([kWasmI32, kWasmI64, kWasmI64], [kWasmI32]))
+    builder.addFunction("increment", kSig_v_i)
         .addBody([
-        kExprLocalGet, 0,
-        kExprLocalGet, 1,
-        kExprLocalGet, 2,
-        kAtomicPrefix,
-        kExprI64AtomicWait, 3, 0])
+            kExprLocalGet, 0,
+            kExprLocalGet, 0,
+            kExprI32LoadMem, 2, 0,
+            ...wasmI32Const(1),
+            kExprI32Add,
+            kExprI32StoreMem, 2, 0])
         .exportFunc();
     let moduleBytes = builder.toBuffer();
     let module = new WebAssembly.Module(moduleBytes);
     let instance = new WebAssembly.Instance(module, {env: {imported_mem: memory}});
-    
-    assertEqual(0, instance.exports.notify(0, 4));
-    assertEqual(2, instance.exports.wait32(0, 0, BigInt(1e9)));
-    assertEqual(2, instance.exports.wait64(0, BigInt(0), BigInt(1e9)));
+
+    let agentCode = `
+        $262.agent.receiveBroadcast(function(obj) {
+            if (obj === null) {
+                return;
+            }
+            let moduleBytes = obj.moduleBytes;
+            let memory = obj.memory;
+            let module = new WebAssembly.Module(moduleBytes);
+            let instance = new WebAssembly.Instance(module, {env: {imported_mem: memory}});
+            for (let i = 0; i < 100000000; i++) {
+                instance.exports.lockMutex(0);
+                instance.exports.increment(4);
+                instance.exports.unlockMutex(0);
+            }
+            $262.agent.report('done');
+            $262.agent.leaving();
+        });
+    `;
+
+    let getReport = $262.agent.getReport.bind($262.agent);
+    $262.agent.getReport = function() {
+        let r;
+        while ((r = getReport()) == null) {
+            $262.agent.sleep(1);
+        }
+        return r;
+    };
+
+    $262.agent.start(agentCode);
+    $262.agent.start(agentCode);
+    $262.agent.broadcast({moduleBytes: moduleBytes, memory: memory});
+
+    // wait for agents to finish
+    $262.agent.getReport();
+    $262.agent.getReport();
+
+    let i32a = new Int32Array(memory.buffer);
+    assertEqual(0, i32a[0]);
+    assertEqual(200000000, i32a[1]);
 })();
 
 (function TestAtomicIncrement() {
@@ -216,6 +304,44 @@ load('./wasm-module-builder.js');
 
     let i32a = new Int32Array(memory.buffer);
     assertEqual(200000000, i32a[0]);
+})();
+
+(function TestAtomicWaitNotify() {
+    print("TestAtomicWaitNotify");
+
+    let memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
+    let builder = new WasmModuleBuilder();
+    builder.addImportedMemory("env", "imported_mem", 1, 1, "shared");
+    builder.addFunction("notify", kSig_i_ii)
+        .addBody([
+            kExprLocalGet, 0,
+            kExprLocalGet, 1,
+            kAtomicPrefix,
+            kExprAtomicNotify, 2, 0])
+        .exportFunc();
+    builder.addFunction("wait32", makeSig([kWasmI32, kWasmI32, kWasmI64], [kWasmI32]))
+        .addBody([
+            kExprLocalGet, 0,
+            kExprLocalGet, 1,
+            kExprLocalGet, 2,
+            kAtomicPrefix,
+            kExprI32AtomicWait, 2, 0])
+        .exportFunc();
+    builder.addFunction("wait64", makeSig([kWasmI32, kWasmI64, kWasmI64], [kWasmI32]))
+        .addBody([
+            kExprLocalGet, 0,
+            kExprLocalGet, 1,
+            kExprLocalGet, 2,
+            kAtomicPrefix,
+            kExprI64AtomicWait, 3, 0])
+        .exportFunc();
+    let moduleBytes = builder.toBuffer();
+    let module = new WebAssembly.Module(moduleBytes);
+    let instance = new WebAssembly.Instance(module, {env: {imported_mem: memory}});
+
+    assertEqual(0, instance.exports.notify(0, 4));
+    assertEqual(2, instance.exports.wait32(0, 0, BigInt(1e9)));
+    assertEqual(2, instance.exports.wait64(0, BigInt(0), BigInt(1e9)));
 })();
 
 (function TestMemoryGrow() {
