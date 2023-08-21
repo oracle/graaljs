@@ -11,10 +11,13 @@
  * @option webassembly
  * @option test262-mode
  * @option wasm.Threads
+ * @option wasm.UseUnsafeMemory
  */
 
 load('../js/assert.js');
 load('./wasm-module-builder.js');
+
+const NUM_ITERATIONS = 100000000;
 
 (function TestNaiveMutex() {
     print("TestNaiveMutex");
@@ -81,9 +84,6 @@ load('./wasm-module-builder.js');
         kExprI32StoreMem, 2, 0])
         .exportFunc();
     let moduleBytes = builder.toBuffer();
-    let module = new WebAssembly.Module(moduleBytes);
-    let instance = new WebAssembly.Instance(module, {env: {imported_mem: memory}});
-
     let agentCode = `
         $262.agent.receiveBroadcast(function(obj) {
             if (obj === null) {
@@ -93,7 +93,7 @@ load('./wasm-module-builder.js');
             let memory = obj.memory;
             let module = new WebAssembly.Module(moduleBytes);
             let instance = new WebAssembly.Instance(module, {env: {imported_mem: memory}});
-            for (let i = 0; i < 100000000; i++) {
+            for (let i = 0; i < ${NUM_ITERATIONS}; i++) {
                 instance.exports.lockMutex(0);
                 instance.exports.increment(4);
                 instance.exports.unlockMutex(0);
@@ -111,7 +111,6 @@ load('./wasm-module-builder.js');
         }
         return r;
     };
-
     $262.agent.start(agentCode);
     $262.agent.start(agentCode);
     $262.agent.broadcast({moduleBytes: moduleBytes, memory: memory});
@@ -122,7 +121,7 @@ load('./wasm-module-builder.js');
 
     let i32a = new Int32Array(memory.buffer);
     assertEqual(0, i32a[0]);  // mutex unlocked
-    assertEqual(200000000, i32a[1]); // all increments reflected
+    assertEqual(2 * NUM_ITERATIONS, i32a[1]); // all increments reflected
 })();
 
 (function TestFastMutex() {
@@ -208,9 +207,6 @@ load('./wasm-module-builder.js');
             kExprI32StoreMem, 2, 0])
         .exportFunc();
     let moduleBytes = builder.toBuffer();
-    let module = new WebAssembly.Module(moduleBytes);
-    let instance = new WebAssembly.Instance(module, {env: {imported_mem: memory}});
-
     let agentCode = `
         $262.agent.receiveBroadcast(function(obj) {
             if (obj === null) {
@@ -220,7 +216,7 @@ load('./wasm-module-builder.js');
             let memory = obj.memory;
             let module = new WebAssembly.Module(moduleBytes);
             let instance = new WebAssembly.Instance(module, {env: {imported_mem: memory}});
-            for (let i = 0; i < 100000000; i++) {
+            for (let i = 0; i < ${NUM_ITERATIONS}; i++) {
                 instance.exports.lockMutex(0);
                 instance.exports.increment(4);
                 instance.exports.unlockMutex(0);
@@ -238,7 +234,6 @@ load('./wasm-module-builder.js');
         }
         return r;
     };
-
     $262.agent.start(agentCode);
     $262.agent.start(agentCode);
     $262.agent.broadcast({moduleBytes: moduleBytes, memory: memory});
@@ -249,7 +244,7 @@ load('./wasm-module-builder.js');
 
     let i32a = new Int32Array(memory.buffer);
     assertEqual(0, i32a[0]);
-    assertEqual(200000000, i32a[1]);
+    assertEqual(2 * NUM_ITERATIONS, i32a[1]);
 })();
 
 (function TestAtomicIncrement() {
@@ -267,7 +262,6 @@ load('./wasm-module-builder.js');
         kExprI32AtomicAdd, 2, 0])
         .exportFunc();
     let moduleBytes = builder.toBuffer();
-
     let agentCode = `
         $262.agent.receiveBroadcast(function(obj) {
             if (obj === null) {	
@@ -277,7 +271,7 @@ load('./wasm-module-builder.js');
             let memory = obj.memory;
             let module = new WebAssembly.Module(moduleBytes);
             let instance = new WebAssembly.Instance(module, {env: {imported_mem: memory}});
-            for (let i = 0; i < 100000000; i++) {
+            for (let i = 0; i < ${NUM_ITERATIONS}; i++) {
                 instance.exports.increment(0, 1);
             }
             $262.agent.report('done');
@@ -293,7 +287,6 @@ load('./wasm-module-builder.js');
         }
         return r;
     };
-
     $262.agent.start(agentCode);
     $262.agent.start(agentCode);
     $262.agent.broadcast({moduleBytes: moduleBytes, memory: memory});
@@ -303,7 +296,7 @@ load('./wasm-module-builder.js');
     $262.agent.getReport();
 
     let i32a = new Int32Array(memory.buffer);
-    assertEqual(200000000, i32a[0]);
+    assertEqual(2 * NUM_ITERATIONS, i32a[0]);
 })();
 
 (function TestAtomicWaitNotify() {

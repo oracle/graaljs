@@ -65,16 +65,16 @@ public final class JSWebAssemblyMemoryNotifyCallback implements TruffleObject {
     private final JSContext context;
     private final TruffleContext truffleContext;
     private final Object memSetNotifyCallbackFunction;
-    private final RootCallTarget constructTypedArray;
+    private final RootCallTarget constructInt32Array;
     private final RootCallTarget atomicsNotify;
 
     public JSWebAssemblyMemoryNotifyCallback(JSRealm realm, JSContext context, TruffleContext truffleContext, Object memSetNotifyCallbackFunction,
-                    RootCallTarget constructTypedArray, RootCallTarget atomicsNotify) {
+                    RootCallTarget constructInt32Array, RootCallTarget atomicsNotify) {
         this.realm = realm;
         this.context = context;
         this.truffleContext = truffleContext;
         this.memSetNotifyCallbackFunction = memSetNotifyCallbackFunction;
-        this.constructTypedArray = constructTypedArray;
+        this.constructInt32Array = constructInt32Array;
         this.atomicsNotify = atomicsNotify;
     }
 
@@ -110,7 +110,7 @@ public final class JSWebAssemblyMemoryNotifyCallback implements TruffleObject {
         try {
             // Let int32array be Int32Array(buffer).
             JSDynamicObject newTarget = realm.getArrayBufferViewConstructor(TypedArrayFactory.Int32Array);
-            JSTypedArrayObject int32array = (JSTypedArrayObject) constructTypedArray.call(newTarget, buffer, Undefined.instance, Undefined.instance);
+            JSTypedArrayObject int32array = (JSTypedArrayObject) constructInt32Array.call(newTarget, buffer, Undefined.instance, Undefined.instance);
             // Let result be Atomics.notify(int32array, address, count).
             result = (int) atomicsNotify.call(int32array, address, count);
         } finally {
