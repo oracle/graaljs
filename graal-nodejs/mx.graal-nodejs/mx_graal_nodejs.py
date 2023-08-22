@@ -54,6 +54,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     with Task('UnitTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.unitTests, GraalNodeJsTags.coverage], report=True) as t:
         if t:
+            mx.command_function('build')(['--dependencies', 'TRUFFLE_JS_TESTS'])
             _setEnvVar('NODE_JVM_CLASSPATH', mx.distribution('graal-js:TRUFFLE_JS_TESTS').path)
             commonArgs = ['-ea', '-esa']
             unitTestDir = join(_suite.dir, 'test', 'graal')
@@ -109,6 +110,7 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 
     with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows, GraalNodeJsTags.coverage]) as t:
         if t:
+            mx.command_function('build')(['--dependencies', 'TRUFFLENODE_TEST'])
             testnodeInstrument([])
 
     suite = os.getenv('NODE_SUITE')
