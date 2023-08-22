@@ -292,71 +292,94 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
     std::string node_exe = nodeExe();
     std::string node_bin_path = up(node_exe);
-    std::string node_jvm_lib;
+    std::string jdk_path;
+    std::string jvmlib_path;
     std::string standalone_home;
     bool is_graalvm = ends_with(node_bin_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
     bool is_jvm_standalone = false;
+    int effective_mode = kModeDefault;
     if (is_graalvm) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
         // We set environment variables to ensure these values are correctly
         // propagated to child processes.
         std::string graalvm_home = up(node_exe, 4); // ${graalvm_home}/languages/nodejs/bin/node
-        SetEnv("JAVA_HOME", graalvm_home.c_str());
+        jdk_path = graalvm_home;
+        SetEnv("JAVA_HOME", jdk_path.c_str());
 
-#       ifdef LIBNODESVM_RELPATH
-            node_jvm_lib = graalvm_home + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
-#       else
-            if (mode == kModeNative) {
-                fprintf(stderr, "`--native` mode not available.\n");
-                exit(9);
+        jvmlib_path = graalvm_home + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
+
+        if (mode == kModeNative || (mode == kModeDefault && file_exists(jvmlib_path))) {
+            SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
+            effective_mode = kModeNative;
+        } else {
+            // mode == kModeJVM || (mode == kModeDefault && !file_exists(jvmlib_path))
+            std::string node_jvm_lib = getstdenv("NODE_JVM_LIB");
+            if (!node_jvm_lib.empty()) {
+                jvmlib_path = node_jvm_lib;
+            } else {
+                // Use JAVA_HOME based libjvm path.
+                jvmlib_path = jdk_path + LIBJVM_RELPATH;
+                SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
+                effective_mode = kModeJVM;
             }
-#       endif
+        }
     } else {
         // Assume standalone distribution with libs in ../lib.
         standalone_home = up(node_exe, 2); // ${standalone_home}/bin/node
 
         // SVM standalone
-        node_jvm_lib = standalone_home + file_separator + "lib" + file_separator + LIBNODESVM_NAME;
-
+        jvmlib_path = standalone_home + file_separator + "lib" + file_separator + LIBNODESVM_NAME;
         // JVM standalone has a JDK in ${standalone_home}/jvm
-        if (mode == kModeJVM || !file_exists(node_jvm_lib)) {
+
+        if (mode == kModeNative || (mode == kModeDefault && file_exists(jvmlib_path))) {
+            SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
+            effective_mode = kModeNative;
+        } else {
+            // mode == kModeJVM || (mode == kModeDefault && !file_exists(jvmlib_path))
             std::string jvm_subdir = standalone_home + file_separator + "jvm";
             std::string jvm_subdir_libjvm = jvm_subdir + LIBJVM_RELPATH;
             if (file_exists(jvm_subdir_libjvm)) {
                 is_jvm_standalone = true;
+                jdk_path = jvm_subdir;
+                jvmlib_path = jvm_subdir_libjvm;
                 SetEnv("JAVA_HOME", jvm_subdir.c_str());
-            } // else use JAVA_HOME/NODE_JVM_LIB or fail
-        }
-    }
-    bool force_native = false;
-    if (!node_jvm_lib.empty()) {
-        if (mode == kModeJVM) {
-            // will be set to appropriate libjvm path below
-            UnsetEnv("NODE_JVM_LIB");
-        } else if (mode == kModeNative) {
-            force_native = true;
-        } else { // mode == kModeDefault
-            if (getstdenv("NODE_JVM_LIB").empty() && access(node_jvm_lib.c_str(), F_OK) == 0) {
-                force_native = true;
-            } // else reuse NODE_JVM_LIB
-        }
-        if (force_native) {
-            SetEnv("NODE_JVM_LIB", node_jvm_lib.c_str());
+                SetEnv("NODE_JVM_LIB", jvm_subdir_libjvm.c_str());
+                effective_mode = kModeJVM;
+            } else {
+                // Try using JAVA_HOME/NODE_JVM_LIB or fail
+                jdk_path = getstdenv("JAVA_HOME");
+                std::string node_jvm_lib = getstdenv("NODE_JVM_LIB");
+                if (!node_jvm_lib.empty()) {
+                    jvmlib_path = node_jvm_lib;
+                } else if (!jdk_path.empty()) {
+                    jvmlib_path = jdk_path + LIBJVM_RELPATH;
+                    SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
+                    effective_mode = kModeJVM;
+                } else if (mode == kModeJVM) {
+                    fprintf(stderr, "JAVA_HOME is not set. Specify JAVA_HOME so $JAVA_HOME%s exists.\n", LIBJVM_RELPATH);
+                    exit(1);
+                }
+            }
         }
     }
 
-    std::string jdk_path = getstdenv("JAVA_HOME");
-    if (jdk_path.empty() && !force_native) {
-        fprintf(stderr, "JAVA_HOME is not set. Specify JAVA_HOME so $JAVA_HOME%s exists.\n", LIBJVM_RELPATH);
-        exit(1);
+    std::string verbose_graalvm_launchers_str = getstdenv("VERBOSE_GRAALVM_LAUNCHERS");
+    bool verbose_graalvm_launchers = verbose_graalvm_launchers_str == "true";
+    if (verbose_graalvm_launchers) {
+        fprintf(stderr, "mode: %s\n", effective_mode == kModeNative ? "native" : effective_mode == kModeJVM ? "jvm" : "default");
     }
-    std::string jvmlib_path = getstdenv("NODE_JVM_LIB");
-    if (jvmlib_path.empty()) {
-        jvmlib_path = jdk_path + LIBJVM_RELPATH;
-        SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
-    }
-    if (access(jvmlib_path.c_str(), F_OK) == -1) {
-        fprintf(stderr, "Cannot find %s. Rebuild the polyglot library with `gu rebuild-images libpolyglot`, specify JAVA_HOME so that $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
+
+    if (!file_exists(jvmlib_path)) {
+        if (is_graalvm && polyglot) {
+            fprintf(stderr, "Cannot find %s. Rebuild the polyglot library with `gu rebuild-images libpolyglot`, specify JAVA_HOME so that $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
+        } else if (mode == kModeNative) {
+            fprintf(stderr, "Cannot find %s. Specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str());
+        } else if (mode == kModeJVM) {
+            fprintf(stderr, "Cannot find %s. Specify JAVA_HOME so that $JAVA_HOME%s exists.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
+        } else {
+            // mode == kModeDefault
+            fprintf(stderr, "Cannot find %s. Specify JAVA_HOME so that $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
+        }
         exit(1);
     }
 
@@ -561,9 +584,8 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         }
     #endif
 
-        std::string verbose_graalvm_launchers = getstdenv("VERBOSE_GRAALVM_LAUNCHERS");
-        if (verbose_graalvm_launchers == "true") {
-            fprintf(stderr, "load: %s ", jvmlib_path.c_str());
+        if (verbose_graalvm_launchers) {
+            fprintf(stderr, "load: %s", jvmlib_path.c_str());
             for (auto i = 0; i < options.size(); i++) {
                 fprintf(stderr, " %s", options[i].optionString);
             }
