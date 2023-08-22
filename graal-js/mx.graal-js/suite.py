@@ -257,12 +257,29 @@ suite = {
         "sdk:GRAAL_SDK",
         "mx:JUNIT",
         "GRAALJS",
-        "truffle:TRUFFLE_TCK",
         "com.oracle.truffle.js.snapshot",
       ],
       "requires" : [
         "java.desktop",
         "jdk.unsupported",
+      ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.js",
+      "spotbugs" : "true",
+      "javaCompliance" : "17+",
+      "workingSets" : "Truffle,JavaScript",
+      "testProject" : True,
+    },
+
+    "com.oracle.truffle.js.test.debug" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+        "mx:JUNIT",
+        "GRAALJS",
+        "TRUFFLE_JS_TESTS",
+        "truffle:TRUFFLE_TCK",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
@@ -382,7 +399,6 @@ suite = {
         "JACKSON_CORE",
         "JACKSON_ANNOTATIONS",
         "JACKSON_DATABIND",
-        "NASHORN_INTERNAL_TESTS",
         "TRUFFLE_JS_SNAPSHOT_TOOL",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
@@ -458,6 +474,7 @@ suite = {
         "MIT",  # JONI regexp engine
       ],
       "allowsJavadocWarnings": True,
+      "useModulePath": True,
     },
 
     "JS_COMMUNITY" : {
@@ -533,6 +550,12 @@ suite = {
     },
 
     "TRUFFLE_JS_SNAPSHOT_TOOL" : {
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.js.snapshot",
+        "exports" : [
+          "com.oracle.truffle.js.snapshot",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.snapshot"],
       "mainClass" : "com.oracle.truffle.js.snapshot.SnapshotTool",
@@ -567,6 +590,16 @@ suite = {
     },
 
     "TRUFFLE_JS_TESTS" : {
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.js.test",
+        "exports" : [
+          # Export everything to junit and dependent test distributions.
+          "com.oracle.truffle.js.test*",
+        ],
+        "opens" : [
+          "com.oracle.truffle.js.test.external.suite to com.fasterxml.jackson.databind",
+        ],
+      },
       "dependencies" : [
         "com.oracle.truffle.js.test",
         "com.oracle.truffle.js.test.external",
@@ -580,11 +613,9 @@ suite = {
         "JACKSON_CORE",
         "JACKSON_ANNOTATIONS",
         "JACKSON_DATABIND",
-        "NASHORN_INTERNAL_TESTS",
       ],
       "distDependencies" : [
         "GRAALJS",
-        "truffle:TRUFFLE_TCK",
         "TRUFFLE_JS_SNAPSHOT_TOOL",
       ],
       "license": [
@@ -593,6 +624,26 @@ suite = {
       "maven" : False,
       "description" : "Graal JavaScript Tests",
       "allowsJavadocWarnings": True,
+      "useModulePath": True,
+    },
+
+    "JS_DEBUG_TESTS" : {
+      "subDir" : "src",
+      "javaCompliance" : "17+",
+      "dependencies" : [
+        "com.oracle.truffle.js.test.debug",
+      ],
+      "exclude" : [
+        "mx:HAMCREST",
+        "mx:JUNIT",
+      ],
+      "distDependencies" : [
+        "GRAALJS",
+        "TRUFFLE_JS_TESTS",
+        "sdk:POLYGLOT_TCK",
+        "truffle:TRUFFLE_TCK",
+      ],
+      "maven" : False
     },
 
     "SDK_JS_TESTS" : {

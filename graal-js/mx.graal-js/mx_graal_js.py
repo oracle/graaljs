@@ -144,6 +144,9 @@ def _graal_js_gate_runner(args, tasks):
 def _unittest_config_participant(config):
     (vmArgs, mainClass, mainClassArgs) = config
     vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
+    mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
+    mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
+    mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=ALL-UNNAMED']
     return (vmArgs, mainClass, mainClassArgs)
 
 mx_unittest.add_config_participant(_unittest_config_participant)
@@ -256,10 +259,12 @@ def _fetch_test_suite(dest, library_names):
 def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
     _vm_args, _prog_args = parse_js_args(custom_args)
     _vm_args = _append_default_js_vm_args(vm_args=_vm_args, max_heap=max_heap, stack_size=stack_size)
-    _cp = mx.classpath(['TRUFFLE_JS_TESTS']
+    _mp = mx.classpath(['TRUFFLE_JS_TESTS']
         + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
         + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
-    _vm_args = ['-ea', '-esa', '-cp', _cp] + default_vm_args + _vm_args
+    _cp = mx.classpath(['NASHORN_INTERNAL_TESTS'])
+    _exports = ['--add-exports', 'org.graalvm.js/com.oracle.truffle.js.runtime=com.oracle.truffle.js.test']
+    _vm_args = ['-ea', '-esa', '--module-path', _mp, '-cp', _cp] + _exports + default_vm_args + _vm_args
     return mx.run_java(_vm_args + [main_class] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd, jdk=get_jdk())
 
 def test262(args, nonZeroIsFatal=True):

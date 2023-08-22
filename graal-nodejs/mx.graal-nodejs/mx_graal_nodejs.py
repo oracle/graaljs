@@ -363,9 +363,9 @@ def node(args, add_graal_vm_args=True, nonZeroIsFatal=True, out=None, err=None, 
     return mx.run(prepareNodeCmdLine(args, add_graal_vm_args), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 def testnodeInstrument(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
-    instrument_cp = mx.classpath(['TRUFFLENODE_TEST'])
-    _setEnvVar('NODE_JVM_CLASSPATH', instrument_cp)
-    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-Dpolyglotimpl.DisableClassPathIsolation=true']))
+    instrument_mp = mx.classpath(['TRUFFLENODE_TEST'])
+    _setEnvVar('NODE_JVM_MODULE_PATH', instrument_mp)
+    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '--add-exports=org.graalvm.js/com.oracle.truffle.js.nodes.instrumentation=com.oracle.truffle.trufflenode.test']))
     test = join(_suite.dir, 'test', 'graal', 'instrument', 'async-test.js')
     node(['--experimental-options', '--testing-agent', test], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
     node(['--experimental-options', '--broken-instrument', '-e', '6*7'], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
