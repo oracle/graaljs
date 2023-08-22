@@ -41,19 +41,27 @@
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.RootCallTarget;
-import com.oracle.truffle.api.TruffleContext;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
+import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+
+import java.nio.ByteBuffer;
+import java.util.NoSuchElementException;
 
 /**
  * Represents a callback that is invoked when the memory.atomic.notify instruction executes in WebAssembly.
@@ -63,19 +71,12 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class JSWebAssemblyMemoryNotifyCallback implements TruffleObject {
     private final JSRealm realm;
     private final JSContext context;
-    private final TruffleContext truffleContext;
     private final Object memSetNotifyCallbackFunction;
-    private final RootCallTarget constructInt32Array;
-    private final RootCallTarget atomicsNotify;
 
-    public JSWebAssemblyMemoryNotifyCallback(JSRealm realm, JSContext context, TruffleContext truffleContext, Object memSetNotifyCallbackFunction,
-                    RootCallTarget constructInt32Array, RootCallTarget atomicsNotify) {
+    public JSWebAssemblyMemoryNotifyCallback(JSRealm realm, JSContext context, Object memSetNotifyCallbackFunction) {
         this.realm = realm;
         this.context = context;
-        this.truffleContext = truffleContext;
         this.memSetNotifyCallbackFunction = memSetNotifyCallbackFunction;
-        this.constructInt32Array = constructInt32Array;
-        this.atomicsNotify = atomicsNotify;
     }
 
     public void attachToMemory(Object wasmMemory) {
@@ -103,20 +104,58 @@ public final class JSWebAssemblyMemoryNotifyCallback implements TruffleObject {
         final int count = (int) arguments[2];
 
         // Let buffer be memory(Get(memory, "buffer")).
-        final JSDynamicObject buffer = memoryObject.getBufferObject(context, realm);
+        final JSArrayBufferObject buffer = memoryObject.getBufferObject(context, realm);
 
-        final Object prev = truffleContext.enter(null);
-        int result;
-        try {
-            // Let int32array be Int32Array(buffer).
-            JSDynamicObject newTarget = realm.getArrayBufferViewConstructor(TypedArrayFactory.Int32Array);
-            JSTypedArrayObject int32array = (JSTypedArrayObject) constructInt32Array.call(newTarget, buffer, Undefined.instance, Undefined.instance);
-            // Let result be Atomics.notify(int32array, address, count).
-            result = (int) atomicsNotify.call(int32array, address, count);
-        } finally {
-            truffleContext.leave(null, prev);
+        // Let int32array be Int32Array(buffer).
+        final JSTypedArrayObject int32array = constructInt32Array(buffer);
+
+        // Let result be Atomics.notify(int32array, address, count).
+        return atomicsNotify(int32array, (int) address, count);
+    }
+
+    private JSTypedArrayObject constructInt32Array(JSArrayBufferObject buffer) {
+        final ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(buffer);
+        final TypedArrayFactory factory = findTypedArrayFactory(Strings.INT32_ARRAY);
+        final int length = byteBuffer.limit() / factory.getBytesPerElement();
+        final TypedArray typedArray = factory.createArrayType(true, false);
+        final JSObjectFactory objectFactory = context.getArrayBufferViewFactory(factory);
+        return JSArrayBufferView.createArrayBufferView(objectFactory, realm, buffer, typedArray, 0, length);
+    }
+
+    private static TypedArrayFactory findTypedArrayFactory(TruffleString name) {
+        for (TypedArrayFactory typedArrayFactory : TypedArray.factories()) {
+            if (Strings.equals(typedArrayFactory.getName(), name)) {
+                return typedArrayFactory;
+            }
         }
+        throw new NoSuchElementException(Strings.toJavaString(name));
+    }
 
-        return result;
+    private int atomicsNotify(JSTypedArrayObject int32array, int address, int count) {
+        final int convertedCount = Integer.max(count, 0);
+        final JSAgentWaiterList.JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(context, int32array, address);
+        wl.enterCriticalSection();
+        try {
+            boolean wake = false;
+            final JSAgentWaiterList.WaiterRecord[] waiters = SharedMemorySync.removeWaiters(wl, convertedCount);
+            int n;
+            for (n = 0; n < waiters.length; n++) {
+                final JSAgentWaiterList.WaiterRecord waiterRecord = waiters[n];
+                waiterRecord.setNotified();
+                if (waiterRecord.getPromiseCapability() == null) {
+                    wake = true;
+                } else {
+                    if (Double.isInfinite(waiterRecord.getTimeout())) {
+                        waiterRecord.enqueueInAgent();
+                    }
+                }
+            }
+            if (wake) {
+                SharedMemorySync.wakeWaiters(wl);
+            }
+            return n;
+        } finally {
+            wl.leaveCriticalSection();
+        }
     }
 }

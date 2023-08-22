@@ -57,11 +57,6 @@ import java.util.Objects;
 import java.util.SplittableRandom;
 import java.util.WeakHashMap;
 
-import com.oracle.truffle.js.nodes.wasm.WasmAtomicsNotifyNode;
-import com.oracle.truffle.js.nodes.wasm.WasmAtomicsWaitNode;
-import com.oracle.truffle.js.nodes.wasm.WasmCallBigIntNode;
-import com.oracle.truffle.js.nodes.wasm.WasmConstructBigInt64ArrayNode;
-import com.oracle.truffle.js.nodes.wasm.WasmConstructInt32ArrayNode;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryNotifyCallback;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryWaitCallback;
 import org.graalvm.collections.Pair;
@@ -967,18 +962,8 @@ public class JSRealm {
             this.webAssemblyGlobalPrototype = ctor.getPrototype();
 
             this.webAssemblyMemoryGrowCallback = new JSWebAssemblyMemoryGrowCallback(this, wasmMemSetGrowCallback);
-
-            WasmConstructInt32ArrayNode constructInt32ArrayNode = new WasmConstructInt32ArrayNode(context);
-            WasmAtomicsNotifyNode atomicsNotifyNode = new WasmAtomicsNotifyNode(context);
-            this.webAssemblyMemoryNotifyCallback = new JSWebAssemblyMemoryNotifyCallback(this, context, getTruffleContext(), wasmMemSetNotifyCallback,
-                            constructInt32ArrayNode.getCallTarget(), atomicsNotifyNode.getCallTarget());
-
-            WasmConstructBigInt64ArrayNode constructBigInt64ArrayNode = new WasmConstructBigInt64ArrayNode(context);
-            WasmCallBigIntNode callBigIntNode = new WasmCallBigIntNode(context);
-            WasmAtomicsWaitNode atomicsWaitNode = new WasmAtomicsWaitNode(context);
-            this.webAssemblyMemoryWaitCallback = new JSWebAssemblyMemoryWaitCallback(this, context, getTruffleContext(), wasmMemSetWaitCallback,
-                            constructInt32ArrayNode.getCallTarget(), constructBigInt64ArrayNode.getCallTarget(), callBigIntNode.getCallTarget(),
-                            atomicsWaitNode.getCallTarget());
+            this.webAssemblyMemoryNotifyCallback = new JSWebAssemblyMemoryNotifyCallback(this, context, wasmMemSetNotifyCallback);
+            this.webAssemblyMemoryWaitCallback = new JSWebAssemblyMemoryWaitCallback(this, context, wasmMemSetWaitCallback);
         } else {
             this.wasmTableAlloc = null;
             this.wasmTableGrow = null;

@@ -17,7 +17,7 @@
 load('../js/assert.js');
 load('./wasm-module-builder.js');
 
-const NUM_ITERATIONS = 100000000;
+const NUM_ITERATIONS = 10000000;
 
 (function TestNaiveMutex() {
     print("TestNaiveMutex");

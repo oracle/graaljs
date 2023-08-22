@@ -554,11 +554,6 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         }
     }
 
-    @Override
-    protected boolean isThreadAccessAllowed(Thread thread, boolean singleThreaded) {
-        return true;
-    }
-
     @TruffleBoundary
     @SuppressWarnings("unchecked")
     private static void processTimeoutCallbacks(JSRealm realm) {
