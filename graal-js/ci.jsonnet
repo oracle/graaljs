@@ -41,8 +41,7 @@ local ci = import '../ci.jsonnet';
     nativeimages+:: ['lib:jsvm', 'lib:jvmcicompiler'],
     extraimagebuilderarguments+:: ['-H:+ReportExceptionStackTraces'],
     run+: [
-      ['mx', 'build'],
-      ['mx', 'build', '--dependencies', 'GRAALVM_STANDALONES'],
+      ['mx', 'build', '--dependencies', 'ALL_GRAALVM_ARTIFACTS'],
       ['set-export', 'GRAALVM_HOME', ['mx', '--quiet', 'graalvm-home']],
       ['${GRAALVM_HOME}/bin/js', '--native', '-e', "print('hello:' + Array.from(new Array(10), (x,i) => i*i ).join('|'))"],
       ['${GRAALVM_HOME}/bin/js', '--native', '../../js-benchmarks/harness.js', '--', '../../js-benchmarks/octane-richards.js', '--show-warmup'],
