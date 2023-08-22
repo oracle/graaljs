@@ -54,6 +54,8 @@ local ci = import '../ci.jsonnet';
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=native']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
+      ['${STANDALONE_HOME}/bin/npm', '--prefix', 'test/graal', 'install'],
+      ['${STANDALONE_HOME}/bin/npm', '--prefix', 'test/graal', 'test'],
     ] else []),
   },
 
