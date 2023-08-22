@@ -412,6 +412,7 @@ suite = {
         "name" : "org.graalvm.js",
         "exports" : [
           "com.oracle.truffle.js.lang to org.graalvm.truffle",
+          "com.oracle.js.parser to org.graalvm.nodejs",
           "com.oracle.js.parser.ir to org.graalvm.nodejs",
           "com.oracle.truffle.js.builtins to org.graalvm.nodejs",
           "com.oracle.truffle.js.builtins.helper to org.graalvm.nodejs",
