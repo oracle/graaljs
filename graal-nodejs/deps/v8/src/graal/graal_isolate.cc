@@ -450,7 +450,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
                 module_path += standalone_modules_dir;
                 module_path_sep = path_separator;
             }
-            options.push_back({const_cast<char*>("--add-modules=org.graalvm.nodejs"), nullptr});
         }
         std::string env_module_path = getstdenv("NODE_JVM_MODULE_PATH");
         if (!env_module_path.empty()) {
@@ -461,6 +460,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         if (!module_path.empty()) {
             module_path = "--module-path=" + module_path;
             options.push_back({const_cast<char*>(module_path.c_str()), nullptr});
+            options.push_back({const_cast<char*>("--add-modules=org.graalvm.nodejs"), nullptr});
         }
 
         std::string classpath = "";
