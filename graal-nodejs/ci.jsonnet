@@ -30,7 +30,7 @@ local ci = import '../ci.jsonnet';
   local build = {
     run+: [
       // build only if no artifact is being used to avoid rebuilding
-      ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac', '--dependencies', self.build_dependencies],
+      ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac', '--dependencies', std.join(',', self.build_dependencies)],
     ],
   },
 
