@@ -185,6 +185,9 @@ suite = {
       },
     },
     "TRUFFLENODE_TEST" : {
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.trufflenode.test",
+      },
       "subdir" : "mx.graal-nodejs",
       "dependencies" : ["com.oracle.truffle.trufflenode.test"],
       "distDependencies" : [
@@ -193,7 +196,8 @@ suite = {
       "description" : "Graal Node.js testing",
       "maven" : {
         "artifactId" : "graal-nodejs-test",
-      }
+      },
+      "useModulePath": True,
     },
   },
 }
