@@ -56,13 +56,10 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
-import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
-import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 
-import java.nio.ByteBuffer;
+import java.lang.invoke.VarHandle;
 
 /**
  * Represents a callback that is invoked when the memory.atomic.waitN instruction executes in WebAssembly.
@@ -70,6 +67,8 @@ import java.nio.ByteBuffer;
  */
 @ExportLibrary(InteropLibrary.class)
 public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
+    private static final int INT32_BYTES_PER_ELEMENT = 4;
+    private static final int BIGINT64_BYTES_PER_ELEMENT = 8;
     private final JSRealm realm;
     private final JSContext context;
     private final Object memSetWaitCallbackFunction;
@@ -108,8 +107,7 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
         final boolean is64 = (boolean) arguments[4];
 
         final JSArrayBufferObject buffer = memoryObject.getBufferObject(context, realm);
-        final JSTypedArrayObject typedArrayObject = constructTypedArray(buffer, is64);
-        final TruffleString result = atomicsWait(typedArrayObject, (int) address, expected, convertedTimeout, is64);
+        final TruffleString result = atomicsWait(buffer, (int) address, expected, convertedTimeout, is64);
 
         if (Strings.equals(result, Strings.OK)) {
             return 0;
@@ -121,30 +119,25 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
         }
     }
 
-    private JSTypedArrayObject constructTypedArray(JSArrayBufferObject buffer, boolean is64) {
-        final ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(buffer);
-        final TypedArrayFactory factory = !is64 ? TypedArrayFactory.Int32Array : TypedArrayFactory.BigInt64Array;
-        final int length = byteBuffer.limit() / factory.getBytesPerElement();
-        final TypedArray typedArray = factory.createArrayType(true, false);
-        final JSObjectFactory objectFactory = context.getArrayBufferViewFactory(factory);
-        return JSArrayBufferView.createArrayBufferView(objectFactory, realm, buffer, typedArray, 0, length);
-    }
-
-    private TruffleString atomicsWait(JSTypedArrayObject typedArrayObject, int address, long expected, double timeout, boolean is64) {
+    private TruffleString atomicsWait(JSArrayBufferObject buffer, int address, long expected, double timeout, boolean is64) {
         final JSAgent agent = realm.getAgent();
         assert agent.canBlock();
-        final JSAgentWaiterList.JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(context, typedArrayObject, address);
+        final JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(buffer);
+        final JSAgentWaiterList.JSAgentWaiterListEntry wl;
+        if (!is64) {
+            wl = waiterList.getListForIndex(address * INT32_BYTES_PER_ELEMENT);
+        } else {
+            wl = waiterList.getListForIndex(address * BIGINT64_BYTES_PER_ELEMENT);
+        }
         wl.enterCriticalSection();
         try {
             if (!is64) {
-                final TypedArray.DirectInt32Array arrayType = (TypedArray.DirectInt32Array) JSArrayBufferView.typedArrayGetArrayType(typedArrayObject);
-                final int val = SharedMemorySync.doVolatileGet(typedArrayObject, address, arrayType);
+                final int val = doVolatileGetFromBuffer(buffer, address);
                 if (val != expected) {
                     return Strings.NOT_EQUAL;
                 }
             } else {
-                final TypedArray.DirectBigInt64Array arrayType = (TypedArray.DirectBigInt64Array) JSArrayBufferView.typedArrayGetArrayType(typedArrayObject);
-                final BigInt val = SharedMemorySync.doVolatileGetBigInt(typedArrayObject, address, arrayType);
+                final BigInt val = doVolatileGetBigIntFromBuffer(buffer, address);
                 if (val.longValue() != expected) {
                     return Strings.NOT_EQUAL;
                 }
@@ -163,5 +156,19 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
         } finally {
             wl.leaveCriticalSection();
         }
+    }
+
+    private static int doVolatileGetFromBuffer(JSArrayBufferObject buffer, int intArrayOffset) {
+        TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) TypedArrayFactory.Int32Array.createArrayType(true, false);
+        int result = typedArray.getIntImpl(buffer, 0, intArrayOffset, InteropLibrary.getUncached());
+        VarHandle.acquireFence();
+        return result;
+    }
+
+    private static BigInt doVolatileGetBigIntFromBuffer(JSArrayBufferObject buffer, int bigIntArrayOffset) {
+        TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) TypedArrayFactory.BigInt64Array.createArrayType(true, false);
+        BigInt result = typedArray.getBigIntImpl(buffer, 0, bigIntArrayOffset, InteropLibrary.getUncached());
+        VarHandle.acquireFence();
+        return result;
     }
 }

@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
  */
 @ExportLibrary(InteropLibrary.class)
 public final class JSWebAssemblyMemoryNotifyCallback implements TruffleObject {
+    private static final int INT32_BYTES_PER_ELEMENT = 4;
     private final JSRealm realm;
     private final JSContext context;
     private final Object memSetNotifyCallbackFunction;
@@ -98,8 +99,8 @@ public final class JSWebAssemblyMemoryNotifyCallback implements TruffleObject {
 
     private static int atomicsNotify(JSArrayBufferObject buffer, int address, int count) {
         final int convertedCount = Integer.max(count, 0);
-        JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(buffer);
-        final JSAgentWaiterList.JSAgentWaiterListEntry wl = waiterList.getListForIndex(address * 4);
+        final JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(buffer);
+        final JSAgentWaiterList.JSAgentWaiterListEntry wl = waiterList.getListForIndex(address * INT32_BYTES_PER_ELEMENT);
         return JSAgentWaiterList.JSAgentWaiterListEntry.notifyWaiters(wl, convertedCount);
     }
 }
