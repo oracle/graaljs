@@ -62,8 +62,8 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import java.lang.invoke.VarHandle;
 
 /**
- * Represents a callback that is invoked when the memory.atomic.waitN instruction executes in WebAssembly.
- * This allows us to reuse the JS implementation of Atomics.wait.
+ * Represents a callback that is invoked when the memory.atomic.waitN instruction executes in
+ * WebAssembly. This allows us to reuse the JS implementation of Atomics.wait.
  */
 @ExportLibrary(InteropLibrary.class)
 public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {

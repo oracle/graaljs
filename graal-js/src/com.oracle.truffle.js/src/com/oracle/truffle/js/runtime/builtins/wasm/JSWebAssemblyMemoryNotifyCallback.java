@@ -53,8 +53,8 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 
 /**
- * Represents a callback that is invoked when the memory.atomic.notify instruction executes in WebAssembly.
- * This allows us to reuse the JS implementation of Atomics.notify.
+ * Represents a callback that is invoked when the memory.atomic.notify instruction executes in
+ * WebAssembly. This allows us to reuse the JS implementation of Atomics.notify.
  */
 @ExportLibrary(InteropLibrary.class)
 public final class JSWebAssemblyMemoryNotifyCallback implements TruffleObject {
