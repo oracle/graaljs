@@ -32,6 +32,8 @@ from os.path import join, exists, getmtime
 import mx_graal_js_benchmark
 import mx, mx_sdk, mx_urlrewrites
 from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
+
+import mx_unittest
 from mx_unittest import unittest
 
 _suite = mx.suite('graal-js')
@@ -139,6 +141,12 @@ def _graal_js_gate_runner(args, tasks):
             finally:
                 os.unlink(jsonResultsFile)
 
+def _unittest_config_participant(config):
+    (vmArgs, mainClass, mainClassArgs) = config
+    vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
+    return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.add_config_participant(_unittest_config_participant)
 prepend_gate_runner(_suite, _graal_js_pre_gate_runner)
 add_gate_runner(_suite, _graal_js_gate_runner)
 

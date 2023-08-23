@@ -365,8 +365,9 @@ def node(args, add_graal_vm_args=True, nonZeroIsFatal=True, out=None, err=None, 
 def testnodeInstrument(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     instrument_cp = mx.classpath(['TRUFFLENODE_TEST'])
     _setEnvVar('NODE_JVM_CLASSPATH', instrument_cp)
+    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-Dpolyglotimpl.DisableClassPathIsolation=true']))
     test = join(_suite.dir, 'test', 'graal', 'instrument', 'async-test.js')
-    node(['--experimental-options', '--testing-agent', '-ea', test], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+    node(['--experimental-options', '--testing-agent', test], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
     node(['--experimental-options', '--broken-instrument', '-e', '6*7'], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
     node(['--experimental-options', '--coverage-like-instrument', '-e', '6*7'], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
