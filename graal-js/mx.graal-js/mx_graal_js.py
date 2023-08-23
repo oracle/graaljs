@@ -50,11 +50,15 @@ TESTV8_REV = "59187809cbc7a6887e45c85ab410e4596aaf5e9c"
 
 def get_jdk(forBuild=False):
     # Graal.nodejs requires a JDK at build time, to be passed as argument to `./configure`.
+    # GraalVMJDKConfig (`tag='graalvm'`) is not available until all the components are built.
     # GraalJVMCIJDKConfig (`tag='jvmci'`) is not available until all required jars are built.
-    if not forBuild and mx.suite('compiler', fatalIfMissing=False):
-        return mx.get_jdk(tag='jvmci')
-    else:
-        return mx.get_jdk()
+    if not forBuild:
+        jdk = mx.get_jdk(tag='graalvm')
+        if exists(jdk.home):
+            return jdk
+        elif mx.suite('compiler', fatalIfMissing=False):
+            return mx.get_jdk(tag='jvmci')
+    return mx.get_jdk()
 
 class GraalJsDefaultTags:
     default = 'default'
