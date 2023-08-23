@@ -71,7 +71,6 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
-import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -438,39 +437,23 @@ public final class JSInteropUtil {
         return sb.toString();
     }
 
-    public static ByteBuffer wasmMemoryAsByteBuffer(JSArrayBufferObject interopArrayBuffer, InteropLibrary interop, JSRealm realm) {
+    public static ByteBuffer jsInteropBufferAsByteBuffer(JSArrayBufferObject interopArrayBuffer, InteropLibrary interop, JSRealm realm) {
         assert JSArrayBuffer.isJSInteropArrayBuffer(interopArrayBuffer);
-        Object memAsByteBuffer = realm.getWASMMemAsByteBuffer();
-        if (memAsByteBuffer == null) {
+        Object interopBuffer = JSArrayBuffer.getInteropBuffer(interopArrayBuffer);
+        if (interopBuffer == null) {
+            assert JSArrayBuffer.isDetachedBuffer(interopArrayBuffer);
             return null;
         }
-        try {
-            Object interopBuffer = JSArrayBuffer.getInteropBuffer(interopArrayBuffer);
-            if (interopBuffer == null) {
-                assert JSArrayBuffer.isDetachedBuffer(interopArrayBuffer);
-                return null;
-            }
-            Object bufferObject = interop.execute(memAsByteBuffer, interopBuffer);
-            TruffleLanguage.Env env = realm.getEnv();
-            if (env.isHostObject(bufferObject)) {
-                Object buffer = env.asHostObject(bufferObject);
-                if (buffer instanceof ByteBuffer) {
-                    return (ByteBuffer) buffer;
-                }
-            }
-        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
-        }
-        return null;
+        return foreignInteropBufferAsByteBuffer(interopBuffer, interop, realm);
     }
 
-    public static ByteBuffer sharedWasmMemoryAsByteBuffer(Object sharedWasmMemory, InteropLibrary interop, JSRealm realm) {
+    public static ByteBuffer foreignInteropBufferAsByteBuffer(Object foreignInteropBuffer, InteropLibrary interop, JSRealm realm) {
         Object memAsByteBuffer = realm.getWASMMemAsByteBuffer();
         if (memAsByteBuffer == null) {
             return null;
         }
         try {
-            Object bufferObject = interop.execute(memAsByteBuffer, sharedWasmMemory);
+            Object bufferObject = interop.execute(memAsByteBuffer, foreignInteropBuffer);
             TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(bufferObject)) {
                 Object buffer = env.asHostObject(bufferObject);

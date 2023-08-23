@@ -153,6 +153,8 @@ public class TestV8Runnable extends TestRunnable {
             extraOptions.put("wasm.BulkMemoryAndRefTypes", "true");
             // TODO: remove after threads are enabled by default in wasm
             extraOptions.put("wasm.Threads", "true");
+            // Required for using shared memories, for now
+            extraOptions.put("wasm.UseUnsafeMemory", "true");
         }
 
         suite.logVerbose("Starting: " + getName());

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 
 /**
@@ -123,6 +124,33 @@ public class JSAgentWaiterList {
         @TruffleBoundary
         public boolean inCriticalSection() {
             return criticalSection.isHeldByCurrentThread();
+        }
+
+        @TruffleBoundary
+        public static int notifyWaiters(JSAgentWaiterListEntry wl, int c) {
+            wl.enterCriticalSection();
+            try {
+                boolean wake = false;
+                WaiterRecord[] waiters = SharedMemorySync.removeWaiters(wl, c);
+                int n;
+                for (n = 0; n < waiters.length; n++) {
+                    WaiterRecord waiterRecord = waiters[n];
+                    waiterRecord.setNotified();
+                    if (waiterRecord.getPromiseCapability() == null) {
+                        wake = true;
+                    } else {
+                        if (Double.isInfinite(waiterRecord.getTimeout())) {
+                            waiterRecord.enqueueInAgent();
+                        }
+                    }
+                }
+                if (wake) {
+                    SharedMemorySync.wakeWaiters(wl);
+                }
+                return n;
+            } finally {
+                wl.leaveCriticalSection();
+            }
         }
     }
 

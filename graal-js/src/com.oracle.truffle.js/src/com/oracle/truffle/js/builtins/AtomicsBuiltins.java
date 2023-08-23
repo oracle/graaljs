@@ -1097,34 +1097,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
 
-            return notifyWaiters(wl, c);
-        }
-
-        @TruffleBoundary
-        private static Object notifyWaiters(JSAgentWaiterListEntry wl, int c) {
-            wl.enterCriticalSection();
-            try {
-                boolean wake = false;
-                WaiterRecord[] waiters = SharedMemorySync.removeWaiters(wl, c);
-                int n;
-                for (n = 0; n < waiters.length; n++) {
-                    WaiterRecord waiterRecord = waiters[n];
-                    waiterRecord.setNotified();
-                    if (waiterRecord.getPromiseCapability() == null) {
-                        wake = true;
-                    } else {
-                        if (Double.isInfinite(waiterRecord.getTimeout())) {
-                            waiterRecord.enqueueInAgent();
-                        }
-                    }
-                }
-                if (wake) {
-                    SharedMemorySync.wakeWaiters(wl);
-                }
-                return n;
-            } finally {
-                wl.leaveCriticalSection();
-            }
+            return JSAgentWaiterListEntry.notifyWaiters(wl, c);
         }
     }
 

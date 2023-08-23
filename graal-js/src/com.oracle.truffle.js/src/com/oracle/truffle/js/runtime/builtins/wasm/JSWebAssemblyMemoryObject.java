@@ -75,7 +75,7 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
                 bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
             } else {
                 InteropLibrary lib = InteropLibrary.getUncached();
-                ByteBuffer buffer = JSInteropUtil.sharedWasmMemoryAsByteBuffer(wasmMemory, lib, realm);
+                ByteBuffer buffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(wasmMemory, lib, realm);
                 bufferObject = JSSharedArrayBuffer.createSharedArrayBuffer(context, realm, buffer);
             }
             boolean status = setIntegrityLevel(bufferObject, true);

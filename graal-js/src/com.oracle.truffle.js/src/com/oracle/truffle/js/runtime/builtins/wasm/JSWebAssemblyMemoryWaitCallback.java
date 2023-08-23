@@ -63,7 +63,6 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 
 import java.nio.ByteBuffer;
-import java.util.NoSuchElementException;
 
 /**
  * Represents a callback that is invoked when the memory.atomic.waitN instruction executes in WebAssembly.
@@ -108,18 +107,10 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
         final double convertedTimeout = timeout >= 0 ? (timeout / 1e6) : Double.POSITIVE_INFINITY;
         final boolean is64 = (boolean) arguments[4];
 
-        // Let buffer be memory(Get(memory, "buffer")).
         final JSArrayBufferObject buffer = memoryObject.getBufferObject(context, realm);
-
-        // Let int32array be Int32Array(buffer).
-        // Let int64array be BigInt64Array(buffer).
         final JSTypedArrayObject typedArrayObject = constructTypedArray(buffer, is64);
-
-        // Let result be Atomics.wait(int32array, address, expected, timeout / 1e6).
-        // Let result be Atomics.wait(int64array, address, expected, timeout / 1e6).
         final TruffleString result = atomicsWait(typedArrayObject, (int) address, expected, convertedTimeout, is64);
 
-        // Return an i32 value as described in the above table: ("ok" -> 0, "not-equal" -> 1, "timed-out" -> 2).
         if (Strings.equals(result, Strings.OK)) {
             return 0;
         } else if (Strings.equals(result, Strings.NOT_EQUAL)) {
@@ -132,20 +123,11 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
 
     private JSTypedArrayObject constructTypedArray(JSArrayBufferObject buffer, boolean is64) {
         final ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(buffer);
-        final TypedArrayFactory factory = findTypedArrayFactory(!is64 ? Strings.INT32_ARRAY : Strings.BIGINT64_ARRAY);
+        final TypedArrayFactory factory = !is64 ? TypedArrayFactory.Int32Array : TypedArrayFactory.BigInt64Array;
         final int length = byteBuffer.limit() / factory.getBytesPerElement();
         final TypedArray typedArray = factory.createArrayType(true, false);
         final JSObjectFactory objectFactory = context.getArrayBufferViewFactory(factory);
         return JSArrayBufferView.createArrayBufferView(objectFactory, realm, buffer, typedArray, 0, length);
-    }
-
-    private static TypedArrayFactory findTypedArrayFactory(TruffleString name) {
-        for (TypedArrayFactory typedArrayFactory : TypedArray.factories()) {
-            if (Strings.equals(typedArrayFactory.getName(), name)) {
-                return typedArrayFactory;
-            }
-        }
-        throw new NoSuchElementException(Strings.toJavaString(name));
     }
 
     private TruffleString atomicsWait(JSTypedArrayObject typedArrayObject, int address, long expected, double timeout, boolean is64) {

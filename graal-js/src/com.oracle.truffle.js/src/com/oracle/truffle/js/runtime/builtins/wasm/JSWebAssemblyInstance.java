@@ -167,7 +167,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     value = JSWebAssemblyGlobal.create(context, realm, externval, valueType, mutable);
                 } else if (Strings.MEMORY.equals(externtype)) {
                     TruffleString type = asTString(exportInterop.readMember(exportInfo, "type"));
-                    final boolean shared = Strings.regionEquals(type, 0, Strings.constant("shared"), 0, 6);
+                    final boolean shared = Strings.regionEquals(type, 0, Strings.SHARED, 0, 6);
                     value = JSWebAssemblyMemory.create(context, realm, externval, shared);
                 } else {
                     assert Strings.TABLE.equals(externtype);

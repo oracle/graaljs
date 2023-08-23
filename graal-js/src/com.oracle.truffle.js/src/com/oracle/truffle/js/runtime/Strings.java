@@ -594,9 +594,6 @@ public final class Strings {
     public static final TruffleString PRIVATE = constant("private");
     public static final TruffleString INIT = constant("init");
 
-    public static final TruffleString INT32_ARRAY = constant("Int32Array");
-    public static final TruffleString BIGINT64_ARRAY = constant("BigInt64Array");
-
     /* end of constants */
 
     public static boolean isTString(Object string) {

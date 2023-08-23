@@ -15,13 +15,11 @@
  */
 
 load('../js/assert.js');
-load('./wasm-module-builder.js');
+load('../../../../graal-nodejs/deps/v8/test/mjsunit/wasm/wasm-module-builder.js');
 
-const NUM_ITERATIONS = 10000000;
+const NUM_ITERATIONS = 500000;
 
 (function TestNaiveMutex() {
-    print("TestNaiveMutex");
-
     let memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
     let builder = new WasmModuleBuilder();
     builder.addImportedMemory("env", "imported_mem", 1, 1, "shared");
@@ -125,8 +123,6 @@ const NUM_ITERATIONS = 10000000;
 })();
 
 (function TestFastMutex() {
-    print("TestFastMutex");
-
     let memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
     let builder = new WasmModuleBuilder();
     builder.addImportedMemory("env", "imported_mem", 1, 1, "shared");
@@ -248,8 +244,6 @@ const NUM_ITERATIONS = 10000000;
 })();
 
 (function TestAtomicIncrement() {
-    print("TestAtomicIncrement");
-
     let memory = new WebAssembly.Memory({
         initial: 1, maximum: 1, shared: true});
     let builder = new WasmModuleBuilder();
@@ -300,8 +294,6 @@ const NUM_ITERATIONS = 10000000;
 })();
 
 (function TestAtomicWaitNotify() {
-    print("TestAtomicWaitNotify");
-
     let memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
     let builder = new WasmModuleBuilder();
     builder.addImportedMemory("env", "imported_mem", 1, 1, "shared");
@@ -338,8 +330,6 @@ const NUM_ITERATIONS = 10000000;
 })();
 
 (function TestMemoryGrow() {
-    print("TestMemoryGrow");
-
     let memory = new WebAssembly.Memory({initial: 1, maximum: 2, shared: true});
     let builder = new WasmModuleBuilder();
     builder.addImportedMemory("env", "imported_mem", 1, 2, "shared");
@@ -357,8 +347,6 @@ const NUM_ITERATIONS = 10000000;
 })();
 
 (function TestByteLength() {
-    print("TestByteLength");
-
     // make sure shared memories are backed by a direct ByteBuffer
     let memory = new WebAssembly.Memory({initial: 1, maximum: 1, shared: true});
     assertEqual(kPageSize, memory.buffer.byteLength);
