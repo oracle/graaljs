@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.test.debug;
+package com.oracle.truffle.js.test.tools;
 
 import static org.hamcrest.CoreMatchers.containsString;
 import static org.junit.Assert.assertEquals;
@@ -57,7 +57,6 @@ import com.oracle.truffle.api.instrumentation.ExecutionEventNodeFactory;
 import com.oracle.truffle.api.instrumentation.SourceSectionFilter;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.TruffleInstrument;
-import com.oracle.truffle.api.instrumentation.TruffleInstrument.Registration;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExecutableNode;
 import com.oracle.truffle.api.nodes.LanguageInfo;
@@ -74,7 +73,7 @@ public class ParseInlineTest {
 
     static final String PARSE_INLINE_INSTRUMENT_ID = "testParseInline";
 
-    @Registration(name = "", version = "", id = PARSE_INLINE_INSTRUMENT_ID, services = ParseInlineInstrument.Tester.class)
+    @TruffleInstrument.Registration(name = "", version = "", id = PARSE_INLINE_INSTRUMENT_ID, services = ParseInlineInstrument.Tester.class)
     public static class ParseInlineInstrument extends TruffleInstrument {
 
         @Override
