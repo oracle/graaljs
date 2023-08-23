@@ -73,30 +73,33 @@ suite = {
     },
 
     "JACKSON_CORE" : {
-      "sha1" : "2ef7b1cc34de149600f5e75bc2d5bf40de894e60",
+      "sha1" : "a6fe1836469a69b3ff66037c324d75fc66ef137c",
       "maven" : {
         "groupId" : "com.fasterxml.jackson.core",
         "artifactId" : "jackson-core",
-        "version" : "2.8.6",
+        "version" : "2.15.2",
       },
+      "moduleName" : "com.fasterxml.jackson.core",
     },
 
     "JACKSON_ANNOTATIONS" : {
-      "sha1" : "9577018f9ce3636a2e1cb0a0c7fe915e5098ded5",
+      "sha1" : "4724a65ac8e8d156a24898d50fd5dbd3642870b8",
       "maven" : {
         "groupId" : "com.fasterxml.jackson.core",
         "artifactId" : "jackson-annotations",
-        "version" : "2.8.6",
+        "version" : "2.15.2",
       },
+      "moduleName" : "com.fasterxml.jackson.annotation",
     },
 
     "JACKSON_DATABIND" : {
-      "sha1" : "c43de61f74ecc61322ef8f402837ba65b0aa2bf4",
+      "sha1" : "9353b021f10c307c00328f52090de2bdb4b6ff9c",
       "maven" : {
         "groupId" : "com.fasterxml.jackson.core",
         "artifactId" : "jackson-databind",
-        "version" : "2.8.6",
+        "version" : "2.15.2",
       },
+      "moduleName" : "com.fasterxml.jackson.databind",
     },
   },
 
