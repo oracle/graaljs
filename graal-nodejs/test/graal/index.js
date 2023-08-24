@@ -39,8 +39,9 @@
  * SOFTWARE.
  */
 
-var Mocha = require('mocha');
-var fs = require('fs');
+const Mocha = require('mocha');
+const fs = require('fs');
+const path = require('path');
 
 const {
     EVENT_TEST_FAIL,
@@ -111,13 +112,14 @@ Mocha.interfaces['graal'] = function (suite) {
 
 var mocha = new Mocha().ui('graal');
 
-var files = fs.readdirSync('unit');
+var unitDir = path.join(__dirname, 'unit');
+var files = fs.readdirSync(unitDir);
 var filesLength = files.length;
 for (var i = 0; i < filesLength; i++) {
     var file = files[i];
     if (file.indexOf('.js', file.length - 3) !== -1) { // file.endsWith('.js')
         if (limitToSuites.length === 0 || limitToSuites.indexOf(file) >= 0) {
-            mocha.addFile('unit/' + file);
+            mocha.addFile(path.join(unitDir, file));
         }
     }
 }
