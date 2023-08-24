@@ -16,7 +16,7 @@ module.exports = {
         docs: {
             description: "Enforce comparing `typeof` expressions against valid strings",
             recommended: true,
-            url: "https://eslint.org/docs/rules/valid-typeof"
+            url: "https://eslint.org/docs/latest/rules/valid-typeof"
         },
 
         hasSuggestions: true,
@@ -44,7 +44,7 @@ module.exports = {
 
         const VALID_TYPES = new Set(["symbol", "undefined", "object", "boolean", "number", "string", "function", "bigint"]),
             OPERATORS = new Set(["==", "===", "!=", "!=="]);
-
+        const sourceCode = context.sourceCode;
         const requireStringLiterals = context.options[0] && context.options[0].requireStringLiterals;
 
         let globalScope;
@@ -77,13 +77,13 @@ module.exports = {
 
         return {
 
-            Program() {
-                globalScope = context.getScope();
+            Program(node) {
+                globalScope = sourceCode.getScope(node);
             },
 
             UnaryExpression(node) {
                 if (isTypeofExpression(node)) {
-                    const parent = context.getAncestors().pop();
+                    const { parent } = node;
 
                     if (parent.type === "BinaryExpression" && OPERATORS.has(parent.operator)) {
                         const sibling = parent.left === node ? parent.right : parent.left;

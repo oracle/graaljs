@@ -439,6 +439,9 @@ define('ci-name', {
     platform.
   `,
   type: [null, String],
+  deprecated: `
+    This config is deprecated and will not be changeable in future version of npm.
+  `,
   description: `
     The name of a continuous integration system.  If not set explicitly, npm
     will detect the current CI environment using the
@@ -1078,7 +1081,7 @@ define('init.version', {
 })
 
 define('install-links', {
-  default: true,
+  default: false,
   type: Boolean,
   description: `
     When set file: protocol dependencies will be packed and installed as
@@ -1090,14 +1093,14 @@ define('install-links', {
 
 define('install-strategy', {
   default: 'hoisted',
-  type: ['hoisted', 'nested', 'shallow'],
+  type: ['hoisted', 'nested', 'shallow', 'linked'],
   description: `
     Sets the strategy for installing packages in node_modules.
     hoisted (default): Install non-duplicated in top-level, and duplicated as
       necessary within directory structure.
     nested: (formerly --legacy-bundling) install in place, no hoisting.
     shallow (formerly --global-style) only install direct deps at top-level.
-    linked: (coming soon) install in node_modules/.store, link in place,
+    linked: (experimental) install in node_modules/.store, link in place,
       unhoisted.
   `,
   flatten,
@@ -1618,6 +1621,16 @@ define('progress', {
     flatOptions.progress = !obj.progress ? false
       : !!process.stderr.isTTY && process.env.TERM !== 'dumb'
   },
+})
+
+define('provenance', {
+  default: false,
+  type: Boolean,
+  description: `
+    When publishing from a supported cloud CI/CD system, the package will be
+    publicly linked to where it was built and published from.
+  `,
+  flatten,
 })
 
 define('proxy', {

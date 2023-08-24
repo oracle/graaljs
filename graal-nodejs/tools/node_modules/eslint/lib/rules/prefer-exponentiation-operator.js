@@ -10,7 +10,7 @@
 //------------------------------------------------------------------------------
 
 const astUtils = require("./utils/ast-utils");
-const { CALL, ReferenceTracker } = require("eslint-utils");
+const { CALL, ReferenceTracker } = require("@eslint-community/eslint-utils");
 
 //------------------------------------------------------------------------------
 // Helpers
@@ -92,7 +92,7 @@ module.exports = {
         docs: {
             description: "Disallow the use of `Math.pow` in favor of the `**` operator",
             recommended: false,
-            url: "https://eslint.org/docs/rules/prefer-exponentiation-operator"
+            url: "https://eslint.org/docs/latest/rules/prefer-exponentiation-operator"
         },
 
         schema: [],
@@ -104,7 +104,7 @@ module.exports = {
     },
 
     create(context) {
-        const sourceCode = context.getSourceCode();
+        const sourceCode = context.sourceCode;
 
         /**
          * Reports the given node.
@@ -172,8 +172,8 @@ module.exports = {
         }
 
         return {
-            Program() {
-                const scope = context.getScope();
+            Program(node) {
+                const scope = sourceCode.getScope(node);
                 const tracker = new ReferenceTracker(scope);
                 const trackMap = {
                     Math: {
@@ -181,8 +181,8 @@ module.exports = {
                     }
                 };
 
-                for (const { node } of tracker.iterateGlobalReferences(trackMap)) {
-                    report(node);
+                for (const { node: refNode } of tracker.iterateGlobalReferences(trackMap)) {
+                    report(refNode);
                 }
             }
         };

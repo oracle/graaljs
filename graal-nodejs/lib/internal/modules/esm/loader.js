@@ -31,7 +31,7 @@ const {
   ERR_INVALID_RETURN_VALUE,
   ERR_UNKNOWN_MODULE_FORMAT,
 } = require('internal/errors').codes;
-const { pathToFileURL, isURLInstance, URL } = require('internal/url');
+const { pathToFileURL, isURL, URL } = require('internal/url');
 const { emitExperimentalWarning } = require('internal/util');
 const {
   isAnyArrayBuffer,
@@ -49,7 +49,7 @@ const {
   DEFAULT_CONDITIONS,
 } = require('internal/modules/esm/resolve');
 const {
-  initializeImportMeta
+  initializeImportMeta,
 } = require('internal/modules/esm/initialize_import_meta');
 const { defaultLoad } = require('internal/modules/esm/load');
 const { translators } = require(
@@ -139,7 +139,7 @@ function nextHookFactory(chain, meta, { validateArgs, validateOutput }) {
     // eslint-disable-next-line func-name-matching
     nextNextHook = function chainAdvancedTooFar() {
       throw new ERR_INTERNAL_ASSERTION(
-        `ESM custom loader '${hookName}' advanced beyond the end of the chain.`
+        `ESM custom loader '${hookName}' advanced beyond the end of the chain.`,
       );
     };
   }
@@ -247,7 +247,7 @@ class ESMLoader {
     ) {
       process.emitWarning(
         'The Node.js specifier resolution flag is experimental. It could change or be removed at any time.',
-        'ExperimentalWarning'
+        'ExperimentalWarning',
       );
       emittedSpecifierResolutionWarning = true;
     }
@@ -276,12 +276,12 @@ class ESMLoader {
       globalPreload ??= getGlobalPreloadCode;
 
       process.emitWarning(
-        'Loader hook "getGlobalPreloadCode" has been renamed to "globalPreload"'
+        'Loader hook "getGlobalPreloadCode" has been renamed to "globalPreload"',
       );
     }
     if (dynamicInstantiate) ArrayPrototypePush(
       obsoleteHooks,
-      'dynamicInstantiate'
+      'dynamicInstantiate',
     );
     if (getFormat) ArrayPrototypePush(
       obsoleteHooks,
@@ -371,7 +371,7 @@ class ESMLoader {
 
   async eval(
     source,
-    url = pathToFileURL(`${process.cwd()}/[eval${++this.evalIndex}]`).href
+    url = pathToFileURL(`${process.cwd()}/[eval${++this.evalIndex}]`).href,
   ) {
     const evalInstance = (url) => {
       const { ModuleWrap, callbackMap } = internalBinding('module_wrap');
@@ -379,7 +379,7 @@ class ESMLoader {
       callbackMap.set(module, {
         importModuleDynamically: (specifier, { url }, importAssertions) => {
           return this.import(specifier, url, importAssertions);
-        }
+        },
       });
 
       return module;
@@ -483,7 +483,7 @@ class ESMLoader {
       importAssertions,
       moduleProvider,
       parentURL === undefined,
-      inspectBrk
+      inspectBrk,
     );
 
     this.moduleMap.set(url, importAssertions.type, job);
@@ -497,7 +497,6 @@ class ESMLoader {
    *
    * This method must NOT be renamed: it functions as a dynamic import on a
    * loader module.
-   *
    * @param {string | string[]} specifiers Path(s) to the module.
    * @param {string} parentURL Path of the parent importing the module.
    * @param {Record<string, string>} importAssertions Validations for the
@@ -548,7 +547,6 @@ class ESMLoader {
    * Internally, this behaves like a backwards iterator, wherein the stack of
    * hooks starts at the top and each call to `nextLoad()` moves down 1 step
    * until it reaches the bottom or short-circuits.
-   *
    * @param {URL['href']} url The URL/path of the module to be loaded
    * @param {object} context Metadata about the module
    * @returns {{ format: ModuleFormat, source: ModuleSource }}
@@ -671,7 +669,7 @@ class ESMLoader {
         'a string, an ArrayBuffer, or a TypedArray',
         hookErrIdentifier,
         'source',
-        source
+        source,
       );
     }
 
@@ -720,7 +718,7 @@ class ESMLoader {
         ['getBuiltin', 'port', 'setImportMetaCallback'],
         {
           filename: '<preload>',
-        }
+        },
       );
       const { BuiltinModule } = require('internal/bootstrap/loaders');
       // We only allow replacing the importMetaInitializer during preload,
@@ -778,7 +776,6 @@ class ESMLoader {
    * Internally, this behaves like a backwards iterator, wherein the stack of
    * hooks starts at the top and each call to `nextResolve()` moves down 1 step
    * until it reaches the bottom or short-circuits.
-   *
    * @param {string} originalSpecifier The specified URL path of the module to
    *                                   be resolved.
    * @param {string} [parentURL] The URL path of the module's parent.
@@ -792,7 +789,7 @@ class ESMLoader {
     if (
       !isMain &&
       typeof parentURL !== 'string' &&
-      !isURLInstance(parentURL)
+      !isURL(parentURL)
     ) {
       throw new ERR_INVALID_ARG_TYPE(
         'parentURL',

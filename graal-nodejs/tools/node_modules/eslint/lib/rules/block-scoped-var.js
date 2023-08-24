@@ -16,7 +16,7 @@ module.exports = {
         docs: {
             description: "Enforce the use of variables within the scope they are defined",
             recommended: false,
-            url: "https://eslint.org/docs/rules/block-scoped-var"
+            url: "https://eslint.org/docs/latest/rules/block-scoped-var"
         },
 
         schema: [],
@@ -28,6 +28,7 @@ module.exports = {
 
     create(context) {
         let stack = [];
+        const sourceCode = context.sourceCode;
 
         /**
          * Makes a block scope.
@@ -83,7 +84,7 @@ module.exports = {
             }
 
             // Gets declared variables, and checks its references.
-            const variables = context.getDeclaredVariables(node);
+            const variables = sourceCode.getDeclaredVariables(node);
 
             for (let i = 0; i < variables.length; ++i) {
 

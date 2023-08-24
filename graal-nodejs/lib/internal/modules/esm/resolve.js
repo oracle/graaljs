@@ -3,7 +3,6 @@
 const {
   ArrayIsArray,
   ArrayPrototypeJoin,
-  ArrayPrototypePush,
   ArrayPrototypeShift,
   JSONParse,
   JSONStringify,
@@ -57,7 +56,6 @@ const {
   ERR_PACKAGE_PATH_NOT_EXPORTED,
   ERR_UNSUPPORTED_DIR_IMPORT,
   ERR_NETWORK_IMPORT_DISALLOWED,
-  ERR_UNSUPPORTED_ESM_URL_SCHEME,
 } = require('internal/errors').codes;
 
 const { Module: CJSModule } = require('internal/modules/cjs/loader');
@@ -95,7 +93,7 @@ function emitTrailingSlashPatternDeprecation(match, pjsonUrl, base) {
       base ? ` imported from ${fileURLToPath(base)}` :
         ''}. Mapping specifiers ending in "/" is no longer supported.`,
     'DeprecationWarning',
-    'DEP0155'
+    'DEP0155',
   );
 }
 
@@ -112,7 +110,7 @@ function emitInvalidSegmentDeprecation(target, request, match, pjsonUrl, interna
       }in the "${internal ? 'imports' : 'exports'}" field module resolution of the package at ${
         pjsonPath}${base ? ` imported from ${fileURLToPath(base)}` : ''}.`,
     'DeprecationWarning',
-    'DEP0166'
+    'DEP0166',
   );
 }
 
@@ -138,7 +136,7 @@ function emitLegacyIndexDeprecation(url, packageJSONUrl, base, main) {
         basePath}.\n Automatic extension resolution of the "main" field is ` +
       'deprecated for ES modules.',
       'DeprecationWarning',
-      'DEP0151'
+      'DEP0151',
     );
   else
     process.emitWarning(
@@ -147,7 +145,7 @@ function emitLegacyIndexDeprecation(url, packageJSONUrl, base, main) {
         StringPrototypeSlice(path, pkgPath.length)}", imported from ${basePath
       }.\nDefault "index" lookups for the main are deprecated for ES modules.`,
       'DeprecationWarning',
-      'DEP0151'
+      'DEP0151',
     );
 }
 
@@ -329,7 +327,7 @@ function finalizeResolution(resolved, base, preserveSymlinks) {
 
   if (!preserveSymlinks) {
     const real = realpathSync(path, {
-      [internalFS.realpathCacheKey]: realpathCache
+      [internalFS.realpathCacheKey]: realpathCache,
     });
     const { search, hash } = resolved;
     resolved =
@@ -486,7 +484,7 @@ function resolvePackageTargetString(
 
   if (pattern) {
     return new URL(
-      RegExpPrototypeSymbolReplace(patternRegEx, resolved.href, () => subpath)
+      RegExpPrototypeSymbolReplace(patternRegEx, resolved.href, () => subpath),
     );
   }
 
@@ -634,7 +632,7 @@ function packageExportsResolve(
     const target = exports[packageSubpath];
     const resolveResult = resolvePackageTarget(
       packageJSONUrl, target, '', packageSubpath, base, false, false, false,
-      conditions
+      conditions,
     );
 
     if (resolveResult == null) {
@@ -733,7 +731,7 @@ function packageImportsResolve(name, base, conditions) {
           !StringPrototypeIncludes(name, '*')) {
         const resolveResult = resolvePackageTarget(
           packageJSONUrl, imports[name], '', name, base, false, true, false,
-          conditions
+          conditions,
         );
         if (resolveResult != null) {
           return resolveResult;
@@ -876,7 +874,7 @@ function packageResolve(specifier, base, conditions) {
       return legacyMainResolve(
         packageJSONUrl,
         packageConfig,
-        base
+        base,
       );
     }
 
@@ -994,21 +992,25 @@ function resolveAsCommonJS(specifier, parentURL) {
 // TODO(@JakobJingleheimer): de-dupe `specifier` & `parsed`
 function checkIfDisallowedImport(specifier, parsed, parsedParentURL) {
   if (parsedParentURL) {
+    // Avoid accessing the `protocol` property due to the lazy getters.
+    const parentProtocol = parsedParentURL.protocol;
     if (
-      parsedParentURL.protocol === 'http:' ||
-      parsedParentURL.protocol === 'https:'
+      parentProtocol === 'http:' ||
+      parentProtocol === 'https:'
     ) {
       if (shouldBeTreatedAsRelativeOrAbsolutePath(specifier)) {
+        // Avoid accessing the `protocol` property due to the lazy getters.
+        const parsedProtocol = parsed?.protocol;
         // data: and blob: disallowed due to allowing file: access via
         // indirection
-        if (parsed &&
-          parsed.protocol !== 'https:' &&
-          parsed.protocol !== 'http:'
+        if (parsedProtocol &&
+          parsedProtocol !== 'https:' &&
+          parsedProtocol !== 'http:'
         ) {
           throw new ERR_NETWORK_IMPORT_DISALLOWED(
             specifier,
             parsedParentURL,
-            'remote imports cannot import from a local location.'
+            'remote imports cannot import from a local location.',
           );
         }
 
@@ -1019,46 +1021,19 @@ function checkIfDisallowedImport(specifier, parsed, parsedParentURL) {
         throw new ERR_NETWORK_IMPORT_DISALLOWED(
           specifier,
           parsedParentURL,
-          'remote imports cannot import from a local location.'
+          'remote imports cannot import from a local location.',
         );
       }
 
       throw new ERR_NETWORK_IMPORT_DISALLOWED(
         specifier,
         parsedParentURL,
-        'only relative and absolute specifiers are supported.'
+        'only relative and absolute specifiers are supported.',
       );
     }
   }
 }
 
-function throwIfUnsupportedURLProtocol(url) {
-  if (url.protocol !== 'file:' && url.protocol !== 'data:' &&
-      url.protocol !== 'node:') {
-    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(url);
-  }
-}
-
-function throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports) {
-  if (
-    parsed &&
-    parsed.protocol !== 'file:' &&
-    parsed.protocol !== 'data:' &&
-    (
-      !experimentalNetworkImports ||
-      (
-        parsed.protocol !== 'https:' &&
-        parsed.protocol !== 'http:'
-      )
-    )
-  ) {
-    const schemes = ['file', 'data'];
-    if (experimentalNetworkImports) {
-      ArrayPrototypePush(schemes, 'https', 'http');
-    }
-    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed, schemes);
-  }
-}
 
 async function defaultResolve(specifier, context = {}) {
   let { parentURL, conditions } = context;
@@ -1081,7 +1056,7 @@ async function defaultResolve(specifier, context = {}) {
         reaction(new ERR_MANIFEST_DEPENDENCY_MISSING(
           parentURL,
           specifier,
-          ArrayPrototypeJoin([...conditions], ', '))
+          ArrayPrototypeJoin([...conditions], ', ')),
         );
       }
     }
@@ -1104,11 +1079,13 @@ async function defaultResolve(specifier, context = {}) {
       parsed = new URL(specifier);
     }
 
-    if (parsed.protocol === 'data:' ||
+    // Avoid accessing the `protocol` property due to the lazy getters.
+    const protocol = parsed.protocol;
+    if (protocol === 'data:' ||
       (experimentalNetworkImports &&
         (
-          parsed.protocol === 'https:' ||
-          parsed.protocol === 'http:'
+          protocol === 'https:' ||
+          protocol === 'http:'
         )
       )
     ) {
@@ -1132,7 +1109,6 @@ async function defaultResolve(specifier, context = {}) {
   // This must come after checkIfDisallowedImport
   if (parsed && parsed.protocol === 'node:') return { url: specifier };
 
-  throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports);
 
   const isMain = parentURL === undefined;
   if (isMain) {
@@ -1154,7 +1130,7 @@ async function defaultResolve(specifier, context = {}) {
       specifier,
       parentURL,
       conditions,
-      isMain ? preserveSymlinksMain : preserveSymlinks
+      isMain ? preserveSymlinksMain : preserveSymlinks,
     );
   } catch (error) {
     // Try to give the user a hint of what would have been the
@@ -1178,8 +1154,6 @@ async function defaultResolve(specifier, context = {}) {
     }
     throw error;
   }
-
-  throwIfUnsupportedURLProtocol(url);
 
   return {
     // Do NOT cast `url` to a string: that will work even when there are real
@@ -1208,7 +1182,7 @@ if (policy) {
   const $defaultResolve = defaultResolve;
   module.exports.defaultResolve = async function defaultResolve(
     specifier,
-    context
+    context,
   ) {
     const ret = await $defaultResolve(specifier, context);
     // This is a preflight check to avoid data exfiltration by query params etc.
@@ -1216,8 +1190,8 @@ if (policy) {
       new ERR_MANIFEST_DEPENDENCY_MISSING(
         context.parentURL,
         specifier,
-        context.conditions
-      )
+        context.conditions,
+      ),
     );
     return ret;
   };

@@ -27,14 +27,13 @@ const {
     ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
-  }
+  },
 } = require('internal/errors');
 
 const {
   validateInt32,
   validateObject,
   validateString,
-  validateUint32,
 } = require('internal/validators');
 
 const {
@@ -48,7 +47,6 @@ const {
 
 const {
   KeyObject,
-  isCryptoKey,
 } = require('internal/crypto/keys');
 
 const {
@@ -65,7 +63,7 @@ const {
     POINT_CONVERSION_COMPRESSED,
     POINT_CONVERSION_HYBRID,
     POINT_CONVERSION_UNCOMPRESSED,
-  }
+  },
 } = internalBinding('constants');
 
 const DH_GENERATOR = 2;
@@ -81,7 +79,7 @@ function DiffieHellman(sizeOrKey, keyEncoding, generator, genEncoding) {
     throw new ERR_INVALID_ARG_TYPE(
       'sizeOrKey',
       ['number', 'string', 'ArrayBuffer', 'Buffer', 'TypedArray', 'DataView'],
-      sizeOrKey
+      sizeOrKey,
     );
   }
 
@@ -116,7 +114,7 @@ function DiffieHellman(sizeOrKey, keyEncoding, generator, genEncoding) {
     throw new ERR_INVALID_ARG_TYPE(
       'generator',
       ['number', 'string', 'ArrayBuffer', 'Buffer', 'TypedArray', 'DataView'],
-      generator
+      generator,
     );
   }
 
@@ -126,7 +124,7 @@ function DiffieHellman(sizeOrKey, keyEncoding, generator, genEncoding) {
     __proto__: null,
     enumerable: true,
     value: this[kHandle].verifyError,
-    writable: false
+    writable: false,
   });
 }
 
@@ -139,7 +137,7 @@ function DiffieHellmanGroup(name) {
     __proto__: null,
     enumerable: true,
     value: this[kHandle].verifyError,
-    writable: false
+    writable: false,
   });
 }
 
@@ -319,13 +317,6 @@ function diffieHellman(options) {
 // deriveKeys and deriveBits functions.
 async function ecdhDeriveBits(algorithm, baseKey, length) {
   const { 'public': key } = algorithm;
-
-  // Null means that we're not asking for a specific number of bits, just
-  // give us everything that is generated.
-  if (length !== null)
-    validateUint32(length, 'length');
-  if (!isCryptoKey(key))
-    throw new ERR_INVALID_ARG_TYPE('algorithm.public', 'CryptoKey', key);
 
   if (key.type !== 'public') {
     throw lazyDOMException(

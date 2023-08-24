@@ -69,7 +69,7 @@ module.exports = {
         docs: {
             description: "Disallow redundant return statements",
             recommended: false,
-            url: "https://eslint.org/docs/rules/no-useless-return"
+            url: "https://eslint.org/docs/latest/rules/no-useless-return"
         },
 
         fixable: "code",
@@ -83,7 +83,7 @@ module.exports = {
     create(context) {
         const segmentInfoMap = new WeakMap();
         const usedUnreachableSegments = new WeakSet();
-        const sourceCode = context.getSourceCode();
+        const sourceCode = context.sourceCode;
         let scopeInfo = null;
 
         /**
@@ -197,7 +197,7 @@ module.exports = {
 
         return {
 
-            // Makes and pushs a new scope information.
+            // Makes and pushes a new scope information.
             onCodePathStart(codePath) {
                 scopeInfo = {
                     upper: scopeInfo,

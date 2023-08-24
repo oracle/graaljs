@@ -643,6 +643,7 @@ public class Serializer {
     public void release(ByteBuffer targetBuffer) {
         buffer.flip();
         targetBuffer.put(buffer);
+        buffer.clear();
     }
 
     private void assignId(Object object) {

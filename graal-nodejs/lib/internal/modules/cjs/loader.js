@@ -72,14 +72,14 @@ const cjsParseCache = new SafeWeakMap();
 // Set first due to cycle with ESM loader functions.
 module.exports = {
   wrapSafe, Module, toRealPath, readPackageScope, cjsParseCache,
-  get hasLoadedAnyUserCJSModule() { return hasLoadedAnyUserCJSModule; }
+  get hasLoadedAnyUserCJSModule() { return hasLoadedAnyUserCJSModule; },
 };
 
 const { BuiltinModule } = require('internal/bootstrap/loaders');
 const {
   maybeCacheSourceMap,
 } = require('internal/source_map/source_map_cache');
-const { pathToFileURL, fileURLToPath, isURLInstance } = require('internal/url');
+const { pathToFileURL, fileURLToPath, isURL } = require('internal/url');
 const {
   deprecate,
   emitExperimentalWarning,
@@ -143,7 +143,7 @@ const {
 } = require('internal/constants');
 
 const {
-  isProxy
+  isProxy,
 } = require('internal/util/types');
 
 const asyncESM = require('internal/process/esm_loader');
@@ -152,7 +152,7 @@ const { kEvaluated } = internalBinding('module_wrap');
 const {
   encodedSepRegEx,
   packageExportsResolve,
-  packageImportsResolve
+  packageImportsResolve,
 } = require('internal/modules/esm/resolve');
 
 const isWindows = process.platform === 'win32';
@@ -160,8 +160,8 @@ const isWindows = process.platform === 'win32';
 const relativeResolveCache = ObjectCreate(null);
 
 let requireDepth = 0;
-let statCache = null;
 let isPreloading = false;
+let statCache = null;
 
 function internalRequire(module, id) {
   validateString(id, 'id');
@@ -237,6 +237,8 @@ function Module(id = '', parent) {
     redirects = policy.manifest.getDependencyMapper(moduleURL);
     // TODO(rafaelgss): remove the necessity of this branch
     setOwnProperty(this, 'require', makeRequireFunction(this, redirects));
+    // eslint-disable-next-line no-proto
+    setOwnProperty(this.__proto__, 'require', makeRequireFunction(this, redirects));
   }
   this[require_private_symbol] = internalRequire;
 }
@@ -250,7 +252,7 @@ for (const { 0: id, 1: mod } of BuiltinModule.map) {
 }
 
 const allBuiltins = new SafeSet(
-  ArrayPrototypeFlatMap(builtinModules, (bm) => [bm, `node:${bm}`])
+  ArrayPrototypeFlatMap(builtinModules, (bm) => [bm, `node:${bm}`]),
 );
 BuiltinModule.getSchemeOnlyModuleNames().forEach((builtin) => allBuiltins.add(`node:${builtin}`));
 
@@ -286,7 +288,7 @@ let wrapperProxy = new Proxy(wrapper, {
   defineProperty(target, property, descriptor) {
     patched = true;
     return ObjectDefineProperty(target, property, descriptor);
-  }
+  },
 });
 
 ObjectDefineProperty(Module, 'wrap', {
@@ -298,7 +300,7 @@ ObjectDefineProperty(Module, 'wrap', {
   set(value) {
     patched = true;
     wrap = value;
-  }
+  },
 });
 
 ObjectDefineProperty(Module, 'wrapper', {
@@ -310,7 +312,7 @@ ObjectDefineProperty(Module, 'wrapper', {
   set(value) {
     patched = true;
     wrapperProxy = value;
-  }
+  },
 });
 
 const isPreloadingDesc = { get() { return isPreloading; } };
@@ -331,13 +333,13 @@ ObjectDefineProperty(Module.prototype, 'parent', {
     getModuleParent,
     'module.parent is deprecated due to accuracy issues. Please use ' +
       'require.main to find program entry point instead.',
-    'DEP0144'
+    'DEP0144',
   ) : getModuleParent,
   set: pendingDeprecation ? deprecate(
     setModuleParent,
     'module.parent is deprecated due to accuracy issues. Please use ' +
       'require.main to find program entry point instead.',
-    'DEP0144'
+    'DEP0144',
   ) : setModuleParent,
 });
 
@@ -435,7 +437,7 @@ function tryPackage(requestPath, exts, isMain, originalPath) {
       // eslint-disable-next-line no-restricted-syntax
       const err = new Error(
         `Cannot find module '${filename}'. ` +
-        'Please verify that the package.json has a valid "main" entry'
+        'Please verify that the package.json has a valid "main" entry',
       );
       err.code = 'MODULE_NOT_FOUND';
       err.path = path.resolve(requestPath, 'package.json');
@@ -448,7 +450,7 @@ function tryPackage(requestPath, exts, isMain, originalPath) {
         `Invalid 'main' field in '${jsonPath}' of '${pkg}'. ` +
           'Please either fix that or report it to the module author',
         'DeprecationWarning',
-        'DEP0128'
+        'DEP0128',
       );
     }
   }
@@ -475,7 +477,7 @@ function tryFile(requestPath, isMain) {
 
 function toRealPath(requestPath) {
   return fs.realpathSync(requestPath, {
-    [internalFS.realpathCacheKey]: realpathCache
+    [internalFS.realpathCacheKey]: realpathCache,
   });
 }
 
@@ -727,7 +729,7 @@ if (isWindows) {
         if (p !== nmLen)
           ArrayPrototypePush(
             paths,
-            StringPrototypeSlice(from, 0, last) + '\\node_modules'
+            StringPrototypeSlice(from, 0, last) + '\\node_modules',
           );
         last = i;
         p = 0;
@@ -762,7 +764,7 @@ if (isWindows) {
         if (p !== nmLen)
           ArrayPrototypePush(
             paths,
-            StringPrototypeSlice(from, 0, last) + '/node_modules'
+            StringPrototypeSlice(from, 0, last) + '/node_modules',
           );
         last = i;
         p = 0;
@@ -833,7 +835,7 @@ Module._resolveLookupPaths = function(request, parent) {
 function emitCircularRequireWarning(prop) {
   process.emitWarning(
     `Accessing non-existent property '${String(prop)}' of module exports ` +
-    'inside circular dependency'
+    'inside circular dependency',
   );
 }
 
@@ -856,7 +858,7 @@ const CircularRequirePrototypeWarningProxy = new Proxy({}, {
       return ObjectGetOwnPropertyDescriptor(target, prop);
     emitCircularRequireWarning(prop);
     return undefined;
-  }
+  },
 });
 
 function getExportsForCircularRequire(module) {
@@ -941,7 +943,7 @@ Module._load = function(request, parent, isMain) {
   const module = cachedModule || new Module(filename, parent);
 
   if (isMain) {
-    process.mainModule = module;
+    setOwnProperty(process, 'mainModule', module);
     setOwnProperty(module.require, 'main', process.mainModule);
     module.id = '.';
   }
@@ -1058,7 +1060,7 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   }
 
   // Look up the filename first, since that's the cache key.
-  const filename = Module._findPath(request, paths, isMain, false);
+  const filename = Module._findPath(request, paths, isMain);
   if (filename) return filename;
   const requireStack = [];
   for (let cursor = parent;
@@ -1361,7 +1363,7 @@ const createRequireError = 'must be a file URL object, file URL string, or ' +
 function createRequire(filename) {
   let filepath;
 
-  if (isURLInstance(filename) ||
+  if (isURL(filename) ||
       (typeof filename === 'string' && !path.isAbsolute(filename))) {
     try {
       filepath = fileURLToPath(filename);
@@ -1399,7 +1401,7 @@ Module._initPaths = function() {
   if (nodePath) {
     ArrayPrototypeUnshiftApply(paths, ArrayPrototypeFilter(
       StringPrototypeSplit(nodePath, path.delimiter),
-      Boolean
+      Boolean,
     ));
   }
 
@@ -1444,6 +1446,15 @@ Module.syncBuiltinESMExports = function syncBuiltinESMExports() {
 Module.isBuiltin = function isBuiltin(moduleName) {
   return allBuiltins.has(moduleName);
 };
+
+ObjectDefineProperty(Module.prototype, 'constructor', {
+  __proto__: null,
+  get: function() {
+    return policy ? undefined : Module;
+  },
+  configurable: false,
+  enumerable: false,
+});
 
 // Backwards compatibility
 Module.Module = Module;

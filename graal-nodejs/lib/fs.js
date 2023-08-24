@@ -27,6 +27,7 @@
 const {
   ArrayPrototypePush,
   BigIntPrototypeToString,
+  Boolean,
   MathMax,
   Number,
   ObjectDefineProperties,
@@ -53,7 +54,7 @@ const {
   W_OK,
   X_OK,
   O_WRONLY,
-  O_SYMLINK
+  O_SYMLINK,
 } = constants;
 
 const pathModule = require('path');
@@ -73,7 +74,7 @@ const {
   },
   AbortError,
   uvErrmapGet,
-  uvException
+  uvException,
 } = require('internal/errors');
 
 const { FSReqCallback } = binding;
@@ -95,6 +96,7 @@ const {
   copyObject,
   Dirent,
   emitRecursiveRmdirWarning,
+  getDirent,
   getDirents,
   getOptions,
   getValidatedFd,
@@ -104,6 +106,7 @@ const {
   nullCheck,
   preprocessSymlinkDestination,
   Stats,
+  getStatFsFromBinding,
   getStatsFromBinding,
   realpathCacheKey,
   stringToFlags,
@@ -120,12 +123,12 @@ const {
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
   validatePrimitiveStringAfterArrayBufferView,
-  warnOnNonPortableTemplate
+  warnOnNonPortableTemplate,
 } = require('internal/fs/utils');
 const {
   Dir,
   opendir,
-  opendirSync
+  opendirSync,
 } = require('internal/fs/dir');
 const {
   CHAR_FORWARD_SLASH,
@@ -170,7 +173,7 @@ const isOSX = process.platform === 'darwin';
 const showStringCoercionDeprecation = deprecate(
   () => {},
   'Implicit coercion of objects with own toString property is deprecated.',
-  'DEP0162'
+  'DEP0162',
 );
 function showTruncateDeprecation() {
   if (truncateWarn) {
@@ -973,7 +976,7 @@ function writev(fd, buffers, position, callback) {
 ObjectDefineProperty(writev, kCustomPromisifyArgsSymbol, {
   __proto__: null,
   value: ['bytesWritten', 'buffer'],
-  enumerable: false
+  enumerable: false,
 });
 
 /**
@@ -1399,6 +1402,62 @@ function mkdirSync(path, options) {
 }
 
 /**
+ * An iterative algorithm for reading the entire contents of the `basePath` directory.
+ * This function does not validate `basePath` as a directory. It is passed directly to
+ * `binding.readdir` after a `nullCheck`.
+ * @param {string} basePath
+ * @param {{ encoding: string, withFileTypes: boolean }} options
+ * @returns {string[] | Dirent[]}
+ */
+function readdirSyncRecursive(basePath, options) {
+  nullCheck(basePath, 'path', true);
+
+  const withFileTypes = Boolean(options.withFileTypes);
+  const encoding = options.encoding;
+
+  const readdirResults = [];
+  const pathsQueue = [basePath];
+
+  const ctx = { path: basePath };
+  function read(path) {
+    ctx.path = path;
+    const readdirResult = binding.readdir(
+      pathModule.toNamespacedPath(path),
+      encoding,
+      withFileTypes,
+      undefined,
+      ctx,
+    );
+    handleErrorFromBinding(ctx);
+
+    for (let i = 0; i < readdirResult.length; i++) {
+      if (withFileTypes) {
+        const dirent = getDirent(path, readdirResult[0][i], readdirResult[1][i]);
+        ArrayPrototypePush(readdirResults, dirent);
+        if (dirent.isDirectory()) {
+          ArrayPrototypePush(pathsQueue, pathModule.join(dirent.path, dirent.name));
+        }
+      } else {
+        const resultPath = pathModule.join(path, readdirResult[i]);
+        const relativeResultPath = pathModule.relative(basePath, resultPath);
+        const stat = binding.internalModuleStat(resultPath);
+        ArrayPrototypePush(readdirResults, relativeResultPath);
+        // 1 indicates directory
+        if (stat === 1) {
+          ArrayPrototypePush(pathsQueue, resultPath);
+        }
+      }
+    }
+  }
+
+  for (let i = 0; i < pathsQueue.length; i++) {
+    read(pathsQueue[i]);
+  }
+
+  return readdirResults;
+}
+
+/**
  * Reads the contents of a directory.
  * @param {string | Buffer | URL} path
  * @param {string | {
@@ -1415,6 +1474,14 @@ function readdir(path, options, callback) {
   callback = makeCallback(typeof options === 'function' ? options : callback);
   options = getOptions(options);
   path = getValidatedPath(path);
+  if (options.recursive != null) {
+    validateBoolean(options.recursive, 'options.recursive');
+  }
+
+  if (options.recursive) {
+    callback(null, readdirSyncRecursive(path, options));
+    return;
+  }
 
   const req = new FSReqCallback();
   if (!options.withFileTypes) {
@@ -1438,12 +1505,21 @@ function readdir(path, options, callback) {
  * @param {string | {
  *   encoding?: string;
  *   withFileTypes?: boolean;
+ *   recursive?: boolean;
  *   }} [options]
  * @returns {string | Buffer[] | Dirent[]}
  */
 function readdirSync(path, options) {
   options = getOptions(options);
   path = getValidatedPath(path);
+  if (options.recursive != null) {
+    validateBoolean(options.recursive, 'options.recursive');
+  }
+
+  if (options.recursive) {
+    return readdirSyncRecursive(path, options);
+  }
+
   const ctx = { path };
   const result = binding.readdir(pathModule.toNamespacedPath(path),
                                  options.encoding, !!options.withFileTypes,
@@ -1523,6 +1599,24 @@ function stat(path, options = { bigint: false }, callback) {
   binding.stat(pathModule.toNamespacedPath(path), options.bigint, req);
 }
 
+function statfs(path, options = { bigint: false }, callback) {
+  if (typeof options === 'function') {
+    callback = options;
+    options = kEmptyObject;
+  }
+  callback = maybeCallback(callback);
+  path = getValidatedPath(path);
+  const req = new FSReqCallback(options.bigint);
+  req.oncomplete = (err, stats) => {
+    if (err) {
+      return callback(err);
+    }
+
+    callback(err, getStatFsFromBinding(stats));
+  };
+  binding.statfs(pathModule.toNamespacedPath(path), options.bigint, req);
+}
+
 function hasNoEntryError(ctx) {
   if (ctx.errno) {
     const uvErr = uvErrmapGet(ctx.errno);
@@ -1595,6 +1689,15 @@ function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
   }
   handleErrorFromBinding(ctx);
   return getStatsFromBinding(stats);
+}
+
+function statfsSync(path, options = { bigint: false }) {
+  path = getValidatedPath(path);
+  const ctx = { path };
+  const stats = binding.statfs(pathModule.toNamespacedPath(path),
+                               options.bigint, undefined, ctx);
+  handleErrorFromBinding(ctx);
+  return getStatFsFromBinding(stats);
 }
 
 /**
@@ -2368,7 +2471,7 @@ function watchFile(filename, options, listener) {
     // behavioral changes to a minimum.
     interval: 5007,
     persistent: true,
-    ...options
+    ...options,
   };
 
   validateFunction(listener, 'listener');
@@ -3025,7 +3128,9 @@ module.exports = fs = {
   rmdir,
   rmdirSync,
   stat,
+  statfs,
   statSync,
+  statfsSync,
   symlink,
   symlinkSync,
   truncate,
@@ -3086,7 +3191,7 @@ module.exports = fs = {
   },
 
   // For tests
-  _toUnixTimestamp: toUnixTimestamp
+  _toUnixTimestamp: toUnixTimestamp,
 };
 
 ObjectDefineProperties(fs, {
@@ -3098,7 +3203,7 @@ ObjectDefineProperties(fs, {
     __proto__: null,
     configurable: false,
     enumerable: true,
-    value: constants
+    value: constants,
   },
   promises: {
     __proto__: null,
@@ -3107,6 +3212,6 @@ ObjectDefineProperties(fs, {
     get() {
       promises ??= require('internal/fs/promises').exports;
       return promises;
-    }
-  }
+    },
+  },
 });

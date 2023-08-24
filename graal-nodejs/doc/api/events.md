@@ -646,16 +646,23 @@ Returns the current max listener value for the `EventEmitter` which is either
 set by [`emitter.setMaxListeners(n)`][] or defaults to
 [`events.defaultMaxListeners`][].
 
-### `emitter.listenerCount(eventName)`
+### `emitter.listenerCount(eventName[, listener])`
 
 <!-- YAML
 added: v3.2.0
+changes:
+  - version: v18.16.0
+    pr-url: https://github.com/nodejs/node/pull/46523
+    description: Added the `listener` argument.
 -->
 
 * `eventName` {string|symbol} The name of the event being listened for
+* `listener` {Function} The event handler function
 * Returns: {integer}
 
-Returns the number of listeners listening to the event named `eventName`.
+Returns the number of listeners listening for the event named `eventName`.
+If `listener` is provided, it will return how many times the listener is found
+in the list of the listeners of the event.
 
 ### `emitter.listeners(eventName)`
 
@@ -1232,13 +1239,13 @@ import { getEventListeners, EventEmitter } from 'node:events';
   const ee = new EventEmitter();
   const listener = () => console.log('Events are fun');
   ee.on('foo', listener);
-  getEventListeners(ee, 'foo'); // [listener]
+  console.log(getEventListeners(ee, 'foo')); // [ [Function: listener] ]
 }
 {
   const et = new EventTarget();
   const listener = () => console.log('Events are fun');
   et.addEventListener('foo', listener);
-  getEventListeners(et, 'foo'); // [listener]
+  console.log(getEventListeners(et, 'foo')); // [ [Function: listener] ]
 }
 ```
 
@@ -1249,13 +1256,65 @@ const { getEventListeners, EventEmitter } = require('node:events');
   const ee = new EventEmitter();
   const listener = () => console.log('Events are fun');
   ee.on('foo', listener);
-  getEventListeners(ee, 'foo'); // [listener]
+  console.log(getEventListeners(ee, 'foo')); // [ [Function: listener] ]
 }
 {
   const et = new EventTarget();
   const listener = () => console.log('Events are fun');
   et.addEventListener('foo', listener);
-  getEventListeners(et, 'foo'); // [listener]
+  console.log(getEventListeners(et, 'foo')); // [ [Function: listener] ]
+}
+```
+
+## `events.getMaxListeners(emitterOrTarget)`
+
+<!-- YAML
+added: v18.17.0
+-->
+
+* `emitterOrTarget` {EventEmitter|EventTarget}
+* Returns: {number}
+
+Returns the currently set max amount of listeners.
+
+For `EventEmitter`s this behaves exactly the same as calling `.getMaxListeners` on
+the emitter.
+
+For `EventTarget`s this is the only way to get the max event listeners for the
+event target. If the number of event handlers on a single EventTarget exceeds
+the max set, the EventTarget will print a warning.
+
+```mjs
+import { getMaxListeners, setMaxListeners, EventEmitter } from 'node:events';
+
+{
+  const ee = new EventEmitter();
+  console.log(getMaxListeners(ee)); // 10
+  setMaxListeners(11, ee);
+  console.log(getMaxListeners(ee)); // 11
+}
+{
+  const et = new EventTarget();
+  console.log(getMaxListeners(et)); // 10
+  setMaxListeners(11, et);
+  console.log(getMaxListeners(et)); // 11
+}
+```
+
+```cjs
+const { getMaxListeners, setMaxListeners, EventEmitter } = require('node:events');
+
+{
+  const ee = new EventEmitter();
+  console.log(getMaxListeners(ee)); // 10
+  setMaxListeners(11, ee);
+  console.log(getMaxListeners(ee)); // 11
+}
+{
+  const et = new EventTarget();
+  console.log(getMaxListeners(et)); // 10
+  setMaxListeners(11, et);
+  console.log(getMaxListeners(et)); // 11
 }
 ```
 
@@ -2314,6 +2373,20 @@ equivalent `EventEmitter` API. The only difference between `addListener()` and
 `addEventListener()` is that `addListener()` will return a reference to the
 `EventTarget`.
 
+#### `nodeEventTarget.emit(type, arg)`
+
+<!-- YAML
+added: v15.2.0
+-->
+
+* `type` {string}
+* `arg` {any}
+* Returns: {boolean} `true` if event listeners registered for the `type` exist,
+  otherwise `false`.
+
+Node.js-specific extension to the `EventTarget` class that dispatches the
+`arg` to the list of handlers for `type`.
+
 #### `nodeEventTarget.eventNames()`
 
 <!-- YAML
@@ -2375,7 +2448,7 @@ added: v14.5.0
 
 * Returns: {EventTarget} this
 
-Node.js-specific alias for `eventTarget.removeListener()`.
+Node.js-specific alias for `eventTarget.removeEventListener()`.
 
 #### `nodeEventTarget.on(type, listener)`
 
@@ -2389,7 +2462,7 @@ added: v14.5.0
 
 * Returns: {EventTarget} this
 
-Node.js-specific alias for `eventTarget.addListener()`.
+Node.js-specific alias for `eventTarget.addEventListener()`.
 
 #### `nodeEventTarget.once(type, listener)`
 
@@ -2448,7 +2521,7 @@ to the `EventTarget`.
 [`EventTarget` error handling]: #eventtarget-error-handling
 [`Event` Web API]: https://dom.spec.whatwg.org/#event
 [`domain`]: domain.md
-[`emitter.listenerCount()`]: #emitterlistenercounteventname
+[`emitter.listenerCount()`]: #emitterlistenercounteventname-listener
 [`emitter.removeListener()`]: #emitterremovelistenereventname-listener
 [`emitter.setMaxListeners(n)`]: #emittersetmaxlistenersn
 [`event.defaultPrevented`]: #eventdefaultprevented

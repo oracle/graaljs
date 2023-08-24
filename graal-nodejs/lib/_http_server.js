@@ -51,7 +51,7 @@ const { ConnectionsList } = internalBinding('http_parser');
 const {
   kUniqueHeaders,
   parseUniqueHeadersOption,
-  OutgoingMessage
+  OutgoingMessage,
 } = require('_http_outgoing');
 const {
   kOutHeaders,
@@ -63,12 +63,12 @@ const {
 } = require('internal/http');
 const {
   defaultTriggerAsyncIdScope,
-  getOrSetAsyncId
+  getOrSetAsyncId,
 } = require('internal/async_hooks');
 const { IncomingMessage } = require('_http_incoming');
 const {
   connResetException,
-  codes
+  codes,
 } = require('internal/errors');
 const {
   ERR_HTTP_REQUEST_TIMEOUT,
@@ -76,19 +76,20 @@ const {
   ERR_HTTP_INVALID_STATUS_CODE,
   ERR_HTTP_SOCKET_ENCODING,
   ERR_INVALID_ARG_TYPE,
+  ERR_HTTP_SOCKET_ASSIGNED,
   ERR_INVALID_ARG_VALUE,
-  ERR_INVALID_CHAR
+  ERR_INVALID_CHAR,
 } = codes;
 const {
   validateInteger,
   validateBoolean,
   validateLinkHeaderValue,
-  validateObject
+  validateObject,
 } = require('internal/validators');
 const Buffer = require('buffer').Buffer;
 const {
   DTRACE_HTTP_SERVER_REQUEST,
-  DTRACE_HTTP_SERVER_RESPONSE
+  DTRACE_HTTP_SERVER_RESPONSE,
 } = require('internal/dtrace');
 const { setInterval, clearInterval } = require('timers');
 let debug = require('internal/util/debuglog').debuglog('http', (fn) => {
@@ -171,7 +172,7 @@ const STATUS_CODES = {
   508: 'Loop Detected',              // RFC 5842 7.2
   509: 'Bandwidth Limit Exceeded',
   510: 'Not Extended',               // RFC 2774 7
-  511: 'Network Authentication Required' // RFC 6585 6
+  511: 'Network Authentication Required', // RFC 6585 6
 };
 
 const kOnExecute = HTTPParser.kOnExecute | 0;
@@ -190,8 +191,8 @@ class HTTPServerAsyncResource {
   }
 }
 
-function ServerResponse(req) {
-  OutgoingMessage.call(this);
+function ServerResponse(req, options) {
+  OutgoingMessage.call(this, options);
 
   if (req.method === 'HEAD') this._hasBody = false;
 
@@ -279,7 +280,9 @@ function onServerResponseClose() {
 }
 
 ServerResponse.prototype.assignSocket = function assignSocket(socket) {
-  assert(!socket._httpMessage);
+  if (socket._httpMessage) {
+    throw new ERR_HTTP_SOCKET_ASSIGNED();
+  }
   socket._httpMessage = this;
   socket.on('close', onServerResponseClose);
   this.socket = socket;
@@ -480,6 +483,14 @@ function storeHTTPOptions(options) {
     validateBoolean(joinDuplicateHeaders, 'options.joinDuplicateHeaders');
   }
   this.joinDuplicateHeaders = joinDuplicateHeaders;
+
+  const rejectNonStandardBodyWrites = options.rejectNonStandardBodyWrites;
+  if (rejectNonStandardBodyWrites !== undefined) {
+    validateBoolean(rejectNonStandardBodyWrites, 'options.rejectNonStandardBodyWrites');
+    this.rejectNonStandardBodyWrites = rejectNonStandardBodyWrites;
+  } else {
+    this.rejectNonStandardBodyWrites = false;
+  }
 }
 
 function setupConnectionsTracking(server) {
@@ -509,7 +520,8 @@ function Server(options, requestListener) {
     this,
     { allowHalfOpen: true, noDelay: options.noDelay,
       keepAlive: options.keepAlive,
-      keepAliveInitialDelay: options.keepAliveInitialDelay });
+      keepAliveInitialDelay: options.keepAliveInitialDelay,
+      highWaterMark: options.highWaterMark });
 
   if (requestListener) {
     this.on('request', requestListener);
@@ -604,7 +616,7 @@ function checkConnections() {
 
 function connectionListener(socket) {
   defaultTriggerAsyncIdScope(
-    getOrSetAsyncId(socket), connectionListenerInternal, this, socket
+    getOrSetAsyncId(socket), connectionListenerInternal, this, socket,
   );
 }
 
@@ -658,7 +670,7 @@ function connectionListenerInternal(server, socket) {
     // sent to the client.
     outgoingData: 0,
     requestsCount: 0,
-    keepAliveTimeoutSet: false
+    keepAliveTimeoutSet: false,
   };
   state.onData = socketOnData.bind(undefined,
                                    server, socket, parser, state);
@@ -807,20 +819,39 @@ function onParserTimeout(server, socket) {
 const noop = () => {};
 const badRequestResponse = Buffer.from(
   `HTTP/1.1 400 ${STATUS_CODES[400]}\r\n` +
-  'Connection: close\r\n\r\n', 'ascii'
+  'Connection: close\r\n\r\n', 'ascii',
 );
 const requestTimeoutResponse = Buffer.from(
   `HTTP/1.1 408 ${STATUS_CODES[408]}\r\n` +
-  'Connection: close\r\n\r\n', 'ascii'
+  'Connection: close\r\n\r\n', 'ascii',
 );
 const requestHeaderFieldsTooLargeResponse = Buffer.from(
   `HTTP/1.1 431 ${STATUS_CODES[431]}\r\n` +
-  'Connection: close\r\n\r\n', 'ascii'
+  'Connection: close\r\n\r\n', 'ascii',
 );
+
+function warnUnclosedSocket() {
+  if (warnUnclosedSocket.emitted) {
+    return;
+  }
+
+  warnUnclosedSocket.emitted = true;
+  process.emitWarning(
+    'An error event has already been emitted on the socket. ' +
+    'Please use the destroy method on the socket while handling ' +
+    "a 'clientError' event.",
+  );
+}
+
 function socketOnError(e) {
   // Ignore further errors
   this.removeListener('error', socketOnError);
-  this.on('error', noop);
+
+  if (this.listenerCount('error', noop) === 0) {
+    this.on('error', noop);
+  } else {
+    warnUnclosedSocket();
+  }
 
   if (!this.server.emit('clientError', e, this)) {
     // Caution must be taken to avoid corrupting the remote peer.
@@ -917,7 +948,7 @@ function resOnFinish(req, res, socket, state, server) {
       request: req,
       response: res,
       socket,
-      server
+      server,
     });
   }
 
@@ -995,7 +1026,11 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
     }
   }
 
-  const res = new server[kServerResponse](req);
+  const res = new server[kServerResponse](req,
+                                          {
+                                            highWaterMark: socket.writableHighWaterMark,
+                                            rejectNonStandardBodyWrites: server.rejectNonStandardBodyWrites,
+                                          });
   res._keepAliveTimeout = server.keepAliveTimeout;
   res._maxRequestsPerSocket = server.maxRequestsPerSocket;
   res._onPendingData = updateOutgoingData.bind(undefined,
@@ -1010,7 +1045,7 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
       request: req,
       response: res,
       socket,
-      server
+      server,
     });
   }
 
@@ -1143,5 +1178,5 @@ module.exports = {
   setupConnectionsTracking,
   storeHTTPOptions,
   _connectionListener: connectionListener,
-  kServerResponse
+  kServerResponse,
 };

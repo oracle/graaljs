@@ -57,7 +57,7 @@ const { previewEntries } = internalBinding('util');
 const { Buffer: { isBuffer } } = require('buffer');
 const {
   inspect,
-  formatWithOptions
+  formatWithOptions,
 } = require('internal/util/inspect');
 const {
   isTypedArray, isSet, isMap, isSetIterator, isMapIterator,
@@ -80,6 +80,12 @@ const kMaxGroupIndentation = 1000;
 // Lazy loaded for startup performance.
 let cliTable;
 
+let utilColors;
+function lazyUtilColors() {
+  utilColors ??= require('internal/util/colors');
+  return utilColors;
+}
+
 // Track amount of indentation required via `console.group()`.
 const kGroupIndent = Symbol('kGroupIndent');
 const kGroupIndentationWidth = Symbol('kGroupIndentWidth');
@@ -96,7 +102,6 @@ const kUseStdout = Symbol('kUseStdout');
 const kUseStderr = Symbol('kUseStderr');
 
 const optionsMap = new SafeWeakMap();
-
 function Console(options /* or: stdout, stderr, ignoreErrors = true */) {
   // We have to test new.target here to see if this function is called
   // with new, because we need to define a custom instanceof to accommodate
@@ -109,7 +114,7 @@ function Console(options /* or: stdout, stderr, ignoreErrors = true */) {
     options = {
       stdout: options,
       stderr: arguments[1],
-      ignoreErrors: arguments[2]
+      ignoreErrors: arguments[2],
     };
   }
 
@@ -156,7 +161,7 @@ function Console(options /* or: stdout, stderr, ignoreErrors = true */) {
     this[key] = FunctionPrototypeBind(this[key], this);
     ObjectDefineProperty(this[key], 'name', {
       __proto__: null,
-      value: key
+      value: key,
     });
   });
 
@@ -167,7 +172,7 @@ function Console(options /* or: stdout, stderr, ignoreErrors = true */) {
 const consolePropAttributes = {
   writable: true,
   enumerable: false,
-  configurable: true
+  configurable: true,
 };
 
 // Fixup global.console instanceof global.console.Console
@@ -175,7 +180,7 @@ ObjectDefineProperty(Console, SymbolHasInstance, {
   __proto__: null,
   value(instance) {
     return instance[kIsConsole];
-  }
+  },
 });
 
 const kColorInspectOptions = { colors: true };
@@ -191,7 +196,7 @@ ObjectDefineProperties(Console.prototype, {
         '_stdout': { __proto__: null, ...consolePropAttributes, value: stdout },
         '_stderr': { __proto__: null, ...consolePropAttributes, value: stderr },
       });
-    }
+    },
   },
   [kBindStreamsLazy]: {
     __proto__: null,
@@ -210,7 +215,7 @@ ObjectDefineProperties(Console.prototype, {
             if (!stdout) stdout = object.stdout;
             return stdout;
           },
-          set(value) { stdout = value; }
+          set(value) { stdout = value; },
         },
         '_stderr': {
           __proto__: null,
@@ -220,10 +225,10 @@ ObjectDefineProperties(Console.prototype, {
             if (!stderr) { stderr = object.stderr; }
             return stderr;
           },
-          set(value) { stderr = value; }
-        }
+          set(value) { stderr = value; },
+        },
       });
-    }
+    },
   },
   [kBindProperties]: {
     __proto__: null,
@@ -233,17 +238,17 @@ ObjectDefineProperties(Console.prototype, {
         '_stdoutErrorHandler': {
           __proto__: null,
           ...consolePropAttributes,
-          value: createWriteErrorHandler(this, kUseStdout)
+          value: createWriteErrorHandler(this, kUseStdout),
         },
         '_stderrErrorHandler': {
           ...consolePropAttributes,
           __proto__: null,
-          value: createWriteErrorHandler(this, kUseStderr)
+          value: createWriteErrorHandler(this, kUseStderr),
         },
         '_ignoreErrors': {
           __proto__: null,
           ...consolePropAttributes,
-          value: Boolean(ignoreErrors)
+          value: Boolean(ignoreErrors),
         },
         '_times': { __proto__: null, ...consolePropAttributes, value: new SafeMap() },
         // Corresponds to https://console.spec.whatwg.org/#count-map
@@ -254,17 +259,17 @@ ObjectDefineProperties(Console.prototype, {
         [kGroupIndentationWidth]: {
           __proto__: null,
           ...consolePropAttributes,
-          value: groupIndentation
+          value: groupIndentation,
         },
         [SymbolToStringTag]: {
           __proto__: null,
           writable: false,
           enumerable: false,
           configurable: true,
-          value: 'console'
-        }
+          value: 'console',
+        },
       });
-    }
+    },
   },
   [kWriteToConsole]: {
     __proto__: null,
@@ -307,7 +312,7 @@ ObjectDefineProperties(Console.prototype, {
       } finally {
         stream.removeListener('error', noop);
       }
-    }
+    },
   },
   [kGetInspectOptions]: {
     __proto__: null,
@@ -315,9 +320,7 @@ ObjectDefineProperties(Console.prototype, {
     value: function(stream) {
       let color = this[kColorMode];
       if (color === 'auto') {
-        color = stream.isTTY && (
-          typeof stream.getColorDepth === 'function' ?
-            stream.getColorDepth() > 2 : true);
+        color = lazyUtilColors().shouldColorize(stream);
       }
 
       const options = optionsMap.get(this);
@@ -329,7 +332,7 @@ ObjectDefineProperties(Console.prototype, {
       }
 
       return color ? kColorInspectOptions : kNoColorInspectOptions;
-    }
+    },
   },
   [kFormatForStdout]: {
     __proto__: null,
@@ -338,7 +341,7 @@ ObjectDefineProperties(Console.prototype, {
       const opts = this[kGetInspectOptions](this._stdout);
       ArrayPrototypeUnshift(args, opts);
       return ReflectApply(formatWithOptions, null, args);
-    }
+    },
   },
   [kFormatForStderr]: {
     __proto__: null,
@@ -347,7 +350,7 @@ ObjectDefineProperties(Console.prototype, {
       const opts = this[kGetInspectOptions](this._stderr);
       ArrayPrototypeUnshift(args, opts);
       return ReflectApply(formatWithOptions, null, args);
-    }
+    },
   },
 });
 
@@ -387,7 +390,7 @@ const consoleMethods = {
     this[kWriteToConsole](kUseStdout, inspect(object, {
       customInspect: false,
       ...this[kGetInspectOptions](this._stdout),
-      ...options
+      ...options,
     }));
   },
 
@@ -422,7 +425,7 @@ const consoleMethods = {
   trace: function trace(...args) {
     const err = {
       name: 'Trace',
-      message: this[kFormatForStderr](args)
+      message: this[kFormatForStderr](args),
     };
     ErrorCaptureStackTrace(err, trace);
     this.error(err.stack);
@@ -491,7 +494,7 @@ const consoleMethods = {
     this[kGroupIndent] = StringPrototypeSlice(
       this[kGroupIndent],
       0,
-      this[kGroupIndent].length - this[kGroupIndentationWidth]
+      this[kGroupIndent].length - this[kGroupIndentationWidth],
     );
   },
 
@@ -515,7 +518,7 @@ const consoleMethods = {
         depth,
         maxArrayLength: 3,
         breakLength: Infinity,
-        ...this[kGetInspectOptions](this._stdout)
+        ...this[kGetInspectOptions](this._stdout),
       };
       return inspect(v, opt);
     };
@@ -654,7 +657,7 @@ function formatTime(ms) {
   if (hours !== 0 || minutes !== 0) {
     ({ 0: seconds, 1: ms } = StringPrototypeSplit(
       NumberPrototypeToFixed(seconds, 3),
-      '.'
+      '.',
     ));
     const res = hours !== 0 ? `${hours}:${pad(minutes)}` : minutes;
     return `${res}:${pad(seconds)}.${ms} (${hours !== 0 ? 'h:m' : ''}m:ss.mmm)`;
@@ -721,5 +724,5 @@ module.exports = {
   kBindStreamsLazy,
   kBindProperties,
   initializeGlobalConsole,
-  formatTime // exported for tests
+  formatTime, // exported for tests
 };

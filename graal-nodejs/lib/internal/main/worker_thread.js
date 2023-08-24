@@ -10,13 +10,16 @@ const {
   ObjectDefineProperty,
   PromisePrototypeThen,
   RegExpPrototypeExec,
-  globalThis: { Atomics },
+  globalThis: {
+    Atomics,
+    SharedArrayBuffer,
+  },
 } = primordials;
 
 const {
   prepareWorkerThreadExecution,
   setupUserModules,
-  markBootstrapComplete
+  markBootstrapComplete,
 } = require('internal/process/pre_execution');
 
 // Passed by Graal.js init phase during global module loading.
@@ -27,7 +30,7 @@ if (!SharedMemMessagingInit) {
 
 const {
   threadId,
-  getEnvMessagePort
+  getEnvMessagePort,
 } = internalBinding('worker');
 
 const workerIo = require('internal/worker/io');
@@ -43,11 +46,11 @@ const {
     STDIO_PAYLOAD,
     STDIO_WANTS_MORE_DATA,
   },
-  kStdioWantsMoreDataCallback
+  kStdioWantsMoreDataCallback,
 } = workerIo;
 
 const {
-  onGlobalUncaughtException
+  onGlobalUncaughtException,
 } = require('internal/process/execution');
 
 let debug = require('internal/util/debuglog').debuglog('worker', (fn) => {
@@ -74,13 +77,13 @@ if (process.env.NODE_CHANNEL_FD) {
   ObjectDefineProperty(process, 'channel', {
     __proto__: null,
     enumerable: false,
-    get: workerThreadSetup.unavailable('process.channel')
+    get: workerThreadSetup.unavailable('process.channel'),
   });
 
   ObjectDefineProperty(process, 'connected', {
     __proto__: null,
     enumerable: false,
-    get: workerThreadSetup.unavailable('process.connected')
+    get: workerThreadSetup.unavailable('process.connected'),
   });
 
   process.send = workerThreadSetup.unavailable('process.send()');
@@ -101,7 +104,7 @@ port.on('message', (message) => {
       publicPort,
       manifestSrc,
       manifestURL,
-      hasStdin
+      hasStdin,
     } = message;
 
     if (argv !== undefined) {
@@ -114,21 +117,23 @@ port.on('message', (message) => {
 
     require('internal/worker').assignEnvironmentData(environmentData);
 
-    // The counter is only passed to the workers created by the main thread, not
-    // to workers created by other workers.
-    let cachedCwd = '';
-    let lastCounter = -1;
-    const originalCwd = process.cwd;
+    if (SharedArrayBuffer !== undefined && Atomics !== undefined) {
+      // The counter is only passed to the workers created by the main thread,
+      // not to workers created by other workers.
+      let cachedCwd = '';
+      let lastCounter = -1;
+      const originalCwd = process.cwd;
 
-    process.cwd = function() {
-      const currentCounter = Atomics.load(cwdCounter, 0);
-      if (currentCounter === lastCounter)
+      process.cwd = function() {
+        const currentCounter = Atomics.load(cwdCounter, 0);
+        if (currentCounter === lastCounter)
+          return cachedCwd;
+        lastCounter = currentCounter;
+        cachedCwd = originalCwd();
         return cachedCwd;
-      lastCounter = currentCounter;
-      cachedCwd = originalCwd();
-      return cachedCwd;
-    };
-    workerIo.sharedCwdCounter = cwdCounter;
+      };
+      workerIo.sharedCwdCounter = cwdCounter;
+    }
 
     if (manifestSrc) {
       require('internal/process/policy').setup(manifestSrc, manifestURL);
@@ -175,7 +180,7 @@ port.on('message', (message) => {
   } else {
     assert(
       message.type === STDIO_WANTS_MORE_DATA,
-      `Unknown worker message type ${message.type}`
+      `Unknown worker message type ${message.type}`,
     );
     const { stream } = message;
     process[stream][kStdioWantsMoreDataCallback]();
@@ -221,7 +226,7 @@ function workerOnGlobalUncaughtException(error, fromPromise) {
   if (serialized)
     port.postMessage({
       type: ERROR_MESSAGE,
-      error: serialized
+      error: serialized,
     });
   else
     port.postMessage({ type: COULD_NOT_SERIALIZE_ERROR });

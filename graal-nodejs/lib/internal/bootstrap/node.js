@@ -121,7 +121,7 @@ const deprecationHandler = {
     if (!this.warned) {
       process.emitWarning(this.message, {
         type: 'DeprecationWarning',
-        code: this.code
+        code: this.code,
       });
       this.warned = true;
     }
@@ -159,7 +159,7 @@ const deprecationHandler = {
   setPrototypeOf(target, proto) {
     this.maybeWarn();
     return ObjectSetPrototypeOf(target, proto);
-  }
+  },
 };
 
 // process.config is serialized config.gypi
@@ -178,7 +178,7 @@ ObjectDefineProperty(process, 'config', {
   set(value) {
     deprecationHandler.maybeWarn();
     processConfig = value;
-  }
+  },
 });
 
 require('internal/worker/js_transferable').setup();
@@ -206,6 +206,7 @@ const rawMethods = internalBinding('process_methods');
   process.cpuUsage = wrapped.cpuUsage;
   process.resourceUsage = wrapped.resourceUsage;
   process.memoryUsage = wrapped.memoryUsage;
+  process.constrainedMemory = rawMethods.constrainedMemory;
   process.kill = wrapped.kill;
   process.exit = wrapped.exit;
 
@@ -236,7 +237,7 @@ internalBinding('async_wrap').setupHooks(nativeHooks);
 
 const {
   setupTaskQueue,
-  queueMicrotask
+  queueMicrotask,
 } = require('internal/process/task_queues');
 
 // Non-standard extensions:
@@ -277,11 +278,11 @@ ObjectDefineProperty(process, 'allowedNodeEnvironmentFlags', {
       value,
       configurable: true,
       enumerable: true,
-      writable: true
+      writable: true,
     });
   },
   enumerable: true,
-  configurable: true
+  configurable: true,
 });
 
 // process.assert
@@ -306,7 +307,7 @@ const features = {
   // code cache even if the binary is built with embedded code cache.
   get cached_builtins() {
     return binding.hasCachedBuiltins();
-  }
+  },
 };
 
 ObjectDefineProperty(process, 'features', {
@@ -314,14 +315,14 @@ ObjectDefineProperty(process, 'features', {
   enumerable: true,
   writable: false,
   configurable: false,
-  value: features
+  value: features,
 });
 
 {
   const {
     onGlobalUncaughtException,
     setUncaughtExceptionCaptureCallback,
-    hasUncaughtExceptionCaptureCallback
+    hasUncaughtExceptionCaptureCallback,
   } = require('internal/process/execution');
 
   // For legacy reasons this is still called `_fatalException`, even
@@ -378,14 +379,14 @@ if (config.hasOpenSSL) {
 function setupPrepareStackTrace() {
   const {
     setEnhanceStackForFatalException,
-    setPrepareStackTraceCallback
+    setPrepareStackTraceCallback,
   } = internalBinding('errors');
   const {
     prepareStackTrace,
     fatalExceptionStackEnhancers: {
       beforeInspector,
-      afterInspector
-    }
+      afterInspector,
+    },
   } = require('internal/errors');
   // Tell our PrepareStackTraceCallback passed to the V8 API
   // to call prepareStackTrace().
@@ -404,7 +405,7 @@ function setupProcessObject() {
     enumerable: false,
     writable: true,
     configurable: false,
-    value: 'process'
+    value: 'process',
   });
 
   // Create global.process as getters so that we have a
@@ -430,7 +431,7 @@ function setupGlobalProxy() {
     value: 'global',
     writable: false,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
   globalThis.global = globalThis;
 }

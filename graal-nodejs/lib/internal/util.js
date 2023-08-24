@@ -47,7 +47,7 @@ const {
   hideStackFrames,
   codes: {
     ERR_NO_CRYPTO,
-    ERR_UNKNOWN_SIGNAL
+    ERR_UNKNOWN_SIGNAL,
   },
   uvErrmapGet,
   overrideStackTrace,
@@ -349,7 +349,7 @@ function promisify(original) {
 
     return ObjectDefineProperty(fn, kCustomPromisifiedSymbol, {
       __proto__: null,
-      value: fn, enumerable: false, writable: false, configurable: true
+      value: fn, enumerable: false, writable: false, configurable: true,
     });
   }
 
@@ -380,7 +380,7 @@ function promisify(original) {
 
   ObjectDefineProperty(fn, kCustomPromisifiedSymbol, {
     __proto__: null,
-    value: fn, enumerable: false, writable: false, configurable: true
+    value: fn, enumerable: false, writable: false, configurable: true,
   });
 
   const descriptors = ObjectGetOwnPropertyDescriptors(original);
@@ -494,7 +494,7 @@ function defineOperation(target, name, method) {
     writable: true,
     enumerable: true,
     configurable: true,
-    value: method
+    value: method,
   });
 }
 
@@ -505,7 +505,7 @@ function exposeInterface(target, name, interfaceObject) {
     writable: true,
     enumerable: false,
     configurable: true,
-    value: interfaceObject
+    value: interfaceObject,
   });
 }
 
@@ -607,6 +607,27 @@ function isArrayBufferDetached(value) {
   return false;
 }
 
+// Setup user-facing NODE_V8_COVERAGE environment variable that writes
+// ScriptCoverage objects to a specified directory.
+function setupCoverageHooks(dir) {
+  const cwd = require('internal/process/execution').tryGetCwd();
+  const { resolve } = require('path');
+  const coverageDirectory = resolve(cwd, dir);
+  const { sourceMapCacheToObject } =
+    require('internal/source_map/source_map_cache');
+
+  if (process.features.inspector) {
+    internalBinding('profiler').setCoverageDirectory(coverageDirectory);
+    internalBinding('profiler').setSourceMapCacheGetter(sourceMapCacheToObject);
+  } else {
+    process.emitWarning('The inspector is disabled, ' +
+                        'coverage could not be collected',
+                        'Warning');
+    return '';
+  }
+  return coverageDirectory;
+}
+
 module.exports = {
   assertCrypto,
   cachedResult,
@@ -638,6 +659,7 @@ module.exports = {
   SideEffectFreeRegExpPrototypeSymbolSplit,
   sleep,
   spliceOne,
+  setupCoverageHooks,
   toUSVString,
   removeColors,
 

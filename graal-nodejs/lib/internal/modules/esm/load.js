@@ -77,9 +77,11 @@ async function defaultLoad(url, context) {
     source,
   } = context;
 
-  if (format == null) {
-    format = await defaultGetFormat(url, context);
-  }
+  const urlInstance = new URL(url);
+
+  throwIfUnsupportedURLScheme(urlInstance, experimentalNetworkImports);
+
+  format ??= await defaultGetFormat(urlInstance, context);
 
   validateAssertions(url, format, importAssertions);
 
@@ -98,6 +100,36 @@ async function defaultLoad(url, context) {
     responseURL,
     source,
   };
+}
+
+/**
+ * throws an error if the protocol is not one of the protocols
+ * that can be loaded in the default loader
+ * @param {URL} parsed
+ * @param {boolean} experimentalNetworkImports
+ */
+function throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports) {
+  // Avoid accessing the `protocol` property due to the lazy getters.
+  const protocol = parsed?.protocol;
+  if (
+    protocol &&
+    protocol !== 'file:' &&
+    protocol !== 'data:' &&
+    protocol !== 'node:' &&
+    (
+      !experimentalNetworkImports ||
+      (
+        protocol !== 'https:' &&
+        protocol !== 'http:'
+      )
+    )
+  ) {
+    const schemes = ['file', 'data', 'node'];
+    if (experimentalNetworkImports) {
+      ArrayPrototypePush(schemes, 'https', 'http');
+    }
+    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed, schemes);
+  }
 }
 
 module.exports = {

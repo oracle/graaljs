@@ -268,7 +268,7 @@ function emitInvalidHostnameWarning(hostname) {
       `The provided hostname "${hostname}" is not a valid ` +
       'hostname, and is supported in the dns module solely for compatibility.',
       'DeprecationWarning',
-      'DEP0118'
+      'DEP0118',
     );
     invalidHostnameWarningEmitted = true;
   }
@@ -281,6 +281,10 @@ function getDefaultVerbatim() {
 function setDefaultResultOrder(value) {
   validateOneOf(value, 'dnsOrder', ['verbatim', 'ipv4first']);
   dnsOrder = value;
+}
+
+function getDefaultResultOrder() {
+  return dnsOrder;
 }
 
 function createResolverClass(resolver) {
@@ -304,7 +308,7 @@ function createResolverClass(resolver) {
 
   return {
     resolveMap,
-    Resolver
+    Resolver,
   };
 }
 
@@ -345,8 +349,9 @@ module.exports = {
   validateTries,
   emitInvalidHostnameWarning,
   getDefaultVerbatim,
+  getDefaultResultOrder,
   setDefaultResultOrder,
   errorCodes,
   createResolverClass,
-  initializeDns
+  initializeDns,
 };

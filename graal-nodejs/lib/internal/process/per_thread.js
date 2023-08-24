@@ -38,8 +38,8 @@ const {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_OUT_OF_RANGE,
-    ERR_UNKNOWN_SIGNAL
-  }
+    ERR_UNKNOWN_SIGNAL,
+  },
 } = require('internal/errors');
 const format = require('internal/util/inspect').format;
 const {
@@ -111,7 +111,7 @@ function wrapProcessMethods(binding) {
     cpuUsage: _cpuUsage,
     memoryUsage: _memoryUsage,
     rss,
-    resourceUsage: _resourceUsage
+    resourceUsage: _resourceUsage,
   } = binding;
 
   function _rawDebug(...args) {
@@ -148,14 +148,14 @@ function wrapProcessMethods(binding) {
     if (prevValue) {
       return {
         user: cpuValues[0] - prevValue.user,
-        system: cpuValues[1] - prevValue.system
+        system: cpuValues[1] - prevValue.system,
       };
     }
 
     // If no previous value passed in, return current value.
     return {
       user: cpuValues[0],
-      system: cpuValues[1]
+      system: cpuValues[1],
     };
   }
 
@@ -175,7 +175,7 @@ function wrapProcessMethods(binding) {
       heapTotal: memValues[1],
       heapUsed: memValues[2],
       external: memValues[3],
-      arrayBuffers: memValues[4]
+      arrayBuffers: memValues[4],
     };
   }
 
@@ -254,7 +254,7 @@ function wrapProcessMethods(binding) {
       ipcReceived: resourceValues[12],
       signalsCount: resourceValues[13],
       voluntaryContextSwitches: resourceValues[14],
-      involuntaryContextSwitches: resourceValues[15]
+      involuntaryContextSwitches: resourceValues[15],
     };
   }
 
@@ -265,7 +265,7 @@ function wrapProcessMethods(binding) {
     resourceUsage,
     memoryUsage,
     kill,
-    exit
+    exit,
   };
 }
 
@@ -277,14 +277,14 @@ const trailingValuesRegex = /=.*$/;
 // from data in the config binding.
 function buildAllowedFlags() {
   const {
-    envSettings: { kAllowedInEnvironment },
+    envSettings: { kAllowedInEnvvar },
     types: { kBoolean },
   } = internalBinding('options');
   const { options, aliases } = require('internal/options');
 
   const allowedNodeEnvironmentFlags = [];
   for (const { 0: name, 1: info } of options) {
-    if (info.envVarSettings === kAllowedInEnvironment) {
+    if (info.envVarSettings === kAllowedInEnvvar) {
       ArrayPrototypePush(allowedNodeEnvironmentFlags, name);
       if (info.type === kBoolean) {
         const negatedName = `--no-${name.slice(2)}`;
@@ -301,7 +301,7 @@ function buildAllowedFlags() {
         ArrayPrototypeSplice(recursiveExpansion, 0, 1);
       return ArrayPrototypeEvery(recursiveExpansion, isAccepted);
     }
-    return options.get(to).envVarSettings === kAllowedInEnvironment;
+    return options.get(to).envVarSettings === kAllowedInEnvvar;
   }
   for (const { 0: from, 1: expansion } of aliases) {
     if (ArrayPrototypeEvery(expansion, isAccepted)) {
@@ -370,7 +370,7 @@ function buildAllowedFlags() {
     forEach(callback, thisArg = undefined) {
       ArrayPrototypeForEach(
         this[kInternal].array,
-        (v) => ReflectApply(callback, thisArg, [v, v, this])
+        (v) => ReflectApply(callback, thisArg, [v, v, this]),
       );
     }
 
@@ -398,7 +398,7 @@ function buildAllowedFlags() {
   ObjectFreeze(NodeEnvironmentFlagsSet.prototype);
 
   return ObjectFreeze(new NodeEnvironmentFlagsSet(
-    allowedNodeEnvironmentFlags
+    allowedNodeEnvironmentFlags,
   ));
 }
 

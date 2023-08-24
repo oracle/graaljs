@@ -627,7 +627,7 @@ added: v16.5.0
 Returns the amount of data remaining to fill the {ReadableStream}'s
 queue.
 
-#### `readableStreamDefaultController.enqueue(chunk)`
+#### `readableStreamDefaultController.enqueue([chunk])`
 
 <!-- YAML
 added: v16.5.0
@@ -637,7 +637,7 @@ added: v16.5.0
 
 Appends a new chunk of data to the {ReadableStream}'s queue.
 
-#### `readableStreamDefaultController.error(error)`
+#### `readableStreamDefaultController.error([error])`
 
 <!-- YAML
 added: v16.5.0
@@ -698,7 +698,7 @@ added: v16.5.0
 
 Appends a new chunk of data to the {ReadableStream}'s queue.
 
-#### `readableByteStreamController.error(error)`
+#### `readableByteStreamController.error([error])`
 
 <!-- YAML
 added: v16.5.0
@@ -982,7 +982,7 @@ changes:
 The `WritableStreamDefaultController` manage's the {WritableStream}'s
 internal state.
 
-#### `writableStreamDefaultController.error(error)`
+#### `writableStreamDefaultController.error([error])`
 
 <!-- YAML
 added: v16.5.0
@@ -1462,7 +1462,7 @@ added: v16.7.0
   contents of the stream.
 
 ```mjs
-import { buffer as arrayBuffer } from 'node:stream/consumers';
+import { arrayBuffer } from 'node:stream/consumers';
 import { Readable } from 'node:stream';
 import { TextEncoder } from 'node:util';
 
@@ -1480,7 +1480,7 @@ const { Readable } = require('node:stream');
 const { TextEncoder } = require('node:util');
 
 const encoder = new TextEncoder();
-const dataArray = encoder.encode(['hello world from consumers!']);
+const dataArray = encoder.encode('hello world from consumers!');
 const readable = Readable.from(dataArray);
 arrayBuffer(readable).then((data) => {
   console.log(`from readable: ${data.byteLength}`);
@@ -1611,7 +1611,7 @@ added: v16.7.0
   UTF-8 encoded string.
 
 ```mjs
-import { json, text, blob, buffer } from 'node:stream/consumers';
+import { text } from 'node:stream/consumers';
 import { Readable } from 'node:stream';
 
 const readable = Readable.from('Hello world from consumers!');

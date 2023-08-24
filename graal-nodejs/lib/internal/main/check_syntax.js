@@ -3,13 +3,14 @@
 // If user passed `-c` or `--check` arguments to Node, check its syntax
 // instead of actually running the file.
 
+const { URL } = require('internal/url');
 const {
   prepareMainThreadExecution,
-  markBootstrapComplete
+  markBootstrapComplete,
 } = require('internal/process/pre_execution');
 
 const {
-  readStdin
+  readStdin,
 } = require('internal/process/execution');
 
 const { pathToFileURL } = require('url');
@@ -55,7 +56,7 @@ async function checkSyntax(source, filename) {
     const { defaultResolve } = require('internal/modules/esm/resolve');
     const { defaultGetFormat } = require('internal/modules/esm/get_format');
     const { url } = await defaultResolve(pathToFileURL(filename).toString());
-    const format = await defaultGetFormat(url);
+    const format = await defaultGetFormat(new URL(url));
     isModule = format === 'module';
   }
   if (isModule) {

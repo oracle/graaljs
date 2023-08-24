@@ -14,11 +14,9 @@ const {
 } = internalBinding('crypto');
 
 const {
-  getArrayBufferOrView,
   getDefaultEncoding,
   getStringOption,
   jobPromise,
-  normalizeAlgorithm,
   normalizeHashName,
   validateMaxBufferLength,
   kHandle,
@@ -41,7 +39,7 @@ const {
     ERR_CRYPTO_HASH_FINALIZED,
     ERR_CRYPTO_HASH_UPDATE_FAILED,
     ERR_INVALID_ARG_TYPE,
-  }
+  },
 } = require('internal/errors');
 
 const {
@@ -70,7 +68,7 @@ function Hash(algorithm, options) {
     validateUint32(xofLen, 'options.outputLength');
   this[kHandle] = new _Hash(algorithm, xofLen);
   this[kState] = {
-    [kFinalized]: false
+    [kFinalized]: false,
   };
   ReflectApply(LazyTransform, this, [options]);
 }
@@ -137,7 +135,7 @@ function Hmac(hmac, key, options) {
   this[kHandle] = new _Hmac();
   this[kHandle].init(hmac, key);
   this[kState] = {
-    [kFinalized]: false
+    [kFinalized]: false,
   };
   ReflectApply(LazyTransform, this, [options]);
 }
@@ -168,12 +166,7 @@ Hmac.prototype._transform = Hash.prototype._transform;
 // Implementation for WebCrypto subtle.digest()
 
 async function asyncDigest(algorithm, data) {
-  algorithm = normalizeAlgorithm(algorithm);
-  data = getArrayBufferOrView(data, 'data');
   validateMaxBufferLength(data, 'data');
-
-  if (algorithm.length !== undefined)
-    validateUint32(algorithm.length, 'algorithm.length');
 
   switch (algorithm.name) {
     case 'SHA-1':
@@ -186,11 +179,10 @@ async function asyncDigest(algorithm, data) {
       return jobPromise(() => new HashJob(
         kCryptoJobAsync,
         normalizeHashName(algorithm.name),
-        data,
-        algorithm.length));
+        data));
   }
 
-  throw lazyDOMException('Unrecognized name.', 'NotSupportedError');
+  throw lazyDOMException('Unrecognized algorithm name', 'NotSupportedError');
 }
 
 module.exports = {

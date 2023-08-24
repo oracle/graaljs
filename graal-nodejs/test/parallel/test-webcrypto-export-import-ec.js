@@ -164,6 +164,15 @@ async function testImportPkcs8(
         message: /key is not extractable/
       });
   }
+
+  await assert.rejects(
+    subtle.importKey(
+      'pkcs8',
+      keyData[namedCurve].pkcs8,
+      { name, namedCurve },
+      extractable,
+      [/* empty usages */]),
+    { name: 'SyntaxError', message: 'Usages cannot be empty when importing a private key.' });
 }
 
 async function testImportJwk(
@@ -261,6 +270,38 @@ async function testImportJwk(
       });
   }
 
+  {
+    const invalidUse = name === 'ECDH' ? 'sig' : 'enc';
+    await assert.rejects(
+      subtle.importKey(
+        'jwk',
+        { ...jwk, use: invalidUse },
+        { name, namedCurve },
+        extractable,
+        privateUsages),
+      { message: 'Invalid JWK "use" Parameter' });
+  }
+
+  if (name === 'ECDSA') {
+    await assert.rejects(
+      subtle.importKey(
+        'jwk',
+        { kty: jwk.kty, x: jwk.x, y: jwk.y, crv: jwk.crv, alg: jwk.crv === 'P-256' ? 'ES384' : 'ES256' },
+        { name, namedCurve },
+        extractable,
+        publicUsages),
+      { message: 'JWK "alg" does not match the requested algorithm' });
+
+    await assert.rejects(
+      subtle.importKey(
+        'jwk',
+        { ...jwk, alg: jwk.crv === 'P-256' ? 'ES384' : 'ES256' },
+        { name, namedCurve },
+        extractable,
+        privateUsages),
+      { message: 'JWK "alg" does not match the requested algorithm' });
+  }
+
   for (const crv of [undefined, namedCurve === 'P-256' ? 'P-384' : 'P-256']) {
     await assert.rejects(
       subtle.importKey(
@@ -269,17 +310,26 @@ async function testImportJwk(
         { name, namedCurve },
         extractable,
         publicUsages),
-      { message: /Named curve mismatch/ });
+      { message: 'JWK "crv" does not match the requested algorithm' });
 
     await assert.rejects(
       subtle.importKey(
         'jwk',
-        { kty: jwk.kty, d: jwk.d, x: jwk.x, y: jwk.y, crv },
+        { ...jwk, crv },
         { name, namedCurve },
         extractable,
-        publicUsages),
-      { message: /Named curve mismatch/ });
+        privateUsages),
+      { message: 'JWK "crv" does not match the requested algorithm' });
   }
+
+  await assert.rejects(
+    subtle.importKey(
+      'jwk',
+      { ...jwk },
+      { name, namedCurve },
+      extractable,
+      [/* empty usages */]),
+    { name: 'SyntaxError', message: 'Usages cannot be empty when importing a private key.' });
 }
 
 async function testImportRaw({ name, publicUsages }, namedCurve) {

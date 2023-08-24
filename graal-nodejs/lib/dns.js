@@ -38,11 +38,12 @@ const {
   validateHints,
   emitInvalidHostnameWarning,
   getDefaultVerbatim,
+  getDefaultResultOrder,
   setDefaultResultOrder,
   errorCodes: dnsErrorCodes,
 } = require('internal/dns/utils');
 const {
-  Resolver
+  Resolver,
 } = require('internal/dns/callback_resolver');
 const {
   NODATA,
@@ -123,7 +124,7 @@ function onlookupall(err, addresses) {
     const addr = addresses[i];
     addresses[i] = {
       address: addr,
-      family: family || isIP(addr)
+      family: family || isIP(addr),
     };
   }
 
@@ -219,7 +220,7 @@ function lookup(hostname, options, callback) {
   req.oncomplete = all ? onlookupall : onlookup;
 
   const err = cares.getaddrinfo(
-    req, toASCII(hostname), family, hints, verbatim
+    req, toASCII(hostname), family, hints, verbatim,
   );
   if (err) {
     process.nextTick(callback, dnsException(err, 'getaddrinfo', hostname));
@@ -305,6 +306,7 @@ module.exports = {
   lookupService,
 
   Resolver,
+  getDefaultResultOrder,
   setDefaultResultOrder,
   setServers: defaultResolverSetServers,
 
@@ -352,6 +354,6 @@ ObjectDefineProperties(module.exports, {
         promises = require('internal/dns/promises');
       }
       return promises;
-    }
-  }
+    },
+  },
 });

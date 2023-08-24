@@ -61,13 +61,13 @@ function copyAccessor(dest, prefix, key, { enumerable, get, set }) {
   ReflectDefineProperty(dest, `${prefix}Get${key}`, {
     __proto__: null,
     value: uncurryThis(get),
-    enumerable
+    enumerable,
   });
   if (set !== undefined) {
     ReflectDefineProperty(dest, `${prefix}Set${key}`, {
       __proto__: null,
       value: uncurryThis(set),
-      enumerable
+      enumerable,
     });
   }
 }
@@ -260,6 +260,8 @@ function copyPrototype(src, dest, prefix) {
   copyPrototype(original.prototype, primordials, `${name}Prototype`);
 });
 
+primordials.IteratorPrototype = Reflect.getPrototypeOf(primordials.ArrayIteratorPrototype);
+
 /* eslint-enable node-core/prefer-primordials */
 
 const {
@@ -305,9 +307,20 @@ const {
   WeakSet,
 } = primordials;
 
-// Because these functions are used by `makeSafe`, which is exposed
-// on the `primordials` object, it's important to use const references
-// to the primordials that they use:
+
+/**
+ * Creates a class that can be safely iterated over.
+ *
+ * Because these functions are used by `makeSafe`, which is exposed on the
+ * `primordials` object, it's important to use const references to the
+ * primordials that they use.
+ * @template {Iterable} T
+ * @template {*} TReturn
+ * @template {*} TNext
+ * @param {(self: T) => IterableIterator<T>} factory
+ * @param {(...args: [] | [TNext]) => IteratorResult<T, TReturn>} next
+ * @returns {Iterator<T, TReturn, TNext>}
+ */
 const createSafeIterator = (factory, next) => {
   class SafeIterator {
     constructor(iterable) {
@@ -328,11 +341,11 @@ const createSafeIterator = (factory, next) => {
 
 primordials.SafeArrayIterator = createSafeIterator(
   primordials.ArrayPrototypeSymbolIterator,
-  primordials.ArrayIteratorPrototypeNext
+  primordials.ArrayIteratorPrototypeNext,
 );
 primordials.SafeStringIterator = createSafeIterator(
   primordials.StringPrototypeSymbolIterator,
-  primordials.StringIteratorPrototypeNext
+  primordials.StringIteratorPrototypeNext,
 );
 
 const copyProps = (src, dest) => {
@@ -392,26 +405,26 @@ primordials.SafeMap = makeSafe(
   Map,
   class SafeMap extends Map {
     constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
-  }
+  },
 );
 primordials.SafeWeakMap = makeSafe(
   WeakMap,
   class SafeWeakMap extends WeakMap {
     constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
-  }
+  },
 );
 
 primordials.SafeSet = makeSafe(
   Set,
   class SafeSet extends Set {
     constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
-  }
+  },
 );
 primordials.SafeWeakSet = makeSafe(
   WeakSet,
   class SafeWeakSet extends WeakSet {
     constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
-  }
+  },
 );
 
 primordials.SafeFinalizationRegistry = makeSafe(
@@ -419,14 +432,14 @@ primordials.SafeFinalizationRegistry = makeSafe(
   class SafeFinalizationRegistry extends FinalizationRegistry {
     // eslint-disable-next-line no-useless-constructor
     constructor(cleanupCallback) { super(cleanupCallback); }
-  }
+  },
 );
 primordials.SafeWeakRef = makeSafe(
   WeakRef,
   class SafeWeakRef extends WeakRef {
     // eslint-disable-next-line no-useless-constructor
     constructor(target) { super(target); }
-  }
+  },
 );
 
 const SafePromise = makeSafe(
@@ -434,7 +447,7 @@ const SafePromise = makeSafe(
   class SafePromise extends Promise {
     // eslint-disable-next-line no-useless-constructor
     constructor(executor) { super(executor); }
-  }
+  },
 );
 
 /**
@@ -452,7 +465,7 @@ primordials.SafePromisePrototypeFinally = (thisPromise, onFinally) =>
   new Promise((a, b) =>
     new SafePromise((a, b) => PromisePrototypeThen(thisPromise, a, b))
       .finally(onFinally)
-      .then(a, b)
+      .then(a, b),
   );
 
 primordials.AsyncIteratorPrototype =
@@ -465,8 +478,8 @@ const arrayToSafePromiseIterable = (promises, mapFn) =>
     ArrayPrototypeMap(
       promises,
       (promise, i) =>
-        new SafePromise((a, b) => PromisePrototypeThen(mapFn == null ? promise : mapFn(promise, i), a, b))
-    )
+        new SafePromise((a, b) => PromisePrototypeThen(mapFn == null ? promise : mapFn(promise, i), a, b)),
+    ),
   );
 
 /**
@@ -479,7 +492,7 @@ primordials.SafePromiseAll = (promises, mapFn) =>
   // Wrapping on a new Promise is necessary to not expose the SafePromise
   // prototype to user-land.
   new Promise((a, b) =>
-    SafePromise.all(arrayToSafePromiseIterable(promises, mapFn)).then(a, b)
+    SafePromise.all(arrayToSafePromiseIterable(promises, mapFn)).then(a, b),
   );
 
 /**
@@ -539,7 +552,7 @@ primordials.SafePromiseAllSettled = (promises, mapFn) =>
   // Wrapping on a new Promise is necessary to not expose the SafePromise
   // prototype to user-land.
   new Promise((a, b) =>
-    SafePromise.allSettled(arrayToSafePromiseIterable(promises, mapFn)).then(a, b)
+    SafePromise.allSettled(arrayToSafePromiseIterable(promises, mapFn)).then(a, b),
   );
 
 /**
@@ -551,13 +564,7 @@ primordials.SafePromiseAllSettled = (promises, mapFn) =>
  * @returns {Promise<void>}
  */
 primordials.SafePromiseAllSettledReturnVoid = async (promises, mapFn) => {
-  for (let i = 0; i < promises.length; i++) {
-    try {
-      await (mapFn != null ? mapFn(promises[i], i) : promises[i]);
-    } catch {
-      // In all settled, we can ignore errors.
-    }
-  }
+  await primordials.SafePromiseAllSettled(promises, mapFn);
 };
 
 /**
@@ -570,7 +577,7 @@ primordials.SafePromiseAny = (promises, mapFn) =>
   // Wrapping on a new Promise is necessary to not expose the SafePromise
   // prototype to user-land.
   new Promise((a, b) =>
-    SafePromise.any(arrayToSafePromiseIterable(promises, mapFn)).then(a, b)
+    SafePromise.any(arrayToSafePromiseIterable(promises, mapFn)).then(a, b),
   );
 
 /**
@@ -583,7 +590,7 @@ primordials.SafePromiseRace = (promises, mapFn) =>
   // Wrapping on a new Promise is necessary to not expose the SafePromise
   // prototype to user-land.
   new Promise((a, b) =>
-    SafePromise.race(arrayToSafePromiseIterable(promises, mapFn)).then(a, b)
+    SafePromise.race(arrayToSafePromiseIterable(promises, mapFn)).then(a, b),
   );
 
 
@@ -615,6 +622,10 @@ class RegExpLikeForStringSplitting {
 }
 ObjectSetPrototypeOf(RegExpLikeForStringSplitting.prototype, null);
 
+/**
+ * @param {RegExp} pattern
+ * @returns {RegExp}
+ */
 primordials.hardenRegExp = function hardenRegExp(pattern) {
   ObjectDefineProperties(pattern, {
     [SymbolMatch]: {
@@ -647,7 +658,7 @@ primordials.hardenRegExp = function hardenRegExp(pattern) {
       configurable: true,
       value: {
         [SymbolSpecies]: RegExpLikeForStringSplitting,
-      }
+      },
     },
     dotAll: {
       __proto__: null,
@@ -704,6 +715,11 @@ primordials.hardenRegExp = function hardenRegExp(pattern) {
 };
 
 
+/**
+ * @param {string} str
+ * @param {RegExp} regexp
+ * @returns {number}
+ */
 primordials.SafeStringPrototypeSearch = (str, regexp) => {
   regexp.lastIndex = 0;
   const match = RegExpPrototypeExec(regexp, str);

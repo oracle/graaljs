@@ -52,7 +52,7 @@ const { ClientRequest } = require('_http_client');
 let debug = require('internal/util/debuglog').debuglog('https', (fn) => {
   debug = fn;
 });
-const { URL, urlToHttpOptions, searchParamsSymbol } = require('internal/url');
+const { URL, urlToHttpOptions, isURL } = require('internal/url');
 
 function Server(opts, requestListener) {
   if (!(this instanceof Server)) return new Server(opts, requestListener);
@@ -142,7 +142,7 @@ function createConnection(port, host, options) {
       debug('reuse session for %j', options._agentKey);
       options = {
         session,
-        ...options
+        ...options,
       };
     }
   }
@@ -193,7 +193,7 @@ function Agent(options) {
 
   this._sessionCache = {
     map: {},
-    list: []
+    list: [],
   };
 }
 ObjectSetPrototypeOf(Agent.prototype, HttpAgent.prototype);
@@ -344,9 +344,7 @@ function request(...args) {
   if (typeof args[0] === 'string') {
     const urlStr = ArrayPrototypeShift(args);
     options = urlToHttpOptions(new URL(urlStr));
-  } else if (args[0] && args[0][searchParamsSymbol] &&
-             args[0][searchParamsSymbol][searchParamsSymbol]) {
-    // url.URL instance
+  } else if (isURL(args[0])) {
     options = urlToHttpOptions(ArrayPrototypeShift(args));
   }
 
@@ -402,5 +400,5 @@ module.exports = {
   Server,
   createServer,
   get,
-  request
+  request,
 };

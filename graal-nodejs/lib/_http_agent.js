@@ -244,7 +244,7 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
       __proto__: null,
       host: options,
       port,
-      localAddress
+      localAddress,
     };
   }
 
@@ -395,7 +395,7 @@ function installListeners(agent, s, options) {
     // TODO(ronag): Always destroy, even if not in free list.
     const sockets = agent.freeSockets;
     if (ArrayPrototypeSome(ObjectKeys(sockets), (name) =>
-      ArrayPrototypeIncludes(sockets[name], s)
+      ArrayPrototypeIncludes(sockets[name], s),
     )) {
       return s.destroy();
     }
@@ -533,5 +533,5 @@ function asyncResetHandle(socket) {
 
 module.exports = {
   Agent,
-  globalAgent: new Agent()
+  globalAgent: new Agent(),
 };
