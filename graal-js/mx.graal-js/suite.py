@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "ce7e2791bb11eee493e6c332efe73f589e289e5f",
+           "version" : "c852ac898d74b897a4f4b875631ed0b280dc88ab",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
@@ -423,6 +423,18 @@ suite = {
       "testProject" : True,
     },
 
+    "com.oracle.truffle.js.isolate": {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "truffle:TRUFFLE_API",
+      ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "spotbugs" : "true",
+      "javaCompliance" : "17+",
+      "checkstyle" : "com.oracle.truffle.js",
+      "workingSets" : "Truffle,JavaScript",
+    },
   },
 
   "distributions" : {
