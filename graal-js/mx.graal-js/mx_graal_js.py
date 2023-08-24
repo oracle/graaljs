@@ -31,6 +31,7 @@ from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
 import mx, mx_sdk, mx_urlrewrites
+import mx_truffle
 from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
 
 import mx_unittest
@@ -133,7 +134,7 @@ def _graal_js_gate_runner(args, tasks):
 
     with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck, GraalJsDefaultTags.coverage], report=True) as t:
         if t:
-            import mx_gate, mx_truffle
+            import mx_gate
             jsonResultsFile = tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz').name
             try:
                 mx_truffle._tck(['--json-results=' + jsonResultsFile])
@@ -396,6 +397,16 @@ def run_javascript_basictests(js_binary):
 
     return mx.run([js_binary, '--js.intl-402'] + testfiles, nonZeroIsFatal=True)
 
+
+def mx_register_dynamic_suite_constituents(register_project, register_distribution):
+    if register_distribution:
+        layout_dist = mx.distribution('sdk:JS_ISOLATE_LAYOUT', fatalIfMissing=False)
+        if layout_dist:
+            language_dist = [d for d in _suite.dists if d.name == 'GRAALJS'][0]
+            resource_project = [p for p in _suite.projects if p.name == 'com.oracle.truffle.js.isolate'][0]
+            mx_truffle.register_polyglot_isolate_distributions(register_distribution, 'js', language_dist, layout_dist, resource_project)
+
+
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.js',
@@ -435,6 +446,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
             ] if not mx.is_windows() else [],
             language='js',
+            isolate_library_layout_distribution='JS_ISOLATE_LAYOUT'
         )
     ],
     boot_jars=[],
