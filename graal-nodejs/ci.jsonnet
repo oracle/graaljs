@@ -29,10 +29,9 @@ local ci = import '../ci.jsonnet';
 
   local build = {
     run+: [
-      ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac'], // build only if no artifact is being used
-    ] + (if 'build_standalones' in self && self.build_standalones then [
-      ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac', '--dependencies', 'GRAALVM_STANDALONES'],
-    ] else []),
+      // build only if no artifact is being used to avoid rebuilding
+      ['[', '${ARTIFACT_NAME}', ']', '||', 'mx', 'build', '--force-javac', '--dependencies', std.join(',', self.build_dependencies)],
+    ],
   },
 
   local defaultGateTags = gateTags('all') + {
@@ -55,6 +54,8 @@ local ci = import '../ci.jsonnet';
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=native']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
+      ['${STANDALONE_HOME}/bin/npm', '--prefix', 'test/graal', 'install'],
+      ['${STANDALONE_HOME}/bin/npm', '--prefix', 'test/graal', 'test'],
     ] else []),
   },
 
