@@ -14,6 +14,7 @@ const {
   emitInvalidHostnameWarning,
   getDefaultVerbatim,
   errorCodes: dnsErrorCodes,
+  getDefaultResultOrder,
   setDefaultResultOrder,
   setDefaultResolver,
 } = require('internal/dns/utils');
@@ -52,7 +53,7 @@ const {
   getnameinfo,
   GetAddrInfoReqWrap,
   GetNameInfoReqWrap,
-  QueryReqWrap
+  QueryReqWrap,
 } = internalBinding('cares_wrap');
 const {
   ERR_INVALID_ARG_TYPE,
@@ -103,7 +104,7 @@ function onlookupall(err, addresses) {
 
     addresses[i] = {
       address,
-      family: family || isIP(addresses[i])
+      family: family || isIP(addresses[i]),
     };
   }
 
@@ -226,8 +227,8 @@ function createLookupServicePromise(hostname, port) {
         name: 'lookupService',
         detail: {
           host: hostname,
-          port
-        }
+          port,
+        },
       });
     }
   });
@@ -283,8 +284,8 @@ function createResolverPromise(resolver, bindingName, hostname, ttl) {
         name: bindingName,
         detail: {
           host: hostname,
-          ttl
-        }
+          ttl,
+        },
       });
     }
   });
@@ -335,6 +336,7 @@ module.exports = {
   lookup,
   lookupService,
   Resolver,
+  getDefaultResultOrder,
   setDefaultResultOrder,
   setServers: defaultResolverSetServers,
 

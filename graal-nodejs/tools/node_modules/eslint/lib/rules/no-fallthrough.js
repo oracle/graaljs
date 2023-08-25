@@ -5,10 +5,26 @@
 "use strict";
 
 //------------------------------------------------------------------------------
+// Requirements
+//------------------------------------------------------------------------------
+
+const { directivesPattern } = require("../shared/directives");
+
+//------------------------------------------------------------------------------
 // Helpers
 //------------------------------------------------------------------------------
 
 const DEFAULT_FALLTHROUGH_COMMENT = /falls?\s?through/iu;
+
+/**
+ * Checks whether or not a given comment string is really a fallthrough comment and not an ESLint directive.
+ * @param {string} comment The comment string to check.
+ * @param {RegExp} fallthroughCommentPattern The regular expression used for checking for fallthrough comments.
+ * @returns {boolean} `true` if the comment string is truly a fallthrough comment.
+ */
+function isFallThroughComment(comment, fallthroughCommentPattern) {
+    return fallthroughCommentPattern.test(comment) && !directivesPattern.test(comment.trim());
+}
 
 /**
  * Checks whether or not a given case has a fallthrough comment.
@@ -19,20 +35,20 @@ const DEFAULT_FALLTHROUGH_COMMENT = /falls?\s?through/iu;
  * @returns {boolean} `true` if the case has a valid fallthrough comment.
  */
 function hasFallthroughComment(caseWhichFallsThrough, subsequentCase, context, fallthroughCommentPattern) {
-    const sourceCode = context.getSourceCode();
+    const sourceCode = context.sourceCode;
 
     if (caseWhichFallsThrough.consequent.length === 1 && caseWhichFallsThrough.consequent[0].type === "BlockStatement") {
         const trailingCloseBrace = sourceCode.getLastToken(caseWhichFallsThrough.consequent[0]);
         const commentInBlock = sourceCode.getCommentsBefore(trailingCloseBrace).pop();
 
-        if (commentInBlock && fallthroughCommentPattern.test(commentInBlock.value)) {
+        if (commentInBlock && isFallThroughComment(commentInBlock.value, fallthroughCommentPattern)) {
             return true;
         }
     }
 
     const comment = sourceCode.getCommentsBefore(subsequentCase).pop();
 
-    return Boolean(comment && fallthroughCommentPattern.test(comment.value));
+    return Boolean(comment && isFallThroughComment(comment.value, fallthroughCommentPattern));
 }
 
 /**
@@ -66,7 +82,7 @@ module.exports = {
         docs: {
             description: "Disallow fallthrough of `case` statements",
             recommended: true,
-            url: "https://eslint.org/docs/rules/no-fallthrough"
+            url: "https://eslint.org/docs/latest/rules/no-fallthrough"
         },
 
         schema: [
@@ -94,7 +110,7 @@ module.exports = {
     create(context) {
         const options = context.options[0] || {};
         let currentCodePath = null;
-        const sourceCode = context.getSourceCode();
+        const sourceCode = context.sourceCode;
         const allowEmptyCase = options.allowEmptyCase || false;
 
         /*

@@ -1,4 +1,4 @@
-/* auto-generated on 2023-01-18 12:43:26 -0500. Do not edit! */
+/* auto-generated on 2023-05-22 21:46:48 -0400. Do not edit! */
 // dofile: invoked with prepath=/Users/dlemire/CVS/github/simdutf/include, filename=simdutf.h
 /* begin file include/simdutf.h */
 #ifndef SIMDUTF_H
@@ -144,6 +144,8 @@
 // POWER processors. Please see https://github.com/lemire/simdutf/issues/51
 #elif defined(__s390__)
 // s390 IBM system. Big endian.
+#elif (defined(__riscv) || defined(__riscv__)) && __riscv_xlen == 64
+// RISC-V 64-bit
 #else
 // The simdutf library is designed
 // for 64-bit processors and it seems that you are not
@@ -538,7 +540,7 @@ enum error_code {
   HEADER_BITS,  // Any byte must have fewer than 5 header bits.
   TOO_SHORT,    // The leading byte must be followed by N-1 continuation bytes, where N is the UTF-8 character length
                 // This is also the error when the input is truncated.
-  TOO_LONG,     // The leading byte must not be a continuation byte.
+  TOO_LONG,     // We either have too many consecutive continuation bytes or the string starts with a continuation byte.
   OVERLONG,     // The decoded character must be above U+7F for two-byte characters, U+7FF for three-byte characters,
                 // and U+FFFF for four-byte characters.
   TOO_LARGE,    // The decoded character must be less than or equal to U+10FFFF OR less than or equal than U+7F for ASCII.
@@ -572,7 +574,7 @@ SIMDUTF_DISABLE_UNDESIRED_WARNINGS
 #define SIMDUTF_SIMDUTF_VERSION_H
 
 /** The version of simdutf being used (major.minor.revision) */
-#define SIMDUTF_VERSION "3.1.0"
+#define SIMDUTF_VERSION "3.2.12"
 
 namespace simdutf {
 enum {
@@ -583,11 +585,11 @@ enum {
   /**
    * The minor version (major.MINOR.revision) of simdutf being used.
    */
-  SIMDUTF_VERSION_MINOR = 1,
+  SIMDUTF_VERSION_MINOR = 2,
   /**
    * The revision (major.minor.REVISION) of simdutf being used.
    */
-  SIMDUTF_VERSION_REVISION = 0
+  SIMDUTF_VERSION_REVISION = 12
 };
 } // namespace simdutf
 
@@ -690,21 +692,11 @@ static inline uint32_t detect_supported_architectures() {
   return instruction_set::ALTIVEC;
 }
 
-#elif defined(__arm__) || defined(__aarch64__) // incl. armel, armhf, arm64
-
-#if defined(__ARM_NEON)
+#elif defined(__aarch64__) || defined(_M_ARM64)
 
 static inline uint32_t detect_supported_architectures() {
   return instruction_set::NEON;
 }
-
-#else // ARM without NEON
-
-static inline uint32_t detect_supported_architectures() {
-  return instruction_set::DEFAULT;
-}
-
-#endif
 
 #elif defined(__x86_64__) || defined(_M_AMD64) // x64
 
@@ -716,6 +708,7 @@ namespace cpuid_bit {
     // EAX = 0x01
     constexpr uint32_t pclmulqdq = uint32_t(1) << 1; ///< @private bit  1 of ECX for EAX=0x1
     constexpr uint32_t sse42 = uint32_t(1) << 20;    ///< @private bit 20 of ECX for EAX=0x1
+    constexpr uint32_t osxsave = (uint32_t(1) << 26) | (uint32_t(1) << 27); ///< @private bits 26+27 of ECX for EAX=0x1
 
     // EAX = 0x7f (Structured Extended Feature Flags), ECX = 0x00 (Sub-leaf)
     // See: "Table 3-8. Information Returned by CPUID Instruction"
@@ -741,6 +734,10 @@ namespace cpuid_bit {
     namespace edx {
       constexpr uint32_t avx512vp2intersect = uint32_t(1) << 8;
     }
+    namespace xcr0_bit {
+     constexpr uint64_t avx256_saved = uint64_t(1) << 2; ///< @private bit 2 = AVX
+     constexpr uint64_t avx512_saved = uint64_t(7) << 5; ///< @private bits 5,6,7 = opmask, ZMM_hi256, hi16_ZMM
+   }
   }
 }
 
@@ -750,7 +747,7 @@ static inline void cpuid(uint32_t *eax, uint32_t *ebx, uint32_t *ecx,
                          uint32_t *edx) {
 #if defined(_MSC_VER)
   int cpu_info[4];
-  __cpuid(cpu_info, *eax);
+  __cpuidex(cpu_info, *eax, *ecx);
   *eax = cpu_info[0];
   *ebx = cpu_info[1];
   *ecx = cpu_info[2];
@@ -767,6 +764,16 @@ static inline void cpuid(uint32_t *eax, uint32_t *ebx, uint32_t *ecx,
   *edx = d;
 #endif
 }
+
+static inline uint64_t xgetbv() {
+ #if defined(_MSC_VER)
+   return _xgetbv(0);
+ #else
+   uint32_t xcr0_lo, xcr0_hi;
+   asm volatile("xgetbv\n\t" : "=a" (xcr0_lo), "=d" (xcr0_hi) : "c" (0));
+   return xcr0_lo | ((uint64_t)xcr0_hi << 32);
+ #endif
+ }
 
 static inline uint32_t detect_supported_architectures() {
   uint32_t eax;
@@ -787,6 +794,16 @@ static inline uint32_t detect_supported_architectures() {
     host_isa |= instruction_set::PCLMULQDQ;
   }
 
+  if ((ecx & cpuid_bit::osxsave) != cpuid_bit::osxsave) {
+    return host_isa;
+  }
+
+  // xgetbv for checking if the OS saves registers
+  uint64_t xcr0 = xgetbv();
+
+  if ((xcr0 & cpuid_bit::xcr0_bit::avx256_saved) == 0) {
+    return host_isa;
+  }
   // ECX for EAX=0x7
   eax = 0x7;
   ecx = 0x0; // Sub-leaf = 0
@@ -799,6 +816,9 @@ static inline uint32_t detect_supported_architectures() {
   }
   if (ebx & cpuid_bit::ebx::bmi2) {
     host_isa |= instruction_set::BMI2;
+  }
+  if (!((xcr0 & cpuid_bit::xcr0_bit::avx512_saved) == cpuid_bit::xcr0_bit::avx512_saved)) {
+    return host_isa;
   }
   if (ebx & cpuid_bit::ebx::avx512f) {
     host_isa |= instruction_set::AVX512F;
@@ -822,7 +842,7 @@ static inline uint32_t detect_supported_architectures() {
 }
 #else // fallback
 
-
+// includes 32-bit ARM.
 static inline uint32_t detect_supported_architectures() {
   return instruction_set::DEFAULT;
 }
@@ -2724,7 +2744,7 @@ class detect_best_supported_implementation_on_first_use;
 } // namespace internal
 
 /**
- * The list of available implementations compiled into simdjson.
+ * The list of available implementations compiled into simdutf.
  */
 extern SIMDUTF_DLLIMPORTEXPORT const internal::available_implementation_list& get_available_implementations();
 

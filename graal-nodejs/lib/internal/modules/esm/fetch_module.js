@@ -136,7 +136,7 @@ function fetchWithRedirects(parsed) {
           throw new ERR_NETWORK_IMPORT_DISALLOWED(
             res.headers.location,
             parsed.href,
-            'cannot redirect to non-network location'
+            'cannot redirect to non-network location',
           );
         }
         const entry = await fetchWithRedirects(location);
@@ -161,7 +161,7 @@ function fetchWithRedirects(parsed) {
       if (!contentType) {
         throw new ERR_NETWORK_IMPORT_BAD_RESPONSE(
           parsed.href,
-          "the 'Content-Type' header is required"
+          "the 'Content-Type' header is required",
         );
       }
       /**
@@ -235,7 +235,6 @@ async function isLocalAddress(hostname) {
  *
  * In cases where the request & response have already settled, this returns the
  * cache value synchronously.
- *
  * @param {URL} parsed
  * @param {ESModuleContext} context
  * @returns {ReturnType<typeof fetchWithRedirects>}
@@ -252,7 +251,7 @@ function fetchModule(parsed, { parentURL }) {
         throw new ERR_NETWORK_IMPORT_DISALLOWED(
           href,
           parentURL,
-          'http can only be used to load local resources (use https instead).'
+          'http can only be used to load local resources (use https instead).',
         );
       }
       return fetchWithRedirects(parsed);

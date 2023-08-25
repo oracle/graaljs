@@ -1,6 +1,5 @@
 'use strict';
 
-require('../common');
 const { WPTRunner } = require('../common/wpt');
 
 const runner = new WPTRunner('url');
@@ -14,4 +13,7 @@ runner.setScriptModifier((obj) => {
   }
 });
 runner.pretendGlobalThisAs('Window');
+runner.setInitScript(`
+  globalThis.location ||= {};
+`);
 runner.runJsTests();

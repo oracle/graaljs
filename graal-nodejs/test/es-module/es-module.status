@@ -19,3 +19,7 @@ test-esm-loader-side-effect          : FAIL
 
 # WebAssembly is not supported
 test-esm-wasm                        : FAIL
+
+[$system==linux || $system==freebsd]
+# https://github.com/nodejs/node/issues/47836
+test-esm-loader-http-imports: PASS,FLAKY

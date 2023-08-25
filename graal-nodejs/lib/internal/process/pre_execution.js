@@ -20,6 +20,7 @@ const { reconnectZeroFillToggle } = require('internal/buffer');
 const {
   defineOperation,
   exposeInterface,
+  setupCoverageHooks,
 } = require('internal/util');
 
 const {
@@ -36,7 +37,7 @@ function prepareMainThreadExecution(expandArgv1 = false, initializeModules = tru
   prepareExecution({
     expandArgv1,
     initializeModules,
-    isMainThread: true
+    isMainThread: true,
   });
 }
 
@@ -44,7 +45,7 @@ function prepareWorkerThreadExecution() {
   prepareExecution({
     expandArgv1: false,
     initializeModules: false,  // Will need to initialize it after policy setup
-    isMainThread: false
+    isMainThread: false,
   });
 }
 
@@ -63,21 +64,12 @@ function prepareExecution(options) {
   setupFetch();
   setupWebCrypto();
   setupCustomEvent();
-
-  // Resolve the coverage directory to an absolute path, and
-  // overwrite process.env so that the original path gets passed
-  // to child processes even when they switch cwd.
-  if (process.env.NODE_V8_COVERAGE) {
-    process.env.NODE_V8_COVERAGE =
-      setupCoverageHooks(process.env.NODE_V8_COVERAGE);
-  }
-
+  setupCodeCoverage();
   setupDebugEnv();
   // Process initial diagnostic reporting configuration, if present.
   initializeReport();
   initializeSourceMapsHandlers();
   initializeDeprecations();
-  initializeWASI();
   require('internal/dns/utils').initializeDns();
 
   if (isMainThread) {
@@ -142,7 +134,7 @@ function patchProcessObject(expandArgv1) {
     enumerable: true,
     // Only set it to true during snapshot building.
     configurable: getOptionValue('--build-snapshot'),
-    value: process.argv[0]
+    value: process.argv[0],
   });
 
   process.exitCode = undefined;
@@ -198,7 +190,7 @@ function addReadOnlyProcessAlias(name, option, enumerable = true) {
       writable: false,
       configurable: true,
       enumerable,
-      value
+      value,
     });
   }
 }
@@ -206,7 +198,7 @@ function addReadOnlyProcessAlias(name, option, enumerable = true) {
 function setupWarningHandler() {
   const {
     onWarning,
-    resetForSerialization
+    resetForSerialization,
   } = require('internal/process/warning');
   if (getOptionValue('--warnings') &&
     process.env.NODE_NO_WARNINGS !== '1') {
@@ -255,7 +247,7 @@ function setupFetch() {
       },
       set(value) {
         exposeInterface(globalThis, name, value);
-      }
+      },
     };
   }
 
@@ -288,13 +280,26 @@ function setupWebCrypto() {
                          get crypto() {
                            webcrypto ??= require('internal/crypto/webcrypto');
                            return webcrypto.crypto;
-                         }
+                         },
                        }, 'crypto') });
   if (internalBinding('config').hasOpenSSL) {
     webcrypto ??= require('internal/crypto/webcrypto');
     exposeInterface(globalThis, 'Crypto', webcrypto.Crypto);
     exposeInterface(globalThis, 'CryptoKey', webcrypto.CryptoKey);
     exposeInterface(globalThis, 'SubtleCrypto', webcrypto.SubtleCrypto);
+  }
+}
+
+function setupCodeCoverage() {
+  // Resolve the coverage directory to an absolute path, and
+  // overwrite process.env so that the original path gets passed
+  // to child processes even when they switch cwd. Don't do anything if the
+  // --experimental-test-coverage flag is present, as the test runner will
+  // handle coverage.
+  if (process.env.NODE_V8_COVERAGE &&
+      !getOptionValue('--experimental-test-coverage')) {
+    process.env.NODE_V8_COVERAGE =
+      setupCoverageHooks(process.env.NODE_V8_COVERAGE);
   }
 }
 
@@ -307,27 +312,6 @@ function setupCustomEvent() {
   }
   const { CustomEvent } = require('internal/event_target');
   exposeInterface(globalThis, 'CustomEvent', CustomEvent);
-}
-
-// Setup User-facing NODE_V8_COVERAGE environment variable that writes
-// ScriptCoverage to a specified file.
-function setupCoverageHooks(dir) {
-  const cwd = require('internal/process/execution').tryGetCwd();
-  const { resolve } = require('path');
-  const coverageDirectory = resolve(cwd, dir);
-  const { sourceMapCacheToObject } =
-    require('internal/source_map/source_map_cache');
-
-  if (process.features.inspector) {
-    internalBinding('profiler').setCoverageDirectory(coverageDirectory);
-    internalBinding('profiler').setSourceMapCacheGetter(sourceMapCacheToObject);
-  } else {
-    process.emitWarning('The inspector is disabled, ' +
-                        'coverage could not be collected',
-                        'Warning');
-    return '';
-  }
-  return coverageDirectory;
 }
 
 function setupStacktracePrinterOnSigint() {
@@ -348,7 +332,7 @@ function initializeReport() {
     configurable: true,
     get() {
       return report;
-    }
+    },
   });
 }
 
@@ -409,7 +393,7 @@ function setupInspectorHooks() {
   if (internalBinding('config').hasInspector) {
     const {
       enable,
-      disable
+      disable,
     } = require('internal/inspector_async_hook');
     internalBinding('inspector').registerAsyncHook(enable, disable);
   }
@@ -464,7 +448,7 @@ function initializeDeprecations() {
       writable: false,
       enumerable: true,
       configurable: true,
-      value: noBrowserGlobals
+      value: noBrowserGlobals,
     });
   }
 
@@ -535,7 +519,7 @@ function readPolicyFromDisk() {
       for (let i = 0; i < integrityEntries.length; i++) {
         const {
           algorithm,
-          value: expected
+          value: expected,
         } = integrityEntries[i];
         const hash = createHash(algorithm);
         hash.update(src);
@@ -552,16 +536,9 @@ function readPolicyFromDisk() {
       }
     }
     return {
-      manifestSrc: src, manifestURL: manifestURL.href
+      manifestSrc: src, manifestURL: manifestURL.href,
     };
   }
-}
-
-function initializeWASI() {
-  const { BuiltinModule } = require('internal/bootstrap/loaders');
-  const mod = BuiltinModule.map.get('wasi');
-  mod.canBeRequiredByUsers =
-    getOptionValue('--experimental-wasi-unstable-preview1');
 }
 
 function initializeCJSLoader() {
@@ -582,7 +559,7 @@ function initializeESMLoader() {
 
   const {
     setImportModuleDynamicallyCallback,
-    setInitializeImportMetaObjectCallback
+    setInitializeImportMetaObjectCallback,
   } = internalBinding('module_wrap');
   const esm = require('internal/process/esm_loader');
   // Setup per-isolate callbacks that locate data or callbacks that we keep
@@ -625,7 +602,7 @@ function loadPreloadModules() {
   if (preloadModules && preloadModules.length > 0) {
     const {
       Module: {
-        _preloadModules
+        _preloadModules,
       },
     } = require('internal/modules/cjs/loader');
     _preloadModules(preloadModules);
@@ -640,5 +617,5 @@ module.exports = {
   setupUserModules,
   prepareMainThreadExecution,
   prepareWorkerThreadExecution,
-  markBootstrapComplete
+  markBootstrapComplete,
 };

@@ -264,7 +264,7 @@ class SourceMap {
       ArrayPrototypePush(
         this.#mappings,
         [lineNumber, columnNumber, sourceURL, sourceLineNumber,
-         sourceColumnNumber, name]
+         sourceColumnNumber, name],
       );
     }
   }
@@ -342,5 +342,5 @@ function compareSourceMapEntry(entry1, entry2) {
 }
 
 module.exports = {
-  SourceMap
+  SourceMap,
 };

@@ -1591,3 +1591,46 @@ const tsp = require('timers/promises');
     assert.strictEqual(writable.endCount, 1);
   }));
 }
+
+{
+  const readable = new Readable({
+    read() {}
+  });
+  readable.on('end', common.mustCall(() => {
+    pipeline(readable, new PassThrough(), common.mustSucceed());
+  }));
+  readable.push(null);
+  readable.read();
+}
+
+{
+  const dup = new Duplex({
+    read() {},
+    write(chunk, enc, cb) {
+      cb();
+    }
+  });
+  dup.on('end', common.mustCall(() => {
+    pipeline(dup, new PassThrough(), common.mustSucceed());
+  }));
+  dup.push(null);
+  dup.read();
+}
+
+{
+  let res = '';
+  const writable = new Writable({
+    write(chunk, enc, cb) {
+      res += chunk;
+      cb();
+    }
+  });
+  pipelinep(async function*() {
+    yield 'hello';
+    await Promise.resolve();
+    yield 'world';
+  }, writable, { end: false }).then(common.mustCall(() => {
+    assert.strictEqual(res, 'helloworld');
+    assert.strictEqual(writable.closed, false);
+  }));
+}

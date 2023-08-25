@@ -26,7 +26,7 @@ const {
 
 const {
   copyArrayBuffer,
-  detachArrayBuffer
+  detachArrayBuffer,
 } = internalBinding('buffer');
 
 const {
@@ -91,7 +91,7 @@ function customInspect(depth, options, name, data) {
 
   const opts = {
     ...options,
-    depth: options.depth == null ? null : options.depth - 1
+    depth: options.depth == null ? null : options.depth - 1,
   };
 
   return `${name} ${inspect(data, opts)}`;
@@ -118,7 +118,7 @@ function cloneAsUint8Array(view) {
   const byteOffset = ArrayBufferViewGetByteOffset(view);
   const byteLength = ArrayBufferViewGetByteLength(view);
   return new Uint8Array(
-    ArrayBufferPrototypeSlice(buffer, byteOffset, byteOffset + byteLength)
+    ArrayBufferPrototypeSlice(buffer, byteOffset, byteOffset + byteLength),
   );
 }
 

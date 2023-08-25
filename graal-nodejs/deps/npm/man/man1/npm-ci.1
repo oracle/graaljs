@@ -1,4 +1,4 @@
-.TH "NPM-CI" "1" "January 2023" "" ""
+.TH "NPM-CI" "1" "May 2023" "" ""
 .SH "NAME"
 \fBnpm-ci\fR - Clean install a project
 .SS "Synopsis"
@@ -66,59 +66,16 @@ cache:
 .fi
 .RE
 .SS "Configuration"
-.SS "\fBsave\fR"
-.RS 0
-.IP \(bu 4
-Default: \fBtrue\fR unless when using \fBnpm update\fR where it defaults to \fBfalse\fR
-.IP \(bu 4
-Type: Boolean
-.RE 0
-
-.P
-Save installed packages to a \fBpackage.json\fR file as dependencies.
-.P
-When used with the \fBnpm rm\fR command, removes the dependency from \fBpackage.json\fR.
-.P
-Will also prevent writing to \fBpackage-lock.json\fR if set to \fBfalse\fR.
-.SS "\fBsave-exact\fR"
-.RS 0
-.IP \(bu 4
-Default: false
-.IP \(bu 4
-Type: Boolean
-.RE 0
-
-.P
-Dependencies saved to package.json will be configured with an exact version rather than using npm's default semver range operator.
-.SS "\fBglobal\fR"
-.RS 0
-.IP \(bu 4
-Default: false
-.IP \(bu 4
-Type: Boolean
-.RE 0
-
-.P
-Operates in "global" mode, so that packages are installed into the \fBprefix\fR folder instead of the current working directory. See npm help folders for more on the differences in behavior.
-.RS 0
-.IP \(bu 4
-packages are installed into the \fB{prefix}/lib/node_modules\fR folder, instead of the current working directory.
-.IP \(bu 4
-bin files are linked to \fB{prefix}/bin\fR
-.IP \(bu 4
-man pages are linked to \fB{prefix}/share/man\fR
-.RE 0
-
 .SS "\fBinstall-strategy\fR"
 .RS 0
 .IP \(bu 4
 Default: "hoisted"
 .IP \(bu 4
-Type: "hoisted", "nested", or "shallow"
+Type: "hoisted", "nested", "shallow", or "linked"
 .RE 0
 
 .P
-Sets the strategy for installing packages in node_modules. hoisted (default): Install non-duplicated in top-level, and duplicated as necessary within directory structure. nested: (formerly --legacy-bundling) install in place, no hoisting. shallow (formerly --global-style) only install direct deps at top-level. linked: (coming soon) install in node_modules/.store, link in place, unhoisted.
+Sets the strategy for installing packages in node_modules. hoisted (default): Install non-duplicated in top-level, and duplicated as necessary within directory structure. nested: (formerly --legacy-bundling) install in place, no hoisting. shallow (formerly --global-style) only install direct deps at top-level. linked: (experimental) install in node_modules/.store, link in place, unhoisted.
 .SS "\fBlegacy-bundling\fR"
 .RS 0
 .IP \(bu 4
@@ -314,7 +271,7 @@ This value is not exported to the environment for child processes.
 .SS "\fBinstall-links\fR"
 .RS 0
 .IP \(bu 4
-Default: true
+Default: false
 .IP \(bu 4
 Type: Boolean
 .RE 0

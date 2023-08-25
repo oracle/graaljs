@@ -47,7 +47,7 @@ class Tracing {
       if (enabledTracingObjects.size > kMaxTracingCount) {
         process.emitWarning(
           'Possible trace_events memory leak detected. There are more than ' +
-          `${kMaxTracingCount} enabled Tracing objects.`
+          `${kMaxTracingCount} enabled Tracing objects.`,
         );
       }
     }
@@ -75,7 +75,7 @@ class Tracing {
 
     const obj = {
       enabled: this.enabled,
-      categories: this.categories
+      categories: this.categories,
     };
     return `Tracing ${format(obj)}`;
   }
@@ -93,5 +93,5 @@ function createTracing(options) {
 
 module.exports = {
   createTracing,
-  getEnabledCategories
+  getEnabledCategories,
 };

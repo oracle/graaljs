@@ -59,7 +59,7 @@ else
   exit 1
 fi
 
-licenseText="$(cat "${rootdir}/deps/uv/LICENSE")"
+licenseText="$(cat "${rootdir}/deps/uv/LICENSE" "${rootdir}/deps/uv/LICENSE-extra")"
 addlicense "libuv" "deps/uv" "$licenseText"
 licenseText="$(cat deps/llhttp/LICENSE-MIT)"
 addlicense "llhttp" "deps/llhttp" "$licenseText"
@@ -81,6 +81,10 @@ licenseText="$(sed -e '/The data format used by the zlib library/,$d' -e 's/^\/\
 addlicense "zlib" "deps/zlib" "$licenseText"
 licenseText="$(cat "${rootdir}/deps/simdutf/LICENSE-MIT")"
 addlicense "simdutf" "deps/simdutf" "$licenseText"
+licenseText="$(curl -sL https://raw.githubusercontent.com/ada-url/ada/HEAD/LICENSE-MIT)"
+addlicense "ada" "deps/ada" "$licenseText"
+licenseText="$(cat "${rootdir}/deps/minimatch/LICENSE")"
+addlicense "minimatch" "deps/minimatch" "$licenseText"
 
 # npm
 licenseText="$(cat "${rootdir}/deps/npm/LICENSE")"

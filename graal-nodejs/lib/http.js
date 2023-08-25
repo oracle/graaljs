@@ -35,13 +35,13 @@ const { IncomingMessage } = require('_http_incoming');
 const {
   validateHeaderName,
   validateHeaderValue,
-  OutgoingMessage
+  OutgoingMessage,
 } = require('_http_outgoing');
 const {
   _connectionListener,
   STATUS_CODES,
   Server,
-  ServerResponse
+  ServerResponse,
 } = require('_http_server');
 let maxHeaderSize;
 
@@ -53,6 +53,8 @@ let maxHeaderSize;
  *   insecureHTTPParser?: boolean;
  *   maxHeaderSize?: number;
  *   joinDuplicateHeaders?: boolean;
+ *   highWaterMark?: number;
+ *   rejectNonStandardBodyWrites?: boolean;
  *   }} [opts]
  * @param {Function} [requestListener]
  * @returns {Server}
@@ -129,7 +131,7 @@ module.exports = {
   setMaxIdleHTTPParsers(max) {
     validateInteger(max, 'max', 1);
     parsers.max = max;
-  }
+  },
 };
 
 ObjectDefineProperty(module.exports, 'maxHeaderSize', {
@@ -143,7 +145,7 @@ ObjectDefineProperty(module.exports, 'maxHeaderSize', {
     }
 
     return maxHeaderSize;
-  }
+  },
 });
 
 ObjectDefineProperty(module.exports, 'globalAgent', {
@@ -155,5 +157,5 @@ ObjectDefineProperty(module.exports, 'globalAgent', {
   },
   set(value) {
     httpAgent.globalAgent = value;
-  }
+  },
 });

@@ -48,13 +48,13 @@ const {
   isIPv4,
   isIPv6,
   normalizedArgsSymbol,
-  makeSyncWrite
+  makeSyncWrite,
 } = require('internal/net');
 const assert = require('internal/assert');
 const {
   UV_EADDRINUSE,
   UV_EINVAL,
-  UV_ENOTCONN
+  UV_ENOTCONN,
 } = internalBinding('uv');
 
 const { Buffer } = require('buffer');
@@ -63,17 +63,17 @@ const { ShutdownWrap } = internalBinding('stream_wrap');
 const {
   TCP,
   TCPConnectWrap,
-  constants: TCPConstants
+  constants: TCPConstants,
 } = internalBinding('tcp_wrap');
 const {
   Pipe,
   PipeConnectWrap,
-  constants: PipeConstants
+  constants: PipeConstants,
 } = internalBinding('pipe_wrap');
 const {
   newAsyncId,
   defaultTriggerAsyncIdScope,
-  symbols: { async_id_symbol, owner_symbol }
+  symbols: { async_id_symbol, owner_symbol },
 } = require('internal/async_hooks');
 const {
   writevGeneric,
@@ -85,7 +85,7 @@ const {
   setStreamTimeout,
   kBuffer,
   kBufferCb,
-  kBufferGen
+  kBufferGen,
 } = require('internal/stream_base_commons');
 const {
   codes: {
@@ -117,12 +117,12 @@ const {
   validateInt32,
   validateNumber,
   validatePort,
-  validateString
+  validateString,
 } = require('internal/validators');
 const kLastWriteQueueSize = Symbol('lastWriteQueueSize');
 const {
   DTRACE_NET_SERVER_CONNECTION,
-  DTRACE_NET_STREAM_END
+  DTRACE_NET_STREAM_END,
 } = require('internal/dtrace');
 
 // Lazy loaded to improve startup performance.
@@ -164,6 +164,7 @@ const {
   startPerf,
   stopPerf,
 } = require('internal/perf/observe');
+const { getDefaultHighWaterMark } = require('internal/streams/state');
 
 function getFlags(ipv6Only) {
   return ipv6Only === true ? TCPConstants.UV_TCP_IPV6ONLY : 0;
@@ -174,13 +175,13 @@ function createHandle(fd, is_server) {
   const type = guessHandleType(fd);
   if (type === 'PIPE') {
     return new Pipe(
-      is_server ? PipeConstants.SERVER : PipeConstants.SOCKET
+      is_server ? PipeConstants.SERVER : PipeConstants.SOCKET,
     );
   }
 
   if (type === 'TCP') {
     return new TCP(
-      is_server ? TCPConstants.SERVER : TCPConstants.SOCKET
+      is_server ? TCPConstants.SERVER : TCPConstants.SOCKET,
     );
   }
 
@@ -341,7 +342,7 @@ function Socket(options) {
     throw new ERR_INVALID_ARG_VALUE(
       'options.objectMode',
       options.objectMode,
-      'is not supported'
+      'is not supported',
     );
   } else if (options?.readableObjectMode || options?.writableObjectMode) {
     throw new ERR_INVALID_ARG_VALUE(
@@ -349,12 +350,12 @@ function Socket(options) {
         options.readableObjectMode ? 'readableObjectMode' : 'writableObjectMode'
       }`,
       options.readableObjectMode || options.writableObjectMode,
-      'is not supported'
+      'is not supported',
     );
   }
   if (typeof options?.keepAliveInitialDelay !== 'undefined') {
     validateNumber(
-      options?.keepAliveInitialDelay, 'options.keepAliveInitialDelay'
+      options?.keepAliveInitialDelay, 'options.keepAliveInitialDelay',
     );
 
     if (options.keepAliveInitialDelay < 0) {
@@ -428,7 +429,7 @@ function Socket(options) {
       // property.
       ObjectDefineProperty(this._handle, 'bytesWritten', {
         __proto__: null,
-        value: 0, writable: true
+        value: 0, writable: true,
       });
     }
   }
@@ -540,7 +541,7 @@ function writeAfterFIN(chunk, encoding, cb) {
 
   const er = genericNodeError(
     'This socket has been ended by the other party',
-    { code: 'EPIPE' }
+    { code: 'EPIPE' },
   );
   if (typeof cb === 'function') {
     defaultTriggerAsyncIdScope(this[async_id_symbol], process.nextTick, cb, er);
@@ -627,7 +628,7 @@ ObjectDefineProperty(Socket.prototype, '_connecting', {
   __proto__: null,
   get: function() {
     return this.connecting;
-  }
+  },
 });
 
 ObjectDefineProperty(Socket.prototype, 'pending', {
@@ -635,7 +636,7 @@ ObjectDefineProperty(Socket.prototype, 'pending', {
   get() {
     return !this._handle || this.connecting;
   },
-  configurable: true
+  configurable: true,
 });
 
 
@@ -652,7 +653,7 @@ ObjectDefineProperty(Socket.prototype, 'readyState', {
       return 'writeOnly';
     }
     return 'closed';
-  }
+  },
 });
 
 
@@ -662,14 +663,14 @@ ObjectDefineProperty(Socket.prototype, 'bufferSize', {
     if (this._handle) {
       return this.writableLength;
     }
-  }
+  },
 });
 
 ObjectDefineProperty(Socket.prototype, kUpdateTimer, {
   __proto__: null,
   get: function() {
     return this._unrefTimer;
-  }
+  },
 });
 
 
@@ -846,7 +847,7 @@ function protoGetter(name, callback) {
     __proto__: null,
     configurable: false,
     enumerable: true,
-    get: callback
+    get: callback,
   });
 }
 
@@ -1187,7 +1188,7 @@ Socket.prototype.connect = function(...args) {
   if (pipe) {
     validateString(path, 'options.path');
     defaultTriggerAsyncIdScope(
-      this[async_id_symbol], internalConnect, this, path
+      this[async_id_symbol], internalConnect, this, path,
     );
   } else {
     lookupAndConnect(this, options);
@@ -1250,7 +1251,7 @@ function lookupAndConnect(self, options) {
         defaultTriggerAsyncIdScope(
           self[async_id_symbol],
           internalConnect,
-          self, host, port, addressType, localAddress, localPort
+          self, host, port, addressType, localAddress, localPort,
         );
     });
     return;
@@ -1262,7 +1263,7 @@ function lookupAndConnect(self, options) {
   if (dns === undefined) dns = require('dns');
   const dnsopts = {
     family: socketToDnsFamily(options.family),
-    hints: options.hints || 0
+    hints: options.hints || 0,
   };
 
   if (!isWindows &&
@@ -1290,7 +1291,7 @@ function lookupAndConnect(self, options) {
       dnsopts,
       port,
       localPort,
-      autoSelectFamilyAttemptTimeout
+      autoSelectFamilyAttemptTimeout,
     );
 
     return;
@@ -1323,7 +1324,7 @@ function lookupAndConnect(self, options) {
         defaultTriggerAsyncIdScope(
           self[async_id_symbol],
           internalConnect,
-          self, ip, port, addressType, localAddress, localPort
+          self, ip, port, addressType, localAddress, localPort,
         );
       }
     });
@@ -1553,7 +1554,7 @@ function afterConnectMultiple(context, status, handle, req, readable, writable) 
     startPerf(
       self,
       kPerfHooksNetConnectContext,
-      { type: 'net', name: 'connect', detail: { host: req.address, port: req.port } }
+      { type: 'net', name: 'connect', detail: { host: req.address, port: req.port } },
     );
   }
 
@@ -1603,11 +1604,20 @@ function Server(options, connectionListener) {
   }
   if (typeof options.keepAliveInitialDelay !== 'undefined') {
     validateNumber(
-      options.keepAliveInitialDelay, 'options.keepAliveInitialDelay'
+      options.keepAliveInitialDelay, 'options.keepAliveInitialDelay',
     );
 
     if (options.keepAliveInitialDelay < 0) {
       options.keepAliveInitialDelay = 0;
+    }
+  }
+  if (typeof options.highWaterMark !== 'undefined') {
+    validateNumber(
+      options.highWaterMark, 'options.highWaterMark',
+    );
+
+    if (options.highWaterMark < 0) {
+      options.highWaterMark = getDefaultHighWaterMark();
     }
   }
 
@@ -1624,6 +1634,7 @@ function Server(options, connectionListener) {
   this.noDelay = Boolean(options.noDelay);
   this.keepAlive = Boolean(options.keepAlive);
   this.keepAliveInitialDelay = ~~(options.keepAliveInitialDelay / 1000);
+  this.highWaterMark = options.highWaterMark ?? getDefaultHighWaterMark();
 }
 ObjectSetPrototypeOf(Server.prototype, EventEmitter.prototype);
 ObjectSetPrototypeOf(Server, EventEmitter);
@@ -1946,7 +1957,7 @@ ObjectDefineProperty(Server.prototype, 'listening', {
     return !!this._handle;
   },
   configurable: true,
-  enumerable: true
+  enumerable: true,
 });
 
 Server.prototype.address = function() {
@@ -2004,7 +2015,9 @@ function onconnection(err, clientHandle) {
     allowHalfOpen: self.allowHalfOpen,
     pauseOnCreate: self.pauseOnConnect,
     readable: true,
-    writable: true
+    writable: true,
+    readableHighWaterMark: self.highWaterMark,
+    writableHighWaterMark: self.highWaterMark,
   });
 
   if (self.noDelay && clientHandle.setNoDelay) {
@@ -2154,13 +2167,13 @@ Server.prototype[EventEmitter.captureRejectionSymbol] = function(
 ObjectDefineProperty(TCP.prototype, 'owner', {
   __proto__: null,
   get() { return this[owner_symbol]; },
-  set(v) { return this[owner_symbol] = v; }
+  set(v) { return this[owner_symbol] = v; },
 });
 
 ObjectDefineProperty(Socket.prototype, '_handle', {
   __proto__: null,
   get() { return this[kHandle]; },
-  set(v) { return this[kHandle] = v; }
+  set(v) { return this[kHandle] = v; },
 });
 
 Server.prototype._setupWorker = function(socketList) {

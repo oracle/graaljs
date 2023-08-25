@@ -7,6 +7,22 @@
 
 set -ex
 
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+
+[ -z "$NODE" ] && NODE="$ROOT/out/Release/node"
+[ -x "$NODE" ] || NODE=$(command -v node)
+NPM="$ROOT/deps/npm/bin/npm-cli.js"
+
+NEW_VERSION=$("$NODE" "$NPM" view eslint dist-tags.latest)
+CURRENT_VERSION=$("$NODE" -p "require('./tools/node_modules/eslint/package.json').version")
+
+echo "Comparing $NEW_VERSION with $CURRENT_VERSION"
+
+if [ "$NEW_VERSION" = "$CURRENT_VERSION" ]; then
+  echo "Skipped because ESlint is on the latest version."
+  exit 0
+fi
+
 cd "$( dirname "$0" )" || exit
 rm -rf ../node_modules/eslint
 (
@@ -14,18 +30,13 @@ rm -rf ../node_modules/eslint
     mkdir eslint-tmp
     cd eslint-tmp || exit
 
-    ROOT="$PWD/../../.."
-    [ -z "$NODE" ] && NODE="$ROOT/out/Release/node"
-    [ -x "$NODE" ] || NODE=$(command -v node)
-    NPM="$ROOT/deps/npm/bin/npm-cli.js"
-
     "$NODE" "$NPM" init --yes
 
     "$NODE" "$NPM" install \
     --ignore-scripts \
     --install-strategy=shallow \
     --no-bin-links \
-    eslint
+    "eslint@$NEW_VERSION"
     # Uninstall plugins that we want to install so that they are removed from
     # devDependencies. Otherwise --omit=dev will cause them to be skipped.
     (
@@ -63,3 +74,7 @@ rm -rf ../node_modules/eslint
 
 mv eslint-tmp/node_modules/eslint ../node_modules/eslint
 rm -rf eslint-tmp/
+
+# The last line of the script should always print the new version,
+# as we need to add it to $GITHUB_ENV variable.
+echo "NEW_VERSION=$NEW_VERSION"

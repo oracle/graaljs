@@ -2,12 +2,18 @@
 
 <!--introduced_in=v18.0.0-->
 
+<!-- YAML
+added:
+  - v18.0.0
+  - v16.17.0
+-->
+
 > Stability: 1 - Experimental
 
 <!-- source_link=lib/test.js -->
 
-The `node:test` module facilitates the creation of JavaScript tests that
-report results in [TAP][] format. To access it:
+The `node:test` module facilitates the creation of JavaScript tests.
+To access it:
 
 ```mjs
 import test from 'node:test';
@@ -91,9 +97,7 @@ test('callback failing test', (t, done) => {
 });
 ```
 
-As a test file executes, TAP is written to the standard output of the Node.js
-process. This output can be interpreted by any test harness that understands
-the TAP format. If any tests fail, the process exit code is set to `1`.
+If any tests fail, the process exit code is set to `1`.
 
 ## Subtests
 
@@ -122,8 +126,7 @@ test to fail.
 ## Skipping tests
 
 Individual tests can be skipped by passing the `skip` option to the test, or by
-calling the test context's `skip()` method. Both of these options support
-including a message that is displayed in the TAP output as shown in the
+calling the test context's `skip()` method as shown in the
 following example.
 
 ```js
@@ -153,8 +156,7 @@ test('skip() method with message', (t) => {
 Running tests can also be done using `describe` to declare a suite
 and `it` to declare a test.
 A suite is used to organize and group related tests together.
-`it` is an alias for `test`, except there is no test context passed,
-since nesting is done using suites.
+`it` is a shorthand for [`test()`][].
 
 ```js
 describe('A thing', () => {
@@ -258,7 +260,7 @@ Test name patterns do not change the set of files that the test runner executes.
 
 ## Extraneous asynchronous activity
 
-Once a test function finishes executing, the TAP results are output as quickly
+Once a test function finishes executing, the results are reported as quickly
 as possible while maintaining the order of the tests. However, it is possible
 for the test function to generate asynchronous activity that outlives the test
 itself. The test runner handles this type of activity, but does not delay the
@@ -267,13 +269,13 @@ reporting of test results in order to accommodate it.
 In the following example, a test completes with two `setImmediate()`
 operations still outstanding. The first `setImmediate()` attempts to create a
 new subtest. Because the parent test has already finished and output its
-results, the new subtest is immediately marked as failed, and reported in the
-top level of the file's TAP output.
+results, the new subtest is immediately marked as failed, and reported later
+to the {TestsStream}.
 
 The second `setImmediate()` creates an `uncaughtException` event.
 `uncaughtException` and `unhandledRejection` events originating from a completed
-test are handled by the `test` module and reported as diagnostic warnings in
-the top level of the file's TAP output.
+test are marked as failed by the `test` module and reported as diagnostic
+warnings at the top level by the {TestsStream}.
 
 ```js
 test('a test that creates asynchronous activity', (t) => {
@@ -371,6 +373,57 @@ Otherwise, the test is considered to be a failure. Test files must be
 executable by Node.js, but are not required to use the `node:test` module
 internally.
 
+Each test file is executed as if it was a regular script. That is, if the test
+file itself uses `node:test` to define tests, all of those tests will be
+executed within a single application thread, regardless of the value of the
+`concurrency` option of [`test()`][].
+
+## Collecting code coverage
+
+When Node.js is started with the [`--experimental-test-coverage`][]
+command-line flag, code coverage is collected and statistics are reported once
+all tests have completed. If the [`NODE_V8_COVERAGE`][] environment variable is
+used to specify a code coverage directory, the generated V8 coverage files are
+written to that directory. Node.js core modules and files within
+`node_modules/` directories are not included in the coverage report. If
+coverage is enabled, the coverage report is sent to any [test reporters][] via
+the `'test:coverage'` event.
+
+Coverage can be disabled on a series of lines using the following
+comment syntax:
+
+```js
+/* node:coverage disable */
+if (anAlwaysFalseCondition) {
+  // Code in this branch will never be executed, but the lines are ignored for
+  // coverage purposes. All lines following the 'disable' comment are ignored
+  // until a corresponding 'enable' comment is encountered.
+  console.log('this is never executed');
+}
+/* node:coverage enable */
+```
+
+Coverage can also be disabled for a specified number of lines. After the
+specified number of lines, coverage will be automatically reenabled. If the
+number of lines is not explicitly provided, a single line is ignored.
+
+```js
+/* node:coverage ignore next */
+if (anAlwaysFalseCondition) { console.log('this is never executed'); }
+
+/* node:coverage ignore next 3 */
+if (anAlwaysFalseCondition) {
+  console.log('this is never executed');
+}
+```
+
+The test runner's code coverage functionality has the following limitations,
+which will be addressed in a future Node.js release:
+
+* Source maps are not supported.
+* Excluding specific files or directories from the coverage report is not
+  supported.
+
 ## Mocking
 
 The `node:test` module supports mocking during testing via a top-level `mock`
@@ -454,37 +507,262 @@ test('spies on an object method', (t) => {
 });
 ```
 
+## Test reporters
+
+<!-- YAML
+added: v18.15.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47238
+    description: Reporters are now exposed at `node:test/reporters`.
+-->
+
+The `node:test` module supports passing [`--test-reporter`][]
+flags for the test runner to use a specific reporter.
+
+The following built-reporters are supported:
+
+* `tap`
+  The `tap` reporter outputs the test results in the [TAP][] format.
+
+* `spec`
+  The `spec` reporter outputs the test results in a human-readable format.
+
+* `dot`
+  The `dot` reporter outputs the test results in a compact format,
+  where each passing test is represented by a `.`,
+  and each failing test is represented by a `X`.
+
+When `stdout` is a [TTY][], the `spec` reporter is used by default.
+Otherwise, the `tap` reporter is used by default.
+
+The reporters are available via the `node:test/reporters` module:
+
+```mjs
+import { tap, spec, dot } from 'node:test/reporters';
+```
+
+```cjs
+const { tap, spec, dot } = require('node:test/reporters');
+```
+
+### Custom reporters
+
+[`--test-reporter`][] can be used to specify a path to custom reporter.
+A custom reporter is a module that exports a value
+accepted by [stream.compose][].
+Reporters should transform events emitted by a {TestsStream}
+
+Example of a custom reporter using {stream.Transform}:
+
+```mjs
+import { Transform } from 'node:stream';
+
+const customReporter = new Transform({
+  writableObjectMode: true,
+  transform(event, encoding, callback) {
+    switch (event.type) {
+      case 'test:start':
+        callback(null, `test ${event.data.name} started`);
+        break;
+      case 'test:pass':
+        callback(null, `test ${event.data.name} passed`);
+        break;
+      case 'test:fail':
+        callback(null, `test ${event.data.name} failed`);
+        break;
+      case 'test:plan':
+        callback(null, 'test plan');
+        break;
+      case 'test:diagnostic':
+        callback(null, event.data.message);
+        break;
+      case 'test:coverage': {
+        const { totalLineCount } = event.data.summary.totals;
+        callback(null, `total line count: ${totalLineCount}\n`);
+        break;
+      }
+    }
+  },
+});
+
+export default customReporter;
+```
+
+```cjs
+const { Transform } = require('node:stream');
+
+const customReporter = new Transform({
+  writableObjectMode: true,
+  transform(event, encoding, callback) {
+    switch (event.type) {
+      case 'test:start':
+        callback(null, `test ${event.data.name} started`);
+        break;
+      case 'test:pass':
+        callback(null, `test ${event.data.name} passed`);
+        break;
+      case 'test:fail':
+        callback(null, `test ${event.data.name} failed`);
+        break;
+      case 'test:plan':
+        callback(null, 'test plan');
+        break;
+      case 'test:diagnostic':
+        callback(null, event.data.message);
+        break;
+      case 'test:coverage': {
+        const { totalLineCount } = event.data.summary.totals;
+        callback(null, `total line count: ${totalLineCount}\n`);
+        break;
+      }
+    }
+  },
+});
+
+module.exports = customReporter;
+```
+
+Example of a custom reporter using a generator function:
+
+```mjs
+export default async function * customReporter(source) {
+  for await (const event of source) {
+    switch (event.type) {
+      case 'test:start':
+        yield `test ${event.data.name} started\n`;
+        break;
+      case 'test:pass':
+        yield `test ${event.data.name} passed\n`;
+        break;
+      case 'test:fail':
+        yield `test ${event.data.name} failed\n`;
+        break;
+      case 'test:plan':
+        yield 'test plan';
+        break;
+      case 'test:diagnostic':
+        yield `${event.data.message}\n`;
+        break;
+      case 'test:coverage': {
+        const { totalLineCount } = event.data.summary.totals;
+        yield `total line count: ${totalLineCount}\n`;
+        break;
+      }
+    }
+  }
+}
+```
+
+```cjs
+module.exports = async function * customReporter(source) {
+  for await (const event of source) {
+    switch (event.type) {
+      case 'test:start':
+        yield `test ${event.data.name} started\n`;
+        break;
+      case 'test:pass':
+        yield `test ${event.data.name} passed\n`;
+        break;
+      case 'test:fail':
+        yield `test ${event.data.name} failed\n`;
+        break;
+      case 'test:plan':
+        yield 'test plan\n';
+        break;
+      case 'test:diagnostic':
+        yield `${event.data.message}\n`;
+        break;
+      case 'test:coverage': {
+        const { totalLineCount } = event.data.summary.totals;
+        yield `total line count: ${totalLineCount}\n`;
+        break;
+      }
+    }
+  }
+};
+```
+
+The value provided to `--test-reporter` should be a string like one used in an
+`import()` in JavaScript code.
+
+### Multiple reporters
+
+The [`--test-reporter`][] flag can be specified multiple times to report test
+results in several formats. In this situation
+it is required to specify a destination for each reporter
+using [`--test-reporter-destination`][].
+Destination can be `stdout`, `stderr`, or a file path.
+Reporters and destinations are paired according
+to the order they were specified.
+
+In the following example, the `spec` reporter will output to `stdout`,
+and the `dot` reporter will output to `file.txt`:
+
+```bash
+node --test-reporter=spec --test-reporter=dot --test-reporter-destination=stdout --test-reporter-destination=file.txt
+```
+
+When a single reporter is specified, the destination will default to `stdout`,
+unless a destination is explicitly provided.
+
 ## `run([options])`
 
 <!-- YAML
 added: v18.9.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47628
+    description: Add a testNamePatterns option.
 -->
 
 * `options` {Object} Configuration options for running tests. The following
   properties are supported:
   * `concurrency` {number|boolean} If a number is provided,
-    then that many files would run in parallel.
-    If truthy, it would run (number of cpu cores - 1)
-    files in parallel.
-    If falsy, it would only run one file at a time.
-    If unspecified, subtests inherit this value from their parent.
-    **Default:** `true`.
+    then that many test processes would run in parallel, where each process
+    corresponds to one test file.
+    If `true`, it would run `os.availableParallelism() - 1` test files in
+    parallel.
+    If `false`, it would only run one test file at a time.
+    **Default:** `false`.
   * `files`: {Array} An array containing the list of files to run.
     **Default** matching files from [test runner execution model][].
-  * `signal` {AbortSignal} Allows aborting an in-progress test execution.
-  * `timeout` {number} A number of milliseconds the test execution will
-    fail after.
-    If unspecified, subtests inherit this value from their parent.
-    **Default:** `Infinity`.
   * `inspectPort` {number|Function} Sets inspector port of test child process.
     This can be a number, or a function that takes no arguments and returns a
     number. If a nullish value is provided, each process gets its own port,
     incremented from the primary's `process.debugPort`.
     **Default:** `undefined`.
-* Returns: {TapStream}
+  * `setup` {Function} A function that accepts the `TestsStream` instance
+    and can be used to setup listeners before any tests are run.
+    **Default:** `undefined`.
+  * `signal` {AbortSignal} Allows aborting an in-progress test execution.
+  * `testNamePatterns` {string|RegExp|Array} A String, RegExp or a RegExp Array,
+    that can be used to only run tests whose name matches the provided pattern.
+    Test name patterns are interpreted as JavaScript regular expressions.
+    For each test that is executed, any corresponding test hooks, such as
+    `beforeEach()`, are also run.
+    **Default:** `undefined`.
+  * `timeout` {number} A number of milliseconds the test execution will
+    fail after.
+    If unspecified, subtests inherit this value from their parent.
+    **Default:** `Infinity`.
+  * `watch` {boolean} Whether to run in watch mode or not. **Default:** `false`.
+* Returns: {TestsStream}
 
-```js
+```mjs
+import { tap } from 'node:test/reporters';
+import process from 'node:process';
+
 run({ files: [path.resolve('./tests/test.js')] })
+  .compose(tap)
+  .pipe(process.stdout);
+```
+
+```cjs
+const { tap } = require('node:test/reporters');
+
+run({ files: [path.resolve('./tests/test.js')] })
+  .compose(tap)
   .pipe(process.stdout);
 ```
 
@@ -493,6 +771,9 @@ run({ files: [path.resolve('./tests/test.js')] })
 <!-- YAML
 added: v18.0.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47909
+    description: Added the `skip`, `todo`, and `only` shorthands.
   - version: v18.8.0
     pr-url: https://github.com/nodejs/node/pull/43554
     description: Add a `signal` option.
@@ -507,11 +788,9 @@ changes:
 * `options` {Object} Configuration options for the test. The following
   properties are supported:
   * `concurrency` {number|boolean} If a number is provided,
-    then that many tests would run in parallel.
-    If truthy, it would run (number of cpu cores - 1)
-    tests in parallel.
-    For subtests, it will be `Infinity` tests in parallel.
-    If falsy, it would only run one test at a time.
+    then that many tests would run in parallel within the application thread.
+    If `true`, all scheduled asynchronous tests run concurrently within the
+    thread. If `false`, only one test runs at a time.
     If unspecified, subtests inherit this value from their parent.
     **Default:** `false`.
   * `only` {boolean} If truthy, and the test context is configured to run
@@ -531,20 +810,22 @@ changes:
   to this function is a [`TestContext`][] object. If the test uses callbacks,
   the callback function is passed as the second argument. **Default:** A no-op
   function.
-* Returns: {Promise} Resolved with `undefined` once the test completes.
+* Returns: {Promise} Resolved with `undefined` once
+  the test completes, or immediately if the test runs within [`describe()`][].
 
 The `test()` function is the value imported from the `test` module. Each
-invocation of this function results in the creation of a test point in the TAP
-output.
+invocation of this function results in reporting the test to the {TestsStream}.
 
 The `TestContext` object passed to the `fn` argument can be used to perform
 actions related to the current test. Examples include skipping the test, adding
-additional TAP diagnostic information, or creating subtests.
+additional diagnostic information, or creating subtests.
 
-`test()` returns a `Promise` that resolves once the test completes. The return
-value can usually be discarded for top level tests. However, the return value
-from subtests should be used to prevent the parent test from finishing first
-and cancelling the subtest as shown in the following example.
+`test()` returns a `Promise` that resolves once the test completes.
+if `test()` is called within a `describe()` block, it resolve immediately.
+The return value can usually be discarded for top level tests.
+However, the return value from subtests should be used to prevent the parent
+test from finishing first and cancelling the subtest
+as shown in the following example.
 
 ```js
 test('top level test', async (t) => {
@@ -564,6 +845,21 @@ The `timeout` option can be used to fail the test if it takes longer than
 canceling tests because a running test might block the application thread and
 thus prevent the scheduled cancellation.
 
+## `test.skip([name][, options][, fn])`
+
+Shorthand for skipping a test,
+same as [`test([name], { skip: true }[, fn])`][it options].
+
+## `test.todo([name][, options][, fn])`
+
+Shorthand for marking a test as `TODO`,
+same as [`test([name], { todo: true }[, fn])`][it options].
+
+## `test.only([name][, options][, fn])`
+
+Shorthand for marking a test as `only`,
+same as [`test([name], { only: true }[, fn])`][it options].
+
 ## `describe([name][, options][, fn])`
 
 * `name` {string} The name of the suite, which is displayed when reporting test
@@ -578,8 +874,7 @@ thus prevent the scheduled cancellation.
 * Returns: `undefined`.
 
 The `describe()` function imported from the `node:test` module. Each
-invocation of this function results in the creation of a Subtest
-and a test point in the TAP output.
+invocation of this function results in the creation of a Subtest.
 After invocation of top level `describe` functions,
 all top level tests and suites will execute.
 
@@ -592,21 +887,30 @@ Shorthand for skipping a suite, same as [`describe([name], { skip: true }[, fn])
 Shorthand for marking a suite as `TODO`, same as
 [`describe([name], { todo: true }[, fn])`][describe options].
 
+## `describe.only([name][, options][, fn])`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+Shorthand for marking a suite as `only`, same as
+[`describe([name], { only: true }[, fn])`][describe options].
+
 ## `it([name][, options][, fn])`
 
-* `name` {string} The name of the test, which is displayed when reporting test
-  results. **Default:** The `name` property of `fn`, or `'<anonymous>'` if `fn`
-  does not have a name.
-* `options` {Object} Configuration options for the suite.
-  supports the same options as `test([name][, options][, fn])`.
-* `fn` {Function|AsyncFunction} The function under test.
-  If the test uses callbacks, the callback function is passed as an argument.
-  **Default:** A no-op function.
-* Returns: `undefined`.
+<!-- YAML
+added:
+  - v18.6.0
+  - v16.17.0
+changes:
+  - version: v18.16.0
+    pr-url: https://github.com/nodejs/node/pull/46889
+    description: Calling `it()` is now equivalent to calling `test()`.
+-->
 
-The `it()` function is the value imported from the `node:test` module.
-Each invocation of this function results in the creation of a test point in the
-TAP output.
+Shorthand for [`test()`][].
+
+The `it()` function is imported from the `node:test` module.
 
 ## `it.skip([name][, options][, fn])`
 
@@ -617,6 +921,15 @@ same as [`it([name], { skip: true }[, fn])`][it options].
 
 Shorthand for marking a test as `TODO`,
 same as [`it([name], { todo: true }[, fn])`][it options].
+
+## `it.only([name][, options][, fn])`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+Shorthand for marking a test as `only`,
+same as [`it([name], { only: true }[, fn])`][it options].
 
 ## `before([fn][, options])`
 
@@ -696,7 +1009,7 @@ before each subtest of the current suite.
 
 ```js
 describe('tests', async () => {
-  beforeEach(() => t.diagnostic('about to run a test'));
+  beforeEach(() => console.log('about to run a test'));
   it('is a subtest', () => {
     assert.ok('some relevant assertion here');
   });
@@ -725,7 +1038,7 @@ after each subtest of the current test.
 
 ```js
 describe('tests', async () => {
-  afterEach(() => t.diagnostic('about to run a test'));
+  afterEach(() => console.log('finished running a test'));
   it('is a subtest', () => {
     assert.ok('some relevant assertion here');
   });
@@ -1033,7 +1346,7 @@ added: v18.13.0
 This function is syntax sugar for [`MockTracker.method`][] with `options.setter`
 set to `true`.
 
-## Class: `TapStream`
+## Class: `TestsStream`
 
 <!-- YAML
 added: v18.9.0
@@ -1041,24 +1354,89 @@ added: v18.9.0
 
 * Extends {ReadableStream}
 
-A successful call to [`run()`][] method will return a new {TapStream}
-object, streaming a [TAP][] output
-`TapStream` will emit events, in the order of the tests definition
+A successful call to [`run()`][] method will return a new {TestsStream}
+object, streaming a series of events representing the execution of the tests.
+`TestsStream` will emit events, in the order of the tests definition
+
+### Event: `'test:coverage'`
+
+* `data` {Object}
+  * `summary` {Object} An object containing the coverage report.
+    * `files` {Array} An array of coverage reports for individual files. Each
+      report is an object with the following schema:
+      * `path` {string} The absolute path of the file.
+      * `totalLineCount` {number} The total number of lines.
+      * `totalBranchCount` {number} The total number of branches.
+      * `totalFunctionCount` {number} The total number of functions.
+      * `coveredLineCount` {number} The number of covered lines.
+      * `coveredBranchCount` {number} The number of covered branches.
+      * `coveredFunctionCount` {number} The number of covered functions.
+      * `coveredLinePercent` {number} The percentage of lines covered.
+      * `coveredBranchPercent` {number} The percentage of branches covered.
+      * `coveredFunctionPercent` {number} The percentage of functions covered.
+      * `uncoveredLineNumbers` {Array} An array of integers representing line
+        numbers that are uncovered.
+    * `totals` {Object} An object containing a summary of coverage for all
+      files.
+      * `totalLineCount` {number} The total number of lines.
+      * `totalBranchCount` {number} The total number of branches.
+      * `totalFunctionCount` {number} The total number of functions.
+      * `coveredLineCount` {number} The number of covered lines.
+      * `coveredBranchCount` {number} The number of covered branches.
+      * `coveredFunctionCount` {number} The number of covered functions.
+      * `coveredLinePercent` {number} The percentage of lines covered.
+      * `coveredBranchPercent` {number} The percentage of branches covered.
+      * `coveredFunctionPercent` {number} The percentage of functions covered.
+    * `workingDirectory` {string} The working directory when code coverage
+      began. This is useful for displaying relative path names in case the tests
+      changed the working directory of the Node.js process.
+  * `nesting` {number} The nesting level of the test.
+
+Emitted when code coverage is enabled and all tests have completed.
+
+### Event: `'test:dequeue'`
+
+* `data` {Object}
+  * `file` {string|undefined} The path of the test file,
+    undefined if test is not ran through a file.
+  * `name` {string} The test name.
+  * `nesting` {number} The nesting level of the test.
+
+Emitted when a test is dequeued, right before it is executed.
 
 ### Event: `'test:diagnostic'`
 
-* `message` {string} The diagnostic message.
+* `data` {Object}
+  * `file` {string|undefined} The path of the test file,
+    undefined if test is not ran through a file.
+  * `message` {string} The diagnostic message.
+  * `nesting` {number} The nesting level of the test.
 
 Emitted when [`context.diagnostic`][] is called.
+
+### Event: `'test:enqueue'`
+
+* `data` {Object}
+  * `file` {string|undefined} The path of the test file,
+    undefined if test is not ran through a file.
+  * `name` {string} The test name.
+  * `nesting` {number} The nesting level of the test.
+
+Emitted when a test is enqueued for execution.
 
 ### Event: `'test:fail'`
 
 * `data` {Object}
   * `details` {Object} Additional execution metadata.
+    * `duration` {number} The duration of the test in milliseconds.
+    * `error` {Error} The error thrown by the test.
+  * `file` {string|undefined} The path of the test file,
+    undefined if test is not ran through a file.
   * `name` {string} The test name.
+  * `nesting` {number} The nesting level of the test.
   * `testNumber` {number} The ordinal number of the test.
-  * `todo` {string|undefined} Present if [`context.todo`][] is called
-  * `skip` {string|undefined} Present if [`context.skip`][] is called
+  * `todo` {string|boolean|undefined} Present if [`context.todo`][] is called
+  * `skip` {string|boolean|undefined} Present if [`context.skip`][] is called
 
 Emitted when a test fails.
 
@@ -1066,22 +1444,94 @@ Emitted when a test fails.
 
 * `data` {Object}
   * `details` {Object} Additional execution metadata.
+    * `duration` {number} The duration of the test in milliseconds.
+  * `file` {string|undefined} The path of the test file,
+    undefined if test is not ran through a file.
   * `name` {string} The test name.
+  * `nesting` {number} The nesting level of the test.
   * `testNumber` {number} The ordinal number of the test.
-  * `todo` {string|undefined} Present if [`context.todo`][] is called
-  * `skip` {string|undefined} Present if [`context.skip`][] is called
+  * `todo` {string|boolean|undefined} Present if [`context.todo`][] is called
+  * `skip` {string|boolean|undefined} Present if [`context.skip`][] is called
 
 Emitted when a test passes.
+
+### Event: `'test:plan'`
+
+* `data` {Object}
+  * `file` {string|undefined} The path of the test file,
+    undefined if test is not ran through a file.
+  * `nesting` {number} The nesting level of the test.
+  * `count` {number} The number of subtests that have ran.
+
+Emitted when all subtests have completed for a given test.
+
+### Event: `'test:start'`
+
+* `data` {Object}
+  * `file` {string|undefined} The path of the test file,
+    undefined if test is not ran through a file.
+  * `name` {string} The test name.
+  * `nesting` {number} The nesting level of the test.
+
+Emitted when a test starts reporting its own and its subtests status.
+This event is guaranteed to be emitted in the same order as the tests are
+defined.
+
+### Event: `'test:stderr'`
+
+* `data` {Object}
+  * `file` {string} The path of the test file.
+  * `message` {string} The message written to `stderr`.
+
+Emitted when a running test writes to `stderr`.
+This event is only emitted if `--test` flag is passed.
+
+### Event: `'test:stdout'`
+
+* `data` {Object}
+  * `file` {string} The path of the test file.
+  * `message` {string} The message written to `stdout`.
+
+Emitted when a running test writes to `stdout`.
+This event is only emitted if `--test` flag is passed.
+
+### Event: `'test:watch:drained'`
+
+Emitted when no more tests are queued for execution in watch mode.
 
 ## Class: `TestContext`
 
 <!-- YAML
 added: v18.0.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47586
+    description: The `before` function was added to TestContext.
 -->
 
 An instance of `TestContext` is passed to each test function in order to
 interact with the test runner. However, the `TestContext` constructor is not
 exposed as part of the API.
+
+### `context.before([fn][, options])`
+
+<!-- YAML
+added: v18.17.0
+-->
+
+* `fn` {Function|AsyncFunction} The hook function. The first argument
+  to this function is a [`TestContext`][] object. If the hook uses callbacks,
+  the callback function is passed as the second argument. **Default:** A no-op
+  function.
+* `options` {Object} Configuration options for the hook. The following
+  properties are supported:
+  * `signal` {AbortSignal} Allows aborting an in-progress hook.
+  * `timeout` {number} A number of milliseconds the hook will fail after.
+    If unspecified, subtests inherit this value from their parent.
+    **Default:** `Infinity`.
+
+This function is used to create a hook running before
+subtest of the current test.
 
 ### `context.beforeEach([fn][, options])`
 
@@ -1180,9 +1630,9 @@ test('top level test', async (t) => {
 added: v18.0.0
 -->
 
-* `message` {string} Message to be displayed as a TAP diagnostic.
+* `message` {string} Message to be reported.
 
-This function is used to write TAP diagnostics to the output. Any diagnostic
+This function is used to write diagnostics to the output. Any diagnostic
 information is included at the end of the test's results. This function does
 not return a value.
 
@@ -1245,10 +1695,10 @@ test('top level test', async (t) => {
 added: v18.0.0
 -->
 
-* `message` {string} Optional skip message to be displayed in TAP output.
+* `message` {string} Optional skip message.
 
 This function causes the test's output to indicate the test as skipped. If
-`message` is provided, it is included in the TAP output. Calling `skip()` does
+`message` is provided, it is included in the output. Calling `skip()` does
 not terminate execution of the test function. This function does not return a
 value.
 
@@ -1265,10 +1715,10 @@ test('top level test', (t) => {
 added: v18.0.0
 -->
 
-* `message` {string} Optional `TODO` message to be displayed in TAP output.
+* `message` {string} Optional `TODO` message.
 
 This function adds a `TODO` directive to the test's output. If `message` is
-provided, it is included in the TAP output. Calling `todo()` does not terminate
+provided, it is included in the output. Calling `todo()` does not terminate
 execution of the test function. This function does not return a value.
 
 ```js
@@ -1296,9 +1746,12 @@ changes:
   `fn` does not have a name.
 * `options` {Object} Configuration options for the subtest. The following
   properties are supported:
-  * `concurrency` {number} The number of tests that can be run at the same time.
+  * `concurrency` {number|boolean|null} If a number is provided,
+    then that many tests would run in parallel within the application thread.
+    If `true`, it would run all subtests in parallel.
+    If `false`, it would only run one test at a time.
     If unspecified, subtests inherit this value from their parent.
-    **Default:** `1`.
+    **Default:** `null`.
   * `only` {boolean} If truthy, and the test context is configured to run
     `only` tests, then this test will be run. Otherwise, the test is skipped.
     **Default:** `false`.
@@ -1361,19 +1814,27 @@ added: v18.7.0
   aborted.
 
 [TAP]: https://testanything.org/
+[TTY]: tty.md
+[`--experimental-test-coverage`]: cli.md#--experimental-test-coverage
 [`--test-name-pattern`]: cli.md#--test-name-pattern
 [`--test-only`]: cli.md#--test-only
+[`--test-reporter-destination`]: cli.md#--test-reporter-destination
+[`--test-reporter`]: cli.md#--test-reporter
 [`--test`]: cli.md#--test
 [`MockFunctionContext`]: #class-mockfunctioncontext
 [`MockTracker.method`]: #mockmethodobject-methodname-implementation-options
 [`MockTracker`]: #class-mocktracker
+[`NODE_V8_COVERAGE`]: cli.md#node_v8_coveragedir
 [`SuiteContext`]: #class-suitecontext
 [`TestContext`]: #class-testcontext
 [`context.diagnostic`]: #contextdiagnosticmessage
 [`context.skip`]: #contextskipmessage
 [`context.todo`]: #contexttodomessage
+[`describe()`]: #describename-options-fn
 [`run()`]: #runoptions
 [`test()`]: #testname-options-fn
 [describe options]: #describename-options-fn
 [it options]: #testname-options-fn
+[stream.compose]: stream.md#streamcomposestreams
+[test reporters]: #test-reporters
 [test runner execution model]: #test-runner-execution-model

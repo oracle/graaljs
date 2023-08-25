@@ -2,13 +2,6 @@ env:
   es6: true
 
 rules:
-  comma-dangle: [error, {
-    arrays: always-multiline,
-    exports: only-multiline,
-    functions: only-multiline,
-    imports: only-multiline,
-    objects: only-multiline,
-  }]
   prefer-object-spread: error
   no-buffer-constructor: error
   no-mixed-operators:
@@ -61,7 +54,7 @@ rules:
     - name: DecompressionStream
       message: Use `const { DecompressionStream } = require('internal/webstreams/compression')` instead of the global.
     - name: DOMException
-      message: Use lazy function `const { lazyDOMException } = require('internal/util');` instead of the global.
+      message: Use lazy function `const { lazyDOMExceptionClass } = require('internal/util');` instead of the global.
     - name: Event
       message: Use `const { Event } = require('internal/event_target');` instead of the global.
     - name: EventTarget

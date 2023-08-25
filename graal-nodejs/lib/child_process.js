@@ -56,7 +56,7 @@ let debug = require('internal/util/debuglog').debuglog(
   'child_process',
   (fn) => {
     debug = fn;
-  }
+  },
 );
 const { Buffer } = require('buffer');
 const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
@@ -89,7 +89,7 @@ const {
   getValidStdio,
   setupChannel,
   ChildProcess,
-  stdioStringToArray
+  stdioStringToArray,
 } = child_process;
 
 const MAX_BUFFER = 1024 * 1024;
@@ -200,7 +200,7 @@ function normalizeExecArgs(command, options, callback) {
   return {
     file: command,
     options: options,
-    callback: callback
+    callback: callback,
   };
 }
 
@@ -255,7 +255,7 @@ const customPromiseExecFunction = (orig) => {
 ObjectDefineProperty(exec, promisify.custom, {
   __proto__: null,
   enumerable: false,
-  value: customPromiseExecFunction(exec)
+  value: customPromiseExecFunction(exec),
 });
 
 function normalizeExecFileArgs(file, args, options, callback) {
@@ -334,7 +334,7 @@ function execFile(file, args, options, callback) {
     cwd: null,
     env: null,
     shell: false,
-    ...options
+    ...options,
   };
 
   // Validate the timeout, if present.
@@ -353,7 +353,7 @@ function execFile(file, args, options, callback) {
     signal: options.signal,
     uid: options.uid,
     windowsHide: !!options.windowsHide,
-    windowsVerbatimArguments: !!options.windowsVerbatimArguments
+    windowsVerbatimArguments: !!options.windowsVerbatimArguments,
   });
 
   let encoding;
@@ -419,7 +419,7 @@ function execFile(file, args, options, callback) {
       ex = genericNodeError(`Command failed: ${cmd}\n${stderr}`, {
         code: code < 0 ? getSystemErrorName(code) : code,
         killed: child.killed || killed,
-        signal: signal
+        signal: signal,
       });
     }
 
@@ -530,7 +530,7 @@ function execFile(file, args, options, callback) {
 ObjectDefineProperty(execFile, promisify.custom, {
   __proto__: null,
   enumerable: false,
-  value: customPromiseExecFunction(execFile)
+  value: customPromiseExecFunction(execFile),
 });
 
 function copyProcessEnvToEnv(env, name, optionEnv) {
@@ -686,7 +686,7 @@ function normalizeSpawnArguments(file, args, options) {
         }
         sawKey.add(uppercaseKey);
         return true;
-      }
+      },
     );
   }
 
@@ -722,12 +722,12 @@ function normalizeSpawnArguments(file, args, options) {
   };
 }
 
-function abortChildProcess(child, killSignal) {
+function abortChildProcess(child, killSignal, reason) {
   if (!child)
     return;
   try {
     if (child.kill(killSignal)) {
-      child.emit('error', new AbortError());
+      child.emit('error', new AbortError(undefined, { cause: reason }));
     }
   } catch (err) {
     child.emit('error', err);
@@ -797,7 +797,7 @@ function spawn(file, args, options) {
     }
 
     function onAbortListener() {
-      abortChildProcess(child, killSignal);
+      abortChildProcess(child, killSignal, options.signal.reason);
     }
   }
 
@@ -837,7 +837,7 @@ function spawn(file, args, options) {
 function spawnSync(file, args, options) {
   options = {
     maxBuffer: MAX_BUFFER,
-    ...normalizeSpawnArguments(file, args, options)
+    ...normalizeSpawnArguments(file, args, options),
   };
 
   debug('spawnSync', options);
@@ -1022,5 +1022,5 @@ module.exports = {
   execSync,
   fork,
   spawn,
-  spawnSync
+  spawnSync,
 };

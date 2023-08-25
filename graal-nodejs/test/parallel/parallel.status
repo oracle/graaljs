@@ -36,6 +36,11 @@ test-fs-write-buffer-large: FAIL
 test-runner-string-to-regexp: FAIL
 # ports is not iterable versus 0 is not iterable
 test-worker-message-event: FAIL
+# Unexpected number versus expected BindingIdentifier or BindingPattern
+test-node-output-vm: FAIL
+
+# Different stack-traces (for example, different column numbers)
+test-node-output-errors: FAIL
 
 # Suspicious (V8 specific?) test checking whether ArrayBufferView lives on heap
 test-buffer-backing-arraybuffer: FAIL
@@ -71,13 +76,11 @@ test-worker-heap-snapshot: SKIP
 # https://example.com does not work in CI
 test-https-agent-unref-socket: SKIP
 
-# obsolete test (narrow space in date/time format)
-test-intl: FAIL
-
 # missing support for ModifyCodeGenerationFromStringsCallback
 test-source-map-api: FAIL
 
 # missing support for script.sourceMapURL
+test-node-output-sourcemaps: FAIL
 test-vm-source-map-url: FAIL
 
 # Worker resource limits are not supported
@@ -110,9 +113,11 @@ test-vm-basic: FAIL
 # Missing support for lineOffset and columnOffset in ScriptOrigin
 test-vm-context: FAIL
 
-# WebAssembly is not supported
+# WebAssembly is not enabled by default
 test-fetch: FAIL
 test-fetch-disabled: FAIL
+test-http-response-setheaders: FAIL
+test-single-executable-application: SKIP
 test-vm-codegen: FAIL
 test-wasm-simple: FAIL
 test-wasm-web-api: FAIL
@@ -127,6 +132,7 @@ test-vm-timeout-escape-promise-2: FAIL
 
 # run-time user-land snapshots are not supported
 test-snapshot-api: FAIL
+test-snapshot-argv1: FAIL
 test-snapshot-basic: FAIL
 test-snapshot-cjs-main: FAIL
 test-snapshot-dns-lookup-localhost: FAIL
@@ -137,6 +143,7 @@ test-snapshot-error: FAIL
 test-snapshot-eval: FAIL
 test-snapshot-gzip: FAIL
 test-snapshot-incompatible: FAIL
+test-snapshot-namespaced-builtin: FAIL
 test-snapshot-typescript: FAIL
 test-snapshot-umd: FAIL
 test-snapshot-warning: FAIL
@@ -173,9 +180,9 @@ test-trace-events-threadpool: SKIP
 test-trace-events-v8: SKIP
 test-trace-events-vm: SKIP
 test-trace-events-worker-metadata: SKIP
+test-trace-events-worker-metadata-with-name: SKIP
 
 # Unclassified
-test-assert: FAIL
 test-async-hooks-async-await: FAIL
 test-async-hooks-http-parser-destroy: SKIP
 test-async-local-storage-contexts: FAIL
@@ -202,8 +209,12 @@ test-net-connect-memleak: FAIL
 test-promise-hook-exceptions: FAIL
 test-promise-hook-on-resolve: FAIL
 test-repl: FAIL
+test-runner-output: FAIL
+test-runner-watch-mode: SKIP
+test-strace-openat-openssl: FAIL
 test-tls-connect-memleak: FAIL
 test-ttywrap-stack: FAIL
+test-vm-global-setter: FAIL
 test-vm-low-stack-space: SKIP
 test-vm-new-script-new-context: FAIL
 test-vm-syntax-error-stderr: FAIL
@@ -251,10 +262,18 @@ test-timers-immediate-queue: PASS,FLAKY
 test-crypto-keygen: PASS,FLAKY
 # https://github.com/nodejs/node/issues/41201
 test-fs-rmdir-recursive: PASS, FLAKY
+# https://github.com/nodejs/node/issues/48300
+test-child-process-pipe-dataflow: PASS, FLAKY
+test-child-process-stdio-reuse-readable-stdio: PASS, FLAKY
+
+# Windows on ARM
+[$system==win32 && $arch==arm64]
 
 [$system==linux]
 # https://github.com/nodejs/node/issues/39368
 test-domain-error-types: PASS,FLAKY
+# https://github.com/nodejs/node/issues/47420
+test-file-write-stream4: PASS,FLAKY
 
 [$system==macos]
 # https://github.com/nodejs/node/issues/42741
@@ -271,10 +290,10 @@ test-http2-respond-file-fd-invalid: FAIL
 # https://github.com/nodejs/node/pull/31178
 test-crypto-dh-stateless: SKIP
 test-crypto-keygen: SKIP
+# https://github.com/nodejs/node/issues/47297
+test-wasm-web-api: SKIP
 
 [$system==solaris] # Also applies to SmartOS
-# https://github.com/nodejs/node/issues/43446
-test-net-connect-reset-until-connected: PASS, FLAKY
 # https://github.com/nodejs/node/issues/43457
 test-domain-no-error-handler-abort-on-uncaught-0: PASS, FLAKY
 test-domain-no-error-handler-abort-on-uncaught-1: PASS,FLAKY
@@ -294,8 +313,6 @@ test-domain-with-abort-on-uncaught-exception: PASS, FLAKY
 test-fs-stat-bigint: PASS,FLAKY
 # https://github.com/nodejs/node/issues/31280
 test-worker-message-port-message-before-close: PASS,FLAKY
-# https://github.com/nodejs/node/issues/43446
-test-net-connect-reset-until-connected: PASS, FLAKY
 
 [$system==ibmi]
 # https://github.com/nodejs/node/pull/30819
@@ -328,3 +345,9 @@ test-http-server-unconsume: PASS, FLAKY
 test-http-upgrade-advertise: PASS, FLAKY
 test-tls-client-mindhsize: PASS, FLAKY
 test-tls-write-error: PASS, FLAKY
+# https://github.com/nodejs/node/issues/48047
+test-http-pipeline-flood: SKIP
+
+[$asan==on]
+# https://github.com/nodejs/node/issues/39655
+test-cluster-primary-error: PASS, FLAKY
