@@ -48,6 +48,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -56,6 +57,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
+@NodeInfo(shortName = "in")
 public abstract class PrivateFieldInNode extends JSBinaryNode {
     protected PrivateFieldInNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);

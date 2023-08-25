@@ -57,6 +57,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -92,6 +93,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  * ES6, 12.9.4: Runtime Semantics: InstanceofOperator(O, C).
  */
 @ImportStatic({JSConfig.class})
+@NodeInfo(shortName = "instanceof")
 public abstract class InstanceofNode extends JSBinaryNode {
     protected final JSContext context;
 
