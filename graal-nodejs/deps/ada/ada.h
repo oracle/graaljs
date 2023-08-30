@@ -4894,7 +4894,11 @@ ada_really_inline constexpr bool verify_dns_length(
 
 
 #include <algorithm>
+#if __has_include(<charconv>)
 #include <charconv>
+#else
+#include "charconv_shim.h"
+#endif
 #include <iostream>
 #include <optional>
 #include <string>
