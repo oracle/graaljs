@@ -154,6 +154,14 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
 
         build_env = os.environ.copy()
 
+        if _current_os == 'darwin' and _current_arch == 'amd64':
+            min_version = build_env.get('MACOSX_DEPLOYMENT_TARGET')
+            if min_version:
+                # override MACOSX_DEPLOYMENT_TARGET in common.gypi
+                for flags_var in ('CXXFLAGS', 'CFLAGS', 'LDFLAGS'):
+                    other_flags = build_env.get(flags_var)
+                    build_env[flags_var] = f"-mmacosx-version-min={min_version}{' ' + other_flags if other_flags else ''}"
+
         debug = ['--debug'] if self._debug_mode else []
         shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
 
