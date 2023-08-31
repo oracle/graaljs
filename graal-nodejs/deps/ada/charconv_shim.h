@@ -45,6 +45,8 @@
 // Poor man's <charconv> substitute for unsigned integer types only.
 // Allows Ada to be compiled on pre-C++17 macOS <10.15 (GR-48310).
 
+#warning "<charconv> not available, using alternative implementation"
+
 #include <type_traits>
 #include <limits>
 #include <system_error> // std::errc
