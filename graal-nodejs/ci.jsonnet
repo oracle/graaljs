@@ -17,7 +17,7 @@ local cicommon = import '../ci/common.jsonnet';
     // too slow on windows and darwin-amd64
     local enabled = 'os' in self && !(self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')),
     artifact:: if enabled then 'nodejs' else '',
-    suiteimports+:: if enabled then ['vm', 'substratevm', 'tools'] else ['vm'],
+    suiteimports+:: if enabled then ['vm', 'substratevm', 'tools'] else ['vm', 'substratevm'],
     nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [], // 'js'
     build_standalones:: true,
   },
@@ -51,7 +51,7 @@ local cicommon = import '../ci/common.jsonnet';
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=jvm']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
-    ] + (if std.find('substratevm', super.suiteimports) != [] then [
+    ] + (if std.find('lib:graal-nodejs', super.nativeimages) != [] then [
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=native']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
