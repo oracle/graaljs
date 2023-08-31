@@ -165,8 +165,8 @@
                                             <overWrite>true</overWrite>
                                         </artifactItem>
                                         <artifactItem>
-                                            <groupId>org.graalvm.sdk</groupId>
-                                            <artifactId>graal-sdk</artifactId>
+                                            <groupId>org.graalvm.polyglot</groupId>
+                                            <artifactId>polyglot</artifactId>
                                             <version>${graalvm.version}</version>
                                             <type>jar</type>
                                             <overWrite>true</overWrite>
