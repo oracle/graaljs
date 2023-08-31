@@ -254,7 +254,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "mx:JUNIT",
         "GRAALJS",
         "com.oracle.truffle.js.snapshot",
@@ -275,7 +275,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "mx:JUNIT",
         "GRAALJS",
         "TRUFFLE_JS_TESTS",
@@ -310,7 +310,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JUNIT",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
@@ -325,7 +325,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "mx:JUNIT",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "com.oracle.truffle.js.test",
       ],
       "requires" : [
@@ -343,7 +343,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
       ],
       "requires" : [
         "java.scripting",
@@ -360,7 +360,7 @@ suite = {
       "sourceDirs" : ["src"],
       "dependencies" : [
         "com.oracle.truffle.js.scriptengine",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "mx:JUNIT",
         "GRAALJS",
       ],
@@ -379,7 +379,7 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "GRAALJS",
         "mx:JMH_1_21"
       ],
@@ -459,7 +459,7 @@ suite = {
       "distDependencies" : [
         "regex:TREGEX",
         "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "truffle:TRUFFLE_ICU4J",
       ],
       "exclude" : [
@@ -528,7 +528,7 @@ suite = {
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.scriptengine"],
       "distDependencies" : [
-        "sdk:GRAAL_SDK"
+        "sdk:POLYGLOT"
       ],
       "description" : "Graal JavaScript ScriptEngine",
       "maven" : {
@@ -543,7 +543,7 @@ suite = {
       "dependencies" : ["com.oracle.truffle.js.factory.processor"],
       "distDependencies" : [
         "truffle:TRUFFLE_API",
-        "sdk:GRAAL_SDK"
+        "sdk:POLYGLOT"
       ],
       "maven" : False,
       "overlaps" : ["GRAALJS"],
@@ -582,7 +582,7 @@ suite = {
       "dependencies" : ["com.oracle.truffle.js.scriptengine.test"],
       "distDependencies" : [
         "mx:JUNIT",
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "GRAALJS",
         "GRAALJS_SCRIPTENGINE",
       ],
@@ -688,7 +688,7 @@ suite = {
         "mx:JUNIT"
       ],
       "distDependencies" : [
-        "sdk:GRAAL_SDK",
+        "sdk:POLYGLOT",
         "GRAALJS"
       ],
       "maven" : False,
