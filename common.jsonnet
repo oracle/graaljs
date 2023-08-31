@@ -63,8 +63,8 @@ targets +
 
   darwin_amd64:: common.darwin_amd64 + self.common_deps + {
     environment+: {
-      // for compatibility with macOS El Capitan
-      MACOSX_DEPLOYMENT_TARGET: '10.11',
+      // for compatibility with macOS High Sierra
+      MACOSX_DEPLOYMENT_TARGET: '10.13',
     },
     capabilities+: ['darwin_mojave'],
   },
