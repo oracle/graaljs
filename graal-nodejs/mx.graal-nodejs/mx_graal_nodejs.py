@@ -433,8 +433,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         else:
             mx.warn("No standalones available. Falling back to default mx node command.\nYou need to dynamically import '/vm,/substratevm' (or at least '/vm'). Example: 'mx --env svm node'")
 
-    if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None:
-        _prepare_svm_env()
+    if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None and _prepare_svm_env():
         return mode, vmArgs, progArgs, nodeExe
 
     if mx.suite('vm', fatalIfMissing=False) is not None or mx.suite('substratevm', fatalIfMissing=False) is not None:
@@ -581,21 +580,27 @@ if _suite.primary:
     overrideBuild()
 
 def _prepare_svm_env():
+    nodejs_component = mx_sdk_vm.graalvm_component_by_name('njs')
     import mx_vm
     if hasattr(mx_vm, 'graalvm_home'):
         graalvm_home = mx_vm.graalvm_home()
     else:
         import mx_sdk_vm_impl
         graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    try:
+        import mx_sdk_vm_impl
+        if mx_sdk_vm_impl._has_skipped_libraries(nodejs_component):
+            mx.logv(f"Not running on SubstrateVM since {nodejs_component} component has skipped libraries")
+            return False
+    except (ModuleNotFoundError, AttributeError) as e:
+        mx.warn(f"{e}")
+
     libgraal_nodejs_filename = mx.add_lib_suffix(mx.add_lib_prefix('graal-nodejs'))
-    candidates = [join(graalvm_home, directory, libgraal_nodejs_filename) for directory in [join('jre', 'languages', 'nodejs', 'lib'), join('languages', 'nodejs', 'lib')]]
-    libgraal_nodejs = None
-    for candidate in candidates:
-        if exists(candidate):
-            libgraal_nodejs = candidate
-    if libgraal_nodejs is None:
-        mx.abort("Cannot find graal-nodejs library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(candidates))
+    libgraal_nodejs = join(graalvm_home, 'languages', 'nodejs', 'lib', libgraal_nodejs_filename)
+    if not exists(libgraal_nodejs):
+        mx.abort("Cannot find graal-nodejs library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(libgraal_nodejs))
     _setEnvVar('NODE_JVM_LIB', libgraal_nodejs)
+    return True
 
 def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
