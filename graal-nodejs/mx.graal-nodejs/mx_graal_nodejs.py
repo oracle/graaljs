@@ -464,17 +464,7 @@ def makeInNodeEnvironment(args):
                 'java-home', _java_home()
             ] + progArgs, cwd=_suite.dir)
     else:
-        makeCmd = mx.gmake_cmd()
-        if _current_os == 'solaris':
-            # we have to use GNU make and cp because the Solaris versions
-            # do not support options used by Node.js Makefile and gyp files
-            _setEnvVar('MAKE', makeCmd)
-            _mxrun(['sh', '-c', 'ln -s `which gcp` ' + join(_suite.dir, 'cp')])
-            prevPATH = os.environ['PATH']
-            _setEnvVar('PATH', "%s:%s" % (_suite.dir, prevPATH))
-        _mxrun([makeCmd] + progArgs, cwd=_suite.dir)
-        if _current_os == 'solaris':
-            _mxrun(['rm', 'cp'])
+        _mxrun([mx.gmake_cmd()] + progArgs, cwd=_suite.dir)
 
 def prepareNodeCmdLine(args, add_graal_vm_args=True):
     '''run a Node.js program or shell
