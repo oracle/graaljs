@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 module com.mycompany.app {
-    requires org.graalvm.sdk;
+    requires org.graalvm.polyglot;
     requires java.scripting;
 
     exports com.mycompany.app;
