@@ -461,6 +461,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 def makeInNodeEnvironment(args):
     _, vmArgs, progArgs, _ = setupNodeEnvironment(args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
+    quiet_build = mx.is_continuous_integration() and not mx.get_opts().verbose
     if _is_windows:
         _mxrun([join('.', 'vcbuild.bat'),
                 'noprojgen',
@@ -468,7 +469,7 @@ def makeInNodeEnvironment(args):
                 'java-home', _java_home()
             ] + progArgs, cwd=_suite.dir)
     else:
-        _mxrun([mx.gmake_cmd()] + progArgs, cwd=_suite.dir)
+        _mxrun([mx.gmake_cmd()] + progArgs, cwd=_suite.dir, quiet_if_successful=quiet_build)
 
 def prepareNodeCmdLine(args, add_graal_vm_args=True):
     '''run a Node.js program or shell
