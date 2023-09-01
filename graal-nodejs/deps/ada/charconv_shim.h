@@ -48,6 +48,7 @@
 #include <type_traits>
 #include <limits>
 #include <system_error> // std::errc
+#include <algorithm> // std::min
 
 namespace charconv_shim {
     struct from_chars_result {
@@ -73,6 +74,7 @@ namespace charconv_shim {
         const UINT_T mul_limit = max / base;
         UINT_T result = 0;
         auto cursor = first;
+        auto ec = std::errc{};
         while (cursor < last) {
             char c = *cursor;
             char l = to_lower(c);
@@ -86,22 +88,24 @@ namespace charconv_shim {
             }
             if (result > mul_limit) {
                 // multiplication would result in integer overflow
-                return {last, std::errc::result_out_of_range};
+                ec = std::errc::result_out_of_range;
+                // advance until last valid digit
             }
             result *= base;
             if (result > max - d) {
                 // addition would result in integer overflow
-                return {last, std::errc::result_out_of_range};
+                ec = std::errc::result_out_of_range;
+                // advance until last valid digit
             }
             result += d;
             ++cursor;
         }
         if (cursor == first) {
             return {first, std::errc::invalid_argument};
-        } else {
+        } else if (ec == std::errc{}) {
             value = result;
-            return {cursor, {}};
         }
+        return {cursor, ec};
     }
 
     template <typename UINT_T,
