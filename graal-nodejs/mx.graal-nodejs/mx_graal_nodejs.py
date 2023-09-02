@@ -153,6 +153,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         pre_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=False)
 
         build_env = os.environ.copy()
+        _prepare_build_env(build_env)
 
         debug = ['--debug'] if self._debug_mode else []
         shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
@@ -407,11 +408,22 @@ def processDevkitRoot(env=None):
         if devkit_version is not None:
             _setEnvVar('GYP_MSVS_VERSION', devkit_version, _env)
 
+def _prepare_build_env(build_env=None):
+    if _current_os == 'darwin' and _current_arch == 'amd64':
+        env = build_env or os.environ
+        min_version = env.get('MACOSX_DEPLOYMENT_TARGET')
+        if min_version:
+            # override MACOSX_DEPLOYMENT_TARGET in common.gypi
+            for flags_var in ('CXXFLAGS', 'CFLAGS', 'LDFLAGS'):
+                other_flags = env.get(flags_var)
+                _setEnvVar(flags_var, f"-mmacosx-version-min={min_version}{' ' + other_flags if other_flags else ''}", env)
+
 def setupNodeEnvironment(args, add_graal_vm_args=True):
     args = args if args else []
     mode, vmArgs, progArgs, standalone = _parseArgs(args)
     setLibraryPath()
 
+    _prepare_build_env()
     if _is_windows:
         processDevkitRoot()
 
@@ -425,8 +437,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
         else:
             mx.warn("No standalones available. Falling back to default mx node command.\nYou need to dynamically import '/vm,/substratevm' (or at least '/vm'). Example: 'mx --env svm node'")
 
-    if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None:
-        _prepare_svm_env()
+    if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None and _prepare_svm_env():
         return mode, vmArgs, progArgs, nodeExe
 
     if mx.suite('vm', fatalIfMissing=False) is not None or mx.suite('substratevm', fatalIfMissing=False) is not None:
@@ -450,6 +461,7 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
 def makeInNodeEnvironment(args):
     _, vmArgs, progArgs, _ = setupNodeEnvironment(args)
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
+    quiet_build = mx.is_continuous_integration() and not mx.get_opts().verbose
     if _is_windows:
         _mxrun([join('.', 'vcbuild.bat'),
                 'noprojgen',
@@ -457,17 +469,7 @@ def makeInNodeEnvironment(args):
                 'java-home', _java_home()
             ] + progArgs, cwd=_suite.dir)
     else:
-        makeCmd = mx.gmake_cmd()
-        if _current_os == 'solaris':
-            # we have to use GNU make and cp because the Solaris versions
-            # do not support options used by Node.js Makefile and gyp files
-            _setEnvVar('MAKE', makeCmd)
-            _mxrun(['sh', '-c', 'ln -s `which gcp` ' + join(_suite.dir, 'cp')])
-            prevPATH = os.environ['PATH']
-            _setEnvVar('PATH', "%s:%s" % (_suite.dir, prevPATH))
-        _mxrun([makeCmd] + progArgs, cwd=_suite.dir)
-        if _current_os == 'solaris':
-            _mxrun(['rm', 'cp'])
+        _mxrun([mx.gmake_cmd()] + progArgs, cwd=_suite.dir, quiet_if_successful=quiet_build)
 
 def prepareNodeCmdLine(args, add_graal_vm_args=True):
     '''run a Node.js program or shell
@@ -573,21 +575,27 @@ if _suite.primary:
     overrideBuild()
 
 def _prepare_svm_env():
+    nodejs_component = mx_sdk_vm.graalvm_component_by_name('njs')
     import mx_vm
     if hasattr(mx_vm, 'graalvm_home'):
         graalvm_home = mx_vm.graalvm_home()
     else:
         import mx_sdk_vm_impl
         graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    try:
+        import mx_sdk_vm_impl
+        if mx_sdk_vm_impl._has_skipped_libraries(nodejs_component):
+            mx.logv(f"Not running on SubstrateVM since {nodejs_component} component has skipped libraries")
+            return False
+    except (ModuleNotFoundError, AttributeError) as e:
+        mx.warn(f"{e}")
+
     libgraal_nodejs_filename = mx.add_lib_suffix(mx.add_lib_prefix('graal-nodejs'))
-    candidates = [join(graalvm_home, directory, libgraal_nodejs_filename) for directory in [join('jre', 'languages', 'nodejs', 'lib'), join('languages', 'nodejs', 'lib')]]
-    libgraal_nodejs = None
-    for candidate in candidates:
-        if exists(candidate):
-            libgraal_nodejs = candidate
-    if libgraal_nodejs is None:
-        mx.abort("Cannot find graal-nodejs library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(candidates))
+    libgraal_nodejs = join(graalvm_home, 'languages', 'nodejs', 'lib', libgraal_nodejs_filename)
+    if not exists(libgraal_nodejs):
+        mx.abort("Cannot find graal-nodejs library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(libgraal_nodejs))
     _setEnvVar('NODE_JVM_LIB', libgraal_nodejs)
+    return True
 
 def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
