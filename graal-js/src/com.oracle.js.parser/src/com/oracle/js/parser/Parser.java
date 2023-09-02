@@ -365,8 +365,6 @@ public class Parser extends AbstractParser {
 
     private boolean isModule;
 
-    //private int pipeDepth = 0;
-
     private boolean topicReferenceUsed = false;
 
     /**
