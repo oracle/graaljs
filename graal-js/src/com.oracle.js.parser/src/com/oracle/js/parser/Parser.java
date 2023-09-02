@@ -4035,7 +4035,7 @@ public class Parser extends AbstractParser {
                         TruffleString v8IntrinsicNameTS = lexer.stringIntern(v8IntrinsicName);
                         return createIdentNode(v8IntrinsicToken, ident.getFinish(), v8IntrinsicNameTS);
                     }
-                }else if(env.ecmaScriptVersion == 14){
+                }else if(isES2023()){
                     int pipeDepth = lc.getCurrentFunction().getPipeDepth();
                     if(pipeDepth <= 0){
                         throw error(JSErrorType.SyntaxError, "The topic reference can not be used here!");
