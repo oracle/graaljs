@@ -7,7 +7,7 @@ local cicommon = import '../ci/common.jsonnet';
     cd:: 'graal-nodejs',
     suite_prefix:: 'nodejs', # for build job names
     // increase default timelimit on windows and darwin-amd64
-    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:15:00' else '45:00',
+    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:30:00' else '45:00',
   },
 
   local ce = ci.ce,
@@ -51,7 +51,7 @@ local cicommon = import '../ci/common.jsonnet';
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=jvm']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
-    ] + (if std.find('substratevm', super.suiteimports) != [] then [
+    ] + (if std.find('lib:graal-nodejs', super.nativeimages) != [] then [
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=native']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
@@ -149,13 +149,13 @@ local cicommon = import '../ci/common.jsonnet';
   ] +
   // mx makeinnodeenv requires NASM on Windows.
   [gateOnMain + excludePlatforms([common.windows_amd64]) + b for b in [
-    graalNodeJs          + buildAddons      + testNode('addons',        max_heap='8G')                                             + {name: 'addons'},
-    graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='8G')                                             + {name: 'node-api'},
-    graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', max_heap='8G')                                             + {name: 'js-native-api'},
+    graalNodeJs          + buildAddons      + testNode('addons',        max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'addons'},
+    graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'node-api'},
+    graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'js-native-api'},
   ]] +
   [gateOnMain + promoteToTarget(common.gate, [common.jdk21 + common.windows_amd64]) + b for b in [
-    graalNodeJs + vm_env + build            + testNode('async-hooks',   max_heap='8G')                                             + {name: 'async-hooks'},
-    graalNodeJs + vm_env + build            + testNode('es-module',     max_heap='8G')                                             + {name: 'es-module'},
+    graalNodeJs + vm_env + build            + testNode('async-hooks',   max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'async-hooks'},
+    graalNodeJs + vm_env + build            + testNode('es-module',     max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'es-module'},
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
     graalNodeJs + vm_env + build            + testNode('sequential',    max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'sequential'} +
       excludePlatforms([common.darwin_amd64]), # times out on darwin-amd64
