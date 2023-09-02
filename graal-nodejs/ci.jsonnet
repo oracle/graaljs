@@ -17,7 +17,7 @@ local cicommon = import '../ci/common.jsonnet';
     // too slow on windows and darwin-amd64
     local enabled = 'os' in self && !(self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')),
     artifact:: if enabled then 'nodejs' else '',
-    suiteimports+:: if enabled then ['vm', 'substratevm', 'tools'] else ['vm', 'substratevm'],
+    suiteimports+:: if enabled then ['vm', 'substratevm', 'tools'] else ['vm'],
     nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [], // 'js'
     build_standalones:: true,
   },
