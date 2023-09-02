@@ -17,12 +17,6 @@ function add(number1, number2){
     return number1 + number2;
 }
 
-function* foo() {
-    yield 1;
-    yield 2;
-    yield 3;
-}
-
 class Rectangle {
   constructor(height, width) {
     this.height = height;
@@ -67,10 +61,6 @@ assertEqual('Strawberry', templateLiteral);
 let construction = (8/2) |> new Rectangle(2, %);
 assertEqual(JSON.stringify(new Rectangle(2, 4)), JSON.stringify(construction));
 
-//let awaiting = f() |> await %;
-//assertEqual("done!", awaiting);
-
-//let awaiting = 2 |> await f(%);
 function resolveAfter2Seconds(x) {
   return new Promise((resolve) => {
     setTimeout(() => {
@@ -108,9 +98,6 @@ let funcExpression = function test(value){
   let var2 = 7 |> % * var1;
   console.log("Result: " + var2);
 } |> %(2);
-
-
-//import
 
 /*
 * Test chaining of pipeline

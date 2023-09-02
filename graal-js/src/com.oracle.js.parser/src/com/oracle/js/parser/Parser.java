@@ -4014,11 +4014,11 @@ public class Parser extends AbstractParser {
                         return createIdentNode(v8IntrinsicToken, ident.getFinish(), v8IntrinsicNameTS);
                     }
                 }else if(env.ecmaScriptVersion == 14){
-                    next();
                     int pipeDepth = lc.getCurrentFunction().getPipeDepth();
                     if(pipeDepth <= 0){
                         throw error(JSErrorType.SyntaxError, "The topic reference can not be used here!");
                     }
+                    next();
                     addIdentifierReference("%" + pipeDepth);
                     topicReferenceUsed = true;
                     return new IdentNode(Token.recast(token, IDENT), finish + 1, lexer.stringIntern("%" + pipeDepth));
@@ -6430,14 +6430,19 @@ public class Parser extends AbstractParser {
 
             next();
 
+            IdentNode placeHolder = new IdentNode(Token.recast(token, IDENT),
+                    finish + 1, lexer.stringIntern("%" + pipeDepth));
+            BinaryNode lhs = new BinaryNode(Token.recast(token, ASSIGN), placeHolder, exprLhs);
             Expression rhs = assignmentExpression(in, yield, await);
-            BinaryNode lhs = new BinaryNode(Token.recast(token, ASSIGN), new IdentNode(Token.recast(token, IDENT),
-                    finish + 1, lexer.stringIntern("%" + pipeDepth)), exprLhs);
+
+            if(isStrictMode){
+                final VarNode var = new VarNode(line, Token.recast(token, LET), placeHolder.getFinish(), placeHolder.setIsDeclaredHere(), null);
+                declareVar(lc.getCurrentScope(), var);
+            }
 
             if(!topicReferenceUsed){
                 throw error("Pipe body must contain the topic reference token(%) at least once");
             }
-
 
             lc.getCurrentFunction().decreasePipeDepth();
 
