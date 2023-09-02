@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltins;
@@ -68,8 +66,7 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 
-public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
-                PrototypeSupplier {
+public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSTemporalPlainMonthDay INSTANCE = new JSTemporalPlainMonthDay();
 
@@ -77,21 +74,26 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainMonthDay.prototype");
     public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainYearMonth");
 
-    public static JSTemporalPlainMonthDayObject create(JSContext context, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear, BranchProfile errorBranch) {
+    public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), isoMonth, isoDay, calendar, referenceISOYear, node, errorBranch);
+    }
+
+    public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear,
+                    Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(referenceISOYear, isoMonth, isoDay)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
         }
         if (referenceISOYear < -271821 || 275760 < referenceISOYear) {
             // referenceISOYear is not checked in spec (but in polyfill); open bug listed in #1502
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
         }
-        JSRealm realm = JSRealm.get(null);
         JSObjectFactory factory = context.getTemporalPlainMonthDayFactory();
-        JSTemporalPlainMonthDayObject obj = factory.initProto(new JSTemporalPlainMonthDayObject(factory.getShape(realm), isoMonth,
-                        isoDay, calendar, referenceISOYear), realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalPlainMonthDayObject(shape, proto, isoMonth, isoDay, calendar, referenceISOYear), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
@@ -106,17 +108,11 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
-
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR, realm.lookupAccessor(TemporalPlainMonthDayPrototypeBuiltins.BUILTINS, CALENDAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH_CODE, realm.lookupAccessor(TemporalPlainMonthDayPrototypeBuiltins.BUILTINS, MONTH_CODE));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY, realm.lookupAccessor(TemporalPlainMonthDayPrototypeBuiltins.BUILTINS, DAY));
-
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, TemporalPlainMonthDayPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainMonthDayPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
-
         return prototype;
     }
 
@@ -140,8 +136,8 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     @TruffleBoundary
     public static TruffleString temporalMonthDayToString(JSTemporalPlainMonthDayObject md, ShowCalendar showCalendar) {
-        TruffleString monthString = Strings.format("%1$02d", md.getMonth());
-        TruffleString dayString = Strings.format("%1$02d", md.getDay());
+        TruffleString monthString = TemporalUtil.toZeroPaddedDecimalString(md.getMonth(), 2);
+        TruffleString dayString = TemporalUtil.toZeroPaddedDecimalString(md.getDay(), 2);
 
         TruffleString calendarID = JSRuntime.toString(md.getCalendar());
         TruffleString result = Strings.format("%s-%s", monthString, dayString);

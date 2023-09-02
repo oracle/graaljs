@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -76,9 +77,9 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     private final boolean isNew;
     private final boolean isNewTarget;
     private final BranchProfile errorBranch = BranchProfile.create();
-    private final ConditionProfile isTemplate = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile eightOrLessArgs = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile argumentLengthTwo = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile isTemplate = ConditionProfile.create();
+    private final ConditionProfile eightOrLessArgs = ConditionProfile.create();
+    private final ConditionProfile argumentLengthTwo = ConditionProfile.create();
 
     private static final int IMPLICIT_ARG_COUNT = 2;
     private static final int EXPLICIT_ARG_COUNT = 6;
@@ -138,12 +139,12 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         if (isNew) {
             ObjectTemplate instanceTemplate = functionTemplate.getInstanceTemplate();
             boolean hasPropertyHandler = instanceTemplate.hasPropertyHandler();
-            JSDynamicObject thisDynamicObject = (JSDynamicObject) thisObject;
-            objectTemplateInstantiate(frame, thisDynamicObject, realm, instanceTemplate, graalAccess);
+            JSObject thisJSObject = (JSObject) thisObject;
+            objectTemplateInstantiate(frame, thisJSObject, realm, instanceTemplate, graalAccess);
             if (hasPropertyHandler) {
-                thisObject = graalAccess.propertyHandlerInstantiate(context, realm, instanceTemplate, thisDynamicObject, false);
+                thisObject = graalAccess.propertyHandlerInstantiate(context, realm, instanceTemplate, thisJSObject, false);
             }
-            setConstructorTemplate(thisDynamicObject, functionTemplate);
+            setConstructorTemplate(thisJSObject, functionTemplate);
         } else if (signature != null) {
             checkConstructorTemplate(thisObject, signature);
         }
@@ -227,7 +228,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         return graalAccess.correctReturnValue(result);
     }
 
-    private void objectTemplateInstantiate(VirtualFrame frame, JSDynamicObject thisObject, JSRealm realm, ObjectTemplate instanceTemplate, GraalJSAccess graalAccess) {
+    private void objectTemplateInstantiate(VirtualFrame frame, JSObject thisObject, JSRealm realm, ObjectTemplate instanceTemplate, GraalJSAccess graalAccess) {
         if (USE_TEMPLATE_NODES && !context.isMultiContext()) {
             if (instanceTemplateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -240,7 +241,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         }
     }
 
-    private void setConstructorTemplate(JSDynamicObject thisObject, FunctionTemplate functionTemplate) {
+    private void setConstructorTemplate(JSObject thisObject, FunctionTemplate functionTemplate) {
         if (USE_TEMPLATE_NODES) {
             if (setConstructorTemplateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -252,7 +253,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
         }
     }
 
-    private Object getConstructorTemplate(JSDynamicObject thisObject) {
+    private Object getConstructorTemplate(JSObject thisObject) {
         if (USE_TEMPLATE_NODES) {
             if (getConstructorTemplateNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -266,7 +267,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
     }
 
     private void checkConstructorTemplate(Object thisObject, FunctionTemplate signature) {
-        FunctionTemplate constructorTemplate = thisObject instanceof JSDynamicObject ? (FunctionTemplate) getConstructorTemplate((JSDynamicObject) thisObject) : null;
+        FunctionTemplate constructorTemplate = thisObject instanceof JSObject ? (FunctionTemplate) getConstructorTemplate((JSObject) thisObject) : null;
         while (constructorTemplate != signature && constructorTemplate != null) {
             constructorTemplate = constructorTemplate.getParent();
         }
@@ -286,8 +287,7 @@ public class ExecuteNativeFunctionNode extends JavaScriptNode {
             valueTypeNodes[index] = insert(ValueTypeNodeGen.create(context, index >= IMPLICIT_ARG_COUNT));
         }
         int type = valueTypeNodes[index].executeInt(argument);
-        GraalJSAccess graalAccess = GraalJSAccess.get(this);
-        assert type == graalAccess.valueType(argument, false);
+        assert type == GraalJSAccess.get(this).valueType(argument, false);
         return type;
     }
 

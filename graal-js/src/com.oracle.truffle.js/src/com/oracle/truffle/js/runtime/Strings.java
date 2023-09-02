@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -175,10 +175,12 @@ public final class Strings {
     public static final TruffleString COMPARE = constant("compare");
     public static final TruffleString CONSTRUCT = Strings.constant("construct");
     public static final TruffleString DEFAULT = constant("default");
+    public static final TruffleString DEFAULT_VALUE = constant("defaultValue");
     public static final TruffleString DELETE = constant("delete");
     public static final TruffleString DONE = constant("done");
     public static final TruffleString EMPTY = constant("empty");
     public static final TruffleString EMPTY_X = constant("empty \u00d7 ");
+    public static final TruffleString ENTRIES = constant("entries");
     public static final TruffleString UC_ERROR = constant("Error");
     public static final TruffleString FILE = constant("file");
     public static final TruffleString FLAGS = constant("flags");
@@ -272,6 +274,9 @@ public final class Strings {
     public static final TruffleString TO_STRING_TAG = constant("toStringTag");
     public static final TruffleString TO_PRIMITIVE = constant("toPrimitive");
     public static final TruffleString UNSCOPABLES = constant("unscopables");
+    public static final TruffleString TO_REVERSED = constant("toReversed");
+    public static final TruffleString TO_SORTED = constant("toSorted");
+    public static final TruffleString TO_SPLICED = constant("toSpliced");
 
     public static final TruffleString UC_ARRAY = constant("Array");
     public static final TruffleString UC_OBJECT = constant("Object");
@@ -393,9 +398,6 @@ public final class Strings {
     public static final TruffleString ESCAPE_U_00 = constant("\\u00");
     public static final TruffleString ESCAPE_BACKSLASH = constant("\\\\");
     public static final TruffleString ESCAPE_QUOTE = constant("\\\"");
-
-    public static final TruffleString PROPERTY_DESCRIPTION_MUST_BE_AN_OBJECT = constant("Property description must be an object: ");
-    public static final TruffleString METHOD_ERROR_PROTOTYPE_TO_STRING_CALLED_ON_INCOMPATIBLE_RECEIVER = constant("Method Error.prototype.toString called on incompatible receiver ");
 
     /* WASM */
     public static final TruffleString I_64 = constant("i64");
@@ -614,13 +616,6 @@ public final class Strings {
         return node.execute(str, TruffleString.Encoding.UTF_16);
     }
 
-    public static TruffleString fromCharSequence(CharSequence str) {
-        if (str == null) {
-            return null;
-        }
-        return fromJavaString(str.toString());
-    }
-
     public static TruffleString fromLong(long longValue) {
         return fromLong(TruffleString.FromLongNode.getUncached(), longValue);
     }
@@ -708,7 +703,7 @@ public final class Strings {
     }
 
     public static TruffleString substring(JSContext context, TruffleString.SubstringByteIndexNode node, TruffleString s, int fromIndex, int length) {
-        return substring(context.getContextOptions().isStringLazySubstrings(), node, s, fromIndex, length);
+        return substring(context.getLanguageOptions().stringLazySubstrings(), node, s, fromIndex, length);
     }
 
     /**
@@ -762,6 +757,10 @@ public final class Strings {
 
     public static int indexOfAny(TruffleString s, char... chars) {
         return s.charIndexOfAnyCharUTF16Uncached(0, length(s), chars);
+    }
+
+    public static int indexOfAny(TruffleString.CharIndexOfAnyCharUTF16Node node, TruffleString s, char... chars) {
+        return node.execute(s, 0, length(s), chars);
     }
 
     public static int indexOf(TruffleString.ByteIndexOfCodePointNode node, TruffleString s, int codepoint) {
@@ -869,21 +868,17 @@ public final class Strings {
         return s == null ? null : node.execute(s);
     }
 
-    public static TruffleString toLowerCase(TruffleString s, Locale locale) {
-        return fromJavaString(javaStringToLowerCase(toJavaString(s), locale));
-    }
-
     public static TruffleString toUpperCase(TruffleString s, Locale locale) {
         return fromJavaString(javaStringToUpperCase(toJavaString(s), locale));
     }
 
     @TruffleBoundary
-    private static String javaStringToLowerCase(String s, Locale locale) {
+    public static String javaStringToLowerCase(String s, Locale locale) {
         return s.toLowerCase(locale);
     }
 
     @TruffleBoundary
-    private static String javaStringToUpperCase(String s, Locale locale) {
+    public static String javaStringToUpperCase(String s, Locale locale) {
         return s.toUpperCase(locale);
     }
 
@@ -1004,16 +999,31 @@ public final class Strings {
         return interopAsString(InteropLibrary.getUncached(), key);
     }
 
-    public static TruffleString interopAsTruffleString(Object key) throws UnsupportedMessageException {
-        return interopAsTruffleString(InteropLibrary.getUncached(), key);
-    }
-
     public static String interopAsString(InteropLibrary stringInterop, Object key) throws UnsupportedMessageException {
         return key instanceof String ? (String) key : stringInterop.asString(key);
     }
 
-    public static TruffleString interopAsTruffleString(InteropLibrary stringInterop, Object key) throws UnsupportedMessageException {
-        return key instanceof TruffleString ? (TruffleString) key : stringInterop.asTruffleString(key);
+    public static TruffleString interopAsTruffleString(Object key) {
+        return interopAsTruffleString(key, InteropLibrary.getUncached(), TruffleString.SwitchEncodingNode.getUncached());
+    }
+
+    public static TruffleString interopAsTruffleString(Object key, InteropLibrary stringInterop) {
+        return interopAsTruffleString(key, stringInterop, TruffleString.SwitchEncodingNode.getUncached());
+    }
+
+    public static TruffleString interopAsTruffleString(Object key, InteropLibrary stringInterop, TruffleString.SwitchEncodingNode switchEncodingNode) {
+        assert stringInterop.isString(key) : key;
+        TruffleString truffleString;
+        if (key instanceof TruffleString) {
+            truffleString = (TruffleString) key;
+        } else {
+            try {
+                truffleString = stringInterop.asTruffleString(key);
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(key, e, "asTruffleString", stringInterop);
+            }
+        }
+        return switchEncodingNode.execute(truffleString, TruffleString.Encoding.UTF_16);
     }
 
     public static BigInt parseBigInt(TruffleString s) {

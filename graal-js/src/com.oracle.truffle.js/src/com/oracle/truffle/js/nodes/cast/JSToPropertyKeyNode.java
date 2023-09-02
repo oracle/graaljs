@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,11 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
@@ -55,9 +55,11 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * This implements ECMAScript 6 ToPropertyKey(argument).
+ * This implements the abstract operation ToPropertyKey(argument).
  */
 public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
+
+    @NeverDefault
     public static JSToPropertyKeyNode create() {
         return JSToPropertyKeyNodeGen.create();
     }
@@ -78,10 +80,10 @@ public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
     @Specialization(guards = {"!isSymbol(value)"})
     protected Object doOther(Object value,
                     @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode,
-                    @Cached("create()") JSToStringNode toStringNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isSymbol) {
+                    @Cached JSToStringNode toStringNode,
+                    @Cached InlinedConditionProfile isSymbol) {
         Object key = toPrimitiveNode.execute(value);
-        if (isSymbol.profile(key instanceof Symbol)) {
+        if (isSymbol.profile(this, key instanceof Symbol)) {
             return key;
         } else {
             return toStringNode.executeString(key);
@@ -89,7 +91,6 @@ public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
     }
 
     public abstract static class JSToPropertyKeyWrapperNode extends JSUnaryNode {
-        @Child private JSToPropertyKeyNode toPropertyKeyNode;
 
         protected JSToPropertyKeyWrapperNode(JavaScriptNode operand) {
             super(operand);
@@ -103,11 +104,8 @@ public abstract class JSToPropertyKeyNode extends JavaScriptBaseNode {
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
-            if (toPropertyKeyNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toPropertyKeyNode = insert(JSToPropertyKeyNode.create());
-            }
+        protected static Object doDefault(Object value,
+                        @Cached JSToPropertyKeyNode toPropertyKeyNode) {
             return toPropertyKeyNode.execute(value);
         }
 

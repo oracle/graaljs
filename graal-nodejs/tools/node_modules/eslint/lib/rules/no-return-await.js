@@ -13,6 +13,7 @@ const astUtils = require("./utils/ast-utils");
 /** @type {import('../shared/types').Rule} */
 module.exports = {
     meta: {
+        hasSuggestions: true,
         type: "suggestion",
 
         docs: {
@@ -20,7 +21,7 @@ module.exports = {
 
             recommended: false,
 
-            url: "https://eslint.org/docs/rules/no-return-await"
+            url: "https://eslint.org/docs/latest/rules/no-return-await"
         },
 
         fixable: null,
@@ -29,6 +30,7 @@ module.exports = {
         ],
 
         messages: {
+            removeAwait: "Remove redundant `await`.",
             redundantUseOfAwait: "Redundant use of `await` on a return value."
         }
     },
@@ -42,9 +44,34 @@ module.exports = {
          */
         function reportUnnecessaryAwait(node) {
             context.report({
-                node: context.getSourceCode().getFirstToken(node),
+                node: context.sourceCode.getFirstToken(node),
                 loc: node.loc,
-                messageId: "redundantUseOfAwait"
+                messageId: "redundantUseOfAwait",
+                suggest: [
+                    {
+                        messageId: "removeAwait",
+                        fix(fixer) {
+                            const sourceCode = context.sourceCode;
+                            const [awaitToken, tokenAfterAwait] = sourceCode.getFirstTokens(node, 2);
+
+                            const areAwaitAndAwaitedExpressionOnTheSameLine = awaitToken.loc.start.line === tokenAfterAwait.loc.start.line;
+
+                            if (!areAwaitAndAwaitedExpressionOnTheSameLine) {
+                                return null;
+                            }
+
+                            const [startOfAwait, endOfAwait] = awaitToken.range;
+
+                            const characterAfterAwait = sourceCode.text[endOfAwait];
+                            const trimLength = characterAfterAwait === " " ? 1 : 0;
+
+                            const range = [startOfAwait, endOfAwait + trimLength];
+
+                            return fixer.removeRange(range);
+                        }
+                    }
+                ]
+
             });
         }
 

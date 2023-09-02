@@ -5,20 +5,24 @@
 #include "include/v8config.h"
 #include "src/trap-handler/trap-handler-simulator.h"
 
-#if V8_OS_MACOSX
+#if V8_OS_DARWIN
 #define SYMBOL(name) "_" #name
-#else  // !V8_OS_MACOSX
+#else  // !V8_OS_DARWIN
 #define SYMBOL(name) #name
-#endif  // !V8_OS_MACOSX
+#endif  // !V8_OS_DARWIN
 
 // Define the ProbeMemory function declared in trap-handler-simulators.h.
 asm(
     ".globl " SYMBOL(ProbeMemory) "                 \n"
     SYMBOL(ProbeMemory) ":                          \n"
-    // First parameter (address) passed in %rdi.
-    // The second parameter (pc) is unused here. It is read by the trap handler
-    // instead.
+// First parameter (address) passed in %rdi on Linux/Mac, and %rcx on Windows.
+// The second parameter (pc) is unused here. It is read by the trap handler
+// instead.
+#if V8_OS_WIN
+    "  movb (%rcx), %al                             \n"
+#else
     "  movb (%rdi), %al                             \n"
+#endif  // V8_OS_WIN
     // Return 0 on success.
     "  xorl %eax, %eax                              \n"
     // Place an additional "ret" here instead of falling through to the one

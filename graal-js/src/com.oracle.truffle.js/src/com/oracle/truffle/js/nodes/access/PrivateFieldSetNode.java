@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,15 +43,18 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -84,12 +87,14 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
         this.context = context;
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(limit = "3")
     Object doField(JSObject target, HiddenKey key, Object value,
+                    @Bind("this") Node node,
                     @CachedLibrary("target") DynamicObjectLibrary access,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
         if (!Properties.putIfPresent(access, target, key, value)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             missing(target, key, value);
         }
         return value;
@@ -98,10 +103,10 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     @Specialization
     Object doAccessor(JSObject target, Accessor accessor, Object value,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached BranchProfile errorBranch) {
+                    @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
         Object setter = accessor.getSetter();
         if (setter == Undefined.instance) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorCannotSetAccessorProperty(keyAsString(), target);
         }
         callNode.executeCall(JSArguments.createOneArg(target, setter, value));

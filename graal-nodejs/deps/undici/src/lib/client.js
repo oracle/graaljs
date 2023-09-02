@@ -1,3 +1,5 @@
+// @ts-check
+
 'use strict'
 
 /* global WebAssembly */
@@ -5,9 +7,9 @@
 const assert = require('assert')
 const net = require('net')
 const util = require('./core/util')
+const timers = require('./timers')
 const Request = require('./core/request')
 const DispatcherBase = require('./dispatcher-base')
-const RedirectHandler = require('./handler/redirect')
 const {
   RequestContentLengthMismatchError,
   ResponseContentLengthMismatchError,
@@ -18,7 +20,9 @@ const {
   SocketError,
   InformationalError,
   BodyTimeoutError,
-  HTTPParserError
+  HTTPParserError,
+  ResponseExceededMaxSizeError,
+  ClientDestroyedError
 } = require('./core/errors')
 const buildConnector = require('./core/connect')
 const {
@@ -60,8 +64,12 @@ const {
   kCounter,
   kClose,
   kDestroy,
-  kDispatch
+  kDispatch,
+  kInterceptors,
+  kLocalAddress,
+  kMaxResponseSize
 } = require('./core/symbols')
+const FastBuffer = Buffer[Symbol.species]
 
 const kClosedResolve = Symbol('kClosedResolve')
 
@@ -80,8 +88,17 @@ try {
   channels.connected = { hasSubscribers: false }
 }
 
+/**
+ * @type {import('../types/client').default}
+ */
 class Client extends DispatcherBase {
+  /**
+   *
+   * @param {string|URL} url
+   * @param {import('../types/client').Client.Options} options
+   */
   constructor (url, {
+    interceptors,
     maxHeaderSize,
     headersTimeout,
     socketTimeout,
@@ -101,7 +118,11 @@ class Client extends DispatcherBase {
     maxCachedSessions,
     maxRedirections,
     connect,
-    maxRequestsPerClient
+    maxRequestsPerClient,
+    localAddress,
+    maxResponseSize,
+    autoSelectFamily,
+    autoSelectFamilyAttemptTimeout
   } = {}) {
     super()
 
@@ -169,16 +190,35 @@ class Client extends DispatcherBase {
       throw new InvalidArgumentError('maxRequestsPerClient must be a positive number')
     }
 
+    if (localAddress != null && (typeof localAddress !== 'string' || net.isIP(localAddress) === 0)) {
+      throw new InvalidArgumentError('localAddress must be valid string IP address')
+    }
+
+    if (maxResponseSize != null && (!Number.isInteger(maxResponseSize) || maxResponseSize < -1)) {
+      throw new InvalidArgumentError('maxResponseSize must be a positive number')
+    }
+
+    if (
+      autoSelectFamilyAttemptTimeout != null &&
+      (!Number.isInteger(autoSelectFamilyAttemptTimeout) || autoSelectFamilyAttemptTimeout < -1)
+    ) {
+      throw new InvalidArgumentError('autoSelectFamilyAttemptTimeout must be a positive number')
+    }
+
     if (typeof connect !== 'function') {
       connect = buildConnector({
         ...tls,
         maxCachedSessions,
         socketPath,
         timeout: connectTimeout,
+        ...(util.nodeHasAutoSelectFamily && autoSelectFamily ? { autoSelectFamily, autoSelectFamilyAttemptTimeout } : undefined),
         ...connect
       })
     }
 
+    this[kInterceptors] = interceptors && interceptors.Client && Array.isArray(interceptors.Client)
+      ? interceptors.Client
+      : [createRedirectInterceptor({ maxRedirections })]
     this[kUrl] = util.parseOrigin(url)
     this[kConnector] = connect
     this[kSocket] = null
@@ -189,15 +229,17 @@ class Client extends DispatcherBase {
     this[kKeepAliveTimeoutThreshold] = keepAliveTimeoutThreshold == null ? 1e3 : keepAliveTimeoutThreshold
     this[kKeepAliveTimeoutValue] = this[kKeepAliveDefaultTimeout]
     this[kServerName] = null
+    this[kLocalAddress] = localAddress != null ? localAddress : null
     this[kResuming] = 0 // 0, idle, 1, scheduled, 2 resuming
     this[kNeedDrain] = 0 // 0, idle, 1, scheduled, 2 resuming
     this[kHostHeader] = `host: ${this[kUrl].hostname}${this[kUrl].port ? `:${this[kUrl].port}` : ''}\r\n`
-    this[kBodyTimeout] = bodyTimeout != null ? bodyTimeout : 30e3
-    this[kHeadersTimeout] = headersTimeout != null ? headersTimeout : 30e3
+    this[kBodyTimeout] = bodyTimeout != null ? bodyTimeout : 300e3
+    this[kHeadersTimeout] = headersTimeout != null ? headersTimeout : 300e3
     this[kStrictContentLength] = strictContentLength == null ? true : strictContentLength
     this[kMaxRedirections] = maxRedirections
     this[kMaxRequests] = maxRequestsPerClient
     this[kClosedResolve] = null
+    this[kMaxResponseSize] = maxResponseSize > -1 ? maxResponseSize : -1
 
     // kQueue is built up of 3 sections separated by
     // the kRunningIdx and kPendingIdx indices.
@@ -254,11 +296,6 @@ class Client extends DispatcherBase {
   }
 
   [kDispatch] (opts, handler) {
-    const { maxRedirections = this[kMaxRedirections] } = opts
-    if (maxRedirections) {
-      handler = new RedirectHandler(this, maxRedirections, opts, handler)
-    }
-
     const origin = opts.origin || this[kUrl].origin
 
     const request = new Request(origin, opts, handler)
@@ -284,7 +321,7 @@ class Client extends DispatcherBase {
   async [kClose] () {
     return new Promise((resolve) => {
       if (!this[kSize]) {
-        this.destroy(resolve)
+        resolve(null)
       } else {
         this[kClosedResolve] = resolve
       }
@@ -301,6 +338,7 @@ class Client extends DispatcherBase {
 
       const callback = () => {
         if (this[kClosedResolve]) {
+          // TODO (fix): Should we error here with ClientDestroyedError?
           this[kClosedResolve]()
           this[kClosedResolve] = null
         }
@@ -319,14 +357,15 @@ class Client extends DispatcherBase {
 }
 
 const constants = require('./llhttp/constants')
+const createRedirectInterceptor = require('./interceptor/redirectInterceptor')
 const EMPTY_BUF = Buffer.alloc(0)
 
 async function lazyllhttp () {
-  const llhttpWasmData = process.env.JEST_WORKER_ID ? require('./llhttp/llhttp.wasm.js') : undefined
+  const llhttpWasmData = process.env.JEST_WORKER_ID ? require('./llhttp/llhttp-wasm.js') : undefined
 
   let mod
   try {
-    mod = await WebAssembly.compile(Buffer.from(require('./llhttp/llhttp_simd.wasm.js'), 'base64'))
+    mod = await WebAssembly.compile(Buffer.from(require('./llhttp/llhttp_simd-wasm.js'), 'base64'))
   } catch (e) {
     /* istanbul ignore next */
 
@@ -334,7 +373,7 @@ async function lazyllhttp () {
     // being enabled, but the occurring of this other error
     // * https://github.com/emscripten-core/emscripten/issues/11495
     // got me to remove that check to avoid breaking Node 12.
-    mod = await WebAssembly.compile(Buffer.from(llhttpWasmData || require('./llhttp/llhttp.wasm.js'), 'base64'))
+    mod = await WebAssembly.compile(Buffer.from(llhttpWasmData || require('./llhttp/llhttp-wasm.js'), 'base64'))
   }
 
   return await WebAssembly.instantiate(mod, {
@@ -347,9 +386,8 @@ async function lazyllhttp () {
       },
       wasm_on_status: (p, at, len) => {
         assert.strictEqual(currentParser.ptr, p)
-        const start = at - currentBufferPtr
-        const end = start + len
-        return currentParser.onStatus(currentBufferRef.slice(start, end)) || 0
+        const start = at - currentBufferPtr + currentBufferRef.byteOffset
+        return currentParser.onStatus(new FastBuffer(currentBufferRef.buffer, start, len)) || 0
       },
       wasm_on_message_begin: (p) => {
         assert.strictEqual(currentParser.ptr, p)
@@ -357,15 +395,13 @@ async function lazyllhttp () {
       },
       wasm_on_header_field: (p, at, len) => {
         assert.strictEqual(currentParser.ptr, p)
-        const start = at - currentBufferPtr
-        const end = start + len
-        return currentParser.onHeaderField(currentBufferRef.slice(start, end)) || 0
+        const start = at - currentBufferPtr + currentBufferRef.byteOffset
+        return currentParser.onHeaderField(new FastBuffer(currentBufferRef.buffer, start, len)) || 0
       },
       wasm_on_header_value: (p, at, len) => {
         assert.strictEqual(currentParser.ptr, p)
-        const start = at - currentBufferPtr
-        const end = start + len
-        return currentParser.onHeaderValue(currentBufferRef.slice(start, end)) || 0
+        const start = at - currentBufferPtr + currentBufferRef.byteOffset
+        return currentParser.onHeaderValue(new FastBuffer(currentBufferRef.buffer, start, len)) || 0
       },
       wasm_on_headers_complete: (p, statusCode, upgrade, shouldKeepAlive) => {
         assert.strictEqual(currentParser.ptr, p)
@@ -373,9 +409,8 @@ async function lazyllhttp () {
       },
       wasm_on_body: (p, at, len) => {
         assert.strictEqual(currentParser.ptr, p)
-        const start = at - currentBufferPtr
-        const end = start + len
-        return currentParser.onBody(currentBufferRef.slice(start, end)) || 0
+        const start = at - currentBufferPtr + currentBufferRef.byteOffset
+        return currentParser.onBody(new FastBuffer(currentBufferRef.buffer, start, len)) || 0
       },
       wasm_on_message_complete: (p) => {
         assert.strictEqual(currentParser.ptr, p)
@@ -389,8 +424,7 @@ async function lazyllhttp () {
 
 let llhttpInstance = null
 let llhttpPromise = lazyllhttp()
-  .catch(() => {
-  })
+llhttpPromise.catch()
 
 let currentParser = null
 let currentBufferRef = null
@@ -426,14 +460,16 @@ class Parser {
 
     this.keepAlive = ''
     this.contentLength = ''
+    this.connection = ''
+    this.maxResponseSize = client[kMaxResponseSize]
   }
 
   setTimeout (value, type) {
     this.timeoutType = type
     if (value !== this.timeoutValue) {
-      clearTimeout(this.timeout)
+      timers.clearTimeout(this.timeout)
       if (value) {
-        this.timeout = setTimeout(onParserTimeout, value, this)
+        this.timeout = timers.setTimeout(onParserTimeout, value, this)
         // istanbul ignore else: only for jest
         if (this.timeout.unref) {
           this.timeout.unref()
@@ -533,25 +569,15 @@ class Parser {
         /* istanbul ignore else: difficult to make a test case for */
         if (ptr) {
           const len = new Uint8Array(llhttp.memory.buffer, ptr).indexOf(0)
-          message = Buffer.from(llhttp.memory.buffer, ptr, len).toString()
+          message =
+            'Response does not match the HTTP/1.1 protocol (' +
+            Buffer.from(llhttp.memory.buffer, ptr, len).toString() +
+            ')'
         }
         throw new HTTPParserError(message, constants.ERROR[ret], data.slice(offset))
       }
     } catch (err) {
       util.destroy(socket, err)
-    }
-  }
-
-  finish () {
-    try {
-      try {
-        currentParser = this
-      } finally {
-        currentParser = null
-      }
-    } catch (err) {
-      /* istanbul ignore next: difficult to make a test case for */
-      util.destroy(this.socket, err)
     }
   }
 
@@ -562,7 +588,7 @@ class Parser {
     this.llhttp.llhttp_free(this.ptr)
     this.ptr = null
 
-    clearTimeout(this.timeout)
+    timers.clearTimeout(this.timeout)
     this.timeout = null
     this.timeoutValue = null
     this.timeoutType = null
@@ -613,6 +639,8 @@ class Parser {
     const key = this.headers[len - 2]
     if (key.length === 10 && key.toString().toLowerCase() === 'keep-alive') {
       this.keepAlive += buf.toString()
+    } else if (key.length === 10 && key.toString().toLowerCase() === 'connection') {
+      this.connection += buf.toString()
     } else if (key.length === 14 && key.toString().toLowerCase() === 'content-length') {
       this.contentLength += buf.toString()
     }
@@ -706,7 +734,11 @@ class Parser {
     assert.strictEqual(this.timeoutType, TIMEOUT_HEADERS)
 
     this.statusCode = statusCode
-    this.shouldKeepAlive = shouldKeepAlive
+    this.shouldKeepAlive = (
+      shouldKeepAlive ||
+      // Override llhttp value which does not allow keepAlive for HEAD.
+      (request.method === 'HEAD' && !socket[kReset] && this.connection.toLowerCase() === 'keep-alive')
+    )
 
     if (this.statusCode >= 200) {
       const bodyTimeout = request.bodyTimeout != null
@@ -736,7 +768,7 @@ class Parser {
     this.headers = []
     this.headersSize = 0
 
-    if (shouldKeepAlive && client[kPipelining]) {
+    if (this.shouldKeepAlive && client[kPipelining]) {
       const keepAliveTimeout = this.keepAlive ? util.parseKeepAliveTimeout(this.keepAlive) : null
 
       if (keepAliveTimeout != null) {
@@ -766,7 +798,6 @@ class Parser {
     }
 
     if (request.method === 'HEAD') {
-      assert(socket[kReset])
       return 1
     }
 
@@ -783,7 +814,7 @@ class Parser {
   }
 
   onBody (buf) {
-    const { client, socket, statusCode } = this
+    const { client, socket, statusCode, maxResponseSize } = this
 
     if (socket.destroyed) {
       return -1
@@ -801,6 +832,11 @@ class Parser {
     }
 
     assert(statusCode >= 200)
+
+    if (maxResponseSize > -1 && this.bytesRead + buf.length > maxResponseSize) {
+      util.destroy(socket, new ResponseExceededMaxSizeError())
+      return -1
+    }
 
     this.bytesRead += buf.length
 
@@ -835,6 +871,7 @@ class Parser {
     this.bytesRead = 0
     this.contentLength = ''
     this.keepAlive = ''
+    this.connection = ''
 
     assert(this.headers.length % 2 === 0)
     this.headers = []
@@ -917,7 +954,7 @@ function onSocketError (err) {
   // to the user.
   if (err.code === 'ECONNRESET' && parser.statusCode && !parser.shouldKeepAlive) {
     // We treat all incoming data so for as a valid response.
-    parser.finish()
+    parser.onMessageComplete()
     return
   }
 
@@ -951,7 +988,7 @@ function onSocketEnd () {
 
   if (parser.statusCode && !parser.shouldKeepAlive) {
     // We treat all incoming data so far as a valid response.
-    parser.finish()
+    parser.onMessageComplete()
     return
   }
 
@@ -960,6 +997,11 @@ function onSocketEnd () {
 
 function onSocketClose () {
   const { [kClient]: client } = this
+
+  if (!this[kError] && this[kParser].statusCode && !this[kParser].shouldKeepAlive) {
+    // We treat all incoming data so far as a valid response.
+    this[kParser].onMessageComplete()
+  }
 
   this[kParser].destroy()
   this[kParser] = null
@@ -1020,7 +1062,8 @@ async function connect (client) {
         hostname,
         protocol,
         port,
-        servername: client[kServerName]
+        servername: client[kServerName],
+        localAddress: client[kLocalAddress]
       },
       connector: client[kConnector]
     })
@@ -1033,7 +1076,8 @@ async function connect (client) {
         hostname,
         protocol,
         port,
-        servername: client[kServerName]
+        servername: client[kServerName],
+        localAddress: client[kLocalAddress]
       }, (err, socket) => {
         if (err) {
           reject(err)
@@ -1043,6 +1087,11 @@ async function connect (client) {
       })
     })
 
+    if (client.destroyed) {
+      util.destroy(socket.on('error', () => {}), new ClientDestroyedError())
+      return
+    }
+
     if (!llhttpInstance) {
       llhttpInstance = await llhttpPromise
       llhttpPromise = null
@@ -1051,8 +1100,6 @@ async function connect (client) {
     client[kConnecting] = false
 
     assert(socket)
-
-    client[kSocket] = socket
 
     socket[kNoRef] = false
     socket[kWriting] = false
@@ -1069,6 +1116,8 @@ async function connect (client) {
       .on('end', onSocketEnd)
       .on('close', onSocketClose)
 
+    client[kSocket] = socket
+
     if (channels.connected.hasSubscribers) {
       channels.connected.publish({
         connectParams: {
@@ -1076,7 +1125,8 @@ async function connect (client) {
           hostname,
           protocol,
           port,
-          servername: client[kServerName]
+          servername: client[kServerName],
+          localAddress: client[kLocalAddress]
         },
         connector: client[kConnector],
         socket
@@ -1084,6 +1134,10 @@ async function connect (client) {
     }
     client.emit('connect', client[kUrl], [client])
   } catch (err) {
+    if (client.destroyed) {
+      return
+    }
+
     client[kConnecting] = false
 
     if (channels.connectError.hasSubscribers) {
@@ -1093,7 +1147,8 @@ async function connect (client) {
           hostname,
           protocol,
           port,
-          servername: client[kServerName]
+          servername: client[kServerName],
+          localAddress: client[kLocalAddress]
         },
         connector: client[kConnector],
         error: err
@@ -1145,14 +1200,15 @@ function _resume (client, sync) {
       return
     }
 
-    if (client.closed && !client[kSize]) {
-      client.destroy()
+    if (client[kClosedResolve] && !client[kSize]) {
+      client[kClosedResolve]()
+      client[kClosedResolve] = null
       return
     }
 
     const socket = client[kSocket]
 
-    if (socket) {
+    if (socket && !socket.destroyed) {
       if (client[kSize] === 0) {
         if (!socket[kNoRef] && socket.unref) {
           socket.unref()
@@ -1219,7 +1275,7 @@ function _resume (client, sync) {
 
     if (!socket) {
       connect(client)
-      continue
+      return
     }
 
     if (socket.destroyed || socket[kWriting] || socket[kReset] || socket[kBlocking]) {
@@ -1278,7 +1334,7 @@ function _resume (client, sync) {
 }
 
 function write (client, request) {
-  const { body, method, path, host, upgrade, headers, blocking } = request
+  const { body, method, path, host, upgrade, headers, blocking, reset } = request
 
   // https://tools.ietf.org/html/rfc7231#section-4.3.1
   // https://tools.ietf.org/html/rfc7231#section-4.3.2
@@ -1346,7 +1402,6 @@ function write (client, request) {
 
   if (method === 'HEAD') {
     // https://github.com/mcollina/undici/issues/258
-
     // Close after a HEAD request to interop with misbehaving servers
     // that may send a body in the response.
 
@@ -1358,6 +1413,10 @@ function write (client, request) {
     // requests on this connection.
 
     socket[kReset] = true
+  }
+
+  if (reset != null) {
+    socket[kReset] = reset
   }
 
   if (client[kMaxRequests] && socket[kCounter]++ >= client[kMaxRequests]) {
@@ -1378,7 +1437,7 @@ function write (client, request) {
 
   if (upgrade) {
     header += `connection: upgrade\r\nupgrade: ${upgrade}\r\n`
-  } else if (client[kPipelining]) {
+  } else if (client[kPipelining] && !socket[kReset]) {
     header += 'connection: keep-alive\r\n'
   } else {
     header += 'connection: close\r\n'
@@ -1395,17 +1454,17 @@ function write (client, request) {
   /* istanbul ignore else: assertion */
   if (!body) {
     if (contentLength === 0) {
-      socket.write(`${header}content-length: 0\r\n\r\n`, 'ascii')
+      socket.write(`${header}content-length: 0\r\n\r\n`, 'latin1')
     } else {
       assert(contentLength === null, 'no body must not have content length')
-      socket.write(`${header}\r\n`, 'ascii')
+      socket.write(`${header}\r\n`, 'latin1')
     }
     request.onRequestSent()
   } else if (util.isBuffer(body)) {
     assert(contentLength === body.byteLength, 'buffer body must have content length')
 
     socket.cork()
-    socket.write(`${header}content-length: ${contentLength}\r\n\r\n`, 'ascii')
+    socket.write(`${header}content-length: ${contentLength}\r\n\r\n`, 'latin1')
     socket.write(body)
     socket.uncork()
     request.onBodySent(body)
@@ -1438,9 +1497,11 @@ function writeStream ({ body, client, request, socket, contentLength, header, ex
   const writer = new AsyncWriter({ socket, request, contentLength, client, expectsPayload, header })
 
   const onData = function (chunk) {
-    try {
-      assert(!finished)
+    if (finished) {
+      return
+    }
 
+    try {
       if (!writer.write(chunk) && this.pause) {
         this.pause()
       }
@@ -1449,7 +1510,9 @@ function writeStream ({ body, client, request, socket, contentLength, header, ex
     }
   }
   const onDrain = function () {
-    assert(!finished)
+    if (finished) {
+      return
+    }
 
     if (body.resume) {
       body.resume()
@@ -1520,7 +1583,7 @@ async function writeBlob ({ body, client, request, socket, contentLength, header
     const buffer = Buffer.from(await body.arrayBuffer())
 
     socket.cork()
-    socket.write(`${header}content-length: ${contentLength}\r\n\r\n`, 'ascii')
+    socket.write(`${header}content-length: ${contentLength}\r\n\r\n`, 'latin1')
     socket.write(buffer)
     socket.uncork()
 
@@ -1624,25 +1687,29 @@ class AsyncWriter {
       process.emitWarning(new RequestContentLengthMismatchError())
     }
 
+    socket.cork()
+
     if (bytesWritten === 0) {
       if (!expectsPayload) {
         socket[kReset] = true
       }
 
       if (contentLength === null) {
-        socket.write(`${header}transfer-encoding: chunked\r\n`, 'ascii')
+        socket.write(`${header}transfer-encoding: chunked\r\n`, 'latin1')
       } else {
-        socket.write(`${header}content-length: ${contentLength}\r\n\r\n`, 'ascii')
+        socket.write(`${header}content-length: ${contentLength}\r\n\r\n`, 'latin1')
       }
     }
 
     if (contentLength === null) {
-      socket.write(`\r\n${len.toString(16)}\r\n`, 'ascii')
+      socket.write(`\r\n${len.toString(16)}\r\n`, 'latin1')
     }
 
     this.bytesWritten += len
 
     const ret = socket.write(chunk)
+
+    socket.uncork()
 
     request.onBodySent(chunk)
 
@@ -1679,12 +1746,12 @@ class AsyncWriter {
         // no Transfer-Encoding is sent and the request method defines a meaning
         // for an enclosed payload body.
 
-        socket.write(`${header}content-length: 0\r\n\r\n`, 'ascii')
+        socket.write(`${header}content-length: 0\r\n\r\n`, 'latin1')
       } else {
-        socket.write(`${header}\r\n`, 'ascii')
+        socket.write(`${header}\r\n`, 'latin1')
       }
     } else if (contentLength === null) {
-      socket.write('\r\n0\r\n\r\n', 'ascii')
+      socket.write('\r\n0\r\n\r\n', 'latin1')
     }
 
     if (contentLength !== null && bytesWritten !== contentLength) {

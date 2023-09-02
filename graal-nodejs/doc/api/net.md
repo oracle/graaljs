@@ -29,7 +29,7 @@ sockets on other operating systems.
 [`socket.connect()`][] take a `path` parameter to identify IPC endpoints.
 
 On Unix, the local domain is also known as the Unix domain. The path is a
-filesystem pathname. It gets truncated to an OS-dependent length of
+file system pathname. It gets truncated to an OS-dependent length of
 `sizeof(sockaddr_un.sun_path) - 1`. Typical values are 107 bytes on Linux and
 103 bytes on macOS. If a Node.js API abstraction creates the Unix domain socket,
 it will unlink the Unix domain socket as well. For example,
@@ -37,7 +37,7 @@ it will unlink the Unix domain socket as well. For example,
 [`server.close()`][] will unlink it. But if a user creates the Unix domain
 socket outside of these abstractions, the user will need to remove it. The same
 applies when a Node.js API creates a Unix domain socket but the program then
-crashes. In short, a Unix domain socket will be visible in the filesystem and
+crashes. In short, a Unix domain socket will be visible in the file system and
 will persist until unlinked.
 
 On Windows, the local domain is implemented using a named pipe. The path _must_
@@ -59,7 +59,9 @@ net.createServer().listen(
 ## Class: `net.BlockList`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 The `BlockList` object can be used with some network APIs to specify rules for
@@ -69,7 +71,9 @@ IP subnets.
 ### `blockList.addAddress(address[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `address` {string|net.SocketAddress} An IPv4 or IPv6 address.
@@ -80,7 +84,9 @@ Adds a rule to block the given IP address.
 ### `blockList.addRange(start, end[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `start` {string|net.SocketAddress} The starting IPv4 or IPv6 address in the
@@ -94,7 +100,9 @@ Adds a rule to block a range of IP addresses from `start` (inclusive) to
 ### `blockList.addSubnet(net, prefix[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `net` {string|net.SocketAddress} The network IPv4 or IPv6 address.
@@ -108,7 +116,9 @@ Adds a rule to block a range of IP addresses specified as a subnet mask.
 ### `blockList.check(address[, type])`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * `address` {string|net.SocketAddress} The IP address to check
@@ -136,7 +146,9 @@ console.log(blockList.check('::ffff:123.123.123.123', 'ipv6')); // Prints: true
 ### `blockList.rules`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * Type: {string\[]}
@@ -146,13 +158,17 @@ The list of rules added to the blocklist.
 ## Class: `net.SocketAddress`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 ### `new net.SocketAddress([options])`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * `options` {Object}
@@ -167,7 +183,9 @@ added: v15.14.0
 ### `socketaddress.address`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {string}
@@ -175,7 +193,9 @@ added: v15.14.0
 ### `socketaddress.family`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {string} Either `'ipv4'` or `'ipv6'`.
@@ -183,7 +203,9 @@ added: v15.14.0
 ### `socketaddress.flowlabel`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {number}
@@ -191,7 +213,9 @@ added: v15.14.0
 ### `socketaddress.port`
 
 <!-- YAML
-added: v15.14.0
+added:
+  - v15.14.0
+  - v14.18.0
 -->
 
 * Type {number}
@@ -260,7 +284,7 @@ Emitted when the server has been bound after calling [`server.listen()`][].
 ### Event: `'drop'`
 
 <!-- YAML
-added: v16.17.0
+added: v18.6.0
 -->
 
 When the number of connections reaches the threshold of `server.maxConnections`,
@@ -279,6 +303,13 @@ TCP server, the argument is as follows, otherwise the argument is `undefined`.
 
 <!-- YAML
 added: v0.1.90
+changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: The `family` property now returns a string instead of a number.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: The `family` property now returns a number instead of a string.
 -->
 
 * Returns: {Object|string|null}
@@ -376,7 +407,7 @@ after a certain amount of time:
 ```js
 server.on('error', (e) => {
   if (e.code === 'EADDRINUSE') {
-    console.log('Address in use, retrying...');
+    console.error('Address in use, retrying...');
     setTimeout(() => {
       server.close();
       server.listen(PORT, HOST);
@@ -454,7 +485,7 @@ shown below.
 server.listen({
   host: 'localhost',
   port: 80,
-  exclusive: true
+  exclusive: true,
 });
 ```
 
@@ -474,7 +505,7 @@ const controller = new AbortController();
 server.listen({
   host: 'localhost',
   port: 80,
-  signal: controller.signal
+  signal: controller.signal,
 });
 // Later, when you want to close the server.
 controller.abort();
@@ -704,7 +735,7 @@ Not applicable to Unix sockets.
 
 * `err` {Error|null} The error object. See [`dns.lookup()`][].
 * `address` {string} The IP address.
-* `family` {string|null} The address type. See [`dns.lookup()`][].
+* `family` {number|null} The address type. See [`dns.lookup()`][].
 * `host` {string} The host name.
 
 ### Event: `'ready'`
@@ -732,6 +763,13 @@ See also: [`socket.setTimeout()`][].
 
 <!-- YAML
 added: v0.1.90
+changes:
+  - version: v18.4.0
+    pr-url: https://github.com/nodejs/node/pull/43054
+    description: The `family` property now returns a string instead of a number.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41431
+    description: The `family` property now returns a number instead of a string.
 -->
 
 * Returns: {Object}
@@ -816,7 +854,10 @@ behavior.
 <!-- YAML
 added: v0.1.90
 changes:
-  - version: v16.15.0
+  - version: v18.13.0
+    pr-url: https://github.com/nodejs/node/pull/44731
+    description: Added the `autoSelectFamily` option.
+  - version: v17.7.0
     pr-url: https://github.com/nodejs/node/pull/41310
     description: The `noDelay`, `keepAlive`, and `keepAliveInitialDelay`
                  options are supported now.
@@ -860,6 +901,20 @@ For TCP connections, available `options` are:
   **Default:** `false`.
 * `keepAliveInitialDelay` {number} If set to a positive number, it sets the initial delay before
   the first keepalive probe is sent on an idle socket.**Default:** `0`.
+* `autoSelectFamily` {boolean}: If set to `true`, it enables a family autodetection algorithm
+  that loosely implements section 5 of [RFC 8305][].
+  The `all` option passed to lookup is set to `true` and the sockets attempts to connect to all
+  obtained IPv6 and IPv4 addresses, in sequence, until a connection is established.
+  The first returned AAAA address is tried first, then the first returned A address and so on.
+  Each connection attempt is given the amount of time specified by the `autoSelectFamilyAttemptTimeout`
+  option before timing out and trying the next address.
+  Ignored if the `family` option is not `0` or if `localAddress` is set.
+  Connection errors are not emitted if at least one connection succeeds.
+  **Default:** `false`.
+* `autoSelectFamilyAttemptTimeout` {number}: The amount of time in milliseconds to wait
+  for a connection attempt to finish before trying the next address when using the `autoSelectFamily` option.
+  If set to a positive integer less than `10`, then the value `10` will be used instead.
+  **Default:** `250`.
 
 For [IPC][] connections, available `options` are:
 
@@ -895,8 +950,8 @@ net.connect({
     callback: function(nread, buf) {
       // Received data is available in `buf` from 0 to `nread`.
       console.log(buf.toString('utf8', 0, nread));
-    }
-  }
+    },
+  },
 });
 ```
 
@@ -969,6 +1024,16 @@ See [`writable.destroy()`][] for further details.
 
 See [`writable.destroyed`][] for further details.
 
+### `socket.destroySoon()`
+
+<!-- YAML
+added: v0.3.4
+-->
+
+Destroys the socket after all data is written. If the `'finish'` event was
+already emitted the socket is destroyed immediately. If the socket is still
+writable it implicitly calls `socket.end()`.
+
 ### `socket.end([data[, encoding]][, callback])`
 
 <!-- YAML
@@ -1011,7 +1076,7 @@ The numeric representation of the local port. For example, `80` or `21`.
 ### `socket.localFamily`
 
 <!-- YAML
-added: v16.18.0
+added: v18.8.0
 -->
 
 * {string}
@@ -1071,7 +1136,8 @@ added: v0.11.14
 
 * {string}
 
-The string representation of the remote IP family. `'IPv4'` or `'IPv6'`.
+The string representation of the remote IP family. `'IPv4'` or `'IPv6'`. Value may be `undefined` if
+the socket is destroyed (for example, if the client disconnected).
 
 ### `socket.remotePort`
 
@@ -1081,12 +1147,13 @@ added: v0.5.10
 
 * {integer}
 
-The numeric representation of the remote port. For example, `80` or `21`.
+The numeric representation of the remote port. For example, `80` or `21`. Value may be `undefined` if
+the socket is destroyed (for example, if the client disconnected).
 
 ### `socket.resetAndDestroy()`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 * Returns: {net.Socket}
@@ -1169,6 +1236,12 @@ algorithm.
 
 <!-- YAML
 added: v0.1.90
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `timeout` {number}
@@ -1431,6 +1504,9 @@ then returns the `net.Socket` that starts the connection.
 <!-- YAML
 added: v0.5.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47405
+    description: The `highWaterMark` option is supported now.
   - version:
     - v17.7.0
     - v16.15.0
@@ -1443,6 +1519,9 @@ changes:
   * `allowHalfOpen` {boolean} If set to `false`, then the socket will
     automatically end the writable side when the readable side ends.
     **Default:** `false`.
+  * `highWaterMark` {number} Optionally overrides all [`net.Socket`][]s'
+    `readableHighWaterMark` and `writableHighWaterMark`.
+    **Default:** See [`stream.getDefaultHighWaterMark()`][].
   * `pauseOnConnect` {boolean} Indicates whether the socket should be
     paused on incoming connections. **Default:** `false`.
   * `noDelay` {boolean} If set to `true`, it disables the use of Nagle's algorithm immediately
@@ -1578,6 +1657,7 @@ net.isIPv6('fhqwhgads'); // returns false
 
 [IPC]: #ipc-support
 [Identifying paths for IPC connections]: #identifying-paths-for-ipc-connections
+[RFC 8305]: https://www.rfc-editor.org/rfc/rfc8305.txt
 [Readable Stream]: stream.md#class-streamreadable
 [`'close'`]: #event-close
 [`'connect'`]: #event-connect
@@ -1625,6 +1705,7 @@ net.isIPv6('fhqwhgads'); // returns false
 [`socket.setKeepAlive(enable, initialDelay)`]: #socketsetkeepaliveenable-initialdelay
 [`socket.setTimeout()`]: #socketsettimeouttimeout-callback
 [`socket.setTimeout(timeout)`]: #socketsettimeouttimeout-callback
+[`stream.getDefaultHighWaterMark()`]: stream.md#streamgetdefaulthighwatermarkobjectmode
 [`writable.destroy()`]: stream.md#writabledestroyerror
 [`writable.destroyed`]: stream.md#writabledestroyed
 [`writable.end()`]: stream.md#writableendchunk-encoding-callback

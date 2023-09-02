@@ -14,7 +14,7 @@ const original = {
 };
 
 // Make a copy to make sure original doesn't get altered by the function itself.
-const backup = JSON.parse(JSON.stringify(original));
+const backup = structuredClone(original);
 
 // Wrapper for convenience:
 const obj = () => mustNotMutateObjectDeep(original);

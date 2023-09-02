@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,13 +51,12 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 import com.oracle.truffle.js.runtime.util.UnmodifiablePropertyKeyList;
 
+/**
+ * @see ListSizeNode
+ */
 public abstract class ListGetNode extends JavaScriptBaseNode {
 
     protected ListGetNode() {
-    }
-
-    public static ListGetNode create() {
-        return ListGetNodeGen.create();
     }
 
     public abstract Object execute(Object list, int index);

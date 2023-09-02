@@ -12,7 +12,7 @@ const {
 } = primordials;
 
 const {
-  Histogram: _Histogram
+  Histogram: _Histogram,
 } = internalBinding('performance');
 
 const {
@@ -36,7 +36,6 @@ const {
   validateInteger,
   validateNumber,
   validateObject,
-  validateUint32,
 } = require('internal/validators');
 
 const kDestroy = Symbol('kDestroy');
@@ -65,7 +64,7 @@ class Histogram {
 
     const opts = {
       ...options,
-      depth: options.depth == null ? null : options.depth - 1
+      depth: options.depth == null ? null : options.depth - 1,
     };
 
     return `Histogram ${inspect({
@@ -246,7 +245,7 @@ class Histogram {
     const handle = this[kHandle];
     return {
       data: { handle },
-      deserializeInfo: 'internal/histogram:internalHistogram'
+      deserializeInfo: 'internal/histogram:internalHistogram',
     };
   }
 
@@ -262,7 +261,7 @@ class Histogram {
       mean: this.mean,
       exceeds: this.exceeds,
       stddev: this.stddev,
-      percentiles: ObjectFromEntries(MapPrototypeEntries(this.percentiles))
+      percentiles: ObjectFromEntries(MapPrototypeEntries(this.percentiles)),
     };
   }
 }
@@ -317,7 +316,7 @@ class RecordableHistogram extends Histogram {
     const handle = this[kHandle];
     return {
       data: { handle },
-      deserializeInfo: 'internal/histogram:internalRecordableHistogram'
+      deserializeInfo: 'internal/histogram:internalRecordableHistogram',
     };
   }
 
@@ -368,7 +367,7 @@ function createHistogram(options = kEmptyObject) {
   } else if (highest < 2n * lowest) {
     throw new ERR_INVALID_ARG_VALUE.RangeError('options.highest', highest);
   }
-  validateUint32(figures, 'options.figures', 1, 5);
+  validateInteger(figures, 'options.figures', 1, 5);
   return internalRecordableHistogram(new _Histogram(lowest, highest, figures));
 }
 

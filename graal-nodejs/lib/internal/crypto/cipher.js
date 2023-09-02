@@ -19,7 +19,7 @@ const {
   crypto: {
     RSA_PKCS1_OAEP_PADDING,
     RSA_PKCS1_PADDING,
-  }
+  },
 } = internalBinding('constants');
 
 const {
@@ -27,7 +27,8 @@ const {
     ERR_CRYPTO_INVALID_STATE,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
-  }
+    ERR_UNKNOWN_ENCODING,
+  },
 } = require('internal/errors');
 
 const {
@@ -91,9 +92,14 @@ const privateDecrypt = rsaFunctionFor(_privateDecrypt, RSA_PKCS1_OAEP_PADDING,
                                       'private');
 
 function getDecoder(decoder, encoding) {
-  encoding = normalizeEncoding(encoding);
+  const normalizedEncoding = normalizeEncoding(encoding);
   decoder = decoder || new StringDecoder(encoding);
-  assert(decoder.encoding === encoding, 'Cannot change encoding');
+  if (decoder.encoding !== normalizedEncoding) {
+    if (normalizedEncoding === undefined) {
+      throw new ERR_UNKNOWN_ENCODING(encoding);
+    }
+    assert(false, 'Cannot change encoding');
+  }
   return decoder;
 }
 

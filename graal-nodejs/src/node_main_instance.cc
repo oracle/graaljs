@@ -1,9 +1,14 @@
 #include "node_main_instance.h"
 #include <memory>
+#if HAVE_OPENSSL
+#include "crypto/crypto_util.h"
+#endif  // HAVE_OPENSSL
 #include "debug_utils-inl.h"
+#include "node_builtins.h"
 #include "node_external_reference.h"
 #include "node_internals.h"
 #include "node_options-inl.h"
+#include "node_realm.h"
 #include "node_snapshot_builder.h"
 #include "node_snapshotable.h"
 #include "node_v8_platform-inl.h"
@@ -71,13 +76,9 @@ NodeMainInstance::NodeMainInstance(const SnapshotData* snapshot_data,
                                              isolate_params_.get());
   }
 
-  isolate_ = Isolate::Allocate();
+  isolate_ = NewIsolate(
+      isolate_params_.get(), event_loop, platform, snapshot_data != nullptr);
   CHECK_NOT_NULL(isolate_);
-  // Register the isolate on the platform before the isolate gets initialized,
-  // so that the isolate can access the platform during initialization.
-  platform->RegisterIsolate(isolate_, event_loop);
-  SetIsolateCreateParamsForNode(isolate_params_.get());
-  Isolate::Initialize(isolate_, *isolate_params_);
 
   // If the indexes are not nullptr, we are not deserializing
   isolate_data_ = std::make_unique<IsolateData>(
@@ -85,15 +86,8 @@ NodeMainInstance::NodeMainInstance(const SnapshotData* snapshot_data,
       event_loop,
       platform,
       array_buffer_allocator_.get(),
-      snapshot_data == nullptr ? nullptr
-                               : &(snapshot_data->isolate_data_indices));
-  IsolateSettings s;
-  SetIsolateMiscHandlers(isolate_, s);
-  if (snapshot_data == nullptr) {
-    // If in deserialize mode, delay until after the deserialization is
-    // complete.
-    SetIsolateErrorHandlers(isolate_, s);
-  }
+      snapshot_data == nullptr ? nullptr : &(snapshot_data->isolate_data_info));
+
   isolate_data_->max_young_gen_size =
       isolate_params_->constraints.max_young_generation_size_in_bytes();
 }
@@ -140,21 +134,6 @@ void NodeMainInstance::Run(int* exit_code, Environment* env) {
     *exit_code = SpinEventLoop(env).FromMaybe(1);
   }
 
-  ResetStdio();
-
-  // TODO(addaleax): Neither NODE_SHARED_MODE nor HAVE_INSPECTOR really
-  // make sense here.
-#if HAVE_INSPECTOR && defined(__POSIX__) && !defined(NODE_SHARED_MODE)
-  struct sigaction act;
-  memset(&act, 0, sizeof(act));
-  for (unsigned nr = 1; nr < kMaxSignal; nr += 1) {
-    if (nr == SIGKILL || nr == SIGSTOP || nr == SIGPROF)
-      continue;
-    act.sa_handler = (nr == SIGPIPE) ? SIG_IGN : SIG_DFL;
-    CHECK_EQ(0, sigaction(nr, &act, nullptr));
-  }
-#endif
-
 #if defined(LEAK_SANITIZER)
   __lsan_do_leak_check();
 #endif
@@ -184,36 +163,29 @@ NodeMainInstance::CreateMainEnvironment(int* exit_code) {
                               EnvironmentFlags::kDefaultFlags,
                               {}));
     context = Context::FromSnapshot(isolate_,
-                                    kNodeContextIndex,
+                                    SnapshotData::kNodeMainContextIndex,
                                     {DeserializeNodeInternalFields, env.get()})
                   .ToLocalChecked();
 
     CHECK(!context.IsEmpty());
     Context::Scope context_scope(context);
+
     CHECK(InitializeContextRuntime(context).IsJust());
     SetIsolateErrorHandlers(isolate_, {});
     env->InitializeMainContext(context, &(snapshot_data_->env_info));
 #if HAVE_INSPECTOR
     env->InitializeInspector({});
 #endif
-    env->DoneBootstrapping();
+
+#if HAVE_OPENSSL
+    crypto::InitCryptoOnce(isolate_);
+#endif  // HAVE_OPENSSL
   } else {
     context = NewContext(isolate_);
     CHECK(!context.IsEmpty());
     Context::Scope context_scope(context);
-    env.reset(new Environment(isolate_data_.get(),
-                              context,
-                              args_,
-                              exec_args_,
-                              nullptr,
-                              EnvironmentFlags::kDefaultFlags,
-                              {}));
-#if HAVE_INSPECTOR
-    env->InitializeInspector({});
-#endif
-    if (env->RunBootstrapping().IsEmpty()) {
-      return nullptr;
-    }
+    env.reset(
+        CreateEnvironment(isolate_data_.get(), context, args_, exec_args_));
   }
 
   return env;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -375,8 +375,7 @@ public class Parser extends AbstractParser {
      */
     private ParserContextFunctionNode coverArrowFunction;
 
-    public static final boolean PROFILE_PARSING = Options.getBooleanProperty("parser.profiling", false);
-    public static final boolean PROFILE_PARSING_PRINT = Options.getBooleanProperty("parser.profiling.print", true);
+    private static final boolean PROFILE_PARSING = Options.getBooleanProperty("parser.profiling", false);
 
     /**
      * Constructor
@@ -525,24 +524,23 @@ public class Parser extends AbstractParser {
      */
     public FunctionNode parse(final TruffleString scriptName, final int startPos, final int len, final int reparseFlags, Scope parentScope, List<String> argumentNames) {
         long startTime = PROFILE_PARSING ? System.nanoTime() : 0L;
+        FunctionNode program;
         try {
             prepareLexer(startPos, len);
 
             scanFirstToken();
 
-            return program(scriptName, reparseFlags, parentScope, argumentNames);
+            program = program(scriptName, reparseFlags, parentScope, argumentNames);
         } catch (final Exception e) {
             handleParseException(e);
 
-            return null;
-        } finally {
-            if (PROFILE_PARSING) {
-                long duration = (System.nanoTime() - startTime);
-                if (PROFILE_PARSING_PRINT) {
-                    System.out.println("Parsing: " + duration / 1_000_000);
-                }
-            }
+            program = null;
         }
+        if (PROFILE_PARSING) {
+            long duration = (System.nanoTime() - startTime);
+            System.out.println("Parsing: " + duration / 1_000_000);
+        }
+        return program;
     }
 
     /**
@@ -652,9 +650,10 @@ public class Parser extends AbstractParser {
             try {
                 sourceElements(generator, async, 0);
                 addFunctionDeclarations(function);
+
+                function.finishBodyScope(lexer);
             } finally {
                 functionDeclarations = null;
-                function.finishBodyScope(lexer::stringIntern);
                 restoreBlock(body);
                 lc.pop(function);
             }
@@ -744,14 +743,8 @@ public class Parser extends AbstractParser {
         }
     }
 
-    /**
-     * Set up a new block.
-     *
-     * @return New block.
-     */
-    private ParserContextBlockNode newBlock() {
-        Scope scope = Scope.createBlock(lc.getCurrentScope());
-        return newBlock(scope);
+    private Scope newBlockScope() {
+        return Scope.createBlock(lc.getCurrentScope());
     }
 
     /**
@@ -829,7 +822,6 @@ public class Parser extends AbstractParser {
      * Restore the current block.
      */
     private ParserContextBlockNode restoreBlock(final ParserContextBlockNode block) {
-        block.getScope().close();
         return lc.pop(block);
     }
 
@@ -840,7 +832,7 @@ public class Parser extends AbstractParser {
      */
     private Block getBlock(boolean yield, boolean await, boolean needsBraces) {
         final long blockToken = token;
-        final ParserContextBlockNode newBlock = newBlock();
+        final ParserContextBlockNode newBlock = newBlock(newBlockScope());
         try {
             // Block opening brace.
             if (needsBraces) {
@@ -865,6 +857,7 @@ public class Parser extends AbstractParser {
             realFinish = finish;
         }
 
+        newBlock.getScope().close();
         final int flags = newBlock.getFlags() | (needsBraces ? 0 : Block.IS_SYNTHETIC);
         return new Block(blockToken, Math.max(realFinish, Token.descPosition(blockToken)), flags, newBlock.getScope(), newBlock.getStatements());
     }
@@ -901,13 +894,14 @@ public class Parser extends AbstractParser {
             return getBlock(yield, await, true);
         }
         // Set up new block. Captures first token.
-        final ParserContextBlockNode newBlock = newBlock();
+        final ParserContextBlockNode newBlock = newBlock(newBlockScope());
         newBlock.setFlag(Block.IS_SYNTHETIC);
         try {
             statement(yield, await, false, 0, true, labelledStatement, mayBeFunctionDeclaration, mayBeLabeledFunctionDeclaration);
         } finally {
             restoreBlock(newBlock);
         }
+        newBlock.getScope().close();
         return new Block(newBlock.getToken(), finish, newBlock.getFlags(), newBlock.getScope(), newBlock.getStatements());
     }
 
@@ -1179,8 +1173,8 @@ public class Parser extends AbstractParser {
         final long functionToken = Token.toDesc(FUNCTION, functionStart, source.getLength() - functionStart);
         final int functionLine = line;
 
-        Scope topScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
-        topScope = applyArgumentsToScope(topScope, argumentNames);
+        Scope initialTopScope = (parseFlags & PARSE_EVAL) != 0 ? createEvalScope(parseFlags, parentScope) : Scope.createGlobal();
+        initialTopScope = applyArgumentsToScope(initialTopScope, argumentNames);
         final IdentNode ident = null;
         final List<IdentNode> parameters = createFunctionNodeParameters(argumentNames);
         final ParserContextFunctionNode script = createParserContextFunctionNode(
@@ -1190,24 +1184,31 @@ public class Parser extends AbstractParser {
                         functionLine,
                         parameters,
                         parameters.size(),
-                        topScope);
+                        initialTopScope);
         script.setInternalName(lexer.stringIntern(scriptName));
 
         lc.push(script);
-        final ParserContextBlockNode body = newBlock(topScope);
+        final ParserContextBlockNode body = newBlock(initialTopScope);
         functionDeclarations = new ArrayList<>();
         try {
             sourceElements(false, false, parseFlags);
             addFunctionDeclarations(script);
+
+            script.finishBodyScope(lexer);
         } finally {
             functionDeclarations = null;
-            script.finishBodyScope(lexer::stringIntern);
             restoreBlock(body);
             lc.pop(script);
         }
 
+        Scope finalTopScope = body.getScope();
+        // We may have switched non-strict eval into strict mode and introduced an extra scope.
+        assert finalTopScope == initialTopScope || finalTopScope.isEvalScope() : finalTopScope;
+        initialTopScope.close();
+        finalTopScope.close();
+
         body.setFlag(Block.NEEDS_SCOPE);
-        final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, body.getScope(), body.getStatements());
+        final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY, finalTopScope, body.getStatements());
         script.setLastToken(token);
 
         expect(EOF);
@@ -1752,10 +1753,11 @@ public class Parser extends AbstractParser {
             ClassElement constructor = null;
             List<ClassElement> classElements = new ArrayList<>();
             Map<String, Integer> privateNameToAccessorIndexMap = new HashMap<>();
-            int instanceFieldCount = 0;
             int staticElementCount = 0;
             boolean hasPrivateMethods = false;
             boolean hasPrivateInstanceMethods = false;
+            boolean hasClassElementDecorators = false;
+            boolean hasInstanceFieldsOrAccessors = false;
             for (;;) {
                 if (type == SEMICOLON) {
                     next();
@@ -1768,6 +1770,7 @@ public class Parser extends AbstractParser {
 
                 if (type == AT) {
                     classElementDecorators = decoratorList(yield, await);
+                    hasClassElementDecorators = true;
                 }
                 boolean isAutoAccessor = false;
                 if (isES2023() && type == ACCESSOR) {
@@ -1831,10 +1834,8 @@ public class Parser extends AbstractParser {
                 ClassElement classElement;
                 if (!generator && !async && isClassFieldDefinition(nameTokenType)) {
                     classElement = fieldDefinition(classElementName, isStatic, isAutoAccessor, classElementToken, computed, classElementDecorators);
-                    if (isStatic) {
-                        staticElementCount++;
-                    } else {
-                        instanceFieldCount++;
+                    if (!isStatic) {
+                        hasInstanceFieldsOrAccessors = true;
                     }
                 } else {
                     if (isAutoAccessor) {
@@ -1880,7 +1881,7 @@ public class Parser extends AbstractParser {
                 }
 
                 if (classElement.isPrivate()) {
-                    hasPrivateMethods = hasPrivateMethods || !classElement.isClassField();
+                    hasPrivateMethods = hasPrivateMethods || classElement.isMethodOrAccessor();
                     hasPrivateInstanceMethods = hasPrivateInstanceMethods || (!classElement.isClassField() && !classElement.isStatic());
                     declarePrivateName(classScope, classElement);
                 }
@@ -1897,6 +1898,9 @@ public class Parser extends AbstractParser {
                     }
                 } else {
                     classElements.add(classElement);
+                    if (isStatic) {
+                        staticElementCount++;
+                    }
                 }
             }
 
@@ -1932,7 +1936,7 @@ public class Parser extends AbstractParser {
             classScope.close();
             classHeadScope.close();
             return new ClassNode(classToken, classFinish, className, classHeritage, constructor, classElements, classDecorators, classScope,
-                            instanceFieldCount, staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods);
+                            staticElementCount, hasPrivateMethods, hasPrivateInstanceMethods, hasInstanceFieldsOrAccessors, hasClassElementDecorators);
         } finally {
             lc.pop(classNode);
         }
@@ -1972,10 +1976,10 @@ public class Parser extends AbstractParser {
     private void declarePrivateName(Scope classScope, ClassElement classElement) {
         // Syntax Error if PrivateBoundIdentifiers of ClassBody contains any duplicate entries,
         // unless the name is used once for a getter and once for a setter and in no other entries.
-        int privateFlags = (classElement.isStatic() ? Symbol.IS_PRIVATE_NAME_STATIC : 0);
-        if (!classElement.isClassField()) {
-            privateFlags |= classElement.isAccessor() ? Symbol.IS_PRIVATE_NAME_ACCESSOR : Symbol.IS_PRIVATE_NAME_METHOD;
-        }
+        int privateFlags = (classElement.isStatic() ? Symbol.IS_PRIVATE_NAME_STATIC : 0) |
+                        (classElement.isMethod() ? Symbol.IS_PRIVATE_NAME_METHOD : 0) |
+                        ((classElement.isAccessor() || classElement.isAutoAccessor()) ? Symbol.IS_PRIVATE_NAME_ACCESSOR : 0);
+
         if (!classScope.addPrivateName(classElement.getPrivateNameTS(), privateFlags)) {
             throw error(ECMAErrors.getMessage(MSG_SYNTAX_ERROR_REDECLARE_VARIABLE, classElement.getPrivateName()), classElement.getKey().getToken());
         }
@@ -2162,14 +2166,19 @@ public class Parser extends AbstractParser {
         ParserContextFunctionNode function = createParserContextFunctionNode(null, fieldToken, functionFlags, lineNumber, List.of(), 0);
         function.setInternalName(lexer.stringIntern(INITIALIZER_FUNCTION_NAME));
         lc.push(function);
-        ParserContextBlockNode body = newBlock(function.createBodyScope());
+        ParserContextBlockNode body;
         Expression initializer;
         try {
-            initializer = assignmentExpression(true, false, false);
-        } finally {
-            function.finishBodyScope(lexer::stringIntern);
-            restoreBlock(body);
+            body = newBlock(function.createBodyScope());
+            try {
+                initializer = assignmentExpression(true, false, false);
+
+                function.finishBodyScope(lexer);
+            } finally {
+                restoreBlock(body);
+            }
             lc.propagateFunctionFlags();
+        } finally {
             lc.pop(function);
         }
 
@@ -2917,7 +2926,7 @@ public class Parser extends AbstractParser {
         // When ES6 for-let is enabled we create a container block to capture the LET.
         ParserContextBlockNode outer;
         if (useBlockScope()) {
-            outer = newBlock();
+            outer = newBlock(newBlockScope());
             outer.setFlag(Block.IS_SYNTHETIC);
         } else {
             outer = null;
@@ -2926,7 +2935,7 @@ public class Parser extends AbstractParser {
         // Create FOR node, capturing FOR token.
         final ParserContextLoopNode forNode = new ParserContextLoopNode();
         lc.push(forNode);
-        Block body = null;
+        Block body;
         Expression init = null;
         JoinPredecessorExpression test = null;
         JoinPredecessorExpression modify = null;
@@ -2943,156 +2952,161 @@ public class Parser extends AbstractParser {
         boolean initStartsWithAsyncOf = false;
 
         try {
-            // FOR tested in caller.
-            next();
-
-            // Nashorn extension: for each expression.
-            // iterate property values rather than property names.
-            if (env.syntaxExtensions && type == IDENT && lexer.checkIdentForKeyword(token, "each")) {
-                flags |= ForNode.IS_FOR_EACH;
+            try {
+                // FOR tested in caller.
                 next();
-            } else if (ES8_FOR_AWAIT_OF && type == AWAIT) {
-                if (!await) {
-                    throw error(AbstractParser.message(MSG_INVALID_FOR_AWAIT_OF), token);
+
+                // Nashorn extension: for each expression.
+                // iterate property values rather than property names.
+                if (env.syntaxExtensions && type == IDENT && lexer.checkIdentForKeyword(token, "each")) {
+                    flags |= ForNode.IS_FOR_EACH;
+                    next();
+                } else if (ES8_FOR_AWAIT_OF && type == AWAIT) {
+                    if (!await) {
+                        throw error(AbstractParser.message(MSG_INVALID_FOR_AWAIT_OF), token);
+                    }
+                    isForAwaitOf = true;
+                    next();
                 }
-                isForAwaitOf = true;
-                next();
-            }
 
-            expect(LPAREN);
+                expect(LPAREN);
 
-            TokenType varType = null;
-            switch (type) {
-                case VAR:
-                    // Var declaration captured in for outer block.
-                    varType = type;
-                    varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
-                    break;
-                case SEMICOLON:
-                    break;
-                default:
-                    if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration() || type == CONST)) {
-                        // LET/CONST declaration captured in container block created above.
+                TokenType varType = null;
+                switch (type) {
+                    case VAR:
+                        // Var declaration captured in for outer block.
                         varType = type;
                         varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
-                        if (varType == LET) {
-                            // Per-iteration scope not needed if BindingPattern is empty
-                            if (!forNode.getStatements().isEmpty()) {
+                        break;
+                    case SEMICOLON:
+                        break;
+                    default:
+                        if (useBlockScope() && (type == LET && lookaheadIsLetDeclaration() || type == CONST)) {
+                            // LET/CONST declaration captured in container block created above.
+                            varType = type;
+                            varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
+                            if (varType == LET) {
+                                // Per-iteration scope not needed if BindingPattern is empty
+                                if (!forNode.getStatements().isEmpty()) {
+                                    flags |= ForNode.PER_ITERATION_SCOPE;
+                                }
+                            }
+                            break;
+                        }
+                        if (env.constAsVar && type == CONST) {
+                            // Var declaration captured in for outer block.
+                            varType = TokenType.VAR;
+                            varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
+                            break;
+                        }
+
+                        initStartsWithLet = (type == LET);
+                        initStartsWithAsyncOf = (type == ASYNC && !isForAwaitOf && lookaheadIsOf());
+                        initCoverExpr = new CoverExpressionError();
+                        init = expression(false, yield, await, initCoverExpr);
+                        break;
+                }
+
+                switch (type) {
+                    case SEMICOLON:
+                        // for (init; test; modify)
+                        if (varDeclList != null) {
+                            assert init == null;
+                            // init has already been hoisted to the surrounding (declaration) block.
+                            // late check for missing assignment, now we know it's a
+                            // for (init; test; modify) loop
+                            if (varDeclList.missingAssignment != null) {
+                                if (varDeclList.missingAssignment instanceof IdentNode) {
+                                    throw error(AbstractParser.message(MSG_MISSING_CONST_ASSIGNMENT, ((IdentNode) varDeclList.missingAssignment).getName()));
+                                } else {
+                                    throw error(AbstractParser.message(MSG_MISSING_DESTRUCTURING_ASSIGNMENT), varDeclList.missingAssignment.getToken());
+                                }
+                            }
+                        } else if (init != null) {
+                            verifyExpression(initCoverExpr);
+                        }
+
+                        // for each (init; test; modify) is invalid
+                        if ((flags & ForNode.IS_FOR_EACH) != 0) {
+                            throw error(AbstractParser.message(MSG_FOR_EACH_WITHOUT_IN), token);
+                        }
+
+                        expect(SEMICOLON);
+                        if (type != SEMICOLON) {
+                            test = joinPredecessorExpression(yield, await);
+                        }
+                        expect(SEMICOLON);
+                        if (type != RPAREN) {
+                            modify = joinPredecessorExpression(yield, await);
+                        }
+                        break;
+
+                    case OF:
+                        if (ES8_FOR_AWAIT_OF && isForAwaitOf && !initStartsWithLet) {
+                            // fall through
+                        } else if (ES6_FOR_OF && !initStartsWithLet && !initStartsWithAsyncOf) {
+                            isForOf = true;
+                            // fall through
+                        } else {
+                            expect(SEMICOLON); // fail with expected message
+                            break;
+                        }
+                    case IN:
+                        if (isForAwaitOf) {
+                            expectDontAdvance(OF);
+                            flags |= ForNode.IS_FOR_AWAIT_OF;
+                        } else {
+                            flags |= isForOf ? ForNode.IS_FOR_OF : ForNode.IS_FOR_IN;
+                        }
+                        test = new JoinPredecessorExpression();
+                        if (varDeclList != null) {
+                            // for (var|let|const ForBinding in|of expression)
+                            if (varDeclList.secondBinding != null) {
+                                // for (var i, j in obj) is invalid
+                                throw error(AbstractParser.message(MSG_MANY_VARS_IN_FOR_IN_LOOP, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), varDeclList.secondBinding.getToken());
+                            }
+                            init = varDeclList.firstBinding;
+                            assert init instanceof IdentNode || isDestructuringLhs(init) : init;
+                            if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != IN || varType != VAR || isDestructuringLhs(init))) {
+                                /*
+                                 * ES5 legacy: for (var i = AssignmentExpressionNoIn in Expression).
+                                 * Invalid in ES6, but allowed in non-strict mode if no ES6 features
+                                 * are used, i.e., it is a syntax error in strict mode, for-of
+                                 * loops, let/const, or destructuring.
+                                 */
+                                throw error(AbstractParser.message(MSG_FOR_IN_LOOP_INITIALIZER, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), varDeclList.declarationWithInitializerToken);
+                            }
+                            if (varType == CONST || varType == LET) {
                                 flags |= ForNode.PER_ITERATION_SCOPE;
                             }
-                        }
-                        break;
-                    }
-                    if (env.constAsVar && type == CONST) {
-                        // Var declaration captured in for outer block.
-                        varType = TokenType.VAR;
-                        varDeclList = variableDeclarationList(varType, false, yield, await, forStart);
-                        break;
-                    }
+                        } else {
+                            // for (LeftHandSideExpression in|of expression)
+                            assert init != null : "for..in/of init expression cannot be null here";
 
-                    initStartsWithLet = (type == LET);
-                    initStartsWithAsyncOf = (type == ASYNC && !isForAwaitOf && lookaheadIsOf());
-                    initCoverExpr = new CoverExpressionError();
-                    init = expression(false, yield, await, initCoverExpr);
-                    break;
-            }
-
-            switch (type) {
-                case SEMICOLON:
-                    // for (init; test; modify)
-                    if (varDeclList != null) {
-                        assert init == null;
-                        // init has already been hoisted to the surrounding (declaration) block.
-                        // late check for missing assignment, now we know it's a
-                        // for (init; test; modify) loop
-                        if (varDeclList.missingAssignment != null) {
-                            if (varDeclList.missingAssignment instanceof IdentNode) {
-                                throw error(AbstractParser.message(MSG_MISSING_CONST_ASSIGNMENT, ((IdentNode) varDeclList.missingAssignment).getName()));
-                            } else {
-                                throw error(AbstractParser.message(MSG_MISSING_DESTRUCTURING_ASSIGNMENT), varDeclList.missingAssignment.getToken());
+                            // check if initial expression is a valid L-value
+                            if (!checkValidLValue(init, isForOf || isForAwaitOf ? CONTEXT_FOR_OF_ITERATOR : CONTEXT_FOR_IN_ITERATOR)) {
+                                throw error(AbstractParser.message(MSG_NOT_LVALUE_FOR_IN_LOOP, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), init.getToken());
                             }
                         }
-                    } else if (init != null) {
-                        verifyExpression(initCoverExpr);
-                    }
 
-                    // for each (init; test; modify) is invalid
-                    if ((flags & ForNode.IS_FOR_EACH) != 0) {
-                        throw error(AbstractParser.message(MSG_FOR_EACH_WITHOUT_IN), token);
-                    }
+                        next();
 
-                    expect(SEMICOLON);
-                    if (type != SEMICOLON) {
-                        test = joinPredecessorExpression(yield, await);
-                    }
-                    expect(SEMICOLON);
-                    if (type != RPAREN) {
-                        modify = joinPredecessorExpression(yield, await);
-                    }
-                    break;
-
-                case OF:
-                    if (ES8_FOR_AWAIT_OF && isForAwaitOf && !initStartsWithLet) {
-                        // fall through
-                    } else if (ES6_FOR_OF && !initStartsWithLet && !initStartsWithAsyncOf) {
-                        isForOf = true;
-                        // fall through
-                    } else {
-                        expect(SEMICOLON); // fail with expected message
+                        // For-of only allows AssignmentExpression.
+                        modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(true, yield, await)) : joinPredecessorExpression(yield, await);
                         break;
-                    }
-                case IN:
-                    if (isForAwaitOf) {
-                        expectDontAdvance(OF);
-                        flags |= ForNode.IS_FOR_AWAIT_OF;
-                    } else {
-                        flags |= isForOf ? ForNode.IS_FOR_OF : ForNode.IS_FOR_IN;
-                    }
-                    test = new JoinPredecessorExpression();
-                    if (varDeclList != null) {
-                        // for (var|let|const ForBinding in|of expression)
-                        if (varDeclList.secondBinding != null) {
-                            // for (var i, j in obj) is invalid
-                            throw error(AbstractParser.message(MSG_MANY_VARS_IN_FOR_IN_LOOP, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), varDeclList.secondBinding.getToken());
-                        }
-                        init = varDeclList.firstBinding;
-                        assert init instanceof IdentNode || isDestructuringLhs(init) : init;
-                        if (varDeclList.declarationWithInitializerToken != 0 && (isStrictMode || type != IN || varType != VAR || isDestructuringLhs(init))) {
-                            // ES5 legacy: for (var i = AssignmentExpressionNoIn in Expression)
-                            // Invalid in ES6, but allow it in non-strict mode if no ES6 features
-                            // used, i.e., error if strict, for-of, let/const, or destructuring
-                            throw error(AbstractParser.message(MSG_FOR_IN_LOOP_INITIALIZER, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), varDeclList.declarationWithInitializerToken);
-                        }
-                        if (varType == CONST || varType == LET) {
-                            flags |= ForNode.PER_ITERATION_SCOPE;
-                        }
-                    } else {
-                        // for (LeftHandSideExpression in|of expression)
-                        assert init != null : "for..in/of init expression can not be null here";
 
-                        // check if initial expression is a valid L-value
-                        if (!checkValidLValue(init, isForOf || isForAwaitOf ? CONTEXT_FOR_OF_ITERATOR : CONTEXT_FOR_IN_ITERATOR)) {
-                            throw error(AbstractParser.message(MSG_NOT_LVALUE_FOR_IN_LOOP, isForOf || isForAwaitOf ? CONTEXT_OF : CONTEXT_IN), init.getToken());
-                        }
-                    }
+                    default:
+                        expect(SEMICOLON);
+                        break;
+                }
 
-                    next();
+                expect(RPAREN);
 
-                    // For-of only allows AssignmentExpression.
-                    modify = isForOf || isForAwaitOf ? new JoinPredecessorExpression(assignmentExpression(true, yield, await)) : joinPredecessorExpression(yield, await);
-                    break;
-
-                default:
-                    expect(SEMICOLON);
-                    break;
+                // Set the for body.
+                body = getStatement(yield, await);
+            } finally {
+                lc.pop(forNode);
             }
-
-            expect(RPAREN);
-
-            // Set the for body.
-            body = getStatement(yield, await);
-        } finally {
-            lc.pop(forNode);
 
             boolean skipVars = (flags & ForNode.PER_ITERATION_SCOPE) != 0 && (isForOf || isForAwaitOf || (flags & ForNode.IS_FOR_IN) != 0);
             if (!skipVars) {
@@ -3103,15 +3117,17 @@ public class Parser extends AbstractParser {
                     appendStatement(var);
                 }
             }
-            if (body != null) {
-                appendStatement(new ForNode(forLine, forToken, body.getFinish(), body, (forNode.getFlags() | flags), init, test, modify));
-            }
+
+            appendStatement(new ForNode(forLine, forToken, body.getFinish(), body, (forNode.getFlags() | flags), init, test, modify));
+        } finally {
             if (outer != null) {
                 restoreBlock(outer);
-                if (body != null) {
-                    appendStatement(new BlockStatement(forLine, new Block(outer.getToken(), body.getFinish(), 0, outer.getScope(), outer.getStatements())));
-                }
             }
+        }
+
+        if (outer != null) {
+            outer.getScope().close();
+            appendStatement(new BlockStatement(forLine, new Block(outer.getToken(), body.getFinish(), 0, outer.getScope(), outer.getStatements())));
         }
     }
 
@@ -3590,105 +3606,110 @@ public class Parser extends AbstractParser {
         // Block around the switch statement with a variable capturing the switch expression value.
         final ParserContextBlockNode outerBlock;
         if (useBlockScope()) {
-            outerBlock = newBlock();
+            outerBlock = newBlock(newBlockScope());
             outerBlock.setFlag(Block.IS_SYNTHETIC);
         } else {
             outerBlock = null;
         }
 
-        // Block to capture variables declared inside the switch statement.
-        final ParserContextBlockNode switchBlock = newBlock(Scope.createSwitchBlock(lc.getCurrentScope()));
-        switchBlock.setFlag(Block.IS_SYNTHETIC | Block.IS_SWITCH_BLOCK);
-
-        // SWITCH tested in caller.
-        next();
-
-        // Create and add switch statement.
-        final ParserContextSwitchNode switchNode = new ParserContextSwitchNode();
-        lc.push(switchNode);
-
-        int defaultCaseIndex = -1;
-        // Prepare to accumulate cases.
-        final ArrayList<CaseNode> cases = new ArrayList<>();
-
-        SwitchNode switchStatement = null;
-
+        ParserContextBlockNode switchBlock;
+        SwitchNode switchStatement;
         try {
-            expect(LPAREN);
-            int expressionLine = line;
-            Expression expression = expression(yield, await);
-            expect(RPAREN);
+            // Block to capture variables declared inside the switch statement.
+            switchBlock = newBlock(Scope.createSwitchBlock(lc.getCurrentScope()));
+            switchBlock.setFlag(Block.IS_SYNTHETIC | Block.IS_SWITCH_BLOCK);
 
-            expect(LBRACE);
-
-            // Desugar expression to an assignment to a synthetic let variable in the outer block.
-            // This simplifies lexical scope analysis (the expression is outside the switch block).
-            // e.g.: let x = 1; switch (x) { case 0: let x = 2; } =>
-            // let x = 1; { let :switch = x; { let x; switch (:switch) { case 0: x = 2; } } }
-            if (useBlockScope()) {
-                IdentNode switchExprName = new IdentNode(Token.recast(expression.getToken(), IDENT), expression.getFinish(), lexer.stringIntern(SWITCH_BINDING_NAME));
-                VarNode varNode = new VarNode(expressionLine, Token.recast(expression.getToken(), LET), expression.getFinish(), switchExprName, expression, VarNode.IS_LET);
-                outerBlock.appendStatement(varNode);
-                declareVar(outerBlock.getScope(), varNode);
-                expression = switchExprName;
-            }
-
-            while (type != RBRACE) {
-                // Prepare for next case.
-                Expression caseExpression = null;
-                final long caseToken = token;
-
-                switch (type) {
-                    case CASE:
-                        next();
-                        caseExpression = expression(yield, await);
-                        break;
-
-                    case DEFAULT:
-                        if (defaultCaseIndex != -1) {
-                            throw error(AbstractParser.message(MSG_DUPLICATE_DEFAULT_IN_SWITCH));
-                        }
-                        next();
-                        break;
-
-                    default:
-                        // Force an error.
-                        expect(CASE);
-                        break;
-                }
-
-                expect(COLON);
-
-                // Get CASE body.
-                List<Statement> statements = caseStatementList(yield, await);
-                final CaseNode caseNode = new CaseNode(caseToken, finish, caseExpression, statements);
-
-                if (caseExpression == null) {
-                    assert defaultCaseIndex == -1;
-                    defaultCaseIndex = cases.size();
-                }
-
-                cases.add(caseNode);
-            }
-
+            // SWITCH tested in caller.
             next();
 
-            switchStatement = new SwitchNode(switchLine, switchToken, finish, expression, cases, defaultCaseIndex);
-        } finally {
-            lc.pop(switchNode);
-            restoreBlock(switchBlock);
+            // Create and add switch statement.
+            final ParserContextSwitchNode switchNode = new ParserContextSwitchNode();
+            lc.push(switchNode);
 
-            if (switchStatement != null) {
-                appendStatement(new BlockStatement(switchLine,
-                                new Block(switchToken, switchStatement.getFinish(), switchBlock.getFlags(), switchBlock.getScope(), List.of(switchStatement))));
+            int defaultCaseIndex = -1;
+            // Prepare to accumulate cases.
+            final ArrayList<CaseNode> cases = new ArrayList<>();
+
+            try {
+                expect(LPAREN);
+                int expressionLine = line;
+                Expression expression = expression(yield, await);
+                expect(RPAREN);
+
+                expect(LBRACE);
+
+                // Desugar expression to a synthetic let variable assignment in the outer block.
+                // This simplifies lexical scope analysis (the expression is outside the switch
+                // block).
+                // e.g.: let x = 1; switch (x) { case 0: let x = 2; } =>
+                // let x = 1; { let :switch = x; { let x; switch (:switch) { case 0: x = 2; } } }
+                if (useBlockScope()) {
+                    IdentNode switchExprName = new IdentNode(Token.recast(expression.getToken(), IDENT), expression.getFinish(), lexer.stringIntern(SWITCH_BINDING_NAME));
+                    VarNode varNode = new VarNode(expressionLine, Token.recast(expression.getToken(), LET), expression.getFinish(), switchExprName, expression, VarNode.IS_LET);
+                    outerBlock.appendStatement(varNode);
+                    declareVar(outerBlock.getScope(), varNode);
+                    expression = switchExprName;
+                }
+
+                while (type != RBRACE) {
+                    // Prepare for next case.
+                    Expression caseExpression = null;
+                    final long caseToken = token;
+
+                    switch (type) {
+                        case CASE:
+                            next();
+                            caseExpression = expression(yield, await);
+                            break;
+
+                        case DEFAULT:
+                            if (defaultCaseIndex != -1) {
+                                throw error(AbstractParser.message(MSG_DUPLICATE_DEFAULT_IN_SWITCH));
+                            }
+                            next();
+                            break;
+
+                        default:
+                            // Force an error.
+                            expect(CASE);
+                            break;
+                    }
+
+                    expect(COLON);
+
+                    // Get CASE body.
+                    List<Statement> statements = caseStatementList(yield, await);
+                    final CaseNode caseNode = new CaseNode(caseToken, finish, caseExpression, statements);
+
+                    if (caseExpression == null) {
+                        assert defaultCaseIndex == -1;
+                        defaultCaseIndex = cases.size();
+                    }
+
+                    cases.add(caseNode);
+                }
+
+                next();
+
+                switchStatement = new SwitchNode(switchLine, switchToken, finish, expression, cases, defaultCaseIndex);
+            } finally {
+                lc.pop(switchNode);
+                restoreBlock(switchBlock);
             }
+
+            switchBlock.getScope().close();
+            appendStatement(new BlockStatement(switchLine,
+                            new Block(switchToken, switchStatement.getFinish(), switchBlock.getFlags(), switchBlock.getScope(), List.of(switchStatement))));
+        } finally {
             if (outerBlock != null) {
                 restoreBlock(outerBlock);
-                if (switchStatement != null) {
-                    appendStatement(new BlockStatement(switchLine,
-                                    new Block(switchToken, switchStatement.getFinish(), outerBlock.getFlags(), outerBlock.getScope(), outerBlock.getStatements())));
-                }
             }
+        }
+
+        if (outerBlock != null) {
+            outerBlock.getScope().close();
+            appendStatement(new BlockStatement(switchLine,
+                            new Block(switchToken, switchStatement.getFinish(), outerBlock.getFlags(), outerBlock.getScope(), outerBlock.getStatements())));
         }
     }
 
@@ -3728,10 +3749,10 @@ public class Parser extends AbstractParser {
      * Parse throw statement.
      *
      * <pre>
-     * {@code
+     * <code>
      * ThrowStatement:
      *      throw Expression; // [no LineTerminator here]
-     * }
+     * </code>
      * </pre>
      */
     private void throwStatement(boolean yield, boolean await) {
@@ -3790,7 +3811,7 @@ public class Parser extends AbstractParser {
 
         // Container block needed to act as target for labeled break statements
         final int startLine = line;
-        final ParserContextBlockNode outer = newBlock();
+        final ParserContextBlockNode outer = newBlock(newBlockScope());
         // Create try.
 
         try {
@@ -3807,7 +3828,8 @@ public class Parser extends AbstractParser {
                     expect(LPAREN);
                 }
 
-                final ParserContextBlockNode catchBlock = newBlock(Scope.createCatchParameter(lc.getCurrentScope()));
+                final Scope catchParameterScope = Scope.createCatchParameter(lc.getCurrentScope());
+                final ParserContextBlockNode catchBlock = newBlock(catchParameterScope);
                 final Expression ifExpression;
                 try {
                     final IdentNode exception;
@@ -3846,8 +3868,9 @@ public class Parser extends AbstractParser {
                     restoreBlock(catchBlock);
                 }
 
+                catchParameterScope.close();
                 int catchFinish = Math.max(finish, Token.descPosition(catchBlock.getToken()));
-                Block catchBlockNode = new Block(catchBlock.getToken(), catchFinish, catchBlock.getFlags() | Block.IS_SYNTHETIC, catchBlock.getScope(), catchBlock.getStatements());
+                Block catchBlockNode = new Block(catchBlock.getToken(), catchFinish, catchBlock.getFlags() | Block.IS_SYNTHETIC, catchParameterScope, catchBlock.getStatements());
                 catchBlocks.add(catchBlockNode);
 
                 // If unconditional catch then should to be the end.
@@ -3877,6 +3900,7 @@ public class Parser extends AbstractParser {
             restoreBlock(outer);
         }
 
+        outer.getScope().close();
         appendStatement(new BlockStatement(startLine, new Block(tryToken, finish, outer.getFlags() | Block.IS_SYNTHETIC, outer.getScope(), outer.getStatements())));
     }
 
@@ -5766,11 +5790,12 @@ public class Parser extends AbstractParser {
                 functionNode.setLastToken(token);
                 expect(RBRACE);
             }
+
+            functionNode.finishBodyScope(lexer);
         } finally {
-            functionNode.finishBodyScope(lexer::stringIntern);
             restoreBlock(body);
-            lc.propagateFunctionFlags();
         }
+        lc.propagateFunctionFlags();
 
         // NOTE: we can only do alterations to the function node after restoreFunctionNode.
 
@@ -6217,15 +6242,20 @@ public class Parser extends AbstractParser {
             expect(RPAREN);
         }
 
+        boolean parenthesized = true;
         if (canBeArrowParameterList) {
             if (arrowAhead) {
                 // arrow parameter list
                 commitArrowHead(coverFunction);
+                parenthesized = false;
             } else {
                 // parenthesized expression
-                assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
                 revertArrowHead(coverFunction);
             }
+        }
+
+        if (parenthesized) {
+            assignmentExpression.makeParenthesized(Token.descPosition(primaryToken), finish);
         }
 
         return assignmentExpression;
@@ -6905,6 +6935,7 @@ public class Parser extends AbstractParser {
             lc.pop(script);
         }
 
+        moduleScope.close();
         body.setFlag(Block.NEEDS_SCOPE);
         final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY | Block.IS_MODULE_BODY, body.getScope(), body.getStatements());
         script.setLastToken(token);

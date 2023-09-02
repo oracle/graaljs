@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -394,6 +394,10 @@ public final class Scope {
         closed = true;
     }
 
+    public boolean isClosed() {
+        return closed;
+    }
+
     /**
      * Clears defined symbols and moves any local uses into the parent scope.
      */
@@ -732,6 +736,8 @@ public final class Scope {
             return "Global";
         } else if (isModuleScope()) {
             return "Module";
+        } else if (isEvalScope()) {
+            return "Eval";
         } else if (isFunctionBodyScope()) {
             return "Var";
         } else if (isFunctionParameterScope()) {
@@ -744,8 +750,6 @@ public final class Scope {
             return "Class";
         } else if (isClassBodyScope()) {
             return "Private";
-        } else if (isEvalScope()) {
-            return "Eval";
         }
         return "";
     }

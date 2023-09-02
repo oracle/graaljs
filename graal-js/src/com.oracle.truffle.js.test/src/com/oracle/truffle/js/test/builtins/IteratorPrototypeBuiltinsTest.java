@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,12 +101,6 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertEquals(6, result.getArrayElement(2).asInt());
 
             try {
-                context.eval(JavaScriptLanguage.ID, "Iterator.prototype.map.call({}, x => x)");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
-            try {
                 context.eval(JavaScriptLanguage.ID, "[].values().map(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
@@ -143,12 +137,6 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertEquals(4, result.getArrayElement(1).asInt());
 
             try {
-                context.eval(JavaScriptLanguage.ID, "Iterator.prototype.filter.call({}, x => x)");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
-            try {
                 context.eval(JavaScriptLanguage.ID, "[].values().filter(1)");
                 Assert.fail("No exception thrown");
             } catch (PolyglotException e) {
@@ -184,12 +172,6 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertEquals(1, result.getArrayElement(0).asInt());
             Assert.assertEquals(2, result.getArrayElement(1).asInt());
 
-            try {
-                context.eval(JavaScriptLanguage.ID, "Iterator.prototype.take.call({}, 2)");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
             try {
                 context.eval(JavaScriptLanguage.ID, "[].values().take(NaN)");
                 Assert.fail("No exception thrown");
@@ -236,12 +218,6 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertEquals(3, result.getArrayElement(0).asInt());
             Assert.assertEquals(4, result.getArrayElement(1).asInt());
 
-            try {
-                context.eval(JavaScriptLanguage.ID, "Iterator.prototype.drop.call({}, 2)");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
             try {
                 context.eval(JavaScriptLanguage.ID, "[].values().drop(NaN)");
                 Assert.fail("No exception thrown");
@@ -290,12 +266,6 @@ public class IteratorPrototypeBuiltinsTest {
             Assert.assertEquals(0, result.getArrayElement(2).asInt());
             Assert.assertEquals(2, result.getArrayElement(3).asInt());
 
-            try {
-                context.eval(JavaScriptLanguage.ID, "Iterator.prototype.flatMap.call({}, x => x)");
-                Assert.fail("No exception thrown");
-            } catch (PolyglotException e) {
-                Assert.assertTrue(e.getMessage().startsWith("TypeError: "));
-            }
             try {
                 context.eval(JavaScriptLanguage.ID, "[].values().flatMap(1)");
                 Assert.fail("No exception thrown");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -47,7 +48,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.StopIterationException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.EnumerateIteratorPrototypeBuiltinsFactory.EnumerateNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -99,25 +100,22 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
 
     @ImportStatic({JSConfig.class})
     public abstract static class EnumerateNextNode extends JSBuiltinNode {
-        @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private PropertyGetNode getIteratorNode;
-        @Child private ImportValueNode importValueNode;
-        private final BranchProfile errorBranch;
 
         public EnumerateNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             this.getIteratorNode = PropertyGetNode.createGetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
-            this.importValueNode = ImportValueNode.create();
-            this.errorBranch = BranchProfile.create();
         }
 
         @Specialization
-        public JSDynamicObject execute(VirtualFrame frame, Object target,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+        public JSDynamicObject next(VirtualFrame frame, Object target,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached("create(getContext())") CreateIterResultObjectNode createIterResultObjectNode,
+                        @Cached ImportValueNode importValueNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             Object iterator = getIteratorNode.getValue(target);
             if (iterator == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("Enumerate iterator required");
             }
             try {
@@ -132,7 +130,7 @@ public final class EnumerateIteratorPrototypeBuiltins extends JSBuiltinsContaine
                 }
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             } catch (UnsupportedMessageException e) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorInteropException(iterator, e, "next", null);
             }
         }

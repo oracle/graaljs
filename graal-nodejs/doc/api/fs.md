@@ -420,7 +420,7 @@ number of bytes read is zero.
 #### `filehandle.read(buffer[, options])`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * `buffer` {Buffer|TypedArray|DataView} A buffer that will be filled with the
@@ -443,6 +443,61 @@ Reads data from the file and stores that in the given buffer.
 
 If the file is not modified concurrently, the end-of-file is reached when the
 number of bytes read is zero.
+
+#### `filehandle.readableWebStream(options)`
+
+<!-- YAML
+added: v17.0.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/46933
+    description: Added option to create a 'bytes' stream.
+-->
+
+> Stability: 1 - Experimental
+
+* `options` {Object}
+  * `type` {string|undefined} Whether to open a normal or a `'bytes'` stream.
+    **Default:** `undefined`
+
+* Returns: {ReadableStream}
+
+Returns a `ReadableStream` that may be used to read the files data.
+
+An error will be thrown if this method is called more than once or is called
+after the `FileHandle` is closed or closing.
+
+```mjs
+import {
+  open,
+} from 'node:fs/promises';
+
+const file = await open('./some/file/to/read');
+
+for await (const chunk of file.readableWebStream())
+  console.log(chunk);
+
+await file.close();
+```
+
+```cjs
+const {
+  open,
+} = require('node:fs/promises');
+
+(async () => {
+  const file = await open('./some/file/to/read');
+
+  for await (const chunk of file.readableWebStream())
+    console.log(chunk);
+
+  await file.close();
+})();
+```
+
+While the `ReadableStream` will read the file to completion, it will not
+close the `FileHandle` automatically. User code must still call the
+`fileHandle.close()` method.
 
 #### `filehandle.readFile(options)`
 
@@ -467,6 +522,46 @@ If one or more `filehandle.read()` calls are made on a file handle and then a
 `filehandle.readFile()` call is made, the data will be read from the current
 position till the end of the file. It doesn't always read from the beginning
 of the file.
+
+#### `filehandle.readLines([options])`
+
+<!-- YAML
+added: v18.11.0
+-->
+
+* `options` {Object}
+  * `encoding` {string} **Default:** `null`
+  * `autoClose` {boolean} **Default:** `true`
+  * `emitClose` {boolean} **Default:** `true`
+  * `start` {integer}
+  * `end` {integer} **Default:** `Infinity`
+  * `highWaterMark` {integer} **Default:** `64 * 1024`
+* Returns: {readline.InterfaceConstructor}
+
+Convenience method to create a `readline` interface and stream over the file.
+See [`filehandle.createReadStream()`][] for the options.
+
+```mjs
+import { open } from 'node:fs/promises';
+
+const file = await open('./some/file/to/read');
+
+for await (const line of file.readLines()) {
+  console.log(line);
+}
+```
+
+```cjs
+const { open } = require('node:fs/promises');
+
+(async () => {
+  const file = await open('./some/file/to/read');
+
+  for await (const line of file.readLines()) {
+    console.log(line);
+  }
+})();
+```
 
 #### `filehandle.readv(buffers[, position])`
 
@@ -602,7 +697,7 @@ the end of the file.
 #### `filehandle.write(buffer[, options])`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 * `buffer` {Buffer|TypedArray|DataView}
@@ -658,7 +753,9 @@ the end of the file.
 <!-- YAML
 added: v10.0.0
 changes:
-  - version: v15.14.0
+  - version:
+      - v15.14.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37490
     description: The `data` argument supports `AsyncIterable`, `Iterable`, and `Stream`.
   - version: v14.0.0
@@ -813,7 +910,7 @@ added: v10.0.0
 changes:
   - version: v14.0.0
     pr-url: https://github.com/nodejs/node/pull/27044
-    description: Changed 'flags' argument to 'mode' and imposed
+    description: Changed `flags` argument to `mode` and imposed
                  stricter type validation.
 -->
 
@@ -848,7 +945,7 @@ try {
   await copyFile('source.txt', 'destination.txt');
   console.log('source.txt was copied to destination.txt');
 } catch {
-  console.log('The file could not be copied');
+  console.error('The file could not be copied');
 }
 
 // By using COPYFILE_EXCL, the operation will fail if destination.txt exists.
@@ -856,7 +953,7 @@ try {
   await copyFile('source.txt', 'destination.txt', constants.COPYFILE_EXCL);
   console.log('source.txt was copied to destination.txt');
 } catch {
-  console.log('The file could not be copied');
+  console.error('The file could not be copied');
 }
 ```
 
@@ -865,7 +962,11 @@ try {
 <!-- YAML
 added: v16.7.0
 changes:
-  - version: v16.15.0
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47084
+    description: Accept an additional `mode` option to specify
+                 the copy behavior as the `mode` argument of `fs.copyFile()`.
+  - version: v17.6.0
     pr-url: https://github.com/nodejs/node/pull/41819
     description: Accepts an additional `verbatimSymlinks` option to specify
                  whether to perform path resolution for symlinks.
@@ -882,10 +983,15 @@ changes:
   * `filter` {Function} Function to filter copied files/directories. Return
     `true` to copy the item, `false` to ignore it. Can also return a `Promise`
     that resolves to `true` or `false` **Default:** `undefined`.
+    * `src` {string} source path to copy.
+    * `dest` {string} destination path to copy to.
+    * Returns: {boolean|Promise}
   * `force` {boolean} overwrite existing file or directory. The copy
     operation will ignore errors if you set this to false and the destination
     exists. Use the `errorOnExist` option to change this behavior.
     **Default:** `true`.
+  * `mode` {integer} modifiers for copy operation. **Default:** `0`.
+    See `mode` flag of [`fsPromises.copyFile()`][].
   * `preserveTimestamps` {boolean} When `true` timestamps from `src` will
     be preserved. **Default:** `false`.
   * `recursive` {boolean} copy directories recursively **Default:** `false`
@@ -1019,7 +1125,7 @@ try {
 
 ```cjs
 const { mkdir } = require('node:fs/promises');
-const { resolve, join } = require('node:path');
+const { join } = require('node:path');
 
 async function makeDirectory() {
   const projectFolder = join(__dirname, 'test', 'project');
@@ -1037,7 +1143,9 @@ makeDirectory().catch(console.error);
 <!-- YAML
 added: v10.0.0
 changes:
-  - version: v16.5.0
+  - version:
+      - v16.5.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/39028
     description: The `prefix` parameter now accepts an empty string.
 -->
@@ -1045,7 +1153,7 @@ changes:
 * `prefix` {string}
 * `options` {string|Object}
   * `encoding` {string} **Default:** `'utf8'`
-* Returns: {Promise}  Fulfills with a string containing the filesystem path
+* Returns: {Promise}  Fulfills with a string containing the file system path
   of the newly created temporary directory.
 
 Creates a unique temporary directory. A unique directory name is generated by
@@ -1059,9 +1167,11 @@ object with an `encoding` property specifying the character encoding to use.
 
 ```mjs
 import { mkdtemp } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 try {
-  await mkdtemp(path.join(os.tmpdir(), 'foo-'));
+  await mkdtemp(join(tmpdir(), 'foo-'));
 } catch (err) {
   console.error(err);
 }
@@ -1104,6 +1214,9 @@ a colon, Node.js will open a file system stream, as described by
 <!-- YAML
 added: v12.12.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
   - version:
      - v13.1.0
      - v12.16.0
@@ -1117,6 +1230,8 @@ changes:
   * `bufferSize` {number} Number of directory entries that are buffered
     internally when reading from the directory. Higher values lead to better
     performance but higher memory usage. **Default:** `32`
+  * `recursive` {boolean} Resolved `Dir` will be an {AsyncIterable}
+    containing all sub files and directories. **Default:** `false`
 * Returns: {Promise}  Fulfills with an {fs.Dir}.
 
 Asynchronously open a directory for iterative scanning. See the POSIX
@@ -1150,6 +1265,9 @@ closed after the iterator exits.
 <!-- YAML
 added: v10.0.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
   - version: v10.11.0
     pr-url: https://github.com/nodejs/node/pull/22020
     description: New option `withFileTypes` was added.
@@ -1159,6 +1277,7 @@ changes:
 * `options` {string|Object}
   * `encoding` {string} **Default:** `'utf8'`
   * `withFileTypes` {boolean} **Default:** `false`
+  * `recursive` {boolean} **Default:** `false`
 * Returns: {Promise}  Fulfills with an array of the names of the files in
   the directory excluding `'.'` and `'..'`.
 
@@ -1215,6 +1334,35 @@ When the `path` is a directory, the behavior of `fsPromises.readFile()` is
 platform-specific. On macOS, Linux, and Windows, the promise will be rejected
 with an error. On FreeBSD, a representation of the directory's contents will be
 returned.
+
+An example of reading a `package.json` file located in the same directory of the
+running code:
+
+```mjs
+import { readFile } from 'node:fs/promises';
+try {
+  const filePath = new URL('./package.json', import.meta.url);
+  const contents = await readFile(filePath, { encoding: 'utf8' });
+  console.log(contents);
+} catch (err) {
+  console.error(err.message);
+}
+```
+
+```cjs
+const { readFile } = require('node:fs/promises');
+const { resolve } = require('node:path');
+async function logFile() {
+  try {
+    const filePath = resolve('./package.json');
+    const contents = await readFile(filePath, { encoding: 'utf8' });
+    console.log(contents);
+  } catch (err) {
+    console.error(err.message);
+  }
+}
+logFile();
+```
 
 It is possible to abort an ongoing `readFile` using an {AbortSignal}. If a
 request is aborted the promise returned is rejected with an `AbortError`:
@@ -1402,6 +1550,19 @@ changes:
 * Returns: {Promise}  Fulfills with the {fs.Stats} object for the
   given `path`.
 
+### `fsPromises.statfs(path[, options])`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* `path` {string|Buffer|URL}
+* `options` {Object}
+  * `bigint` {boolean} Whether the numeric values in the returned
+    {fs.StatFs} object should be `bigint`. **Default:** `false`.
+* Returns: {Promise} Fulfills with the {fs.StatFs} object for the
+  given `path`.
+
 ### `fsPromises.symlink(target, path[, type])`
 
 <!-- YAML
@@ -1418,7 +1579,8 @@ Creates a symbolic link.
 The `type` argument is only used on Windows platforms and can be one of `'dir'`,
 `'file'`, or `'junction'`. Windows junction points require the destination path
 to be absolute. When using `'junction'`, the `target` argument will
-automatically be normalized to absolute path.
+automatically be normalized to absolute path. Junction points on NTFS volumes
+can only point to directories.
 
 ### `fsPromises.truncate(path[, len])`
 
@@ -1470,7 +1632,9 @@ The `atime` and `mtime` arguments follow these rules:
 ### `fsPromises.watch(filename[, options])`
 
 <!-- YAML
-added: v15.9.0
+added:
+  - v15.9.0
+  - v14.18.0
 -->
 
 * `filename` {string|Buffer|URL}
@@ -1522,12 +1686,14 @@ All the [caveats][] for `fs.watch()` also apply to `fsPromises.watch()`.
 <!-- YAML
 added: v10.0.0
 changes:
-  - version: v15.14.0
+  - version:
+      - v15.14.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37490
     description: The `data` argument supports `AsyncIterable`, `Iterable`, and `Stream`.
   - version:
-    - v15.2.0
-    - v14.17.0
+      - v15.2.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/35993
     description: The options argument may include an AbortSignal to abort an
                  ongoing writeFile request.
@@ -1595,6 +1761,12 @@ system requests but rather the internal buffering `fs.writeFile` performs.
 
 ### `fsPromises.constants`
 
+<!-- YAML
+added:
+  - v18.4.0
+  - v16.17.0
+-->
+
 * {Object}
 
 Returns an object containing commonly used constants for file system
@@ -1616,6 +1788,11 @@ concurrent modifications on the same file or data corruption may occur.
 <!-- YAML
 added: v0.11.15
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v7.6.0
     pr-url: https://github.com/nodejs/node/pull/10739
     description: The `path` parameter can be a WHATWG `URL` object using `file:`
@@ -1801,6 +1978,11 @@ the user from reading or writing to it.
 <!-- YAML
 added: v0.6.7
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -1882,6 +2064,11 @@ open('message.txt', 'a', (err, fd) => {
 <!-- YAML
 added: v0.1.30
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -1970,6 +2157,11 @@ implemented.
 <!-- YAML
 added: v0.1.97
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -2000,7 +2192,14 @@ See the POSIX chown(2) documentation for more detail.
 <!-- YAML
 added: v0.0.2
 changes:
-  - version: v15.9.0
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
+  - version:
+      - v15.9.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/37174
     description: A default callback is now used if one is not provided.
   - version: v10.0.0
@@ -2030,9 +2229,14 @@ See the POSIX close(2) documentation for more detail.
 <!-- YAML
 added: v8.5.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v14.0.0
     pr-url: https://github.com/nodejs/node/pull/27044
-    description: Changed 'flags' argument to 'mode' and imposed
+    description: Changed `flags` argument to `mode` and imposed
                  stricter type validation.
 -->
 
@@ -2081,7 +2285,16 @@ copyFile('source.txt', 'destination.txt', constants.COPYFILE_EXCL, callback);
 <!-- YAML
 added: v16.7.0
 changes:
-  - version: v16.15.0
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47084
+    description: Accept an additional `mode` option to specify
+                 the copy behavior as the `mode` argument of `fs.copyFile()`.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
+  - version: v17.6.0
     pr-url: https://github.com/nodejs/node/pull/41819
     description: Accepts an additional `verbatimSymlinks` option to specify
                  whether to perform path resolution for symlinks.
@@ -2098,10 +2311,15 @@ changes:
   * `filter` {Function} Function to filter copied files/directories. Return
     `true` to copy the item, `false` to ignore it. Can also return a `Promise`
     that resolves to `true` or `false` **Default:** `undefined`.
+    * `src` {string} source path to copy.
+    * `dest` {string} destination path to copy to.
+    * Returns: {boolean|Promise}
   * `force` {boolean} overwrite existing file or directory. The copy
     operation will ignore errors if you set this to false and the destination
     exists. Use the `errorOnExist` option to change this behavior.
     **Default:** `true`.
+  * `mode` {integer} modifiers for copy operation. **Default:** `0`.
+    See `mode` flag of [`fs.copyFile()`][].
   * `preserveTimestamps` {boolean} When `true` timestamps from `src` will
     be preserved. **Default:** `false`.
   * `recursive` {boolean} copy directories recursively **Default:** `false`
@@ -2126,6 +2344,9 @@ changes:
   - version: v16.10.0
     pr-url: https://github.com/nodejs/node/pull/40013
     description: The `fs` option does not need `close` method if `autoClose` is `false`.
+  - version: v15.5.0
+    pr-url: https://github.com/nodejs/node/pull/36431
+    description: Add support for `AbortSignal`.
   - version:
      - v15.4.0
     pr-url: https://github.com/nodejs/node/pull/35922
@@ -2172,6 +2393,7 @@ changes:
   * `end` {integer} **Default:** `Infinity`
   * `highWaterMark` {integer} **Default:** `64 * 1024`
   * `fs` {Object|null} **Default:** `null`
+  * `signal` {AbortSignal|null} **Default:** `null`
 * Returns: {fs.ReadStream}
 
 Unlike the 16 KiB default `highWaterMark` for a {stream.Readable}, the stream
@@ -2251,6 +2473,9 @@ changes:
   - version: v16.10.0
     pr-url: https://github.com/nodejs/node/pull/40013
     description: The `fs` option does not need `close` method if `autoClose` is `false`.
+  - version: v15.5.0
+    pr-url: https://github.com/nodejs/node/pull/36431
+    description: Add support for `AbortSignal`.
   - version:
      - v15.4.0
     pr-url: https://github.com/nodejs/node/pull/35922
@@ -2293,6 +2518,7 @@ changes:
   * `emitClose` {boolean} **Default:** `true`
   * `start` {integer}
   * `fs` {Object|null} **Default:** `null`
+  * `signal` {AbortSignal|null} **Default:** `null`
 * Returns: {fs.WriteStream}
 
 `options` may also include a `start` option to allow writing data at some
@@ -2331,6 +2557,11 @@ If `options` is a string, then it specifies the encoding.
 added: v0.0.2
 deprecated: v1.0.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v7.6.0
     pr-url: https://github.com/nodejs/node/pull/10739
     description: The `path` parameter can be a WHATWG `URL` object using
@@ -2476,6 +2707,11 @@ process.
 <!-- YAML
 added: v0.4.7
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -2501,6 +2737,11 @@ See the POSIX fchmod(2) documentation for more detail.
 <!-- YAML
 added: v0.4.7
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -2527,6 +2768,11 @@ See the POSIX fchown(2) documentation for more detail.
 <!-- YAML
 added: v0.1.96
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -2551,6 +2797,11 @@ exception are given to the completion callback.
 <!-- YAML
 added: v0.1.95
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.5.0
     pr-url: https://github.com/nodejs/node/pull/20220
     description: Accepts an additional `options` object to specify whether
@@ -2582,6 +2833,11 @@ See the POSIX fstat(2) documentation for more detail.
 <!-- YAML
 added: v0.1.96
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -2606,6 +2862,11 @@ than a possible exception are given to the completion callback.
 <!-- YAML
 added: v0.8.6
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -2666,6 +2927,11 @@ If `len` is negative then `0` will be used.
 <!-- YAML
 added: v0.4.2
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -2694,6 +2960,11 @@ descriptor. See [`fs.utimes()`][].
 <!-- YAML
 deprecated: v0.4.7
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v16.0.0
     pr-url: https://github.com/nodejs/node/pull/37460
     description: The error returned may be an `AggregateError` if more than one
@@ -2724,6 +2995,11 @@ See the POSIX lchmod(2) documentation for more detail.
 
 <!-- YAML
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.6.0
     pr-url: https://github.com/nodejs/node/pull/21498
     description: This API is no longer deprecated.
@@ -2756,6 +3032,12 @@ See the POSIX lchown(2) documentation for more detail.
 added:
   - v14.5.0
   - v12.19.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `path` {string|Buffer|URL}
@@ -2777,6 +3059,11 @@ callback.
 <!-- YAML
 added: v0.1.31
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -2806,6 +3093,11 @@ exception are given to the completion callback.
 <!-- YAML
 added: v0.1.30
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.5.0
     pr-url: https://github.com/nodejs/node/pull/20220
     description: Accepts an additional `options` object to specify whether
@@ -2844,6 +3136,11 @@ See the POSIX lstat(2) documentation for more details.
 <!-- YAML
 added: v0.1.8
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version:
      - v13.11.0
      - v12.17.0
@@ -2882,19 +3179,20 @@ Asynchronously creates a directory.
 The callback is given a possible exception and, if `recursive` is `true`, the
 first directory path created, `(err[, path])`.
 `path` can still be `undefined` when `recursive` is `true`, if no directory was
-created.
+created (for instance, if it was previously created).
 
 The optional `options` argument can be an integer specifying `mode` (permission
 and sticky bits), or an object with a `mode` property and a `recursive`
 property indicating whether parent directories should be created. Calling
 `fs.mkdir()` when `path` is a directory that exists results in an error only
-when `recursive` is false.
+when `recursive` is false. If `recursive` is false and the directory exists,
+an `EEXIST` error occurs.
 
 ```mjs
 import { mkdir } from 'node:fs';
 
-// Creates /tmp/a/apple, regardless of whether `/tmp` and /tmp/a exist.
-mkdir('/tmp/a/apple', { recursive: true }, (err) => {
+// Create ./tmp/a/apple, regardless of whether ./tmp and ./tmp/a exist.
+mkdir('./tmp/a/apple', { recursive: true }, (err) => {
   if (err) throw err;
 });
 ```
@@ -2917,7 +3215,14 @@ See the POSIX mkdir(2) documentation for more details.
 <!-- YAML
 added: v5.10.0
 changes:
-  - version: v16.5.0
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
+  - version:
+      - v16.5.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/39028
     description: The `prefix` parameter now accepts an empty string.
   - version: v10.0.0
@@ -2956,8 +3261,10 @@ object with an `encoding` property specifying the character encoding to use.
 
 ```mjs
 import { mkdtemp } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
-mkdtemp(path.join(os.tmpdir(), 'foo-'), (err, directory) => {
+mkdtemp(join(tmpdir(), 'foo-'), (err, directory) => {
   if (err) throw err;
   console.log(directory);
   // Prints: /tmp/foo-itXde2 or C:\Users\...\AppData\Local\Temp\foo-itXde2
@@ -3002,6 +3309,11 @@ mkdtemp(`${tmpDir}${sep}`, (err, directory) => {
 <!-- YAML
 added: v0.0.2
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v11.1.0
     pr-url: https://github.com/nodejs/node/pull/23767
     description: The `flags` argument is now optional and defaults to `'r'`.
@@ -3043,6 +3355,14 @@ Functions based on `fs.open()` exhibit this behavior as well:
 <!-- YAML
 added: v12.12.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version:
      - v13.1.0
      - v12.16.0
@@ -3056,6 +3376,7 @@ changes:
   * `bufferSize` {number} Number of directory entries that are buffered
     internally when reading from the directory. Higher values lead to better
     performance but higher memory usage. **Default:** `32`
+  * `recursive` {boolean} **Default:** `false`
 * `callback` {Function}
   * `err` {Error}
   * `dir` {fs.Dir}
@@ -3074,6 +3395,11 @@ directory and subsequent read operations.
 <!-- YAML
 added: v0.0.2
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.10.0
     pr-url: https://github.com/nodejs/node/pull/22150
     description: The `buffer` parameter can now be any `TypedArray`, or a
@@ -3143,7 +3469,7 @@ above values.
 ### `fs.read(fd, buffer[, options], callback)`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * `fd` {integer}
@@ -3167,6 +3493,14 @@ above values.
 <!-- YAML
 added: v0.1.8
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.10.0
     pr-url: https://github.com/nodejs/node/pull/22020
     description: New option `withFileTypes` was added.
@@ -3191,6 +3525,7 @@ changes:
 * `options` {string|Object}
   * `encoding` {string} **Default:** `'utf8'`
   * `withFileTypes` {boolean} **Default:** `false`
+  * `recursive` {boolean} **Default:** `false`
 * `callback` {Function}
   * `err` {Error}
   * `files` {string\[]|Buffer\[]|fs.Dirent\[]}
@@ -3214,11 +3549,18 @@ If `options.withFileTypes` is set to `true`, the `files` array will contain
 <!-- YAML
 added: v0.1.29
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v16.0.0
     pr-url: https://github.com/nodejs/node/pull/37460
     description: The error returned may be an `AggregateError` if more than one
                  error is returned.
-  - version: v15.2.0
+  - version:
+      - v15.2.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/35911
     description: The options argument may include an AbortSignal to abort an
                  ongoing readFile request.
@@ -3353,6 +3695,11 @@ different Node.js versions.
 <!-- YAML
 added: v0.1.31
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -3388,8 +3735,14 @@ the link path returned will be passed as a {Buffer} object.
 
 <!-- YAML
 added:
- - v13.13.0
- - v12.17.0
+  - v13.13.0
+  - v12.17.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `fd` {integer}
@@ -3418,6 +3771,11 @@ a promise for an `Object` with `bytesRead` and `buffers` properties.
 <!-- YAML
 added: v0.1.31
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -3479,6 +3837,12 @@ dependent name for that object.
 
 <!-- YAML
 added: v9.2.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `path` {string|Buffer|URL}
@@ -3508,6 +3872,11 @@ this restriction.
 <!-- YAML
 added: v0.0.2
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -3550,6 +3919,11 @@ rename('oldFile.txt', 'newFile.txt', (err) => {
 <!-- YAML
 added: v0.0.2
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v16.0.0
     pr-url: https://github.com/nodejs/node/pull/37216
     description: "Using `fs.rmdir(path, { recursive: true })` on a `path` that is
@@ -3624,7 +3998,9 @@ with options `{ recursive: true, force: true }`.
 <!-- YAML
 added: v14.14.0
 changes:
-  - version: v16.14.0
+  - version:
+      - v17.3.0
+      - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41132
     description: The `path` parameter can be a WHATWG `URL` object using `file:`
                  protocol.
@@ -3656,6 +4032,11 @@ completion callback.
 <!-- YAML
 added: v0.0.2
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.5.0
     pr-url: https://github.com/nodejs/node/pull/20220
     description: Accepts an additional `options` object to specify whether
@@ -3686,6 +4067,9 @@ Asynchronous stat(2). The callback gets two arguments `(err, stats)` where
 `stats` is an {fs.Stats} object.
 
 In case of an error, the `err.code` will be one of [Common System Errors][].
+
+[`fs.stat()`][] follows symbolic links. Use [`fs.lstat()`][] to look at the
+links themselves.
 
 Using `fs.stat()` to check for the existence of a file before calling
 `fs.open()`, `fs.readFile()`, or `fs.writeFile()` is not recommended.
@@ -3765,11 +4149,36 @@ Stats {
 }
 ```
 
+### `fs.statfs(path[, options], callback)`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* `path` {string|Buffer|URL}
+* `options` {Object}
+  * `bigint` {boolean} Whether the numeric values in the returned
+    {fs.StatFs} object should be `bigint`. **Default:** `false`.
+* `callback` {Function}
+  * `err` {Error}
+  * `stats` {fs.StatFs}
+
+Asynchronous statfs(2). Returns information about the mounted file system which
+contains `path`. The callback gets two arguments `(err, stats)` where `stats`
+is an {fs.StatFs} object.
+
+In case of an error, the `err.code` will be one of [Common System Errors][].
+
 ### `fs.symlink(target, path[, type], callback)`
 
 <!-- YAML
 added: v0.1.31
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v12.0.0
     pr-url: https://github.com/nodejs/node/pull/23724
     description: If the `type` argument is left undefined, Node will autodetect
@@ -3797,7 +4206,8 @@ It can be set to `'dir'`, `'file'`, or `'junction'`. If the `type` argument is
 not a string, Node.js will autodetect `target` type and use `'file'` or `'dir'`.
 If the `target` does not exist, `'file'` will be used. Windows junction points
 require the destination path to be absolute. When using `'junction'`, the
-`target` argument will automatically be normalized to absolute path.
+`target` argument will automatically be normalized to absolute path. Junction
+points on NTFS volumes can only point to directories.
 
 Relative targets are relative to the link's parent directory.
 
@@ -3822,6 +4232,11 @@ $ tree .
 <!-- YAML
 added: v0.8.6
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v16.0.0
     pr-url: https://github.com/nodejs/node/pull/37460
     description: The error returned may be an `AggregateError` if more than one
@@ -3873,6 +4288,11 @@ See the POSIX truncate(2) documentation for more details.
 <!-- YAML
 added: v0.0.2
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -3934,6 +4354,11 @@ and `fs.unwatchFile()` when possible.
 <!-- YAML
 added: v0.4.2
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v10.0.0
     pr-url: https://github.com/nodejs/node/pull/12562
     description: The `callback` parameter is no longer optional. Not passing
@@ -3976,7 +4401,9 @@ The `atime` and `mtime` arguments follow these rules:
 <!-- YAML
 added: v0.5.10
 changes:
-  - version: v15.9.0
+  - version:
+      - v15.9.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/37190
     description: Added support for closing the watcher with an AbortSignal.
   - version: v7.6.0
@@ -4043,7 +4470,7 @@ renamed. An `EPERM` error is reported when the watched directory is deleted.
 <!--type=misc-->
 
 This feature depends on the underlying operating system providing a way
-to be notified of filesystem changes.
+to be notified of file system changes.
 
 * On Linux systems, this uses [`inotify(7)`][].
 * On BSD systems, this uses [`kqueue(2)`][].
@@ -4174,6 +4601,11 @@ This happens when:
 <!-- YAML
 added: v0.0.2
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v14.0.0
     pr-url: https://github.com/nodejs/node/pull/31030
     description: The `buffer` parameter won't coerce unsupported input to
@@ -4234,7 +4666,7 @@ the end of the file.
 ### `fs.write(fd, buffer[, options], callback)`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 * `fd` {integer}
@@ -4259,6 +4691,10 @@ default with the above values.
 <!-- YAML
 added: v0.11.5
 changes:
+  - version: v17.8.0
+    pr-url: https://github.com/nodejs/node/pull/42149
+    description: Passing to the `string` parameter an object with an own
+                 `toString` function is deprecated.
   - version: v14.12.0
     pr-url: https://github.com/nodejs/node/pull/34993
     description: The `string` parameter will stringify an object with an
@@ -4323,11 +4759,22 @@ details.
 <!-- YAML
 added: v0.1.29
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
+  - version: v17.8.0
+    pr-url: https://github.com/nodejs/node/pull/42149
+    description: Passing to the `string` parameter an object with an own
+                 `toString` function is deprecated.
   - version: v16.0.0
     pr-url: https://github.com/nodejs/node/pull/37460
     description: The error returned may be an `AggregateError` if more than one
                  error is returned.
-  - version: v15.2.0
+  - version:
+      - v15.2.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/35993
     description: The options argument may include an AbortSignal to abort an
                  ongoing writeFile request.
@@ -4380,9 +4827,6 @@ The `encoding` option is ignored if `data` is a buffer.
 
 The `mode` option only affects the newly created file. See [`fs.open()`][]
 for more details.
-
-If `data` is a plain object, it must have an own (not inherited) `toString`
-function property.
 
 ```mjs
 import { writeFile } from 'node:fs';
@@ -4465,6 +4909,12 @@ to contain only `', World'`.
 
 <!-- YAML
 added: v12.9.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `fd` {integer}
@@ -4662,7 +5112,7 @@ added: v8.5.0
 changes:
   - version: v14.0.0
     pr-url: https://github.com/nodejs/node/pull/27044
-    description: Changed 'flags' argument to 'mode' and imposed
+    description: Changed `flags` argument to `mode` and imposed
                  stricter type validation.
 -->
 
@@ -4705,7 +5155,11 @@ copyFileSync('source.txt', 'destination.txt', constants.COPYFILE_EXCL);
 <!-- YAML
 added: v16.7.0
 changes:
-  - version: v16.15.0
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47084
+    description: Accept an additional `mode` option to specify
+                 the copy behavior as the `mode` argument of `fs.copyFile()`.
+  - version: v17.6.0
     pr-url: https://github.com/nodejs/node/pull/41819
     description: Accepts an additional `verbatimSymlinks` option to specify
                  whether to perform path resolution for symlinks.
@@ -4721,10 +5175,15 @@ changes:
     exists, throw an error. **Default:** `false`.
   * `filter` {Function} Function to filter copied files/directories. Return
     `true` to copy the item, `false` to ignore it. **Default:** `undefined`
+    * `src` {string} source path to copy.
+    * `dest` {string} destination path to copy to.
+    * Returns: {boolean}
   * `force` {boolean} overwrite existing file or directory. The copy
     operation will ignore errors if you set this to false and the destination
     exists. Use the `errorOnExist` option to change this behavior.
     **Default:** `true`.
+  * `mode` {integer} modifiers for copy operation. **Default:** `0`.
+    See `mode` flag of [`fs.copyFileSync()`][].
   * `preserveTimestamps` {boolean} When `true` timestamps from `src` will
     be preserved. **Default:** `false`.
   * `recursive` {boolean} copy directories recursively **Default:** `false`
@@ -5009,7 +5468,9 @@ See the POSIX mkdir(2) documentation for more details.
 <!-- YAML
 added: v5.10.0
 changes:
-  - version: v16.5.0
+  - version:
+      - v16.5.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/39028
     description: The `prefix` parameter now accepts an empty string.
 -->
@@ -5032,6 +5493,9 @@ object with an `encoding` property specifying the character encoding to use.
 <!-- YAML
 added: v12.12.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
   - version:
      - v13.1.0
      - v12.16.0
@@ -5045,6 +5509,7 @@ changes:
   * `bufferSize` {number} Number of directory entries that are buffered
     internally when reading from the directory. Higher values lead to better
     performance but higher memory usage. **Default:** `32`
+  * `recursive` {boolean} **Default:** `false`
 * Returns: {fs.Dir}
 
 Synchronously open a directory. See opendir(3).
@@ -5088,6 +5553,9 @@ this API: [`fs.open()`][].
 <!-- YAML
 added: v0.1.21
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
   - version: v10.10.0
     pr-url: https://github.com/nodejs/node/pull/22020
     description: New option `withFileTypes` was added.
@@ -5101,6 +5569,7 @@ changes:
 * `options` {string|Object}
   * `encoding` {string} **Default:** `'utf8'`
   * `withFileTypes` {boolean} **Default:** `false`
+  * `recursive` {boolean} **Default:** `false`
 * Returns: {string\[]|Buffer\[]|fs.Dirent\[]}
 
 Reads the contents of the directory.
@@ -5397,7 +5866,9 @@ with options `{ recursive: true, force: true }`.
 <!-- YAML
 added: v14.14.0
 changes:
-  - version: v16.14.0
+  - version:
+      - v17.3.0
+      - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41132
     description: The `path` parameter can be a WHATWG `URL` object using `file:`
                  protocol.
@@ -5452,6 +5923,23 @@ changes:
 * Returns: {fs.Stats}
 
 Retrieves the {fs.Stats} for the path.
+
+### `fs.statfsSync(path[, options])`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* `path` {string|Buffer|URL}
+* `options` {Object}
+  * `bigint` {boolean} Whether the numeric values in the returned
+    {fs.StatFs} object should be `bigint`. **Default:** `false`.
+* Returns: {fs.StatFs}
+
+Synchronous statfs(2). Returns information about the mounted file system which
+contains `path`.
+
+In case of an error, the `err.code` will be one of [Common System Errors][].
 
 ### `fs.symlinkSync(target, path[, type])`
 
@@ -5541,6 +6029,10 @@ this API: [`fs.utimes()`][].
 <!-- YAML
 added: v0.1.29
 changes:
+  - version: v17.8.0
+    pr-url: https://github.com/nodejs/node/pull/42149
+    description: Passing to the `data` parameter an object with an own
+                 `toString` function is deprecated.
   - version: v14.12.0
     pr-url: https://github.com/nodejs/node/pull/34993
     description: The `data` parameter will stringify an object with an
@@ -5569,9 +6061,6 @@ changes:
   * `flag` {string} See [support of file system `flags`][]. **Default:** `'w'`.
 
 Returns `undefined`.
-
-If `data` is a plain object, it must have an own (not inherited) `toString`
-function property.
 
 The `mode` option only affects the newly created file. See [`fs.open()`][]
 for more details.
@@ -5613,7 +6102,7 @@ this API: [`fs.write(fd, buffer...)`][].
 ### `fs.writeSync(fd, buffer[, options])`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 * `fd` {integer}
@@ -5713,6 +6202,12 @@ closed.
 
 <!-- YAML
 added: v12.12.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `callback` {Function}
@@ -5919,6 +6414,16 @@ added: v10.10.0
 The file name that this {fs.Dirent} object refers to. The type of this
 value is determined by the `options.encoding` passed to [`fs.readdir()`][] or
 [`fs.readdirSync()`][].
+
+#### `dirent.path`
+
+<!-- YAML
+added: v18.17.0
+-->
+
+* {string}
+
+The base path that this {fs.Dirent} object refers to.
 
 ### Class: `fs.FSWatcher`
 
@@ -6522,7 +7027,7 @@ The times in the stat object have the following semantics:
   link(2), mknod(2), rename(2), unlink(2), utimes(2),
   read(2), and write(2) system calls.
 * `birthtime` "Birth Time": Time of file creation. Set once when the
-  file is created. On filesystems where birthtime is not available,
+  file is created. On file systems where birthtime is not available,
   this field may instead hold either the `ctime` or
   `1970-01-01T00:00Z` (ie, Unix epoch timestamp `0`). This value may be greater
   than `atime` or `mtime` in this case. On Darwin and other FreeBSD variants,
@@ -6531,6 +7036,114 @@ The times in the stat object have the following semantics:
 
 Prior to Node.js 0.12, the `ctime` held the `birthtime` on Windows systems. As
 of 0.12, `ctime` is not "creation time", and on Unix systems, it never was.
+
+### Class: `fs.StatFs`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+Provides information about a mounted file system.
+
+Objects returned from [`fs.statfs()`][] and its synchronous counterpart are of
+this type. If `bigint` in the `options` passed to those methods is `true`, the
+numeric values will be `bigint` instead of `number`.
+
+```console
+StatFs {
+  type: 1397114950,
+  bsize: 4096,
+  blocks: 121938943,
+  bfree: 61058895,
+  bavail: 61058895,
+  files: 999,
+  ffree: 1000000
+}
+```
+
+`bigint` version:
+
+```console
+StatFs {
+  type: 1397114950n,
+  bsize: 4096n,
+  blocks: 121938943n,
+  bfree: 61058895n,
+  bavail: 61058895n,
+  files: 999n,
+  ffree: 1000000n
+}
+```
+
+#### `statfs.bavail`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Free blocks available to unprivileged users.
+
+#### `statfs.bfree`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Free blocks in file system.
+
+#### `statfs.blocks`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Total data blocks in file system.
+
+#### `statfs.bsize`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Optimal transfer block size.
+
+#### `statfs.ffree`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Free file nodes in file system.
+
+#### `statfs.files`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Total file nodes in file system.
+
+#### `statfs.type`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Type of file system.
 
 ### Class: `fs.WriteStream`
 
@@ -6642,7 +7255,7 @@ import { open, constants } from 'node:fs';
 const {
   O_RDWR,
   O_CREAT,
-  O_EXCL
+  O_EXCL,
 } = constants;
 
 open('/path/to/my/file', O_RDWR | O_CREAT | O_EXCL, (err, fd) => {
@@ -6933,6 +7546,8 @@ For example, the following is prone to error because the `fs.stat()`
 operation might complete before the `fs.rename()` operation:
 
 ```js
+const fs = require('node:fs');
+
 fs.rename('/tmp/hello', '/tmp/world', (err) => {
   if (err) throw err;
   console.log('renamed complete');
@@ -6949,12 +7564,12 @@ of one before invoking the other:
 ```mjs
 import { rename, stat } from 'node:fs/promises';
 
-const from = '/tmp/hello';
-const to = '/tmp/world';
+const oldPath = '/tmp/hello';
+const newPath = '/tmp/world';
 
 try {
-  await rename(from, to);
-  const stats = await stat(to);
+  await rename(oldPath, newPath);
+  const stats = await stat(newPath);
   console.log(`stats: ${JSON.stringify(stats)}`);
 } catch (error) {
   console.error('there was an error:', error.message);
@@ -6964,10 +7579,10 @@ try {
 ```cjs
 const { rename, stat } = require('node:fs/promises');
 
-(async function(from, to) {
+(async function(oldPath, newPath) {
   try {
-    await rename(from, to);
-    const stats = await stat(to);
+    await rename(oldPath, newPath);
+    const stats = await stat(newPath);
     console.log(`stats: ${JSON.stringify(stats)}`);
   } catch (error) {
     console.error('there was an error:', error.message);
@@ -7023,7 +7638,7 @@ try {
   fd = await open('/open/some/file.txt', 'r');
   // Do something with the file
 } finally {
-  await fd.close();
+  await fd?.close();
 }
 ```
 
@@ -7037,7 +7652,7 @@ try {
   fd = await open('file.txt', 'r');
   // Do something with the file
 } finally {
-  await fd.close();
+  await fd?.close();
 }
 ```
 
@@ -7152,7 +7767,7 @@ try {
   fd = await open(Buffer.from('/open/some/file.txt'), 'r');
   // Do something with the file
 } finally {
-  await fd.close();
+  await fd?.close();
 }
 ```
 
@@ -7343,6 +7958,7 @@ the file contents.
 [`ReadDirectoryChangesW`]: https://docs.microsoft.com/en-us/windows/desktop/api/winbase/nf-winbase-readdirectorychangesw
 [`UV_THREADPOOL_SIZE`]: cli.md#uv_threadpool_sizesize
 [`event ports`]: https://illumos.org/man/port_create
+[`filehandle.createReadStream()`]: #filehandlecreatereadstreamoptions
 [`filehandle.createWriteStream()`]: #filehandlecreatewritestreamoptions
 [`filehandle.writeFile()`]: #filehandlewritefiledata-options
 [`fs.access()`]: #fsaccesspath-mode-callback
@@ -7350,6 +7966,7 @@ the file contents.
 [`fs.chmod()`]: #fschmodpath-mode-callback
 [`fs.chown()`]: #fschownpath-uid-gid-callback
 [`fs.copyFile()`]: #fscopyfilesrc-dest-mode-callback
+[`fs.copyFileSync()`]: #fscopyfilesyncsrc-dest-mode
 [`fs.createReadStream()`]: #fscreatereadstreampath-options
 [`fs.createWriteStream()`]: #fscreatewritestreampath-options
 [`fs.exists()`]: #fsexistspath-callback
@@ -7374,6 +7991,7 @@ the file contents.
 [`fs.rmSync()`]: #fsrmsyncpath-options
 [`fs.rmdir()`]: #fsrmdirpath-options-callback
 [`fs.stat()`]: #fsstatpath-options-callback
+[`fs.statfs()`]: #fsstatfspath-options-callback
 [`fs.symlink()`]: #fssymlinktarget-path-type-callback
 [`fs.utimes()`]: #fsutimespath-atime-mtime-callback
 [`fs.watch()`]: #fswatchfilename-options-listener
@@ -7382,6 +8000,7 @@ the file contents.
 [`fs.writeFile()`]: #fswritefilefile-data-options-callback
 [`fs.writev()`]: #fswritevfd-buffers-position-callback
 [`fsPromises.access()`]: #fspromisesaccesspath-mode
+[`fsPromises.copyFile()`]: #fspromisescopyfilesrc-dest-mode
 [`fsPromises.open()`]: #fspromisesopenpath-flags-mode
 [`fsPromises.opendir()`]: #fspromisesopendirpath-options
 [`fsPromises.rm()`]: #fspromisesrmpath-options

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,13 +63,15 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
     private JSWeakRef() {
     }
 
-    public static JSWeakRefObject create(JSContext context, JSRealm realm, Object referent) {
+    public static JSWeakRefObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object referent) {
         TruffleWeakReference<Object> weakReference = new TruffleWeakReference<>(referent);
         JSObjectFactory factory = context.getWeakRefFactory();
-        JSWeakRefObject obj = factory.initProto(new JSWeakRefObject(factory.getShape(realm), weakReference), realm);
+        var shape = factory.getShape(realm, proto);
+        var weakRefObj = factory.initProto(new JSWeakRefObject(shape, proto, weakReference), realm, proto);
+        factory.trackAllocation(weakRefObj);
         // Used for KeepDuringJob(target) in the specification
         context.addWeakRefTargetToSet(referent);
-        return context.trackAllocation(obj);
+        return factory.trackAllocation(weakRefObj);
     }
 
     public static TruffleWeakReference<?> getInternalWeakRef(JSDynamicObject obj) {
@@ -79,9 +81,8 @@ public final class JSWeakRef extends JSNonProxy implements JSConstructorFactory.
 
     @Override
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakRefPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;

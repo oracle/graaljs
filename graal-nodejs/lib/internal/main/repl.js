@@ -4,12 +4,12 @@
 // the main module is not specified and stdin is a TTY.
 
 const {
-  prepareMainThreadExecution
-} = require('internal/bootstrap/pre_execution');
+  prepareMainThreadExecution,
+  markBootstrapComplete,
+} = require('internal/process/pre_execution');
 
-const esmLoader = require('internal/process/esm_loader');
 const {
-  evalScript
+  evalScript,
 } = require('internal/process/execution');
 
 const console = require('internal/console/global');
@@ -33,6 +33,7 @@ if (process.env.NODE_REPL_EXTERNAL_MODULE) {
     process.exit(1);
   }
 
+  const esmLoader = require('internal/process/esm_loader');
   esmLoader.loadESM(() => {
     console.log(`Welcome to Node.js ${process.version}.\n` +
       'Type ".help" for more information.');

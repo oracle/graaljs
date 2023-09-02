@@ -13,11 +13,11 @@ const {
   messaging_deserialize_symbol,
   messaging_transfer_symbol,
   messaging_clone_symbol,
-  messaging_transfer_list_symbol
+  messaging_transfer_list_symbol,
 } = internalBinding('symbols');
 const {
   JSTransferable,
-  setDeserializerCreateObjectFunction
+  setDeserializerCreateObjectFunction,
 } = internalBinding('messaging');
 
 function setup() {
@@ -40,6 +40,8 @@ function setup() {
 }
 
 function makeTransferable(obj) {
+  // If the object is already transferable, skip all this.
+  if (obj instanceof JSTransferable) return obj;
   const inst = ReflectConstruct(JSTransferable, [], obj.constructor);
   const properties = ObjectGetOwnPropertyDescriptors(obj);
   const propertiesValues = ObjectValues(properties);

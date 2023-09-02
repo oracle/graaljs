@@ -10,14 +10,14 @@ bitfield struct JSPromiseFlags extends uint31 {
   async_task_id: int32: 22 bit;
 }
 
-extern class JSPromise extends JSObject {
+extern class JSPromise extends JSObjectWithEmbedderSlots {
   macro Status(): PromiseState {
     return this.flags.status;
   }
 
   macro SetStatus(status: constexpr PromiseState): void {
-    assert(this.Status() == PromiseState::kPending);
-    assert(status != PromiseState::kPending);
+    dcheck(this.Status() == PromiseState::kPending);
+    dcheck(status != PromiseState::kPending);
 
     this.flags.status = status;
   }

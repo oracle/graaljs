@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import java.util.Set;
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -71,11 +72,13 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRealmBoundaryRootNode;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -96,7 +99,7 @@ public class ImportCallNode extends JavaScriptNode {
     private static final TruffleString ASSERTIONS = Strings.constant("assert");
 
     @Child private JavaScriptNode argRefNode;
-    @Child private JavaScriptNode activeScriptOrModuleNode;
+    private final ScriptOrModule activeScriptOrModule;
     @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
     @Child private JSToStringNode toStringNode;
     @Child private PromiseReactionJobNode promiseReactionJobNode;
@@ -110,40 +113,41 @@ public class ImportCallNode extends JavaScriptNode {
 
     private final JSContext context;
 
-    protected ImportCallNode(JSContext context, JavaScriptNode argRefNode, JavaScriptNode activeScriptOrModuleNode, JavaScriptNode optionsRefNode) {
+    protected ImportCallNode(JSContext context, JavaScriptNode argRefNode, ScriptOrModule activeScriptOrModule, JavaScriptNode optionsRefNode) {
         this.context = context;
         this.argRefNode = argRefNode;
-        this.activeScriptOrModuleNode = activeScriptOrModuleNode;
+        this.activeScriptOrModule = activeScriptOrModule;
         this.optionsRefNode = optionsRefNode;
         this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
         this.toStringNode = JSToStringNode.create();
         this.promiseReactionJobNode = PromiseReactionJobNode.create(context);
     }
 
-    public static ImportCallNode create(JSContext context, JavaScriptNode argRefNode, JavaScriptNode activeScriptOrModuleNode) {
-        return new ImportCallNode(context, argRefNode, activeScriptOrModuleNode, null);
+    public static ImportCallNode create(JSContext context, JavaScriptNode argRefNode, ScriptOrModule activeScriptOrModule) {
+        return new ImportCallNode(context, argRefNode, activeScriptOrModule, null);
     }
 
-    public static ImportCallNode createWithOptions(JSContext context, JavaScriptNode specifierRefNode, JavaScriptNode activeScriptOrModuleNode, JavaScriptNode optionsRefNode) {
-        return new ImportCallNode(context, specifierRefNode, activeScriptOrModuleNode, optionsRefNode);
+    public static ImportCallNode createWithOptions(JSContext context, JavaScriptNode specifierRefNode, ScriptOrModule activeScriptOrModule, JavaScriptNode optionsRefNode) {
+        return new ImportCallNode(context, specifierRefNode, activeScriptOrModule, optionsRefNode);
     }
 
+    @NeverDefault
     public static ImportCallNode create(JSContext context) {
         return create(context, null, null);
     }
 
     @Override
     public Object execute(VirtualFrame frame) {
-        Object referencingScriptOrModule = getActiveScriptOrModule(frame);
+        ScriptOrModule referencingScriptOrModule = activeScriptOrModule;
         Object specifier = argRefNode.execute(frame);
-        if (context.getContextOptions().isImportAssertions() && optionsRefNode != null) {
+        if (context.getLanguageOptions().importAssertions() && optionsRefNode != null) {
             return executeAssertions(frame, referencingScriptOrModule, specifier);
         } else {
             return executeWithoutAssertions(referencingScriptOrModule, specifier);
         }
     }
 
-    private Object executeWithoutAssertions(Object referencingScriptOrModule, Object specifier) {
+    private Object executeWithoutAssertions(ScriptOrModule referencingScriptOrModule, Object specifier) {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         TruffleString specifierString;
         try {
@@ -155,7 +159,7 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     @SuppressWarnings("unchecked")
-    private Object executeAssertions(VirtualFrame frame, Object referencingScriptOrModule, Object specifier) {
+    private Object executeAssertions(VirtualFrame frame, ScriptOrModule referencingScriptOrModule, Object specifier) {
         assert optionsRefNode != null;
         if (enumerableOwnPropertyNamesNode == null || getAssertionsNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -217,21 +221,17 @@ public class ImportCallNode extends JavaScriptNode {
         return ModuleRequest.create(specifierString, assertions);
     }
 
-    private Object getActiveScriptOrModule(VirtualFrame frame) {
-        return activeScriptOrModuleNode.execute(frame);
-    }
-
-    public final JSDynamicObject hostImportModuleDynamically(Object referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
+    public final JSDynamicObject hostImportModuleDynamically(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
         JSRealm realm = getRealm();
         if (context.hasImportModuleDynamicallyCallbackBeenSet()) {
-            JSDynamicObject promise = context.hostImportModuleDynamically(realm, (ScriptOrModule) referencingScriptOrModule, moduleRequest);
+            JSDynamicObject promise = context.hostImportModuleDynamically(realm, referencingScriptOrModule, moduleRequest);
             if (promise == null) {
                 return rejectPromise(promiseCapability, createTypeErrorCannotImport(moduleRequest.getSpecifier()));
             }
             assert JSPromise.isJSPromise(promise);
             return promise;
         } else {
-            context.promiseEnqueueJob(realm, createImportModuleDynamicallyJob((ScriptOrModule) referencingScriptOrModule, moduleRequest, promiseCapability));
+            context.enqueuePromiseJob(realm, createImportModuleDynamicallyJob(referencingScriptOrModule, moduleRequest, promiseCapability, realm));
             return promiseCapability.getPromise();
         }
     }
@@ -271,15 +271,16 @@ public class ImportCallNode extends JavaScriptNode {
     /**
      * Returns a promise job that performs both HostImportModuleDynamically and FinishDynamicImport.
      */
-    public JSFunctionObject createImportModuleDynamicallyJob(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
+    public JSFunctionObject createImportModuleDynamicallyJob(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability, JSRealm realm) {
+        JobCallback importModuleDynamicallyHandler = realm.getAgent().hostMakeJobCallback(createImportModuleDynamicallyHandler(realm));
         if (context.isOptionTopLevelAwait()) {
             Triple<ScriptOrModule, ModuleRequest, PromiseCapabilityRecord> request = new Triple<>(referencingScriptOrModule, moduleRequest, promiseCapability);
             PromiseCapabilityRecord startModuleLoadCapability = newPromiseCapability();
-            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, createImportModuleDynamicallyHandler(), true);
+            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, importModuleDynamicallyHandler, true);
             return promiseReactionJobNode.execute(startModuleLoad, request);
         } else {
             Pair<ScriptOrModule, ModuleRequest> request = new Pair<>(referencingScriptOrModule, moduleRequest);
-            return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, createImportModuleDynamicallyHandler(), true), request);
+            return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, importModuleDynamicallyHandler, true), request);
         }
     }
 
@@ -287,9 +288,9 @@ public class ImportCallNode extends JavaScriptNode {
      * Returns a handler function to be used together with a PromiseReactionJob in order to perform
      * the steps of both HostImportModuleDynamically and FinishDynamicImport.
      */
-    private JSDynamicObject createImportModuleDynamicallyHandler() {
+    private JSFunctionObject createImportModuleDynamicallyHandler(JSRealm realm) {
         JSFunctionData functionData = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.ImportModuleDynamically, (c) -> createImportModuleDynamicallyHandlerImpl(c));
-        return JSFunction.create(getRealm(), functionData);
+        return JSFunction.create(realm, functionData);
     }
 
     private static JSFunctionData createImportModuleDynamicallyHandlerImpl(JSContext context) {
@@ -348,18 +349,17 @@ public class ImportCallNode extends JavaScriptNode {
                     JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                     if (moduleRecord.hasTLA()) {
                         context.getEvaluator().moduleLinking(realm, moduleRecord);
-                        Object innerPromise = context.getEvaluator().moduleEvaluation(realm, moduleRecord);
-                        assert JSPromise.isJSPromise(innerPromise);
+                        JSPromiseObject innerPromise = (JSPromiseObject) context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                         JSDynamicObject resolve = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, false);
                         JSDynamicObject reject = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, true);
-                        promiseThenNode.execute((JSDynamicObject) innerPromise, resolve, reject, moduleLoadedCapability);
+                        promiseThenNode.execute(innerPromise, resolve, reject, moduleLoadedCapability);
                     } else {
                         Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, moduleRequest);
                         if (moduleRecord.isAsyncEvaluation()) {
                             // Some module import started an async loading chain. The top-level
                             // capability will reject/resolve the dynamic import promise.
                             PromiseCapabilityRecord topLevelCapability = moduleRecord.getTopLevelCapability();
-                            promiseThenNode.execute(topLevelCapability.getPromise(), moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), null);
+                            promiseThenNode.execute((JSPromiseObject) topLevelCapability.getPromise(), moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), null);
                         } else {
                             callPromiseResolve.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
                         }
@@ -428,9 +428,9 @@ public class ImportCallNode extends JavaScriptNode {
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         if (optionsRefNode == null) {
-            return ImportCallNode.create(context, cloneUninitialized(argRefNode, materializedTags), cloneUninitialized(activeScriptOrModuleNode, materializedTags));
+            return ImportCallNode.create(context, cloneUninitialized(argRefNode, materializedTags), activeScriptOrModule);
         } else {
-            return ImportCallNode.createWithOptions(context, cloneUninitialized(argRefNode, materializedTags), cloneUninitialized(activeScriptOrModuleNode, materializedTags),
+            return ImportCallNode.createWithOptions(context, cloneUninitialized(argRefNode, materializedTags), activeScriptOrModule,
                             cloneUninitialized(optionsRefNode, materializedTags));
         }
     }

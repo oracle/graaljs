@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,42 +56,32 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
  * JavaScript WeakMap that emulates ephemeron semantics by storing the value in the key itself
  * (i.e., in a hidden property within the key object).
  */
-public final class WeakMap implements Map<Object, Object>{
+public final class WeakMap implements Map<Object, Object> {
     public static final HiddenKey INVERTED_WEAK_MAP_KEY = new HiddenKey("InvertedWeakMap");
 
     public WeakMap() {
     }
 
-    private static Object checkKey(Object key) {
-        if (key instanceof JSObject){
-            return (JSObject) key;
-        } else if (key instanceof Symbol) {
-            return (Symbol) key;
-        } else {
-            throw new IllegalArgumentException("key must be instanceof JSObject or Symbol");
-        }
-
-    }
-
     @SuppressWarnings("unchecked")
     private static Map<WeakMap, Object> getInvertedMap(Object k) {
-        if(k instanceof JSObject){
+        if (k instanceof JSObject) {
             return (Map<WeakMap, Object>) JSDynamicObject.getOrNull((JSObject) k, INVERTED_WEAK_MAP_KEY);
-        } else if(k instanceof Symbol){
-            return ((Symbol)k).getInvertedMap();
+        } else if (k instanceof Symbol) {
+            return ((Symbol) k).getInvertedMap();
         } else {
-            return null;
+            throw new IllegalArgumentException("key must be instanceof JSObject or Symbol");
         }
     }
 
     private static Map<WeakMap, Object> putInvertedMap(Object k) {
         Map<WeakMap, Object> invertedMap = newInvertedMap();
-        if(k instanceof JSObject){
+        if (k instanceof JSObject) {
             JSObjectUtil.putHiddenProperty((JSObject) k, INVERTED_WEAK_MAP_KEY, invertedMap);
-        } else if(k instanceof Symbol){
-            ((Symbol)k).setInvertedMap(invertedMap);
+        } else if (k instanceof Symbol) {
+            ((Symbol) k).setInvertedMap(invertedMap);
+        } else {
+            throw new IllegalArgumentException("key must be instanceof JSObject or Symbol");
         }
-
         return invertedMap;
     }
 
@@ -110,32 +100,28 @@ public final class WeakMap implements Map<Object, Object>{
 
     @Override
     public boolean containsKey(Object key) {
-        Object k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         return invertedMap == null ? false : invertedMap.containsKey(this);
     }
 
     @Override
     public Object get(Object key) {
-        Object k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         return invertedMap == null ? null : invertedMap.get(this);
     }
 
     @Override
     public Object put(Object key, Object value) {
-        Object k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         if (invertedMap == null) {
-            invertedMap = putInvertedMap(k);
+            invertedMap = putInvertedMap(key);
         }
         return invertedMap.put(this, value);
     }
 
     @Override
     public Object remove(Object key) {
-        Object k = checkKey(key);
-        Map<WeakMap, Object> invertedMap = getInvertedMap(k);
+        Map<WeakMap, Object> invertedMap = getInvertedMap(key);
         return invertedMap == null ? null : invertedMap.remove(this);
     }
 

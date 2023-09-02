@@ -32,13 +32,16 @@
 #define V8_INSPECTOR_V8_RUNTIME_AGENT_IMPL_H_
 
 #include <memory>
-#include <set>
 #include <unordered_map>
 
-#include "include/v8.h"
+#include "include/v8-persistent-handle.h"
 #include "src/base/macros.h"
 #include "src/inspector/protocol/Forward.h"
 #include "src/inspector/protocol/Runtime.h"
+
+namespace v8 {
+class Script;
+}  // namespace v8
 
 namespace v8_inspector {
 
@@ -72,6 +75,7 @@ class V8RuntimeAgentImpl : public protocol::Runtime::Backend {
                 Maybe<double> timeout, Maybe<bool> disableBreaks,
                 Maybe<bool> replMode, Maybe<bool> allowUnsafeEvalBlockedByCSP,
                 Maybe<String16> uniqueContextId,
+                Maybe<bool> generateWebDriverValue,
                 std::unique_ptr<EvaluateCallback>) override;
   void awaitPromise(const String16& promiseObjectId, Maybe<bool> returnByValue,
                     Maybe<bool> generatePreview,
@@ -83,11 +87,13 @@ class V8RuntimeAgentImpl : public protocol::Runtime::Backend {
       Maybe<bool> generatePreview, Maybe<bool> userGesture,
       Maybe<bool> awaitPromise, Maybe<int> executionContextId,
       Maybe<String16> objectGroup, Maybe<bool> throwOnSideEffect,
+      Maybe<bool> generateWebDriverValue,
       std::unique_ptr<CallFunctionOnCallback>) override;
   Response releaseObject(const String16& objectId) override;
   Response getProperties(
       const String16& objectId, Maybe<bool> ownProperties,
       Maybe<bool> accessorPropertiesOnly, Maybe<bool> generatePreview,
+      Maybe<bool> nonIndexedPropertiesOnly,
       std::unique_ptr<protocol::Array<protocol::Runtime::PropertyDescriptor>>*
           result,
       Maybe<protocol::Array<protocol::Runtime::InternalPropertyDescriptor>>*
@@ -124,6 +130,9 @@ class V8RuntimeAgentImpl : public protocol::Runtime::Backend {
                       Maybe<String16> executionContextName) override;
   Response removeBinding(const String16& name) override;
   void addBindings(InspectedContext* context);
+  Response getExceptionDetails(const String16& errorObjectId,
+                               Maybe<protocol::Runtime::ExceptionDetails>*
+                                   out_exceptionDetails) override;
 
   void reset();
   void reportExecutionContextCreated(InspectedContext*);

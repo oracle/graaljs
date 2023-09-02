@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.function.BuiltinArgumentBuilder;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 
 public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
@@ -53,7 +54,7 @@ public interface BuiltinEnum<E extends Enum<? extends BuiltinEnum<E>>> {
     }
 
     default TruffleString getName() {
-        return prependAccessorPrefix(stripName(Strings.fromJavaString(asEnum().name())));
+        return prependAccessorPrefix(JSRuntime.propertyKeyToFunctionNameString(getKey()));
     }
 
     default Object getKey() {

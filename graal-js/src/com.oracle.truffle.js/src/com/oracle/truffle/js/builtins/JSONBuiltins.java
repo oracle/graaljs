@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -150,7 +150,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             Object unfiltered = parseIntl(toString(text));
             JSObject root = JSOrdinary.create(getContext(), getRealm());
-            JSObjectUtil.putDataProperty(getContext(), root, Strings.EMPTY_STRING, unfiltered, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(root, Strings.EMPTY_STRING, unfiltered, JSAttributes.getDefault());
             return walk(reviver, root, Strings.EMPTY_STRING);
         }
 
@@ -209,9 +209,9 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         @Child private JSIsArrayNode isArrayNode;
         @Child private IsCallableNode isCallableNode;
         private final BranchProfile spaceIsStringBranch = BranchProfile.create();
-        private final ConditionProfile spaceIsUndefinedProfile = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile spaceIsUndefinedProfile = ConditionProfile.create();
 
-        protected Object jsonStr(Object jsonData, Object keyStr, JSDynamicObject holder) {
+        protected Object jsonStr(Object jsonData, Object keyStr, JSObject holder) {
             if (jsonStringifyStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 jsonStringifyStringNode = insert(JSONStringifyStringNode.create(getContext()));
@@ -244,11 +244,12 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         @Specialization(guards = "isArray(replacerObj)")
         protected Object stringifyReplacerArray(Object value, JSDynamicObject replacerObj, Object spaceParam) {
-            int len = (int) JSRuntime.toLength(JSObject.get(replacerObj, JSArray.LENGTH));
+            long len = JSRuntime.toLength(JSObject.get(replacerObj, JSArray.LENGTH));
             List<Object> replacerList = new ArrayList<>();
-            for (int i = 0; i < len; i++) {
+            for (long i = 0; i < len; i++) {
                 // harmony/proxies-json.js requires toString()
-                Object v = JSObject.get(replacerObj, JSRuntime.toString(i));
+                TruffleString k = Strings.fromLong(i);
+                Object v = JSObject.get(replacerObj, k);
                 Object item = null; // Let item be undefined.
                 if (Strings.isTString(v)) {
                     item = JSRuntime.toStringIsString(v);
@@ -295,7 +296,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         private Object stringifyIntl(Object value, Object spaceParam, Object replacerFnObj, List<Object> replacerList) {
             final TruffleString gap = spaceIsUndefinedProfile.profile(spaceParam == Undefined.instance) ? Strings.EMPTY_STRING : getGap(spaceParam);
 
-            JSDynamicObject wrapper = JSOrdinary.create(getContext(), getRealm());
+            JSObject wrapper = JSOrdinary.create(getContext(), getRealm());
             if (createWrapperPropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 createWrapperPropertyNode = insert(CreateDataPropertyNode.create(getContext(), Strings.EMPTY_STRING));

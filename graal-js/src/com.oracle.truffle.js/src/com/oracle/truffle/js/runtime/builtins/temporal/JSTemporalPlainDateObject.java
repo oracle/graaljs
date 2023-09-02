@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,8 +58,8 @@ public class JSTemporalPlainDateObject extends JSNonProxyObject implements Tempo
     private final int day;
     private final JSDynamicObject calendar;
 
-    public JSTemporalPlainDateObject(Shape shape, int year, int month, int day, JSDynamicObject calendar) {
-        super(shape);
+    public JSTemporalPlainDateObject(Shape shape, JSDynamicObject proto, int year, int month, int day, JSDynamicObject calendar) {
+        super(shape, proto);
         this.year = year;
         this.month = month;
         this.day = day;

@@ -33,7 +33,7 @@ void TypedArrayBuiltinsAssembler::SetupTypedArrayEmbedderFields(
 // elements.
 // TODO(bmeurer,v8:4153): Rename this and maybe fix up the implementation a bit.
 TNode<JSArrayBuffer> TypedArrayBuiltinsAssembler::AllocateEmptyOnHeapBuffer(
-    TNode<Context> context, TNode<UintPtrT> byte_length) {
+    TNode<Context> context) {
   TNode<NativeContext> native_context = LoadNativeContext(context);
   TNode<Map> map =
       CAST(LoadContextElement(native_context, Context::ARRAY_BUFFER_MAP_INDEX));
@@ -49,7 +49,7 @@ TNode<JSArrayBuffer> TypedArrayBuiltinsAssembler::AllocateEmptyOnHeapBuffer(
   // Setup the ArrayBuffer.
   //  - Set BitField to 0.
   //  - Set IsExternal and IsDetachable bits of BitFieldSlot.
-  //  - Set the byte_length field to byte_length.
+  //  - Set the byte_length field to zero.
   //  - Set backing_store to null/Smi(0).
   //  - Set extension to null.
   //  - Set all embedder fields to Smi(0).
@@ -64,10 +64,9 @@ TNode<JSArrayBuffer> TypedArrayBuiltinsAssembler::AllocateEmptyOnHeapBuffer(
                                  Int32Constant(bitfield_value));
 
   StoreObjectFieldNoWriteBarrier(buffer, JSArrayBuffer::kByteLengthOffset,
-                                 byte_length);
-  InitializeExternalPointerField(buffer, JSArrayBuffer::kBackingStoreOffset,
-                                 PointerConstant(nullptr),
-                                 kArrayBufferBackingStoreTag);
+                                 UintPtrConstant(0));
+  StoreSandboxedPointerToObject(buffer, JSArrayBuffer::kBackingStoreOffset,
+                                EmptyBackingStoreBufferConstant());
   StoreObjectFieldNoWriteBarrier(buffer, JSArrayBuffer::kExtensionOffset,
                                  IntPtrConstant(0));
   for (int offset = JSArrayBuffer::kHeaderSize;
@@ -128,7 +127,8 @@ TF_BUILTIN(TypedArrayPrototypeByteLength, TypedArrayBuiltinsAssembler) {
       LoadJSArrayBufferViewBuffer(receiver_array);
 
   Label variable_length(this), normal(this);
-  Branch(IsVariableLengthTypedArray(receiver_array), &variable_length, &normal);
+  Branch(IsVariableLengthJSArrayBufferView(receiver_array), &variable_length,
+         &normal);
   BIND(&variable_length);
   {
     Return(ChangeUintPtrToTagged(LoadVariableLengthJSTypedArrayByteLength(
@@ -155,13 +155,13 @@ TF_BUILTIN(TypedArrayPrototypeByteOffset, TypedArrayBuiltinsAssembler) {
   ThrowIfNotInstanceType(context, receiver, JS_TYPED_ARRAY_TYPE, kMethodName);
 
   // Default to zero if the {receiver}s buffer was detached / out of bounds.
-  Label detached_or_oob(this), not_detached_or_oob(this);
-  IsTypedArrayDetachedOrOutOfBounds(CAST(receiver), &detached_or_oob,
-                                    &not_detached_or_oob);
+  Label detached_or_oob(this), not_detached_nor_oob(this);
+  IsJSArrayBufferViewDetachedOrOutOfBounds(CAST(receiver), &detached_or_oob,
+                                           &not_detached_nor_oob);
   BIND(&detached_or_oob);
   Return(ChangeUintPtrToTagged(UintPtrConstant(0)));
 
-  BIND(&not_detached_or_oob);
+  BIND(&not_detached_nor_oob);
   Return(
       ChangeUintPtrToTagged(LoadJSArrayBufferViewByteOffset(CAST(receiver))));
 }
@@ -186,14 +186,21 @@ TF_BUILTIN(TypedArrayPrototypeLength, TypedArrayBuiltinsAssembler) {
 
 TNode<BoolT> TypedArrayBuiltinsAssembler::IsUint8ElementsKind(
     TNode<Int32T> kind) {
-  return Word32Or(Word32Equal(kind, Int32Constant(UINT8_ELEMENTS)),
-                  Word32Equal(kind, Int32Constant(UINT8_CLAMPED_ELEMENTS)));
+  return Word32Or(
+      Word32Or(Word32Equal(kind, Int32Constant(UINT8_ELEMENTS)),
+               Word32Equal(kind, Int32Constant(UINT8_CLAMPED_ELEMENTS))),
+      Word32Or(
+          Word32Equal(kind, Int32Constant(RAB_GSAB_UINT8_ELEMENTS)),
+          Word32Equal(kind, Int32Constant(RAB_GSAB_UINT8_CLAMPED_ELEMENTS))));
 }
 
 TNode<BoolT> TypedArrayBuiltinsAssembler::IsBigInt64ElementsKind(
     TNode<Int32T> kind) {
   STATIC_ASSERT(BIGUINT64_ELEMENTS + 1 == BIGINT64_ELEMENTS);
-  return IsElementsKindInRange(kind, BIGUINT64_ELEMENTS, BIGINT64_ELEMENTS);
+  return Word32Or(
+      IsElementsKindInRange(kind, BIGUINT64_ELEMENTS, BIGINT64_ELEMENTS),
+      IsElementsKindInRange(kind, RAB_GSAB_BIGUINT64_ELEMENTS,
+                            RAB_GSAB_BIGINT64_ELEMENTS));
 }
 
 TNode<IntPtrT> TypedArrayBuiltinsAssembler::GetTypedArrayElementSize(
@@ -256,7 +263,25 @@ TNode<JSTypedArray> TypedArrayBuiltinsAssembler::ValidateTypedArray(
   // If the typed array's buffer is detached, throw
   ThrowIfArrayBufferViewBufferIsDetached(context, CAST(obj), method_name);
 
+  // TODO(v8:11111): Throw if the RAB / GSAB is OOB.
   return CAST(obj);
+}
+
+TNode<UintPtrT> TypedArrayBuiltinsAssembler::ValidateTypedArrayAndGetLength(
+    TNode<Context> context, TNode<Object> obj, const char* method_name) {
+  // If it is not a typed array, throw
+  ThrowIfNotInstanceType(context, obj, JS_TYPED_ARRAY_TYPE, method_name);
+
+  Label detached_or_oob(this), not_detached_nor_oob(this);
+  TNode<UintPtrT> length =
+      LoadJSTypedArrayLengthAndCheckDetached(CAST(obj), &detached_or_oob);
+  Goto(&not_detached_nor_oob);
+
+  BIND(&detached_or_oob);
+  ThrowTypeError(context, MessageTemplate::kDetachedOperation, method_name);
+
+  BIND(&not_detached_nor_oob);
+  return length;
 }
 
 void TypedArrayBuiltinsAssembler::CallCMemmove(TNode<RawPtrT> dest_ptr,
@@ -318,7 +343,7 @@ void TypedArrayBuiltinsAssembler::
     CallCCopyFastNumberJSArrayElementsToTypedArray(
         TNode<Context> context, TNode<JSArray> source, TNode<JSTypedArray> dest,
         TNode<UintPtrT> source_length, TNode<UintPtrT> offset) {
-  CSA_ASSERT(this,
+  CSA_DCHECK(this,
              Word32BinaryNot(IsBigInt64ElementsKind(LoadElementsKind(dest))));
   TNode<ExternalReference> f = ExternalConstant(
       ExternalReference::copy_fast_number_jsarray_elements_to_typed_array());
@@ -389,25 +414,20 @@ void TypedArrayBuiltinsAssembler::DispatchTypedArrayByElementsKind(
   TYPED_ARRAYS(TYPED_ARRAY_CASE)
 #undef TYPED_ARRAY_CASE
 
-#define TYPED_ARRAY_CASE(Type, type, TYPE, ctype)     \
-  BIND(&if_##type##array);                            \
-  {                                                   \
-    case_function(TYPE##_ELEMENTS, sizeof(ctype), 0); \
-    Goto(&next);                                      \
+#define TYPED_ARRAY_CASE(Type, type, TYPE, ctype, NON_RAB_GSAB_TYPE) \
+  BIND(&if_##type##array);                                           \
+  {                                                                  \
+    case_function(TYPE##_ELEMENTS, sizeof(ctype),                    \
+                  Context::NON_RAB_GSAB_TYPE##_ARRAY_FUN_INDEX);     \
+    Goto(&next);                                                     \
   }
-  RAB_GSAB_TYPED_ARRAYS(TYPED_ARRAY_CASE)
+  RAB_GSAB_TYPED_ARRAYS_WITH_NON_RAB_GSAB_ELEMENTS_KIND(TYPED_ARRAY_CASE)
 #undef TYPED_ARRAY_CASE
 
   BIND(&if_unknown_type);
   Unreachable();
 
   BIND(&next);
-}
-
-void TypedArrayBuiltinsAssembler::AllocateJSTypedArrayExternalPointerEntry(
-    TNode<JSTypedArray> holder) {
-  InitializeExternalPointerField(
-      holder, IntPtrConstant(JSTypedArray::kExternalPointerOffset));
 }
 
 void TypedArrayBuiltinsAssembler::SetJSTypedArrayOnHeapDataPtr(
@@ -421,10 +441,10 @@ void TypedArrayBuiltinsAssembler::SetJSTypedArrayOnHeapDataPtr(
     TNode<IntPtrT> ptr_compr_cage_base =
         IntPtrSub(full_base, Signed(ChangeUint32ToWord(compressed_base)));
     // Add JSTypedArray::ExternalPointerCompensationForOnHeapArray() to offset.
+    // See JSTypedArray::AddExternalPointerCompensationForDeserialization().
     DCHECK_EQ(
         isolate()->cage_base(),
         JSTypedArray::ExternalPointerCompensationForOnHeapArray(isolate()));
-    // See JSTypedArray::SetOnHeapDataPtr() for details.
     offset = Unsigned(IntPtrAdd(offset, ptr_compr_cage_base));
   }
 

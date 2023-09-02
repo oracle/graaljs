@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,7 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
             out.reset();
 
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: async () => ({value: typeof this, done: true})}).next.call((function* test(){})()).catch(err => console.log(err))");
-            Assert.assertEquals("TypeError: incompatible receiver: {}\n", out.toString());
+            Assert.assertEquals("TypeError: Method next called on incompatible receiver Generator{}\n", out.toString());
             out.reset();
 
             context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({next: () => {throw new Error('test')}}).next().catch(err => console.log(err))");
@@ -119,7 +119,7 @@ public class WrapForAsyncIteratorPrototypeBuiltinsTest {
 
             context.eval(JavaScriptLanguage.ID,
                             "AsyncIterator.from({next: () => ({value: typeof this, done: true}), return: () => ({done: true})}).return.call((function* test(){})()).catch(err => console.log(err))");
-            Assert.assertEquals("TypeError: incompatible receiver: {}\n", out.toString());
+            Assert.assertEquals("TypeError: Method return called on incompatible receiver Generator{}\n", out.toString());
         }
     }
 }

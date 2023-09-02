@@ -1,20 +1,33 @@
 'use strict';
 
 const {
-  Symbol,
   SymbolAsyncIterator,
   SymbolIterator,
+  SymbolFor,
 } = primordials;
 
-const kIsErrored = Symbol('kIsErrored');
-const kIsReadable = Symbol('kIsReadable');
-const kIsDisturbed = Symbol('kIsDisturbed');
+// We need to use SymbolFor to make these globally available
+// for interopt with readable-stream, i.e. readable-stream
+// and node core needs to be able to read/write private state
+// from each other for proper interoperability.
+const kIsDestroyed = SymbolFor('nodejs.stream.destroyed');
+const kIsErrored = SymbolFor('nodejs.stream.errored');
+const kIsReadable = SymbolFor('nodejs.stream.readable');
+const kIsWritable = SymbolFor('nodejs.stream.writable');
+const kIsDisturbed = SymbolFor('nodejs.stream.disturbed');
 
-function isReadableNodeStream(obj) {
+const kIsClosedPromise = SymbolFor('nodejs.webstream.isClosedPromise');
+const kControllerErrorFunction = SymbolFor('nodejs.webstream.controllerErrorFunction');
+
+function isReadableNodeStream(obj, strict = false) {
   return !!(
     obj &&
     typeof obj.pipe === 'function' &&
     typeof obj.on === 'function' &&
+    (
+      !strict ||
+      (typeof obj.pause === 'function' && typeof obj.resume === 'function')
+    ) &&
     (!obj._writableState || obj._readableState?.readable !== false) && // Duplex
     (!obj._writableState || obj._readableState) // Writable has .pipe.
   );
@@ -50,6 +63,38 @@ function isNodeStream(obj) {
   );
 }
 
+function isReadableStream(obj) {
+  return !!(
+    obj &&
+    !isNodeStream(obj) &&
+    typeof obj.pipeThrough === 'function' &&
+    typeof obj.getReader === 'function' &&
+    typeof obj.cancel === 'function'
+  );
+}
+
+function isWritableStream(obj) {
+  return !!(
+    obj &&
+    !isNodeStream(obj) &&
+    typeof obj.getWriter === 'function' &&
+    typeof obj.abort === 'function'
+  );
+}
+
+function isTransformStream(obj) {
+  return !!(
+    obj &&
+    !isNodeStream(obj) &&
+    typeof obj.readable === 'object' &&
+    typeof obj.writable === 'object'
+  );
+}
+
+function isWebStream(obj) {
+  return isReadableStream(obj) || isWritableStream(obj) || isTransformStream(obj);
+}
+
 function isIterable(obj, isAsync) {
   if (obj == null) return false;
   if (isAsync === true) return typeof obj[SymbolAsyncIterator] === 'function';
@@ -63,7 +108,7 @@ function isDestroyed(stream) {
   const wState = stream._writableState;
   const rState = stream._readableState;
   const state = wState || rState;
-  return !!(stream.destroyed || state?.destroyed);
+  return !!(stream.destroyed || stream[kIsDestroyed] || state?.destroyed);
 }
 
 // Have been end():d.
@@ -121,6 +166,7 @@ function isReadable(stream) {
 }
 
 function isWritable(stream) {
+  if (stream && stream[kIsWritable] != null) return stream[kIsWritable];
   if (typeof stream?.writable !== 'boolean') return null;
   if (isDestroyed(stream)) return false;
   return isWritableNodeStream(stream) &&
@@ -148,9 +194,37 @@ function isFinished(stream, opts) {
   return true;
 }
 
+function isWritableErrored(stream) {
+  if (!isNodeStream(stream)) {
+    return null;
+  }
+
+  if (stream.writableErrored) {
+    return stream.writableErrored;
+  }
+
+  return stream._writableState?.errored ?? null;
+}
+
+function isReadableErrored(stream) {
+  if (!isNodeStream(stream)) {
+    return null;
+  }
+
+  if (stream.readableErrored) {
+    return stream.readableErrored;
+  }
+
+  return stream._readableState?.errored ?? null;
+}
+
 function isClosed(stream) {
   if (!isNodeStream(stream)) {
     return null;
+  }
+
+  if (typeof stream.closed === 'boolean') {
+    return stream.closed;
   }
 
   const wState = stream._writableState;
@@ -229,26 +303,36 @@ function isErrored(stream) {
 }
 
 module.exports = {
+  isDestroyed,
+  kIsDestroyed,
   isDisturbed,
   kIsDisturbed,
   isErrored,
   kIsErrored,
   isReadable,
   kIsReadable,
+  kIsClosedPromise,
+  kControllerErrorFunction,
+  kIsWritable,
   isClosed,
-  isDestroyed,
   isDuplexNodeStream,
   isFinished,
   isIterable,
   isReadableNodeStream,
+  isReadableStream,
   isReadableEnded,
   isReadableFinished,
+  isReadableErrored,
   isNodeStream,
+  isWebStream,
   isWritable,
   isWritableNodeStream,
+  isWritableStream,
   isWritableEnded,
   isWritableFinished,
+  isWritableErrored,
   isServerRequest,
   isServerResponse,
   willEmitClose,
+  isTransformStream,
 };

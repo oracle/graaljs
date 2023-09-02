@@ -4,6 +4,7 @@
 // https://encoding.spec.whatwg.org
 
 const {
+  Boolean,
   ObjectCreate,
   ObjectDefineProperties,
   ObjectGetOwnPropertyDescriptors,
@@ -18,17 +19,19 @@ const {
 } = primordials;
 
 const {
-  ERR_ENCODING_INVALID_ENCODED_DATA,
   ERR_ENCODING_NOT_SUPPORTED,
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_THIS,
-  ERR_NO_ICU
+  ERR_NO_ICU,
 } = require('internal/errors').codes;
 const kHandle = Symbol('handle');
 const kFlags = Symbol('flags');
 const kEncoding = Symbol('encoding');
 const kDecoder = Symbol('decoder');
 const kEncoder = Symbol('encoder');
+const kFatal = Symbol('kFatal');
+const kUTF8FastPath = Symbol('kUTF8FastPath');
+const kIgnoreBOM = Symbol('kIgnoreBOM');
 
 const {
   getConstructorOf,
@@ -40,7 +43,7 @@ const {
 const {
   isAnyArrayBuffer,
   isArrayBufferView,
-  isUint8Array
+  isUint8Array,
 } = require('internal/util/types');
 
 const {
@@ -50,7 +53,8 @@ const {
 
 const {
   encodeInto,
-  encodeUtf8String
+  encodeUtf8String,
+  decodeUTF8,
 } = internalBinding('buffer');
 
 let Buffer;
@@ -352,7 +356,7 @@ class TextEncoder {
       return this;
     const ctor = getConstructorOf(this);
     const obj = ObjectCreate({
-      constructor: ctor === null ? TextEncoder : ctor
+      constructor: ctor === null ? TextEncoder : ctor,
     });
     obj.encoding = this.encoding;
     // Lazy to avoid circular dependency
@@ -398,26 +402,39 @@ function makeTextDecoderICU() {
         flags |= options.ignoreBOM ? CONVERTER_FLAGS_IGNORE_BOM : 0;
       }
 
-      const handle = getConverter(enc, flags);
-      if (handle === undefined)
-        throw new ERR_ENCODING_NOT_SUPPORTED(encoding);
-
       this[kDecoder] = true;
-      this[kHandle] = handle;
       this[kFlags] = flags;
       this[kEncoding] = enc;
+      this[kIgnoreBOM] = Boolean(options?.ignoreBOM);
+      this[kFatal] = Boolean(options?.fatal);
+      // Only support fast path for UTF-8.
+      this[kUTF8FastPath] = enc === 'utf-8';
+      this[kHandle] = undefined;
+
+      if (!this[kUTF8FastPath]) {
+        this.#prepareConverter();
+      }
     }
 
+    #prepareConverter() {
+      if (this[kHandle] !== undefined) return;
+      const handle = getConverter(this[kEncoding], this[kFlags]);
+      if (handle === undefined)
+        throw new ERR_ENCODING_NOT_SUPPORTED(this[kEncoding]);
+      this[kHandle] = handle;
+    }
 
     decode(input = empty, options = kEmptyObject) {
       validateDecoder(this);
-      if (isAnyArrayBuffer(input)) {
-        input = lazyBuffer().from(input);
-      } else if (!isArrayBufferView(input)) {
-        throw new ERR_INVALID_ARG_TYPE('input',
-                                       ['ArrayBuffer', 'ArrayBufferView'],
-                                       input);
+
+      this[kUTF8FastPath] &&= !(options?.stream);
+
+      if (this[kUTF8FastPath]) {
+        return decodeUTF8(input, this[kIgnoreBOM], this[kFatal]);
       }
+
+      this.#prepareConverter();
+
       validateObject(options, 'options', {
         nullable: true,
         allowArray: true,
@@ -428,11 +445,7 @@ function makeTextDecoderICU() {
       if (options !== null)
         flags |= options.stream ? 0 : CONVERTER_FLAGS_FLUSH;
 
-      const ret = _decode(this[kHandle], input, flags);
-      if (typeof ret === 'number') {
-        throw new ERR_ENCODING_INVALID_ENCODED_DATA(this.encoding, ret);
-      }
-      return ret.toString('ucs2');
+      return _decode(this[kHandle], input, flags, this.encoding);
     }
   }
 
@@ -485,10 +498,18 @@ function makeTextDecoderJS() {
     decode(input = empty, options = kEmptyObject) {
       validateDecoder(this);
       if (isAnyArrayBuffer(input)) {
-        input = lazyBuffer().from(input);
+        try {
+          input = lazyBuffer().from(input);
+        } catch {
+          input = empty;
+        }
       } else if (isArrayBufferView(input)) {
-        input = lazyBuffer().from(input.buffer, input.byteOffset,
-                                  input.byteLength);
+        try {
+          input = lazyBuffer().from(input.buffer, input.byteOffset,
+                                    input.byteLength);
+        } catch {
+          input = empty;
+        }
       } else {
         throw new ERR_INVALID_ARG_TYPE('input',
                                        ['ArrayBuffer', 'ArrayBufferView'],
@@ -566,7 +587,7 @@ const sharedProperties = ObjectGetOwnPropertyDescriptors({
     // Lazy to avoid circular dependency
     const { inspect } = require('internal/util/inspect');
     return `${constructor.name} ${inspect(obj)}`;
-  }
+  },
 });
 const propertiesValues = ObjectValues(sharedProperties);
 for (let i = 0; i < propertiesValues.length; i++) {
@@ -582,12 +603,12 @@ ObjectDefineProperties(TextDecoder.prototype, {
   [SymbolToStringTag]: {
     __proto__: null,
     configurable: true,
-    value: 'TextDecoder'
-  }
+    value: 'TextDecoder',
+  },
 });
 
 module.exports = {
   getEncodingFromLabel,
   TextDecoder,
-  TextEncoder
+  TextEncoder,
 };

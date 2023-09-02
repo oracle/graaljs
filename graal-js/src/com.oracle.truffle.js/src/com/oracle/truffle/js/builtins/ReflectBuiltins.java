@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.List;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -209,7 +210,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         private Object apply(Object target, Object thisArgument, Object argumentsList) {
             Object[] applyUserArgs = toObjectArray.executeObjectArray(argumentsList);
-            assert applyUserArgs.length <= getContext().getContextOptions().getMaxApplyArgumentLength();
+            assert applyUserArgs.length <= getContext().getLanguageOptions().maxApplyArgumentLength();
             Object[] passedOnArguments = JSArguments.create(thisArgument, target, applyUserArgs);
             return call.executeCall(passedOnArguments);
         }
@@ -277,11 +278,11 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization
         protected boolean reflectDefineProperty(Object target, Object propertyKey, Object attributes,
-                        @Cached("create()") JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached JSToPropertyKeyNode toPropertyKeyNode,
                         @Cached("create(getContext())") ToPropertyDescriptorNode toPropertyDescriptorNode) {
             ensureJSObject(target);
             Object key = toPropertyKeyNode.execute(propertyKey);
-            PropertyDescriptor descriptor = (PropertyDescriptor) toPropertyDescriptorNode.execute(attributes);
+            PropertyDescriptor descriptor = toPropertyDescriptorNode.execute(attributes);
             return JSObject.defineOwnProperty((JSDynamicObject) target, key, descriptor);
         }
     }
@@ -295,9 +296,9 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSObject(target)")
-        protected boolean doObject(JSDynamicObject target, Object propertyKey,
-                        @Cached("create()") JSClassProfile classProfile) {
+        @Specialization
+        protected boolean doObject(JSObject target, Object propertyKey,
+                        @Cached JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.delete(target, key, false, classProfile);
         }
@@ -341,27 +342,29 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSObject(target)")
-        protected Object doObject(JSDynamicObject target, Object propertyKey, Object[] optionalArgs,
-                        @Cached("create()") JSClassProfile classProfile) {
+        @Specialization
+        protected Object doObject(JSObject target, Object propertyKey, Object[] optionalArgs,
+                        @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
             Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSRuntime.nullToUndefined(classProfile.getJSClass(target).getHelper(target, receiver, key, this));
         }
 
+        @InliningCutoff
         @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected Object doForeignObject(Object target, Object propertyKey, Object[] optionalArgs,
                         @CachedLibrary("target") InteropLibrary interop,
                         @Cached ImportValueNode importValue,
                         @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                        @Cached JSClassProfile classProfile) {
+                        @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
                 Object result = JSInteropUtil.readMemberOrDefault(target, key, null, interop, importValue, this);
                 if (result == null) {
-                    if (getContext().getContextOptions().hasForeignObjectPrototype()) {
+                    if (getContext().getLanguageOptions().hasForeignObjectPrototype()) {
                         JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
-                        result = doObject(prototype, key, optionalArgs, classProfile);
+                        Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
+                        return JSRuntime.nullToUndefined(classProfile.getJSClass(prototype).getHelper(prototype, receiver, key, this));
                     } else {
                         result = Undefined.instance;
                     }
@@ -419,24 +422,25 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSObject(target)")
-        protected Object doObject(JSDynamicObject target, Object propertyKey,
-                        @Cached("create()") JSClassProfile jsclassProfile) {
+        @Specialization
+        protected Object doObject(JSObject target, Object propertyKey,
+                        @Shared("jsclassProf") @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.hasProperty(target, key, jsclassProfile);
         }
 
+        @InliningCutoff
         @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
         protected Object doForeignObject(Object target, Object propertyKey,
                         @CachedLibrary("target") InteropLibrary interop,
                         @Cached TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                        @Cached JSClassProfile classProfile) {
+                        @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
                 if (key instanceof TruffleString) {
                     boolean result = interop.isMemberExisting(target, Strings.toJavaString(toJavaStringNode, (TruffleString) key));
-                    if (!result && getContext().getContextOptions().hasForeignObjectPrototype()) {
+                    if (!result && getContext().getLanguageOptions().hasForeignObjectPrototype()) {
                         JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
                         result = JSObject.hasProperty(prototype, key, classProfile);
                     }
@@ -477,11 +481,14 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSObject(target)")
-        protected JSDynamicObject reflectOwnKeys(Object target,
+        @Specialization
+        protected JSDynamicObject reflectOwnKeys(JSObject target,
                         @Cached JSClassProfile jsclassProfile,
                         @Cached ListSizeNode listSize) {
-            List<Object> list = JSObject.ownPropertyKeys((JSDynamicObject) target, jsclassProfile);
+            List<Object> list = JSObject.ownPropertyKeys(target, jsclassProfile);
+            if (getContext().isOptionV8CompatibilityMode()) {
+                list = JSRuntime.filterPrivateSymbols(list);
+            }
             return JSArray.createLazyArray(getContext(), getRealm(), list, listSize.execute(list));
         }
 

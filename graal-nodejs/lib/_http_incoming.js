@@ -27,7 +27,7 @@ const {
   StringPrototypeCharCodeAt,
   StringPrototypeSlice,
   StringPrototypeToLowerCase,
-  Symbol
+  Symbol,
 } = primordials;
 
 const { Readable, finished } = require('stream');
@@ -55,7 +55,7 @@ function IncomingMessage(socket) {
 
   if (socket) {
     streamOptions = {
-      highWaterMark: socket.readableHighWaterMark
+      highWaterMark: socket.readableHighWaterMark,
     };
   }
 
@@ -75,7 +75,7 @@ function IncomingMessage(socket) {
   this[kTrailers] = null;
   this[kTrailersCount] = 0;
   this.rawTrailers = [];
-
+  this.joinDuplicateHeaders = false;
   this.aborted = false;
 
   this.upgrade = null;
@@ -104,7 +104,7 @@ ObjectDefineProperty(IncomingMessage.prototype, 'connection', {
   },
   set: function(val) {
     this.socket = val;
-  }
+  },
 });
 
 ObjectDefineProperty(IncomingMessage.prototype, 'headers', {
@@ -124,7 +124,7 @@ ObjectDefineProperty(IncomingMessage.prototype, 'headers', {
   },
   set: function(val) {
     this[kHeaders] = val;
-  }
+  },
 });
 
 ObjectDefineProperty(IncomingMessage.prototype, 'headersDistinct', {
@@ -144,7 +144,7 @@ ObjectDefineProperty(IncomingMessage.prototype, 'headersDistinct', {
   },
   set: function(val) {
     this[kHeadersDistinct] = val;
-  }
+  },
 });
 
 ObjectDefineProperty(IncomingMessage.prototype, 'trailers', {
@@ -164,7 +164,7 @@ ObjectDefineProperty(IncomingMessage.prototype, 'trailers', {
   },
   set: function(val) {
     this[kTrailers] = val;
-  }
+  },
 });
 
 ObjectDefineProperty(IncomingMessage.prototype, 'trailersDistinct', {
@@ -184,7 +184,7 @@ ObjectDefineProperty(IncomingMessage.prototype, 'trailersDistinct', {
   },
   set: function(val) {
     this[kTrailersDistinct] = val;
-  }
+  },
 });
 
 IncomingMessage.prototype.setTimeout = function setTimeout(msecs, callback) {
@@ -232,11 +232,14 @@ IncomingMessage.prototype._destroy = function _destroy(err, cb) {
   if (this.socket && !this.socket.destroyed && this.aborted) {
     this.socket.destroy(err);
     const cleanup = finished(this.socket, (e) => {
+      if (e?.code === 'ERR_STREAM_PREMATURE_CLOSE') {
+        e = null;
+      }
       cleanup();
-      onError(this, e || err, cb);
+      process.nextTick(onError, this, e || err, cb);
     });
   } else {
-    onError(this, err, cb);
+    process.nextTick(onError, this, err, cb);
   }
 };
 
@@ -397,6 +400,16 @@ function _addHeaderLine(field, value, dest) {
     } else {
       dest['set-cookie'] = [value];
     }
+  } else if (this.joinDuplicateHeaders) {
+    // RFC 9110 https://www.rfc-editor.org/rfc/rfc9110#section-5.2
+    // https://github.com/nodejs/node/issues/45699
+    // allow authorization multiple fields
+    // Make a delimited list
+    if (dest[field] === undefined) {
+      dest[field] = value;
+    } else {
+      dest[field] += ', ' + value;
+    }
   } else if (dest[field] === undefined) {
     // Drop duplicates
     dest[field] = value;
@@ -439,5 +452,5 @@ function onError(self, error, cb) {
 module.exports = {
   IncomingMessage,
   readStart,
-  readStop
+  readStop,
 };

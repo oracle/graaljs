@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,13 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
@@ -76,10 +78,6 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
 
     public abstract List<String> executeIterable(Object value);
 
-    public static JSStringListFromIterableNode create(JSContext context) {
-        return JSStringListFromIterableNodeGen.create(context);
-    }
-
     @Specialization
     @TruffleBoundary
     protected static List<String> stringToList(TruffleString s) {
@@ -94,12 +92,13 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isUndefined(iterable)", "!isString(iterable)"})
     protected static List<String> toArray(Object iterable,
-                    @Cached GetIteratorBaseNode getIteratorNode,
+                    @Bind("this") Node node,
+                    @Cached(inline = true) GetIteratorNode getIteratorNode,
                     @Cached IteratorStepNode iteratorStepNode,
                     @Cached IteratorValueNode iteratorValueNode,
                     @Cached("create(context)") IteratorCloseNode iteratorCloseNode) {
 
-        IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+        IteratorRecord iteratorRecord = getIteratorNode.execute(node, iterable);
         List<String> list = new ArrayList<>();
         Object next = true;
 

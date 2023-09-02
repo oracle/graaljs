@@ -422,7 +422,9 @@ declare namespace primordials {
   export const StringName: typeof String.name
   export const StringPrototype: typeof String.prototype
   export const StringFromCharCode: typeof String.fromCharCode
+  export const StringFromCharCodeApply: StaticApply<typeof String.fromCharCode>
   export const StringFromCodePoint: typeof String.fromCodePoint
+  export const StringFromCodePointApply: StaticApply<typeof String.fromCodePoint>
   export const StringRaw: typeof String.raw
   export const StringPrototypeAnchor: UncurryThis<typeof String.prototype.anchor>
   export const StringPrototypeBig: UncurryThis<typeof String.prototype.big>
@@ -595,4 +597,7 @@ declare namespace primordials {
   export const PromisePrototypeThen: UncurryThis<typeof Promise.prototype.then>
   export const PromisePrototypeCatch: UncurryThis<typeof Promise.prototype.catch>
   export const PromisePrototypeFinally: UncurryThis<typeof Promise.prototype.finally>
+  export import Proxy = globalThis.Proxy
+  import _globalThis = globalThis
+  export { _globalThis as globalThis }
 }

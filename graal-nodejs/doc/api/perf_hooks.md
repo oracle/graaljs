@@ -70,7 +70,7 @@ Performance Timeline. If `name` is provided, removes only the named measure.
 ### `performance.clearResourceTimings([name])`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * `name` {string}
@@ -213,7 +213,7 @@ Performance Timeline manually with `performance.clearMarks`.
 ### `performance.markResourceTiming(timingInfo, requestedUrl, initiatorType, global, cacheMode)`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * `timingInfo` {Object} [Fetch Timing Info][]
@@ -308,6 +308,17 @@ added: v8.5.0
 Returns the current high resolution millisecond timestamp, where 0 represents
 the start of the current `node` process.
 
+### `performance.setResourceTimingBufferSize(maxSize)`
+
+<!-- YAML
+added: v18.8.0
+-->
+
+Sets the global performance resource timing buffer size to the specified number
+of "resource" type performance entry objects.
+
+By default the max buffer size is set to 250.
+
 ### `performance.timeOrigin`
 
 <!-- YAML
@@ -348,7 +359,7 @@ event type in order for the timing details to be accessed.
 ```js
 const {
   performance,
-  PerformanceObserver
+  PerformanceObserver,
 } = require('node:perf_hooks');
 
 function someFunction() {
@@ -382,6 +393,18 @@ added: v16.1.0
 
 An object which is JSON representation of the `performance` object. It
 is similar to [`window.performance.toJSON`][] in browsers.
+
+#### Event: `'resourcetimingbufferfull'`
+
+<!-- YAML
+added: v18.8.0
+-->
+
+The `'resourcetimingbufferfull'` event is fired when the global performance
+resource timing buffer is full. Adjust resource timing buffer size with
+`performance.setResourceTimingBufferSize()` or clear the buffer with
+`performance.clearResourceTimings()` in the event listener to allow
+more entries to be added to the performance timeline buffer.
 
 ## Class: `PerformanceEntry`
 
@@ -713,7 +736,7 @@ initialized.
 ## Class: `PerformanceResourceTiming`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * Extends: {PerformanceEntry}
@@ -726,7 +749,7 @@ The constructor of this class is not exposed to users directly.
 ### `performanceResourceTiming.workerStart`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -738,7 +761,7 @@ will always return 0.
 ### `performanceResourceTiming.redirectStart`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -749,7 +772,7 @@ of the fetch which initiates the redirect.
 ### `performanceResourceTiming.redirectEnd`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -760,7 +783,7 @@ receiving the last byte of the response of the last redirect.
 ### `performanceResourceTiming.fetchStart`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -771,7 +794,7 @@ to fetch the resource.
 ### `performanceResourceTiming.domainLookupStart`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -782,7 +805,7 @@ the domain name lookup for the resource.
 ### `performanceResourceTiming.domainLookupEnd`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -793,7 +816,7 @@ after the Node.js finished the domain name lookup for the resource.
 ### `performanceResourceTiming.connectStart`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -805,7 +828,7 @@ the resource.
 ### `performanceResourceTiming.connectEnd`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -817,7 +840,7 @@ the resource.
 ### `performanceResourceTiming.secureConnectionStart`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -828,7 +851,7 @@ before Node.js starts the handshake process to secure the current connection.
 ### `performanceResourceTiming.requestStart`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -839,7 +862,7 @@ before Node.js receives the first byte of the response from the server.
 ### `performanceResourceTiming.responseEnd`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -851,7 +874,7 @@ the transport connection is closed, whichever comes first.
 ### `performanceResourceTiming.transferSize`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -862,7 +885,7 @@ includes the response header fields plus the response payload body.
 ### `performanceResourceTiming.encodedBodySize`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -874,7 +897,7 @@ content-codings.
 ### `performanceResourceTiming.decodedBodySize`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 * {number}
@@ -886,7 +909,7 @@ content-codings.
 ### `performanceResourceTiming.toJSON()`
 
 <!-- YAML
-added: v16.17.0
+added: v18.2.0
 -->
 
 Returns a `object` that is the JSON representation of the
@@ -894,10 +917,30 @@ Returns a `object` that is the JSON representation of the
 
 ## Class: `perf_hooks.PerformanceObserver`
 
+<!-- YAML
+added: v8.5.0
+-->
+
+### `PerformanceObserver.supportedEntryTypes`
+
+<!-- YAML
+added: v16.0.0
+-->
+
+* {string\[]}
+
+Get supported types.
+
 ### `new PerformanceObserver(callback)`
 
 <!-- YAML
 added: v8.5.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `callback` {Function}
@@ -910,7 +953,7 @@ added: v8.5.0
 ```js
 const {
   performance,
-  PerformanceObserver
+  PerformanceObserver,
 } = require('node:perf_hooks');
 
 const obs = new PerformanceObserver((list, observer) => {
@@ -976,7 +1019,7 @@ or `options.type`:
 ```js
 const {
   performance,
-  PerformanceObserver
+  PerformanceObserver,
 } = require('node:perf_hooks');
 
 const obs = new PerformanceObserver((list, observer) => {
@@ -1012,7 +1055,7 @@ with respect to `performanceEntry.startTime`.
 ```js
 const {
   performance,
-  PerformanceObserver
+  PerformanceObserver,
 } = require('node:perf_hooks');
 
 const obs = new PerformanceObserver((perfObserverList, observer) => {
@@ -1062,7 +1105,7 @@ equal to `name`, and optionally, whose `performanceEntry.entryType` is equal to
 ```js
 const {
   performance,
-  PerformanceObserver
+  PerformanceObserver,
 } = require('node:perf_hooks');
 
 const obs = new PerformanceObserver((perfObserverList, observer) => {
@@ -1118,7 +1161,7 @@ is equal to `type`.
 ```js
 const {
   performance,
-  PerformanceObserver
+  PerformanceObserver,
 } = require('node:perf_hooks');
 
 const obs = new PerformanceObserver((perfObserverList, observer) => {
@@ -1152,7 +1195,9 @@ performance.mark('meow');
 ## `perf_hooks.createHistogram([options])`
 
 <!-- YAML
-added: v15.9.0
+added:
+  - v15.9.0
+  - v14.18.0
 -->
 
 * `options` {Object}
@@ -1213,7 +1258,9 @@ added: v11.10.0
 ### `histogram.count`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 * {number}
@@ -1223,7 +1270,9 @@ The number of samples recorded by the histogram.
 ### `histogram.countBigInt`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 * {bigint}
@@ -1244,7 +1293,9 @@ loop delay threshold.
 ### `histogram.exceedsBigInt`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 * {bigint}
@@ -1265,7 +1316,9 @@ The maximum recorded event loop delay.
 ### `histogram.maxBigInt`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 * {bigint}
@@ -1295,7 +1348,9 @@ The minimum recorded event loop delay.
 ### `histogram.minBigInt`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 * {bigint}
@@ -1316,7 +1371,9 @@ Returns the value at the given percentile.
 ### `histogram.percentileBigInt(percentile)`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 * `percentile` {number} A percentile value in the range (0, 100].
@@ -1337,7 +1394,9 @@ Returns a `Map` object detailing the accumulated percentile distribution.
 ### `histogram.percentilesBigInt`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 * {Map}
@@ -1397,13 +1456,17 @@ implement the `enable()` and `disable()` methods.
 ## Class: `RecordableHistogram extends Histogram`
 
 <!-- YAML
-added: v15.9.0
+added:
+  - v15.9.0
+  - v14.18.0
 -->
 
 ### `histogram.add(other)`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.4.0
+  - v16.14.0
 -->
 
 * `other` {RecordableHistogram}
@@ -1413,7 +1476,9 @@ Adds the values from `other` to this histogram.
 ### `histogram.record(val)`
 
 <!-- YAML
-added: v15.9.0
+added:
+  - v15.9.0
+  - v14.18.0
 -->
 
 * `val` {number|bigint} The amount to record in the histogram.
@@ -1421,7 +1486,9 @@ added: v15.9.0
 ### `histogram.recordDelta()`
 
 <!-- YAML
-added: v15.9.0
+added:
+  - v15.9.0
+  - v14.18.0
 -->
 
 Calculates the amount of time (in nanoseconds) that has passed since the
@@ -1440,7 +1507,7 @@ to execute the callback).
 const async_hooks = require('node:async_hooks');
 const {
   performance,
-  PerformanceObserver
+  PerformanceObserver,
 } = require('node:perf_hooks');
 
 const set = new Set();
@@ -1459,7 +1526,7 @@ const hook = async_hooks.createHook({
                           `Timeout-${id}-Init`,
                           `Timeout-${id}-Destroy`);
     }
-  }
+  },
 });
 hook.enable();
 
@@ -1485,7 +1552,7 @@ dependencies:
 'use strict';
 const {
   performance,
-  PerformanceObserver
+  PerformanceObserver,
 } = require('node:perf_hooks');
 const mod = require('node:module');
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.promise;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNode;
@@ -56,19 +59,27 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
-public class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
+public abstract class PerformPromiseAllSettledNode extends PerformPromiseAllNode {
 
     protected PerformPromiseAllSettledNode(JSContext context) {
         super(context);
     }
 
     public static PerformPromiseAllSettledNode create(JSContext context) {
-        return new PerformPromiseAllSettledNode(context);
+        return PerformPromiseAllSettledNodeGen.create(context);
+    }
+
+    @Specialization
+    @Override
+    protected JSDynamicObject promiseAll(IteratorRecord iteratorRecord, JSDynamicObject constructor, PromiseCapabilityRecord resultCapability, Object promiseResolve,
+                    @Cached InlinedBranchProfile growProfile) {
+        return super.promiseAll(iteratorRecord, constructor, resultCapability, promiseResolve, growProfile);
     }
 
     @Override

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,6 +99,46 @@ EXPORT_TO_JS(Uint64ValueLossLess) {
 
 EXPORT_TO_JS(WordCount) {
     args.GetReturnValue().Set(args[0].As<BigInt>()->WordCount());
+}
+
+EXPORT_TO_JS(NewFromWords) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    int sign_bit = args[0].As<Int32>()->Value();
+    int word_count = args[1].As<Int32>()->Value();
+    uint64_t* words = new uint64_t[word_count];
+    for (int i = 0; i < word_count; i++) {
+        // supporting words that fit into double only (for simplicity)
+        words[i] = (uint64_t) args[2].As<Object>()->Get(context, i).ToLocalChecked().As<Number>()->Value();
+    }
+
+    Local<BigInt> result = BigInt::NewFromWords(context, sign_bit, word_count, words).ToLocalChecked();
+
+    args.GetReturnValue().Set(result);
+    delete[] words;
+}
+
+EXPORT_TO_JS(ToWordsArray) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    int sign_bit;
+    int word_count = args[1].As<Int32>()->Value();
+    int original_word_count = word_count;
+    uint64_t* words = new uint64_t[word_count];
+
+    args[0].As<BigInt>()->ToWordsArray(&sign_bit, &word_count, words);
+
+    int effective_word_count = std::min(word_count, original_word_count);
+    Local<Array> result = Array::New(isolate, effective_word_count + 2);
+    result->Set(context, 0, Integer::New(isolate, sign_bit));
+    result->Set(context, 1, Integer::New(isolate, word_count));
+    for (int i = 0; i < effective_word_count; i++) {
+        // supporting words that fit into double only (for simplicity)
+        result->Set(context, i + 2, Number::New(isolate, (double) words[i]));
+    }
+
+    args.GetReturnValue().Set(result);
+    delete[] words;
 }
 
 #undef SUITE

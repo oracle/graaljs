@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,16 +60,17 @@ public final class JSShadowRealm extends JSNonProxy implements JSConstructorFact
     private JSShadowRealm() {
     }
 
-    public static JSShadowRealmObject create(JSContext context, JSRealm callerRealm, JSRealm shadowRealm) {
-        JSShadowRealmObject obj = JSShadowRealmObject.create(callerRealm, context.getShadowRealmFactory(), shadowRealm);
-        return context.trackAllocation(obj);
+    public static JSShadowRealmObject create(JSContext context, JSRealm callerRealm, JSDynamicObject proto, JSRealm shadowRealm) {
+        JSObjectFactory factory = context.getShadowRealmFactory();
+        var shape = factory.getShape(callerRealm, proto);
+        var newObj = factory.initProto(new JSShadowRealmObject(shape, proto, shadowRealm), callerRealm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, ShadowRealmPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;

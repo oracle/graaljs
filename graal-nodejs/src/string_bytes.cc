@@ -25,6 +25,7 @@
 #include "env-inl.h"
 #include "node_buffer.h"
 #include "node_errors.h"
+#include "simdutf.h"
 #include "util.h"
 
 #include <climits>
@@ -367,8 +368,7 @@ size_t StringBytes::Write(Isolate* isolate,
       break;
 
     default:
-      CHECK(0 && "unknown encoding");
-      break;
+      UNREACHABLE("unknown encoding");
   }
 
   return nbytes;
@@ -422,8 +422,7 @@ Maybe<size_t> StringBytes::StorageSize(Isolate* isolate,
       break;
 
     default:
-      CHECK(0 && "unknown encoding");
-      break;
+      UNREACHABLE("unknown encoding");
   }
 
   return Just(data_size);
@@ -466,60 +465,6 @@ Maybe<size_t> StringBytes::Size(Isolate* isolate,
 
   UNREACHABLE();
 }
-
-
-
-
-static bool contains_non_ascii_slow(const char* buf, size_t len) {
-  for (size_t i = 0; i < len; ++i) {
-    if (buf[i] & 0x80)
-      return true;
-  }
-  return false;
-}
-
-
-static bool contains_non_ascii(const char* src, size_t len) {
-  if (len < 16) {
-    return contains_non_ascii_slow(src, len);
-  }
-
-  const unsigned bytes_per_word = sizeof(uintptr_t);
-  const unsigned align_mask = bytes_per_word - 1;
-  const unsigned unaligned = reinterpret_cast<uintptr_t>(src) & align_mask;
-
-  if (unaligned > 0) {
-    const unsigned n = bytes_per_word - unaligned;
-    if (contains_non_ascii_slow(src, n))
-      return true;
-    src += n;
-    len -= n;
-  }
-
-
-#if defined(_WIN64) || defined(_LP64)
-  const uintptr_t mask = 0x8080808080808080ll;
-#else
-  const uintptr_t mask = 0x80808080l;
-#endif
-
-  const uintptr_t* srcw = reinterpret_cast<const uintptr_t*>(src);
-
-  for (size_t i = 0, n = len / bytes_per_word; i < n; ++i) {
-    if (srcw[i] & mask)
-      return true;
-  }
-
-  const unsigned remainder = len & align_mask;
-  if (remainder > 0) {
-    const size_t offset = len - remainder;
-    if (contains_non_ascii_slow(src + offset, remainder))
-      return true;
-  }
-
-  return false;
-}
-
 
 static void force_ascii_slow(const char* src, char* dst, size_t len) {
   for (size_t i = 0; i < len; ++i) {
@@ -596,7 +541,7 @@ size_t StringBytes::hex_encode(
 std::string StringBytes::hex_encode(const char* src, size_t slen) {
   size_t dlen = slen * 2;
   std::string dst(dlen, '\0');
-  hex_encode(src, slen, &dst[0], dlen);
+  hex_encode(src, slen, dst.data(), dlen);
   return dst;
 }
 
@@ -634,7 +579,8 @@ MaybeLocal<Value> StringBytes::Encode(Isolate* isolate,
       }
 
     case ASCII:
-      if (contains_non_ascii(buf, buflen)) {
+      if (simdutf::validate_ascii_with_errors(buf, buflen).error) {
+        // The input contains non-ASCII bytes.
         char* out = node::UncheckedMalloc(buflen);
         if (out == nullptr) {
           *error = node::ERR_MEMORY_ALLOCATION_FAILED(isolate);
@@ -704,20 +650,21 @@ MaybeLocal<Value> StringBytes::Encode(Isolate* isolate,
     }
 
     case UCS2: {
+      size_t str_len = buflen / 2;
       if (IsBigEndian()) {
-        uint16_t* dst = node::UncheckedMalloc<uint16_t>(buflen / 2);
-        if (dst == nullptr) {
+        uint16_t* dst = node::UncheckedMalloc<uint16_t>(str_len);
+        if (str_len != 0 && dst == nullptr) {
           *error = node::ERR_MEMORY_ALLOCATION_FAILED(isolate);
           return MaybeLocal<Value>();
         }
-        for (size_t i = 0, k = 0; k < buflen / 2; i += 2, k += 1) {
+        for (size_t i = 0, k = 0; k < str_len; i += 2, k += 1) {
           // The input is in *little endian*, because that's what Node.js
           // expects, so the high byte comes after the low byte.
           const uint8_t hi = static_cast<uint8_t>(buf[i + 1]);
           const uint8_t lo = static_cast<uint8_t>(buf[i + 0]);
           dst[k] = static_cast<uint16_t>(hi) << 8 | lo;
         }
-        return ExternTwoByteString::New(isolate, dst, buflen / 2, error);
+        return ExternTwoByteString::New(isolate, dst, str_len, error);
       }
       if (reinterpret_cast<uintptr_t>(buf) % 2 != 0) {
         // Unaligned data still means we can't directly pass it to V8.
@@ -728,18 +675,15 @@ MaybeLocal<Value> StringBytes::Encode(Isolate* isolate,
         }
         memcpy(dst, buf, buflen);
         return ExternTwoByteString::New(
-            isolate, reinterpret_cast<uint16_t*>(dst), buflen / 2, error);
+            isolate, reinterpret_cast<uint16_t*>(dst), str_len, error);
       }
       return ExternTwoByteString::NewFromCopy(
-          isolate, reinterpret_cast<const uint16_t*>(buf), buflen / 2, error);
+          isolate, reinterpret_cast<const uint16_t*>(buf), str_len, error);
     }
 
     default:
-      CHECK(0 && "unknown encoding");
-      break;
+      UNREACHABLE("unknown encoding");
   }
-
-  UNREACHABLE();
 }
 
 
@@ -747,6 +691,7 @@ MaybeLocal<Value> StringBytes::Encode(Isolate* isolate,
                                       const uint16_t* buf,
                                       size_t buflen,
                                       Local<Value>* error) {
+  if (buflen == 0) return String::Empty(isolate);
   CHECK_BUFLEN_IN_RANGE(buflen);
 
   // Node's "ucs2" encoding expects LE character data inside a

@@ -243,9 +243,12 @@ FieldAccess AccessBuilder::ForJSGeneratorObjectContext() {
 
 // static
 FieldAccess AccessBuilder::ForJSGeneratorObjectFunction() {
-  FieldAccess access = {kTaggedBase,         JSGeneratorObject::kFunctionOffset,
-                        Handle<Name>(),      MaybeHandle<Map>(),
-                        Type::Function(),    MachineType::TaggedPointer(),
+  FieldAccess access = {kTaggedBase,
+                        JSGeneratorObject::kFunctionOffset,
+                        Handle<Name>(),
+                        MaybeHandle<Map>(),
+                        Type::CallableFunction(),
+                        MachineType::TaggedPointer(),
                         kPointerWriteBarrier};
   return access;
 }
@@ -416,19 +419,21 @@ FieldAccess AccessBuilder::ForJSTypedArrayBasePointer() {
 
 // static
 FieldAccess AccessBuilder::ForJSTypedArrayExternalPointer() {
-  FieldAccess access = {kTaggedBase,
-                        JSTypedArray::kExternalPointerOffset,
-                        MaybeHandle<Name>(),
-                        MaybeHandle<Map>(),
-                        V8_HEAP_SANDBOX_BOOL ? Type::SandboxedExternalPointer()
-                                             : Type::ExternalPointer(),
-                        MachineType::Pointer(),
-                        kNoWriteBarrier,
-                        ConstFieldInfo::None(),
-                        false,
-#ifdef V8_HEAP_SANDBOX
-                        kTypedArrayExternalPointerTag
+  FieldAccess access = {
+      kTaggedBase,
+      JSTypedArray::kExternalPointerOffset,
+      MaybeHandle<Name>(),
+      MaybeHandle<Map>(),
+#ifdef V8_SANDBOXED_POINTERS
+      Type::SandboxedPointer(),
+      MachineType::SandboxedPointer(),
+#else
+      Type::ExternalPointer(),
+      MachineType::Pointer(),
 #endif
+      kNoWriteBarrier,
+      ConstFieldInfo::None(),
+      false,
   };
   return access;
 }
@@ -440,15 +445,16 @@ FieldAccess AccessBuilder::ForJSDataViewDataPointer() {
       JSDataView::kDataPointerOffset,
       MaybeHandle<Name>(),
       MaybeHandle<Map>(),
-      V8_HEAP_SANDBOX_BOOL ? Type::SandboxedExternalPointer()
-                           : Type::ExternalPointer(),
+#ifdef V8_SANDBOXED_POINTERS
+      Type::SandboxedPointer(),
+      MachineType::SandboxedPointer(),
+#else
+      Type::ExternalPointer(),
       MachineType::Pointer(),
+#endif
       kNoWriteBarrier,
       ConstFieldInfo::None(),
       false,
-#ifdef V8_HEAP_SANDBOX
-      kDataViewDataPointerTag,
-#endif
   };
   return access;
 }
@@ -750,13 +756,12 @@ FieldAccess AccessBuilder::ForExternalStringResourceData() {
       ExternalString::kResourceDataOffset,
       Handle<Name>(),
       MaybeHandle<Map>(),
-      V8_HEAP_SANDBOX_BOOL ? Type::SandboxedExternalPointer()
-                           : Type::ExternalPointer(),
+      Type::ExternalPointer(),
       MachineType::Pointer(),
       kNoWriteBarrier,
       ConstFieldInfo::None(),
       false,
-#ifdef V8_HEAP_SANDBOX
+#ifdef V8_SANDBOXED_EXTERNAL_POINTERS
       kExternalStringResourceDataTag,
 #endif
   };
@@ -1221,15 +1226,6 @@ FieldAccess AccessBuilder::ForDictionaryObjectHashIndex() {
       Type::SignedSmall(),
       MachineType::TaggedSigned(),
       kNoWriteBarrier};
-  return access;
-}
-
-// static
-FieldAccess AccessBuilder::ForFeedbackCellValue() {
-  FieldAccess access = {kTaggedBase,      FeedbackCell::kValueOffset,
-                        Handle<Name>(),   MaybeHandle<Map>(),
-                        Type::Any(),      MachineType::TaggedPointer(),
-                        kFullWriteBarrier};
   return access;
 }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 import java.util.stream.Stream;
 
 import org.graalvm.polyglot.Source;
@@ -70,7 +69,6 @@ public class Test262 extends TestSuite {
     private static final String[] COMMON_PREQUEL_FILES = new String[]{
                     "assert.js",
                     "sta.js",
-                    "temporalHelpers.js"
     };
     private static final String[] ASYNC_PREQUEL_FILES = new String[]{
                     "doneprintHandle.js"
@@ -91,11 +89,15 @@ public class Test262 extends TestSuite {
         super(config);
         Map<String, String> options = new HashMap<>();
         options.put(JSContextOptions.INTL_402_NAME, "true");
+        options.put(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "none");
         options.put(JSContextOptions.TEST262_MODE_NAME, "true");
         options.put(JSContextOptions.GLOBAL_ARGUMENTS_NAME, "false");
         config.addCommonOptions(options);
         commonOptions = Collections.unmodifiableMap(options);
         commonOptionsExtLauncher = optionsToExtLauncherOptions(options);
+
+        // sanity check: fail early if any prequel file is missing
+        assert getHarnessSources(false, true, Stream.empty()).length > 0;
     }
 
     public Source[] getHarnessSources(boolean strict, boolean async, Stream<String> includes) {
@@ -187,9 +189,6 @@ public class Test262 extends TestSuite {
 
     public static void main(String[] args) throws Exception {
         SuiteConfig.Builder configBuilder = new SuiteConfig.Builder(SUITE_NAME, SUITE_DESCRIPTION, DEFAULT_LOC, DEFAULT_CONFIG_LOC, TESTS_REL_LOC, HARNESS_REL_LOC);
-
-        TimeZone pstZone = TimeZone.getTimeZone("PST"); // =Californian Time (PST)
-        TimeZone.setDefault(pstZone);
 
         System.out.println("Checking your Javascript conformance. Using ECMAScript Test262 testsuite.\n");
 

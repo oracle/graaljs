@@ -16,7 +16,6 @@ const findUp = require("find-up");
 const { version } = require("../../package.json");
 const { Linter } = require("../linter");
 const { getRuleFromConfig } = require("../config/flat-config-helpers");
-const { gitignoreToMinimatch } = require("@humanwhocodes/gitignore-to-minimatch");
 const {
     Legacy: {
         ConfigOps: {
@@ -28,7 +27,6 @@ const {
 } = require("@eslint/eslintrc");
 
 const {
-    fileExists,
     findFiles,
     getCacheFile,
 
@@ -57,8 +55,10 @@ const LintResultCache = require("../cli-engine/lint-result-cache");
 /** @typedef {import("../shared/types").ConfigData} ConfigData */
 /** @typedef {import("../shared/types").DeprecatedRuleInfo} DeprecatedRuleInfo */
 /** @typedef {import("../shared/types").LintMessage} LintMessage */
+/** @typedef {import("../shared/types").LintResult} LintResult */
 /** @typedef {import("../shared/types").ParserOptions} ParserOptions */
 /** @typedef {import("../shared/types").Plugin} Plugin */
+/** @typedef {import("../shared/types").ResultsMeta} ResultsMeta */
 /** @typedef {import("../shared/types").RuleConf} RuleConf */
 /** @typedef {import("../shared/types").Rule} Rule */
 /** @typedef {ReturnType<ConfigArray.extractConfig>} ExtractedConfig */
@@ -76,9 +76,8 @@ const LintResultCache = require("../cli-engine/lint-result-cache");
  * @property {boolean|Function} [fix] Execute in autofix mode. If a function, should return a boolean.
  * @property {string[]} [fixTypes] Array of rule types to apply fixes for.
  * @property {boolean} [globInputPaths] Set to false to skip glob resolution of input file paths to lint (default: true). If false, each input file paths is assumed to be a non-glob path to an existing file.
- * @property {boolean} [ignore] False disables use of .eslintignore.
- * @property {string} [ignorePath] The ignore file to use instead of .eslintignore.
- * @property {string[]} [ignorePatterns] Ignore file patterns to use in addition to .eslintignore.
+ * @property {boolean} [ignore] False disables all ignore patterns except for the default ones.
+ * @property {string[]} [ignorePatterns] Ignore file patterns to use in addition to config ignores. These patterns are relative to `cwd`.
  * @property {ConfigData} [overrideConfig] Override config object, overrides all configs used with this instance
  * @property {boolean|string} [overrideConfigFile] Searches for default config file when falsy;
  *      doesn't do any config file lookup when `true`; considered to be a config filename
@@ -95,6 +94,7 @@ const FLAT_CONFIG_FILENAME = "eslint.config.js";
 const debug = require("debug")("eslint:flat-eslint");
 const removedFormatters = new Set(["table", "codeframe"]);
 const privateMembers = new WeakMap();
+const importedConfigFileModificationTime = new Map();
 
 /**
  * It will calculate the error and warning count for collection of messages per file
@@ -152,30 +152,6 @@ function calculateStatsPerRun(results) {
 }
 
 /**
- * Loads global ignore patterns from an ignore file (usually .eslintignore).
- * @param {string} filePath The filename to load.
- * @returns {ignore} A function encapsulating the ignore patterns.
- * @throws {Error} If the file cannot be read.
- * @private
- */
-async function loadIgnoreFilePatterns(filePath) {
-    debug(`Loading ignore file: ${filePath}`);
-
-    try {
-        const ignoreFileText = await fs.readFile(filePath, { encoding: "utf8" });
-
-        return ignoreFileText
-            .split(/\r?\n/gu)
-            .filter(line => line.trim() !== "" && !line.startsWith("#"));
-
-    } catch (e) {
-        debug(`Error reading ignore file: ${filePath}`);
-        e.message = `Cannot read ignore file: ${filePath}\nError: ${e.message}`;
-        throw e;
-    }
-}
-
-/**
  * Create rulesMeta object.
  * @param {Map<string,Rule>} rules a map of rules from which to generate the object.
  * @returns {Object} metadata for all enabled rules.
@@ -185,6 +161,16 @@ function createRulesMeta(rules) {
         retVal[id] = rule.meta;
         return retVal;
     }, {});
+}
+
+/**
+ * Return the absolute path of a file named `"__placeholder__.js"` in a given directory.
+ * This is used as a replacement for a missing file path.
+ * @param {string} cwd An absolute directory path.
+ * @returns {string} The absolute path of a file named `"__placeholder__.js"` in the given directory.
+ */
+function getPlaceholderPath(cwd) {
+    return path.join(cwd, "__placeholder__.js");
 }
 
 /** @type {WeakMap<ExtractedConfig, DeprecatedRuleInfo[]>} */
@@ -203,7 +189,7 @@ function getOrFindUsedDeprecatedRules(eslint, maybeFilePath) {
     } = privateMembers.get(eslint);
     const filePath = path.isAbsolute(maybeFilePath)
         ? maybeFilePath
-        : path.join(cwd, "__placeholder__.js");
+        : getPlaceholderPath(cwd);
     const config = configs.getConfig(filePath);
 
     // Most files use the same config, so cache it.
@@ -276,7 +262,7 @@ function compareResultsByFilePath(a, b) {
  * Searches from the current working directory up until finding the
  * given flat config filename.
  * @param {string} cwd The current working directory to search from.
- * @returns {Promise<string|null>} The filename if found or `null` if not.
+ * @returns {Promise<string|undefined>} The filename if found or `undefined` if not.
  */
 function findFlatConfigFile(cwd) {
     return findUp(
@@ -288,24 +274,90 @@ function findFlatConfigFile(cwd) {
 /**
  * Load the config array from the given filename.
  * @param {string} filePath The filename to load from.
- * @param {Object} options Options to help load the config file.
- * @param {string} options.basePath The base path for the config array.
- * @param {boolean} options.shouldIgnore Whether to honor ignore patterns.
- * @returns {Promise<FlatConfigArray>} The config array loaded from the config file.
+ * @returns {Promise<any>} The config loaded from the config file.
  */
-async function loadFlatConfigFile(filePath, { basePath, shouldIgnore }) {
+async function loadFlatConfigFile(filePath) {
     debug(`Loading config from ${filePath}`);
 
     const fileURL = pathToFileURL(filePath);
 
     debug(`Config file URL is ${fileURL}`);
 
-    const module = await import(fileURL);
+    const mtime = (await fs.stat(filePath)).mtime.getTime();
 
-    return new FlatConfigArray(module.default, {
+    /*
+     * Append a query with the config file's modification time (`mtime`) in order
+     * to import the current version of the config file. Without the query, `import()` would
+     * cache the config file module by the pathname only, and then always return
+     * the same version (the one that was actual when the module was imported for the first time).
+     *
+     * This ensures that the config file module is loaded and executed again
+     * if it has been changed since the last time it was imported.
+     * If it hasn't been changed, `import()` will just return the cached version.
+     *
+     * Note that we should not overuse queries (e.g., by appending the current time
+     * to always reload the config file module) as that could cause memory leaks
+     * because entries are never removed from the import cache.
+     */
+    fileURL.searchParams.append("mtime", mtime);
+
+    /*
+     * With queries, we can bypass the import cache. However, when import-ing a CJS module,
+     * Node.js uses the require infrastructure under the hood. That includes the require cache,
+     * which caches the config file module by its file path (queries have no effect).
+     * Therefore, we also need to clear the require cache before importing the config file module.
+     * In order to get the same behavior with ESM and CJS config files, in particular - to reload
+     * the config file only if it has been changed, we track file modification times and clear
+     * the require cache only if the file has been changed.
+     */
+    if (importedConfigFileModificationTime.get(filePath) !== mtime) {
+        delete require.cache[filePath];
+    }
+
+    const config = (await import(fileURL)).default;
+
+    importedConfigFileModificationTime.set(filePath, mtime);
+
+    return config;
+}
+
+/**
+ * Determines which config file to use. This is determined by seeing if an
+ * override config file was passed, and if so, using it; otherwise, as long
+ * as override config file is not explicitly set to `false`, it will search
+ * upwards from the cwd for a file named `eslint.config.js`.
+ * @param {import("./eslint").ESLintOptions} options The ESLint instance options.
+ * @returns {{configFilePath:string|undefined,basePath:string,error:Error|null}} Location information for
+ *      the config file.
+ */
+async function locateConfigFileToUse({ configFile, cwd }) {
+
+    // determine where to load config file from
+    let configFilePath;
+    let basePath = cwd;
+    let error = null;
+
+    if (typeof configFile === "string") {
+        debug(`Override config file path is ${configFile}`);
+        configFilePath = path.resolve(cwd, configFile);
+    } else if (configFile !== false) {
+        debug("Searching for eslint.config.js");
+        configFilePath = await findFlatConfigFile(cwd);
+
+        if (configFilePath) {
+            basePath = path.resolve(path.dirname(configFilePath));
+        } else {
+            error = new Error("Could not find config file.");
+        }
+
+    }
+
+    return {
+        configFilePath,
         basePath,
-        shouldIgnore
-    });
+        error
+    };
+
 }
 
 /**
@@ -316,10 +368,10 @@ async function loadFlatConfigFile(filePath, { basePath, shouldIgnore }) {
  */
 async function calculateConfigArray(eslint, {
     cwd,
+    baseConfig,
     overrideConfig,
     configFile,
     ignore: shouldIgnore,
-    ignorePath,
     ignorePatterns
 }) {
 
@@ -330,105 +382,62 @@ async function calculateConfigArray(eslint, {
         return slots.configs;
     }
 
-    // determine where to load config file from
-    let configFilePath;
-    let basePath = cwd;
+    const { configFilePath, basePath, error } = await locateConfigFileToUse({ configFile, cwd });
 
-    if (typeof configFile === "string") {
-        debug(`Override config file path is ${configFile}`);
-        configFilePath = path.resolve(cwd, configFile);
-    } else if (configFile !== false) {
-        debug("Searching for eslint.config.js");
-        configFilePath = await findFlatConfigFile(cwd);
-
-        if (!configFilePath) {
-            throw new Error("Could not find config file.");
-        }
-
-        basePath = path.resolve(path.dirname(configFilePath));
+    // config file is required to calculate config
+    if (error) {
+        throw error;
     }
 
-    // load config array
-    let configs;
+    const configs = new FlatConfigArray(baseConfig || [], { basePath, shouldIgnore });
 
+    // load config file
     if (configFilePath) {
-        configs = await loadFlatConfigFile(configFilePath, {
-            basePath,
-            shouldIgnore
-        });
-    } else {
-        configs = new FlatConfigArray([], { basePath, shouldIgnore });
+        const fileConfig = await loadFlatConfigFile(configFilePath);
+
+        if (Array.isArray(fileConfig)) {
+            configs.push(...fileConfig);
+        } else {
+            configs.push(fileConfig);
+        }
     }
 
     // add in any configured defaults
     configs.push(...slots.defaultConfigs);
 
-    let allIgnorePatterns = [];
-    let ignoreFilePath;
-
-    // load ignore file if necessary
-    if (shouldIgnore) {
-        if (ignorePath) {
-            ignoreFilePath = path.resolve(cwd, ignorePath);
-            allIgnorePatterns = await loadIgnoreFilePatterns(ignoreFilePath);
-        } else {
-            ignoreFilePath = path.resolve(cwd, ".eslintignore");
-
-            // no error if .eslintignore doesn't exist`
-            if (fileExists(ignoreFilePath)) {
-                allIgnorePatterns = await loadIgnoreFilePatterns(ignoreFilePath);
-            }
-        }
-    }
-
     // append command line ignore patterns
-    if (ignorePatterns) {
-        if (typeof ignorePatterns === "string") {
-            allIgnorePatterns.push(ignorePatterns);
+    if (ignorePatterns && ignorePatterns.length > 0) {
+
+        let relativeIgnorePatterns;
+
+        /*
+         * If the config file basePath is different than the cwd, then
+         * the ignore patterns won't work correctly. Here, we adjust the
+         * ignore pattern to include the correct relative path. Patterns
+         * passed as `ignorePatterns` are relative to the cwd, whereas
+         * the config file basePath can be an ancestor of the cwd.
+         */
+        if (basePath === cwd) {
+            relativeIgnorePatterns = ignorePatterns;
         } else {
-            allIgnorePatterns.push(...ignorePatterns);
-        }
-    }
 
-    /*
-     * If the config file basePath is different than the cwd, then
-     * the ignore patterns won't work correctly. Here, we adjust the
-     * ignore pattern to include the correct relative path. Patterns
-     * loaded from ignore files are always relative to the cwd, whereas
-     * the config file basePath can be an ancestor of the cwd.
-     */
-    if (basePath !== cwd && allIgnorePatterns.length) {
+            const relativeIgnorePath = path.relative(basePath, cwd);
 
-        const relativeIgnorePath = path.relative(basePath, cwd);
+            relativeIgnorePatterns = ignorePatterns.map(pattern => {
+                const negated = pattern.startsWith("!");
+                const basePattern = negated ? pattern.slice(1) : pattern;
 
-        allIgnorePatterns = allIgnorePatterns.map(pattern => {
-            const negated = pattern.startsWith("!");
-            const basePattern = negated ? pattern.slice(1) : pattern;
-
-            /*
-             * Ignore patterns are considered relative to a directory
-             * when the pattern contains a slash in a position other
-             * than the last character. If that's the case, we need to
-             * add the relative ignore path to the current pattern to
-             * get the correct behavior. Otherwise, no change is needed.
-             */
-            if (!basePattern.includes("/") || basePattern.endsWith("/")) {
-                return pattern;
-            }
-
-            return (negated ? "!" : "") +
+                return (negated ? "!" : "") +
                 path.posix.join(relativeIgnorePath, basePattern);
-        });
-    }
-
-    if (allIgnorePatterns.length) {
+            });
+        }
 
         /*
          * Ignore patterns are added to the end of the config array
          * so they can override default ignores.
          */
         configs.push({
-            ignores: allIgnorePatterns.map(gitignoreToMinimatch)
+            ignores: relativeIgnorePatterns
         });
     }
 
@@ -481,7 +490,7 @@ function verifyText({
      * `config.extractConfig(filePath)` requires an absolute path, but `linter`
      * doesn't know CWD, so it gives `linter` an absolute path always.
      */
-    const filePathToVerify = filePath === "<text>" ? path.join(cwd, "__placeholder__.js") : filePath;
+    const filePathToVerify = filePath === "<text>" ? getPlaceholderPath(cwd) : filePath;
     const { fixed, messages, output } = linter.verifyAndFix(
         text,
         configs,
@@ -576,6 +585,14 @@ function *iterateRuleDeprecationWarnings(configs) {
             };
         }
     }
+}
+
+/**
+ * Creates an error to be thrown when an array of results passed to `getRulesMetaForResults` was not created by the current engine.
+ * @returns {TypeError} An error object.
+ */
+function createExtraneousResultsError() {
+    return new TypeError("Results object was not created from this ESLint instance.");
 }
 
 //-----------------------------------------------------------------------------
@@ -708,14 +725,16 @@ class FlatESLint {
      */
     getRulesMetaForResults(results) {
 
-        const resultRules = new Map();
-
         // short-circuit simple case
         if (results.length === 0) {
-            return resultRules;
+            return {};
         }
 
-        const { configs } = privateMembers.get(this);
+        const resultRules = new Map();
+        const {
+            configs,
+            options: { cwd }
+        } = privateMembers.get(this);
 
         /*
          * We can only accurately return rules meta information for linting results if the
@@ -724,7 +743,7 @@ class FlatESLint {
          * to let the user know we can't do anything here.
          */
         if (!configs) {
-            throw new TypeError("Results object was not created from this ESLint instance.");
+            throw createExtraneousResultsError();
         }
 
         for (const result of results) {
@@ -733,16 +752,23 @@ class FlatESLint {
              * Normalize filename for <text>.
              */
             const filePath = result.filePath === "<text>"
-                ? "__placeholder__.js" : result.filePath;
-
-            /*
-             * All of the plugin and rule information is contained within the
-             * calculated config for the given file.
-             */
-            const config = configs.getConfig(filePath);
+                ? getPlaceholderPath(cwd) : result.filePath;
             const allMessages = result.messages.concat(result.suppressedMessages);
 
             for (const { ruleId } of allMessages) {
+                if (!ruleId) {
+                    continue;
+                }
+
+                /*
+                 * All of the plugin and rule information is contained within the
+                 * calculated config for the given file.
+                 */
+                const config = configs.getConfig(filePath);
+
+                if (!config) {
+                    throw createExtraneousResultsError();
+                }
                 const rule = getRuleFromConfig(ruleId, config);
 
                 // ensure the rule exists
@@ -872,7 +898,7 @@ class FlatESLint {
                 }
 
 
-                // set up fixer for fixtypes if necessary
+                // set up fixer for fixTypes if necessary
                 let fixer = fix;
 
                 if (fix && fixTypesSet) {
@@ -1048,7 +1074,7 @@ class FlatESLint {
      * The following values are allowed:
      * - `undefined` ... Load `stylish` builtin formatter.
      * - A builtin formatter name ... Load the builtin formatter.
-     * - A thirdparty formatter name:
+     * - A third-party formatter name:
      *   - `foo` → `eslint-formatter-foo`
      *   - `@foo` → `@foo/eslint-formatter`
      *   - `@foo/bar` → `@foo/eslint-formatter-bar`
@@ -1080,7 +1106,7 @@ class FlatESLint {
                 const npmFormat = naming.normalizePackageName(normalizedFormatName, "eslint-formatter");
 
                 // TODO: This is pretty dirty...would be nice to clean up at some point.
-                formatterPath = ModuleResolver.resolve(npmFormat, path.join(cwd, "__placeholder__.js"));
+                formatterPath = ModuleResolver.resolve(npmFormat, getPlaceholderPath(cwd));
             } catch {
                 formatterPath = path.resolve(__dirname, "../", "cli-engine", "formatters", `${normalizedFormatName}.js`);
             }
@@ -1114,14 +1140,16 @@ class FlatESLint {
             /**
              * The main formatter method.
              * @param {LintResults[]} results The lint results to format.
+             * @param {ResultsMeta} resultsMeta Warning count and max threshold.
              * @returns {string} The formatted lint results.
              */
-            format(results) {
+            format(results, resultsMeta) {
                 let rulesMeta = null;
 
                 results.sort(compareResultsByFilePath);
 
                 return formatter(results, {
+                    ...resultsMeta,
                     cwd,
                     get rulesMeta() {
                         if (!rulesMeta) {
@@ -1155,6 +1183,19 @@ class FlatESLint {
     }
 
     /**
+     * Finds the config file being used by this instance based on the options
+     * passed to the constructor.
+     * @returns {string|undefined} The path to the config file being used or
+     *      `undefined` if no config file is being used.
+     */
+    async findConfigFile() {
+        const options = privateMembers.get(this).options;
+        const { configFilePath } = await locateConfigFileToUse(options);
+
+        return configFilePath;
+    }
+
+    /**
      * Checks if a given path is ignored by ESLint.
      * @param {string} filePath The path of the file to check.
      * @returns {Promise<boolean>} Whether or not the given path is ignored.
@@ -1166,11 +1207,31 @@ class FlatESLint {
     }
 }
 
+/**
+ * Returns whether flat config should be used.
+ * @returns {Promise<boolean>} Whether flat config should be used.
+ */
+async function shouldUseFlatConfig() {
+    switch (process.env.ESLINT_USE_FLAT_CONFIG) {
+        case "true":
+            return true;
+        case "false":
+            return false;
+        default:
+
+            /*
+             * If neither explicitly enabled nor disabled, then use the presence
+             * of a flat config file to determine enablement.
+             */
+            return !!(await findFlatConfigFile(process.cwd()));
+    }
+}
+
 //------------------------------------------------------------------------------
 // Public Interface
 //------------------------------------------------------------------------------
 
 module.exports = {
     FlatESLint,
-    findFlatConfigFile
+    shouldUseFlatConfig
 };

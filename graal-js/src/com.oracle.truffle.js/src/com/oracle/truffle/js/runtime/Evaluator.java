@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,7 +62,6 @@ public interface Evaluator {
     String EVAL_SOURCE_NAME = "<eval>";
     String EVAL_AT_SOURCE_NAME_PREFIX = "eval at ";
     TruffleString TS_EVAL_SOURCE_NAME = Strings.constant(EVAL_SOURCE_NAME);
-    TruffleString TS_EVAL_AT_SOURCE_NAME_PREFIX = Strings.constant(EVAL_AT_SOURCE_NAME_PREFIX);
 
     TruffleString MODULE_LINK_SUFFIX = Strings.constant(":link");
     TruffleString MODULE_EVAL_SUFFIX = Strings.constant(":eval");
@@ -72,7 +71,7 @@ public interface Evaluator {
      *
      * @param lastNode the node invoking the eval or {@code null}
      */
-    ScriptNode parseEval(JSContext context, Node lastNode, Source code);
+    ScriptNode parseEval(JSContext context, Node lastNode, Source code, ScriptOrModule activeScriptOrModule);
 
     /**
      * Parse direct eval code using the local execution context.
@@ -121,10 +120,10 @@ public interface Evaluator {
     /**
      * Parse function using parameter list and body, to be used by the {@code Function} constructor.
      */
-    ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName);
+    ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName, ScriptOrModule activeScriptOrModule);
 
     default ScriptNode parseScript(JSContext context, Source source) {
-        return parseScript(context, source, "", "", context.getParserOptions().isStrict());
+        return parseScript(context, source, "", "", context.getParserOptions().strict());
     }
 
     default ScriptNode parseScript(JSContext context, Source source, String prolog, String epilog, boolean isStrict) {

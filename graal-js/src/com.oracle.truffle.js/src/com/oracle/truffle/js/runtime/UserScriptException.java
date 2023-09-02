@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,7 +92,7 @@ public final class UserScriptException extends GraalJSException {
 
     @TruffleBoundary
     public static UserScriptException create(Object exceptionObject) {
-        int stackTraceLimit = JavaScriptLanguage.getCurrentLanguage().getJSContext().getContextOptions().getStackTraceLimit();
+        int stackTraceLimit = JavaScriptLanguage.getCurrentLanguage().getJSContext().getLanguageOptions().stackTraceLimit();
         return create(exceptionObject, null, stackTraceLimit);
     }
 
@@ -160,7 +160,7 @@ public final class UserScriptException extends GraalJSException {
                     TruffleString name = JSFunction.getName((JSFunctionObject) constructor);
                     if (!Strings.isEmpty(name)) {
                         Object message = JSDynamicObject.getOrDefault(errorObj, JSError.MESSAGE, null);
-                        if (!Strings.isTString(message) && JSObject.getJSContext(errorObj).getContextOptions().isTestV8Mode()) {
+                        if (!Strings.isTString(message) && JSObject.getJSContext(errorObj).getLanguageOptions().testV8Mode()) {
                             // allow side-effect
                             // (MjsUnitAssertionError.prototype.message is a getter)
                             message = JSObject.get(errorObj, JSError.MESSAGE);

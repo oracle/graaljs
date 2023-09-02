@@ -8,6 +8,7 @@ const {
   ObjectDefineProperties,
   ObjectSetPrototypeOf,
   ObjectDefineProperty,
+  PromiseResolve,
   SafeFinalizationRegistry,
   SafeSet,
   Symbol,
@@ -22,20 +23,27 @@ const {
   kTrustEvent,
   kNewListener,
   kRemoveListener,
+  kWeakHandler,
 } = require('internal/event_target');
 const {
+  createDeferredPromise,
   customInspectSymbol,
+  kEmptyObject,
   kEnumerableProperty,
 } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
 const {
   codes: {
     ERR_ILLEGAL_CONSTRUCTOR,
+    ERR_INVALID_ARG_TYPE,
     ERR_INVALID_THIS,
-  }
+  },
 } = require('internal/errors');
 
 const {
+  validateAbortSignal,
+  validateAbortSignalArray,
+  validateObject,
   validateUint32,
 } = require('internal/validators');
 
@@ -47,11 +55,12 @@ const {
   clearTimeout,
   setTimeout,
 } = require('timers');
+const assert = require('internal/assert');
 
 const {
   messaging_deserialize_symbol: kDeserialize,
   messaging_transfer_symbol: kTransfer,
-  messaging_transfer_list_symbol: kTransferList
+  messaging_transfer_list_symbol: kTransferList,
 } = internalBinding('symbols');
 
 let _MessageChannel;
@@ -73,25 +82,29 @@ function lazyMakeTransferable(obj) {
 }
 
 const clearTimeoutRegistry = new SafeFinalizationRegistry(clearTimeout);
-const timeOutSignals = new SafeSet();
+const gcPersistentSignals = new SafeSet();
 
 const kAborted = Symbol('kAborted');
 const kReason = Symbol('kReason');
 const kCloneData = Symbol('kCloneData');
 const kTimeout = Symbol('kTimeout');
+const kMakeTransferable = Symbol('kMakeTransferable');
+const kComposite = Symbol('kComposite');
+const kSourceSignals = Symbol('kSourceSignals');
+const kDependantSignals = Symbol('kDependantSignals');
 
 function customInspect(self, obj, depth, options) {
   if (depth < 0)
     return self;
 
   const opts = ObjectAssign({}, options, {
-    depth: options.depth === null ? null : options.depth - 1
+    depth: options.depth === null ? null : options.depth - 1,
   });
 
   return `${self.constructor.name} ${inspect(obj, opts)}`;
 }
 
-function validateAbortSignal(obj) {
+function validateThisAbortSignal(obj) {
   if (obj?.[kAborted] === undefined)
     throw new ERR_INVALID_THIS('AbortSignal');
 }
@@ -108,7 +121,7 @@ function setWeakAbortSignalTimeout(weakRef, delay) {
   const timeout = setTimeout(() => {
     const signal = weakRef.deref();
     if (signal !== undefined) {
-      timeOutSignals.delete(signal);
+      gcPersistentSignals.delete(signal);
       abortSignal(
         signal,
         new DOMException(
@@ -129,7 +142,7 @@ class AbortSignal extends EventTarget {
    * @type {boolean}
    */
   get aborted() {
-    validateAbortSignal(this);
+    validateThisAbortSignal(this);
     return !!this[kAborted];
   }
 
@@ -137,29 +150,30 @@ class AbortSignal extends EventTarget {
    * @type {any}
    */
   get reason() {
-    validateAbortSignal(this);
+    validateThisAbortSignal(this);
     return this[kReason];
   }
 
   throwIfAborted() {
-    if (this.aborted) {
-      throw this.reason;
+    validateThisAbortSignal(this);
+    if (this[kAborted]) {
+      throw this[kReason];
     }
   }
 
   [customInspectSymbol](depth, options) {
     return customInspect(this, {
-      aborted: this.aborted
+      aborted: this.aborted,
     }, depth, options);
   }
 
   /**
-   * @param {any} reason
+   * @param {any} [reason]
    * @returns {AbortSignal}
    */
   static abort(
     reason = new DOMException('This operation was aborted', 'AbortError')) {
-    return createAbortSignal(true, reason);
+    return createAbortSignal({ aborted: true, reason });
   }
 
   /**
@@ -167,7 +181,7 @@ class AbortSignal extends EventTarget {
    * @returns {AbortSignal}
    */
   static timeout(delay) {
-    validateUint32(delay, 'delay', true);
+    validateUint32(delay, 'delay', false);
     const signal = createAbortSignal();
     signal[kTimeout] = true;
     clearTimeoutRegistry.register(
@@ -176,30 +190,76 @@ class AbortSignal extends EventTarget {
     return signal;
   }
 
+  /**
+   * @param {AbortSignal[]} signals
+   * @returns {AbortSignal}
+   */
+  static any(signals) {
+    validateAbortSignalArray(signals, 'signals');
+    const resultSignal = createAbortSignal({ composite: true });
+    if (!signals.length) {
+      return resultSignal;
+    }
+    const resultSignalWeakRef = new WeakRef(resultSignal);
+    resultSignal[kSourceSignals] = new SafeSet();
+    for (let i = 0; i < signals.length; i++) {
+      const signal = signals[i];
+      if (signal.aborted) {
+        abortSignal(resultSignal, signal.reason);
+        return resultSignal;
+      }
+      signal[kDependantSignals] ??= new SafeSet();
+      if (!signal[kComposite]) {
+        resultSignal[kSourceSignals].add(new WeakRef(signal));
+        signal[kDependantSignals].add(resultSignalWeakRef);
+      } else if (!signal[kSourceSignals]) {
+        continue;
+      } else {
+        for (const sourceSignal of signal[kSourceSignals]) {
+          const sourceSignalRef = sourceSignal.deref();
+          if (!sourceSignalRef) {
+            continue;
+          }
+          assert(!sourceSignalRef.aborted);
+          assert(!sourceSignalRef[kComposite]);
+
+          if (resultSignal[kSourceSignals].has(sourceSignal)) {
+            continue;
+          }
+          resultSignal[kSourceSignals].add(sourceSignal);
+          sourceSignalRef[kDependantSignals].add(resultSignalWeakRef);
+        }
+      }
+    }
+    return resultSignal;
+  }
+
   [kNewListener](size, type, listener, once, capture, passive, weak) {
     super[kNewListener](size, type, listener, once, capture, passive, weak);
-    if (this[kTimeout] &&
+    const isTimeoutOrNonEmptyCompositeSignal = this[kTimeout] || (this[kComposite] && this[kSourceSignals]?.size);
+    if (isTimeoutOrNonEmptyCompositeSignal &&
         type === 'abort' &&
         !this.aborted &&
         !weak &&
         size === 1) {
-      // If this is a timeout signal, and we're adding a non-weak abort
+      // If this is a timeout signal, or a non-empty composite signal, and we're adding a non-weak abort
       // listener, then we don't want it to be gc'd while the listener
       // is attached and the timer still hasn't fired. So, we retain a
       // strong ref that is held for as long as the listener is registered.
-      timeOutSignals.add(this);
+      gcPersistentSignals.add(this);
     }
   }
 
   [kRemoveListener](size, type, listener, capture) {
     super[kRemoveListener](size, type, listener, capture);
-    if (this[kTimeout] && type === 'abort' && size === 0) {
-      timeOutSignals.delete(this);
+    const isTimeoutOrNonEmptyCompositeSignal = this[kTimeout] || (this[kComposite] && this[kSourceSignals]?.size);
+    if (isTimeoutOrNonEmptyCompositeSignal && type === 'abort' && size === 0) {
+      gcPersistentSignals.delete(this);
     }
   }
 
   [kTransfer]() {
-    validateAbortSignal(this);
+    validateThisAbortSignal(this);
     const aborted = this.aborted;
     if (aborted) {
       const reason = this.reason;
@@ -256,9 +316,9 @@ class AbortSignal extends EventTarget {
 }
 
 function ClonedAbortSignal() {
-  return createAbortSignal();
+  return createAbortSignal({ transferable: true });
 }
-ClonedAbortSignal.prototype[kDeserialize] = () => {};
+ClonedAbortSignal.prototype[kDeserialize] = () => { };
 
 ObjectDefineProperties(AbortSignal.prototype, {
   aborted: kEnumerableProperty,
@@ -274,12 +334,28 @@ ObjectDefineProperty(AbortSignal.prototype, SymbolToStringTag, {
 
 defineEventHandler(AbortSignal.prototype, 'abort');
 
-function createAbortSignal(aborted = false, reason = undefined) {
+/**
+ * @param {{
+ *   aborted? : boolean,
+ *   reason? : any,
+ *   transferable? : boolean,
+ *   composite? : boolean,
+ * }} [init]
+ * @returns {AbortSignal}
+ */
+function createAbortSignal(init = kEmptyObject) {
+  const {
+    aborted = false,
+    reason = undefined,
+    transferable = false,
+    composite = false,
+  } = init;
   const signal = new EventTarget();
   ObjectSetPrototypeOf(signal, AbortSignal.prototype);
   signal[kAborted] = aborted;
   signal[kReason] = reason;
-  return lazyMakeTransferable(signal);
+  signal[kComposite] = composite;
+  return transferable ? lazyMakeTransferable(signal) : signal;
 }
 
 function abortSignal(signal, reason) {
@@ -287,14 +363,17 @@ function abortSignal(signal, reason) {
   signal[kAborted] = true;
   signal[kReason] = reason;
   const event = new Event('abort', {
-    [kTrustEvent]: true
+    [kTrustEvent]: true,
   });
   signal.dispatchEvent(event);
+  signal[kDependantSignals]?.forEach((s) => {
+    const signalRef = s.deref();
+    if (signalRef) abortSignal(signalRef, reason);
+  });
 }
 
-// TODO(joyeecheung): V8 snapshot does not support instance member
-// initializers for now:
-// https://bugs.chromium.org/p/v8/issues/detail?id=10704
+// TODO(joyeecheung): use private fields and we'll get invalid access
+// validation from V8 instead of throwing ERR_INVALID_THIS ourselves.
 const kSignal = Symbol('signal');
 
 function validateAbortController(obj) {
@@ -316,7 +395,7 @@ class AbortController {
   }
 
   /**
-   * @param {any} reason
+   * @param {any} [reason]
    */
   abort(reason = new DOMException('This operation was aborted', 'AbortError')) {
     validateAbortController(this);
@@ -325,9 +404,51 @@ class AbortController {
 
   [customInspectSymbol](depth, options) {
     return customInspect(this, {
-      signal: this.signal
+      signal: this.signal,
     }, depth, options);
   }
+
+  static [kMakeTransferable]() {
+    const controller = new AbortController();
+    controller[kSignal] = transferableAbortSignal(controller[kSignal]);
+    return controller;
+  }
+}
+
+/**
+ * Enables the AbortSignal to be transferable using structuredClone/postMessage.
+ * @param {AbortSignal} signal
+ * @returns {AbortSignal}
+ */
+function transferableAbortSignal(signal) {
+  if (signal?.[kAborted] === undefined)
+    throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
+  return lazyMakeTransferable(signal);
+}
+
+/**
+ * Creates an AbortController with a transferable AbortSignal
+ */
+function transferableAbortController() {
+  return AbortController[kMakeTransferable]();
+}
+
+/**
+ * @param {AbortSignal} signal
+ * @param {any} resource
+ * @returns {Promise<void>}
+ */
+async function aborted(signal, resource) {
+  if (signal === undefined) {
+    throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
+  }
+  validateAbortSignal(signal, 'signal');
+  validateObject(resource, 'resource', { nullable: false, allowFunction: true, allowArray: true });
+  if (signal.aborted)
+    return PromiseResolve();
+  const abortPromise = createDeferredPromise();
+  signal.addEventListener('abort', abortPromise.resolve, { [kWeakHandler]: resource, once: true });
+  return abortPromise.promise;
 }
 
 ObjectDefineProperties(AbortController.prototype, {
@@ -344,8 +465,10 @@ ObjectDefineProperty(AbortController.prototype, SymbolToStringTag, {
 });
 
 module.exports = {
-  kAborted,
   AbortController,
   AbortSignal,
   ClonedAbortSignal,
+  aborted,
+  transferableAbortSignal,
+  transferableAbortController,
 };

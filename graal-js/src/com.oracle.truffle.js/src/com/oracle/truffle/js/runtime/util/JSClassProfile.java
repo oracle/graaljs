@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.util;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.nodes.NodeCloneable;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -52,10 +53,12 @@ public abstract class JSClassProfile extends NodeCloneable {
     JSClassProfile() {
     }
 
+    @NeverDefault
     public static JSClassProfile create() {
         return new JSClassProfile.Cached();
     }
 
+    @NeverDefault
     public static JSClassProfile getUncached() {
         return UNCACHED;
     }

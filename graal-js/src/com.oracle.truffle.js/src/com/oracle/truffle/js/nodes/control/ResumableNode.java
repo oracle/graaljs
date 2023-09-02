@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,10 +53,16 @@ public interface ResumableNode {
         throw CompilerDirectives.shouldNotReachHere();
     }
 
+    default JavaScriptNode asResumableNode(int stateSlot) {
+        return GeneratorWrapperNode.createWrapper((JavaScriptNode) this, stateSlot);
+    }
+
     static JavaScriptNode createResumableNode(ResumableNode node, int stateSlot) {
-        assert !(node instanceof SuspendNode) : node;
-        JavaScriptNode original = (JavaScriptNode) node;
-        return GeneratorWrapperNode.createWrapper(original, stateSlot);
+        assert !(node instanceof SuspendNode) && !(node instanceof GeneratorNode) : node;
+        JavaScriptNode generatorNode = node.asResumableNode(stateSlot);
+        assert generatorNode instanceof GeneratorNode : generatorNode;
+        JavaScriptNode.transferSourceSectionAndTags((JavaScriptNode) node, generatorNode);
+        return generatorNode;
     }
 
     default void resetState(VirtualFrame frame, int stateSlot) {

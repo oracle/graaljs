@@ -26,6 +26,7 @@
 .\"
 .\"======================================================================
 .
+.tr -\-^\(ha~\(ti`\(ga
 .Dd 2018
 .Dt NODE 1
 .
@@ -139,9 +140,6 @@ Requires Node.js to be built with
 .It Fl -enable-source-maps
 Enable Source Map V3 support for stack traces.
 .
-.It Fl -experimental-fetch
-Enable experimental support for the Fetch API.
-.
 .It Fl -experimental-global-customevent
 Expose the CustomEvent on the global scope.
 .
@@ -162,6 +160,15 @@ Enable experimental support for loading modules using `import` over `https:`.
 .It Fl -experimental-policy
 Use the specified file as a security policy.
 .
+.It Fl -experimental-shadow-realm
+Use this flag to enable ShadowRealm support.
+.
+.It Fl -experimental-test-coverage
+Enable code coverage in the test runner.
+.
+.It Fl -no-experimental-fetch
+Disable experimental support for the Fetch API.
+.
 .It Fl -no-experimental-repl-await
 Disable top-level await keyword support in REPL.
 .
@@ -172,7 +179,8 @@ Select extension resolution algorithm for ES Modules; either 'explicit' (default
 Enable experimental ES module support in VM module.
 .
 .It Fl -experimental-wasi-unstable-preview1
-Enable experimental WebAssembly System Interface support.
+Enable experimental WebAssembly System Interface support. This
+flag is no longer required as WASI is enabled by default.
 .
 .It Fl -experimental-wasm-modules
 Enable experimental WebAssembly module support.
@@ -282,6 +290,9 @@ It is kept for compatibility.
 .It Fl -no-deprecation
 Silence deprecation warnings.
 .
+.It Fl -no-extra-info-on-fatal-exception
+Hide extra information on fatal exception that causes exit.
+.
 .It Fl -no-force-async-hooks-checks
 Disable runtime checks for `async_hooks`.
 These will still be enabled dynamically when `async_hooks` is enabled.
@@ -383,6 +394,16 @@ Specify the minimum allocation from the OpenSSL secure heap. The default is 2. T
 .
 .It Fl -test
 Starts the Node.js command line test runner.
+.
+.It Fl -test-name-pattern
+A regular expression that configures the test runner to only execute tests
+whose name matches the provided pattern.
+.
+.It Fl -test-reporter
+A test reporter to use when running tests.
+.
+.It Fl -test-reporter-destination
+The destination for the corresponding test reporter.
 .
 .It Fl -test-only
 Configures the test runner to only execute top level tests that have the `only`

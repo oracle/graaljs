@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.util.Map;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -66,24 +64,18 @@ public final class JSWeakMap extends JSNonProxy implements JSConstructorFactory.
     private JSWeakMap() {
     }
 
-    public static JSWeakMapObject create(JSContext context, JSRealm realm) {
+    public static JSWeakMapObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
         WeakMap weakMap = new WeakMap();
         JSObjectFactory factory = context.getWeakMapFactory();
-        JSWeakMapObject obj = factory.initProto(new JSWeakMapObject(factory.getShape(realm), weakMap), realm);
-        return context.trackAllocation(obj);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static Map<Object, Object> getInternalWeakMap(JSDynamicObject obj) {
-        assert isJSWeakMap(obj);
-        return ((JSWeakMapObject) obj).getWeakHashMap();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSWeakMapObject(shape, proto, weakMap), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakMapPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;

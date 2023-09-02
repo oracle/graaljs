@@ -1,6 +1,6 @@
 
 suite = {
-  "mxversion" : "5.264.0",
+  "mxversion" : "6.27.1",
   "name" : "graal-nodejs",
   "versionConflictResolution" : "latest",
 
@@ -66,8 +66,19 @@ suite = {
         "coremodules",
       ],
       "class" : "GraalNodeJsProject",
-      "results" : ["Release/<exe:node>", "headers/include"],
-      "output" : "out"
+      "output" : "out",
+      "results" : [
+        "Release/<exe:node>",
+        "headers/include",
+      ],
+      "os" : {
+        "windows" : {},
+        "<others>" : {
+          "results" : [
+            "lib/<lib:jsig>",
+          ],
+        }
+      },
     },
     "com.oracle.truffle.trufflenode" : {
       "subDir" : "mx.graal-nodejs",
@@ -81,8 +92,8 @@ suite = {
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
-      "checkstyleVersion" : "8.36.1",
+      "javaCompliance" : "17+",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
     "com.oracle.truffle.trufflenode.test" : {
@@ -94,7 +105,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "spotbugs" : "true",
       "checkstyle" : "com.oracle.truffle.trufflenode",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript,NodeJS",
     },
     "coremodules" : {
@@ -109,11 +120,18 @@ suite = {
 
   "distributions" : {
     "TRUFFLENODE" : {
+      "moduleInfo" : {
+        "name" : "org.graalvm.nodejs",
+        "requires" : [
+          "org.graalvm.launcher",
+        ],
+      },
       "subdir" : "mx.graal-nodejs",
       "dependencies" : ["com.oracle.truffle.trufflenode"],
       "distDependencies" : [
         "graal-js:GRAALJS",
         "sdk:LAUNCHER_COMMON",
+        "sdk:JLINE3",
       ],
       "description" : "Graal Node.js",
       "maven" : {
@@ -136,8 +154,6 @@ suite = {
           },
           "dependency:trufflenodeNative/headers/include",
         ],
-        "LICENSE_GRAALNODEJS.txt" : "file:LICENSE_GRAAL_NODEJS",
-        "THIRD_PARTY_LICENSE_GRAALNODEJS.txt" : "file:LICENSE",
         "NODE_README.md" : "file:README.md",
         "native-image.properties": "file:mx.graal-nodejs/graal-nodejs-native-image.properties",
         "bin/" : [
@@ -147,8 +163,31 @@ suite = {
         ],
         "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
       },
+      "os" : {
+        "windows" : {},
+        "<others>" : {
+          "layout" : {
+            "lib/" : [
+              "dependency:trufflenodeNative/lib/<lib:jsig>",
+            ],
+          },
+        }
+      }
+    },
+    "TRUFFLENODE_GRAALVM_LICENSES" : {
+      "fileListPurpose": 'native-image-resources',
+      "native" : True,
+      "platformDependent" : False,
+      "description" : "Graal.nodejs license files for the GraalVM",
+      "layout" : {
+        "LICENSE_GRAALNODEJS.txt" : "file:LICENSE_GRAAL_NODEJS",
+        "THIRD_PARTY_LICENSE_GRAALNODEJS.txt" : "file:LICENSE",
+      },
     },
     "TRUFFLENODE_TEST" : {
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.trufflenode.test",
+      },
       "subdir" : "mx.graal-nodejs",
       "dependencies" : ["com.oracle.truffle.trufflenode.test"],
       "distDependencies" : [
@@ -157,7 +196,8 @@ suite = {
       "description" : "Graal Node.js testing",
       "maven" : {
         "artifactId" : "graal-nodejs-test",
-      }
+      },
+      "useModulePath": True,
     },
   },
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
@@ -58,7 +59,8 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSInputGeneratingNodeWrapper;
@@ -176,13 +178,15 @@ public abstract class JSNewNode extends JavaScriptNode {
         throw Errors.createTypeError("new cannot be used with non-public java type " + target.getTypeName() + ".");
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isForeignObject(target)"})
     public Object doNewForeignObject(VirtualFrame frame, Object target,
+                    @Bind("this") Node node,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                    @Cached("create()") ExportValueNode convert,
-                    @Cached("create()") ImportValueNode toJSType,
-                    @Cached("createBinaryProfile()") ConditionProfile isHostClassProf,
-                    @Cached("createBinaryProfile()") ConditionProfile isAbstractProf) {
+                    @Cached ExportValueNode convert,
+                    @Cached ImportValueNode toJSType,
+                    @Cached InlinedConditionProfile isHostClassProf,
+                    @Cached InlinedConditionProfile isAbstractProf) {
         Object newTarget = target;
         int count = arguments.getCount(frame);
         Object[] args = new Object[count];
@@ -194,9 +198,9 @@ public abstract class JSNewNode extends JavaScriptNode {
 
         if (!JSConfig.SubstrateVM && context.isOptionNashornCompatibilityMode()) {
             TruffleLanguage.Env env = getRealm().getEnv();
-            if (isHostClassProf.profile(count == 1 && env.isHostObject(target) && env.asHostObject(target) instanceof Class<?>)) {
+            if (isHostClassProf.profile(node, count == 1 && env.isHostObject(target) && env.asHostObject(target) instanceof Class<?>)) {
                 Class<?> javaType = (Class<?>) env.asHostObject(target);
-                if (isAbstractProf.profile(Modifier.isAbstract(javaType.getModifiers()) && !javaType.isArray())) {
+                if (isAbstractProf.profile(node, Modifier.isAbstract(javaType.getModifiers()) && !javaType.isArray())) {
                     newTarget = extend(javaType, env);
                 }
             }

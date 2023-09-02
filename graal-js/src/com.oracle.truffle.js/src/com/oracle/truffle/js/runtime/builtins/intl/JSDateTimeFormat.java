@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,43 +53,33 @@ import java.util.Set;
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.ibm.icu.text.ConstrainedFieldPosition;
-import com.ibm.icu.text.DateFormat;
-import com.ibm.icu.text.DateIntervalFormat;
-import com.ibm.icu.text.DateTimePatternGenerator;
-import com.ibm.icu.text.NumberingSystem;
-import com.ibm.icu.text.SimpleDateFormat;
-import com.ibm.icu.util.Calendar;
-import com.ibm.icu.util.GregorianCalendar;
-import com.ibm.icu.util.TimeZone;
-import com.ibm.icu.util.ULocale;
-import com.oracle.truffle.api.CallTarget;
+import org.graalvm.shadowed.com.ibm.icu.text.ConstrainedFieldPosition;
+import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
+import org.graalvm.shadowed.com.ibm.icu.text.DateIntervalFormat;
+import org.graalvm.shadowed.com.ibm.icu.text.DateTimePatternGenerator;
+import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
+import org.graalvm.shadowed.com.ibm.icu.text.SimpleDateFormat;
+import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
+import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -139,11 +129,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject numberFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
+        JSObjectUtil.putConstructorProperty(numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, DateTimeFormatPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(numberFormatPrototype, Strings.FORMAT, createFormatFunctionGetter(realm, ctx), Undefined.instance);
+        JSObjectUtil.putAccessorsFromContainer(realm, numberFormatPrototype, DateTimeFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(numberFormatPrototype, TO_STRING_TAG);
         return numberFormatPrototype;
     }
@@ -159,11 +148,20 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     public static JSDateTimeFormatObject create(JSContext context, JSRealm realm) {
-        InternalState state = new InternalState();
         JSObjectFactory factory = context.getDateTimeFormatFactory();
-        JSDateTimeFormatObject obj = new JSDateTimeFormatObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return create(factory, realm, factory.getPrototype(realm));
+    }
+
+    public static JSDateTimeFormatObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        JSObjectFactory factory = context.getDateTimeFormatFactory();
+        return create(factory, realm, proto);
+    }
+
+    private static JSDateTimeFormatObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
+        InternalState state = new InternalState();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSDateTimeFormatObject(shape, proto, state), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @TruffleBoundary
@@ -688,14 +686,23 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return false;
     }
 
-    public static DateFormat getDateFormatProperty(JSDynamicObject obj) {
-        return getInternalState(obj).dateFormat;
+    public static DateFormat getDateFormatProperty(JSDateTimeFormatObject obj) {
+        return obj.getInternalState().dateFormat;
+    }
+
+    private static String maybeReplaceNarrowSpaces(String formatted) {
+        if (!JSRealm.getMain(null).getContextOptions().allowNarrowSpacesInDateFormat()) {
+            return formatted.replace('\u202f', ' ');
+        }
+        return formatted;
     }
 
     @TruffleBoundary
-    public static TruffleString format(JSDynamicObject numberFormatObj, Object n) {
+    public static TruffleString format(JSDateTimeFormatObject numberFormatObj, Object n) {
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
-        return Strings.fromJavaString(dateFormat.format(timeClip(n)));
+        String formatted = dateFormat.format(timeClip(n));
+        formatted = maybeReplaceNarrowSpaces(formatted);
+        return Strings.fromJavaString(formatted);
     }
 
     private static double timeClip(Object n) {
@@ -748,7 +755,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj, Object n, String source) {
+    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDateTimeFormatObject numberFormatObj, Object n, String source) {
 
         DateFormat dateFormat = getDateFormatProperty(numberFormatObj);
         String yearPattern = yearRelatedSubpattern(dateFormat);
@@ -797,8 +804,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         return JSArray.createConstant(context, realm, resultParts.toArray());
     }
 
-    private static DateIntervalFormat.FormattedDateInterval formatRangeImpl(JSDynamicObject dateTimeFormat, double startDate, double endDate) {
-        InternalState state = getInternalState(dateTimeFormat);
+    private static DateIntervalFormat.FormattedDateInterval formatRangeImpl(JSDateTimeFormatObject dateTimeFormat, double startDate, double endDate) {
+        InternalState state = dateTimeFormat.getInternalState();
         DateFormat dateFormat = state.dateFormat;
         Calendar calendar = dateFormat.getCalendar();
         Calendar fromCalendar = ((Calendar) calendar.clone());
@@ -809,7 +816,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static TruffleString formatRange(JSDynamicObject dateTimeFormat, double startDate, double endDate) {
+    public static TruffleString formatRange(JSDateTimeFormatObject dateTimeFormat, double startDate, double endDate) {
         DateIntervalFormat.FormattedDateInterval formattedRange = formatRangeImpl(dateTimeFormat, startDate, endDate);
 
         if (dateFieldsPracticallyEqual(formattedRange)) {
@@ -830,7 +837,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatRangeToParts(JSContext context, JSRealm realm, JSDynamicObject dateTimeFormat, double startDate, double endDate) {
+    public static JSDynamicObject formatRangeToParts(JSContext context, JSRealm realm, JSDateTimeFormatObject dateTimeFormat, double startDate, double endDate) {
         DateIntervalFormat.FormattedDateInterval formattedRange = formatRangeImpl(dateTimeFormat, startDate, endDate);
 
         if (dateFieldsPracticallyEqual(formattedRange)) {
@@ -877,7 +884,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                 if (field == DateFormat.Field.YEAR) {
                     // DateFormat.Field.YEAR covers both "year" and "yearName"
                     if (digits == null) {
-                        String numberingSystem = getInternalState(dateTimeFormat).numberingSystem;
+                        String numberingSystem = dateTimeFormat.getInternalState().numberingSystem;
                         digits = NumberingSystem.getInstanceByName(numberingSystem).getDescription();
                     }
                     boolean year = (value.length() > 0) && (digits.indexOf(value.charAt(0)) != -1);
@@ -963,129 +970,78 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
 
         JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             JSObject result = JSOrdinary.create(context, realm);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
             if (calendar != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_CALENDAR, Strings.fromJavaString(calendar), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_CALENDAR, Strings.fromJavaString(calendar), JSAttributes.getDefault());
             }
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NUMBERING_SYSTEM, Strings.fromJavaString(numberingSystem), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NUMBERING_SYSTEM, Strings.fromJavaString(numberingSystem), JSAttributes.getDefault());
             if (timeZone != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TIME_ZONE, Strings.fromJavaString(timeZone), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TIME_ZONE, Strings.fromJavaString(timeZone), JSAttributes.getDefault());
             }
             if (hourCycle != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_HOUR_CYCLE, Strings.fromJavaString(hourCycle), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_HOUR_CYCLE, Strings.fromJavaString(hourCycle), JSAttributes.getDefault());
                 boolean hour12 = IntlUtil.H11.equals(hourCycle) || IntlUtil.H12.equals(hourCycle);
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_HOUR12, hour12, JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_HOUR12, hour12, JSAttributes.getDefault());
             }
             if (weekday != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_WEEKDAY, Strings.fromJavaString(weekday), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_WEEKDAY, Strings.fromJavaString(weekday), JSAttributes.getDefault());
             }
             if (era != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_ERA, Strings.fromJavaString(era), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ERA, Strings.fromJavaString(era), JSAttributes.getDefault());
             }
             if (year != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_YEAR, Strings.fromJavaString(year), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_YEAR, Strings.fromJavaString(year), JSAttributes.getDefault());
             }
             if (month != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MONTH, Strings.fromJavaString(month), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MONTH, Strings.fromJavaString(month), JSAttributes.getDefault());
             }
             if (day != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_DAY, Strings.fromJavaString(day), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_DAY, Strings.fromJavaString(day), JSAttributes.getDefault());
             }
             if (dayPeriod != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_DAY_PERIOD, Strings.fromJavaString(dayPeriod), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_DAY_PERIOD, Strings.fromJavaString(dayPeriod), JSAttributes.getDefault());
             }
             if (hour != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_HOUR, Strings.fromJavaString(hour), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_HOUR, Strings.fromJavaString(hour), JSAttributes.getDefault());
             }
             if (minute != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MINUTE, Strings.fromJavaString(minute), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MINUTE, Strings.fromJavaString(minute), JSAttributes.getDefault());
             }
             if (second != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_SECOND, Strings.fromJavaString(second), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_SECOND, Strings.fromJavaString(second), JSAttributes.getDefault());
             }
             if (fractionalSecondDigits != 0) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_FRACTIONAL_SECOND_DIGITS, fractionalSecondDigits, JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_FRACTIONAL_SECOND_DIGITS, fractionalSecondDigits, JSAttributes.getDefault());
             }
             if (timeZoneName != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TIME_ZONE_NAME, Strings.fromJavaString(timeZoneName), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TIME_ZONE_NAME, Strings.fromJavaString(timeZoneName), JSAttributes.getDefault());
             }
             if (dateStyle != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_DATE_STYLE, Strings.fromJavaString(dateStyle), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_DATE_STYLE, Strings.fromJavaString(dateStyle), JSAttributes.getDefault());
             }
             if (timeStyle != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TIME_STYLE, Strings.fromJavaString(timeStyle), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TIME_STYLE, Strings.fromJavaString(timeStyle), JSAttributes.getDefault());
             }
             return result;
+        }
+
+        public boolean isInitialized() {
+            return initialized;
+        }
+
+        public JSDynamicObject getBoundFormatFunction() {
+            return boundFormatFunction;
+        }
+
+        public void setBoundFormatFunction(JSDynamicObject boundFormatFunction) {
+            this.boundFormatFunction = boundFormatFunction;
         }
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj) {
-        InternalState state = getInternalState(numberFormatObj);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSDateTimeFormatObject dateTimeFormatObj) {
+        InternalState state = dateTimeFormatObj.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject obj) {
-        assert isJSDateTimeFormat(obj);
-        return ((JSDateTimeFormatObject) obj).getInternalState();
-    }
-
-    private static CallTarget createGetFormatCallTarget(JSContext context) {
-        return new JavaScriptRootNode(context.getLanguage(), null, null) {
-            private final BranchProfile errorBranch = BranchProfile.create();
-            @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-
-                Object[] frameArgs = frame.getArguments();
-                Object dateTimeFormatObj = JSArguments.getThisObject(frameArgs);
-
-                if (isJSDateTimeFormat(dateTimeFormatObj)) {
-
-                    InternalState state = getInternalState((JSDynamicObject) dateTimeFormatObj);
-
-                    if (state == null || !state.initialized) {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
-                    }
-
-                    if (state.boundFormatFunction == null) {
-                        JSFunctionData formatFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.DateTimeFormatFormat, c -> createFormatFunctionData(c));
-                        JSDynamicObject formatFn = JSFunction.create(getRealm(), formatFunctionData);
-                        setBoundObjectNode.setValue(formatFn, dateTimeFormatObj);
-                        state.boundFormatFunction = formatFn;
-                    }
-
-                    return state.boundFormatFunction;
-                }
-                errorBranch.enter();
-                throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
-            }
-        }.getCallTarget();
-    }
-
-    private static JSFunctionData createFormatFunctionData(JSContext context) {
-        return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] arguments = frame.getArguments();
-                JSDynamicObject thisObj = (JSDynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
-                assert isJSDateTimeFormat(thisObj);
-                Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
-                return format(thisObj, n);
-            }
-        }.getCallTarget(), 1, Strings.EMPTY_STRING);
-    }
-
-    private static JSDynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {
-        JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.DateTimeFormatGetFormat, (c) -> {
-            CallTarget ct = createGetFormatCallTarget(context);
-            return JSFunctionData.create(context, ct, ct, 0, GET_FORMAT_NAME, false, false, false, true);
-        });
-        return JSFunction.create(realm, fd);
     }
 
     @Override

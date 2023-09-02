@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,11 +51,14 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltins;
+import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
+import com.oracle.truffle.js.runtime.objects.AsyncContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -73,12 +76,15 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     private JSFinalizationRegistry() {
     }
 
-    public static JSFinalizationRegistryObject create(JSContext context, JSRealm realm, Object cleanupCallback) {
+    public static JSFinalizationRegistryObject create(JSContext context, JSRealm realm, JSDynamicObject proto, JobCallback cleanupCallback) {
+        ArrayList<FinalizationRecord> cells = new ArrayList<>();
+        ReferenceQueue<Object> referenceQueue = createReferenceQueue();
         JSObjectFactory factory = context.getFinalizationRegistryFactory();
-        JSFinalizationRegistryObject obj = factory.initProto(new JSFinalizationRegistryObject(factory.getShape(realm), cleanupCallback, new ArrayList<>(), createReferenceQueue()), realm);
-        context.registerFinalizationRegistry(obj);
-        context.trackAllocation(obj);
-        return obj;
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSFinalizationRegistryObject(shape, proto, cleanupCallback, cells, referenceQueue), realm, proto);
+        JSFinalizationRegistryObject registryObj = factory.trackAllocation(newObj);
+        context.registerFinalizationRegistry(registryObj);
+        return registryObj;
     }
 
     @TruffleBoundary
@@ -88,9 +94,8 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
 
     @Override
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, FinalizationRegistryPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;
@@ -154,11 +159,25 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
 
     @TruffleBoundary
     public static void cleanupFinalizationRegistry(JSFinalizationRegistryObject finalizationRegistry, Object callbackArg) {
-        Object callback = callbackArg == Undefined.instance ? finalizationRegistry.getCleanupCallback() : callbackArg;
+        JSAgent agent = JSRealm.get(null).getAgent();
+        Object callback;
+        AsyncContext asyncContext = null;
+        if (callbackArg == Undefined.instance) {
+            callback = finalizationRegistry.getCleanupCallback().callback();
+            asyncContext = finalizationRegistry.getCleanupCallback().asyncContextSnapshot();
+        } else {
+            callback = callbackArg;
+            asyncContext = agent.getAsyncContextMapping();
+        }
         FinalizationRecord cell;
         while ((cell = removeCellEmptyTarget(finalizationRegistry)) != null) {
             assert (cell.getWeakRefTarget().get() == null);
-            JSRuntime.call(callback, Undefined.instance, new Object[]{cell.getHeldValue()});
+            AsyncContext previousContextMapping = agent.asyncContextSwap(asyncContext);
+            try {
+                JSRuntime.call(callback, Undefined.instance, new Object[]{cell.getHeldValue()});
+            } finally {
+                agent.asyncContextSwap(previousContextMapping);
+            }
         }
     }
 
@@ -185,7 +204,7 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
         // Cleared WeakReferences may not appear in ReferenceQueue immediatelly
         // but V8 tests expect the invocation of the callbacks as soon as possible
         // => do not wait for enqueuing in TestV8 mode.
-        boolean performCleanup = queueNotEmpty || JSObject.getJSContext(finalizationRegistry).getContextOptions().isTestV8Mode();
+        boolean performCleanup = queueNotEmpty || JSObject.getJSContext(finalizationRegistry).getLanguageOptions().testV8Mode();
         if (performCleanup) {
             // empty the ReferenceQueue
             Object o;

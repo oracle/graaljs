@@ -164,7 +164,7 @@ const win32 = {
       let path;
       if (i >= 0) {
         path = args[i];
-        validateString(path, 'path');
+        validateString(path, `paths[${i}]`);
 
         // Skip empty entries
         if (path.length === 0) {
@@ -1064,7 +1064,7 @@ const win32 = {
   sep: '\\',
   delimiter: ';',
   win32: null,
-  posix: null
+  posix: null,
 };
 
 const posixCwd = (() => {
@@ -1094,8 +1094,7 @@ const posix = {
 
     for (let i = args.length - 1; i >= -1 && !resolvedAbsolute; i--) {
       const path = i >= 0 ? args[i] : posixCwd();
-
-      validateString(path, 'path');
+      validateString(path, `paths[${i}]`);
 
       // Skip empty entries
       if (path.length === 0) {
@@ -1530,7 +1529,7 @@ const posix = {
   sep: '/',
   delimiter: ':',
   win32: null,
-  posix: null
+  posix: null,
 };
 
 posix.win32 = win32.win32 = win32;

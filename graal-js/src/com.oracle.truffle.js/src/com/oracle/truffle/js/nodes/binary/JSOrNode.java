@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,14 +42,19 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @NodeInfo(shortName = "||")
-public final class JSOrNode extends JSLogicalNode {
+public abstract class JSOrNode extends JSLogicalNode {
 
     @Child private JSToBooleanNode toBooleanCast = JSToBooleanNode.create();
 
@@ -58,37 +63,58 @@ public final class JSOrNode extends JSLogicalNode {
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
-        return new JSOrNode(left, right);
+        return JSOrNodeGen.create(left, right);
     }
 
     public static JavaScriptNode createNotUndefinedOr(JavaScriptNode left, JavaScriptNode right) {
-        return new NotUndefinedOrNode(left, right);
+        return NotUndefinedOrNodeGen.create(left, right);
     }
 
-    @Override
-    protected boolean useLeftValue(Object leftValue) {
-        return toBooleanCast.executeBoolean(leftValue);
+    @Specialization
+    protected Object doBoolean(VirtualFrame frame, boolean leftValue,
+                    @Cached @Shared("profile") InlinedConditionProfile canShortCircuit) {
+        if (canShortCircuit.profile(this, leftValue)) {
+            return leftValue;
+        } else {
+            return rightNode.execute(frame);
+        }
+    }
+
+    @Specialization(replaces = "doBoolean")
+    protected Object doGeneric(VirtualFrame frame, Object leftValue,
+                    @Cached(inline = true) JSToBooleanNode toBoolean,
+                    @Cached @Shared("profile") InlinedConditionProfile canShortCircuit) {
+        if (canShortCircuit.profile(this, toBoolean.executeBoolean(this, leftValue))) {
+            return leftValue;
+        } else {
+            return rightNode.execute(frame);
+        }
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new JSOrNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
+        return create(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
 }
 
-final class NotUndefinedOrNode extends JSLogicalNode {
+abstract class NotUndefinedOrNode extends JSLogicalNode {
 
     NotUndefinedOrNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
     }
 
-    @Override
-    protected boolean useLeftValue(Object leftValue) {
-        return leftValue != Undefined.instance;
+    @Specialization
+    protected Object doGeneric(VirtualFrame frame, Object leftValue,
+                    @Cached InlinedConditionProfile canShortCircuit) {
+        if (canShortCircuit.profile(this, leftValue != Undefined.instance)) {
+            return leftValue;
+        } else {
+            return rightNode.execute(frame);
+        }
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new NotUndefinedOrNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
+        return NotUndefinedOrNodeGen.create(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
 }

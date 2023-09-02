@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,9 @@
 package com.oracle.truffle.trufflenode.node;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.List;
+
+import org.graalvm.collections.EconomicSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -55,8 +56,10 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
@@ -346,45 +349,47 @@ public class ExecuteNativePropertyHandlerNode extends JavaScriptRootNode {
         PropertyHandler indexedHandler = template.getIndexedPropertyHandler();
         PropertyHandler namedHandler = template.getNamedPropertyHandler();
         JSDynamicObject proxy = (JSDynamicObject) holder;
+        JSDynamicObject target = (JSDynamicObject) arguments[2];
 
-        Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], arguments[2]);
-        JSDynamicObject ownKeys = null;
-        if (namedHandler != null && namedHandler.getEnumerator() != 0) {
-            ownKeys = (JSDynamicObject) NativeAccess.executePropertyHandlerEnumerator(namedHandler.getEnumerator(), holder, nativeCallArgs, namedHandler.getData());
-        }
+        Object[] nativeCallArgs = JSArguments.create(proxy, arguments[1], target);
+        List<Object> ownKeys = new ArrayList<>();
+        EconomicSet<Object> ownKeysSet = EconomicSet.create();
+
+        // Note: the indexed and the named handler may both return the same result.
+        // This is currently the case for the global object template of ContextifyContext.
         if (indexedHandler != null && indexedHandler.getEnumerator() != 0) {
-            JSDynamicObject ownKeys2 = (JSDynamicObject) NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandler.getData());
-            if (JSArray.isJSArray(ownKeys2)) {
-                // indexed handler returns array of numbers but we need an array of property keys
-                long length = JSAbstractArray.arrayGetLength(ownKeys2);
-                for (long i = 0; i < length; i++) {
-                    Object key = JSObject.get(ownKeys2, i);
-                    JSObject.set(ownKeys2, i, JSRuntime.toString(key));
-                }
-                ownKeys = concatArrays(ownKeys, ownKeys2);
+            Object handlerResult = NativeAccess.executePropertyHandlerEnumerator(indexedHandler.getEnumerator(), holder, nativeCallArgs, indexedHandler.getData());
+            if (handlerResult instanceof JSArrayObject resultArray) {
+                addKeysFromHandlerResultArray(resultArray, ownKeys, ownKeysSet);
             }
         }
-        if (!JSArray.isJSArray(ownKeys)) {
-            ownKeys = JSArray.createEmpty(context, getRealm(), 0);
+
+        if (namedHandler != null && namedHandler.getEnumerator() != 0) {
+            Object handlerResult = NativeAccess.executePropertyHandlerEnumerator(namedHandler.getEnumerator(), holder, nativeCallArgs, namedHandler.getData());
+            if (handlerResult instanceof JSArrayObject resultArray) {
+                addKeysFromHandlerResultArray(resultArray, ownKeys, ownKeysSet);
+            }
         }
-        return ownKeys;
+
+        List<Object> targetList = JSObject.ownPropertyKeys(target);
+        for (Object propertyKey : targetList) {
+            if (ownKeysSet.add(propertyKey)) {
+                ownKeys.add(propertyKey);
+            }
+        }
+
+        return JSArray.createConstant(context, getRealm(), ownKeys.toArray(ScriptArray.EMPTY_OBJECT_ARRAY));
     }
 
-    private JSDynamicObject concatArrays(JSDynamicObject array1, JSDynamicObject array2) {
-        if (JSArray.isJSArray(array1)) {
-            if (JSArray.isJSArray(array2)) {
-                List<Object> keys = new ArrayList<>(Arrays.asList(JSArray.toArray(array1)));
-                for (Object key : JSArray.toArray(array2)) {
-                    if (!keys.contains(key)) {
-                        keys.add(key);
-                    }
-                }
-                return JSArray.createConstant(context, getRealm(), keys.toArray());
-            } else {
-                return array1;
+    private static void addKeysFromHandlerResultArray(JSArrayObject resultArray, List<Object> keys, EconomicSet<Object> keysSet) {
+        long length = JSAbstractArray.arrayGetLength(resultArray);
+        for (long i = 0; i < length; i++) {
+            Object key = JSObject.get(resultArray, i);
+            // handler returns numeric keys as numbers but we need an array of property keys
+            Object propertyKey = JSRuntime.isPropertyKey(key) ? key : JSRuntime.toString(key);
+            if (keysSet.add(propertyKey)) {
+                keys.add(propertyKey);
             }
-        } else {
-            return array2;
         }
     }
 

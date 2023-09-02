@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,20 +42,17 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins;
@@ -74,11 +71,12 @@ import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
-import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadIntArrayMemberNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadMemberNode;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.InteropReadStringMemberNode;
-import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResultNode;
-import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResult;
 
 public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
@@ -102,6 +100,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     public static final TruffleString INDEX = Strings.constant("index");
     public static final TruffleString INDICES = Strings.constant("indices");
     public static final TruffleString HAS_INDICES = Strings.constant("hasIndices");
+    public static final TruffleString UNICODE_SETS = Strings.constant("unicodeSets");
 
     public static final PropertyProxy LAZY_INDEX_PROXY = new LazyRegexResultIndexProxyProperty();
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
@@ -117,7 +116,8 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
         @Override
         public Object get(JSDynamicObject object) {
-            return TRegexUtil.InvokeGetGroupBoundariesMethodNode.getUncached().execute(arrayGetRegexResult(object, DynamicObjectLibrary.getUncached()), TRegexUtil.Props.RegexResult.GET_START, 0);
+            Object regexResult = arrayGetRegexResult(object, DynamicObjectLibrary.getUncached());
+            return InvokeGetGroupBoundariesMethodNode.getUncached().execute(null, regexResult, TRegexUtil.Props.RegexResult.GET_START, 0);
         }
 
         @TruffleBoundary
@@ -130,35 +130,32 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
 
     public static final class LazyNamedCaptureGroupProperty extends PropertyProxy {
 
-        private final JSContext context;
+        private final int[] groupIndices;
         private final TruffleString groupName;
-        private final int groupIndex;
-        private final ConditionProfile isIndicesObject = ConditionProfile.createBinaryProfile();
 
-        public LazyNamedCaptureGroupProperty(JSContext context, TruffleString groupName, int groupIndex) {
-            this.context = context;
+        public LazyNamedCaptureGroupProperty(TruffleString groupName, int[] groupIndices) {
+            this.groupIndices = groupIndices;
             this.groupName = groupName;
-            this.groupIndex = groupIndex;
         }
 
-        public int getGroupIndex() {
-            return groupIndex;
+        public int[] getGroupIndices() {
+            return groupIndices;
         }
-
-        private final TRegexMaterializeResultNode materializeNode = TRegexMaterializeResultNode.getUncached();
 
         @Override
         public Object get(JSDynamicObject object) {
             JSRegExpGroupsObject groups = (JSRegExpGroupsObject) object;
             Object regexResult = groups.getRegexResult();
-            if (isIndicesObject.profile(groups.isIndices())) {
-                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentLanguage().getJSContext(), TRegexResultAccessor.getUncached(), regexResult, groupIndex);
+            if (groups.isIndices()) {
+                return LazyRegexResultIndicesArray.getIntIndicesArray(JavaScriptLanguage.getCurrentLanguage().getJSContext(), regexResult, groupIndices,
+                                null, InvokeGetGroupBoundariesMethodNode.getUncached(), InvokeGetGroupBoundariesMethodNode.getUncached());
             } else {
                 TruffleString input = groups.getInputString();
-                return materializeNode.materializeGroup(context, regexResult, groupIndex, input);
+                return TRegexMaterializeResult.materializeGroupUncached(regexResult, groupIndices, input);
             }
         }
 
+        @TruffleBoundary
         @Override
         public boolean set(JSDynamicObject object, Object value) {
             JSObjectUtil.defineDataProperty(object, groupName, value, JSAttributes.getDefault());
@@ -169,6 +166,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     private JSRegExp() {
     }
 
+    @NeverDefault
     public static Object getCompiledRegex(JSDynamicObject thisObj) {
         assert isJSRegExp(thisObj);
         return ((JSRegExpObject) thisObj).getCompiledRegex();
@@ -200,8 +198,15 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     public static JSRegExpObject create(JSContext ctx, JSRealm realm, Object compiledRegex) {
         JSObjectFactory groupsFactory = computeGroupsFactory(ctx, compiledRegex);
         JSRegExpObject obj = create(ctx, realm, compiledRegex, groupsFactory);
-        JSObjectUtil.putDataProperty(ctx, obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(obj, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         return obj;
+    }
+
+    /**
+     * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
+     */
+    public static JSRegExpObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object compiledRegex, JSObjectFactory groupsFactory) {
+        return create(context, realm, proto, compiledRegex, groupsFactory, true);
     }
 
     /**
@@ -214,9 +219,23 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     /**
      * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
      */
+    public static JSRegExpObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+        JSObjectFactory factory = context.getRegExpFactory();
+        return create(factory, realm, proto, compiledRegex, groupsFactory, legacyFeaturesEnabled);
+    }
+
+    /**
+     * Creates a new JavaScript RegExp object <em>without</em> a {@code lastIndex} property.
+     */
     public static JSRegExpObject create(JSContext context, JSRealm realm, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
-        JSRegExpObject regExp = JSRegExpObject.create(realm, context.getRegExpFactory(), compiledRegex, groupsFactory, legacyFeaturesEnabled);
-        return context.trackAllocation(regExp);
+        JSObjectFactory factory = context.getRegExpFactory();
+        return create(factory, realm, factory.getPrototype(realm), compiledRegex, groupsFactory, legacyFeaturesEnabled);
+    }
+
+    private static JSRegExpObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, Object compiledRegex, JSObjectFactory groupsFactory, boolean legacyFeaturesEnabled) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSRegExpObject(shape, proto, compiledRegex, groupsFactory, realm, legacyFeaturesEnabled), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     private static void initialize(JSContext ctx, JSDynamicObject regExp, Object regex) {
@@ -229,14 +248,16 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         initialize(ctx, thisObj, regex);
     }
 
-    public static JSDynamicObject createGroupsObject(JSContext context, JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
-        JSDynamicObject obj = JSRegExpGroupsObject.create(realm, groupsFactory, regexResult, input, isIndices);
-        return context.trackAllocation(obj);
+    public static JSDynamicObject createGroupsObject(JSRealm realm, JSObjectFactory groupsFactory, Object regexResult, TruffleString input, boolean isIndices) {
+        var proto = groupsFactory.getPrototype(realm);
+        var shape = groupsFactory.getShape(realm, proto);
+        var newObj = groupsFactory.initProto(new JSRegExpGroupsObject(shape, proto, regexResult, input, isIndices), realm, proto);
+        return groupsFactory.trackAllocation(newObj);
     }
 
     @TruffleBoundary
     private static JSObjectFactory computeGroupsFactory(JSContext ctx, Object compiledRegex) {
-        Object namedCaptureGroups = TRegexUtil.InteropReadMemberNode.getUncached().execute(compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
+        Object namedCaptureGroups = InteropReadMemberNode.getUncached().execute(null, compiledRegex, TRegexUtil.Props.CompiledRegex.GROUPS);
         if (InteropLibrary.getUncached().isNull(namedCaptureGroups)) {
             return null;
         } else {
@@ -244,30 +265,19 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         }
     }
 
-    private static final Comparator<Pair<Integer, TruffleString>> NAMED_GROUPS_COMPARATOR = new Comparator<>() {
-        @Override
-        public int compare(Pair<Integer, TruffleString> group1, Pair<Integer, TruffleString> group2) {
-            return group1.getFirst() - group2.getFirst();
-        }
-    };
-
     @TruffleBoundary
     public static JSObjectFactory buildGroupsFactory(JSContext ctx, Object namedCaptureGroups) {
         try {
             Shape groupsShape = ctx.getRegExpGroupsEmptyShape();
-            List<Object> keys = JSInteropUtil.keys(namedCaptureGroups);
-            List<Pair<Integer, TruffleString>> pairs = new ArrayList<>(keys.size());
-            for (Object key : keys) {
-                int groupIndex = TRegexUtil.InteropReadIntMemberNode.getUncached().execute(namedCaptureGroups, InteropLibrary.getUncached().asString(key));
-                TruffleString groupName = InteropLibrary.getUncached().asTruffleString(key);
-                pairs.add(new Pair<>(groupIndex, groupName));
-            }
-            Collections.sort(pairs, NAMED_GROUPS_COMPARATOR);
             Shape.DerivedBuilder builder = Shape.newBuilder(groupsShape);
-            for (Pair<Integer, TruffleString> pair : pairs) {
-                int groupIndex = pair.getFirst();
-                TruffleString groupName = pair.getSecond();
-                builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(ctx, groupName, groupIndex), JSAttributes.getDefault() | JSProperty.PROXY);
+            List<Object> keys = JSInteropUtil.keys(namedCaptureGroups);
+            int firstIndexOfLastGroup = 0;
+            for (Object key : keys) {
+                int[] groupIndices = InteropReadIntArrayMemberNode.getUncached().execute(null, namedCaptureGroups, InteropLibrary.getUncached().asString(key));
+                assert groupIndices[0] > firstIndexOfLastGroup;
+                firstIndexOfLastGroup = groupIndices[0];
+                TruffleString groupName = Strings.interopAsTruffleString(key);
+                builder.addConstantProperty(groupName, new LazyNamedCaptureGroupProperty(groupName, groupIndices), JSAttributes.getDefault() | JSProperty.PROXY);
             }
             groupsShape = builder.build();
             return JSObjectFactory.createBound(ctx, Null.instance, groupsShape);
@@ -284,12 +294,13 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     @TruffleBoundary
     public static TruffleString prototypeToString(JSDynamicObject thisObj) {
         Object regex = getCompiledRegex(thisObj);
-        InteropReadStringMemberNode readString = TRegexUtil.InteropReadStringMemberNode.getUncached();
-        TruffleString pattern = readString.execute(regex, TRegexUtil.Props.CompiledRegex.PATTERN);
+        InteropReadStringMemberNode readString = InteropReadStringMemberNode.getUncached();
+        TruffleString pattern = readString.execute(null, regex, TRegexUtil.Props.CompiledRegex.PATTERN);
         if (Strings.length(pattern) == 0) {
             pattern = Strings.EMPTY_REGEX;
         }
-        TruffleString flags = readString.execute(TRegexUtil.InteropReadMemberNode.getUncached().execute(regex, TRegexUtil.Props.CompiledRegex.FLAGS), TRegexUtil.Props.Flags.SOURCE);
+        Object regexFlags = TRegexUtil.InteropReadMemberNode.getUncached().execute(null, regex, TRegexUtil.Props.CompiledRegex.FLAGS);
+        TruffleString flags = readString.execute(null, regexFlags, TRegexUtil.Props.Flags.SOURCE);
         return Strings.concatAll(Strings.SLASH, pattern, Strings.SLASH, flags);
     }
 
@@ -304,9 +315,9 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         JSDynamicObject prototype;
         if (ctx.getEcmaScriptVersion() < 6) {
             Shape shape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-            prototype = JSRegExpObject.create(shape, es5GetEmptyRegexEarly(realm), realm);
+            prototype = JSRegExpObject.create(shape, realm.getObjectPrototype(), es5GetEmptyRegexEarly(realm), realm);
             JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
-            JSObjectUtil.putDataProperty(ctx, prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(prototype, LAST_INDEX, 0, JSAttributes.notConfigurableNotEnumerableWritable());
         } else {
             prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         }
@@ -326,8 +337,11 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         if (ctx.isOptionRegexpMatchIndices()) {
             putRegExpPropertyAccessor(realm, prototype, HAS_INDICES);
         }
+        if (ctx.isOptionRegexpUnicodeSets()) {
+            putRegExpPropertyAccessor(realm, prototype, UNICODE_SETS);
+        }
         // ctor and functions
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, RegExpPrototypeBuiltins.BUILTINS);
         return prototype;
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -59,7 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -136,22 +138,28 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         return null;
     }
 
-    public abstract static class CallSiteOperation extends JSBuiltinNode {
+    protected abstract static class CallSiteOperation extends JSBuiltinNode {
         @Child private PropertyGetNode getStackTraceElementNode;
         private final BranchProfile errorBranch = BranchProfile.create();
 
-        public CallSiteOperation(JSContext context, JSBuiltin builtin) {
+        protected CallSiteOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getStackTraceElementNode = PropertyGetNode.createGetHidden(JSError.STACK_TRACE_ELEMENT_PROPERTY_NAME, context);
         }
 
-        protected final JSStackTraceElement getStackTraceElement(JSDynamicObject thisObj) {
+        protected final JSStackTraceElement getStackTraceElement(JSObject thisObj) {
             Object element = getStackTraceElementNode.getValue(thisObj);
             if (!(element instanceof JSStackTraceElement)) {
                 errorBranch.enter();
                 throw Errors.createTypeError("Expected CallSite as receiver");
             }
             return (JSStackTraceElement) element;
+        }
+
+        @TruffleBoundary(transferToInterpreterOnException = false)
+        @Fallback
+        protected final Object incompatibleReceiver(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }
     }
 
@@ -164,7 +172,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        final int getNumber(JSDynamicObject thisObj) {
+        final int getNumber(JSObject thisObj) {
             JSStackTraceElement stackTraceElement = getStackTraceElement(thisObj);
             switch (method) {
                 case getLineNumber:
@@ -188,7 +196,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        final Object getFunctionName(JSDynamicObject thisObj) {
+        final Object get(JSObject thisObj) {
             JSStackTraceElement stackTraceElement = getStackTraceElement(thisObj);
             switch (method) {
                 case getFunction:
@@ -257,7 +265,7 @@ public final class CallSitePrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @Specialization
-        final boolean getBoolean(JSDynamicObject thisObj) {
+        final boolean getBoolean(JSObject thisObj) {
             JSStackTraceElement stackTraceElement = getStackTraceElement(thisObj);
             switch (method) {
                 case isConstructor:

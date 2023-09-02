@@ -7,6 +7,9 @@ prefix sequential
 [true] # This section applies to all platforms
 # https://github.com/nodejs/node/issues/27611#issuecomment-613100468
 test-cpu-prof-dir-worker: PASS, FLAKY
+# https://github.com/nodejs/node/issues/44898
+test-watch-mode: PASS, FLAKY
+test-watch-mode-inspect: PASS, FLAKY
 
 ### Graal.js-specific ###
 
@@ -24,7 +27,10 @@ test-vm-timeout-escape-promise-module-2: FAIL
 test-worker-prof: FAIL
 
 # Unclassified
+test-gc-http-client: SKIP
+test-gc-http-client-timeout: SKIP
 test-vm-break-on-sigint: FAIL
+test-watch-mode: SKIP
 test-worker-http2-stream-terminate: SKIP
 
 [$system==solaris]
@@ -37,12 +43,20 @@ test-child-process-pass-fd: SKIP
 # Triggers stack-overflow that may not be handled well
 test-fs-stat-sync-overflow: SKIP
 
-# Needs too many system resources (starts 80 child processes)
+# Needs too many system resources
 test-child-process-pass-fd: SKIP
+test-worker-fshandles-error-on-termination: SKIP
+test-worker-fshandles-open-close-on-termination: SKIP
+
+[$system==macos]
+# setrlimit to increase file descriptor limit failed, errno 22
+test-child-process-emfile: SKIP
 
 ### Graal-specific end ###
 
 [$system==win32]
+# https://github.com/nodejs/node/issues/47116
+test-http-max-sockets: PASS, FLAKY
 
 [$system==linux]
 

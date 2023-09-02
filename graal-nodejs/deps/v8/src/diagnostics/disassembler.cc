@@ -128,8 +128,11 @@ const char* V8NameConverter::RootRelativeName(int offset) const {
   const unsigned kRootsTableSize = sizeof(RootsTable);
   const int kExtRefsTableStart = IsolateData::external_reference_table_offset();
   const unsigned kExtRefsTableSize = ExternalReferenceTable::kSizeInBytes;
-  const int kBuiltinsTableStart = IsolateData::builtins_table_offset();
-  const unsigned kBuiltinsTableSize =
+  const int kBuiltinTier0TableStart = IsolateData::builtin_tier0_table_offset();
+  const unsigned kBuiltinTier0TableSize =
+      Builtins::kBuiltinTier0Count * kSystemPointerSize;
+  const int kBuiltinTableStart = IsolateData::builtin_table_offset();
+  const unsigned kBuiltinTableSize =
       Builtins::kBuiltinCount * kSystemPointerSize;
 
   if (static_cast<unsigned>(offset - kRootsTableStart) < kRootsTableSize) {
@@ -143,7 +146,6 @@ const char* V8NameConverter::RootRelativeName(int offset) const {
 
     SNPrintF(v8_buffer_, "root (%s)", RootsTable::name(root_index));
     return v8_buffer_.begin();
-
   } else if (static_cast<unsigned>(offset - kExtRefsTableStart) <
              kExtRefsTableSize) {
     uint32_t offset_in_extref_table = offset - kExtRefsTableStart;
@@ -162,17 +164,24 @@ const char* V8NameConverter::RootRelativeName(int offset) const {
              isolate_->external_reference_table()->NameFromOffset(
                  offset_in_extref_table));
     return v8_buffer_.begin();
-
-  } else if (static_cast<unsigned>(offset - kBuiltinsTableStart) <
-             kBuiltinsTableSize) {
-    uint32_t offset_in_builtins_table = (offset - kBuiltinsTableStart);
+  } else if (static_cast<unsigned>(offset - kBuiltinTier0TableStart) <
+             kBuiltinTier0TableSize) {
+    uint32_t offset_in_builtins_table = (offset - kBuiltinTier0TableStart);
 
     Builtin builtin =
         Builtins::FromInt(offset_in_builtins_table / kSystemPointerSize);
     const char* name = Builtins::name(builtin);
     SNPrintF(v8_buffer_, "builtin (%s)", name);
     return v8_buffer_.begin();
+  } else if (static_cast<unsigned>(offset - kBuiltinTableStart) <
+             kBuiltinTableSize) {
+    uint32_t offset_in_builtins_table = (offset - kBuiltinTableStart);
 
+    Builtin builtin =
+        Builtins::FromInt(offset_in_builtins_table / kSystemPointerSize);
+    const char* name = Builtins::name(builtin);
+    SNPrintF(v8_buffer_, "builtin (%s)", name);
+    return v8_buffer_.begin();
   } else {
     // It must be a direct access to one of the external values.
     if (directly_accessed_external_refs_.empty()) {
@@ -234,11 +243,7 @@ static void PrintRelocInfo(std::ostringstream& out, Isolate* isolate,
   } else if (RelocInfo::IsEmbeddedObjectMode(rmode)) {
     HeapStringAllocator allocator;
     StringStream accumulator(&allocator);
-    if (relocinfo->host().is_null()) {
-      relocinfo->target_object_no_host(isolate).ShortPrint(&accumulator);
-    } else {
-      relocinfo->target_object().ShortPrint(&accumulator);
-    }
+    relocinfo->target_object(isolate).ShortPrint(&accumulator);
     std::unique_ptr<char[]> obj_name = accumulator.ToCString();
     const bool is_compressed = RelocInfo::IsCompressedEmbeddedObject(rmode);
     out << "    ;; " << (is_compressed ? "(compressed) " : "")
@@ -273,7 +278,7 @@ static void PrintRelocInfo(std::ostringstream& out, Isolate* isolate,
     Address addr = relocinfo->target_address();
     DeoptimizeKind type;
     if (Deoptimizer::IsDeoptimizationEntry(isolate, addr, &type)) {
-      out << "    ;; " << Deoptimizer::MessageFor(type, false)
+      out << "    ;; " << Deoptimizer::MessageFor(type)
           << " deoptimization bailout";
     } else {
       out << "    ;; " << RelocInfo::RelocModeName(rmode);
@@ -297,8 +302,8 @@ static int DecodeIt(Isolate* isolate, ExternalReferenceEncoder* ref_encoder,
   CodeCommentsIterator cit(code.code_comments(), code.code_comments_size());
   // Relocation exists if we either have no isolate (wasm code),
   // or we have an isolate and it is not an off-heap instruction stream.
-  if (!isolate ||
-      !InstructionStream::PcIsOffHeap(isolate, bit_cast<Address>(begin))) {
+  if (!isolate || !OffHeapInstructionStream::PcIsOffHeap(
+                      isolate, bit_cast<Address>(begin))) {
     it = new RelocIterator(code);
   } else {
     // No relocation information when printing code stubs.
@@ -416,8 +421,8 @@ static int DecodeIt(Isolate* isolate, ExternalReferenceEncoder* ref_encoder,
     // bytes, a constant could accidentally match with the bit-pattern checked
     // by IsInConstantPool() below.
     if (pcs.empty() && !code.is_null() && !decoding_constant_pool) {
-      RelocInfo dummy_rinfo(reinterpret_cast<Address>(prev_pc), RelocInfo::NONE,
-                            0, Code());
+      RelocInfo dummy_rinfo(reinterpret_cast<Address>(prev_pc),
+                            RelocInfo::NO_INFO, 0, Code());
       if (dummy_rinfo.IsInConstantPool()) {
         Address constant_pool_entry_address =
             dummy_rinfo.constant_pool_entry_address();

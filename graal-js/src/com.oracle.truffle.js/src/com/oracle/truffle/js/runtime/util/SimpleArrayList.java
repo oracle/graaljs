@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,9 @@ import java.util.StringJoiner;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 /**
  * A simple array-based quasi list. Prepared for use-cases in Graal/Truffle to avoid
@@ -67,7 +69,7 @@ public class SimpleArrayList<E> {
     }
 
     public SimpleArrayList(int capacity) {
-        elements = new Object[capacity];
+        elements = capacity != 0 ? new Object[capacity] : ScriptArray.EMPTY_OBJECT_ARRAY;
     }
 
     public static <E> SimpleArrayList<E> create(long maxAssumedLength) {
@@ -75,8 +77,17 @@ public class SimpleArrayList<E> {
         return new SimpleArrayList<>((int) Math.min(maxAssumedLength, 100));
     }
 
-    public void add(E e, BranchProfile growProfile) {
-        ensureCapacity(size + 1, growProfile);
+    public static <E> SimpleArrayList<E> createEmpty() {
+        return new SimpleArrayList<>(0);
+    }
+
+    public void add(E e, Node node, InlinedBranchProfile growProfile) {
+        ensureCapacity(size + 1, node, growProfile);
+        elements[size++] = e;
+    }
+
+    public void addUncached(E e) {
+        ensureCapacity(size + 1, null, InlinedBranchProfile.getUncached());
         elements[size++] = e;
     }
 
@@ -120,9 +131,9 @@ public class SimpleArrayList<E> {
         return a;
     }
 
-    private void ensureCapacity(int minCapacity, BranchProfile growProfile) {
+    private void ensureCapacity(int minCapacity, Node node, InlinedBranchProfile growProfile) {
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.UNLIKELY_PROBABILITY, elements.length < minCapacity)) {
-            growProfile.enter();
+            growProfile.enter(node);
             ensureCapacityIntl(minCapacity);
         }
     }

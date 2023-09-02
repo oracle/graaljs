@@ -5,8 +5,13 @@ const {
   PromiseResolve,
   SafePromiseAll,
   SafePromisePrototypeFinally,
+  TypedArrayPrototypeGetBuffer,
+  TypedArrayPrototypeGetByteOffset,
+  TypedArrayPrototypeGetByteLength,
   Uint8Array,
 } = primordials;
+
+const { TextEncoder } = require('internal/encoding');
 
 const {
   ReadableStream,
@@ -32,7 +37,6 @@ const {
 const {
   isDestroyed,
   isReadable,
-  isReadableEnded,
   isWritable,
   isWritableEnded,
 } = require('internal/streams/utils');
@@ -55,10 +59,12 @@ const {
 const {
   createDeferredPromise,
   kEmptyObject,
+  normalizeEncoding,
 } = require('internal/util');
 
 const {
   validateBoolean,
+  validateFunction,
   validateObject,
 } = require('internal/validators');
 
@@ -73,6 +79,8 @@ const {
 const finished = require('internal/streams/end-of-stream');
 
 const { UV_EOF } = internalBinding('uv');
+
+const encoder = new TextEncoder();
 
 /**
  * @typedef {import('../../stream').Writable} Writable
@@ -94,11 +102,17 @@ function newWritableStreamFromStreamWritable(streamWritable) {
   // here because it will return false if streamWritable is a Duplex
   // whose writable option is false. For a Duplex that is not writable,
   // we want it to pass this check but return a closed WritableStream.
-  if (typeof streamWritable?._writableState !== 'object') {
+  // We check if the given stream is a stream.Writable or http.OutgoingMessage
+  const checkIfWritableOrOutgoingMessage =
+    streamWritable &&
+    typeof streamWritable?.write === 'function' &&
+    typeof streamWritable?.on === 'function';
+  if (!checkIfWritableOrOutgoingMessage) {
     throw new ERR_INVALID_ARG_TYPE(
       'streamWritable',
       'stream.Writable',
-      streamWritable);
+      streamWritable,
+    );
   }
 
   if (isDestroyed(streamWritable) || !isWritable(streamWritable)) {
@@ -256,11 +270,18 @@ function newStreamWritableFromWritableStream(writableStream, options = kEmptyObj
 
     write(chunk, encoding, callback) {
       if (typeof chunk === 'string' && decodeStrings && !objectMode) {
-        chunk = Buffer.from(chunk, encoding);
-        chunk = new Uint8Array(
-          chunk.buffer,
-          chunk.byteOffset,
-          chunk.byteLength);
+        const enc = normalizeEncoding(encoding);
+
+        if (enc === 'utf8') {
+          chunk = encoder.encode(chunk);
+        } else {
+          chunk = Buffer.from(chunk, encoding);
+          chunk = new Uint8Array(
+            TypedArrayPrototypeGetBuffer(chunk),
+            TypedArrayPrototypeGetByteOffset(chunk),
+            TypedArrayPrototypeGetByteLength(chunk),
+          );
+        }
       }
 
       function done(error) {
@@ -357,10 +378,14 @@ function newStreamWritableFromWritableStream(writableStream, options = kEmptyObj
 }
 
 /**
+ * @typedef {import('./queuingstrategies').QueuingStrategy} QueuingStrategy
  * @param {Readable} streamReadable
+ * @param {{
+ *  strategy : QueuingStrategy
+ * }} [options]
  * @returns {ReadableStream}
  */
-function newReadableStreamFromStreamReadable(streamReadable) {
+function newReadableStreamFromStreamReadable(streamReadable, options = kEmptyObject) {
   // Not using the internal/streams/utils isReadableNodeStream utility
   // here because it will return false if streamReadable is a Duplex
   // whose readable option is false. For a Duplex that is not readable,
@@ -380,14 +405,26 @@ function newReadableStreamFromStreamReadable(streamReadable) {
 
   const objectMode = streamReadable.readableObjectMode;
   const highWaterMark = streamReadable.readableHighWaterMark;
-  // When not running in objectMode explicitly, we just fall
-  // back to a minimal strategy that just specifies the highWaterMark
-  // and no size algorithm. Using a ByteLengthQueuingStrategy here
-  // is unnecessary.
-  const strategy =
-    objectMode ?
-      new CountQueuingStrategy({ highWaterMark }) :
-      { highWaterMark };
+
+  const evaluateStrategyOrFallback = (strategy) => {
+    // If there is a strategy available, use it
+    if (strategy)
+      return strategy;
+
+    if (objectMode) {
+      // When running in objectMode explicitly but no strategy, we just fall
+      // back to CountQueuingStrategy
+      return new CountQueuingStrategy({ highWaterMark });
+    }
+
+    // When not running in objectMode explicitly, we just fall
+    // back to a minimal strategy that just specifies the highWaterMark
+    // and no size algorithm. Using a ByteLengthQueuingStrategy here
+    // is unnecessary.
+    return { highWaterMark };
+  };
+
+  const strategy = evaluateStrategyOrFallback(options?.strategy);
 
   let controller;
 
@@ -512,8 +549,6 @@ function newStreamReadableFromReadableStream(readableStream, options = kEmptyObj
     reader.closed,
     () => {
       closed = true;
-      if (!isReadableEnded(readable))
-        readable.push(null);
     },
     (error) => {
       closed = true;
@@ -535,7 +570,7 @@ function newStreamReadableFromReadableStream(readableStream, options = kEmptyObj
  */
 function newReadableWritablePairFromDuplex(duplex) {
   // Not using the internal/streams/utils isWritableNodeStream and
-  // isReadableNodestream utilities here because they will return false
+  // isReadableNodeStream utilities here because they will return false
   // if the duplex was created with writable or readable options set to
   // false. Instead, we'll check the readable and writable state after
   // and return closed WritableStream or closed ReadableStream as
@@ -661,11 +696,18 @@ function newStreamDuplexFromReadableWritablePair(pair = kEmptyObject, options = 
 
     write(chunk, encoding, callback) {
       if (typeof chunk === 'string' && decodeStrings && !objectMode) {
-        chunk = Buffer.from(chunk, encoding);
-        chunk = new Uint8Array(
-          chunk.buffer,
-          chunk.byteOffset,
-          chunk.byteLength);
+        const enc = normalizeEncoding(encoding);
+
+        if (enc === 'utf8') {
+          chunk = encoder.encode(chunk);
+        } else {
+          chunk = Buffer.from(chunk, encoding);
+          chunk = new Uint8Array(
+            TypedArrayPrototypeGetBuffer(chunk),
+            TypedArrayPrototypeGetByteOffset(chunk),
+            TypedArrayPrototypeGetByteLength(chunk),
+          );
+        }
       }
 
       function done(error) {
@@ -778,8 +820,6 @@ function newStreamDuplexFromReadableWritablePair(pair = kEmptyObject, options = 
     reader.closed,
     () => {
       readableClosed = true;
-      if (!isReadableEnded(duplex))
-        duplex.push(null);
     },
     (error) => {
       writableClosed = true;
@@ -885,8 +925,7 @@ function newReadableStreamFromStreamBase(streamBase, strategy, options = kEmptyO
   if (typeof streamBase.onread === 'function')
     throw new ERR_INVALID_STATE('StreamBase already has a consumer');
 
-  if (typeof ondone !== 'function')
-    throw new ERR_INVALID_ARG_TYPE('options.ondone', 'Function', ondone);
+  validateFunction(ondone, 'options.ondone');
 
   let controller;
 

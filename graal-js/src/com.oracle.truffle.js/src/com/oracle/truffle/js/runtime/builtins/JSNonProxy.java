@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -118,7 +118,7 @@ public abstract class JSNonProxy extends JSClass {
     @Override
     public Object getHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
         Object value = getOwnHelper(store, thisObj, key, encapsulatingNode);
-        if (value != null) {
+        if (value != null || JSRuntime.isPrivateSymbol(key)) {
             return value;
         } else {
             return getPropertyHelperGeneric(thisObj, store, key, encapsulatingNode);
@@ -401,6 +401,13 @@ public abstract class JSNonProxy extends JSClass {
             return false;
         }
 
+        JSContext context = JSObject.getJSContext(thisObj);
+        if (JSShape.hasNoElementsAssumption(thisObj)) {
+            if (context.getArrayPrototypeNoElementsAssumption().isValid() && (isIndex || JSRuntime.isArrayIndex(key))) {
+                context.getArrayPrototypeNoElementsAssumption().invalidate("Set element on an Array prototype");
+            }
+        }
+
         if (JSConfig.DictionaryObject) {
             boolean isDictionaryObject = JSDictionary.isJSDictionaryObject(thisObj);
             if (!isDictionaryObject && isDictionaryObjectCandidate(thisObj, isIndex)) {
@@ -414,8 +421,7 @@ public abstract class JSNonProxy extends JSClass {
         }
 
         // add it here
-        JSContext context = JSObject.getJSContext(thisObj);
-        JSObjectUtil.putDataProperty(context, thisObj, key, value, JSAttributes.getDefault());
+        JSObjectUtil.defineDataProperty(context, thisObj, key, value, JSAttributes.getDefault());
         return true;
     }
 
@@ -470,6 +476,8 @@ public abstract class JSNonProxy extends JSClass {
             Object value = JSDynamicObject.getOrNull(thisObj, key);
             if (JSProperty.isProxy(prop)) {
                 value = ((PropertyProxy) value).get(thisObj);
+            } else {
+                assert !JSProperty.isDataSpecial(prop) : prop;
             }
             desc = PropertyDescriptor.createData(value);
             desc.setWritable(JSProperty.isWritable(prop));
@@ -623,7 +631,26 @@ public abstract class JSNonProxy extends JSClass {
             boolean success = Properties.putIfPresentUncached(thisObj, JSObject.HIDDEN_PROTO, newPrototype);
             assert success;
         }
+        validatePrototypeAssumptions(thisObj, newPrototype);
         return true;
+    }
+
+    /**
+     * If this object is an Array instance, the %Array.prototype%, or an Array subclass prototype,
+     * changing the prototype invalidates the assumption that there are no elements on the prototype
+     * chain of arrays, unless the new prototype is either already marked and vetted, or null.
+     */
+    private static void validatePrototypeAssumptions(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
+        if (JSShape.isArrayPrototypeOrDerivative(thisObj) || JSArray.isJSArray(thisObj)) {
+            /*
+             * Setting the prototype to *null* is always OK. If [[SetPrototypeOf]] is ever called
+             * with another prototype object, we'll repeat this check anyway.
+             */
+            if (newPrototype != Null.instance && !JSShape.hasNoElementsAssumption(newPrototype)) {
+                String reason = JSShape.isArrayPrototypeOrDerivative(newPrototype) ? "Prototype of Array prototype changed" : "Prototype of Array changed";
+                JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(reason);
+            }
+        }
     }
 
     public static boolean checkProtoCycle(JSDynamicObject thisObj, JSDynamicObject newPrototype) {

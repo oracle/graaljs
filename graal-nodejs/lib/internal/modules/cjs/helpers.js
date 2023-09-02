@@ -14,10 +14,11 @@ const {
   StringPrototypeStartsWith,
 } = primordials;
 const {
+  ERR_INVALID_ARG_TYPE,
   ERR_MANIFEST_DEPENDENCY_MISSING,
-  ERR_UNKNOWN_BUILTIN_MODULE
+  ERR_UNKNOWN_BUILTIN_MODULE,
 } = require('internal/errors').codes;
-const { NativeModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule } = require('internal/bootstrap/loaders');
 
 const { validateString } = require('internal/validators');
 const path = require('path');
@@ -26,6 +27,12 @@ const { pathToFileURL, fileURLToPath, URL } = require('internal/url');
 const { getOptionValue } = require('internal/options');
 const { setOwnProperty } = require('internal/util');
 const userConditions = getOptionValue('--conditions');
+
+const {
+  privateSymbols: {
+    require_private_symbol,
+  },
+} = internalBinding('util');
 
 let debug = require('internal/util/debuglog').debuglog('module', (fn) => {
   debug = fn;
@@ -42,14 +49,20 @@ const cjsConditions = new SafeSet([
   ...userConditions,
 ]);
 
-function loadNativeModule(filename, request) {
-  const mod = NativeModule.map.get(filename);
+function loadBuiltinModule(filename, request) {
+  const mod = BuiltinModule.map.get(filename);
   if (mod?.canBeRequiredByUsers) {
-    debug('load native module %s', request);
+    debug('load built-in module %s', request);
     // compileForPublicLoader() throws if mod.canBeRequiredByUsers is false:
     mod.compileForPublicLoader();
     return mod;
   }
+}
+
+let $Module = null;
+function lazyModule() {
+  $Module = $Module || require('internal/modules/cjs/loader').Module;
+  return $Module;
 }
 
 // Invoke with makeRequireFunction(module) where |module| is the Module object
@@ -57,7 +70,11 @@ function loadNativeModule(filename, request) {
 // Use redirects to set up a mapping from a policy and restrict dependencies
 const urlToFileCache = new SafeMap();
 function makeRequireFunction(mod, redirects) {
-  const Module = mod.constructor;
+  // lazy due to cycle
+  const Module = lazyModule();
+  if (mod instanceof Module !== true) {
+    throw new ERR_INVALID_ARG_TYPE('mod', 'Module', mod);
+  }
 
   let require;
   if (redirects) {
@@ -73,7 +90,7 @@ function makeRequireFunction(mod, redirects) {
         const href = destination.href;
         if (destination.protocol === 'node:') {
           const specifier = destination.pathname;
-          const mod = loadNativeModule(specifier, href);
+          const mod = loadBuiltinModule(specifier, href);
           if (mod && mod.canBeRequiredByUsers) {
             return mod.exports;
           }
@@ -86,20 +103,21 @@ function makeRequireFunction(mod, redirects) {
             filepath = fileURLToPath(destination);
             urlToFileCache.set(href, filepath);
           }
-          return mod.require(filepath);
+          return mod[require_private_symbol](mod, filepath);
         }
       }
       if (missing) {
         reaction(new ERR_MANIFEST_DEPENDENCY_MISSING(
           id,
           specifier,
-          ArrayPrototypeJoin([...conditions], ', ')
+          ArrayPrototypeJoin([...conditions], ', '),
         ));
       }
-      return mod.require(specifier);
+      return mod[require_private_symbol](mod, specifier);
     };
   } else {
     require = function require(path) {
+      // When no policy manifest, the original prototype.require is sustained
       return mod.require(path);
     };
   }
@@ -176,22 +194,25 @@ function addBuiltinLibsToObject(object, dummyModuleName) {
       get: () => {
         const lib = dummyModule.require(name);
 
-        // Disable the current getter/setter and set up a new
-        // non-enumerable property.
-        delete object[name];
-        ObjectDefineProperty(object, name, {
-          __proto__: null,
-          get: () => lib,
-          set: setReal,
-          configurable: true,
-          enumerable: false
-        });
+        try {
+          // Override the current getter/setter and set up a new
+          // non-enumerable property.
+          ObjectDefineProperty(object, name, {
+            __proto__: null,
+            get: () => lib,
+            set: setReal,
+            configurable: true,
+            enumerable: false,
+          });
+        } catch {
+          // If the property is no longer configurable, ignore the error.
+        }
 
         return lib;
       },
       set: setReal,
       configurable: true,
-      enumerable: false
+      enumerable: false,
     });
   });
 }
@@ -230,7 +251,7 @@ module.exports = {
   addBuiltinLibsToObject,
   cjsConditions,
   hasEsmSyntax,
-  loadNativeModule,
+  loadBuiltinModule,
   makeRequireFunction,
   normalizeReferrerURL,
   stripBOM,

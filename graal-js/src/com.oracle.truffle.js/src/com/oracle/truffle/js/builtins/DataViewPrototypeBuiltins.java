@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,18 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.util.EnumSet;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewGetNodeGen;
+import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewGetterNodeGen;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltinsFactory.DataViewSetNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
@@ -98,7 +101,12 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         setInt32(2),
         setUint8(2),
         setUint16(2),
-        setUint32(2);
+        setUint32(2),
+
+        // getters
+        buffer(0),
+        byteLength(0),
+        byteOffset(0);
 
         private final int length;
 
@@ -109,6 +117,11 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return EnumSet.of(buffer, byteLength, byteOffset).contains(this);
         }
     }
 
@@ -137,6 +150,10 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             case setUint32:
             case setUint8:
                 return DataViewSetNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
+            case buffer:
+            case byteLength:
+            case byteOffset:
+                return DataViewGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -144,15 +161,12 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     @ImportStatic({JSDataView.class})
     public abstract static class DataViewAccessNode extends JSBuiltinNode {
         protected final TypedArrayFactory factory;
-        @Child protected JSToBooleanNode toBooleanNode;
         @Child private InteropLibrary interopLibrary;
-        protected final BranchProfile errorBranch = BranchProfile.create();
 
         public DataViewAccessNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             // string doesn't escape
             this.factory = typedArrayFactoryFromType(Strings.lazySubstring(builtin.getName(), 3));
-            this.toBooleanNode = factory.getBytesPerElement() == 1 ? null : JSToBooleanNode.create();
         }
 
         private static TypedArrayFactory typedArrayFactoryFromType(TruffleString type) {
@@ -173,20 +187,20 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return lib;
         }
 
-        protected final void ensureNotDetached(JSArrayBufferObject buffer) {
+        protected final void ensureNotDetached(JSArrayBufferObject buffer, InlinedBranchProfile errorBranch) {
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid()) {
                 if (JSArrayBuffer.isDetachedBuffer(buffer)) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeErrorDetachedBuffer();
                 }
             }
         }
 
-        protected final int getBufferIndex(JSDataViewObject dataView, long getIndex) {
+        protected final int getBufferIndex(JSDataViewObject dataView, long getIndex, InlinedBranchProfile errorBranch) {
             int viewLength = JSDataView.typedArrayGetLength(dataView);
             int elementSize = factory.getBytesPerElement();
             if (getIndex + elementSize > viewLength) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("index + elementSize > viewLength");
             }
             int viewOffset = JSDataView.typedArrayGetOffset(dataView);
@@ -205,18 +219,20 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         protected final Object doDataView(JSDataViewObject dataView, Object byteOffset, Object littleEndian,
-                        @Cached("create()") JSToIndexNode toIndexNode,
-                        @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
-                        @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
+                        @Cached JSToIndexNode toIndexNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedExactClassProfile bufferTypeProfile,
+                        @Cached InlinedExactClassProfile arrayTypeProfile) {
             long getIndex = toIndexNode.executeLong(byteOffset);
-            boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(littleEndian);
+            boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
-            JSArrayBufferObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
-            ensureNotDetached(buffer);
-            int bufferIndex = getBufferIndex(dataView, getIndex);
+            JSArrayBufferObject buffer = bufferTypeProfile.profile(this, JSDataView.getArrayBuffer(dataView));
+            ensureNotDetached(buffer, errorBranch);
+            int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch);
 
             boolean isInteropBuffer = JSArrayBuffer.isJSInteropArrayBuffer(buffer);
-            TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, isInteropBuffer));
+            TypedArray strategy = arrayTypeProfile.profile(this, factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, isInteropBuffer));
             return strategy.getBufferElement(buffer, bufferIndex, isLittleEndian, isInteropBuffer ? getInterop() : null);
         }
 
@@ -242,19 +258,21 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         protected Object doDataView(JSDataViewObject dataView, Object byteOffset, Object value, Object littleEndian,
-                        @Cached("create()") JSToIndexNode toIndexNode,
-                        @Cached("createClassProfile()") ValueProfile bufferTypeProfile,
-                        @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
+                        @Cached JSToIndexNode toIndexNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedExactClassProfile bufferTypeProfile,
+                        @Cached InlinedExactClassProfile arrayTypeProfile) {
             long getIndex = toIndexNode.executeLong(byteOffset);
             Object numberValue = factory.isBigInt() ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
-            boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(littleEndian);
+            boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
-            JSArrayBufferObject buffer = bufferTypeProfile.profile(JSDataView.getArrayBuffer(dataView));
-            ensureNotDetached(buffer);
-            int bufferIndex = getBufferIndex(dataView, getIndex);
+            JSArrayBufferObject buffer = bufferTypeProfile.profile(this, JSDataView.getArrayBuffer(dataView));
+            ensureNotDetached(buffer, errorBranch);
+            int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch);
 
             boolean isInteropBuffer = JSArrayBuffer.isJSInteropArrayBuffer(buffer);
-            TypedArray strategy = arrayTypeProfile.profile(factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, isInteropBuffer));
+            TypedArray strategy = arrayTypeProfile.profile(this, factory.createArrayType(JSArrayBuffer.isJSDirectOrSharedArrayBuffer(buffer), true, isInteropBuffer));
             strategy.setBufferElement(buffer, bufferIndex, isLittleEndian, numberValue, isInteropBuffer ? getInterop() : null);
             return Undefined.instance;
         }
@@ -262,6 +280,47 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSDataView(thisObj)")
         protected JSDynamicObject doIncompatibleReceiver(Object thisObj, Object byteOffset, Object value, Object littleEndian) {
+            throw Errors.createTypeErrorNotADataView();
+        }
+    }
+
+    @ImportStatic({JSDataView.class})
+    public abstract static class DataViewGetterNode extends JSBuiltinNode {
+
+        private final DataViewPrototype getter;
+
+        public DataViewGetterNode(JSContext context, JSBuiltin builtin, DataViewPrototype getter) {
+            super(context, builtin);
+            this.getter = getter;
+        }
+
+        @Specialization
+        protected final Object doDataView(JSDataViewObject dataView,
+                        @Cached InlinedBranchProfile errorBranch) {
+            JSArrayBufferObject arrayBuffer = JSDataView.getArrayBuffer(dataView);
+            switch (getter) {
+                case buffer:
+                    return arrayBuffer;
+                case byteLength:
+                    if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
+                        errorBranch.enter(this);
+                        throw Errors.createTypeErrorDetachedBuffer();
+                    }
+                    return JSDataView.typedArrayGetLength(dataView);
+                case byteOffset:
+                    if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
+                        errorBranch.enter(this);
+                        throw Errors.createTypeErrorDetachedBuffer();
+                    }
+                    return JSDataView.typedArrayGetOffset(dataView);
+                default:
+                    throw Errors.shouldNotReachHere();
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isJSDataView(thisObj)")
+        protected Object doIncompatibleReceiver(Object thisObj) {
             throw Errors.createTypeErrorNotADataView();
         }
     }

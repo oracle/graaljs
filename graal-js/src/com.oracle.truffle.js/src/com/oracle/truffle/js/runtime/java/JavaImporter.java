@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,9 +86,10 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
 
     public static JavaImporterObject create(JSContext context, JSRealm realm, Object[] value) {
         JSObjectFactory factory = context.getJavaImporterFactory();
-        JavaImporterObject obj = new JavaImporterObject(factory.getShape(realm), value);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JavaImporterObject(shape, proto, value), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static boolean isJavaImporter(Object obj) {
@@ -118,7 +119,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
                     }
                 } else {
                     try {
-                        if (name.equals(InteropLibrary.getUncached().asTruffleString(InteropLibrary.getUncached().getMetaSimpleName(anImport)))) {
+                        if (Strings.equals(name, Strings.interopAsTruffleString(InteropLibrary.getUncached().getMetaSimpleName(anImport)))) {
                             return anImport;
                         }
                     } catch (UnsupportedMessageException e) {
@@ -142,10 +143,9 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
 
     @Override
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
-        JSContext context = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
-        JSObjectUtil.putConstructorProperty(context, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         return prototype;
     }
 

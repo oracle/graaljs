@@ -44,7 +44,7 @@ const {
   codes: {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
-  }
+  },
 } = require('internal/errors');
 
 const {
@@ -57,6 +57,8 @@ const {
   kHandle,
 } = require('internal/crypto/util');
 
+let lazyTranslatePeerCertificate;
+
 const kInternalState = Symbol('kInternalState');
 
 function isX509Certificate(value) {
@@ -66,8 +68,7 @@ function isX509Certificate(value) {
 function getFlags(options = kEmptyObject) {
   validateObject(options, 'options');
   const {
-    // TODO(tniessen): change the default to 'default'
-    subject = 'always',  // Can be 'default', 'always', or 'never'
+    subject = 'default',  // Can be 'default', 'always', or 'never'
     wildcards = true,
     partialWildcards = true,
     multiLabelWildcards = false,
@@ -124,7 +125,7 @@ class X509Certificate extends JSTransferable {
 
     const opts = {
       ...options,
-      depth: options.depth == null ? null : options.depth - 1
+      depth: options.depth == null ? null : options.depth - 1,
     };
 
     return `X509Certificate ${inspect({
@@ -146,7 +147,7 @@ class X509Certificate extends JSTransferable {
     const handle = this[kHandle];
     return {
       data: { handle },
-      deserializeInfo: 'internal/crypto/x509:InternalX509Certificate'
+      deserializeInfo: 'internal/crypto/x509:InternalX509Certificate',
     };
   }
 
@@ -347,7 +348,11 @@ class X509Certificate extends JSTransferable {
   }
 
   toLegacyObject() {
-    return this[kHandle].toLegacy();
+    // TODO(tniessen): do not depend on translatePeerCertificate here, return
+    // the correct legacy representation from the binding
+    lazyTranslatePeerCertificate ??=
+      require('_tls_common').translatePeerCertificate;
+    return lazyTranslatePeerCertificate(this[kHandle].toLegacy());
   }
 }
 

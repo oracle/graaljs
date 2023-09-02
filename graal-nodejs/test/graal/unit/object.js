@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -163,7 +163,7 @@ describe('Object', function () {
             var names = module.Object_GetOwnPropertyNames(o);
             assert.strictEqual(names.length, 0);
         });
-        if (typeof java === 'object') {
+        if (module.hasJavaInterop()) {
             it('should work for foreign objects', function () {
                 var point = new java.awt.Point();
                 var names = module.Object_GetOwnPropertyNames(point);
@@ -226,7 +226,7 @@ describe('Object', function () {
             assert.strictEqual(names[1], 'b');
             assert.strictEqual(names[2], 'c');
         });
-        if (typeof java === 'object') {
+        if (module.hasJavaInterop()) {
             it('should work for foreign objects', function () {
                 var point = new java.awt.Point();
                 var names = module.Object_GetPropertyNames(point);
@@ -497,7 +497,7 @@ describe('Object', function () {
                 module.Object_SetIntegrityLevel(proxy, false);
             }, TypeError);
         });
-        if (typeof java === 'object') {
+        if (module.hasJavaInterop()) {
             var point = new java.awt.Point();
             it('should not crash for foreign objects (freeze)', function () {
                 assert.strictEqual(module.Object_SetIntegrityLevel(point, true), true);
@@ -506,5 +506,88 @@ describe('Object', function () {
                 assert.strictEqual(module.Object_SetIntegrityLevel(point, false), true);
             });
         }
+    });
+    describe('CreateDataProperty', function () {
+        describe('name version', function () {
+            it('should create data property', function () {
+                var o = {};
+                var key = 'foo';
+                assert.strictEqual(module.Object_CreateDataProperty(o, key, 42), true);
+                var desc = Object.getOwnPropertyDescriptor(o, key);
+                assert.strictEqual(desc.value, 42);
+                assert.strictEqual(desc.configurable, true);
+                assert.strictEqual(desc.enumerable, true);
+                assert.strictEqual(desc.writable, true);
+            });
+            it('should not override existing non-configurable property', function () {
+                var o = {};
+                var key = 'foo';
+                Object.defineProperty(o, key, { value: 211 });
+                assert.strictEqual(module.Object_CreateDataProperty(o, key, 42), false);
+                var desc = Object.getOwnPropertyDescriptor(o, key);
+                assert.strictEqual(desc.value, 211);
+                assert.strictEqual(desc.configurable, false);
+                assert.strictEqual(desc.enumerable, false);
+                assert.strictEqual(desc.writable, false);
+            });
+            it('should not create data property on non-extensible object', function () {
+                var o = Object.freeze({});
+                var key = 'foo';
+                assert.strictEqual(module.Object_CreateDataProperty(o, key, 42), false);
+                assert.strictEqual(Object.getOwnPropertyDescriptor(o, key), undefined);
+            });
+        });
+        describe('index version', function () {
+            it('should create data property', function () {
+                var o = {};
+                var key = 123;
+                assert.strictEqual(module.Object_CreateDataPropertyIndex(o, key, 42), true);
+                var desc = Object.getOwnPropertyDescriptor(o, key);
+                assert.strictEqual(desc.value, 42);
+                assert.strictEqual(desc.configurable, true);
+                assert.strictEqual(desc.enumerable, true);
+                assert.strictEqual(desc.writable, true);
+            });
+            it('should not override existing non-configurable property', function () {
+                var o = {};
+                var key = 123;
+                Object.defineProperty(o, key, { value: 211 });
+                assert.strictEqual(module.Object_CreateDataPropertyIndex(o, key, 42), false);
+                var desc = Object.getOwnPropertyDescriptor(o, key);
+                assert.strictEqual(desc.value, 211);
+                assert.strictEqual(desc.configurable, false);
+                assert.strictEqual(desc.enumerable, false);
+                assert.strictEqual(desc.writable, false);
+            });
+            it('should not create data property on non-extensible object', function () {
+                var o = Object.freeze({});
+                var key = 123;
+                assert.strictEqual(module.Object_CreateDataPropertyIndex(o, key, 42), false);
+                assert.strictEqual(Object.getOwnPropertyDescriptor(o, key), undefined);
+            });
+            it('should work for indices that do not fit into int32', function () {
+                var o = {};
+                var key = 4294967295;
+                assert.strictEqual(module.Object_CreateDataPropertyIndex(o, key, 42), true);
+                var desc = Object.getOwnPropertyDescriptor(o, key);
+                assert.strictEqual(desc.value, 42);
+                assert.strictEqual(desc.configurable, true);
+                assert.strictEqual(desc.enumerable, true);
+                assert.strictEqual(desc.writable, true);
+            });
+        });
+    });
+    describe('CallAsConstructor', function () {
+        it('should create an instance of a function', function () {
+            var f = function() {};
+            var result = module.Object_CallAsConstructor(f);
+            assert.ok(result instanceof f);
+        });
+        it('should throw for an ordinary object', function () {
+            assert.throws(() => module.Object_CallAsConstructor({}), TypeError);
+        });
+        it('should throw for a non-constructor function', function () {
+            assert.throws(() => module.Object_CallAsConstructor(Math.abs), TypeError);
+        });
     });
 });

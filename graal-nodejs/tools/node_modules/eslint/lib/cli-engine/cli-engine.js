@@ -308,9 +308,11 @@ function createIgnoreResult(filePath, baseDir) {
         filePath: path.resolve(filePath),
         messages: [
             {
+                ruleId: null,
                 fatal: false,
                 severity: 1,
-                message
+                message,
+                nodeType: null
             }
         ],
         suppressedMessages: [],
@@ -615,8 +617,8 @@ class CLIEngine {
             useEslintrc: options.useEslintrc,
             builtInRules,
             loadRules,
-            getEslintRecommendedConfig: () => require("../../conf/eslint-recommended.js"),
-            getEslintAllConfig: () => require("../../conf/eslint-all.js")
+            getEslintRecommendedConfig: () => require("@eslint/js").configs.recommended,
+            getEslintAllConfig: () => require("@eslint/js").configs.all
         });
         const fileEnumerator = new FileEnumerator({
             configArrayFactory,

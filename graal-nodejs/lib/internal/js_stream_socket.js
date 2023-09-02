@@ -13,7 +13,7 @@ let debug = require('internal/util/debuglog').debuglog(
   'stream_socket',
   (fn) => {
     debug = fn;
-  }
+  },
 );
 const { owner_symbol } = require('internal/async_hooks').symbols;
 const { ERR_STREAM_WRAP } = require('internal/errors').codes;
@@ -141,7 +141,7 @@ class JSStreamSocket extends Socket {
 
     const handle = this._handle;
 
-    setImmediate(() => {
+    process.nextTick(() => {
       // Ensure that write is dispatched asynchronously.
       this.stream.end(() => {
         this.finishShutdown(handle, 0);

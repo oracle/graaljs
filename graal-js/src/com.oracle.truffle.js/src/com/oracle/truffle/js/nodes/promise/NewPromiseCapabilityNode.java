@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -85,6 +86,7 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
         this.setPromiseCapability = PropertySetNode.createSetHidden(PROMISE_CAPABILITY_KEY, context);
     }
 
+    @NeverDefault
     public static NewPromiseCapabilityNode create(JSContext context) {
         return new NewPromiseCapabilityNode(context);
     }
@@ -106,19 +108,23 @@ public class NewPromiseCapabilityNode extends JavaScriptBaseNode {
         return promiseCapability;
     }
 
-    public PromiseCapabilityRecord execute(JSDynamicObject constructor) {
+    public PromiseCapabilityRecord execute(Object constructor) {
         if (!isConstructor.executeBoolean(constructor)) {
             errorBranch.enter();
             throw Errors.createTypeErrorNotAConstructor(constructor, context);
         }
         PromiseCapabilityRecord promiseCapability = PromiseCapabilityRecord.create(Undefined.instance, Undefined.instance, Undefined.instance);
         JSDynamicObject executor = getCapabilitiesExecutor(promiseCapability);
-        JSDynamicObject promise = (JSDynamicObject) newPromise.executeCall(JSArguments.create(Undefined.instance, constructor, executor));
+        Object promise = newPromise.executeCall(JSArguments.create(Undefined.instance, constructor, executor));
+        if (!(promise instanceof JSDynamicObject)) {
+            errorBranch.enter();
+            throw Errors.createTypeError("Promise cannot be a foreign object");
+        }
         if (!isCallable.executeBoolean(promiseCapability.getResolve()) || !isCallable.executeBoolean(promiseCapability.getReject())) {
             errorBranch.enter();
-            throw Errors.createTypeError("cannot create promise");
+            throw Errors.createTypeError("Promise resolve or reject function is not callable");
         }
-        promiseCapability.setPromise(promise);
+        promiseCapability.setPromise((JSDynamicObject) promise);
         return promiseCapability;
     }
 

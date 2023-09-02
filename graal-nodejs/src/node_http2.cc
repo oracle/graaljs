@@ -14,6 +14,10 @@
 #include "util-inl.h"
 
 #include <algorithm>
+#include <memory>
+#include <string>
+#include <utility>
+#include <vector>
 
 namespace node {
 
@@ -24,7 +28,6 @@ using v8::BackingStore;
 using v8::Boolean;
 using v8::Context;
 using v8::EscapableHandleScope;
-using v8::False;
 using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
@@ -38,7 +41,6 @@ using v8::Number;
 using v8::Object;
 using v8::ObjectTemplate;
 using v8::String;
-using v8::True;
 using v8::Uint8Array;
 using v8::Undefined;
 using v8::Value;
@@ -328,10 +330,8 @@ void Http2Settings::Done(bool ack) {
   uint64_t end = uv_hrtime();
   double duration = (end - startTime_) / 1e6;
 
-  Local<Value> argv[] = {
-    ack ? True(env()->isolate()) : False(env()->isolate()),
-    Number::New(env()->isolate(), duration)
-  };
+  Local<Value> argv[] = {Boolean::New(env()->isolate(), ack),
+                         Number::New(env()->isolate(), duration)};
   MakeCallback(callback(), arraysize(argv), argv);
 }
 
@@ -437,8 +437,7 @@ Http2Session::Callbacks::Callbacks(bool kHasGetPaddingCallback) {
     callbacks_, OnFrameNotSent);
   nghttp2_session_callbacks_set_on_invalid_header_callback2(
     callbacks_, OnInvalidHeader);
-  nghttp2_session_callbacks_set_error_callback(
-    callbacks_, OnNghttpError);
+  nghttp2_session_callbacks_set_error_callback2(callbacks_, OnNghttpError);
   nghttp2_session_callbacks_set_send_data_callback(
     callbacks_, OnSendData);
   nghttp2_session_callbacks_set_on_invalid_frame_recv_callback(
@@ -644,7 +643,7 @@ void Http2Stream::EmitStatistics() {
           duration,
           statistics_);
 
-  env()->SetImmediate([entry = move(entry)](Environment* env) {
+  env()->SetImmediate([entry = std::move(entry)](Environment* env) {
     if (HasHttp2Observer(env))
       entry->Notify(env);
   });
@@ -703,6 +702,11 @@ void Http2Session::Close(uint32_t code, bool socket_closed) {
     Debug(this, "make done session callback");
     HandleScope scope(env()->isolate());
     MakeCallback(env()->ondone_string(), 0, nullptr);
+    if (stream_ != nullptr) {
+      // Start reading again to detect the other end finishing.
+      set_reading_stopped(false);
+      stream_->ReadStart();
+    }
   }
 
   // If there are outstanding pings, those will need to be canceled, do
@@ -1063,8 +1067,7 @@ int Http2Session::OnFrameNotSent(nghttp2_session* handle,
   // Do not report if the frame was not sent due to the session closing
   if (error_code == NGHTTP2_ERR_SESSION_CLOSING ||
       error_code == NGHTTP2_ERR_STREAM_CLOSED ||
-      error_code == NGHTTP2_ERR_STREAM_CLOSING ||
-      session->js_fields_->frame_error_listener_count == 0) {
+      error_code == NGHTTP2_ERR_STREAM_CLOSING) {
     // Nghttp2 contains header limit of 65536. When this value is exceeded the
     // pipeline is stopped and we should remove the current headers reference
     // to destroy the session completely.
@@ -1253,13 +1256,10 @@ ssize_t Http2Session::OnSelectPadding(nghttp2_session* handle,
   return padding;
 }
 
-#define BAD_PEER_MESSAGE "Remote peer returned unexpected data while we "     \
-                         "expected SETTINGS frame.  Perhaps, peer does not "  \
-                         "support HTTP/2 properly."
-
 // We use this currently to determine when an attempt is made to use the http2
 // protocol with a non-http2 peer.
 int Http2Session::OnNghttpError(nghttp2_session* handle,
+                                int lib_error_code,
                                 const char* message,
                                 size_t len,
                                 void* user_data) {
@@ -1267,7 +1267,7 @@ int Http2Session::OnNghttpError(nghttp2_session* handle,
   // the session errored because the peer is not an http2 peer.
   Http2Session* session = static_cast<Http2Session*>(user_data);
   Debug(session, "Error '%s'", message);
-  if (strncmp(message, BAD_PEER_MESSAGE, len) == 0) {
+  if (lib_error_code == NGHTTP2_ERR_SETTINGS_EXPECTED) {
     Environment* env = session->env();
     Isolate* isolate = env->isolate();
     HandleScope scope(isolate);
@@ -1592,6 +1592,11 @@ void Http2Session::OnStreamAfterWrite(WriteWrap* w, int status) {
   if (is_destroyed()) {
     HandleScope scope(env()->isolate());
     MakeCallback(env()->ondone_string(), 0, nullptr);
+    if (stream_ != nullptr) {
+      // Start reading again to detect the other end finishing.
+      set_reading_stopped(false);
+      stream_->ReadStart();
+    }
     return;
   }
 
@@ -1640,7 +1645,9 @@ void Http2Session::MaybeScheduleWrite() {
 }
 
 void Http2Session::MaybeStopReading() {
-  if (is_reading_stopped()) return;
+  // If the session is already closing we don't want to stop reading as we want
+  // to detect when the other peer is actually closed.
+  if (is_reading_stopped() || is_closing()) return;
   int want_read = nghttp2_session_want_read(session_.get());
   Debug(this, "wants read? %d", want_read);
   if (want_read == 0 || is_write_in_progress()) {
@@ -2060,9 +2067,12 @@ void Http2Stream::MemoryInfo(MemoryTracker* tracker) const {
 }
 
 std::string Http2Stream::diagnostic_name() const {
+  const Http2Session* sess = session();
+  const std::string sname =
+      sess ? sess->diagnostic_name() : "session already destroyed";
   return "HttpStream " + std::to_string(id()) + " (" +
-      std::to_string(static_cast<int64_t>(get_async_id())) + ") [" +
-      session()->diagnostic_name() + "]";
+         std::to_string(static_cast<int64_t>(get_async_id())) + ") [" + sname +
+         "]";
 }
 
 // Notify the Http2Stream that a new block of HEADERS is being processed.
@@ -2375,8 +2385,7 @@ int Http2Stream::DoWrite(WriteWrap* req_wrap,
   CHECK_NULL(send_handle);
   Http2Scope h2scope(this);
   if (!is_writable() || is_destroyed()) {
-    req_wrap->Done(UV_EOF);
-    return 0;
+    return UV_EOF;
   }
   Debug(this, "queuing %d buffers to send", nbufs);
   for (size_t i = 0; i < nbufs; ++i) {
@@ -2550,7 +2559,7 @@ void HttpErrorString(const FunctionCallbackInfo<Value>& args) {
 // would be suitable, for instance, for creating the Base64
 // output for an HTTP2-Settings header field.
 void PackSettings(const FunctionCallbackInfo<Value>& args) {
-  Http2State* state = Environment::GetBindingData<Http2State>(args);
+  Http2State* state = Realm::GetBindingData<Http2State>(args);
   args.GetReturnValue().Set(Http2Settings::Pack(state));
 }
 
@@ -2558,7 +2567,7 @@ void PackSettings(const FunctionCallbackInfo<Value>& args) {
 // default SETTINGS. RefreshDefaultSettings updates that TypedArray with the
 // default values.
 void RefreshDefaultSettings(const FunctionCallbackInfo<Value>& args) {
-  Http2State* state = Environment::GetBindingData<Http2State>(args);
+  Http2State* state = Realm::GetBindingData<Http2State>(args);
   Http2Settings::RefreshDefaults(state);
 }
 
@@ -2641,7 +2650,7 @@ void Http2Session::RefreshState(const FunctionCallbackInfo<Value>& args) {
 
 // Constructor for new Http2Session instances.
 void Http2Session::New(const FunctionCallbackInfo<Value>& args) {
-  Http2State* state = Environment::GetBindingData<Http2State>(args);
+  Http2State* state = Realm::GetBindingData<Http2State>(args);
   Environment* env = state->env();
   CHECK(args.IsConstructCall());
   SessionType type =
@@ -3114,10 +3123,7 @@ void Http2Ping::Done(bool ack, const uint8_t* payload) {
   }
 
   Local<Value> argv[] = {
-    ack ? True(isolate) : False(isolate),
-    Number::New(isolate, duration_ms),
-    buf
-  };
+      Boolean::New(isolate, ack), Number::New(isolate, duration_ms), buf};
   MakeCallback(callback(), arraysize(argv), argv);
 }
 
@@ -3154,23 +3160,27 @@ void SetCallbackFunctions(const FunctionCallbackInfo<Value>& args) {
 #undef SET_FUNCTION
 }
 
+#ifdef NODE_DEBUG_NGHTTP2
+void NgHttp2Debug(const char* format, va_list args) {
+  vfprintf(stderr, format, args);
+}
+#endif
+
 void Http2State::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("root_buffer", root_buffer);
 }
-
-// TODO(addaleax): Remove once we're on C++17.
-constexpr FastStringKey Http2State::type_name;
 
 // Set up the process.binding('http2') binding.
 void Initialize(Local<Object> target,
                 Local<Value> unused,
                 Local<Context> context,
                 void* priv) {
-  Environment* env = Environment::GetCurrent(context);
+  Realm* realm = Realm::GetCurrent(context);
+  Environment* env = realm->env();
   Isolate* isolate = env->isolate();
   HandleScope handle_scope(isolate);
 
-  Http2State* const state = env->AddBindingData<Http2State>(context, target);
+  Http2State* const state = realm->AddBindingData<Http2State>(context, target);
   if (state == nullptr) return;
 
 #define SET_STATE_TYPEDARRAY(name, field)             \
@@ -3207,10 +3217,10 @@ void Initialize(Local<Object> target,
   NODE_DEFINE_CONSTANT(target, kSessionHasAltsvcListeners);
 
   // Method to fetch the nghttp2 string description of an nghttp2 error code
-  env->SetMethod(target, "nghttp2ErrorString", HttpErrorString);
-  env->SetMethod(target, "refreshDefaultSettings", RefreshDefaultSettings);
-  env->SetMethod(target, "packSettings", PackSettings);
-  env->SetMethod(target, "setCallbackFunctions", SetCallbackFunctions);
+  SetMethod(context, target, "nghttp2ErrorString", HttpErrorString);
+  SetMethod(context, target, "refreshDefaultSettings", RefreshDefaultSettings);
+  SetMethod(context, target, "packSettings", PackSettings);
+  SetMethod(context, target, "setCallbackFunctions", SetCallbackFunctions);
 
   Local<FunctionTemplate> ping = FunctionTemplate::New(env->isolate());
   ping->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "Http2Ping"));
@@ -3226,50 +3236,54 @@ void Initialize(Local<Object> target,
   env->set_http2settings_constructor_template(settingt);
 
   Local<FunctionTemplate> stream = FunctionTemplate::New(env->isolate());
-  env->SetProtoMethod(stream, "id", Http2Stream::GetID);
-  env->SetProtoMethod(stream, "destroy", Http2Stream::Destroy);
-  env->SetProtoMethod(stream, "priority", Http2Stream::Priority);
-  env->SetProtoMethod(stream, "pushPromise", Http2Stream::PushPromise);
-  env->SetProtoMethod(stream, "info", Http2Stream::Info);
-  env->SetProtoMethod(stream, "trailers", Http2Stream::Trailers);
-  env->SetProtoMethod(stream, "respond", Http2Stream::Respond);
-  env->SetProtoMethod(stream, "rstStream", Http2Stream::RstStream);
-  env->SetProtoMethod(stream, "refreshState", Http2Stream::RefreshState);
+  SetProtoMethod(isolate, stream, "id", Http2Stream::GetID);
+  SetProtoMethod(isolate, stream, "destroy", Http2Stream::Destroy);
+  SetProtoMethod(isolate, stream, "priority", Http2Stream::Priority);
+  SetProtoMethod(isolate, stream, "pushPromise", Http2Stream::PushPromise);
+  SetProtoMethod(isolate, stream, "info", Http2Stream::Info);
+  SetProtoMethod(isolate, stream, "trailers", Http2Stream::Trailers);
+  SetProtoMethod(isolate, stream, "respond", Http2Stream::Respond);
+  SetProtoMethod(isolate, stream, "rstStream", Http2Stream::RstStream);
+  SetProtoMethod(isolate, stream, "refreshState", Http2Stream::RefreshState);
   stream->Inherit(AsyncWrap::GetConstructorTemplate(env));
   StreamBase::AddMethods(env, stream);
   Local<ObjectTemplate> streamt = stream->InstanceTemplate();
   streamt->SetInternalFieldCount(StreamBase::kInternalFieldCount);
   env->set_http2stream_constructor_template(streamt);
-  env->SetConstructorFunction(target, "Http2Stream", stream);
+  SetConstructorFunction(context, target, "Http2Stream", stream);
 
   Local<FunctionTemplate> session =
-      env->NewFunctionTemplate(Http2Session::New);
+      NewFunctionTemplate(isolate, Http2Session::New);
   session->InstanceTemplate()->SetInternalFieldCount(
       Http2Session::kInternalFieldCount);
   session->Inherit(AsyncWrap::GetConstructorTemplate(env));
-  env->SetProtoMethod(session, "origin", Http2Session::Origin);
-  env->SetProtoMethod(session, "altsvc", Http2Session::AltSvc);
-  env->SetProtoMethod(session, "ping", Http2Session::Ping);
-  env->SetProtoMethod(session, "consume", Http2Session::Consume);
-  env->SetProtoMethod(session, "receive", Http2Session::Receive);
-  env->SetProtoMethod(session, "destroy", Http2Session::Destroy);
-  env->SetProtoMethod(session, "goaway", Http2Session::Goaway);
-  env->SetProtoMethod(session, "settings", Http2Session::Settings);
-  env->SetProtoMethod(session, "request", Http2Session::Request);
-  env->SetProtoMethod(session, "setNextStreamID",
-                      Http2Session::SetNextStreamID);
-  env->SetProtoMethod(session, "setLocalWindowSize",
-                      Http2Session::SetLocalWindowSize);
-  env->SetProtoMethod(session, "updateChunksSent",
-                      Http2Session::UpdateChunksSent);
-  env->SetProtoMethod(session, "refreshState", Http2Session::RefreshState);
-  env->SetProtoMethod(
-      session, "localSettings",
+  SetProtoMethod(isolate, session, "origin", Http2Session::Origin);
+  SetProtoMethod(isolate, session, "altsvc", Http2Session::AltSvc);
+  SetProtoMethod(isolate, session, "ping", Http2Session::Ping);
+  SetProtoMethod(isolate, session, "consume", Http2Session::Consume);
+  SetProtoMethod(isolate, session, "receive", Http2Session::Receive);
+  SetProtoMethod(isolate, session, "destroy", Http2Session::Destroy);
+  SetProtoMethod(isolate, session, "goaway", Http2Session::Goaway);
+  SetProtoMethod(isolate, session, "settings", Http2Session::Settings);
+  SetProtoMethod(isolate, session, "request", Http2Session::Request);
+  SetProtoMethod(
+      isolate, session, "setNextStreamID", Http2Session::SetNextStreamID);
+  SetProtoMethod(
+      isolate, session, "setLocalWindowSize", Http2Session::SetLocalWindowSize);
+  SetProtoMethod(
+      isolate, session, "updateChunksSent", Http2Session::UpdateChunksSent);
+  SetProtoMethod(isolate, session, "refreshState", Http2Session::RefreshState);
+  SetProtoMethod(
+      isolate,
+      session,
+      "localSettings",
       Http2Session::RefreshSettings<nghttp2_session_get_local_settings>);
-  env->SetProtoMethod(
-      session, "remoteSettings",
+  SetProtoMethod(
+      isolate,
+      session,
+      "remoteSettings",
       Http2Session::RefreshSettings<nghttp2_session_get_remote_settings>);
-  env->SetConstructorFunction(target, "Http2Session", session);
+  SetConstructorFunction(context, target, "Http2Session", session);
 
   Local<Object> constants = Object::New(isolate);
 
@@ -3318,8 +3332,12 @@ void Initialize(Local<Object> target,
 #undef V
 
   target->Set(context, env->constants_string(), constants).Check();
+
+#ifdef NODE_DEBUG_NGHTTP2
+  nghttp2_set_debug_vprintf_callback(NgHttp2Debug);
+#endif
 }
 }  // namespace http2
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(http2, node::http2::Initialize)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(http2, node::http2::Initialize)

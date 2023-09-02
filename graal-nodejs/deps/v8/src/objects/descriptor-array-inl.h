@@ -5,12 +5,11 @@
 #ifndef V8_OBJECTS_DESCRIPTOR_ARRAY_INL_H_
 #define V8_OBJECTS_DESCRIPTOR_ARRAY_INL_H_
 
-#include "src/objects/descriptor-array.h"
-
 #include "src/execution/isolate.h"
 #include "src/handles/maybe-handles-inl.h"
 #include "src/heap/heap-write-barrier.h"
 #include "src/heap/heap.h"
+#include "src/objects/descriptor-array.h"
 #include "src/objects/field-type.h"
 #include "src/objects/heap-object-inl.h"
 #include "src/objects/lookup-cache-inl.h"
@@ -189,7 +188,7 @@ void DescriptorArray::SetDetails(InternalIndex descriptor_number,
 }
 
 int DescriptorArray::GetFieldIndex(InternalIndex descriptor_number) {
-  DCHECK_EQ(GetDetails(descriptor_number).location(), kField);
+  DCHECK_EQ(GetDetails(descriptor_number).location(), PropertyLocation::kField);
   return GetDetails(descriptor_number).field_index();
 }
 
@@ -200,7 +199,7 @@ FieldType DescriptorArray::GetFieldType(InternalIndex descriptor_number) {
 
 FieldType DescriptorArray::GetFieldType(PtrComprCageBase cage_base,
                                         InternalIndex descriptor_number) {
-  DCHECK_EQ(GetDetails(descriptor_number).location(), kField);
+  DCHECK_EQ(GetDetails(descriptor_number).location(), PropertyLocation::kField);
   MaybeObject wrapped_type = GetValue(cage_base, descriptor_number);
   return Map::UnwrapFieldType(wrapped_type);
 }

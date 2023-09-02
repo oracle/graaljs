@@ -122,10 +122,67 @@ with each other's data.
 added:
  - v13.10.0
  - v12.17.0
+changes:
+ - version: v18.16.0
+   pr-url: https://github.com/nodejs/node/pull/46386
+   description: Removed experimental onPropagate option.
+ - version: v18.13.0
+   pr-url: https://github.com/nodejs/node/pull/45386
+   description: Add option onPropagate.
 -->
 
 Creates a new instance of `AsyncLocalStorage`. Store is only provided within a
 `run()` call or after an `enterWith()` call.
+
+### Static method: `AsyncLocalStorage.bind(fn)`
+
+<!-- YAML
+added: v18.16.0
+-->
+
+> Stability: 1 - Experimental
+
+* `fn` {Function} The function to bind to the current execution context.
+* Returns: {Function} A new function that calls `fn` within the captured
+  execution context.
+
+Binds the given function to the current execution context.
+
+### Static method: `AsyncLocalStorage.snapshot()`
+
+<!-- YAML
+added: v18.16.0
+-->
+
+> Stability: 1 - Experimental
+
+* Returns: {Function} A new function with the signature
+  `(fn: (...args) : R, ...args) : R`.
+
+Captures the current execution context and returns a function that accepts a
+function as an argument. Whenever the returned function is called, it
+calls the function passed to it within the captured context.
+
+```js
+const asyncLocalStorage = new AsyncLocalStorage();
+const runInAsyncScope = asyncLocalStorage.run(123, () => AsyncLocalStorage.snapshot());
+const result = asyncLocalStorage.run(321, () => runInAsyncScope(() => asyncLocalStorage.getStore()));
+console.log(result);  // returns 123
+```
+
+AsyncLocalStorage.snapshot() can replace the use of AsyncResource for simple
+async context tracking purposes, for example:
+
+```js
+class Foo {
+  #runInAsyncScope = AsyncLocalStorage.snapshot();
+
+  get() { return this.#runInAsyncScope(() => asyncLocalStorage.getStore()); }
+}
+
+const foo = asyncLocalStorage.run(123, () => new Foo());
+console.log(asyncLocalStorage.run(321, () => foo.get())); // returns 123
+```
 
 ### `asyncLocalStorage.disable()`
 
@@ -354,7 +411,7 @@ import { AsyncResource, executionAsyncId } from 'node:async_hooks';
 // new AsyncResource() also triggers init. If triggerAsyncId is omitted then
 // async_hook.executionAsyncId() is used.
 const asyncResource = new AsyncResource(
-  type, { triggerAsyncId: executionAsyncId(), requireManualDestroy: false }
+  type, { triggerAsyncId: executionAsyncId(), requireManualDestroy: false },
 );
 
 // Run a function in the execution context of the resource. This will
@@ -382,7 +439,7 @@ const { AsyncResource, executionAsyncId } = require('node:async_hooks');
 // new AsyncResource() also triggers init. If triggerAsyncId is omitted then
 // async_hook.executionAsyncId() is used.
 const asyncResource = new AsyncResource(
-  type, { triggerAsyncId: executionAsyncId(), requireManualDestroy: false }
+  type, { triggerAsyncId: executionAsyncId(), requireManualDestroy: false },
 );
 
 // Run a function in the execution context of the resource. This will
@@ -446,7 +503,7 @@ added:
   - v14.8.0
   - v12.19.0
 changes:
-  - version: v16.15.0
+  - version: v17.8.0
     pr-url: https://github.com/nodejs/node/pull/42177
     description: Changed the default when `thisArg` is undefined to use `this`
                  from the caller.
@@ -472,7 +529,7 @@ added:
   - v14.8.0
   - v12.19.0
 changes:
-  - version: v16.15.0
+  - version: v17.8.0
     pr-url: https://github.com/nodejs/node/pull/42177
     description: Changed the default when `thisArg` is undefined to use `this`
                  from the caller.
@@ -593,7 +650,7 @@ export default class WorkerPool extends EventEmitter {
   }
 
   addNewWorker() {
-    const worker = new Worker(new URL('task_processer.js', import.meta.url));
+    const worker = new Worker(new URL('task_processor.js', import.meta.url));
     worker.on('message', (result) => {
       // In case of success: Call the callback that was passed to `runTask`,
       // remove the `TaskInfo` associated with the Worker, and mark it as free
@@ -740,7 +797,7 @@ This pool could be used as follows:
 import WorkerPool from './worker_pool.js';
 import os from 'node:os';
 
-const pool = new WorkerPool(os.cpus().length);
+const pool = new WorkerPool(os.availableParallelism());
 
 let finished = 0;
 for (let i = 0; i < 10; i++) {
@@ -756,7 +813,7 @@ for (let i = 0; i < 10; i++) {
 const WorkerPool = require('./worker_pool.js');
 const os = require('node:os');
 
-const pool = new WorkerPool(os.cpus().length);
+const pool = new WorkerPool(os.availableParallelism());
 
 let finished = 0;
 for (let i = 0; i < 10; i++) {

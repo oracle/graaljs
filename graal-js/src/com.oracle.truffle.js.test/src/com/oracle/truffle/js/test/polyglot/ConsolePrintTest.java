@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.polyglot;
 
 import static org.junit.Assert.assertEquals;
 
+import java.math.BigInteger;
 import java.util.Collections;
 import java.util.Map;
 
@@ -371,6 +372,12 @@ public class ConsolePrintTest extends JSTest {
 
         @SuppressWarnings("static-method")
         @ExportMessage
+        boolean fitsInBigInteger() {
+            return false;
+        }
+
+        @SuppressWarnings("static-method")
+        @ExportMessage
         byte asByte() throws UnsupportedMessageException {
             throw UnsupportedMessageException.create();
         }
@@ -404,6 +411,11 @@ public class ConsolePrintTest extends JSTest {
             return value;
         }
 
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        BigInteger asBigInteger() throws UnsupportedMessageException {
+            throw UnsupportedMessageException.create();
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)

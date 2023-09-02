@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,9 +46,7 @@ import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.OutputStream;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -80,18 +78,20 @@ public class Test262Runnable extends TestRunnable {
     private static final String INCLUDES_PREFIX = "includes: ";
     private static final String FEATURES_PREFIX = "features: ";
     private static final String ONLY_STRICT_FLAG = "onlyStrict";
+    private static final String ASYNC_FLAG = "async";
     private static final String MODULE_FLAG = "module";
     private static final String CAN_BLOCK_IS_FALSE_FLAG = "CanBlockIsFalse";
-    private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?(?:\\w+))*)\\]");
+    private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?[a-zA-Z-]+)*)\\]");
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
     private static final Pattern FEATURES_PATTERN = Pattern.compile("features: \\[(.*)\\]");
     private static final Pattern SPLIT_PATTERN = Pattern.compile(",\\s*");
 
-    private static final Set<String> SUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+    private static final Set<String> SUPPORTED_FEATURES = featureSet(new String[]{
                     "AggregateError",
                     "Array.prototype.at",
                     "Array.prototype.flat",
                     "Array.prototype.flatMap",
+                    "Array.prototype.includes",
                     "Array.prototype.values",
                     "ArrayBuffer",
                     "Atomics",
@@ -184,10 +184,12 @@ public class Test262Runnable extends TestRunnable {
                     "align-detached-buffer-semantics-with-web-reality",
                     "array-find-from-last",
                     "array-grouping",
+                    "arraybuffer-transfer",
                     "arrow-function",
                     "async-functions",
                     "async-iteration",
                     "caller",
+                    "change-array-by-copy",
                     "class",
                     "class-fields-private",
                     "class-fields-private-in",
@@ -208,6 +210,7 @@ public class Test262Runnable extends TestRunnable {
                     "destructuring-binding",
                     "dynamic-import",
                     "error-cause",
+                    "exponentiation",
                     "export-star-as-namespace-from-module",
                     "for-in-order",
                     "for-of",
@@ -215,9 +218,10 @@ public class Test262Runnable extends TestRunnable {
                     "globalThis",
                     "hashbang",
                     "host-gc-required",
-                    "intl-normative-optional",
                     "import-assertions",
                     "import.meta",
+                    "intl-normative-optional",
+                    "iterator-helpers",
                     "json-modules",
                     "json-superset",
                     "legacy-regexp",
@@ -231,42 +235,43 @@ public class Test262Runnable extends TestRunnable {
                     "optional-chaining",
                     "proxy-missing-checks",
                     "regexp-dotall",
+                    "regexp-duplicate-named-groups",
                     "regexp-lookbehind",
                     "regexp-match-indices",
                     "regexp-named-groups",
                     "regexp-unicode-property-escapes",
+                    "regexp-v-flag",
                     "rest-parameters",
                     "string-trimming",
                     "super",
+                    "symbols-as-weakmap-keys",
                     "template",
+                    "top-level-await",
                     "u180e",
                     "well-formed-json-stringify",
-                    "top-level-await",
-    }));
-    private static final Set<String> UNSUPPORTED_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+    });
+    private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
+                    "Array.fromAsync",
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
                     "String.prototype.isWellFormed",
                     "String.prototype.toWellFormed",
                     "arbitrary-module-namespace-names",
-                    "change-array-by-copy",
-                    "regexp-duplicate-named-groups",
-                    "regexp-v-flag",
                     "resizable-arraybuffer",
-                    "symbols-as-weakmap-keys",
                     "tail-call-optimization",
-    }));
-    private static final Set<String> ES2023_FEATURES = new HashSet<>(Arrays.asList(new String[]{
+    });
+    private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
                     "Atomics.waitAsync",
+                    "FinalizationRegistry.prototype.cleanupSome",
                     "Intl-enumeration",
                     "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.Locale-info",
                     "Intl.NumberFormat-v3",
-                    "array-find-from-last",
-                    "array-grouping",
-                    "decorators",
                     "ShadowRealm",
-    }));
+                    "array-grouping",
+                    "arraybuffer-transfer",
+                    "decorators",
+    });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
         super(suite, testFile);
@@ -282,7 +287,7 @@ public class Test262Runnable extends TestRunnable {
         Set<String> flags = getFlags(scriptCodeList);
         Set<String> features = getFeatures(scriptCodeList);
         boolean runStrict = flags.contains(ONLY_STRICT_FLAG);
-        boolean asyncTest = isAsyncTest(scriptCodeList);
+        boolean asyncTest = flags.contains(ASYNC_FLAG);
         boolean module = flags.contains(MODULE_FLAG);
 
         Map<String, String> extraOptions = new HashMap<>(4);
@@ -303,6 +308,12 @@ public class Test262Runnable extends TestRunnable {
         }
         if (features.contains("ShadowRealm")) {
             extraOptions.put(JSContextOptions.SHADOW_REALM_NAME, "true");
+        }
+        if (features.contains("regexp-v-flag")) {
+            extraOptions.put(JSContextOptions.REGEXP_UNICODE_SETS_NAME, "true");
+        }
+        if (features.contains("iterator-helpers")) {
+            extraOptions.put(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
@@ -325,8 +336,8 @@ public class Test262Runnable extends TestRunnable {
         for (String feature : features) {
             if (SUPPORTED_FEATURES.contains(feature)) {
                 assert !UNSUPPORTED_FEATURES.contains(feature) : feature;
-                if (ES2023_FEATURES.contains(feature)) {
-                    featureVersion = JSConfig.ECMAScript2023;
+                if (STAGING_FEATURES.contains(feature)) {
+                    featureVersion = JSConfig.StagingECMAScriptVersion;
                 }
             } else {
                 assert UNSUPPORTED_FEATURES.contains(feature) : feature;
@@ -508,7 +519,7 @@ public class Test262Runnable extends TestRunnable {
                 Matcher matcher = NEGATIVE_PREFIX.matcher(line);
                 if (matcher.find()) {
                     String candidate = line.substring(matcher.end());
-                    if (candidate.length() > 0) {
+                    if (!candidate.isBlank()) {
                         return candidate;
                     } else {
                         lookForType = true;
@@ -547,7 +558,4 @@ public class Test262Runnable extends TestRunnable {
         return getStrings(scriptCode, FEATURES_PREFIX, FEATURES_PATTERN, SPLIT_PATTERN).collect(Collectors.toSet());
     }
 
-    private static boolean isAsyncTest(List<String> scriptCodeList) {
-        return scriptCodeList.stream().anyMatch(s -> s.contains("$DONE"));
-    }
 }

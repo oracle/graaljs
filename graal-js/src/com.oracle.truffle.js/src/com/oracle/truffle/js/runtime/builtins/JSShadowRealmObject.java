@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 /**
@@ -52,21 +53,17 @@ public final class JSShadowRealmObject extends JSNonProxyObject {
 
     private JSRealm shadowRealm;
 
-    protected JSShadowRealmObject(Shape shape, JSRealm shadowRealm) {
-        super(shape);
+    protected JSShadowRealmObject(Shape shape, JSDynamicObject proto, JSRealm shadowRealm) {
+        super(shape, proto);
         this.shadowRealm = shadowRealm;
     }
 
     @Override
     public TruffleString getClassName() {
-        return JSIterator.CLASS_NAME;
+        return JSShadowRealm.CLASS_NAME;
     }
 
     public JSRealm getShadowRealm() {
         return shadowRealm;
-    }
-
-    public static JSShadowRealmObject create(JSRealm realm, JSObjectFactory factory, JSRealm shadowRealm) {
-        return factory.initProto(new JSShadowRealmObject(factory.getShape(realm), shadowRealm), realm);
     }
 }

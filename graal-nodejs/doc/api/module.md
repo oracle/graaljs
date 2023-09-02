@@ -65,7 +65,7 @@ const siblingModule = require('./sibling-module');
 ### `module.isBuiltin(moduleName)`
 
 <!-- YAML
-added: v16.17.0
+added: v18.6.0
 -->
 
 * `moduleName` {string} name of the module
@@ -160,7 +160,8 @@ added:
 -->
 
 * `path` {string}
-* Returns: {module.SourceMap}
+* Returns: {module.SourceMap|undefined} Returns `module.SourceMap` if a source
+  map is found, `undefined` otherwise.
 
 `path` is the resolved path for the file for which a corresponding source map
 should be fetched.

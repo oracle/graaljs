@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,18 +49,19 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.builtins.wasm.WebAssemblyInstancePrototypeBuiltins;
 import com.oracle.truffle.js.nodes.wasm.ToJSValueNode;
+import com.oracle.truffle.js.nodes.wasm.ToJSValueNodeGen;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNode;
+import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyValueNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -75,7 +76,6 @@ import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -84,7 +84,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
     public static final TruffleString CLASS_NAME = Strings.constant("Instance");
-    public static final TruffleString EXPORTS = Strings.constant("exports");
+    public static final TruffleString PROTOTYPE_NAME = Strings.constant("Instance.prototype");
 
     public static final TruffleString WEB_ASSEMBLY_INSTANCE = Strings.constant("WebAssembly.Instance");
 
@@ -106,10 +106,9 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
-        JSObjectUtil.putAccessorProperty(ctx, prototype, EXPORTS, createExportsGetterFunction(realm), Undefined.instance, JSAttributes.configurableEnumerableWritable());
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, WebAssemblyInstancePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_INSTANCE);
         return prototype;
     }
@@ -129,33 +128,15 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     }
 
     public static JSWebAssemblyInstanceObject create(JSContext context, JSRealm realm, Object wasmInstance, Object wasmModule) {
-        JSObjectFactory factory = context.getWebAssemblyInstanceFactory();
-        Object exportsObject = createExportsObject(context, realm, wasmInstance, wasmModule);
-        JSWebAssemblyInstanceObject object = new JSWebAssemblyInstanceObject(factory.getShape(realm), wasmInstance, exportsObject);
-        factory.initProto(object, realm);
-        return context.trackAllocation(object);
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmInstance, wasmModule);
     }
 
-    private static JSFunctionObject createExportsGetterFunction(JSRealm realm) {
-        JSFunctionData getterData = realm.getContext().getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.WebAssemblyInstanceGetExports, (c) -> {
-            CallTarget callTarget = new JavaScriptRootNode(c.getLanguage(), null, null) {
-                private final BranchProfile errorBranch = BranchProfile.create();
-
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object thiz = JSFrameUtil.getThisObj(frame);
-                    if (isJSWebAssemblyInstance(thiz)) {
-                        return ((JSWebAssemblyInstanceObject) thiz).getExports();
-                    } else {
-                        errorBranch.enter();
-                        throw Errors.createTypeError("WebAssembly.Instance.exports(): Receiver is not a WebAssembly.Instance", this);
-                    }
-                }
-            }.getCallTarget();
-            return JSFunctionData.createCallOnly(c, callTarget, 0, Strings.concat(Strings.GET_SPC, EXPORTS));
-        });
-
-        return JSFunction.create(realm, getterData);
+    public static JSWebAssemblyInstanceObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmInstance, Object wasmModule) {
+        JSObjectFactory factory = context.getWebAssemblyInstanceFactory();
+        Object exportsObject = createExportsObject(context, realm, wasmInstance, wasmModule);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSWebAssemblyInstanceObject(shape, proto, wasmInstance, exportsObject), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     private static JSObject createExportsObject(JSContext context, JSRealm realm, Object wasmInstance, Object wasmModule) {
@@ -221,8 +202,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         boolean anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
 
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNode.create();
-            @Child ToJSValueNode toJSValueNode = ToJSValueNode.create();
+            @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNodeGen.create();
+            @Child ToJSValueNode toJSValueNode = ToJSValueNodeGen.create();
             private final BranchProfile errorBranch = BranchProfile.create();
             @Child InteropLibrary exportFunctionLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             @Child InteropLibrary readArrayElementLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
@@ -230,7 +211,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
             @Override
             public Object execute(VirtualFrame frame) {
-                if (!context.getContextOptions().isWasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
+                if (!context.getLanguageOptions().wasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
                     errorBranch.enter();
                     throw Errors.createTypeError("wasm function signature contains illegal type");
                 }
@@ -292,7 +273,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
     @CompilerDirectives.TruffleBoundary
     public static Object transformImportObject(JSContext context, JSRealm realm, Object wasmModule, Object importObject) {
         try {
-            JSDynamicObject transformedImportObject = JSOrdinary.create(context, realm);
+            JSDynamicObject transformedImportObject = JSOrdinary.createWithNullPrototype(context);
 
             Object importsFn = realm.getWASMModuleImports();
             Object imports = InteropLibrary.getUncached(importsFn).execute(importsFn, wasmModule);
@@ -327,10 +308,10 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                 } else if (Strings.equals(Strings.GLOBAL, externType)) {
                     boolean isNumber = JSRuntime.isNumber(value);
                     boolean isBigInt = JSRuntime.isBigInt(value);
-                    if (isNumber || context.getContextOptions().isWasmBigInt() && isBigInt) {
+                    if (isNumber || context.getLanguageOptions().wasmBigInt() && isBigInt) {
                         TruffleString valueType = asTString(descriptorInterop.readMember(descriptor, "type"));
                         boolean isI64 = JSWebAssemblyValueTypes.isI64(valueType);
-                        if (!context.getContextOptions().isWasmBigInt() && isI64) {
+                        if (!context.getLanguageOptions().wasmBigInt() && isI64) {
                             throw Errors.createLinkError("Can't import the value of i64 WebAssembly.Global");
                         }
                         if (isI64 && isNumber) {
@@ -339,7 +320,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         if (!isI64 && isBigInt) {
                             throw Errors.createLinkError("BigInt can only be stored in valtype i64");
                         }
-                        Object webAssemblyValue = ToWebAssemblyValueNode.getUncached().execute(value, valueType);
+                        Object webAssemblyValue = ToWebAssemblyValueNodeGen.getUncached().execute(value, valueType);
                         try {
                             Object createGlobal = realm.getWASMGlobalAlloc();
                             wasmValue = InteropLibrary.getUncached(createGlobal).execute(createGlobal, valueType, false, webAssemblyValue);
@@ -386,11 +367,11 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return new WebAssemblyHostFunction(context, fn, typeInfo);
     }
 
-    private static TruffleString asTString(Object string) throws UnsupportedMessageException {
+    private static TruffleString asTString(Object string) {
         if (string instanceof String) {
             return Strings.fromJavaString((String) string);
         }
-        return InteropLibrary.getUncached(string).asTruffleString(string);
+        return Strings.interopAsTruffleString(string);
     }
 
 }

@@ -58,9 +58,10 @@ When using a `Context`, the option `allowExperimentalOptions(true)` has to be ca
 See [ScriptEngine Implementation](ScriptEngine.md) on how to use experimental options with a `ScriptEngine`.
 
 ### Frequently Used Stable Options
+
 The following stable options are frequently relevant:
    * `--js.ecmascript-version`: emulate a specific ECMAScript version. Integer value (`5`, `6`, etc., `2015`-`2022`), `"latest"` (latest supported version of the spec, including finished proposals), or `"staging"` (latest version including supported unfinished proposals), default is `"latest"`.
-   * `--js.foreign-object-prototype`: provide JavaScript's default prototype to foreign objects that mimic JavaScript's own types (foreign Arrays, Objects and Functions). Boolean value, default is `false`.
+   * `--js.foreign-object-prototype`: provide JavaScript's default prototype to foreign objects that mimic JavaScript's own types (foreign Arrays, Objects and Functions). Boolean value, default is `true`.
    * `--js.intl-402`: enable ECMAScript Internationalization API. Boolean value, default is `false`.
    * `--js.regexp-static-result`: provide static `RegExp` properties containing the results of the last successful match, e.g., `RegExp.$1` (legacy). Boolean value, default is `true`.
    * `--js.strict`: enable strict mode for all scripts. Boolean value, default is `false`.

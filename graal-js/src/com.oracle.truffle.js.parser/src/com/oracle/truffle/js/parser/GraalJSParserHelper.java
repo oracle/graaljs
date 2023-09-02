@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -132,7 +132,7 @@ public final class GraalJSParserHelper {
         }
 
         if (errors.hasErrors()) {
-            throwErrors(truffleSource, errors);
+            throwErrors(truffleSource, errors, context);
         }
         return parsed;
     }
@@ -149,7 +149,7 @@ public final class GraalJSParserHelper {
         Parser parser = createParser(context, env, source, errors, parserOptions);
         Expression expression = parser.parseExpression();
         if (errors.hasErrors()) {
-            throwErrors(truffleSource, errors);
+            throwErrors(truffleSource, errors, context);
         }
 
         return expression;
@@ -162,9 +162,9 @@ public final class GraalJSParserHelper {
                 if (lexerToken instanceof RegexToken) {
                     final RegexToken regex = (RegexToken) lexerToken;
                     // validate regular expression
-                    if (context.getContextOptions().isValidateRegExpLiterals()) {
+                    if (context.getLanguageOptions().validateRegExpLiterals()) {
                         try {
-                            RegexCompilerInterface.validate(context, regex.getExpression(), regex.getOptions(), parserOptions.getEcmaScriptVersion());
+                            RegexCompilerInterface.validate(context, regex.getExpression(), regex.getOptions(), parserOptions.ecmaScriptVersion());
                         } catch (JSException e) {
                             throw error(e.getRawMessage());
                         }
@@ -181,26 +181,26 @@ public final class GraalJSParserHelper {
 
     private static ScriptEnvironment makeScriptEnvironment(JSParserOptions parserOptions) {
         ScriptEnvironment.Builder builder = ScriptEnvironment.builder();
-        builder.strict(parserOptions.isStrict());
-        builder.ecmaScriptVersion(parserOptions.getEcmaScriptVersion());
-        builder.emptyStatements(parserOptions.isEmptyStatements());
-        builder.syntaxExtensions(parserOptions.isSyntaxExtensions());
-        builder.scripting(parserOptions.isScripting());
-        builder.shebang(parserOptions.isShebang());
-        builder.constAsVar(parserOptions.isConstAsVar());
-        builder.allowBigInt(parserOptions.isAllowBigInt());
-        builder.annexB(parserOptions.isAnnexB());
-        builder.classFields(parserOptions.isClassFields());
-        builder.importAssertions(parserOptions.isImportAssertions());
-        builder.privateFieldsIn(parserOptions.isPrivateFieldsIn());
-        builder.topLevelAwait(parserOptions.isTopLevelAwait());
-        builder.v8Intrinsics(parserOptions.isV8Intrinsics());
-        if (parserOptions.isFunctionStatementError()) {
+        builder.strict(parserOptions.strict());
+        builder.ecmaScriptVersion(parserOptions.ecmaScriptVersion());
+        builder.emptyStatements(parserOptions.emptyStatements());
+        builder.syntaxExtensions(parserOptions.syntaxExtensions());
+        builder.scripting(parserOptions.scripting());
+        builder.shebang(parserOptions.shebang());
+        builder.constAsVar(parserOptions.constAsVar());
+        builder.allowBigInt(parserOptions.allowBigInt());
+        builder.annexB(parserOptions.annexB());
+        builder.classFields(parserOptions.classFields());
+        builder.importAssertions(parserOptions.importAssertions());
+        builder.privateFieldsIn(parserOptions.privateFieldsIn());
+        builder.topLevelAwait(parserOptions.topLevelAwait());
+        builder.v8Intrinsics(parserOptions.v8Intrinsics());
+        if (parserOptions.functionStatementError()) {
             builder.functionStatementBehavior(FunctionStatementBehavior.ERROR);
         } else {
             builder.functionStatementBehavior(FunctionStatementBehavior.ACCEPT);
         }
-        if (parserOptions.isDumpOnError()) {
+        if (parserOptions.dumpOnError()) {
             builder.dumpOnError(new PrintWriter(System.err, true));
         }
         return builder.build();
@@ -216,7 +216,7 @@ public final class GraalJSParserHelper {
         parser.parseFunctionBody(generator, async);
     }
 
-    private static void throwErrors(com.oracle.truffle.api.source.Source source, ErrorManager errors) {
+    private static void throwErrors(com.oracle.truffle.api.source.Source source, ErrorManager errors, JSContext context) {
         ParserException parserException = errors.getParserException();
         SourceSection sourceLocation = null;
         boolean isIncompleteSource = false;
@@ -233,16 +233,22 @@ public final class GraalJSParserHelper {
                 assert parserException.getErrorType() == com.oracle.js.parser.JSErrorType.SyntaxError;
             }
         }
-        throw Errors.createSyntaxError(((ErrorManager.StringBuilderErrorManager) errors).getOutput(), sourceLocation, isIncompleteSource);
+        String message;
+        if (context.isOptionV8CompatibilityMode()) {
+            message = errors.getParserException().getRawMessage();
+        } else {
+            message = ((ErrorManager.StringBuilderErrorManager) errors).getOutput();
+        }
+        throw Errors.createSyntaxError(message, errors.getParserException(), sourceLocation, isIncompleteSource);
     }
 
-    public static String parseToJSON(String code, String name, boolean includeLoc, JSParserOptions parserOptions) {
+    public static String parseToJSON(String code, String name, boolean includeLoc, JSContext context) {
         CompilerAsserts.neverPartOfCompilation(NEVER_PART_OF_COMPILATION_MESSAGE);
-        ScriptEnvironment env = makeScriptEnvironment(parserOptions);
+        ScriptEnvironment env = makeScriptEnvironment(context.getParserOptions());
         try {
             return JSONWriter.parse(env, code, name, includeLoc);
         } catch (ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage());
+            throw Errors.createSyntaxError(e, context);
         }
     }
 }

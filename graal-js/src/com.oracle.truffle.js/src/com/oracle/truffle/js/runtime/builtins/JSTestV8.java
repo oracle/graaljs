@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,7 @@ public final class JSTestV8 {
         JSContext ctx = realm.getContext();
         JSObject obj = JSOrdinary.createInit(realm);
         JSObjectUtil.putToStringTag(obj, CLASS_NAME);
-        JSObjectUtil.putDataProperty(ctx, obj, Strings.STRING_MAX_LENGTH, ctx.getStringLengthLimit());
+        JSObjectUtil.putDataProperty(obj, Strings.STRING_MAX_LENGTH, ctx.getStringLengthLimit());
         JSObjectUtil.putFunctionsFromContainer(realm, obj, TestV8Builtins.BUILTINS);
         return obj;
     }

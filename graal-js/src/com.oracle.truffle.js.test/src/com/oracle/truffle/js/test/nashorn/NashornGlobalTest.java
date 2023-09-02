@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,7 +70,7 @@ public class NashornGlobalTest {
     public void testLoadFileNonExistent() {
         String src = "var ret=false; var FILE = Java.type('java.io.File'); \n" +
                         "try { load(new FILE('nonexistent.file')); } \n" +
-                        "catch (ex) { ret = ex instanceof EvalError && ex.message.indexOf('nonexistent.file') >= 0; }; \n" +
+                        "catch (ex) { ret = ex instanceof Error && ex.message.indexOf('nonexistent.file') >= 0; }; \n" +
                         "ret;";
         Assert.assertTrue(testIntl(src));
     }
@@ -79,7 +79,7 @@ public class NashornGlobalTest {
     public void testLoadURLNonExistent() {
         String src = "var ret=false; var URL = Java.type('java.net.URL'); \n" +
                         "try { load(new URL('file://nonexistent.file')); } \n" +
-                        "catch (ex) { ret = ex instanceof EvalError && ex.message.indexOf('nonexistent.file') >= 0; }; \n" +
+                        "catch (ex) { ret = ex instanceof Error && ex.message.indexOf('nonexistent.file') >= 0; }; \n" +
                         "ret;";
         Assert.assertTrue(testIntl(src));
     }

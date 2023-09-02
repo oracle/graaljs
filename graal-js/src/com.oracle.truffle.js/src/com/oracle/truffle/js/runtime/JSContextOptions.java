@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,32 +43,58 @@ package com.oracle.truffle.js.runtime;
 import java.nio.charset.Charset;
 import java.time.DateTimeException;
 import java.time.ZoneId;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
-import java.util.Objects;
-import java.util.function.Consumer;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.graalvm.options.OptionCategory;
 import org.graalvm.options.OptionDescriptor;
+import org.graalvm.options.OptionDescriptors;
 import org.graalvm.options.OptionKey;
 import org.graalvm.options.OptionStability;
 import org.graalvm.options.OptionType;
 import org.graalvm.options.OptionValues;
+import org.graalvm.polyglot.SandboxPolicy;
 
-import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.Option;
-import com.oracle.truffle.api.nodes.InvalidAssumptionException;
-import com.oracle.truffle.api.utilities.CyclicAssumption;
+import com.oracle.truffle.api.TruffleOptionDescriptors;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 
+/**
+ * Defines, and provides access to, all JS (context and language) options.
+ *
+ * Option values are per-context, and cached values may be constant-folded when running with a bound
+ * Engine, as long as no other contexts have been spawned, but have to be reread every time from the
+ * context in "multi-context mode", i.e., if code sharing is enabled via a shared Engine.
+ *
+ * {@link JSLanguageOptions} captures a subset of these options that are immutable and shared per
+ * language instance (polyglot sharing layer) and always treated as constant in compiled code, but
+ * will prevent code sharing between contexts that differ in these options.
+ *
+ * {@link JSParserOptions} captures the subset of both {@link JSContextOptions} and
+ * {@link JSLanguageOptions} that is used by the parser.
+ *
+ * Select context options are treated as stable and/or patchable in the preinitialized context.
+ * Stable options will be read from the language and treated as constant while stable but once the
+ * option's value has changed, it has to be looked up from the context. This gives fast access by
+ * default without preventing code sharing. Similarly, patchable options allow code and the
+ * preinitialized context to be reused even if the option changes.
+ *
+ * @see JSLanguageOptions
+ * @see JSParserOptions
+ * @see com.oracle.truffle.js.runtime.util.StableContextOptionValue
+ */
 public final class JSContextOptions {
 
-    public static final String JS_OPTION_PREFIX = "js.";
+    public static final String JS_OPTION_PREFIX = JavaScriptLanguage.ID + ".";
 
     @CompilationFinal private JSParserOptions parserOptions;
     @CompilationFinal private OptionValues optionValues;
@@ -76,10 +102,11 @@ public final class JSContextOptions {
     public static final String ECMASCRIPT_VERSION_LATEST = "latest";
     public static final String ECMASCRIPT_VERSION_STAGING = "staging";
     public static final String ECMASCRIPT_VERSION_NAME = JS_OPTION_PREFIX + "ecmascript-version";
-    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, usageSyntax = ECMASCRIPT_VERSION_LATEST + "|" + ECMASCRIPT_VERSION_STAGING + "|[5, " +
-                    JSConfig.LatestECMAScriptVersion + "]|[2015, " +
-                    (JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta) + "]", help = "" +
-                                    "ECMAScript version to be compatible with. Default is '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), staged features are in '" +
+    @Option(name = ECMASCRIPT_VERSION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, //
+                    usageSyntax = ECMASCRIPT_VERSION_LATEST + "|" + ECMASCRIPT_VERSION_STAGING + "|" +
+                                    "[5, " + JSConfig.LatestECMAScriptVersion + "]|" +
+                                    "[2015, " + (JSConfig.LatestECMAScriptVersion + JSConfig.ECMAScriptVersionYearDelta) + "]", //
+                    help = "ECMAScript version to be compatible with. Default is '" + ECMASCRIPT_VERSION_LATEST + "' (latest supported version), staged features are in '" +
                                     ECMASCRIPT_VERSION_STAGING + "'.") //
     public static final OptionKey<Integer> ECMASCRIPT_VERSION = new OptionKey<>(JSConfig.LatestECMAScriptVersion, new OptionType<>("ecmascript-version", new Function<String, Integer>() {
 
@@ -128,7 +155,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHEBANG = new OptionKey<>(false);
 
     public static final String STRICT_NAME = JS_OPTION_PREFIX + "strict";
-    @Option(name = STRICT_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, help = "Enforce strict mode.") //
+    @Option(name = STRICT_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Enforce strict mode.") //
     public static final OptionKey<Boolean> STRICT = new OptionKey<>(false);
 
     public static final String CONST_AS_VAR_NAME = JS_OPTION_PREFIX + "const-as-var";
@@ -149,11 +176,14 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> REGEXP_MATCH_INDICES = new OptionKey<>(false);
     @CompilationFinal private boolean regexpMatchIndices;
 
+    public static final String REGEXP_UNICODE_SETS_NAME = JS_OPTION_PREFIX + "regexp-unicode-sets";
+    @Option(name = REGEXP_UNICODE_SETS_NAME, category = OptionCategory.USER, help = "Enable RegExp Unicode sets proposal (v flag).") //
+    public static final OptionKey<Boolean> REGEXP_UNICODE_SETS = new OptionKey<>(false);
+    @CompilationFinal private boolean regexpUnicodeSets;
+
     public static final String REGEXP_STATIC_RESULT_NAME = JS_OPTION_PREFIX + "regexp-static-result";
     @Option(name = REGEXP_STATIC_RESULT_NAME, category = OptionCategory.USER, help = "Provide last RegExp match in RegExp global var, e.g. RegExp.$1.") //
     public static final OptionKey<Boolean> REGEXP_STATIC_RESULT = new OptionKey<>(true);
-    private final CyclicAssumption regexpStaticResultCyclicAssumption = new CyclicAssumption("The " + REGEXP_STATIC_RESULT_NAME + " option is stable.");
-    @CompilationFinal private Assumption regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
     @CompilationFinal private boolean regexpStaticResult;
 
     public static final String SHARED_ARRAY_BUFFER_NAME = JS_OPTION_PREFIX + "shared-array-buffer";
@@ -168,8 +198,6 @@ public final class JSContextOptions {
     public static final String V8_COMPATIBILITY_MODE_NAME = JS_OPTION_PREFIX + "v8-compat";
     @Option(name = V8_COMPATIBILITY_MODE_NAME, category = OptionCategory.USER, help = "Provide compatibility with the Google V8 engine.") //
     public static final OptionKey<Boolean> V8_COMPATIBILITY_MODE = new OptionKey<>(false);
-    private final CyclicAssumption v8CompatibilityModeCyclicAssumption = new CyclicAssumption("The " + V8_COMPATIBILITY_MODE_NAME + " option is stable.");
-    @CompilationFinal private Assumption v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
     @CompilationFinal private boolean v8CompatibilityMode;
 
     public static final String V8_REALM_BUILTIN_NAME = JS_OPTION_PREFIX + "v8-realm-builtin";
@@ -195,8 +223,6 @@ public final class JSContextOptions {
     public static final String DIRECT_BYTE_BUFFER_NAME = JS_OPTION_PREFIX + "direct-byte-buffer";
     @Option(name = DIRECT_BYTE_BUFFER_NAME, category = OptionCategory.USER, help = "Use direct (off-heap) byte buffer for typed arrays.") //
     public static final OptionKey<Boolean> DIRECT_BYTE_BUFFER = new OptionKey<>(false);
-    private final CyclicAssumption directByteBufferCyclicAssumption = new CyclicAssumption("The " + DIRECT_BYTE_BUFFER_NAME + " option is stable.");
-    @CompilationFinal private Assumption directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
     @CompilationFinal private boolean directByteBuffer;
 
     public static final String PARSE_ONLY_NAME = JS_OPTION_PREFIX + "parse-only";
@@ -227,10 +253,9 @@ public final class JSContextOptions {
     @CompilationFinal private boolean zoneRulesBasedTimeZones;
 
     public static final String TIMER_RESOLUTION_NAME = JS_OPTION_PREFIX + "timer-resolution";
-    @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, usageSyntax = "<nanoseconds>", help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
+    @Option(name = TIMER_RESOLUTION_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, usageSyntax = "<nanoseconds>", //
+                    help = "Resolution of timers (performance.now() and Date built-ins) in nanoseconds. Fuzzy time is used when set to 0.") //
     public static final OptionKey<Long> TIMER_RESOLUTION = new OptionKey<>(1000000L);
-    private final CyclicAssumption timerResolutionCyclicAssumption = new CyclicAssumption("The " + TIMER_RESOLUTION_NAME + " option is stable.");
-    @CompilationFinal private Assumption timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
     @CompilationFinal private long timerResolution;
 
     public static final String AGENT_CAN_BLOCK_NAME = JS_OPTION_PREFIX + "agent-can-block";
@@ -251,7 +276,7 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> GLOBAL_ARGUMENTS = new OptionKey<>(true);
 
     public static final String CONSOLE_NAME = JS_OPTION_PREFIX + "console";
-    @Option(name = CONSOLE_NAME, category = OptionCategory.USER, help = "Provide 'console' global property.") //
+    @Option(name = CONSOLE_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Provide 'console' global property.") //
     public static final OptionKey<Boolean> CONSOLE = new OptionKey<>(true);
 
     public static final String PERFORMANCE_NAME = JS_OPTION_PREFIX + "performance";
@@ -298,19 +323,22 @@ public final class JSContextOptions {
                     new OptionType<>("commonjs-require-globals", new Function<String, Map<String, String>>() {
                         @Override
                         public Map<String, String> apply(String value) {
-                            Map<String, String> map = new HashMap<>();
-                            if ("".equals(value)) {
-                                return map;
+                            if (value.isEmpty()) {
+                                return Collections.emptyMap();
                             }
+                            Map<String, String> map = new HashMap<>();
                             String[] options = value.split(",");
                             for (String s : options) {
                                 String[] builtin = s.split(":", 2);
-                                if (builtin.length != 2) {
-                                    throw new IllegalArgumentException("Unexpected builtin arguments: " + s);
+                                if (builtin.length == 2) {
+                                    String key = builtin[0];
+                                    String val = builtin[1];
+                                    if (!key.isEmpty() && !val.isEmpty()) {
+                                        map.put(key, val);
+                                        continue;
+                                    }
                                 }
-                                String key = builtin[0];
-                                String val = builtin[1];
-                                map.put(key, val);
+                                throw new IllegalArgumentException("Unexpected builtin arguments: " + s);
                             }
                             return map;
                         }
@@ -334,9 +362,13 @@ public final class JSContextOptions {
     @CompilationFinal private boolean awaitOptimization;
 
     public static final String DISABLE_EVAL_NAME = JS_OPTION_PREFIX + "disable-eval";
-    @Option(name = DISABLE_EVAL_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to parse code via e.g. eval().") //
+    @Option(name = DISABLE_EVAL_NAME, category = OptionCategory.EXPERT, deprecated = true, deprecationMessage = "Use js.allow-eval=false instead.", help = "Disallow code generation from strings, e.g. using eval().") //
     public static final OptionKey<Boolean> DISABLE_EVAL = new OptionKey<>(false);
-    @CompilationFinal private boolean disableEval;
+
+    public static final String ALLOW_EVAL_NAME = JS_OPTION_PREFIX + "allow-eval";
+    @Option(name = ALLOW_EVAL_NAME, category = OptionCategory.EXPERT, stability = OptionStability.STABLE, sandbox = SandboxPolicy.UNTRUSTED, help = "Allow or disallow code generation from strings, e.g. using eval().") //
+    public static final OptionKey<Boolean> ALLOW_EVAL = new OptionKey<>(true);
+    @CompilationFinal private boolean allowEval;
 
     public static final String DISABLE_WITH_NAME = JS_OPTION_PREFIX + "disable-with";
     @Option(name = DISABLE_WITH_NAME, category = OptionCategory.EXPERT, help = "User code is not allowed to use the 'with' statement.") //
@@ -532,6 +564,16 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SHADOW_REALM = new OptionKey<>(false);
     @CompilationFinal private boolean shadowRealm;
 
+    public static final String ASYNC_CONTEXT_NAME = JS_OPTION_PREFIX + "async-context";
+    @Option(name = ASYNC_CONTEXT_NAME, category = OptionCategory.EXPERT, help = "Enable AsyncContext proposal.") //
+    public static final OptionKey<Boolean> ASYNC_CONTEXT = new OptionKey<>(false);
+    @CompilationFinal private boolean asyncContext;
+
+    public static final String ALLOW_NARROW_SPACES_IN_DATE_FORMAT_NAME = JS_OPTION_PREFIX + "allow-narrow-spaces-in-date-format";
+    @Option(name = ALLOW_NARROW_SPACES_IN_DATE_FORMAT_NAME, category = OptionCategory.EXPERT, help = "Allow narrow spaces when formatting dates.") //
+    public static final OptionKey<Boolean> ALLOW_NARROW_SPACES_IN_DATE_FORMAT = new OptionKey<>(true);
+    @CompilationFinal private boolean allowNarrowSpacesInDateFormat;
+
     public static final String V8_INTRINSICS_NAME = JS_OPTION_PREFIX + "v8-intrinsics";
     @Option(name = V8_INTRINSICS_NAME, category = OptionCategory.INTERNAL, help = "Enable parsing of V8 intrinsics.") //
     public static final OptionKey<Boolean> V8_INTRINSICS = new OptionKey<>(false);
@@ -551,12 +593,12 @@ public final class JSContextOptions {
 
     public static final String UNHANDLED_REJECTIONS_NAME = JS_OPTION_PREFIX + "unhandled-rejections";
 
-    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, help = "" +
-                    "Configure unhandled promise rejections tracking. Accepted values: 'none', unhandled rejections are not tracked. " +
-                    "'warn', a warning is printed to stderr when an unhandled rejection is detected. " +
-                    "'throw', an exception is thrown when an unhandled rejection is detected. " +
-                    "'handler', the handler function set with Graal.setUnhandledPromiseRejectionHandler will be " +
-                    "called with the rejection value and promise respectively as arguments.") //
+    @Option(name = UNHANDLED_REJECTIONS_NAME, category = OptionCategory.USER, stability = OptionStability.STABLE, sandbox = SandboxPolicy.CONSTRAINED, help = """
+                    Configure unhandled promise rejections tracking. Accepted values: \
+                    'none', unhandled rejections are not tracked. \
+                    'warn', a warning is printed to stderr when an unhandled rejection is detected. \
+                    'throw', an exception is thrown when an unhandled rejection is detected. \
+                    'handler', the handler function set with Graal.setUnhandledPromiseRejectionHandler will be called with the rejection value and promise respectively as arguments.""") //
     public static final OptionKey<UnhandledRejectionsTrackingMode> UNHANDLED_REJECTIONS = new OptionKey<>(UnhandledRejectionsTrackingMode.NONE);
     @CompilationFinal private UnhandledRejectionsTrackingMode unhandledRejectionsMode;
 
@@ -628,67 +670,47 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SCOPE_OPTIMIZATION = new OptionKey<>(true);
     @CompilationFinal private boolean scopeOptimization;
 
-    JSContextOptions(JSParserOptions parserOptions, OptionValues optionValues) {
-        this.parserOptions = parserOptions;
+    JSContextOptions(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
         this.optionValues = optionValues;
-        setOptionValues(optionValues);
+        setOptionValues(sandboxPolicy, optionValues);
     }
 
-    public static JSContextOptions fromOptionValues(OptionValues optionValues) {
-        return new JSContextOptions(new JSParserOptions(), optionValues);
+    public static JSContextOptions fromOptionValues(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
+        return new JSContextOptions(sandboxPolicy, optionValues);
     }
 
-    public JSParserOptions getParserOptions() {
-        return parserOptions;
-    }
-
-    public void setParserOptions(JSParserOptions parserOptions) {
-        CompilerAsserts.neverPartOfCompilation();
-        this.parserOptions = parserOptions;
-    }
-
-    public void setOptionValues(OptionValues newOptions) {
+    public void setOptionValues(SandboxPolicy sandboxPolicy, OptionValues newOptions) {
         CompilerAsserts.neverPartOfCompilation();
         optionValues = newOptions;
-        cacheOptions();
-        parserOptions = parserOptions.putOptions(newOptions);
+        cacheOptions(sandboxPolicy);
     }
 
-    private void cacheOptions() {
+    private void cacheOptions(SandboxPolicy sandboxPolicy) {
         this.nashornCompatibilityMode = readBooleanOption(NASHORN_COMPATIBILITY_MODE);
-        this.ecmascriptVersion = readIntegerOption(ECMASCRIPT_VERSION);
         if (nashornCompatibilityMode && !ECMASCRIPT_VERSION.hasBeenSet(optionValues)) {
             // default to ES5 in nashorn-compat mode
             this.ecmascriptVersion = JSConfig.ECMAScript5;
+        } else {
+            this.ecmascriptVersion = readIntegerOption(ECMASCRIPT_VERSION);
         }
 
         this.annexB = readBooleanOption(ANNEX_B);
         this.intl402 = INTL_402.hasBeenSet(optionValues) ? readBooleanOption(INTL_402) : !nashornCompatibilityMode;
-        this.regexpStaticResult = patchBooleanOption(REGEXP_STATIC_RESULT, REGEXP_STATIC_RESULT_NAME, regexpStaticResult, msg -> {
-            regexpStaticResultCyclicAssumption.invalidate(msg);
-            regexpStaticResultCurrentAssumption = regexpStaticResultCyclicAssumption.getAssumption();
-        });
+        this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT);
         this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
+        this.regexpUnicodeSets = readBooleanOption(REGEXP_UNICODE_SETS);
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER);
-        this.v8CompatibilityMode = patchBooleanOption(V8_COMPATIBILITY_MODE, V8_COMPATIBILITY_MODE_NAME, v8CompatibilityMode, msg -> {
-            v8CompatibilityModeCyclicAssumption.invalidate(msg);
-            v8CompatibilityModeCurrentAssumption = v8CompatibilityModeCyclicAssumption.getAssumption();
-        });
+        this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN);
-        this.directByteBuffer = patchBooleanOption(DIRECT_BYTE_BUFFER, DIRECT_BYTE_BUFFER_NAME, directByteBuffer, msg -> {
-            directByteBufferCyclicAssumption.invalidate(msg);
-            directByteBufferCurrentAssumption = directByteBufferCyclicAssumption.getAssumption();
-        });
+        this.directByteBuffer = readBooleanOption(DIRECT_BYTE_BUFFER);
         this.parseOnly = readBooleanOption(PARSE_ONLY);
         this.debug = readBooleanOption(DEBUG_BUILTIN);
         this.zoneRulesBasedTimeZones = readBooleanOption(ZONE_RULES_BASED_TIME_ZONES);
-        this.timerResolution = patchLongOption(TIMER_RESOLUTION, TIMER_RESOLUTION_NAME, timerResolution, msg -> {
-            timerResolutionCyclicAssumption.invalidate(msg);
-            timerResolutionCurrentAssumption = timerResolutionCyclicAssumption.getAssumption();
-        });
+        this.timerResolution = optionValues.hasBeenSet(TIMER_RESOLUTION) ? readLongOption(TIMER_RESOLUTION)
+                        : sandboxPolicy.isStricterOrEqual(SandboxPolicy.UNTRUSTED) ? TimeUnit.SECONDS.toNanos(1) : TIMER_RESOLUTION.getDefaultValue();
         this.agentCanBlock = readBooleanOption(AGENT_CAN_BLOCK);
         this.awaitOptimization = readBooleanOption(AWAIT_OPTIMIZATION);
-        this.disableEval = readBooleanOption(DISABLE_EVAL);
+        this.allowEval = readBooleanOption(ALLOW_EVAL) && !readBooleanOption(DISABLE_EVAL);
         this.disableWith = readBooleanOption(DISABLE_WITH);
         this.regexDumpAutomata = readBooleanOption(REGEX_DUMP_AUTOMATA);
         this.regexStepExecution = readBooleanOption(REGEX_STEP_EXECUTION);
@@ -721,6 +743,7 @@ public final class JSContextOptions {
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
         this.iteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && readBooleanOption(ITERATOR_HELPERS);
         this.shadowRealm = getEcmaScriptVersion() >= JSConfig.ECMAScript2015 && readBooleanOption(SHADOW_REALM);
+        this.asyncContext = readBooleanOption(ASYNC_CONTEXT);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
         this.errorCause = ERROR_CAUSE.hasBeenSet(optionValues) ? readBooleanOption(ERROR_CAUSE) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
         this.importAssertions = readBooleanOption(IMPORT_ASSERTIONS);
@@ -735,15 +758,8 @@ public final class JSContextOptions {
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
         this.scopeOptimization = readBooleanOption(SCOPE_OPTIMIZATION);
+        this.allowNarrowSpacesInDateFormat = ALLOW_NARROW_SPACES_IN_DATE_FORMAT.hasBeenSet(optionValues) ? readBooleanOption(ALLOW_NARROW_SPACES_IN_DATE_FORMAT) : !isV8CompatibilityMode();
         this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
-    }
-
-    private boolean patchBooleanOption(OptionKey<Boolean> key, String name, boolean oldValue, Consumer<String> invalidate) {
-        boolean newValue = readBooleanOption(key);
-        if (oldValue != newValue) {
-            invalidate.accept(String.format("Option %s was changed from %b to %b.", name, oldValue, newValue));
-        }
-        return newValue;
     }
 
     private UnhandledRejectionsTrackingMode readUnhandledRejectionsMode() {
@@ -758,34 +774,45 @@ public final class JSContextOptions {
         return key.getValue(optionValues);
     }
 
-    private long patchLongOption(OptionKey<Long> key, String name, long oldValue, Consumer<String> invalidate) {
-        long newValue = readLongOption(key);
-        if (oldValue != newValue) {
-            invalidate.accept(String.format("Option %s was changed from %d to %d.", name, oldValue, newValue));
-        }
-        return newValue;
-    }
-
     private long readLongOption(OptionKey<Long> key) {
         return key.getValue(optionValues);
     }
 
-    public static String helpWithDefault(String helpMessage, OptionKey<? extends Object> key) {
+    public static TruffleOptionDescriptors optionDescriptorsWithDefaultValues() {
+        JSContextOptionsOptionDescriptors originalOptionDescriptors = new JSContextOptionsOptionDescriptors();
+        ArrayList<OptionDescriptor> options = new ArrayList<>();
+        JSContextOptions.describeOptions(originalOptionDescriptors, options);
+        OptionDescriptors optionDescriptorsWithDefaults = OptionDescriptors.create(options);
+        return new TruffleOptionDescriptors() {
+            @Override
+            public SandboxPolicy getSandboxPolicy(String key) {
+                return originalOptionDescriptors.getSandboxPolicy(key);
+            }
+
+            @Override
+            public OptionDescriptor get(String optionName) {
+                return optionDescriptorsWithDefaults.get(optionName);
+            }
+
+            @Override
+            public Iterator<OptionDescriptor> iterator() {
+                return optionDescriptorsWithDefaults.iterator();
+            }
+        };
+    }
+
+    private static String helpWithDefault(String helpMessage, OptionKey<? extends Object> key) {
         return helpMessage + " (default:" + key.getDefaultValue() + ")";
     }
 
-    public static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, OptionStability stability, String help, String usageSyntax) {
+    private static OptionDescriptor newOptionDescriptor(OptionKey<?> key, String name, OptionCategory category, OptionStability stability, String help, String usageSyntax) {
         return OptionDescriptor.newBuilder(key, name).category(category).help(helpWithDefault(help, key)).stability(stability).usageSyntax(usageSyntax).build();
     }
 
-    public static void describeOptions(List<OptionDescriptor> options) {
-        for (OptionDescriptor desc : new JSContextOptionsOptionDescriptors()) {
+    private static void describeOptions(JSContextOptionsOptionDescriptors descriptors, List<OptionDescriptor> options) {
+        for (OptionDescriptor desc : descriptors) {
             options.add(newOptionDescriptor(desc.getKey(), desc.getName(), desc.getCategory(), desc.getStability(), desc.getHelp(), desc.getUsageSyntax()));
         }
-    }
-
-    public <T> boolean optionWillChange(OptionKey<T> option, OptionValues newOptionValues) {
-        return !option.getValue(this.optionValues).equals(option.getValue(newOptionValues));
     }
 
     public int getEcmaScriptVersion() {
@@ -805,11 +832,11 @@ public final class JSContextOptions {
         return regexpMatchIndices;
     }
 
+    public boolean isRegexpUnicodeSets() {
+        return regexpUnicodeSets;
+    }
+
     public boolean isRegexpStaticResult() {
-        try {
-            regexpStaticResultCurrentAssumption.check();
-        } catch (InvalidAssumptionException e) {
-        }
         return regexpStaticResult;
     }
 
@@ -828,10 +855,6 @@ public final class JSContextOptions {
     }
 
     public boolean isV8CompatibilityMode() {
-        try {
-            v8CompatibilityModeCurrentAssumption.check();
-        } catch (InvalidAssumptionException e) {
-        }
         return v8CompatibilityMode;
     }
 
@@ -848,10 +871,6 @@ public final class JSContextOptions {
     }
 
     public boolean isDirectByteBuffer() {
-        try {
-            directByteBufferCurrentAssumption.check();
-        } catch (InvalidAssumptionException e) {
-        }
         return directByteBuffer;
     }
 
@@ -860,10 +879,6 @@ public final class JSContextOptions {
     }
 
     public long getTimerResolution() {
-        try {
-            timerResolutionCurrentAssumption.check();
-        } catch (InvalidAssumptionException e) {
-        }
         return timerResolution;
     }
 
@@ -887,8 +902,8 @@ public final class JSContextOptions {
         return topLevelAwait;
     }
 
-    public boolean isDisableEval() {
-        return disableEval;
+    public boolean allowEval() {
+        return allowEval;
     }
 
     public boolean isDisableWith() {
@@ -1126,6 +1141,10 @@ public final class JSContextOptions {
         return shadowRealm;
     }
 
+    public boolean isAsyncContext() {
+        return asyncContext;
+    }
+
     public boolean isOperatorOverloading() {
         return operatorOverloading;
     }
@@ -1162,281 +1181,39 @@ public final class JSContextOptions {
         return scopeOptimization;
     }
 
-    @Override
-    public int hashCode() {
-        int hash = 5;
-        hash = 53 * hash + Objects.hashCode(this.parserOptions);
-        hash = 53 * hash + this.ecmascriptVersion;
-        hash = 53 * hash + (this.annexB ? 1 : 0);
-        hash = 53 * hash + (this.intl402 ? 1 : 0);
-        hash = 53 * hash + (this.regexpMatchIndices ? 1 : 0);
-        hash = 53 * hash + (this.regexpStaticResult ? 1 : 0);
-        hash = 53 * hash + (this.sharedArrayBuffer ? 1 : 0);
-        hash = 53 * hash + (this.v8CompatibilityMode ? 1 : 0);
-        hash = 53 * hash + (this.v8RealmBuiltin ? 1 : 0);
-        hash = 53 * hash + (this.nashornCompatibilityMode ? 1 : 0);
-        hash = 53 * hash + (this.debug ? 1 : 0);
-        hash = 53 * hash + (this.directByteBuffer ? 1 : 0);
-        hash = 53 * hash + (this.parseOnly ? 1 : 0);
-        hash = 53 * hash + (this.zoneRulesBasedTimeZones ? 1 : 0);
-        hash = 53 * hash + (int) this.timerResolution;
-        hash = 53 * hash + (this.agentCanBlock ? 1 : 0);
-        hash = 53 * hash + (this.awaitOptimization ? 1 : 0);
-        hash = 53 * hash + (this.disableEval ? 1 : 0);
-        hash = 53 * hash + (this.disableWith ? 1 : 0);
-        hash = 53 * hash + (this.regexDumpAutomata ? 1 : 0);
-        hash = 53 * hash + (this.regexStepExecution ? 1 : 0);
-        hash = 53 * hash + (this.regexAlwaysEager ? 1 : 0);
-        hash = 53 * hash + (this.scriptEngineGlobalScopeImport ? 1 : 0);
-        hash = 53 * hash + (this.hasForeignObjectPrototype ? 1 : 0);
-        hash = 53 * hash + (this.hasForeignHashProperties ? 1 : 0);
-        hash = 53 * hash + (int) this.functionArgumentsLimit;
-        hash = 53 * hash + (this.test262Mode ? 1 : 0);
-        hash = 53 * hash + (this.testV8Mode ? 1 : 0);
-        hash = 53 * hash + (this.validateRegExpLiterals ? 1 : 0);
-        hash = 53 * hash + this.functionConstructorCacheSize;
-        hash = 53 * hash + this.regexCacheSize;
-        hash = 53 * hash + this.stringLengthLimit;
-        hash = 53 * hash + (this.stringLazySubstrings ? 1 : 0);
-        hash = 53 * hash + (this.bindMemberFunctions ? 1 : 0);
-        hash = 53 * hash + (this.commonJSRequire ? 1 : 0);
-        hash = 53 * hash + (this.regexRegressionTestMode ? 1 : 0);
-        hash = 53 * hash + (this.testCloneUninitialized ? 1 : 0);
-        hash = 53 * hash + (this.lazyTranslation ? 1 : 0);
-        hash = 53 * hash + this.stackTraceLimit;
-        hash = 53 * hash + (this.asyncStackTraces ? 1 : 0);
-        hash = 53 * hash + this.maxTypedArrayLength;
-        hash = 53 * hash + this.maxApplyArgumentLength;
-        hash = 53 * hash + this.maxPrototypeChainLength;
-        hash = 53 * hash + this.propertyCacheLimit;
-        hash = 53 * hash + this.functionCacheLimit;
-        hash = 53 * hash + (this.topLevelAwait ? 1 : 0);
-        hash = 53 * hash + (this.useUTCForLegacyDates ? 1 : 0);
-        hash = 53 * hash + (this.webAssembly ? 1 : 0);
-        hash = 53 * hash + this.unhandledRejectionsMode.ordinal();
-        hash = 53 * hash + (this.newSetMethods ? 1 : 0);
-        hash = 53 * hash + (this.iteratorHelpers ? 1 : 0);
-        hash = 53 * hash + (this.shadowRealm ? 1 : 0);
-        hash = 53 * hash + (this.operatorOverloading ? 1 : 0);
-        hash = 53 * hash + (this.errorCause ? 1 : 0);
-        hash = 53 * hash + (this.importAssertions ? 1 : 0);
-        hash = 53 * hash + (this.jsonModules ? 1 : 0);
-        hash = 53 * hash + (this.wasmBigInt ? 1 : 0);
-        hash = 53 * hash + (this.esmEvalReturnsExports ? 1 : 0);
-        hash = 53 * hash + (this.printNoNewline ? 1 : 0);
-        hash = 53 * hash + (this.mleMode ? 1 : 0);
-        hash = 53 * hash + (this.privateFieldsIn ? 1 : 0);
-        hash = 53 * hash + (this.esmBareSpecifierRelativeLookup ? 1 : 0);
-        hash = 53 * hash + (this.temporal ? 1 : 0);
-        hash = 53 * hash + (this.scopeOptimization ? 1 : 0);
-        hash = 53 * hash + (this.v8Intrinsics ? 1 : 0);
-        return hash;
+    public boolean allowNarrowSpacesInDateFormat() {
+        return allowNarrowSpacesInDateFormat;
     }
 
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (obj == null) {
-            return false;
-        }
-        if (getClass() != obj.getClass()) {
-            return false;
-        }
-        final JSContextOptions other = (JSContextOptions) obj;
-        if (this.ecmascriptVersion != other.ecmascriptVersion) {
-            return false;
-        }
-        if (this.annexB != other.annexB) {
-            return false;
-        }
-        if (this.intl402 != other.intl402) {
-            return false;
-        }
-        if (this.regexpMatchIndices != other.regexpMatchIndices) {
-            return false;
-        }
-        if (this.regexpStaticResult != other.regexpStaticResult) {
-            return false;
-        }
-        if (this.sharedArrayBuffer != other.sharedArrayBuffer) {
-            return false;
-        }
-        if (this.v8CompatibilityMode != other.v8CompatibilityMode) {
-            return false;
-        }
-        if (this.v8RealmBuiltin != other.v8RealmBuiltin) {
-            return false;
-        }
-        if (this.nashornCompatibilityMode != other.nashornCompatibilityMode) {
-            return false;
-        }
-        if (this.debug != other.debug) {
-            return false;
-        }
-        if (this.directByteBuffer != other.directByteBuffer) {
-            return false;
-        }
-        if (this.parseOnly != other.parseOnly) {
-            return false;
-        }
-        if (this.zoneRulesBasedTimeZones != other.zoneRulesBasedTimeZones) {
-            return false;
-        }
-        if (this.timerResolution != other.timerResolution) {
-            return false;
-        }
-        if (this.agentCanBlock != other.agentCanBlock) {
-            return false;
-        }
-        if (this.awaitOptimization != other.awaitOptimization) {
-            return false;
-        }
-        if (this.disableEval != other.disableEval) {
-            return false;
-        }
-        if (this.disableWith != other.disableWith) {
-            return false;
-        }
-        if (this.regexDumpAutomata != other.regexDumpAutomata) {
-            return false;
-        }
-        if (this.regexStepExecution != other.regexStepExecution) {
-            return false;
-        }
-        if (this.regexAlwaysEager != other.regexAlwaysEager) {
-            return false;
-        }
-        if (this.scriptEngineGlobalScopeImport != other.scriptEngineGlobalScopeImport) {
-            return false;
-        }
-        if (this.hasForeignObjectPrototype != other.hasForeignObjectPrototype) {
-            return false;
-        }
-        if (this.hasForeignHashProperties != other.hasForeignHashProperties) {
-            return false;
-        }
-        if (this.functionArgumentsLimit != other.functionArgumentsLimit) {
-            return false;
-        }
-        if (this.test262Mode != other.test262Mode) {
-            return false;
-        }
-        if (this.testV8Mode != other.testV8Mode) {
-            return false;
-        }
-        if (this.validateRegExpLiterals != other.validateRegExpLiterals) {
-            return false;
-        }
-        if (this.functionConstructorCacheSize != other.functionConstructorCacheSize) {
-            return false;
-        }
-        if (this.regexCacheSize != other.regexCacheSize) {
-            return false;
-        }
-        if (this.stringLengthLimit != other.stringLengthLimit) {
-            return false;
-        }
-        if (this.stringLazySubstrings != other.stringLazySubstrings) {
-            return false;
-        }
-        if (this.bindMemberFunctions != other.bindMemberFunctions) {
-            return false;
-        }
-        if (this.commonJSRequire != other.commonJSRequire) {
-            return false;
-        }
-        if (this.regexRegressionTestMode != other.regexRegressionTestMode) {
-            return false;
-        }
-        if (this.testCloneUninitialized != other.testCloneUninitialized) {
-            return false;
-        }
-        if (this.lazyTranslation != other.lazyTranslation) {
-            return false;
-        }
-        if (this.stackTraceLimit != other.stackTraceLimit) {
-            return false;
-        }
-        if (this.asyncStackTraces != other.asyncStackTraces) {
-            return false;
-        }
-        if (this.maxTypedArrayLength != other.maxTypedArrayLength) {
-            return false;
-        }
-        if (this.maxApplyArgumentLength != other.maxApplyArgumentLength) {
-            return false;
-        }
-        if (this.maxPrototypeChainLength != other.maxPrototypeChainLength) {
-            return false;
-        }
-        if (this.propertyCacheLimit != other.propertyCacheLimit) {
-            return false;
-        }
-        if (this.functionCacheLimit != other.functionCacheLimit) {
-            return false;
-        }
-        if (this.topLevelAwait != other.topLevelAwait) {
-            return false;
-        }
-        if (this.useUTCForLegacyDates != other.useUTCForLegacyDates) {
-            return false;
-        }
-        if (this.webAssembly != other.webAssembly) {
-            return false;
-        }
-        if (this.unhandledRejectionsMode != other.unhandledRejectionsMode) {
-            return false;
-        }
-        if (this.newSetMethods != other.newSetMethods) {
-            return false;
-        }
-        if (this.iteratorHelpers != other.iteratorHelpers) {
-            return false;
-        }
-        if (this.shadowRealm != other.shadowRealm) {
-            return false;
-        }
-        if (this.operatorOverloading != other.operatorOverloading) {
-            return false;
-        }
-        if (this.errorCause != other.errorCause) {
-            return false;
-        }
-        if (this.importAssertions != other.importAssertions) {
-            return false;
-        }
-        if (this.jsonModules != other.jsonModules) {
-            return false;
-        }
-        if (this.wasmBigInt != other.wasmBigInt) {
-            return false;
-        }
-        if (this.esmEvalReturnsExports != other.esmEvalReturnsExports) {
-            return false;
-        }
-        if (this.printNoNewline != other.printNoNewline) {
-            return false;
-        }
-        if (this.mleMode != other.mleMode) {
-            return false;
-        }
-        if (this.privateFieldsIn != other.privateFieldsIn) {
-            return false;
-        }
-        if (this.esmBareSpecifierRelativeLookup != other.esmBareSpecifierRelativeLookup) {
-            return false;
-        }
-        if (this.temporal != other.temporal) {
-            return false;
-        }
-        if (this.scopeOptimization != other.scopeOptimization) {
-            return false;
-        }
-        if (this.v8Intrinsics != other.v8Intrinsics) {
-            return false;
-        }
-        return Objects.equals(this.parserOptions, other.parserOptions);
+    public boolean isSyntaxExtensions() {
+        return SYNTAX_EXTENSIONS.hasBeenSet(optionValues) ? SYNTAX_EXTENSIONS.getValue(optionValues) : NASHORN_COMPATIBILITY_MODE.getValue(optionValues);
+    }
+
+    public boolean isScripting() {
+        return SCRIPTING.getValue(optionValues);
+    }
+
+    public boolean isShebang() {
+        return SHEBANG.hasBeenSet(optionValues) ? SHEBANG.getValue(optionValues) : getEcmaScriptVersion() >= JSConfig.ECMAScript2020;
+    }
+
+    public boolean isStrict() {
+        return STRICT.getValue(optionValues);
+    }
+
+    public boolean isConstAsVar() {
+        return CONST_AS_VAR.getValue(optionValues);
+    }
+
+    public boolean isFunctionStatementError() {
+        return FUNCTION_STATEMENT_ERROR.getValue(optionValues);
+    }
+
+    public boolean isClassFields() {
+        return CLASS_FIELDS.hasBeenSet(optionValues) ? CLASS_FIELDS.getValue(optionValues) : getEcmaScriptVersion() >= JSContextOptions.CLASS_FIELDS_ES_VERSION;
+    }
+
+    public boolean isV8Intrinsics() {
+        return V8_INTRINSICS.getValue(optionValues);
     }
 }

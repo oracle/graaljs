@@ -706,6 +706,9 @@ is provided below to assist with ecosystem coordination.
   the given export. _This condition should always be included first._
 * `"deno"` - indicates a variation for the Deno platform.
 * `"browser"` - any web browser environment.
+* `"react-native"` - will be matched by the React Native framework (all
+  platforms). _To target React Native for Web, `"browser"` should be specified
+  before this condition._
 * `"development"` - can be used to define a development-only environment
   entry point, for example to provide additional debugging context such as
   better error messages when running in a development mode. _Must always be
@@ -813,51 +816,6 @@ console.log(require('@my/package'));
 $ node other.js
 42
 ```
-
-### Subpath folder mappings
-
-<!-- YAML
-changes:
-  - version: v16.0.0
-    pr-url: https://github.com/nodejs/node/pull/37215
-    description: Runtime deprecation.
-  - version: v15.1.0
-    pr-url: https://github.com/nodejs/node/pull/35747
-    description: Runtime deprecation for self-referencing imports.
-  - version:
-    - v14.13.0
-    - v12.20.0
-    pr-url: https://github.com/nodejs/node/pull/34718
-    description: Documentation-only deprecation.
--->
-
-> Stability: 0 - Deprecated: Use subpath patterns instead.
-
-Before subpath patterns were supported, a trailing `"/"` suffix was used to
-support folder mappings:
-
-```json
-{
-  "exports": {
-    "./features/": "./features/"
-  }
-}
-```
-
-_This feature will be removed in a future release._
-
-Instead, use direct [subpath patterns][]:
-
-```json
-{
-  "exports": {
-    "./features/*": "./features/*.js"
-  }
-}
-```
-
-The benefit of patterns over folder exports is that packages can always be
-imported by consumers without subpath file extensions being necessary.
 
 ## Dual CommonJS/ES module packages
 
@@ -1078,7 +1036,7 @@ CommonJS and ES module instances of the package:
    // ./node_modules/pkg/index.mjs
    import state from './state.cjs';
    export {
-     state
+     state,
    };
    ```
 
@@ -1199,7 +1157,9 @@ require('./path/to/directory');
 ### `"packageManager"`
 
 <!-- YAML
-added: v16.9.0
+added:
+  - v16.9.0
+  - v14.19.0
 -->
 
 > Stability: 1 - Experimental
@@ -1213,9 +1173,9 @@ added: v16.9.0
 ```
 
 The `"packageManager"` field defines which package manager is expected to be
-used when working on the current project. It can set to any of the
+used when working on the current project. It can be set to any of the
 [supported package managers][], and will ensure that your teams use the exact
-same package manager versions without having to install anything else than
+same package manager versions without having to install anything else other than
 Node.js.
 
 This field is currently experimental and needs to be opted-in; check the
@@ -1385,7 +1345,6 @@ This field defines [subpath imports][] for the current package.
 [self-reference]: #self-referencing-a-package-using-its-name
 [subpath exports]: #subpath-exports
 [subpath imports]: #subpath-imports
-[subpath patterns]: #subpath-patterns
 [supported package managers]: corepack.md#supported-package-managers
 [the dual CommonJS/ES module packages section]: #dual-commonjses-module-packages
 [the full specifier path]: esm.md#mandatory-file-extensions

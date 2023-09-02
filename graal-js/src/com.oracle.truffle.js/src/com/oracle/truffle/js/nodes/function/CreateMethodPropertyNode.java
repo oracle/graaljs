@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
@@ -48,7 +49,6 @@ import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
@@ -63,6 +63,7 @@ public abstract class CreateMethodPropertyNode extends JavaScriptBaseNode {
         this.isObject = IsJSObjectNode.create();
     }
 
+    @NeverDefault
     public static CreateMethodPropertyNode create(JSContext context, Object key) {
         return CreateMethodPropertyNodeGen.create(context, key);
     }
@@ -75,8 +76,8 @@ public abstract class CreateMethodPropertyNode extends JavaScriptBaseNode {
         propertyCache.setValue(object, value);
     }
 
-    @Specialization(guards = {"context.getPropertyCacheLimit() == 0", "isJSObject(object)"})
-    protected final void doUncached(JSDynamicObject object, Object value) {
+    @Specialization(guards = {"context.getPropertyCacheLimit() == 0"})
+    protected final void doUncached(JSObject object, Object value) {
         JSObject.defineOwnProperty(object, key, PropertyDescriptor.createData(value, false, true, true));
     }
 
@@ -85,6 +86,7 @@ public abstract class CreateMethodPropertyNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorNotAnObject(object, this);
     }
 
+    @NeverDefault
     protected final PropertySetNode makeDefinePropertyCache() {
         return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefaultNotEnumerable());
     }

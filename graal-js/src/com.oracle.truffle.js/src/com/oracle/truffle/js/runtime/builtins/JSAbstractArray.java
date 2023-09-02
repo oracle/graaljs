@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,6 @@ import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyPrototypeArray;
-import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -86,7 +85,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
     private static final String LENGTH_PROPERTY_NOT_WRITABLE = "length property not writable";
     protected static final String CANNOT_REDEFINE_PROPERTY_LENGTH = "Cannot redefine property: length";
     protected static final String MAKE_SLOW_ARRAY_NEVER_PART_OF_COMPILATION_MESSAGE = "do not convert to slow array from compiled code";
-    public static final String ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION = "Array.prototype no element assumption";
+    public static final String ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION = "Array.prototype no elements assumption";
 
     public static final HiddenKey LAZY_REGEX_RESULT_ID = new HiddenKey("lazyRegexResult");
     public static final HiddenKey LAZY_REGEX_ORIGINAL_INPUT_ID = new HiddenKey("lazyRegexResultOriginalInput");
@@ -165,7 +164,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
     }
 
     public static Object arrayGetRegexResult(JSDynamicObject thisObj, DynamicObjectLibrary lazyRegexResult) {
-        assert JSArray.isJSArray(thisObj) && JSArray.arrayGetArrayType(thisObj) == LazyRegexResultArray.LAZY_REGEX_RESULT_ARRAY;
+        assert JSArray.isJSArray(thisObj);
         return Properties.getOrDefault(lazyRegexResult, thisObj, LAZY_REGEX_RESULT_ID, null);
     }
 
@@ -508,7 +507,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return list;
     }
 
-    protected static long toArrayLengthOrRangeError(Object obj) {
+    public static long toArrayLengthOrRangeError(Object obj, Node originatingNode) {
         Number len = JSRuntime.toNumber(obj);
         Number len32 = JSRuntime.toUInt32(len);
         /*
@@ -516,10 +515,10 @@ public abstract class JSAbstractArray extends JSNonProxy {
          * called twice. This is legacy behaviour that was specified with this effect.
          */
         Number numberLen = JSRuntime.toNumber(obj);
-        return toArrayLengthOrRangeError(numberLen, len32);
+        return toArrayLengthOrRangeError(numberLen, len32, originatingNode);
     }
 
-    public static long toArrayLengthOrRangeError(Number len, Number len32) {
+    public static long toArrayLengthOrRangeError(Number len, Number len32, Node originatingNode) {
         double d32 = JSRuntime.doubleValue(len32);
         double d = JSRuntime.doubleValue(len);
 
@@ -529,7 +528,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
         if (d == 0) {
             return 0; // also handles the -0.0
         }
-        throw Errors.createRangeErrorInvalidArrayLength();
+        throw Errors.createRangeErrorInvalidArrayLength(originatingNode);
     }
 
     @Override
@@ -657,6 +656,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
      * @return whether the operation was successful
      */
     protected boolean defineOwnPropertyIndex(JSDynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
+        CompilerAsserts.neverPartOfCompilation();
         assert Strings.isTString(name);
         long index = JSRuntime.toUInt32(name);
         if (index >= this.getLength(thisObj)) {
@@ -682,16 +682,16 @@ public abstract class JSAbstractArray extends JSNonProxy {
         assert !JSSlowArray.isJSSlowArray(thisObj);
         JSDynamicObject.setJSClass(thisObj, JSSlowArray.INSTANCE);
         JSContext context = JSObject.getJSContext(thisObj);
-        context.getFastArrayAssumption().invalidate("create slow ArgumentsObject");
-        if (isArrayPrototype(thisObj)) {
-            context.getArrayPrototypeNoElementsAssumption().invalidate("Array.prototype has no elements");
+        context.getFastArrayAssumption().invalidate("[[DefineOwnProperty]]");
+        if (JSShape.isArrayPrototypeOrDerivative(thisObj)) {
+            // The only Array exotic object that may reach here is the %Array.prototype%.
+            if (context.getArrayPrototypeNoElementsAssumption().isValid()) {
+                assert arrayGetArrayType(thisObj) instanceof ConstantEmptyPrototypeArray;
+                context.getArrayPrototypeNoElementsAssumption().invalidate("Array.prototype.[[DefineOwnProperty]]");
+            }
         }
         assert JSSlowArray.isJSSlowArray(thisObj);
         return thisObj;
-    }
-
-    private static boolean isArrayPrototype(JSDynamicObject thisObj) {
-        return arrayGetArrayType(thisObj) instanceof ConstantEmptyPrototypeArray;
     }
 
     @Override
@@ -731,13 +731,6 @@ public abstract class JSAbstractArray extends JSNonProxy {
         } else {
             return super.delete(thisObj, key, isStrict);
         }
-    }
-
-    @TruffleBoundary
-    @Override
-    public boolean setPrototypeOf(JSDynamicObject thisObj, JSDynamicObject newPrototype) {
-        JSObject.getJSContext(thisObj).getArrayPrototypeNoElementsAssumption().invalidate(ARRAY_PROTOTYPE_NO_ELEMENTS_INVALIDATION);
-        return super.setPrototypeOf(thisObj, newPrototype);
     }
 
     @Override

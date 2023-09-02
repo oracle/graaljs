@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,13 @@
  */
 package com.oracle.truffle.js.builtins.foreign;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltinsFactory.IteratorNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
@@ -106,26 +107,25 @@ public final class ForeignIterablePrototypeBuiltins extends JSBuiltinsContainer.
     @ImportStatic({JSConfig.class})
     public abstract static class IteratorNode extends JSBuiltinNode {
         @Child private PropertySetNode setEnumerateIteratorNode;
-        private final BranchProfile errorBranch;
 
         public IteratorNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.errorBranch = BranchProfile.create();
             this.setEnumerateIteratorNode = PropertySetNode.createSetHidden(JSRuntime.ENUMERATE_ITERATOR_ID, context);
         }
 
         @Specialization
-        protected JSDynamicObject execute(Object target,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+        protected JSDynamicObject iterator(Object target,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached InlinedBranchProfile errorBranch) {
             if (!interop.hasIterator(target)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorNotIterable(target, null);
             }
             Object iterator;
             try {
                 iterator = interop.getIterator(target);
             } catch (UnsupportedMessageException e) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorInteropException(target, e, "getIterator", null);
             }
             JSObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());

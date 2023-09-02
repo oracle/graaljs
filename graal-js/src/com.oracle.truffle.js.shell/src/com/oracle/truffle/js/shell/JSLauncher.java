@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,11 +47,12 @@ import static com.oracle.truffle.js.shell.JSLauncher.PreprocessResult.Unhandled;
 import java.io.File;
 import java.io.IOException;
 import java.io.PrintStream;
-import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
 import java.util.ListIterator;
@@ -61,6 +62,7 @@ import java.util.Set;
 import org.graalvm.launcher.AbstractLanguageLauncher;
 import org.graalvm.options.OptionCategory;
 import org.graalvm.polyglot.Context;
+import org.graalvm.polyglot.Engine;
 import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
@@ -73,11 +75,14 @@ public class JSLauncher extends AbstractLanguageLauncher {
         new JSLauncher().launch(args);
     }
 
-    boolean printResult = false;
-    boolean fuzzilliREPRL = false;
-    String[] programArgs;
-    final List<UnparsedSource> unparsedSources = new LinkedList<>();
+    private boolean printResult = false;
+    private boolean fuzzilliREPRL = false;
+    private boolean allowExperimentalOptions = false;
+    private boolean useSharedEngine = false;
+    private String[] programArgs;
+    private final List<UnparsedSource> unparsedSources = new LinkedList<>();
     private VersionAction versionAction = VersionAction.None;
+    private Map<String, String> enginePolyglotOptions;
 
     @Override
     protected void launch(Context.Builder contextBuilder) {
@@ -111,6 +116,9 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 if (arg.equals("--")) {
                     break;
                 }
+
+                interceptExperimentalOptions(arg);
+
                 String flag;
                 if (arg.startsWith("--")) {
                     flag = arg.substring(2);
@@ -162,6 +170,19 @@ public class JSLauncher extends AbstractLanguageLauncher {
         return unrecognizedOptions;
     }
 
+    private void interceptExperimentalOptions(String arg) {
+        switch (arg) {
+            case "--experimental-options":
+            case "--experimental-options=true":
+                allowExperimentalOptions = true;
+                break;
+            case "--experimental-options=false": {
+                allowExperimentalOptions = false;
+                break;
+            }
+        }
+    }
+
     public enum PreprocessResult {
         Consumed,
         Unhandled,
@@ -170,7 +191,6 @@ public class JSLauncher extends AbstractLanguageLauncher {
 
     protected PreprocessResult preprocessArgument(String argument) {
         switch (argument) {
-            case "printResult":
             case "print-result":
                 printResult = true;
                 return Consumed;
@@ -182,6 +202,9 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 return Consumed;
             case "fuzzilli-reprl":
                 fuzzilliREPRL = true;
+                return Consumed;
+            case "shared-engine":
+                useSharedEngine = true;
                 return Consumed;
         }
         return Unhandled;
@@ -267,6 +290,13 @@ public class JSLauncher extends AbstractLanguageLauncher {
         if (!hasSources() && printResult) {
             throw abort("Error: cannot print the return value when no FILE is passed.", 6);
         }
+        if (useSharedEngine) {
+            // We must pass engine-level polyglot options (i.e. 'engine' and instrument groups) to
+            // the shared engine; the context would refuse them in this mode.
+            // As a simplification, we pass all polyglot options to the engine instead.
+            this.enginePolyglotOptions = new HashMap<>(polyglotOptions);
+            polyglotOptions.clear();
+        }
     }
 
     @Override
@@ -280,12 +310,11 @@ public class JSLauncher extends AbstractLanguageLauncher {
         printOption("-e, --eval CODE",      "evaluate the code");
         printOption("-f, --file FILE",      "load script file");
         printOption("--module FILE",        "load module file");
-        printOption("--syntax-extensions",  "enable non-spec syntax extensions");
+        printOption("--script-file FILE",   "load script file in strict mode");
         printOption("--print-result",       "print the return value of each FILE");
-        printOption("--scripting",          "enable scripting features (Nashorn compatibility option)");
-        printOption("--strict",             "run in strict mode");
         printOption("--version",            "print the version and exit");
         printOption("--show-version",       "print the version and continue");
+        printOption("--shared-engine",      "run in shared polyglot engine mode");
         // @formatter:on
     }
 
@@ -294,12 +323,12 @@ public class JSLauncher extends AbstractLanguageLauncher {
         args.addAll(Arrays.asList(
                         "-e", "--eval",
                         "-f", "--file",
-                        "--syntax-extensions",
+                        "--module",
+                        "--strict-file",
                         "--print-result",
                         "--version",
                         "--show-version",
-                        "--scripting",
-                        "--strict"));
+                        "--shared-engine"));
     }
 
     protected static void printOption(String option, String description) {
@@ -318,7 +347,12 @@ public class JSLauncher extends AbstractLanguageLauncher {
         contextBuilder.arguments("js", programArgs);
         contextBuilder.option("js.shell", "true");
         contextBuilder.useSystemExit(true);
-        try (Context context = contextBuilder.build()) {
+        Engine sharedEngine = null;
+        if (useSharedEngine) {
+            sharedEngine = Engine.newBuilder().allowExperimentalOptions(allowExperimentalOptions).options(enginePolyglotOptions).build();
+            contextBuilder.engine(sharedEngine);
+        }
+        try (Engine engine = sharedEngine; Context context = contextBuilder.build()) {
             runVersionAction(versionAction, context.getEngine());
             preEval(context);
             if (hasSources()) {
@@ -473,7 +507,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
             return source;
         }
 
-        private Source parseImpl() throws IOException, UnsupportedEncodingException {
+        private Source parseImpl() throws IOException {
             switch (type) {
                 case FILE:
                     return Source.newBuilder("js", new File(src)).build();
@@ -482,7 +516,7 @@ public class JSLauncher extends AbstractLanguageLauncher {
                 case MODULE:
                     return Source.newBuilder("js", new File(src)).mimeType(MODULE_MIME_TYPE).build();
                 case STRICT:
-                    return Source.newBuilder("js", new File(src)).content("\"use strict\";" + new String(Files.readAllBytes(Paths.get(src)), "UTF-8")).build();
+                    return Source.newBuilder("js", new File(src)).content("\"use strict\";" + new String(Files.readAllBytes(Paths.get(src)), StandardCharsets.UTF_8)).build();
                 default:
                     throw new IllegalStateException();
             }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,11 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -128,7 +130,9 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
         }
     }
 
+    @NeverDefault
     protected final Shape getInitialArrayShape() {
+        CompilerAsserts.neverPartOfCompilation();
         JSRealm realm = getRealm();
         return realm.getContext().getArrayFactory().getShape(realm);
     }
@@ -154,18 +158,22 @@ public abstract class IsArrayNode extends JavaScriptBaseNode {
         return checkResult(object, isArray(object));
     }
 
+    @NeverDefault
     public static IsArrayNode createIsAnyArray() {
         return IsArrayNodeGen.create(Kind.AnyArray);
     }
 
+    @NeverDefault
     public static IsArrayNode createIsArray() {
         return IsArrayNodeGen.create(Kind.Array);
     }
 
+    @NeverDefault
     public static IsArrayNode createIsFastArray() {
         return IsArrayNodeGen.create(Kind.FastArray);
     }
 
+    @NeverDefault
     public static IsArrayNode createIsFastOrTypedArray() {
         return IsArrayNodeGen.create(Kind.FastOrTypedArray);
     }

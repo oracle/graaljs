@@ -36,7 +36,7 @@ namespace node {
 namespace inspector {
 namespace {
 
-using node::FatalError;
+using node::OnFatalError;
 
 using v8::Context;
 using v8::Function;
@@ -52,7 +52,9 @@ using v8_inspector::StringView;
 using v8_inspector::V8Inspector;
 using v8_inspector::V8InspectorClient;
 
+#ifdef __POSIX__
 static uv_sem_t start_io_thread_semaphore;
+#endif  // __POSIX__
 static uv_async_t start_io_thread_async;
 // This is just an additional check to make sure start_io_thread_async
 // is not accidentally re-used or used when uninitialized.
@@ -243,6 +245,9 @@ class ChannelImpl final : public v8_inspector::V8Inspector::Channel,
 
   void dispatchProtocolMessage(const StringView& message) {
     std::string raw_message = protocol::StringUtil::StringViewToUtf8(message);
+    per_process::Debug(DebugCategory::INSPECTOR_SERVER,
+                       "[inspector received] %s\n",
+                       raw_message);
     std::unique_ptr<protocol::DictionaryValue> value =
         protocol::DictionaryValue::cast(protocol::StringUtil::parseMessage(
             raw_message, false));
@@ -291,6 +296,13 @@ class ChannelImpl final : public v8_inspector::V8Inspector::Channel,
   void flushProtocolNotifications() override { }
 
   void sendMessageToFrontend(const StringView& message) {
+    if (per_process::enabled_debug_list.enabled(
+            DebugCategory::INSPECTOR_SERVER)) {
+      std::string raw_message = protocol::StringUtil::StringViewToUtf8(message);
+      per_process::Debug(DebugCategory::INSPECTOR_SERVER,
+                         "[inspector send] %s\n",
+                         raw_message);
+    }
     delegate_->SendMessageToFrontend(message);
   }
 
@@ -645,8 +657,9 @@ class NodeInspectorClient : public V8InspectorClient {
         protocol::StringUtil::StringViewToUtf8(resource_name_view);
     if (!IsFilePath(resource_name))
       return nullptr;
-    node::url::URL url = node::url::URL::FromFilePath(resource_name);
-    return Utf8ToStringView(url.href());
+
+    std::string url = node::url::FromFilePath(resource_name);
+    return Utf8ToStringView(url);
   }
 
   node::Environment* env_;
@@ -719,7 +732,8 @@ bool Agent::Start(const std::string& path,
   if (parent_handle_) {
     wait_for_connect = parent_handle_->WaitForConnect();
     parent_handle_->WorkerStarted(client_->getThreadHandle(), wait_for_connect);
-  } else if (!options.inspector_enabled || !StartIoThread()) {
+  } else if (!options.inspector_enabled || !options.allow_attaching_debugger ||
+             !StartIoThread()) {
     return false;
   }
 
@@ -884,8 +898,8 @@ void Agent::ToggleAsyncHook(Isolate* isolate, Local<Function> fn) {
   USE(fn->Call(context, Undefined(isolate), 0, nullptr));
   if (try_catch.HasCaught() && !try_catch.HasTerminated()) {
     PrintCaughtException(isolate, context, try_catch);
-    FatalError("\nnode::inspector::Agent::ToggleAsyncHook",
-               "Cannot toggle Inspector's AsyncHook, please report this.");
+    OnFatalError("\nnode::inspector::Agent::ToggleAsyncHook",
+                 "Cannot toggle Inspector's AsyncHook, please report this.");
   }
 }
 
@@ -914,6 +928,9 @@ void Agent::RequestIoThreadStart() {
   // We need to attempt to interrupt V8 flow (in case Node is running
   // continuous JS code) and to wake up libuv thread (in case Node is waiting
   // for IO events)
+  if (!options().allow_attaching_debugger) {
+    return;
+  }
   CHECK(start_io_thread_async_initialized);
   uv_async_send(&start_io_thread_async);
   parent_env_->RequestInterrupt([this](Environment*) {
@@ -942,7 +959,7 @@ void Agent::SetParentHandle(
 }
 
 std::unique_ptr<ParentInspectorHandle> Agent::GetParentHandle(
-    uint64_t thread_id, const std::string& url) {
+    uint64_t thread_id, const std::string& url, const std::string& name) {
   if (!parent_env_->should_create_inspector() && !client_) {
     ThrowUninitializedInspectorError(parent_env_);
     return std::unique_ptr<ParentInspectorHandle>{};
@@ -950,9 +967,9 @@ std::unique_ptr<ParentInspectorHandle> Agent::GetParentHandle(
 
   CHECK_NOT_NULL(client_);
   if (!parent_handle_) {
-    return client_->getWorkerManager()->NewParentHandle(thread_id, url);
+    return client_->getWorkerManager()->NewParentHandle(thread_id, url, name);
   } else {
-    return parent_handle_->NewParentInspectorHandle(thread_id, url);
+    return parent_handle_->NewParentInspectorHandle(thread_id, url, name);
   }
 }
 

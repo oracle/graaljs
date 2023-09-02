@@ -100,6 +100,62 @@ If this flag is passed, the behavior can still be set to not abort through
 [`process.setUncaughtExceptionCaptureCallback()`][] (and through usage of the
 `node:domain` module that uses it).
 
+### `--build-snapshot`
+
+<!-- YAML
+added: v18.8.0
+-->
+
+> Stability: 1 - Experimental
+
+Generates a snapshot blob when the process exits and writes it to
+disk, which can be loaded later with `--snapshot-blob`.
+
+When building the snapshot, if `--snapshot-blob` is not specified,
+the generated blob will be written, by default, to `snapshot.blob`
+in the current working directory. Otherwise it will be written to
+the path specified by `--snapshot-blob`.
+
+```console
+$ echo "globalThis.foo = 'I am from the snapshot'" > snapshot.js
+
+# Run snapshot.js to initialize the application and snapshot the
+# state of it into snapshot.blob.
+$ node --snapshot-blob snapshot.blob --build-snapshot snapshot.js
+
+$ echo "console.log(globalThis.foo)" > index.js
+
+# Load the generated snapshot and start the application from index.js.
+$ node --snapshot-blob snapshot.blob index.js
+I am from the snapshot
+```
+
+The [`v8.startupSnapshot` API][] can be used to specify an entry point at
+snapshot building time, thus avoiding the need of an additional entry
+script at deserialization time:
+
+```console
+$ echo "require('v8').startupSnapshot.setDeserializeMainFunction(() => console.log('I am from the snapshot'))" > snapshot.js
+$ node --snapshot-blob snapshot.blob --build-snapshot snapshot.js
+$ node --snapshot-blob snapshot.blob
+I am from the snapshot
+```
+
+For more information, check out the [`v8.startupSnapshot` API][] documentation.
+
+Currently the support for run-time snapshot is experimental in that:
+
+1. User-land modules are not yet supported in the snapshot, so only
+   one single file can be snapshotted. Users can bundle their applications
+   into a single script with their bundler of choice before building
+   a snapshot, however.
+2. Only a subset of the built-in modules work in the snapshot, though the
+   Node.js core test suite checks that a few fairly complex applications
+   can be snapshotted. Support for more modules are being added. If any
+   crashes or buggy behaviors occur when building a snapshot, please file
+   a report in the [Node.js issue tracker][] and link to it in the
+   [tracking issue for user-land snapshots][].
+
 ### `--completion-bash`
 
 <!-- YAML
@@ -113,7 +169,7 @@ $ node --completion-bash > node_bash_completion
 $ source node_bash_completion
 ```
 
-### `-C=condition`, `--conditions=condition`
+### `-C condition`, `--conditions=condition`
 
 <!-- YAML
 added:
@@ -134,7 +190,7 @@ The default Node.js conditions of `"node"`, `"default"`, `"import"`, and
 For example, to run a module with "development" resolutions:
 
 ```console
-$ node -C=development app.js
+$ node -C development app.js
 ```
 
 ### `--cpu-prof`
@@ -231,7 +287,13 @@ code from strings throw an exception instead. This does not affect the Node.js
 ### `--dns-result-order=order`
 
 <!-- YAML
-added: v16.4.0
+added:
+  - v16.4.0
+  - v14.18.0
+changes:
+  - version: v17.0.0
+    pr-url: https://github.com/nodejs/node/pull/39987
+    description: Changed default value to `verbatim`.
 -->
 
 Set the default value of `verbatim` in [`dns.lookup()`][] and
@@ -240,7 +302,7 @@ Set the default value of `verbatim` in [`dns.lookup()`][] and
 * `ipv4first`: sets default `verbatim` `false`.
 * `verbatim`: sets default `verbatim` `true`.
 
-The default is `ipv4first` and [`dns.setDefaultResultOrder()`][] have higher
+The default is `verbatim` and [`dns.setDefaultResultOrder()`][] have higher
 priority than `--dns-result-order`.
 
 ### `--enable-fips`
@@ -257,7 +319,9 @@ against FIPS-compatible OpenSSL.)
 <!-- YAML
 added: v12.12.0
 changes:
-  - version: v15.11.0
+  - version:
+      - v15.11.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37362
     description: This API is no longer experimental.
 -->
@@ -277,18 +341,10 @@ when `Error.stack` is accessed. If you access `Error.stack` frequently
 in your application, take into account the performance implications
 of `--enable-source-maps`.
 
-### `--experimental-fetch`
-
-<!-- YAML
-added: v16.15.0
--->
-
-Enable experimental support for the [Fetch API][].
-
 ### `--experimental-global-customevent`
 
 <!-- YAML
-added: v16.17.0
+added: v18.7.0
 -->
 
 Expose the [CustomEvent Web API][] on the global scope.
@@ -296,7 +352,7 @@ Expose the [CustomEvent Web API][] on the global scope.
 ### `--experimental-global-webcrypto`
 
 <!-- YAML
-added: v16.15.0
+added: v17.6.0
 -->
 
 Expose the [Web Crypto API][] on the global scope.
@@ -328,7 +384,7 @@ Specify the `module` of a custom experimental [ECMAScript module loader][].
 ### `--experimental-network-imports`
 
 <!-- YAML
-added: v16.15.0
+added: v17.6.0
 -->
 
 > Stability: 1 - Experimental
@@ -343,13 +399,29 @@ added: v11.8.0
 
 Use the specified file as a security policy.
 
+### `--no-experimental-fetch`
+
+<!-- YAML
+added: v18.0.0
+-->
+
+Disable experimental support for the [Fetch API][].
+
 ### `--no-experimental-repl-await`
 
 <!-- YAML
 added: v16.6.0
- -->
+-->
 
 Use this flag to disable top-level await in REPL.
+
+### `--experimental-shadow-realm`
+
+<!-- YAML
+added: v18.13.0
+-->
+
+Use this flag to enable [ShadowRealm][] support.
 
 ### `--experimental-specifier-resolution=mode`
 
@@ -368,6 +440,21 @@ the ability to import a directory that has an index file.
 
 See [customizing ESM specifier resolution][] for example usage.
 
+### `--experimental-test-coverage`
+
+<!-- YAML
+added: v18.15.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47686
+    description: This option can be used with `--test`.
+-->
+
+When used in conjunction with the `node:test` module, a code coverage report is
+generated as part of the test runner output. If no tests are run, a coverage
+report is not generated. See the documentation on
+[collecting code coverage from tests][] for more details.
+
 ### `--experimental-vm-modules`
 
 <!-- YAML
@@ -383,6 +470,10 @@ added:
   - v13.3.0
   - v12.16.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47286
+    description: This option is no longer required as WASI is
+                 enabled by default, but can still be passed.
   - version: v13.6.0
     pr-url: https://github.com/nodejs/node/pull/30980
     description: changed from `--experimental-wasi-unstable-preview0` to
@@ -435,7 +526,7 @@ To allow polyfills to be added, `--require` runs before freezing intrinsics.
 ### `--force-node-api-uncaught-exceptions-policy`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 Enforces `uncaughtException` event on Node-API asynchronous callbacks.
@@ -447,7 +538,9 @@ enforce the correct behavior.
 ### `--heapsnapshot-near-heap-limit=max_count`
 
 <!-- YAML
-added: v15.1.0
+added:
+  - v15.1.0
+  - v14.18.0
 -->
 
 > Stability: 1 - Experimental
@@ -704,7 +797,9 @@ This option is a no-op. It is kept for compatibility.
 ### `--no-addons`
 
 <!-- YAML
-added: v16.10.0
+added:
+  - v16.10.0
+  - v14.19.0
 -->
 
 Disable the `node-addons` exports condition as well as disable loading
@@ -718,6 +813,14 @@ added: v0.8.0
 -->
 
 Silence deprecation warnings.
+
+### `--no-extra-info-on-fatal-exception`
+
+<!-- YAML
+added: v17.0.0
+-->
+
+Hide extra information on fatal exception that causes exit.
 
 ### `--no-force-async-hooks-checks`
 
@@ -748,7 +851,9 @@ Silence all process warnings (including deprecations).
 ### `--node-memory-debug`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 Enable extra debug checks for memory leaks in Node.js internals. This is
@@ -767,7 +872,7 @@ against FIPS-enabled OpenSSL.
 ### `--openssl-shared-config`
 
 <!-- YAML
-added: v16.17.0
+added: v18.5.0
 -->
 
 Enable OpenSSL default configuration section, `openssl_conf` to be read from
@@ -782,11 +887,11 @@ Node.js which is `nodejs_conf` and is default when this option is not used.
 ### `--openssl-legacy-provider`
 
 <!-- YAML
-added: v16.17.0
+added: v17.0.0
 -->
 
-Enable OpenSSL 3.0 legacy provider when dynamically linking to OpenSSL 3.x.
-For more information please see [OSSL\_PROVIDER-legacy][OSSL_PROVIDER-legacy].
+Enable OpenSSL 3.0 legacy provider. For more information please see
+[OSSL\_PROVIDER-legacy][OSSL_PROVIDER-legacy].
 
 ### `--pending-deprecation`
 
@@ -878,7 +983,7 @@ however, for backward compatibility with older Node.js versions.
 `--preserve-symlinks` when it is not desirable to follow symlinks before
 resolving relative paths.
 
-See `--preserve-symlinks` for more information.
+See [`--preserve-symlinks`][] for more information.
 
 ### `--prof`
 
@@ -1029,7 +1134,7 @@ Default signal is `SIGUSR2`.
 <!-- YAML
 added: v11.8.0
 changes:
-  - version: v16.18.0
+  - version: v18.8.0
     pr-url: https://github.com/nodejs/node/pull/44208
     description: Report is not generated if the uncaught exception is handled.
   - version:
@@ -1083,20 +1188,78 @@ minimum allocation from the secure heap. The minimum value is `2`.
 The maximum value is the lesser of `--secure-heap` or `2147483647`.
 The value given must be a power of two.
 
+### `--snapshot-blob=path`
+
+<!-- YAML
+added: v18.8.0
+-->
+
+> Stability: 1 - Experimental
+
+When used with `--build-snapshot`, `--snapshot-blob` specifies the path
+where the generated snapshot blob is written to. If not specified, the
+generated blob is written to `snapshot.blob` in the current working directory.
+
+When used without `--build-snapshot`, `--snapshot-blob` specifies the
+path to the blob that is used to restore the application state.
+
+When loading a snapshot, Node.js checks that:
+
+1. The version, architecture, and platform of the running Node.js binary
+   are exactly the same as that of the binary that generates the snapshot.
+2. The V8 flags and CPU features are compatible with that of the binary
+   that generates the snapshot.
+
+If they don't match, Node.js refuses to load the snapshot and exits with
+status code 1.
+
 ### `--test`
 
 <!-- YAML
-added: v16.17.0
+added: v18.1.0
+changes:
+  - version: v18.13.0
+    pr-url: https://github.com/nodejs/node/pull/45214
+    description: Test runner now supports running in watch mode.
 -->
 
 Starts the Node.js command line test runner. This flag cannot be combined with
-`--check`, `--eval`, `--interactive`, or the inspector. See the documentation
-on [running tests from the command line][] for more details.
+`--watch-path`, `--check`, `--eval`, `--interactive`, or the inspector.
+See the documentation on [running tests from the command line][]
+for more details.
+
+### `--test-name-pattern`
+
+<!-- YAML
+added: v18.11.0
+-->
+
+A regular expression that configures the test runner to only execute tests
+whose name matches the provided pattern. See the documentation on
+[filtering tests by name][] for more details.
+
+### `--test-reporter`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+A test reporter to use when running tests. See the documentation on
+[test reporters][] for more details.
+
+### `--test-reporter-destination`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+The destination for the corresponding test reporter. See the documentation on
+[test reporters][] for more details.
 
 ### `--test-only`
 
 <!-- YAML
-added: v16.17.0
+added: v18.0.0
 -->
 
 Configures the test runner to only execute top level tests that have the `only`
@@ -1206,7 +1369,7 @@ for TLSv1.2, which is not as secure as TLSv1.3.
 
 <!-- YAML
 added: v14.3.0
-deprecated: v16.18.0
+deprecated: v18.8.0
 -->
 
 > Stability: 0 - Deprecated
@@ -1421,11 +1584,71 @@ added: v5.10.0
 
 Set V8's thread pool size which will be used to allocate background jobs.
 
-If set to `0` then V8 will choose an appropriate size of the thread pool based
-on the number of online processors.
+If set to `0` then Node.js will choose an appropriate size of the thread pool
+based on an estimate of the amount of parallelism.
 
-If the value provided is larger than V8's maximum, then the largest value
-will be chosen.
+The amount of parallelism refers to the number of computations that can be
+carried out simultaneously in a given machine. In general, it's the same as the
+amount of CPUs, but it may diverge in environments such as VMs or containers.
+
+### `--watch`
+
+<!-- YAML
+added: v18.11.0
+changes:
+  - version: v18.13.0
+    pr-url: https://github.com/nodejs/node/pull/45214
+    description: Test runner now supports running in watch mode.
+-->
+
+> Stability: 1 - Experimental
+
+Starts Node.js in watch mode.
+When in watch mode, changes in the watched files cause the Node.js process to
+restart.
+By default, watch mode will watch the entry point
+and any required or imported module.
+Use `--watch-path` to specify what paths to watch.
+
+This flag cannot be combined with
+`--check`, `--eval`, `--interactive`, or the REPL.
+
+```console
+$ node --watch index.js
+```
+
+### `--watch-path`
+
+<!-- YAML
+added: v18.11.0
+-->
+
+> Stability: 1 - Experimental
+
+Starts Node.js in watch mode and specifies what paths to watch.
+When in watch mode, changes in the watched paths cause the Node.js process to
+restart.
+This will turn off watching of required or imported modules, even when used in
+combination with `--watch`.
+
+This flag cannot be combined with
+`--check`, `--eval`, `--interactive`, `--test`, or the REPL.
+
+```console
+$ node --watch-path=./src --watch-path=./tests index.js
+```
+
+This option is only supported on macOS and Windows.
+An `ERR_FEATURE_UNAVAILABLE_ON_PLATFORM` exception will be thrown
+when the option is used on a platform that does not support it.
+
+### `--watch-preserve-output`
+
+Disable the clearing of the console when watch mode restarts the process.
+
+```console
+$ node --watch --watch-preserve-output test.js
+```
 
 ### `--zero-fill-buffers`
 
@@ -1640,7 +1863,6 @@ Node.js options that are allowed are:
 * `--enable-fips`
 * `--enable-source-maps`
 * `--experimental-abortcontroller`
-* `--experimental-fetch`
 * `--experimental-global-customevent`
 * `--experimental-global-webcrypto`
 * `--experimental-import-meta-resolve`
@@ -1649,6 +1871,7 @@ Node.js options that are allowed are:
 * `--experimental-modules`
 * `--experimental-network-imports`
 * `--experimental-policy`
+* `--experimental-shadow-realm`
 * `--experimental-specifier-resolution`
 * `--experimental-top-level-await`
 * `--experimental-vm-modules`
@@ -1674,7 +1897,9 @@ Node.js options that are allowed are:
 * `--native`
 * `--no-addons`
 * `--no-deprecation`
+* `--no-experimental-fetch`
 * `--no-experimental-repl-await`
+* `--no-extra-info-on-fatal-exception`
 * `--no-force-async-hooks-checks`
 * `--no-global-search-paths`
 * `--no-warnings`
@@ -1699,7 +1924,10 @@ Node.js options that are allowed are:
 * `--require`, `-r`
 * `--secure-heap-min`
 * `--secure-heap`
+* `--snapshot-blob`
 * `--test-only`
+* `--test-reporter-destination`
+* `--test-reporter`
 * `--throw-deprecation`
 * `--title`
 * `--tls-cipher-list`
@@ -1727,6 +1955,9 @@ Node.js options that are allowed are:
 * `--use-largepages`
 * `--use-openssl-ca`
 * `--v8-pool-size`
+* `--watch-path`
+* `--watch-preserve-output`
+* `--watch`
 * `--zero-fill-buffers`
 
 <!-- node-options-node end -->
@@ -1737,10 +1968,12 @@ V8 options that are allowed are:
 
 * `--abort-on-uncaught-exception`
 * `--disallow-code-generation-from-strings`
+* `--enable-etw-stack-walking`
 * `--huge-max-old-generation-size`
 * `--interpreted-frames-native-stack`
 * `--jitless`
 * `--max-old-space-size`
+* `--max-semi-space-size`
 * `--perf-basic-prof-only-functions`
 * `--perf-basic-prof`
 * `--perf-prof-unwinding-info`
@@ -1751,6 +1984,8 @@ V8 options that are allowed are:
 
 `--perf-basic-prof-only-functions`, `--perf-basic-prof`,
 `--perf-prof-unwinding-info`, and `--perf-prof` are only available on Linux.
+
+`--enable-etw-stack-walking` is only available on Windows.
 
 ### `NODE_PATH=path[:…]`
 
@@ -1833,6 +2068,12 @@ added: v14.5.0
 If `value` equals `'1'`, the check for a supported platform is skipped during
 Node.js startup. Node.js might not execute correctly. Any issues encountered
 on unsupported platforms will not be fixed.
+
+### `NODE_TEST_CONTEXT=value`
+
+If `value` equals `'child'`, test reporter options will be overridden and test
+output will be sent to stdout in the TAP format. If any other value is provided,
+Node.js makes no guarantees about the reporter format used or its stability.
 
 ### `NODE_TLS_REJECT_UNAUTHORIZED=value`
 
@@ -2071,9 +2312,11 @@ done
 [ECMAScript module loader]: esm.md#loaders
 [Fetch API]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
 [Modules loaders]: packages.md#modules-loaders
+[Node.js issue tracker]: https://github.com/nodejs/node/issues
 [OSSL_PROVIDER-legacy]: https://www.openssl.org/docs/man3.0/man7/OSSL_PROVIDER-legacy.html
 [REPL]: repl.md
 [ScriptCoverage]: https://chromedevtools.github.io/devtools-protocol/tot/Profiler#type-ScriptCoverage
+[ShadowRealm]: https://github.com/tc39/proposal-shadowrealm
 [Source Map]: https://sourcemaps.info/spec.html
 [Subresource Integrity]: https://developer.mozilla.org/en-US/docs/Web/Security/Subresource_Integrity
 [V8 JavaScript code coverage]: https://v8project.blogspot.com/2017/12/javascript-code-coverage.html
@@ -2084,10 +2327,11 @@ done
 [`--experimental-wasm-modules`]: #--experimental-wasm-modules
 [`--heap-prof-dir`]: #--heap-prof-dir
 [`--openssl-config`]: #--openssl-configfile
+[`--preserve-symlinks`]: #--preserve-symlinks
 [`--redirect-warnings`]: #--redirect-warningsfile
 [`Atomics.wait()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Atomics/wait
 [`Buffer`]: buffer.md#class-buffer
-[`CRYPTO_secure_malloc_init`]: https://www.openssl.org/docs/man1.1.0/man3/CRYPTO_secure_malloc_init.html
+[`CRYPTO_secure_malloc_init`]: https://www.openssl.org/docs/man3.0/man3/CRYPTO_secure_malloc_init.html
 [`NODE_OPTIONS`]: #node_optionsoptions
 [`NO_COLOR`]: https://no-color.org
 [`SlowBuffer`]: buffer.md#class-slowbuffer
@@ -2100,13 +2344,16 @@ done
 [`tls.DEFAULT_MAX_VERSION`]: tls.md#tlsdefault_max_version
 [`tls.DEFAULT_MIN_VERSION`]: tls.md#tlsdefault_min_version
 [`unhandledRejection`]: process.md#event-unhandledrejection
+[`v8.startupSnapshot` API]: v8.md#startup-snapshot-api
 [`worker_threads.threadId`]: worker_threads.md#workerthreadid
+[collecting code coverage from tests]: test.md#collecting-code-coverage
 [conditional exports]: packages.md#conditional-exports
 [context-aware]: addons.md#context-aware-addons
 [customizing ESM specifier resolution]: esm.md#customizing-esm-specifier-resolution-algorithm
 [debugger]: debugger.md
 [debugging security implications]: https://nodejs.org/en/docs/guides/debugging-getting-started/#security-implications
 [emit_warning]: process.md#processemitwarningwarning-options
+[filtering tests by name]: test.md#filtering-tests-by-name
 [jitless]: https://v8.dev/blog/jitless
 [libuv threadpool documentation]: https://docs.libuv.org/en/latest/threadpool.html
 [remote code execution]: https://www.owasp.org/index.php/Code_Injection
@@ -2114,5 +2361,7 @@ done
 [scavenge garbage collector]: https://v8.dev/blog/orinoco-parallel-scavenger
 [security warning]: #warning-binding-inspector-to-a-public-ipport-combination-is-insecure
 [semi-space]: https://www.memorymanagement.org/glossary/s.html#semi.space
+[test reporters]: test.md#test-reporters
 [timezone IDs]: https://en.wikipedia.org/wiki/List_of_tz_database_time_zones
+[tracking issue for user-land snapshots]: https://github.com/nodejs/node/issues/44014
 [ways that `TZ` is handled in other environments]: https://www.gnu.org/software/libc/manual/html_node/TZ-Variable.html

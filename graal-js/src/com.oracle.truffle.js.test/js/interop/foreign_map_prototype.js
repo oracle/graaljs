@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -43,6 +43,7 @@ assertSame(undefined, Map.prototype.get.call(foreignMap, unknownKey));
 assertSame(foreignMap, Map.prototype.set.call(foreignMap, obj, 42));
 assertSame(true, Map.prototype.has.call(foreignMap, obj));
 assertSame(false, Map.prototype.has.call(foreignMap, unknownKey));
+assertSame(foreignMap.size(), Object.getOwnPropertyDescriptor(Map.prototype, "size").get.call(foreignMap));
 
 for (let prototypeCall of [true, false]) {
     let size = 0;

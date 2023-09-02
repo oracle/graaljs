@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -378,8 +378,9 @@ public final class TestFile {
         AARCH64(cfg -> System.getProperty("os.arch").equals("aarch64")),
         WINDOWS(cfg -> System.getProperty("os.name").startsWith("Windows")),
         MACOS(cfg -> System.getProperty("os.name").startsWith("Mac")),
-        JDK15(cfg -> TestFileUtil.JAVA_SPEC >= 15),
-        LAZY_TRANSLATION(cfg -> "true".equals(System.getProperty("polyglot.js.lazy-translation")));
+        STAGING(cfg -> cfg.getMinESVersion() == JSConfig.StagingECMAScriptVersion),
+        LAZY_TRANSLATION(cfg -> "true".equals(System.getProperty("polyglot.js.lazy-translation"))),
+        SHARED_ENGINE(cfg -> cfg.isShareEngine());
 
         private final Predicate<SuiteConfig> condition;
 

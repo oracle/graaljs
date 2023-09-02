@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.parser.GraalJSParserHelper;
 import com.oracle.truffle.js.parser.internal.ir.debug.PrintVisitor;
-import com.oracle.truffle.js.runtime.JSParserOptions;
 import com.oracle.truffle.js.test.JSTest;
 
 public class PrintVisitorTest extends JSTest {
@@ -60,7 +59,7 @@ public class PrintVisitorTest extends JSTest {
                         "try { var o= {a:'foo'}; (o?o:o); o.a+o['a']; with(o) {a;} } catch (error) { throw false; }; " +
                         "switch(true) { case false: break; default: break; }; return -a+(++b); }";
         Source source = Source.newBuilder(JavaScriptLanguage.ID, code, "test").build();
-        FunctionNode node = GraalJSParserHelper.parseScript(testHelper.getJSContext(), source, new JSParserOptions());
+        FunctionNode node = GraalJSParserHelper.parseScript(testHelper.getJSContext(), source, testHelper.getJSContext().getParserOptions());
 
         PrintVisitor pv = new PrintVisitor(node);
         String result = pv.toString();

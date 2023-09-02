@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,22 +44,19 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.StringIteratorPrototypeBuiltinsFactory.StringIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSString;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSStringIterator;
+import com.oracle.truffle.js.runtime.builtins.JSStringIteratorObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -70,7 +67,7 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
     public static final JSBuiltinsContainer BUILTINS = new StringIteratorPrototypeBuiltins();
 
     protected StringIteratorPrototypeBuiltins() {
-        super(JSString.ITERATOR_PROTOTYPE_NAME, StringIteratorPrototype.class);
+        super(JSStringIterator.PROTOTYPE_NAME, StringIteratorPrototype.class);
     }
 
     public enum StringIteratorPrototype implements BuiltinEnum<StringIteratorPrototype> {
@@ -98,41 +95,31 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
     }
 
     public abstract static class StringIteratorNextNode extends JSBuiltinNode {
-        @Child private HasHiddenKeyCacheNode isStringIteratorNode;
-        @Child private PropertyGetNode getIteratedObjectNode;
-        @Child private PropertyGetNode getNextIndexNode;
-        @Child private PropertySetNode setNextIndexNode;
-        @Child private PropertySetNode setIteratedObjectNode;
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
         @Child private TruffleString.ReadCharUTF16Node stringReadNode;
-        private final ConditionProfile isSurrogatePair = ConditionProfile.createCountingProfile();
+        private final CountingConditionProfile isSurrogatePair = CountingConditionProfile.create();
 
         public StringIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isStringIteratorNode = HasHiddenKeyCacheNode.create(JSString.ITERATED_STRING_ID);
-            this.getIteratedObjectNode = PropertyGetNode.createGetHidden(JSString.ITERATED_STRING_ID, context);
-            this.getNextIndexNode = PropertyGetNode.createGetHidden(JSString.STRING_ITERATOR_NEXT_INDEX_ID, context);
-            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSString.ITERATED_STRING_ID, context);
-            this.setNextIndexNode = PropertySetNode.createSetHidden(JSString.STRING_ITERATOR_NEXT_INDEX_ID, context);
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
             this.stringReadNode = TruffleString.ReadCharUTF16Node.create();
         }
 
-        @Specialization(guards = "isStringIterator(iterator)")
-        protected JSDynamicObject doStringIterator(VirtualFrame frame, JSDynamicObject iterator,
+        @Specialization
+        protected final JSObject doStringIterator(VirtualFrame frame, JSStringIteratorObject iterator,
                         @Cached TruffleString.FromCodePointNode fromCodePointNode,
                         @Cached TruffleString.SubstringByteIndexNode substringNode) {
-            Object iteratedString = getIteratedObjectNode.getValue(iterator);
-            if (iteratedString == Undefined.instance) {
+            Object iteratedString = iterator.getIteratedString();
+            if (iteratedString == null) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
             TruffleString string = (TruffleString) iteratedString;
-            int index = getNextIndex(iterator);
+            int index = iterator.getNextIndex();
             int length = Strings.length(string);
 
             if (index >= length) {
-                setIteratedObjectNode.setValue(iterator, Undefined.instance);
+                iterator.setIteratedString(null);
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
@@ -143,27 +130,14 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
             } else {
                 result = Strings.fromCodePoint(fromCodePointNode, first);
             }
-            setNextIndexNode.setValue(iterator, index + Strings.length(result));
+            iterator.setNextIndex(index + Strings.length(result));
             return createIterResultObjectNode.execute(frame, result, false);
         }
 
         @SuppressWarnings("unused")
         @Fallback
-        protected JSDynamicObject doIncompatibleReceiver(Object iterator) {
+        protected static JSObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not a String Iterator");
-        }
-
-        protected final boolean isStringIterator(Object thisObj) {
-            // If the [[IteratedString]] internal slot is present, the others must be as well.
-            return isStringIteratorNode.executeHasHiddenKey(thisObj);
-        }
-
-        private int getNextIndex(JSDynamicObject iterator) {
-            try {
-                return getNextIndexNode.getValueInt(iterator);
-            } catch (UnexpectedResultException e) {
-                throw Errors.shouldNotReachHere();
-            }
         }
     }
 }

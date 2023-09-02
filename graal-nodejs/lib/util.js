@@ -49,11 +49,11 @@ const {
   codes: {
     ERR_FALSY_VALUE_REJECTION,
     ERR_INVALID_ARG_TYPE,
-    ERR_OUT_OF_RANGE
+    ERR_OUT_OF_RANGE,
   },
   errnoException,
   exceptionWithHostPort,
-  hideStackFrames
+  hideStackFrames,
 } = require('internal/errors');
 const {
   format,
@@ -68,6 +68,7 @@ const {
   validateNumber,
 } = require('internal/validators');
 const { TextDecoder, TextEncoder } = require('internal/encoding');
+const { MIMEType, MIMEParams } = require('internal/mime');
 const { isBuffer } = require('buffer').Buffer;
 const types = require('internal/util/types');
 
@@ -78,6 +79,13 @@ const {
   promisify,
   toUSVString,
 } = require('internal/util');
+
+let abortController;
+
+function lazyAbortController() {
+  abortController ??= require('internal/abort_controller');
+  return abortController;
+}
 
 let internalDeepEqual;
 
@@ -225,7 +233,6 @@ function log(...args) {
  * during bootstrapping this function needs to be rewritten using some native
  * functions as prototype setup using normal JavaScript does not work as
  * expected during bootstrapping (see mirror.js in r114903).
- *
  * @param {Function} ctor Constructor function which needs to inherit the
  *     prototype.
  * @param {Function} superCtor Constructor function to inherit prototype from.
@@ -248,7 +255,7 @@ function inherits(ctor, superCtor) {
     __proto__: null,
     value: superCtor,
     writable: true,
-    configurable: true
+    configurable: true,
   });
   ObjectSetPrototypeOf(ctor.prototype, superCtor.prototype);
 }
@@ -378,11 +385,22 @@ module.exports = {
   isFunction,
   isPrimitive,
   log,
+  MIMEType,
+  MIMEParams,
   parseArgs,
   promisify,
   stripVTControlCharacters,
   toUSVString,
   TextDecoder,
   TextEncoder,
-  types
+  get transferableAbortSignal() {
+    return lazyAbortController().transferableAbortSignal;
+  },
+  get transferableAbortController() {
+    return lazyAbortController().transferableAbortController;
+  },
+  get aborted() {
+    return lazyAbortController().aborted;
+  },
+  types,
 };

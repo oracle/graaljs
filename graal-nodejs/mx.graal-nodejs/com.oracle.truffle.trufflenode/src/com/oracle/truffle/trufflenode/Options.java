@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,13 @@ package com.oracle.truffle.trufflenode;
 
 import java.net.URL;
 import java.net.URLClassLoader;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
 
@@ -87,17 +89,12 @@ public final class Options {
 
     @SuppressWarnings("unchecked")
     private static Class<Function<String[], Object[]>> loadOptionsParser() throws Exception {
-        String javaHome = System.getProperty("java.home");
-        String truffleNodePath = System.getenv("TRUFFLENODE_JAR_PATH");
-        if (truffleNodePath == null) {
-            truffleNodePath = javaHome + "/languages/nodejs/trufflenode.jar";
-        }
-        String launcherCommonPath = System.getenv("LAUNCHER_COMMON_JAR_PATH");
-        if (launcherCommonPath == null) {
-            launcherCommonPath = javaHome + "/lib/graalvm/launcher-common.jar";
-        }
-        URL truffleNodeURL = new URL("file:" + truffleNodePath);
-        URL launcherCommonURL = new URL("file:" + launcherCommonPath);
+        Path truffleNodePath = Optional.ofNullable(System.getenv("TRUFFLENODE_JAR_PATH")).map(Path::of).orElseGet(
+                        () -> Path.of(System.getProperty("java.home"), "languages", "nodejs", "trufflenode.jar"));
+        Path launcherCommonPath = Optional.ofNullable(System.getenv("LAUNCHER_COMMON_JAR_PATH")).map(Path::of).orElseGet(
+                        () -> Path.of(System.getProperty("java.home"), "lib", "graalvm", "launcher-common.jar"));
+        URL truffleNodeURL = truffleNodePath.toUri().toURL();
+        URL launcherCommonURL = launcherCommonPath.toUri().toURL();
         ClassLoader loader = new URLClassLoader(new URL[]{launcherCommonURL, truffleNodeURL}, ClassLoader.getSystemClassLoader());
         return (Class<Function<String[], Object[]>>) loader.loadClass("com.oracle.truffle.trufflenode.Options$OptionsParser");
     }
@@ -223,12 +220,28 @@ public final class Options {
                     polyglotOptions.put("js.shared-array-buffer", "true");
                     continue;
                 }
+                if ("no-harmony-sharedarraybuffer".equals(normalizedKey)) {
+                    polyglotOptions.put("js.shared-array-buffer", "false");
+                    continue;
+                }
+                if ("no-harmony-atomics".equals(normalizedKey)) {
+                    polyglotOptions.put("js.atomics", "false");
+                    continue;
+                }
                 if ("harmony-top-level-await".equals(normalizedKey)) {
                     polyglotOptions.put("js.top-level-await", "true");
                     continue;
                 }
                 if ("harmony-import-assertions".equals(normalizedKey)) {
                     polyglotOptions.put("js.import-assertions", "true");
+                    continue;
+                }
+                if ("harmony-shadow-realm".equals(normalizedKey)) {
+                    polyglotOptions.put("js.shadow-realm", "true");
+                    continue;
+                }
+                if ("disallow-code-generation-from-strings".equals(normalizedKey)) {
+                    polyglotOptions.put("js.disable-eval", "true");
                     continue;
                 }
                 // Convert -h to --help

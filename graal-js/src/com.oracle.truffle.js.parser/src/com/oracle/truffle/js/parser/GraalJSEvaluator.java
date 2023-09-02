@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -113,7 +113,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespaceObject;
-import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleData;
@@ -142,8 +142,8 @@ public final class GraalJSEvaluator implements JSParser {
      * Evaluate indirect eval.
      */
     @Override
-    public ScriptNode parseEval(JSContext context, Node lastNode, Source source) {
-        return parseEval(context, lastNode, source, false, null);
+    public ScriptNode parseEval(JSContext context, Node lastNode, Source source, ScriptOrModule activeScriptOrModule) {
+        return parseEval(context, lastNode, source, false, null, activeScriptOrModule);
     }
 
     /**
@@ -151,7 +151,7 @@ public final class GraalJSEvaluator implements JSParser {
      */
     @TruffleBoundary(transferToInterpreterOnException = false)
     @Override
-    public ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName) {
+    public ScriptNode parseFunction(JSContext context, String parameterList, String body, boolean generatorFunction, boolean asyncFunction, String sourceName, ScriptOrModule activeScriptOrModule) {
         String wrappedBody = "\n" + body + "\n";
         try {
             GraalJSParserHelper.checkFunctionSyntax(context, context.getParserOptions(), parameterList, wrappedBody, generatorFunction, asyncFunction, sourceName);
@@ -181,8 +181,8 @@ public final class GraalJSEvaluator implements JSParser {
         code.append(") {");
         code.append(wrappedBody);
         code.append("})");
-        Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).build();
-        return parseEval(context, null, source, false, null);
+        Source source = Source.newBuilder(JavaScriptLanguage.ID, code.toString(), sourceName).cached(false).build();
+        return parseEval(context, null, source, false, null, activeScriptOrModule);
     }
 
     /**
@@ -192,15 +192,15 @@ public final class GraalJSEvaluator implements JSParser {
     @Override
     public ScriptNode parseDirectEval(JSContext context, Node lastNode, Source source, Object evalEnv) {
         DirectEvalContext directEval = (DirectEvalContext) evalEnv;
-        return parseEval(context, lastNode, source, directEval.env.isStrictMode(), directEval);
+        return parseEval(context, lastNode, source, directEval.env.isStrictMode(), directEval, directEval.activeScriptOrModule);
     }
 
     @TruffleBoundary(transferToInterpreterOnException = false)
-    private static ScriptNode parseEval(JSContext context, Node lastNode, Source source, boolean isStrict, DirectEvalContext directEval) {
+    private static ScriptNode parseEval(JSContext context, Node lastNode, Source source, boolean isStrict, DirectEvalContext directEval, ScriptOrModule activeScriptOrModule) {
         context.checkEvalAllowed();
         NodeFactory nodeFactory = NodeFactory.getInstance(context);
         try {
-            return JavaScriptTranslator.translateEvalScript(nodeFactory, context, source, isStrict, directEval);
+            return JavaScriptTranslator.translateEvalScript(nodeFactory, context, source, isStrict, directEval, activeScriptOrModule);
         } catch (com.oracle.js.parser.ParserException e) {
             throw parserToJSError(lastNode, e, context);
         }
@@ -208,7 +208,13 @@ public final class GraalJSEvaluator implements JSParser {
 
     private static JSException parserToJSError(Node lastNode, com.oracle.js.parser.ParserException e, JSContext context) {
         CompilerAsserts.neverPartOfCompilation();
-        String message = e.getMessage().replace("\r\n", "\n");
+        String message;
+        if (context.isOptionV8CompatibilityMode()) {
+            message = e.getRawMessage();
+        } else {
+            message = e.getMessage();
+        }
+        message = message.replace("\r\n", "\n");
         if (e.getErrorType() == com.oracle.js.parser.JSErrorType.ReferenceError) {
             return Errors.createReferenceError(message, e, lastNode);
         }
@@ -230,7 +236,7 @@ public final class GraalJSEvaluator implements JSParser {
             context.checkEvalAllowed();
             return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, name).build(), false, "", "");
         } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage());
+            throw Errors.createSyntaxError(e, context);
         }
     }
 
@@ -245,7 +251,7 @@ public final class GraalJSEvaluator implements JSParser {
         try {
             return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, source, isStrict, prolog, epilog, argumentNames);
         } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage());
+            throw Errors.createSyntaxError(e, context);
         }
     }
 
@@ -288,13 +294,12 @@ public final class GraalJSEvaluator implements JSParser {
             Object promise = moduleEvaluation(realm, moduleRecord);
             boolean isAsync = context.isOptionTopLevelAwait() && moduleRecord.isAsyncEvaluation();
             if (isAsync) {
-                assert JSPromise.isJSPromise(promise);
                 JSFunctionObject onRejected = createTopLevelAwaitReject(context, realm);
                 JSFunctionObject onAccepted = createTopLevelAwaitResolve(context, realm);
                 // Non-standard: throw error from onRejected handler.
-                performPromiseThenNode.execute((JSDynamicObject) promise, onAccepted, onRejected, null);
+                performPromiseThenNode.execute((JSPromiseObject) promise, onAccepted, onRejected, null);
             }
-            if (context.getContextOptions().isEsmEvalReturnsExports()) {
+            if (context.getLanguageOptions().esmEvalReturnsExports()) {
                 JSDynamicObject moduleNamespace = getModuleNamespace(moduleRecord);
                 assert moduleNamespace != null;
                 return moduleNamespace;
@@ -349,7 +354,7 @@ public final class GraalJSEvaluator implements JSParser {
         try {
             return JavaScriptTranslator.translateScript(NodeFactory.getInstance(context), context, Source.newBuilder(JavaScriptLanguage.ID, sourceCode, "<unknown>").build(), false, "", "");
         } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage());
+            throw Errors.createSyntaxError(e, context);
         }
     }
 
@@ -362,7 +367,7 @@ public final class GraalJSEvaluator implements JSParser {
 
     @Override
     public String parseToJSON(JSContext context, String code, String name, boolean includeLoc) {
-        return GraalJSParserHelper.parseToJSON(code, name, includeLoc, context.getParserOptions());
+        return GraalJSParserHelper.parseToJSON(code, name, includeLoc, context);
     }
 
     @Override
@@ -374,7 +379,7 @@ public final class GraalJSEvaluator implements JSParser {
      * Parses source to intermediate AST and returns a closure for the translation to Truffle AST.
      */
     public static Supplier<ScriptNode> internalParseForTiming(JSContext context, Source source) {
-        com.oracle.js.parser.ir.FunctionNode ast = GraalJSParserHelper.parseScript(context, source, new JSParserOptions());
+        com.oracle.js.parser.ir.FunctionNode ast = GraalJSParserHelper.parseScript(context, source, context.getParserOptions());
         return () -> JavaScriptTranslator.translateFunction(NodeFactory.getInstance(context), context, null, source, 0, false, ast);
     }
 
@@ -384,7 +389,7 @@ public final class GraalJSEvaluator implements JSParser {
         try {
             return JavaScriptTranslator.translateModule(NodeFactory.getInstance(context), context, source);
         } catch (com.oracle.js.parser.ParserException e) {
-            throw Errors.createSyntaxError(e.getMessage(), e, null);
+            throw Errors.createSyntaxError(e, context);
         }
 
     }
@@ -581,7 +586,6 @@ public final class GraalJSEvaluator implements JSParser {
             return moduleRecord.getNamespace();
         }
 
-        assert moduleRecord.getStatus() != Status.Unlinked;
         Collection<TruffleString> exportedNames = getExportedNames(moduleRecord);
         List<Map.Entry<TruffleString, ExportResolution>> unambiguousNames = new ArrayList<>();
         for (TruffleString exportedName : exportedNames) {
@@ -993,7 +997,8 @@ public final class GraalJSEvaluator implements JSParser {
             scope = null;
             env = null;
         }
-        ScriptNode script = JavaScriptTranslator.translateInlineScript(NodeFactory.getInstance(context), context, env, source, isStrict);
+        ScriptNode script = JavaScriptTranslator.translateInlineScript(NodeFactory.getInstance(context), context, env, source, isStrict,
+                        EvalNode.findActiveScriptOrModule(locationNode));
         return createInlineScriptCallNode(context, script.getFunctionData(), script.getCallTarget(), locationNode);
     }
 
@@ -1028,7 +1033,7 @@ public final class GraalJSEvaluator implements JSParser {
             GraalJSParserHelper.checkFunctionSyntax(context, parserOptions, parameterList, body, generator, async, sourceName);
         } catch (com.oracle.js.parser.ParserException ex) {
             // throw the correct JS error
-            parseFunction(context, parameterList, body, false, false, sourceName);
+            parseFunction(context, parameterList, body, false, false, sourceName, null);
         }
     }
 }

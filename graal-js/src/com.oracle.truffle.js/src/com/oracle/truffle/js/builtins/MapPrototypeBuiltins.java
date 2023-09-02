@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleSafepoint;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,7 +54,7 @@ import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.CreateMapIteratorNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapClearNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapDeleteNodeGen;
@@ -60,9 +62,10 @@ import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapForEachNo
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapGetNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapHasNodeGen;
 import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.JSMapSetNodeGen;
+import com.oracle.truffle.js.builtins.MapPrototypeBuiltinsFactory.MapGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
-import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -76,9 +79,11 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMapObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -103,7 +108,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         forEach(1),
         keys(0),
         values(0),
-        entries(0);
+        entries(0),
+        size(0);
 
         private final int length;
 
@@ -114,6 +120,11 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == size;
         }
     }
 
@@ -138,6 +149,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 return CreateMapIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
             case entries:
                 return CreateMapIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
+            case size:
+                return MapGetSizeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -177,8 +190,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected JSDynamicObject doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorLib,
-                        @Cached BranchProfile growProfile) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary iteratorLib,
+                        @Cached InlinedBranchProfile growProfile) {
             try {
                 Object hashEntriesIterator = mapLib.getHashKeysIterator(thisObj);
                 // Save keys to temporary array to avoid concurrent modification exceptions.
@@ -186,7 +199,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                 while (true) {
                     try {
                         Object nextKey = iteratorLib.getIteratorNextElement(hashEntriesIterator);
-                        keys.add(nextKey, growProfile);
+                        keys.add(nextKey, this, growProfile);
                     } catch (StopIterationException e) {
                         break;
                     }
@@ -201,7 +214,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                     TruffleSafepoint.poll(this);
                 }
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "clear", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "clear", this);
             }
             return Undefined.instance;
         }
@@ -240,7 +253,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             } catch (UnknownKeyException e) {
                 return false;
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "removeHashEntry", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "removeHashEntry", this);
             }
         }
 
@@ -277,7 +290,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             try {
                 return importValue.executeWithTarget(mapLib.readHashValueOrDefault(thisObj, normalizedKey, Undefined.instance));
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "readHashValue", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "readHashValue", this);
             }
         }
 
@@ -315,7 +328,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             try {
                 mapLib.writeHashEntry(thisObj, normalizedKey, exportedValue);
             } catch (UnsupportedMessageException | UnknownKeyException | UnsupportedTypeException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "writeHashEntry", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "writeHashEntry", this);
             }
             return thisObj;
         }
@@ -385,8 +398,8 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("createCall()") @Shared("callNode") JSFunctionCallNode callNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary entryLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary iteratorLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary entryLib) {
             try {
                 Object hashEntriesIterator = mapLib.getHashEntriesIterator(thisObj);
                 while (true) {
@@ -400,7 +413,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                     }
                 }
             } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
-                throw Errors.createTypeErrorInteropException(thisObj, e, "forEach", null);
+                throw Errors.createTypeErrorInteropException(thisObj, e, "forEach", this);
             }
             return Undefined.instance;
         }
@@ -421,34 +434,58 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         }
     }
 
+    /**
+     * Implementation of the Map.prototype.size getter.
+     */
+    @ImportStatic({JSConfig.class, JSMapOperation.class})
+    public abstract static class MapGetSizeNode extends JSBuiltinNode {
+
+        public MapGetSizeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static int doMap(JSMapObject thisObj) {
+            return JSMap.getMapSize(thisObj);
+        }
+
+        @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
+        protected final Object doForeignMap(Object thisObj,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
+                        @Cached(inline = true) LongToIntOrDoubleNode sizeToJSNumber) {
+            try {
+                long hashSize = mapLib.getHashSize(thisObj);
+                return sizeToJSNumber.execute(this, hashSize);
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorInteropException(thisObj, e, "getHashSize", this);
+            }
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
+        protected static int notMap(@SuppressWarnings("unused") Object thisObj,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+            throw Errors.createTypeErrorMapExpected();
+        }
+    }
+
     @ImportStatic({JSConfig.class, JSRuntime.class, JSMapOperation.class})
     public abstract static class CreateMapIteratorNode extends JSBuiltinNode {
         private final int iterationKind;
-        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
-        @Child private PropertySetNode setNextIndexNode;
-        @Child private PropertySetNode setIteratedObjectNode;
-        @Child private PropertySetNode setIterationKindNode;
 
         public CreateMapIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
             super(context, builtin);
             this.iterationKind = iterationKind;
-            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
-            this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
-            this.setIterationKindNode = PropertySetNode.createSetHidden(JSMap.MAP_ITERATION_KIND_ID, context);
         }
 
         @Specialization
-        protected JSDynamicObject doMap(JSMapObject map) {
-            JSDynamicObject iterator = createObjectNode.execute(getRealm().getMapIteratorPrototype());
-            setIteratedObjectNode.setValue(iterator, map);
-            setNextIndexNode.setValue(iterator, JSMap.getInternalMap(map).getEntries());
-            setIterationKindNode.setValueInt(iterator, iterationKind);
-            return iterator;
+        protected final JSObject doMap(JSMapObject map) {
+            return JSMapIterator.create(getContext(), getRealm(), map, JSMap.getInternalMap(map).getEntries(), iterationKind);
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isJSMap(map)", "isForeignHash(map, mapLib)"})
-        protected JSDynamicObject doForeignMap(Object map,
+        protected final JSObject doForeignMap(Object map,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
                         @Cached("createSetHidden(ENUMERATE_ITERATOR_ID, getContext())") PropertySetNode setEnumerateIteratorNode) {
             Object iterator;
@@ -462,17 +499,17 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                     iterator = mapLib.getHashEntriesIterator(map);
                 }
             } catch (UnsupportedMessageException e) {
-                throw Errors.createTypeErrorInteropException(map, e, "get hash iterator", null);
+                throw Errors.createTypeErrorInteropException(map, e, "get hash iterator", this);
             }
 
-            JSDynamicObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());
+            JSObject iteratorObj = JSOrdinary.create(getContext(), getContext().getEnumerateIteratorFactory(), getRealm());
             setEnumerateIteratorNode.setValue(iteratorObj, iterator);
             return iteratorObj;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
-        protected JSDynamicObject doIncompatibleReceiver(Object thisObj,
+        protected static JSObject doIncompatibleReceiver(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }

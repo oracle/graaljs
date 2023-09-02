@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -104,5 +104,13 @@ class JMHDistGraalJsBenchmarkSuite(JMHDistBenchmarkSuite):
 
 add_bm_suite(JMHDistGraalJsBenchmarkSuite())
 
-mx_sdk_vm.register_vm_config('ce', ['cmp', 'icu4j', 'js', 'jss', 'nfi', 'rgx', 'sdk', 'svm', 'svmnfi', 'svmsl', 'tfl', 'tflm'], _suite)
-mx_sdk_vm.register_vm_config('ee', ['cmp', 'cmpee', 'icu4j', 'js', 'jss', 'nfi', 'rgx', 'sdk', 'svm', 'svmee', 'svmeegc', 'svmnfi', 'svmsl', 'tfl', 'tflllm', 'tflm'], _suite)
+# --components=Graal.js,SubstrateVM,tflm
+ce_components = ['cmp', 'icu4j', 'js', 'jsl', 'jss', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'svm', 'svmsl', 'svmt', 'tfl', 'tfla', 'tflc', 'tflm']
+# --components=Graal.js,SubstrateVM Enterprise,SubstrateVM Enterprise GC,tlfm
+ee_components = ['cmp', 'cmpee', 'icu4j', 'js', 'jsl', 'jss', 'rgx', 'sdk', 'sdkc', 'sdkl', 'sdkni', 'svm', 'svmee', 'svmeegc', 'svmsl', 'svmt', 'svmte', 'tfl', 'tfla', 'tflc', 'tfle', 'tflllm', 'tflm']
+# svmeegc is only available on linux
+if not mx.is_linux():
+    ee_components.remove('svmeegc')
+
+mx_sdk_vm.register_vm_config('ce', ce_components, _suite)
+mx_sdk_vm.register_vm_config('ee', ee_components, _suite)

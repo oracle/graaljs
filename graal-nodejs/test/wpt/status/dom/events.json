@@ -19,13 +19,20 @@
   "Event-constructors.any.js": {
     "fail": {
       "expected": [
-        "Untitled 2",
-        "Untitled 3"
+        "Event constructors 3",
+        "Event constructors 4"
       ]
     }
   },
   "Event-dispatch-listener-order.window.js": {
     "skip": "document is not defined"
+  },
+  "Event-isTrusted.any.js": {
+    "fail": {
+      "expected": [
+        "Event-isTrusted"
+      ]
+    }
   },
   "EventListener-addEventListener.sub.window.js": {
     "skip": "document is not defined"

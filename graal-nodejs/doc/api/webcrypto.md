@@ -2,22 +2,26 @@
 
 <!-- YAML
 changes:
-  - version: v16.17.0
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/46067
+    description: Arguments are now coerced and validated as per their WebIDL
+      definitions like in other Web Crypto API implementations.
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/43310
     description: Removed proprietary `'node.keyObject'` import/export format.
-  - version: v16.17.0
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/43310
     description: Removed proprietary `'NODE-DSA'`, `'NODE-DH'`,
       and `'NODE-SCRYPT'` algorithms.
-  - version: v16.17.0
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/42507
     description: Added `'Ed25519'`, `'Ed448'`, `'X25519'`, and `'X448'`
       algorithms.
-  - version: v16.17.0
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/42507
     description: Removed proprietary `'NODE-ED25519'` and `'NODE-ED448'`
       algorithms.
-  - version: v16.17.0
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/42507
     description: Removed proprietary `'NODE-X25519'` and `'NODE-X448'` named
       curves from the `'ECDH'` algorithm.
@@ -39,14 +43,14 @@ const { subtle } = require('node:crypto').webcrypto;
   const key = await subtle.generateKey({
     name: 'HMAC',
     hash: 'SHA-256',
-    length: 256
+    length: 256,
   }, true, ['sign', 'verify']);
 
   const enc = new TextEncoder();
   const message = enc.encode('I love cupcakes');
 
   const digest = await subtle.sign({
-    name: 'HMAC'
+    name: 'HMAC',
   }, key, message);
 
 })();
@@ -67,7 +71,7 @@ const { subtle } = require('node:crypto').webcrypto;
 async function generateAesKey(length = 256) {
   const key = await subtle.generateKey({
     name: 'AES-CBC',
-    length
+    length,
   }, true, ['encrypt', 'decrypt']);
 
   return key;
@@ -82,7 +86,7 @@ const { subtle } = require('node:crypto').webcrypto;
 async function generateEcKey(namedCurve = 'P-521') {
   const {
     publicKey,
-    privateKey
+    privateKey,
   } = await subtle.generateKey({
     name: 'ECDSA',
     namedCurve,
@@ -120,7 +124,7 @@ const { subtle } = require('node:crypto').webcrypto;
 async function generateHmacKey(hash = 'SHA-256') {
   const key = await subtle.generateKey({
     name: 'HMAC',
-    hash
+    hash,
   }, true, ['sign', 'verify']);
 
   return key;
@@ -136,7 +140,7 @@ const publicExponent = new Uint8Array([1, 0, 1]);
 async function generateRsaKey(modulusLength = 2048, hash = 'SHA-256') {
   const {
     publicKey,
-    privateKey
+    privateKey,
   } = await subtle.generateKey({
     name: 'RSASSA-PKCS1-v1_5',
     modulusLength,
@@ -166,7 +170,7 @@ async function aesEncrypt(plaintext) {
   return {
     key,
     iv,
-    ciphertext
+    ciphertext,
   };
 }
 
@@ -189,7 +193,7 @@ const { subtle } = require('node:crypto').webcrypto;
 async function generateAndExportHmacKey(format = 'jwk', hash = 'SHA-512') {
   const key = await subtle.generateKey({
     name: 'HMAC',
-    hash
+    hash,
   }, true, ['sign', 'verify']);
 
   return subtle.exportKey(format, key);
@@ -198,7 +202,7 @@ async function generateAndExportHmacKey(format = 'jwk', hash = 'SHA-512') {
 async function importHmacKey(keyData, format = 'jwk', hash = 'SHA-512') {
   const key = await subtle.importKey(format, keyData, {
     name: 'HMAC',
-    hash
+    hash,
   }, true, ['sign', 'verify']);
 
   return key;
@@ -216,11 +220,11 @@ async function generateAndWrapHmacKey(format = 'jwk', hash = 'SHA-512') {
     wrappingKey,
   ] = await Promise.all([
     subtle.generateKey({
-      name: 'HMAC', hash
+      name: 'HMAC', hash,
     }, true, ['sign', 'verify']),
     subtle.generateKey({
       name: 'AES-KW',
-      length: 256
+      length: 256,
     }, true, ['wrapKey', 'unwrapKey']),
   ]);
 
@@ -289,7 +293,7 @@ async function pbkdf2(pass, salt, iterations = 1000, length = 256) {
     name: 'PBKDF2',
     hash: 'SHA-512',
     salt: ec.encode(salt),
-    iterations
+    iterations,
   }, key, length);
   return bits;
 }
@@ -306,10 +310,10 @@ async function pbkdf2Key(pass, salt, iterations = 1000, length = 256) {
     name: 'PBKDF2',
     hash: 'SHA-512',
     salt: ec.encode(salt),
-    iterations
+    iterations,
   }, keyMaterial, {
     name: 'AES-GCM',
-    length: 256
+    length: 256,
   }, true, ['encrypt', 'decrypt']);
   return key;
 }
@@ -332,28 +336,28 @@ async function digest(data, algorithm = 'SHA-512') {
 The table details the algorithms supported by the Node.js Web Crypto API
 implementation and the APIs supported for each:
 
-| Algorithm             | `generateKey` | `exportKey` | `importKey` | `encrypt` | `decrypt` | `wrapKey` | `unwrapKey` | `deriveBits` | `deriveKey` | `sign` | `verify` | `digest` |
-| --------------------- | ------------- | ----------- | ----------- | --------- | --------- | --------- | ----------- | ------------ | ----------- | ------ | -------- | -------- |
-| `'RSASSA-PKCS1-v1_5'` | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
-| `'RSA-PSS'`           | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
-| `'RSA-OAEP'`          | ✔             | ✔           | ✔           | ✔         | ✔         | ✔         | ✔           |              |             |        |          |          |
-| `'ECDSA'`             | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
-| `'Ed25519'`[^1]       | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
-| `'Ed448'`[^1]         | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
-| `'ECDH'`              | ✔             | ✔           | ✔           |           |           |           |             | ✔            | ✔           |        |          |          |
-| `'X25519'`[^1]        | ✔             | ✔           | ✔           |           |           |           |             | ✔            | ✔           |        |          |          |
-| `'X448'`[^1]          | ✔             | ✔           | ✔           |           |           |           |             | ✔            | ✔           |        |          |          |
-| `'AES-CTR'`           | ✔             | ✔           | ✔           | ✔         | ✔         | ✔         | ✔           |              |             |        |          |          |
-| `'AES-CBC'`           | ✔             | ✔           | ✔           | ✔         | ✔         | ✔         | ✔           |              |             |        |          |          |
-| `'AES-GCM'`           | ✔             | ✔           | ✔           | ✔         | ✔         | ✔         | ✔           |              |             |        |          |          |
-| `'AES-KW'`            | ✔             | ✔           | ✔           |           |           | ✔         | ✔           |              |             |        |          |          |
-| `'HMAC'`              | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
-| `'HKDF'`              |               | ✔           | ✔           |           |           |           |             | ✔            | ✔           |        |          |          |
-| `'PBKDF2'`            |               | ✔           | ✔           |           |           |           |             | ✔            | ✔           |        |          |          |
-| `'SHA-1'`             |               |             |             |           |           |           |             |              |             |        |          | ✔        |
-| `'SHA-256'`           |               |             |             |           |           |           |             |              |             |        |          | ✔        |
-| `'SHA-384'`           |               |             |             |           |           |           |             |              |             |        |          | ✔        |
-| `'SHA-512'`           |               |             |             |           |           |           |             |              |             |        |          | ✔        |
+| Algorithm                                                 | `generateKey` | `exportKey` | `importKey` | `encrypt` | `decrypt` | `wrapKey` | `unwrapKey` | `deriveBits` | `deriveKey` | `sign` | `verify` | `digest` |
+| --------------------------------------------------------- | ------------- | ----------- | ----------- | --------- | --------- | --------- | ----------- | ------------ | ----------- | ------ | -------- | -------- |
+| `'RSASSA-PKCS1-v1_5'`                                     | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
+| `'RSA-PSS'`                                               | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
+| `'RSA-OAEP'`                                              | ✔             | ✔           | ✔           | ✔         | ✔         | ✔         | ✔           |              |             |        |          |          |
+| `'ECDSA'`                                                 | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
+| `'Ed25519'` <span class="experimental-inline"></span>[^1] | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
+| `'Ed448'` <span class="experimental-inline"></span>[^1]   | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
+| `'ECDH'`                                                  | ✔             | ✔           | ✔           |           |           |           |             | ✔            | ✔           |        |          |          |
+| `'X25519'` <span class="experimental-inline"></span>[^1]  | ✔             | ✔           | ✔           |           |           |           |             | ✔            | ✔           |        |          |          |
+| `'X448'` <span class="experimental-inline"></span>[^1]    | ✔             | ✔           | ✔           |           |           |           |             | ✔            | ✔           |        |          |          |
+| `'AES-CTR'`                                               | ✔             | ✔           | ✔           | ✔         | ✔         | ✔         | ✔           |              |             |        |          |          |
+| `'AES-CBC'`                                               | ✔             | ✔           | ✔           | ✔         | ✔         | ✔         | ✔           |              |             |        |          |          |
+| `'AES-GCM'`                                               | ✔             | ✔           | ✔           | ✔         | ✔         | ✔         | ✔           |              |             |        |          |          |
+| `'AES-KW'`                                                | ✔             | ✔           | ✔           |           |           | ✔         | ✔           |              |             |        |          |          |
+| `'HMAC'`                                                  | ✔             | ✔           | ✔           |           |           |           |             |              |             | ✔      | ✔        |          |
+| `'HKDF'`                                                  |               | ✔           | ✔           |           |           |           |             | ✔            | ✔           |        |          |          |
+| `'PBKDF2'`                                                |               | ✔           | ✔           |           |           |           |             | ✔            | ✔           |        |          |          |
+| `'SHA-1'`                                                 |               |             |             |           |           |           |             |              |             |        |          | ✔        |
+| `'SHA-256'`                                               |               |             |             |           |           |           |             |              |             |        |          | ✔        |
+| `'SHA-384'`                                               |               |             |             |           |           |           |             |              |             |        |          | ✔        |
+| `'SHA-512'`                                               |               |             |             |           |           |           |             |              |             |        |          | ✔        |
 
 ## Class: `Crypto`
 
@@ -475,24 +479,24 @@ The possible usages are:
 Valid key usages depend on the key algorithm (identified by
 `cryptokey.algorithm.name`).
 
-| Key Type              | `'encrypt'` | `'decrypt'` | `'sign'` | `'verify'` | `'deriveKey'` | `'deriveBits'` | `'wrapKey'` | `'unwrapKey'` |
-| --------------------- | ----------- | ----------- | -------- | ---------- | ------------- | -------------- | ----------- | ------------- |
-| `'AES-CBC'`           | ✔           | ✔           |          |            |               |                | ✔           | ✔             |
-| `'AES-CTR'`           | ✔           | ✔           |          |            |               |                | ✔           | ✔             |
-| `'AES-GCM'`           | ✔           | ✔           |          |            |               |                | ✔           | ✔             |
-| `'AES-KW'`            |             |             |          |            |               |                | ✔           | ✔             |
-| `'ECDH'`              |             |             |          |            | ✔             | ✔              |             |               |
-| `'X25519'`[^1]        |             |             |          |            | ✔             | ✔              |             |               |
-| `'X448'`[^1]          |             |             |          |            | ✔             | ✔              |             |               |
-| `'ECDSA'`             |             |             | ✔        | ✔          |               |                |             |               |
-| `'Ed25519'`[^1]       |             |             | ✔        | ✔          |               |                |             |               |
-| `'Ed448'`[^1]         |             |             | ✔        | ✔          |               |                |             |               |
-| `'HDKF'`              |             |             |          |            | ✔             | ✔              |             |               |
-| `'HMAC'`              |             |             | ✔        | ✔          |               |                |             |               |
-| `'PBKDF2'`            |             |             |          |            | ✔             | ✔              |             |               |
-| `'RSA-OAEP'`          | ✔           | ✔           |          |            |               |                | ✔           | ✔             |
-| `'RSA-PSS'`           |             |             | ✔        | ✔          |               |                |             |               |
-| `'RSASSA-PKCS1-v1_5'` |             |             | ✔        | ✔          |               |                |             |               |
+| Key Type                                                  | `'encrypt'` | `'decrypt'` | `'sign'` | `'verify'` | `'deriveKey'` | `'deriveBits'` | `'wrapKey'` | `'unwrapKey'` |
+| --------------------------------------------------------- | ----------- | ----------- | -------- | ---------- | ------------- | -------------- | ----------- | ------------- |
+| `'AES-CBC'`                                               | ✔           | ✔           |          |            |               |                | ✔           | ✔             |
+| `'AES-CTR'`                                               | ✔           | ✔           |          |            |               |                | ✔           | ✔             |
+| `'AES-GCM'`                                               | ✔           | ✔           |          |            |               |                | ✔           | ✔             |
+| `'AES-KW'`                                                |             |             |          |            |               |                | ✔           | ✔             |
+| `'ECDH'`                                                  |             |             |          |            | ✔             | ✔              |             |               |
+| `'X25519'` <span class="experimental-inline"></span>[^1]  |             |             |          |            | ✔             | ✔              |             |               |
+| `'X448'` <span class="experimental-inline"></span>[^1]    |             |             |          |            | ✔             | ✔              |             |               |
+| `'ECDSA'`                                                 |             |             | ✔        | ✔          |               |                |             |               |
+| `'Ed25519'` <span class="experimental-inline"></span>[^1] |             |             | ✔        | ✔          |               |                |             |               |
+| `'Ed448'` <span class="experimental-inline"></span>[^1]   |             |             | ✔        | ✔          |               |                |             |               |
+| `'HDKF'`                                                  |             |             |          |            | ✔             | ✔              |             |               |
+| `'HMAC'`                                                  |             |             | ✔        | ✔          |               |                |             |               |
+| `'PBKDF2'`                                                |             |             |          |            | ✔             | ✔              |             |               |
+| `'RSA-OAEP'`                                              | ✔           | ✔           |          |            |               |                | ✔           | ✔             |
+| `'RSA-PSS'`                                               |             |             | ✔        | ✔          |               |                |             |               |
+| `'RSASSA-PKCS1-v1_5'`                                     |             |             | ✔        | ✔          |               |                |             |               |
 
 ## Class: `CryptoKeyPair`
 
@@ -553,7 +557,7 @@ The algorithms currently supported include:
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v16.17.0
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/42507
     description: Added `'X25519'`, and `'X448'` algorithms.
 -->
@@ -562,20 +566,30 @@ changes:
 
 * `algorithm`: {AlgorithmIdentifier|EcdhKeyDeriveParams|HkdfParams|Pbkdf2Params}
 * `baseKey`: {CryptoKey}
-* `length`: {number}
+* `length`: {number|null}
 * Returns: {Promise} containing {ArrayBuffer}
 
 <!--lint enable maximum-line-length remark-lint-->
 
 Using the method and parameters specified in `algorithm` and the keying
 material provided by `baseKey`, `subtle.deriveBits()` attempts to generate
-`length` bits. The Node.js implementation requires that `length` is a
-multiple of `8`. If successful, the returned promise will be resolved with
-an {ArrayBuffer} containing the generated data.
+`length` bits.
+
+The Node.js implementation requires that when `length` is a
+number it must be multiple of `8`.
+
+When `length` is `null` the maximum number of bits for a given algorithm is
+generated. This is allowed for the `'ECDH'`, `'X25519'`, and `'X448'`
+algorithms.
+
+If successful, the returned promise will be resolved with an {ArrayBuffer}
+containing the generated data.
 
 The algorithms currently supported include:
 
 * `'ECDH'`
+* `'X25519'` <span class="experimental-inline"></span>[^1]
+* `'X448'` <span class="experimental-inline"></span>[^1]
 * `'HKDF'`
 * `'PBKDF2'`
 
@@ -584,7 +598,7 @@ The algorithms currently supported include:
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v16.17.0
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/42507
     description: Added `'X25519'`, and `'X448'` algorithms.
 -->
@@ -612,6 +626,8 @@ generate raw keying material, then passing the result into the
 The algorithms currently supported include:
 
 * `'ECDH'`
+* `'X25519'` <span class="experimental-inline"></span>[^1]
+* `'X448'` <span class="experimental-inline"></span>[^1]
 * `'HKDF'`
 * `'PBKDF2'`
 
@@ -666,7 +682,7 @@ The algorithms currently supported include:
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v16.17.0
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/42507
     description: Added `'Ed25519'`, `'Ed448'`, `'X25519'`, and `'X448'`
       algorithms.
@@ -677,7 +693,7 @@ changes:
 
 * `format`: {string} Must be one of `'raw'`, `'pkcs8'`, `'spki'`, or `'jwk'`.
 * `key`: {CryptoKey}
-* Returns: {Promise} containing {ArrayBuffer}.
+* Returns: {Promise} containing {ArrayBuffer|Object}.
 
 Exports the given key into the specified format, if supported.
 
@@ -691,22 +707,22 @@ When `format` is `'jwk'` and the export is successful, the returned promise
 will be resolved with a JavaScript object conforming to the [JSON Web Key][]
 specification.
 
-| Key Type              | `'spki'` | `'pkcs8'` | `'jwk'` | `'raw'` |
-| --------------------- | -------- | --------- | ------- | ------- |
-| `'AES-CBC'`           |          |           | ✔       | ✔       |
-| `'AES-CTR'`           |          |           | ✔       | ✔       |
-| `'AES-GCM'`           |          |           | ✔       | ✔       |
-| `'AES-KW'`            |          |           | ✔       | ✔       |
-| `'ECDH'`              | ✔        | ✔         | ✔       | ✔       |
-| `'ECDSA'`             | ✔        | ✔         | ✔       | ✔       |
-| `'Ed25519'`[^1]       | ✔        | ✔         | ✔       | ✔       |
-| `'Ed448'`[^1]         | ✔        | ✔         | ✔       | ✔       |
-| `'HDKF'`              |          |           |         |         |
-| `'HMAC'`              |          |           | ✔       | ✔       |
-| `'PBKDF2'`            |          |           |         |         |
-| `'RSA-OAEP'`          | ✔        | ✔         | ✔       |         |
-| `'RSA-PSS'`           | ✔        | ✔         | ✔       |         |
-| `'RSASSA-PKCS1-v1_5'` | ✔        | ✔         | ✔       |         |
+| Key Type                                                  | `'spki'` | `'pkcs8'` | `'jwk'` | `'raw'` |
+| --------------------------------------------------------- | -------- | --------- | ------- | ------- |
+| `'AES-CBC'`                                               |          |           | ✔       | ✔       |
+| `'AES-CTR'`                                               |          |           | ✔       | ✔       |
+| `'AES-GCM'`                                               |          |           | ✔       | ✔       |
+| `'AES-KW'`                                                |          |           | ✔       | ✔       |
+| `'ECDH'`                                                  | ✔        | ✔         | ✔       | ✔       |
+| `'ECDSA'`                                                 | ✔        | ✔         | ✔       | ✔       |
+| `'Ed25519'` <span class="experimental-inline"></span>[^1] | ✔        | ✔         | ✔       | ✔       |
+| `'Ed448'` <span class="experimental-inline"></span>[^1]   | ✔        | ✔         | ✔       | ✔       |
+| `'HDKF'`                                                  |          |           |         |         |
+| `'HMAC'`                                                  |          |           | ✔       | ✔       |
+| `'PBKDF2'`                                                |          |           |         |         |
+| `'RSA-OAEP'`                                              | ✔        | ✔         | ✔       |         |
+| `'RSA-PSS'`                                               | ✔        | ✔         | ✔       |         |
+| `'RSASSA-PKCS1-v1_5'`                                     | ✔        | ✔         | ✔       |         |
 
 ### `subtle.generateKey(algorithm, extractable, keyUsages)`
 
@@ -735,11 +751,11 @@ include:
 * `'RSA-PSS'`
 * `'RSA-OAEP'`
 * `'ECDSA'`
-* `'Ed25519'`[^1]
-* `'Ed448'`[^1]
+* `'Ed25519'` <span class="experimental-inline"></span>[^1]
+* `'Ed448'` <span class="experimental-inline"></span>[^1]
 * `'ECDH'`
-* `'X25519'`[^1]
-* `'X448'`[^1]
+* `'X25519'` <span class="experimental-inline"></span>[^1]
+* `'X448'` <span class="experimental-inline"></span>[^1]
 
 The {CryptoKey} (secret key) generating algorithms supported include:
 
@@ -754,7 +770,7 @@ The {CryptoKey} (secret key) generating algorithms supported include:
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v16.17.0
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/42507
     description: Added `'Ed25519'`, `'Ed448'`, `'X25519'`, and `'X448'`
       algorithms.
@@ -764,7 +780,7 @@ changes:
 -->
 
 * `format`: {string} Must be one of `'raw'`, `'pkcs8'`, `'spki'`, or `'jwk'`.
-* `keyData`: {ArrayBuffer|TypedArray|DataView|Buffer|KeyObject}
+* `keyData`: {ArrayBuffer|TypedArray|DataView|Buffer|Object}
 
 <!--lint disable maximum-line-length remark-lint-->
 
@@ -785,31 +801,31 @@ If importing a `'PBKDF2'` key, `extractable` must be `false`.
 
 The algorithms currently supported include:
 
-| Key Type              | `'spki'` | `'pkcs8'` | `'jwk'` | `'raw'` |
-| --------------------- | -------- | --------- | ------- | ------- |
-| `'AES-CBC'`           |          |           | ✔       | ✔       |
-| `'AES-CTR'`           |          |           | ✔       | ✔       |
-| `'AES-GCM'`           |          |           | ✔       | ✔       |
-| `'AES-KW'`            |          |           | ✔       | ✔       |
-| `'ECDH'`              | ✔        | ✔         | ✔       | ✔       |
-| `'X25519'`[^1]        | ✔        | ✔         | ✔       | ✔       |
-| `'X448'`[^1]          | ✔        | ✔         | ✔       | ✔       |
-| `'ECDSA'`             | ✔        | ✔         | ✔       | ✔       |
-| `'Ed25519'`[^1]       | ✔        | ✔         | ✔       | ✔       |
-| `'Ed448'`[^1]         | ✔        | ✔         | ✔       | ✔       |
-| `'HDKF'`              |          |           |         | ✔       |
-| `'HMAC'`              |          |           | ✔       | ✔       |
-| `'PBKDF2'`            |          |           |         | ✔       |
-| `'RSA-OAEP'`          | ✔        | ✔         | ✔       |         |
-| `'RSA-PSS'`           | ✔        | ✔         | ✔       |         |
-| `'RSASSA-PKCS1-v1_5'` | ✔        | ✔         | ✔       |         |
+| Key Type                                                  | `'spki'` | `'pkcs8'` | `'jwk'` | `'raw'` |
+| --------------------------------------------------------- | -------- | --------- | ------- | ------- |
+| `'AES-CBC'`                                               |          |           | ✔       | ✔       |
+| `'AES-CTR'`                                               |          |           | ✔       | ✔       |
+| `'AES-GCM'`                                               |          |           | ✔       | ✔       |
+| `'AES-KW'`                                                |          |           | ✔       | ✔       |
+| `'ECDH'`                                                  | ✔        | ✔         | ✔       | ✔       |
+| `'X25519'` <span class="experimental-inline"></span>[^1]  | ✔        | ✔         | ✔       | ✔       |
+| `'X448'` <span class="experimental-inline"></span>[^1]    | ✔        | ✔         | ✔       | ✔       |
+| `'ECDSA'`                                                 | ✔        | ✔         | ✔       | ✔       |
+| `'Ed25519'` <span class="experimental-inline"></span>[^1] | ✔        | ✔         | ✔       | ✔       |
+| `'Ed448'` <span class="experimental-inline"></span>[^1]   | ✔        | ✔         | ✔       | ✔       |
+| `'HDKF'`                                                  |          |           |         | ✔       |
+| `'HMAC'`                                                  |          |           | ✔       | ✔       |
+| `'PBKDF2'`                                                |          |           |         | ✔       |
+| `'RSA-OAEP'`                                              | ✔        | ✔         | ✔       |         |
+| `'RSA-PSS'`                                               | ✔        | ✔         | ✔       |         |
+| `'RSASSA-PKCS1-v1_5'`                                     | ✔        | ✔         | ✔       |         |
 
 ### `subtle.sign(algorithm, key, data)`
 
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v16.17.0
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/42507
     description: Added `'Ed25519'`, and `'Ed448'` algorithms.
 -->
@@ -833,8 +849,8 @@ The algorithms currently supported include:
 * `'RSASSA-PKCS1-v1_5'`
 * `'RSA-PSS'`
 * `'ECDSA'`
-* `'Ed25519'`[^1]
-* `'Ed448'`[^1]
+* `'Ed25519'` <span class="experimental-inline"></span>[^1]
+* `'Ed448'` <span class="experimental-inline"></span>[^1]
 * `'HMAC'`
 
 ### `subtle.unwrapKey(format, wrappedKey, unwrappingKey, unwrapAlgo, unwrappedKeyAlgo, extractable, keyUsages)`
@@ -881,7 +897,11 @@ The unwrapped key algorithms supported include:
 * `'RSA-PSS'`
 * `'RSA-OAEP'`
 * `'ECDSA'`
+* `'Ed25519'` <span class="experimental-inline"></span>[^1]
+* `'Ed448'` <span class="experimental-inline"></span>[^1]
 * `'ECDH'`
+* `'X25519'` <span class="experimental-inline"></span>[^1]
+* `'X448'` <span class="experimental-inline"></span>[^1]
 * `'HMAC'`
 * `'AES-CTR'`
 * `'AES-CBC'`
@@ -893,7 +913,7 @@ The unwrapped key algorithms supported include:
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v16.17.0
+  - version: v18.4.0
     pr-url: https://github.com/nodejs/node/pull/42507
     description: Added `'Ed25519'`, and `'Ed448'` algorithms.
 -->
@@ -918,8 +938,8 @@ The algorithms currently supported include:
 * `'RSASSA-PKCS1-v1_5'`
 * `'RSA-PSS'`
 * `'ECDSA'`
-* `'Ed25519'`[^1]
-* `'Ed448'`[^1]
+* `'Ed25519'` <span class="experimental-inline"></span>[^1]
+* `'Ed448'` <span class="experimental-inline"></span>[^1]
 * `'HMAC'`
 
 ### `subtle.wrapKey(format, key, wrappingKey, wrapAlgo)`
@@ -965,13 +985,13 @@ are simple JavaScript dictionary objects.
 ### Class: `AlgorithmIdentifier`
 
 <!-- YAML
-added: v16.17.0
+added: v18.4.0
 -->
 
 #### `algorithmIdentifier.name`
 
 <!-- YAML
-added: v16.17.0
+added: v18.4.0
 -->
 
 * Type: {string}
@@ -1228,7 +1248,7 @@ added: v15.0.0
 #### `ed448Params.name`
 
 <!-- YAML
-added: v16.17.0
+added: v18.4.0
 -->
 
 * Type: {string} Must be `'Ed448'`.
@@ -1236,7 +1256,7 @@ added: v16.17.0
 #### `ed448Params.context`
 
 <!-- YAML
-added: v16.17.0
+added: v18.4.0
 -->
 
 * Type: {ArrayBuffer|TypedArray|DataView|Buffer|undefined}
@@ -1538,7 +1558,7 @@ there is reason to use a different value, use `new Uint8Array([1, 0, 1])`
 added: v15.0.0
 -->
 
-#### rsaOaepParams.label
+#### `rsaOaepParams.label`
 
 <!-- YAML
 added: v15.0.0
@@ -1551,7 +1571,7 @@ to the generated ciphertext.
 
 The `rsaOaepParams.label` parameter is optional.
 
-#### rsaOaepParams.name
+#### `rsaOaepParams.name`
 
 <!-- YAML
 added: v15.0.0

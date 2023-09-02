@@ -9,12 +9,14 @@ const {
 const {
   codes: {
     ERR_ILLEGAL_CONSTRUCTOR,
-    ERR_MISSING_ARGS
-  }
+    ERR_MISSING_ARGS,
+  },
 } = require('internal/errors');
 
 const {
   EventTarget,
+  Event,
+  kTrustEvent,
 } = require('internal/event_target');
 
 const { now } = require('internal/perf/utils');
@@ -29,6 +31,8 @@ const {
 const {
   clearEntriesFromBuffer,
   filterBufferMapByNameAndType,
+  setResourceTimingBufferSize,
+  setDispatchBufferFull,
 } = require('internal/perf/observe');
 
 const eventLoopUtilization = require('internal/perf/event_loop_utilization');
@@ -38,7 +42,7 @@ const { customInspectSymbol: kInspect } = require('internal/util');
 const { inspect } = require('util');
 
 const {
-  getTimeOriginTimestamp
+  getTimeOriginTimestamp,
 } = internalBinding('performance');
 
 class Performance extends EventTarget {
@@ -51,7 +55,7 @@ class Performance extends EventTarget {
 
     const opts = {
       ...options,
-      depth: options.depth == null ? null : options.depth - 1
+      depth: options.depth == null ? null : options.depth - 1,
     };
 
     return `Performance ${inspect({
@@ -65,7 +69,7 @@ function toJSON() {
   return {
     nodeTiming: this.nodeTiming,
     timeOrigin: this.timeOrigin,
-    eventLoopUtilization: this.eventLoopUtilization()
+    eventLoopUtilization: this.eventLoopUtilization(),
   };
 }
 
@@ -190,6 +194,12 @@ ObjectDefineProperties(Performance.prototype, {
     enumerable: false,
     value: now,
   },
+  setResourceTimingBufferSize: {
+    __proto__: null,
+    configurable: true,
+    enumerable: false,
+    value: setResourceTimingBufferSize,
+  },
   timerify: {
     __proto__: null,
     configurable: true,
@@ -211,7 +221,7 @@ ObjectDefineProperties(Performance.prototype, {
     configurable: true,
     enumerable: true,
     value: toJSON,
-  }
+  },
 });
 
 function refreshTimeOrigin() {
@@ -223,7 +233,18 @@ function refreshTimeOrigin() {
   });
 }
 
+const performance = new InternalPerformance();
+
+function dispatchBufferFull(type) {
+  const event = new Event(type, {
+    [kTrustEvent]: true,
+  });
+  performance.dispatchEvent(event);
+}
+setDispatchBufferFull(dispatchBufferFull);
+
 module.exports = {
-  InternalPerformance,
-  refreshTimeOrigin
+  Performance,
+  performance,
+  refreshTimeOrigin,
 };

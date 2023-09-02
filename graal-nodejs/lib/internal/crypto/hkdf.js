@@ -2,7 +2,6 @@
 
 const {
   FunctionPrototypeCall,
-  Promise,
 } = primordials;
 
 const {
@@ -12,16 +11,14 @@ const {
 } = internalBinding('crypto');
 
 const {
-  validateCallback,
+  validateFunction,
   validateInteger,
   validateString,
-  validateUint32,
 } = require('internal/validators');
 
 const { kMaxLength } = require('buffer');
 
 const {
-  getArrayBufferOrView,
   normalizeHashName,
   toBuf,
   validateByteSource,
@@ -35,6 +32,7 @@ const {
 
 const {
   lazyDOMException,
+  promisify,
 } = require('internal/util');
 
 const {
@@ -46,7 +44,6 @@ const {
   codes: {
     ERR_INVALID_ARG_TYPE,
     ERR_OUT_OF_RANGE,
-    ERR_MISSING_OPTION,
   },
   hideStackFrames,
 } = require('internal/errors');
@@ -110,7 +107,7 @@ function hkdf(hash, key, salt, info, length, callback) {
     length,
   } = validateParameters(hash, key, salt, info, length));
 
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   const job = new HKDFJob(kCryptoJobAsync, hash, key, salt, info, length);
 
@@ -139,40 +136,29 @@ function hkdfSync(hash, key, salt, info, length) {
   return bits;
 }
 
+const hkdfPromise = promisify(hkdf);
 async function hkdfDeriveBits(algorithm, baseKey, length) {
-  const { hash } = algorithm;
-  const salt = getArrayBufferOrView(algorithm.salt, 'algorithm.salt');
-  const info = getArrayBufferOrView(algorithm.info, 'algorithm.info');
-  if (hash === undefined)
-    throw new ERR_MISSING_OPTION('algorithm.hash');
+  const { hash, salt, info } = algorithm;
 
-  let byteLength = 512 / 8;
-  if (length !== undefined) {
-    if (length === 0)
-      throw lazyDOMException('length cannot be zero', 'OperationError');
-    if (length === null)
-      throw lazyDOMException('length cannot be null', 'OperationError');
-    validateUint32(length, 'length');
-    if (length % 8) {
-      throw lazyDOMException(
-        'length must be a multiple of 8',
-        'OperationError');
-    }
-    byteLength = length / 8;
+  if (length === 0)
+    throw lazyDOMException('length cannot be zero', 'OperationError');
+  if (length === null)
+    throw lazyDOMException('length cannot be null', 'OperationError');
+  if (length % 8) {
+    throw lazyDOMException(
+      'length must be a multiple of 8',
+      'OperationError');
   }
 
-  return new Promise((resolve, reject) => {
-    hkdf(
-      normalizeHashName(hash.name),
-      baseKey[kKeyObject],
-      salt,
-      info,
-      byteLength,
-      (err, bits) => {
-        if (err) return reject(err);
-        resolve(bits);
-      });
-  });
+  try {
+    return await hkdfPromise(
+      normalizeHashName(hash.name), baseKey[kKeyObject], salt, info, length / 8,
+    );
+  } catch (err) {
+    throw lazyDOMException(
+      'The operation failed for an operation-specific reason',
+      { name: 'OperationError', cause: err });
+  }
 }
 
 module.exports = {

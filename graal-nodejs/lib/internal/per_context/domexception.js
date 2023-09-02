@@ -49,12 +49,31 @@ const disusedNamesSet = new SafeSet()
   .add('ValidationError');
 
 class DOMException {
-  constructor(message = '', name = 'Error') {
+  constructor(message = '', options = 'Error') {
     ErrorCaptureStackTrace(this);
-    internalsMap.set(this, {
-      message: `${message}`,
-      name: `${name}`
-    });
+
+    if (options && typeof options === 'object') {
+      const { name } = options;
+      internalsMap.set(this, {
+        message: `${message}`,
+        name: `${name}`,
+      });
+
+      if ('cause' in options) {
+        ObjectDefineProperty(this, 'cause', {
+          __proto__: null,
+          value: options.cause,
+          configurable: true,
+          writable: true,
+          enumerable: false,
+        });
+      }
+    } else {
+      internalsMap.set(this, {
+        message: `${message}`,
+        name: `${options}`,
+      });
+    }
   }
 
   get name() {
@@ -93,7 +112,7 @@ ObjectDefineProperties(DOMException.prototype, {
   [SymbolToStringTag]: { __proto__: null, configurable: true, value: 'DOMException' },
   name: { __proto__: null, enumerable: true, configurable: true },
   message: { __proto__: null, enumerable: true, configurable: true },
-  code: { __proto__: null, enumerable: true, configurable: true }
+  code: { __proto__: null, enumerable: true, configurable: true },
 });
 
 for (const { 0: name, 1: codeName, 2: value } of [

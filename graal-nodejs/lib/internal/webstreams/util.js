@@ -1,7 +1,6 @@
 'use strict';
 
 const {
-  ArrayBufferPrototype,
   ArrayBufferPrototypeSlice,
   ArrayPrototypePush,
   ArrayPrototypeShift,
@@ -20,7 +19,6 @@ const {
 
 const {
   codes: {
-    ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_OPERATION_FAILED,
   },
@@ -28,7 +26,7 @@ const {
 
 const {
   copyArrayBuffer,
-  detachArrayBuffer
+  detachArrayBuffer,
 } = internalBinding('buffer');
 
 const {
@@ -40,11 +38,18 @@ const {
 } = require('util');
 
 const {
+  constants: {
+    kPending,
+  },
   getPromiseDetails,
-  kPending,
 } = internalBinding('util');
 
 const assert = require('internal/assert');
+const { isArrayBufferDetached } = require('internal/util');
+
+const {
+  validateFunction,
+} = require('internal/validators');
 
 const kState = Symbol('kState');
 const kType = Symbol('kType');
@@ -76,8 +81,7 @@ function extractHighWaterMark(value, defaultHWM) {
 
 function extractSizeAlgorithm(size) {
   if (size === undefined) return () => 1;
-  if (typeof size !== 'function')
-    throw new ERR_INVALID_ARG_TYPE('strategy.size', 'Function', size);
+  validateFunction(size, 'strategy.size');
   return size;
 }
 
@@ -87,7 +91,7 @@ function customInspect(depth, options, name, data) {
 
   const opts = {
     ...options,
-    depth: options.depth == null ? null : options.depth - 1
+    depth: options.depth == null ? null : options.depth - 1,
   };
 
   return `${name} ${inspect(data, opts)}`;
@@ -109,16 +113,12 @@ function ArrayBufferViewGetByteOffset(view) {
   return ReflectGet(view.constructor.prototype, 'byteOffset', view);
 }
 
-function ArrayBufferGetByteLength(view) {
-  return ReflectGet(ArrayBufferPrototype, 'byteLength', view);
-}
-
 function cloneAsUint8Array(view) {
   const buffer = ArrayBufferViewGetBuffer(view);
   const byteOffset = ArrayBufferViewGetByteOffset(view);
   const byteLength = ArrayBufferViewGetByteLength(view);
   return new Uint8Array(
-    ArrayBufferPrototypeSlice(buffer, byteOffset, byteOffset + byteLength)
+    ArrayBufferPrototypeSlice(buffer, byteOffset, byteOffset + byteLength),
   );
 }
 
@@ -137,6 +137,13 @@ function transferArrayBuffer(buffer) {
       'The ArrayBuffer could not be transferred');
   }
   return res;
+}
+
+function isViewedArrayBufferDetached(view) {
+  return (
+    ArrayBufferViewGetByteLength(view) === 0 &&
+    isArrayBufferDetached(ArrayBufferViewGetBuffer(view))
+  );
 }
 
 function dequeueValue(controller) {
@@ -224,7 +231,6 @@ module.exports = {
   ArrayBufferViewGetBuffer,
   ArrayBufferViewGetByteLength,
   ArrayBufferViewGetByteOffset,
-  ArrayBufferGetByteLength,
   AsyncIterator,
   cloneAsUint8Array,
   copyArrayBuffer,
@@ -237,6 +243,7 @@ module.exports = {
   lazyTransfer,
   isBrandCheck,
   isPromisePending,
+  isViewedArrayBufferDetached,
   peekQueueValue,
   resetQueue,
   setPromiseHandled,

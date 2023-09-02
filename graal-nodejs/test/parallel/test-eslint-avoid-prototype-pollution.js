@@ -45,10 +45,15 @@ new RuleTester({
       'ReflectDefineProperty({}, "key", { "__proto__": null })',
       'ObjectDefineProperty({}, "key", { \'__proto__\': null })',
       'ReflectDefineProperty({}, "key", { \'__proto__\': null })',
+      'StringPrototypeReplace("some string", "some string", "some replacement")',
+      'StringPrototypeReplaceAll("some string", "some string", "some replacement")',
+      'StringPrototypeSplit("some string", "some string")',
       'new Proxy({}, otherObject)',
       'new Proxy({}, someFactory())',
       'new Proxy({}, { __proto__: null })',
       'new Proxy({}, { __proto__: null, ...{} })',
+      'async function name(){return await SafePromiseAll([])}',
+      'async function name(){const val = await SafePromiseAll([])}',
     ],
     invalid: [
       {
@@ -161,10 +166,18 @@ new RuleTester({
       },
       {
         code: 'RegExpPrototypeSymbolSearch(/some regex/, "some string")',
-        errors: [{ message: /looks up the "exec" property/ }],
+        errors: [{ message: /SafeStringPrototypeSearch/ }],
       },
       {
         code: 'StringPrototypeMatch("some string", /some regex/)',
+        errors: [{ message: /looks up the Symbol\.match property/ }],
+      },
+      {
+        code: 'let v = StringPrototypeMatch("some string", /some regex/)',
+        errors: [{ message: /looks up the Symbol\.match property/ }],
+      },
+      {
+        code: 'let v = StringPrototypeMatch("some string", new RegExp("some regex"))',
         errors: [{ message: /looks up the Symbol\.match property/ }],
       },
       {
@@ -172,7 +185,15 @@ new RuleTester({
         errors: [{ message: /looks up the Symbol\.matchAll property/ }],
       },
       {
+        code: 'let v = StringPrototypeMatchAll("some string", new RegExp("some regex"))',
+        errors: [{ message: /looks up the Symbol\.matchAll property/ }],
+      },
+      {
         code: 'StringPrototypeReplace("some string", /some regex/, "some replacement")',
+        errors: [{ message: /looks up the Symbol\.replace property/ }],
+      },
+      {
+        code: 'StringPrototypeReplace("some string", new RegExp("some regex"), "some replacement")',
         errors: [{ message: /looks up the Symbol\.replace property/ }],
       },
       {
@@ -180,8 +201,12 @@ new RuleTester({
         errors: [{ message: /looks up the Symbol\.replace property/ }],
       },
       {
+        code: 'StringPrototypeReplaceAll("some string", new RegExp("some regex"), "some replacement")',
+        errors: [{ message: /looks up the Symbol\.replace property/ }],
+      },
+      {
         code: 'StringPrototypeSearch("some string", /some regex/)',
-        errors: [{ message: /looks up the Symbol\.search property/ }],
+        errors: [{ message: /SafeStringPrototypeSearch/ }],
       },
       {
         code: 'StringPrototypeSplit("some string", /some regex/)',
@@ -212,6 +237,14 @@ new RuleTester({
         errors: [{ message: /\bSafePromiseAll\b/ }]
       },
       {
+        code: 'async function fn(){await SafePromiseAll([])}',
+        errors: [{ message: /\bSafePromiseAllReturnVoid\b/ }]
+      },
+      {
+        code: 'async function fn(){await SafePromiseAllSettled([])}',
+        errors: [{ message: /\bSafePromiseAllSettledReturnVoid\b/ }]
+      },
+      {
         code: 'PromiseAllSettled([])',
         errors: [{ message: /\bSafePromiseAllSettled\b/ }]
       },
@@ -222,6 +255,10 @@ new RuleTester({
       {
         code: 'PromiseRace([])',
         errors: [{ message: /\bSafePromiseRace\b/ }]
+      },
+      {
+        code: 'ArrayPrototypeConcat([])',
+        errors: [{ message: /\bisConcatSpreadable\b/ }]
       },
     ]
   });

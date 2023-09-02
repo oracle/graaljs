@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -115,6 +115,7 @@ public class Block extends Node implements BreakableNode, Terminal, Flags<Block>
     public Block(final long token, final int finish, final int flags, final Scope scope, final List<Statement> statements) {
         super(token, finish);
         assert start <= finish;
+        assert scope.isClosed() : scope;
 
         this.statements = List.copyOf(statements);
         this.scope = scope;

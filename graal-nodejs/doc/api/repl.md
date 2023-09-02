@@ -132,7 +132,7 @@ const r = repl.start('> ');
 Object.defineProperty(r.context, 'm', {
   configurable: false,
   enumerable: true,
-  value: msg
+  value: msg,
 });
 ```
 
@@ -212,7 +212,7 @@ Explicitly setting `_error` to a value will disable this behavior.
 
 ```console
 > throw new Error('foo');
-Error: foo
+Uncaught Error: foo
 > _error.message
 'foo'
 ```
@@ -225,8 +225,8 @@ Support for the `await` keyword is enabled at the top level.
 > await Promise.resolve(123)
 123
 > await Promise.reject(new Error('REPL await'))
-Error: REPL await
-    at repl:1:45
+Uncaught Error: REPL await
+    at REPL2:1:54
 > const timeout = util.promisify(setTimeout);
 undefined
 > const old = Date.now(); await timeout(1000); console.log(Date.now() - old);
@@ -485,7 +485,7 @@ replServer.defineCommand('sayhello', {
     this.clearBufferedCommand();
     console.log(`Hello, ${name}!`);
     this.displayPrompt();
-  }
+  },
 });
 replServer.defineCommand('saybye', function saybye() {
   console.log('Goodbye!');
@@ -733,7 +733,7 @@ let connections = 0;
 repl.start({
   prompt: 'Node.js via stdin> ',
   input: process.stdin,
-  output: process.stdout
+  output: process.stdout,
 });
 
 net.createServer((socket) => {
@@ -741,7 +741,7 @@ net.createServer((socket) => {
   repl.start({
     prompt: 'Node.js via Unix socket> ',
     input: socket,
-    output: socket
+    output: socket,
   }).on('exit', () => {
     socket.end();
   });
@@ -752,7 +752,7 @@ net.createServer((socket) => {
   repl.start({
     prompt: 'Node.js via TCP socket> ',
     input: socket,
-    output: socket
+    output: socket,
   }).on('exit', () => {
     socket.end();
   });

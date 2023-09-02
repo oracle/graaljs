@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
@@ -52,12 +51,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getNextMethodNode;
-    @Child private IsCallableNode isCallableNode;
-
-    private final BranchProfile errorProfile = BranchProfile.create();
 
     public GetIteratorDirectNode(JSContext context) {
-        isCallableNode = IsCallableNode.create();
         getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
     }
 
@@ -65,16 +60,20 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
 
     @Specialization
     protected IteratorRecord get(JSObject obj) {
-        Object nextMethod = getNextMethodNode.getValue(obj);
-        if (!isCallableNode.executeBoolean(nextMethod)) {
-            errorProfile.enter();
-            throw Errors.createTypeErrorCallableExpected();
-        }
+        return getImpl(obj);
+    }
 
+    @Specialization(guards = "isForeignObject(obj)")
+    protected IteratorRecord get(Object obj) {
+        return getImpl(obj);
+    }
+
+    private IteratorRecord getImpl(Object obj) {
+        Object nextMethod = getNextMethodNode.getValue(obj);
         return IteratorRecord.create(obj, nextMethod, false);
     }
 
-    @Specialization(guards = "!isJSObject(obj)")
+    @Fallback
     public IteratorRecord unsupported(Object obj) {
         throw Errors.createTypeErrorNotAnObject(obj, this);
     }

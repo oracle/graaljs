@@ -5,6 +5,7 @@
 #ifndef V8_OBJECTS_JS_PROMISE_H_
 #define V8_OBJECTS_JS_PROMISE_H_
 
+#include "include/v8-promise.h"
 #include "src/objects/js-objects.h"
 #include "src/objects/promise.h"
 #include "torque-generated/bit-fields.h"
@@ -27,7 +28,8 @@ namespace internal {
 // We also overlay the result and reactions fields on the JSPromise, since
 // the reactions are only necessary for pending promises, whereas the result
 // is only meaningful for settled promises.
-class JSPromise : public TorqueGeneratedJSPromise<JSPromise, JSObject> {
+class JSPromise
+    : public TorqueGeneratedJSPromise<JSPromise, JSObjectWithEmbedderSlots> {
  public:
   // [result]: Checks that the promise is settled and returns the result.
   inline Object result() const;

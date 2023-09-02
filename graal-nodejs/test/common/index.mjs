@@ -37,6 +37,7 @@ const {
   getCallSite,
   mustNotCall,
   mustNotMutateObjectDeep,
+  parseTestFlags,
   printSkipMessage,
   skip,
   nodeProcessAborted,
@@ -51,6 +52,8 @@ const {
   runWithInvalidFD,
   spawnPromisified,
 } = common;
+
+const getPort = () => common.PORT;
 
 export {
   isMainThread,
@@ -86,6 +89,7 @@ export {
   getCallSite,
   mustNotCall,
   mustNotMutateObjectDeep,
+  parseTestFlags,
   printSkipMessage,
   skip,
   nodeProcessAborted,
@@ -100,4 +104,5 @@ export {
   runWithInvalidFD,
   createRequire,
   spawnPromisified,
+  getPort,
 };

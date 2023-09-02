@@ -20,8 +20,8 @@ void AppendExceptionLine(Environment* env,
                          enum ErrorHandlingMode mode);
 
 [[noreturn]] void FatalError(const char* location, const char* message);
-void OnFatalError(const char* location, const char* message);
-void OOMErrorHandler(const char* location, bool is_heap_oom);
+[[noreturn]] void OnFatalError(const char* location, const char* message);
+[[noreturn]] void OOMErrorHandler(const char* location, bool is_heap_oom);
 
 // Helpers to construct errors similar to the ones provided by
 // lib/internal/errors.js.
@@ -60,12 +60,16 @@ void OOMErrorHandler(const char* location, bool is_heap_oom);
   V(ERR_CRYPTO_JOB_INIT_FAILED, Error)                                         \
   V(ERR_DLOPEN_DISABLED, Error)                                                \
   V(ERR_DLOPEN_FAILED, Error)                                                  \
+  V(ERR_ENCODING_INVALID_ENCODED_DATA, TypeError)                              \
   V(ERR_EXECUTION_ENVIRONMENT_NOT_AVAILABLE, Error)                            \
+  V(ERR_ILLEGAL_CONSTRUCTOR, Error)                                            \
   V(ERR_INVALID_ADDRESS, Error)                                                \
   V(ERR_INVALID_ARG_VALUE, TypeError)                                          \
   V(ERR_OSSL_EVP_INVALID_DIGEST, Error)                                        \
   V(ERR_INVALID_ARG_TYPE, TypeError)                                           \
+  V(ERR_INVALID_OBJECT_DEFINE_PROPERTY, TypeError)                             \
   V(ERR_INVALID_MODULE, Error)                                                 \
+  V(ERR_INVALID_STATE, Error)                                                  \
   V(ERR_INVALID_THIS, TypeError)                                               \
   V(ERR_INVALID_TRANSFER_OBJECT, TypeError)                                    \
   V(ERR_MEMORY_ALLOCATION_FAILED, Error)                                       \
@@ -151,6 +155,7 @@ ERRORS_WITH_CODE(V)
   V(ERR_DLOPEN_FAILED, "DLOpen failed")                                        \
   V(ERR_EXECUTION_ENVIRONMENT_NOT_AVAILABLE,                                   \
     "Context not associated with Node.js environment")                         \
+  V(ERR_ILLEGAL_CONSTRUCTOR, "Illegal constructor")                            \
   V(ERR_INVALID_ADDRESS, "Invalid socket address")                             \
   V(ERR_INVALID_MODULE, "No such module")                                      \
   V(ERR_INVALID_THIS, "Value of \"this\" is the wrong type")                   \
@@ -167,7 +172,7 @@ ERRORS_WITH_CODE(V)
     "The V8 platform used by this instance of Node does not support "          \
     "creating Workers")                                                        \
   V(ERR_NON_CONTEXT_AWARE_DISABLED,                                            \
-    "Loading non context-aware native modules has been disabled")              \
+    "Loading non context-aware native addons has been disabled")               \
   V(ERR_SCRIPT_EXECUTION_INTERRUPTED,                                          \
     "Script execution was interrupted by `SIGINT`")                            \
   V(ERR_TLS_PSK_SET_IDENTIY_HINT_FAILED, "Failed to set PSK identity hint")    \

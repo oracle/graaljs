@@ -18,11 +18,6 @@ proposal_flags = [{
                               '--wasm-staging']
                   },
                   {
-                    'name': 'simd',
-                    'flags': ['--experimental-wasm-simd',
-                              '--wasm-staging']
-                  },
-                  {
                     'name': 'memory64',
                     'flags': ['--experimental-wasm-memory64',
                               '--wasm-staging']
@@ -52,7 +47,7 @@ class TestCase(testcase.D8TestCase):
     for proposal in proposal_flags:
       if os.sep.join(['proposals', proposal['name']]) in self.path:
         return proposal['flags']
-    return ['--experimental-wasm-reftypes']
+    return []
 
 
 def GetSuite(*args, **kwargs):

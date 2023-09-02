@@ -3,7 +3,40 @@
 This changelog summarizes major changes between GraalVM versions of the GraalVM JavaScript (ECMAScript) language runtime.
 The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
-See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) for release dates.
+See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
+
+## Version 23.1.0
+* NOTE: GraalVM no longer ships with a "js" ScriptEngine. Please either use the Maven dependency or explicitly put `js-scriptengine.jar` on the module path. See [ScriptEngine documentation](docs/user/ScriptEngine.md) for details.
+* ECMAScript 2023 mode/features enabled by default.
+* Updated Node.js to version 18.17.1.
+* Implemented the [Async Context](https://github.com/tc39/proposal-async-context) proposal. It is available behind the experimental option `--js.async-context`.
+* `FinalizationRegistry.prototype.cleanupSome` is not enabled by default any more; it has been moved to ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Added an experimental option `--js.allow-narrow-spaces-in-date-format` (enabled by default). When this option is set to `false` then narrow spaces in date/time formats are replaced by a space (`0x20`).
+* Made option `js.console` stable and allowed in `SandboxPolicy.UNTRUSTED`.
+* Made option `js.unhandled-rejections` stable and allowed in `SandboxPolicy.CONSTRAINED`.
+* Added option `js.allow-eval` that is stable and allowed in `SandboxPolicy.UNTRUSTED`.
+* Deprecated option `js.disable-eval`, superseded by `js.allow-eval`.
+* Implemented the [String.dedent](https://github.com/tc39/proposal-string-dedent) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Duplicate named capture groups are now supported in regular expressions, as per the [duplicate named capturing groups](https://github.com/tc39/proposal-duplicate-named-capturing-groups) proposal.
+* The Maven coordinates for embedding the GraalVM JavaScript have been updated.
+  For consuming the enterprise GraalVM JavaScript, use:
+  ```xml
+  <dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>js</artifactId>
+    <version>${graalvm.version}</version>
+    <type>pom</type>
+  </dependency>
+  ```
+  For consuming the community GraalVM JavaScript, use:
+  ```xml
+  <dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>js-community</artifactId>
+    <version>${graalvm.version}</version>
+    <type>pom</type>
+  </dependency>
+  ```
 
 ## Version 23.0.0
 * Implemented the [WebAssembly reference types](https://github.com/WebAssembly/reference-types) proposal.
@@ -11,7 +44,16 @@ See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) fo
 * Implemented the [ShadowRealm](https://github.com/tc39/proposal-shadowrealm) proposal. It is available behind the experimental option `--js.shadow-realm`.
 * Removed experimental option `v8-legacy-const`.
 * Removed non-standard `SharedArrayBuffer.isView`.
-* Updated Node.js to version 16.18.1.
+* Updated Node.js to version 18.14.1.
+* Implemented the [Symbols as WeakMap keys](https://github.com/tc39/proposal-symbols-as-weakmap-keys) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [ArrayBuffer.prototype.transfer and friends](https://github.com/tc39/proposal-arraybuffer-transfer) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [Change Array by copy](https://github.com/tc39/proposal-change-array-by-copy) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Added BigInteger interop support.
+  Note that foreign BigIntegers require an explicit type cast using the `BigInt` function to opt into JS BigInt semantics.
+  The default semantics is to treat all foreign numbers like JS Number values, regardless of the original value or type.
+  Arithmetic operators perform an implicit lossy conversion to double; mixing a JS BigInt with any non-JS number always throws.
+  Comparison operators attempt to do a precise value comparison where possible.
+  JS BigInt values can now be converted to `java.math.BigInteger` host objects, although a [target type mapping](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.Builder.html#targetTypeMapping-java.lang.Class-java.lang.Class-java.util.function.Predicate-java.util.function.Function-) may still be necessary to ensure consistent type mapping if the target type is ambiguous or absent.
 
 ## Version 22.3.0
 * Implemented the [WebAssembly multi-value](https://github.com/WebAssembly/multi-value) proposal.

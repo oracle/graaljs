@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,31 +42,39 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
 
 @NodeInfo(shortName = "??")
-public final class JSNullishCoalescingNode extends JSLogicalNode {
-
-    @Child private JSIsNullOrUndefinedNode isNullOrUndefinedNode = JSIsNullOrUndefinedNode.create();
+public abstract class JSNullishCoalescingNode extends JSLogicalNode {
 
     JSNullishCoalescingNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
     }
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
-        return new JSNullishCoalescingNode(left, right);
+        return JSNullishCoalescingNodeGen.create(left, right);
+    }
+
+    @Specialization
+    protected Object doGeneric(VirtualFrame frame, Object leftValue,
+                    @Cached JSIsNullOrUndefinedNode isNullOrUndefinedNode,
+                    @Cached InlinedConditionProfile canShortCircuit) {
+        if (canShortCircuit.profile(this, !isNullOrUndefinedNode.executeBoolean(leftValue))) {
+            return leftValue;
+        } else {
+            return rightNode.execute(frame);
+        }
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new JSNullishCoalescingNode(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
-    }
-
-    @Override
-    protected boolean useLeftValue(Object leftValue) {
-        return !isNullOrUndefinedNode.executeBoolean(leftValue);
+        return create(cloneUninitialized(getLeft(), materializedTags), cloneUninitialized(getRight(), materializedTags));
     }
 }

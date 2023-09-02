@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,13 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.SetIteratorPrototypeBuiltinsFactory.SetIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
-import com.oracle.truffle.js.nodes.access.HasHiddenKeyCacheNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -57,8 +54,10 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSSet;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
+import com.oracle.truffle.js.runtime.builtins.JSSetIteratorObject;
+import com.oracle.truffle.js.runtime.builtins.JSSetObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -70,7 +69,7 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
     public static final JSBuiltinsContainer BUILTINS = new SetIteratorPrototypeBuiltins();
 
     protected SetIteratorPrototypeBuiltins() {
-        super(JSSet.ITERATOR_PROTOTYPE_NAME, SetIteratorPrototype.class);
+        super(JSSetIterator.PROTOTYPE_NAME, SetIteratorPrototype.class);
     }
 
     public enum SetIteratorPrototype implements BuiltinEnum<SetIteratorPrototype> {
@@ -98,44 +97,36 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     public abstract static class SetIteratorNextNode extends JSBuiltinNode {
-        @Child private HasHiddenKeyCacheNode isSetIteratorNode;
-        @Child private PropertyGetNode getIteratedObjectNode;
-        @Child private PropertyGetNode getNextIndexNode;
-        @Child private PropertyGetNode getIterationKindNode;
-        @Child private PropertySetNode setIteratedObjectNode;
+
         @Child private CreateIterResultObjectNode createIterResultObjectNode;
-        private final ConditionProfile detachedProf = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile doneProf = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile iterKindProf = ConditionProfile.createBinaryProfile();
 
         public SetIteratorNextNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isSetIteratorNode = HasHiddenKeyCacheNode.create(JSSet.SET_ITERATION_KIND_ID);
-            this.getIteratedObjectNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
-            this.getNextIndexNode = PropertyGetNode.createGetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
-            this.getIterationKindNode = PropertyGetNode.createGetHidden(JSSet.SET_ITERATION_KIND_ID, context);
-            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
             this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
         }
 
-        @Specialization(guards = "isSetIterator(iterator)")
-        protected JSDynamicObject doSetIterator(VirtualFrame frame, JSDynamicObject iterator) {
-            Object set = getIteratedObjectNode.getValue(iterator);
-            if (detachedProf.profile(set == Undefined.instance)) {
+        @Specialization
+        protected final JSObject doSetIterator(VirtualFrame frame, JSSetIteratorObject iterator,
+                        @Cached InlinedConditionProfile detachedProf,
+                        @Cached InlinedConditionProfile doneProf,
+                        @Cached InlinedConditionProfile iterKindProf) {
+            Object set = iterator.getIteratedObject();
+            if (detachedProf.profile(this, set == Undefined.instance)) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
-            JSHashMap.Cursor mapCursor = (JSHashMap.Cursor) getNextIndexNode.getValue(iterator);
-            int itemKind = getIterationKind(iterator);
+            assert set instanceof JSSetObject;
+            JSHashMap.Cursor mapCursor = iterator.getNextIndex();
+            int itemKind = iterator.getIterationKind();
 
-            if (doneProf.profile(!mapCursor.advance())) {
-                setIteratedObjectNode.setValue(iterator, Undefined.instance);
+            if (doneProf.profile(this, !mapCursor.advance())) {
+                iterator.setIteratedObject(Undefined.instance);
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
             Object elementValue = mapCursor.getKey();
             Object result;
-            if (iterKindProf.profile(itemKind == JSRuntime.ITERATION_KIND_VALUE)) {
+            if (iterKindProf.profile(this, itemKind == JSRuntime.ITERATION_KIND_VALUE)) {
                 result = elementValue;
             } else {
                 assert itemKind == JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE;
@@ -146,21 +137,8 @@ public final class SetIteratorPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @SuppressWarnings("unused")
         @Fallback
-        protected JSDynamicObject doIncompatibleReceiver(Object iterator) {
+        protected static JSObject doIncompatibleReceiver(Object iterator) {
             throw Errors.createTypeError("not a Set Iterator");
-        }
-
-        protected final boolean isSetIterator(Object thisObj) {
-            // If the [[SetIterationKind]] internal slot is present, the others must be as well.
-            return isSetIteratorNode.executeHasHiddenKey(thisObj);
-        }
-
-        private int getIterationKind(JSDynamicObject iterator) {
-            try {
-                return getIterationKindNode.getValueInt(iterator);
-            } catch (UnexpectedResultException e) {
-                throw Errors.shouldNotReachHere();
-            }
         }
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,23 +58,23 @@ public final class JSArgumentsArray extends JSAbstractArgumentsArray {
     private JSArgumentsArray() {
     }
 
-    public static JSArgumentsObject.Unmapped createUnmapped(Shape shape, Object[] elements) {
-        return new JSArgumentsObject.Unmapped(shape, ScriptArray.createConstantArray(elements), elements, elements.length);
+    public static JSArgumentsObject.Unmapped createUnmapped(Shape shape, JSDynamicObject proto, Object[] elements) {
+        return new JSArgumentsObject.Unmapped(shape, proto, ScriptArray.createConstantArray(elements), elements, elements.length);
     }
 
-    public static JSArgumentsObject.Mapped createMapped(Shape shape, Object[] elements) {
-        return new JSArgumentsObject.Mapped(shape, ScriptArray.createConstantArray(elements), elements, elements.length);
+    public static JSArgumentsObject.Mapped createMapped(Shape shape, JSDynamicObject proto, Object[] elements) {
+        return new JSArgumentsObject.Mapped(shape, proto, ScriptArray.createConstantArray(elements), elements, elements.length);
     }
 
     @TruffleBoundary
     public static JSArgumentsObject createStrictSlow(JSRealm realm, Object[] elements) {
         JSContext context = realm.getContext();
         JSObjectFactory factory = context.getStrictArgumentsFactory();
-        JSArgumentsObject argumentsObject = createUnmapped(factory.getShape(realm), elements);
+        JSArgumentsObject argumentsObject = createUnmapped(factory.getShape(realm), factory.getPrototype(realm), elements);
         factory.initProto(argumentsObject, realm);
 
-        JSObjectUtil.putDataProperty(context, argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
 
         Accessor throwerAccessor = realm.getThrowerAccessor();
         JSObjectUtil.putBuiltinAccessorProperty(argumentsObject, CALLEE, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
@@ -89,13 +89,13 @@ public final class JSArgumentsArray extends JSAbstractArgumentsArray {
     public static JSArgumentsObject createNonStrictSlow(JSRealm realm, Object[] elements, JSDynamicObject callee) {
         JSContext context = realm.getContext();
         JSObjectFactory factory = context.getNonStrictArgumentsFactory();
-        JSArgumentsObject argumentsObject = createMapped(factory.getShape(realm), elements);
+        JSArgumentsObject argumentsObject = createMapped(factory.getShape(realm), factory.getPrototype(realm), elements);
         factory.initProto(argumentsObject, realm);
 
-        JSObjectUtil.putDataProperty(context, argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
-        JSObjectUtil.putDataProperty(context, argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
 
-        JSObjectUtil.putDataProperty(context, argumentsObject, CALLEE, callee, JSAttributes.configurableNotEnumerableWritable());
+        JSObjectUtil.putDataProperty(argumentsObject, CALLEE, callee, JSAttributes.configurableNotEnumerableWritable());
         return context.trackAllocation(argumentsObject);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -10,10 +10,6 @@
     const kBindStreamsLazy = Symbol('kBindStreamsLazy');
     const kSymFor = Symbol.for('symFor');
     const aSymbol = Symbol('kSymbol');
-
-    if (Object.is(Symbol('xx'), Symbol('xx'))) {
-        console.log('wrong!');
-    }
 
     function rep() {
         var foo = Object.create({

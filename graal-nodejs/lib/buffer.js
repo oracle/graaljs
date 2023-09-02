@@ -44,9 +44,13 @@ const {
   StringPrototypeTrim,
   SymbolSpecies,
   SymbolToPrimitive,
+  TypedArrayPrototypeGetBuffer,
   TypedArrayPrototypeGetByteLength,
+  TypedArrayPrototypeGetByteOffset,
   TypedArrayPrototypeFill,
+  TypedArrayPrototypeGetLength,
   TypedArrayPrototypeSet,
+  TypedArrayPrototypeSlice,
   Uint8Array,
   Uint8ArrayPrototype,
 } = primordials;
@@ -58,6 +62,8 @@ const {
   compareOffset,
   createFromString,
   fill: bindingFill,
+  isAscii: bindingIsAscii,
+  isUtf8: bindingIsUtf8,
   indexOfBuffer,
   indexOfNumber,
   indexOfString,
@@ -65,29 +71,30 @@ const {
   swap32: _swap32,
   swap64: _swap64,
   kMaxLength,
-  kStringMaxLength
+  kStringMaxLength,
 } = internalBinding('buffer');
 const {
-  getOwnNonIndexProperties,
-  propertyFilter: {
+  constants: {
     ALL_PROPERTIES,
-    ONLY_ENUMERABLE
+    ONLY_ENUMERABLE,
   },
+  getOwnNonIndexProperties,
 } = internalBinding('util');
 const {
   customInspectSymbol,
   isInsideNodeModules,
   lazyDOMException,
   normalizeEncoding,
-  kIsEncodingSymbol
+  kIsEncodingSymbol,
 } = require('internal/util');
 const {
   isAnyArrayBuffer,
   isArrayBufferView,
-  isUint8Array
+  isUint8Array,
+  isTypedArray,
 } = require('internal/util/types');
 const {
-  inspect: utilInspect
+  inspect: utilInspect,
 } = require('internal/util/inspect');
 const { encodings } = internalBinding('string_decoder');
 
@@ -99,7 +106,7 @@ const {
     ERR_INVALID_BUFFER_SIZE,
     ERR_OUT_OF_RANGE,
     ERR_MISSING_ARGS,
-    ERR_UNKNOWN_ENCODING
+    ERR_UNKNOWN_ENCODING,
   },
   genericNodeError,
   hideStackFrames,
@@ -109,7 +116,7 @@ const {
   validateBuffer,
   validateNumber,
   validateInteger,
-  validateString
+  validateString,
 } = require('internal/validators');
 // Provide validateInteger() but with kMaxLength as the default maximum value.
 const validateOffset = (value, name, min = 0, max = kMaxLength) =>
@@ -119,13 +126,17 @@ const {
   FastBuffer,
   markAsUntransferable,
   addBufferPrototypeMethods,
-  createUnsafeBuffer
+  createUnsafeBuffer,
 } = require('internal/buffer');
 
 const {
   Blob,
   resolveObjectURL,
 } = require('internal/blob');
+
+const {
+  File,
+} = require('internal/file');
 
 FastBuffer.prototype.constructor = Buffer;
 Buffer.prototype = FastBuffer.prototype;
@@ -136,14 +147,14 @@ const constants = ObjectDefineProperties({}, {
     __proto__: null,
     value: kMaxLength,
     writable: false,
-    enumerable: true
+    enumerable: true,
   },
   MAX_STRING_LENGTH: {
     __proto__: null,
     value: kStringMaxLength,
     writable: false,
-    enumerable: true
-  }
+    enumerable: true,
+  },
 });
 
 Buffer.poolSize = 8 * 1024;
@@ -223,8 +234,8 @@ function _copy(source, target, targetStart, sourceStart, sourceEnd) {
     sourceStart = 0;
   } else {
     sourceStart = toInteger(sourceStart, 0);
-    if (sourceStart < 0)
-      throw new ERR_OUT_OF_RANGE('sourceStart', '>= 0', sourceStart);
+    if (sourceStart < 0 || sourceStart > source.length)
+      throw new ERR_OUT_OF_RANGE('sourceStart', `>= 0 && <= ${source.length}`, sourceStart);
   }
 
   if (sourceEnd === undefined) {
@@ -237,12 +248,6 @@ function _copy(source, target, targetStart, sourceStart, sourceEnd) {
 
   if (targetStart >= target.length || sourceStart >= sourceEnd)
     return 0;
-
-  if (sourceStart > source.length) {
-    throw new ERR_OUT_OF_RANGE('sourceStart',
-                               `<= ${source.length}`,
-                               sourceStart);
-  }
 
   return _copyActual(source, target, targetStart, sourceStart, sourceEnd);
 }
@@ -290,7 +295,7 @@ ObjectDefineProperty(Buffer, SymbolSpecies, {
   __proto__: null,
   enumerable: false,
   configurable: true,
-  get() { return FastBuffer; }
+  get() { return FastBuffer; },
 });
 
 /**
@@ -331,8 +336,50 @@ Buffer.from = function from(value, encodingOrOffset, length) {
   throw new ERR_INVALID_ARG_TYPE(
     'first argument',
     ['string', 'Buffer', 'ArrayBuffer', 'Array', 'Array-like Object'],
-    value
+    value,
   );
+};
+
+/**
+ * Creates the Buffer as a copy of the underlying ArrayBuffer of the view
+ * rather than the contents of the view.
+ * @param {TypedArray} view
+ * @param {number} [offset]
+ * @param {number} [length]
+ * @returns {Buffer}
+ */
+Buffer.copyBytesFrom = function copyBytesFrom(view, offset, length) {
+  if (!isTypedArray(view)) {
+    throw new ERR_INVALID_ARG_TYPE('view', [ 'TypedArray' ], view);
+  }
+
+  const viewLength = TypedArrayPrototypeGetLength(view);
+  if (viewLength === 0) {
+    return Buffer.alloc(0);
+  }
+
+  if (offset !== undefined || length !== undefined) {
+    if (offset !== undefined) {
+      validateInteger(offset, 'offset', 0);
+      if (offset >= viewLength) return Buffer.alloc(0);
+    } else {
+      offset = 0;
+    }
+    let end;
+    if (length !== undefined) {
+      validateInteger(length, 'length', 0);
+      end = offset + length;
+    } else {
+      end = viewLength;
+    }
+
+    view = TypedArrayPrototypeSlice(view, offset, end);
+  }
+
+  return fromArrayLike(new Uint8Array(
+    TypedArrayPrototypeGetBuffer(view),
+    TypedArrayPrototypeGetByteOffset(view),
+    TypedArrayPrototypeGetByteLength(view)));
 };
 
 // Identical to the built-in %TypedArray%.of(), but avoids using the deprecated
@@ -601,7 +648,7 @@ const encodingOps = {
     write: (buf, string, offset, len) => buf.utf8Write(string, offset, len),
     slice: (buf, start, end) => buf.utf8Slice(start, end),
     indexOf: (buf, val, byteOffset, dir) =>
-      indexOfString(buf, val, byteOffset, encodingsMap.utf8, dir)
+      indexOfString(buf, val, byteOffset, encodingsMap.utf8, dir),
   },
   ucs2: {
     encoding: 'ucs2',
@@ -610,7 +657,7 @@ const encodingOps = {
     write: (buf, string, offset, len) => buf.ucs2Write(string, offset, len),
     slice: (buf, start, end) => buf.ucs2Slice(start, end),
     indexOf: (buf, val, byteOffset, dir) =>
-      indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir)
+      indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir),
   },
   utf16le: {
     encoding: 'utf16le',
@@ -619,7 +666,7 @@ const encodingOps = {
     write: (buf, string, offset, len) => buf.ucs2Write(string, offset, len),
     slice: (buf, start, end) => buf.ucs2Slice(start, end),
     indexOf: (buf, val, byteOffset, dir) =>
-      indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir)
+      indexOfString(buf, val, byteOffset, encodingsMap.utf16le, dir),
   },
   latin1: {
     encoding: 'latin1',
@@ -628,7 +675,7 @@ const encodingOps = {
     write: (buf, string, offset, len) => buf.latin1Write(string, offset, len),
     slice: (buf, start, end) => buf.latin1Slice(start, end),
     indexOf: (buf, val, byteOffset, dir) =>
-      indexOfString(buf, val, byteOffset, encodingsMap.latin1, dir)
+      indexOfString(buf, val, byteOffset, encodingsMap.latin1, dir),
   },
   ascii: {
     encoding: 'ascii',
@@ -641,7 +688,7 @@ const encodingOps = {
                     fromStringFast(val, encodingOps.ascii),
                     byteOffset,
                     encodingsMap.ascii,
-                    dir)
+                    dir),
   },
   base64: {
     encoding: 'base64',
@@ -654,7 +701,7 @@ const encodingOps = {
                     fromStringFast(val, encodingOps.base64),
                     byteOffset,
                     encodingsMap.base64,
-                    dir)
+                    dir),
   },
   base64url: {
     encoding: 'base64url',
@@ -668,7 +715,7 @@ const encodingOps = {
                     fromStringFast(val, encodingOps.base64url),
                     byteOffset,
                     encodingsMap.base64url,
-                    dir)
+                    dir),
   },
   hex: {
     encoding: 'hex',
@@ -681,8 +728,8 @@ const encodingOps = {
                     fromStringFast(val, encodingOps.hex),
                     byteOffset,
                     encodingsMap.hex,
-                    dir)
-  }
+                    dir),
+  },
 };
 function getEncodingOps(encoding) {
   encoding += '';
@@ -741,22 +788,21 @@ function byteLength(string, encoding) {
     }
 
     throw new ERR_INVALID_ARG_TYPE(
-      'string', ['string', 'Buffer', 'ArrayBuffer'], string
+      'string', ['string', 'Buffer', 'ArrayBuffer'], string,
     );
   }
 
   const len = string.length;
-  const mustMatch = (arguments.length > 2 && arguments[2] === true);
-  if (!mustMatch && len === 0)
+  if (len === 0)
     return 0;
 
-  if (!encoding)
-    return (mustMatch ? -1 : byteLengthUtf8(string));
-
-  const ops = getEncodingOps(encoding);
-  if (ops === undefined)
-    return (mustMatch ? -1 : byteLengthUtf8(string));
-  return ops.byteLength(string);
+  if (encoding) {
+    const ops = getEncodingOps(encoding);
+    if (ops) {
+      return ops.byteLength(string);
+    }
+  }
+  return byteLengthUtf8(string);
 }
 
 Buffer.byteLength = byteLength;
@@ -769,7 +815,7 @@ ObjectDefineProperty(Buffer.prototype, 'parent', {
     if (!(this instanceof Buffer))
       return undefined;
     return this.buffer;
-  }
+  },
 });
 ObjectDefineProperty(Buffer.prototype, 'offset', {
   __proto__: null,
@@ -778,7 +824,7 @@ ObjectDefineProperty(Buffer.prototype, 'offset', {
     if (!(this instanceof Buffer))
       return undefined;
     return this.byteOffset;
-  }
+  },
 });
 
 Buffer.prototype.copy =
@@ -865,7 +911,7 @@ Buffer.prototype[customInspectSymbol] = function inspect(recurseTimes, ctx) {
       str += StringPrototypeSlice(utilInspect(obj, {
         ...ctx,
         breakLength: Infinity,
-        compact: true
+        compact: true,
       }), 27, -2);
     }
   }
@@ -963,7 +1009,7 @@ function bidirectionalIndexOf(buffer, val, byteOffset, encoding, dir) {
   }
 
   throw new ERR_INVALID_ARG_TYPE(
-    'value', ['number', 'string', 'Buffer', 'Uint8Array'], val
+    'value', ['number', 'string', 'Buffer', 'Uint8Array'], val,
   );
 }
 
@@ -1198,7 +1244,7 @@ let transcode;
 if (internalBinding('config').hasIntl) {
   const {
     icuErrName,
-    transcode: _transcode
+    transcode: _transcode,
   } = internalBinding('icu');
 
   // Transcodes the Buffer from one encoding to another, returning a new
@@ -1219,7 +1265,7 @@ if (internalBinding('config').hasIntl) {
     const code = icuErrName(result);
     const err = genericNodeError(
       `Unable to transcode Buffer [${code}]`,
-      { code: code, errno: result }
+      { code: code, errno: result },
     );
     throw err;
   };
@@ -1260,6 +1306,8 @@ const kForgivingBase64AllowedChars = [
   0x2F, // /
   0x3D, // =
 ];
+const kEqualSignIndex = ArrayPrototypeIndexOf(kForgivingBase64AllowedChars,
+                                              0x3D);
 
 function atob(input) {
   // The implementation here has not been performance optimized in any way and
@@ -1271,6 +1319,7 @@ function atob(input) {
 
   input = `${input}`;
   let nonAsciiWhitespaceCharCount = 0;
+  let equalCharCount = 0;
 
   for (let n = 0; n < input.length; n++) {
     const index = ArrayPrototypeIndexOf(
@@ -1281,13 +1330,36 @@ function atob(input) {
       // The first 5 elements of `kForgivingBase64AllowedChars` are
       // ASCII whitespace char codes.
       nonAsciiWhitespaceCharCount++;
+
+      if (index === kEqualSignIndex) {
+        equalCharCount++;
+      } else if (equalCharCount) {
+        // The `=` char is only allowed at the end.
+        throw lazyDOMException('Invalid character', 'InvalidCharacterError');
+      }
+
+      if (equalCharCount > 2) {
+        // Only one more `=` is permitted after the first equal sign.
+        throw lazyDOMException('Invalid character', 'InvalidCharacterError');
+      }
     } else if (index === -1) {
       throw lazyDOMException('Invalid character', 'InvalidCharacterError');
     }
   }
 
+  let reminder = nonAsciiWhitespaceCharCount % 4;
+
+  // See #2, #3, #4 - https://infra.spec.whatwg.org/#forgiving-base64
+  if (!reminder) {
+    // Remove all trailing `=` characters and get the new reminder.
+    reminder = (nonAsciiWhitespaceCharCount - equalCharCount) % 4;
+  } else if (equalCharCount) {
+    // `=` should not in the input if there's a reminder.
+    throw lazyDOMException('Invalid character', 'InvalidCharacterError');
+  }
+
   // See #3 - https://infra.spec.whatwg.org/#forgiving-base64
-  if (nonAsciiWhitespaceCharCount % 4 === 1) {
+  if (reminder === 1) {
     throw lazyDOMException(
       'The string to be decoded is not correctly encoded.',
       'InvalidCharacterError');
@@ -1296,12 +1368,32 @@ function atob(input) {
   return Buffer.from(input, 'base64').toString('latin1');
 }
 
+function isUtf8(input) {
+  if (isTypedArray(input) || isAnyArrayBuffer(input)) {
+    return bindingIsUtf8(input);
+  }
+
+  throw new ERR_INVALID_ARG_TYPE('input', ['TypedArray', 'Buffer'], input);
+}
+
+function isAscii(input) {
+  if (isTypedArray(input) || isAnyArrayBuffer(input)) {
+    return bindingIsAscii(input);
+  }
+
+  throw new ERR_INVALID_ARG_TYPE('input', ['ArrayBuffer', 'Buffer', 'TypedArray'], input);
+}
+
 module.exports = {
   Blob,
+  File,
   resolveObjectURL,
   Buffer,
   SlowBuffer,
   transcode,
+  isUtf8,
+  isAscii,
+
   // Legacy
   kMaxLength,
   kStringMaxLength,
@@ -1314,13 +1406,13 @@ ObjectDefineProperties(module.exports, {
     __proto__: null,
     configurable: false,
     enumerable: true,
-    value: constants
+    value: constants,
   },
   INSPECT_MAX_BYTES: {
     __proto__: null,
     configurable: true,
     enumerable: true,
     get() { return INSPECT_MAX_BYTES; },
-    set(val) { INSPECT_MAX_BYTES = val; }
-  }
+    set(val) { INSPECT_MAX_BYTES = val; },
+  },
 });

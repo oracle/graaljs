@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,14 +45,17 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLen
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResult;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetRegexResultOriginalInput;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.api.strings.TruffleString.SubstringByteIndexNode;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.InvokeGetGroupBoundariesMethodNode;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResult;
 
 public final class LazyRegexResultArray extends AbstractConstantArray {
 
@@ -70,19 +73,25 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
         return (Object[]) arrayGetArray(object);
     }
 
-    public static Object materializeGroup(JSContext context, TRegexUtil.TRegexMaterializeResultNode materializeResultNode, JSDynamicObject object, int index,
-                    DynamicObjectLibrary lazyRegexResultNode, DynamicObjectLibrary lazyRegexResultOriginalInputNode) {
+    public static Object materializeGroup(JSContext context, JSDynamicObject object, int index,
+                    DynamicObjectLibrary lazyRegexResultNode, DynamicObjectLibrary lazyRegexResultOriginalInputNode,
+                    Node node, SubstringByteIndexNode substringNode, InvokeGetGroupBoundariesMethodNode getStartNode, InvokeGetGroupBoundariesMethodNode getEndNode) {
         Object[] internalArray = getArray(object);
         if (internalArray[index] == null) {
-            internalArray[index] = materializeResultNode.materializeGroup(context, arrayGetRegexResult(object, lazyRegexResultNode), index,
-                            arrayGetRegexResultOriginalInput(object, lazyRegexResultOriginalInputNode));
+            Object regexResult = arrayGetRegexResult(object, lazyRegexResultNode);
+            TruffleString originalInputString = arrayGetRegexResultOriginalInput(object, lazyRegexResultOriginalInputNode);
+            internalArray[index] = TRegexMaterializeResult.materializeGroup(context, regexResult, index, originalInputString,
+                            node, substringNode, getStartNode, getEndNode);
         }
         return internalArray[index];
     }
 
-    public ScriptArray createWritable(JSContext context, TRegexUtil.TRegexMaterializeResultNode materializeResultNode, JSDynamicObject object, long index, Object value) {
+    public ScriptArray createWritable(JSContext context, JSDynamicObject object, long index, Object value,
+                    DynamicObjectLibrary lazyRegexResultNode, DynamicObjectLibrary lazyRegexResultOriginalInputNode,
+                    Node node, SubstringByteIndexNode substringNode, InvokeGetGroupBoundariesMethodNode getStartNode, InvokeGetGroupBoundariesMethodNode getEndNode) {
         for (int i = 0; i < lengthInt(object); i++) {
-            materializeGroup(context, materializeResultNode, object, i, DynamicObjectLibrary.getUncached(), DynamicObjectLibrary.getUncached());
+            materializeGroup(context, object, i, lazyRegexResultNode, lazyRegexResultOriginalInputNode, node,
+                            substringNode, getStartNode, getEndNode);
         }
         final Object[] internalArray = getArray(object);
         AbstractObjectArray newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, internalArray.length, internalArray.length, internalArray, integrityLevel);
@@ -96,9 +105,9 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
     public Object getElementInBounds(JSDynamicObject object, int index) {
         final Object[] internalArray = getArray(object);
         if (internalArray[index] == null) {
-            internalArray[index] = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeGroup(
-                            JavaScriptLanguage.get(null).getJSContext(), arrayGetRegexResult(object, DynamicObjectLibrary.getUncached()), index,
-                            arrayGetRegexResultOriginalInput(object, DynamicObjectLibrary.getUncached()));
+            Object regexResult = arrayGetRegexResult(object, DynamicObjectLibrary.getUncached());
+            TruffleString originalInputString = arrayGetRegexResultOriginalInput(object, DynamicObjectLibrary.getUncached());
+            internalArray[index] = TRegexMaterializeResult.materializeGroupUncached(regexResult, index, originalInputString);
         }
         return internalArray[index];
     }
@@ -114,10 +123,11 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, ProfileHolder profile) {
-        Object[] array = TRegexUtil.TRegexMaterializeResultNode.getUncached().materializeFull(
-                        JavaScriptLanguage.get(null).getJSContext(), arrayGetRegexResult(object, DynamicObjectLibrary.getUncached()), lengthInt(object),
-                        arrayGetRegexResultOriginalInput(object, DynamicObjectLibrary.getUncached()));
+    public AbstractObjectArray createWriteableObject(JSDynamicObject object, long index, Object value, Node node, CreateWritableProfileAccess profile) {
+        Object regexResult = arrayGetRegexResult(object, DynamicObjectLibrary.getUncached());
+        int length = lengthInt(object);
+        TruffleString originalInputString = arrayGetRegexResultOriginalInput(object, DynamicObjectLibrary.getUncached());
+        Object[] array = TRegexMaterializeResult.materializeFullUncached(regexResult, length, originalInputString);
         AbstractObjectArray newArray;
         newArray = ZeroBasedObjectArray.makeZeroBasedObjectArray(object, array.length, array.length, array, integrityLevel);
         if (JSConfig.TraceArrayTransitions) {
@@ -127,38 +137,38 @@ public final class LazyRegexResultArray extends AbstractConstantArray {
     }
 
     @Override
-    public AbstractObjectArray createWriteableInt(JSDynamicObject object, long index, int value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractObjectArray createWriteableInt(JSDynamicObject object, long index, int value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableObject(object, index, value, node, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableDouble(JSDynamicObject object, long index, double value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractObjectArray createWriteableDouble(JSDynamicObject object, long index, double value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableObject(object, index, value, node, profile);
     }
 
     @Override
-    public AbstractObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, ProfileHolder profile) {
-        return createWriteableObject(object, index, value, profile);
+    public AbstractObjectArray createWriteableJSObject(JSDynamicObject object, long index, JSDynamicObject value, Node node, CreateWritableProfileAccess profile) {
+        return createWriteableObject(object, index, value, node, profile);
     }
 
     @Override
     public ScriptArray deleteElementImpl(JSDynamicObject object, long index, boolean strict) {
-        return createWriteableObject(object, index, null, ProfileHolder.empty()).deleteElementImpl(object, index, strict);
+        return createWriteableObject(object, index, null, null, CreateWritableProfileAccess.getUncached()).deleteElementImpl(object, index, strict);
     }
 
     @Override
-    public ScriptArray setLengthImpl(JSDynamicObject object, long length, ProfileHolder profile) {
-        return createWriteableObject(object, length - 1, null, ProfileHolder.empty()).setLengthImpl(object, length, profile);
+    public ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
+        return createWriteableObject(object, length - 1, null, node, profile).setLengthImpl(object, length, node, profile);
     }
 
     @Override
     public ScriptArray addRangeImpl(JSDynamicObject object, long offset, int size) {
-        return createWriteableObject(object, offset, null, ProfileHolder.empty()).addRangeImpl(object, offset, size);
+        return createWriteableObject(object, offset, null, null, CreateWritableProfileAccess.getUncached()).addRangeImpl(object, offset, size);
     }
 
     @Override
     public ScriptArray removeRangeImpl(JSDynamicObject object, long start, long end) {
-        return createWriteableObject(object, start, null, ProfileHolder.empty()).removeRangeImpl(object, start, end);
+        return createWriteableObject(object, start, null, null, CreateWritableProfileAccess.getUncached()).removeRangeImpl(object, start, end);
     }
 
     @Override

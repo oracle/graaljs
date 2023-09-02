@@ -90,8 +90,8 @@ By default, Node.js will treat the following as CommonJS modules:
 * Files with an extension that is not `.mjs`, `.cjs`, `.json`, `.node`, or `.js`
   (when the nearest parent `package.json` file contains a top-level field
   [`"type"`][] with a value of `"module"`, those files will be recognized as
-  CommonJS modules only if they are being `require`d, not when used as the
-  command-line entry point of the program).
+  CommonJS modules only if they are being included via `require()`, not when
+  used as the command-line entry point of the program).
 
 See [Determining module system][] for more details.
 
@@ -191,7 +191,7 @@ require(X) from module at path Y
    a. return the core module
    b. STOP
 2. If X begins with '/'
-   a. set Y to be the filesystem root
+   a. set Y to be the file system root
 3. If X begins with './' or '/' or '../'
    a. LOAD_AS_FILE(Y + X)
    b. LOAD_AS_DIRECTORY(Y + X)
@@ -272,15 +272,10 @@ LOAD_PACKAGE_SELF(X, DIR)
 6. RESOLVE_ESM_MATCH(MATCH)
 
 RESOLVE_ESM_MATCH(MATCH)
-1. let { RESOLVED, EXACT } = MATCH
-2. let RESOLVED_PATH = fileURLToPath(RESOLVED)
-3. If EXACT is true,
-   a. If the file at RESOLVED_PATH exists, load RESOLVED_PATH as its extension
-      format. STOP
-4. Otherwise, if EXACT is false,
-   a. LOAD_AS_FILE(RESOLVED_PATH)
-   b. LOAD_AS_DIRECTORY(RESOLVED_PATH)
-5. THROW "not found"
+1. let RESOLVED_PATH = fileURLToPath(MATCH)
+2. If the file at RESOLVED_PATH exists, load RESOLVED_PATH as its extension
+   format. STOP
+3. THROW "not found"
 </pre>
 
 ## Caching
@@ -320,7 +315,9 @@ irrespective of whether or not `./foo` and `./FOO` are the same file.
 
 <!-- YAML
 changes:
-  - version: v16.0.0
+  - version:
+      - v16.0.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37246
     description: Added `node:` import support to `require(...)`.
 -->
@@ -705,8 +702,8 @@ This does not apply to [native addons][], for which reloading will result in an
 error.
 
 Adding or replacing entries is also possible. This cache is checked before
-native modules and if a name matching a native module is added to the cache,
-only `node:`-prefixed require calls are going to receive the native module.
+built-in modules and if a name matching a built-in module is added to the cache,
+only `node:`-prefixed require calls are going to receive the built-in module.
 Use with care!
 
 <!-- eslint-disable node-core/no-duplicate-requires -->
@@ -718,7 +715,7 @@ const realFs = require('node:fs');
 const fakeFs = {};
 require.cache.fs = { exports: fakeFs };
 
-assert.strictEqual(require('node:fs'), fakeFs);
+assert.strictEqual(require('fs'), fakeFs);
 assert.strictEqual(require('node:fs'), realFs);
 ```
 
@@ -982,7 +979,9 @@ filename.
 ### `module.isPreloading`
 
 <!-- YAML
-added: v15.4.0
+added:
+  - v15.4.0
+  - v14.17.0
 -->
 
 * Type: {boolean} `true` if the module is running during the Node.js preload

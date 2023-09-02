@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,8 @@ package com.oracle.truffle.js.nodes.function;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -58,6 +60,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public class DefineMethodNode extends JavaScriptBaseNode {
 
@@ -118,23 +121,25 @@ public class DefineMethodNode extends JavaScriptBaseNode {
 
         }
 
-        @Specialization(guards = {"!getContext().isMultiContext()", "isJSObject(prototype)"}, replaces = "doCached")
-        protected final JSFunctionObject doUncached(VirtualFrame frame, JSDynamicObject prototype) {
+        @Specialization(guards = {"!getContext().isMultiContext()"}, replaces = "doCached")
+        protected final JSFunctionObject doUncached(VirtualFrame frame, JSObject prototype) {
             JSFunctionFactory factory = makeFactory(prototype);
             return makeFunction(frame, factory, prototype);
         }
 
-        @Specialization(guards = {"getContext().isMultiContext()", "isJSObject(prototype)"})
-        protected final JSFunctionObject doMultiContext(VirtualFrame frame, JSDynamicObject prototype,
+        @Specialization(guards = {"getContext().isMultiContext()"})
+        protected final JSFunctionObject doMultiContext(VirtualFrame frame, JSObject prototype,
                         @Cached("makeFactoryMultiContext()") JSFunctionFactory factory) {
             return makeFunction(frame, factory, prototype);
         }
 
+        @NeverDefault
         @TruffleBoundary
         protected final JSFunctionFactory makeFactory(JSDynamicObject prototype) {
             return JSFunctionFactory.create(getContext(), prototype);
         }
 
+        @NeverDefault
         protected final JSFunctionFactory makeFactoryMultiContext() {
             return makeFactory(null);
         }
@@ -157,6 +162,7 @@ public class DefineMethodNode extends JavaScriptBaseNode {
             return function;
         }
 
+        @Idempotent
         final JSContext getContext() {
             return functionData.getContext();
         }

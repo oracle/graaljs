@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,10 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
     @Child DefaultNumberOptionNode getMxsdDNO;
     @Child DefaultNumberOptionNode getMnfdDNO;
     @Child DefaultNumberOptionNode getMxfdDNO;
+    @Child GetNumberOptionNode getRoundingIncrementOption;
+    @Child GetStringOptionNode getRoundingModeOption;
     @Child GetStringOptionNode getRoundingPriorityOption;
+    @Child GetStringOptionNode getTrailingZeroDisplayOption;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected SetNumberFormatDigitOptionsNode(JSContext context) {
@@ -76,8 +79,12 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
         this.getMxsdDNO = DefaultNumberOptionNode.create();
         this.getMnfdDNO = DefaultNumberOptionNode.create();
         this.getMxfdDNO = DefaultNumberOptionNode.create();
+        this.getRoundingIncrementOption = GetNumberOptionNode.create(context, IntlUtil.KEY_ROUNDING_INCREMENT);
+        this.getRoundingModeOption = GetStringOptionNode.create(context, IntlUtil.KEY_ROUNDING_MODE, new String[]{IntlUtil.CEIL, IntlUtil.FLOOR, IntlUtil.EXPAND, IntlUtil.TRUNC, IntlUtil.HALF_CEIL,
+                        IntlUtil.HALF_FLOOR, IntlUtil.HALF_EXPAND, IntlUtil.HALF_TRUNC, IntlUtil.HALF_EVEN}, IntlUtil.HALF_EXPAND);
         this.getRoundingPriorityOption = GetStringOptionNode.create(context, IntlUtil.KEY_ROUNDING_PRIORITY, new String[]{IntlUtil.AUTO, IntlUtil.MORE_PRECISION, IntlUtil.LESS_PRECISION},
                         IntlUtil.AUTO);
+        this.getTrailingZeroDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, new String[]{IntlUtil.AUTO, IntlUtil.STRIP_IF_INTEGER}, IntlUtil.AUTO);
     }
 
     public static SetNumberFormatDigitOptionsNode create(JSContext context) {
@@ -87,7 +94,7 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
     public abstract Object execute(JSNumberFormat.BasicInternalState intlObj, Object options, int mnfdDefault, int mxfdDefault, boolean compactNotation);
 
     @Specialization
-    public Object setNumberFormatDigitOptions(JSNumberFormat.BasicInternalState intlObj, Object options, int mnfdDefault, int mxfdDefault, boolean compactNotation) {
+    public Object setNumberFormatDigitOptions(JSNumberFormat.BasicInternalState intlObj, Object options, int mnfdDefault, int mxfdDefaultParam, boolean compactNotation) {
         int mnid = getMinIntDigitsOption.executeInt(options, 1, 21, 1);
         Object mnfdValue = getMinFracDigitsOption.getValue(options);
         Object mxfdValue = getMaxFracDigitsOption.getValue(options);
@@ -95,6 +102,22 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
         Object mxsdValue = getMaxSignificantDigitsOption.getValue(options);
         intlObj.setMinimumIntegerDigits(mnid);
         String roundingPriority = getRoundingPriorityOption.executeValue(options);
+
+        int roundingIncrement = getRoundingIncrementOption.executeInt(options, 1, 5000, 1);
+        if (!isValidRoundingIncrement(roundingIncrement)) {
+            errorBranch.enter();
+            throw Errors.createRangeError("roundingIncrement value is out of range.");
+        }
+
+        String roundingMode = getRoundingModeOption.executeValue(options);
+        String trailingZeroDisplay = getTrailingZeroDisplayOption.executeValue(options);
+
+        int mxfdDefault = (roundingIncrement == 1) ? mxfdDefaultParam : mnfdDefault;
+
+        intlObj.setRoundingIncrement(roundingIncrement);
+        intlObj.setRoundingMode(roundingMode);
+        intlObj.setTrailingZeroDisplay(trailingZeroDisplay);
+
         boolean hasSd = mnsdValue != Undefined.instance || mxsdValue != Undefined.instance;
         boolean hasFd = mnfdValue != Undefined.instance || mxfdValue != Undefined.instance;
         boolean autoRoundingPriority = IntlUtil.AUTO.equals(roundingPriority);
@@ -145,7 +168,42 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
             intlObj.setMinimumSignificantDigits(1);
             intlObj.setMaximumSignificantDigits(2);
         }
+
+        if (roundingIncrement != 1) {
+            if (!IntlUtil.FRACTION_DIGITS.equals(intlObj.getRoundingType())) {
+                errorBranch.enter();
+                throw Errors.createTypeError("roundingIncrement can be used with fractionDigits rounding type only");
+            }
+            if (intlObj.getMinimumFractionDigits().intValue() != intlObj.getMaximumFractionDigits().intValue()) {
+                errorBranch.enter();
+                throw Errors.createRangeError("roundingIncrement can be used when minimumFractionDigits and maximumFractionDigits are equal only");
+            }
+        }
+
         return Undefined.instance;
+    }
+
+    private static boolean isValidRoundingIncrement(int roundingIncrement) {
+        switch (roundingIncrement) {
+            case 1:
+            case 2:
+            case 5:
+            case 10:
+            case 20:
+            case 25:
+            case 50:
+            case 100:
+            case 200:
+            case 250:
+            case 500:
+            case 1000:
+            case 2000:
+            case 2500:
+            case 5000:
+                return true;
+            default:
+                return false;
+        }
     }
 
 }

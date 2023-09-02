@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ public:
     v8::Local<v8::Value> GetSecurityToken();
     v8::Local<v8::Object> GetExtrasBindingObject();
     void SetPromiseHooks(v8::Local<v8::Function> init_hook, v8::Local<v8::Function> before_hook, v8::Local<v8::Function> after_hook, v8::Local<v8::Function> resolve_hook);
+    bool IsCodeGenerationFromStringsAllowed() const;
 
     inline v8::Isolate* GetIsolate() {
         return reinterpret_cast<v8::Isolate*> (Isolate());

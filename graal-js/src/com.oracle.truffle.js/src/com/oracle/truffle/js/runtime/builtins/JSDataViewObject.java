@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,13 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class JSDataViewObject extends JSArrayBufferViewBase {
 
-    protected JSDataViewObject(Shape shape, JSArrayBufferObject arrayBuffer, int length, int offset) {
-        super(shape, arrayBuffer, length, offset);
+    protected JSDataViewObject(Shape shape, JSDynamicObject proto, JSArrayBufferObject arrayBuffer, int length, int offset) {
+        super(shape, proto, arrayBuffer, length, offset);
+        assert offset >= 0 && offset + length <= arrayBuffer.getByteLength();
     }
 
     @Override
@@ -65,9 +66,5 @@ public final class JSDataViewObject extends JSArrayBufferViewBase {
 
     public static int getOffset(Object thisObj) {
         return ((JSDataViewObject) thisObj).offset;
-    }
-
-    public static JSDataViewObject create(JSRealm realm, JSObjectFactory factory, JSArrayBufferObject arrayBuffer, int length, int offset) {
-        return factory.initProto(new JSDataViewObject(factory.getShape(realm), arrayBuffer, length, offset), realm);
     }
 }

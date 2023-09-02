@@ -20,65 +20,48 @@ const {
     ERR_INVALID_RETURN_VALUE,
     ERR_MISSING_ARGS,
     ERR_STREAM_DESTROYED,
+    ERR_STREAM_PREMATURE_CLOSE,
   },
   AbortError,
 } = require('internal/errors');
 
 const {
-  validateCallback,
-  validateAbortSignal
+  validateFunction,
+  validateAbortSignal,
 } = require('internal/validators');
 
 const {
   isIterable,
+  isReadable,
   isReadableNodeStream,
   isNodeStream,
-  isReadableFinished,
+  isTransformStream,
+  isWebStream,
+  isReadableStream,
+  isReadableEnded,
 } = require('internal/streams/utils');
 const { AbortController } = require('internal/abort_controller');
 
 let PassThrough;
 let Readable;
 
-function destroyer(stream, reading, writing, callback) {
-  callback = once(callback);
-
+function destroyer(stream, reading, writing) {
   let finished = false;
   stream.on('close', () => {
     finished = true;
   });
 
-  eos(stream, { readable: reading, writable: writing }, (err) => {
+  const cleanup = eos(stream, { readable: reading, writable: writing }, (err) => {
     finished = !err;
-
-    const rState = stream._readableState;
-    if (
-      err &&
-      err.code === 'ERR_STREAM_PREMATURE_CLOSE' &&
-      reading &&
-      (rState && rState.ended && !rState.errored && !rState.errorEmitted)
-    ) {
-      // Some readable streams will emit 'close' before 'end'. However, since
-      // this is on the readable side 'end' should still be emitted if the
-      // stream has been ended and no error emitted. This should be allowed in
-      // favor of backwards compatibility. Since the stream is piped to a
-      // destination this should not result in any observable difference.
-      // We don't need to check if this is a writable premature close since
-      // eos will only fail with premature close on the reading side for
-      // duplex streams.
-      stream
-        .once('end', callback)
-        .once('error', callback);
-    } else {
-      callback(err);
-    }
   });
 
-  return (err) => {
-    if (finished) return;
-    finished = true;
-    destroyImpl.destroyer(stream, err);
-    callback(err || new ERR_STREAM_DESTROYED('pipe'));
+  return {
+    destroy: (err) => {
+      if (finished) return;
+      finished = true;
+      destroyImpl.destroyer(stream, err || new ERR_STREAM_DESTROYED('pipe'));
+    },
+    cleanup,
   };
 }
 
@@ -86,7 +69,7 @@ function popCallback(streams) {
   // Streams should never be an empty array. It should always contain at least
   // a single stream. Therefore optimize for the average case instead of
   // checking for length === 0 as well.
-  validateCallback(streams[streams.length - 1]);
+  validateFunction(streams[streams.length - 1], 'streams[stream.length - 1]');
   return streams.pop();
 }
 
@@ -109,7 +92,7 @@ async function* fromReadable(val) {
   yield* Readable.prototype[SymbolAsyncIterator].call(val);
 }
 
-async function pump(iterable, writable, finish, opts) {
+async function pumpToNode(iterable, writable, finish, { end }) {
   let error;
   let onresolve = null;
 
@@ -153,11 +136,10 @@ async function pump(iterable, writable, finish, opts) {
       }
     }
 
-    if (opts?.end !== false) {
+    if (end) {
       writable.end();
+      await wait();
     }
-
-    await wait();
 
     finish();
   } catch (err) {
@@ -165,6 +147,35 @@ async function pump(iterable, writable, finish, opts) {
   } finally {
     cleanup();
     writable.off('drain', resume);
+  }
+}
+
+async function pumpToWeb(readable, writable, finish, { end }) {
+  if (isTransformStream(writable)) {
+    writable = writable.writable;
+  }
+  // https://streams.spec.whatwg.org/#example-manual-write-with-backpressure
+  const writer = writable.getWriter();
+  try {
+    for await (const chunk of readable) {
+      await writer.ready;
+      writer.write(chunk).catch(() => {});
+    }
+
+    await writer.ready;
+
+    if (end) {
+      await writer.close();
+    }
+
+    finish();
+  } catch (err) {
+    try {
+      await writer.abort(err);
+      finish(err);
+    } catch (err) {
+      finish(err);
+    }
   }
 }
 
@@ -184,6 +195,10 @@ function pipelineImpl(streams, callback, opts) {
   const ac = new AbortController();
   const signal = ac.signal;
   const outerSignal = opts?.signal;
+
+  // Need to cleanup event listeners if last stream is readable
+  // https://github.com/nodejs/node/issues/35452
+  const lastStreamCleanup = [];
 
   validateAbortSignal(outerSignal, 'options.signal');
 
@@ -220,7 +235,10 @@ function pipelineImpl(streams, callback, opts) {
     ac.abort();
 
     if (final) {
-      callback(error, value);
+      if (!error) {
+        lastStreamCleanup.forEach((fn) => fn());
+      }
+      process.nextTick(callback, error, value);
     }
   }
 
@@ -230,20 +248,33 @@ function pipelineImpl(streams, callback, opts) {
     const reading = i < streams.length - 1;
     const writing = i > 0;
     const end = reading || opts?.end !== false;
+    const isLastStream = i === streams.length - 1;
 
     if (isNodeStream(stream)) {
       if (end) {
-        finishCount++;
-        destroys.push(destroyer(stream, reading, writing, (err) => {
-          if (!err && !reading && isReadableFinished(stream, false)) {
-            stream.read(0);
-            destroyer(stream, true, writing, finish);
-          } else {
-            finish(err);
-          }
-        }));
-      } else {
-        stream.on('error', finish);
+        const { destroy, cleanup } = destroyer(stream, reading, writing);
+        destroys.push(destroy);
+
+        if (isReadable(stream) && isLastStream) {
+          lastStreamCleanup.push(cleanup);
+        }
+      }
+
+      // Catch stream errors that occur after pipe/pump has completed.
+      function onError(err) {
+        if (
+          err &&
+          err.name !== 'AbortError' &&
+          err.code !== 'ERR_STREAM_PREMATURE_CLOSE'
+        ) {
+          finish(err);
+        }
+      }
+      stream.on('error', onError);
+      if (isReadable(stream) && isLastStream) {
+        lastStreamCleanup.push(() => {
+          stream.removeListener('error', onError);
+        });
       }
     }
 
@@ -254,13 +285,17 @@ function pipelineImpl(streams, callback, opts) {
           throw new ERR_INVALID_RETURN_VALUE(
             'Iterable, AsyncIterable or Stream', 'source', ret);
         }
-      } else if (isIterable(stream) || isReadableNodeStream(stream)) {
+      } else if (isIterable(stream) || isReadableNodeStream(stream) || isTransformStream(stream)) {
         ret = stream;
       } else {
         ret = Duplex.from(stream);
       }
     } else if (typeof stream === 'function') {
-      ret = makeAsyncIterable(ret);
+      if (isTransformStream(ret)) {
+        ret = makeAsyncIterable(ret?.readable);
+      } else {
+        ret = makeAsyncIterable(ret);
+      }
       ret = stream(ret, { signal });
 
       if (reading) {
@@ -279,27 +314,36 @@ function pipelineImpl(streams, callback, opts) {
         // composed through `.pipe(stream)`.
 
         const pt = new PassThrough({
-          objectMode: true
+          objectMode: true,
         });
 
         // Handle Promises/A+ spec, `then` could be a getter that throws on
         // second use.
         const then = ret?.then;
         if (typeof then === 'function') {
+          finishCount++;
           then.call(ret,
                     (val) => {
                       value = val;
-                      pt.write(val);
+                      if (val != null) {
+                        pt.write(val);
+                      }
                       if (end) {
                         pt.end();
                       }
+                      process.nextTick(finish);
                     }, (err) => {
                       pt.destroy(err);
+                      process.nextTick(finish, err);
                     },
           );
         } else if (isIterable(ret, true)) {
           finishCount++;
-          pump(ret, pt, finish, { end });
+          pumpToNode(ret, pt, finish, { end });
+        } else if (isReadableStream(ret) || isTransformStream(ret)) {
+          const toRead = ret.readable || ret;
+          finishCount++;
+          pumpToNode(toRead, pt, finish, { end });
         } else {
           throw new ERR_INVALID_RETURN_VALUE(
             'AsyncIterable or Promise', 'destination', ret);
@@ -307,24 +351,44 @@ function pipelineImpl(streams, callback, opts) {
 
         ret = pt;
 
-        finishCount++;
-        destroys.push(destroyer(ret, false, true, finish));
+        const { destroy, cleanup } = destroyer(ret, false, true);
+        destroys.push(destroy);
+        if (isLastStream) {
+          lastStreamCleanup.push(cleanup);
+        }
       }
     } else if (isNodeStream(stream)) {
       if (isReadableNodeStream(ret)) {
-        ret.pipe(stream, { end });
-
-        // Compat. Before node v10.12.0 stdio used to throw an error so
-        // pipe() did/does not end() stdio destinations.
-        // Now they allow it but "secretly" don't close the underlying fd.
-        if (stream === process.stdout || stream === process.stderr) {
-          ret.on('end', () => stream.end());
+        finishCount += 2;
+        const cleanup = pipe(ret, stream, finish, { end });
+        if (isReadable(stream) && isLastStream) {
+          lastStreamCleanup.push(cleanup);
         }
-      } else {
-        ret = makeAsyncIterable(ret);
-
+      } else if (isTransformStream(ret) || isReadableStream(ret)) {
+        const toRead = ret.readable || ret;
         finishCount++;
-        pump(ret, stream, finish, { end });
+        pumpToNode(toRead, stream, finish, { end });
+      } else if (isIterable(ret)) {
+        finishCount++;
+        pumpToNode(ret, stream, finish, { end });
+      } else {
+        throw new ERR_INVALID_ARG_TYPE(
+          'val', ['Readable', 'Iterable', 'AsyncIterable', 'ReadableStream', 'TransformStream'], ret);
+      }
+      ret = stream;
+    } else if (isWebStream(stream)) {
+      if (isReadableNodeStream(ret)) {
+        finishCount++;
+        pumpToWeb(makeAsyncIterable(ret), stream, finish, { end });
+      } else if (isReadableStream(ret) || isIterable(ret)) {
+        finishCount++;
+        pumpToWeb(ret, stream, finish, { end });
+      } else if (isTransformStream(ret)) {
+        finishCount++;
+        pumpToWeb(ret.readable, stream, finish, { end });
+      } else {
+        throw new ERR_INVALID_ARG_TYPE(
+          'val', ['Readable', 'Iterable', 'AsyncIterable', 'ReadableStream', 'TransformStream'], ret);
       }
       ret = stream;
     } else {
@@ -337,6 +401,61 @@ function pipelineImpl(streams, callback, opts) {
   }
 
   return ret;
+}
+
+function pipe(src, dst, finish, { end }) {
+  let ended = false;
+  dst.on('close', () => {
+    if (!ended) {
+      // Finish if the destination closes before the source has completed.
+      finish(new ERR_STREAM_PREMATURE_CLOSE());
+    }
+  });
+
+  src.pipe(dst, { end: false }); // If end is true we already will have a listener to end dst.
+
+  if (end) {
+    // Compat. Before node v10.12.0 stdio used to throw an error so
+    // pipe() did/does not end() stdio destinations.
+    // Now they allow it but "secretly" don't close the underlying fd.
+
+    function endFn() {
+      ended = true;
+      dst.end();
+    }
+
+    if (isReadableEnded(src)) { // End the destination if the source has already ended.
+      process.nextTick(endFn);
+    } else {
+      src.once('end', endFn);
+    }
+  } else {
+    finish();
+  }
+
+  eos(src, { readable: true, writable: false }, (err) => {
+    const rState = src._readableState;
+    if (
+      err &&
+      err.code === 'ERR_STREAM_PREMATURE_CLOSE' &&
+      (rState && rState.ended && !rState.errored && !rState.errorEmitted)
+    ) {
+      // Some readable streams will emit 'close' before 'end'. However, since
+      // this is on the readable side 'end' should still be emitted if the
+      // stream has been ended and no error emitted. This should be allowed in
+      // favor of backwards compatibility. Since the stream is piped to a
+      // destination this should not result in any observable difference.
+      // We don't need to check if this is a writable premature close since
+      // eos will only fail with premature close on the reading side for
+      // duplex streams.
+      src
+        .once('end', finish)
+        .once('error', finish);
+    } else {
+      finish(err);
+    }
+  });
+  return eos(dst, { readable: false, writable: true }, finish);
 }
 
 module.exports = { pipelineImpl, pipeline };

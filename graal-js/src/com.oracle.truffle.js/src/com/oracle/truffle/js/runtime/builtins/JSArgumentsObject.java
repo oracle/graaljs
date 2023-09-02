@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,27 +63,28 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 @ExportLibrary(InteropLibrary.class)
 public class JSArgumentsObject extends JSArrayBase {
 
-    protected JSArgumentsObject(Shape shape, ScriptArray arrayType, Object array, int length) {
-        super(shape, arrayType, array, null, length, 0, 0, 0, 0);
+    protected JSArgumentsObject(Shape shape, JSDynamicObject proto, ScriptArray arrayType, Object array, int length) {
+        super(shape, proto, arrayType, array, null, length, 0, 0, 0, 0);
     }
 
     public static final class Unmapped extends JSArgumentsObject {
 
-        protected Unmapped(Shape shape, ScriptArray arrayType, Object array, int length) {
-            super(shape, arrayType, array, length);
+        protected Unmapped(Shape shape, JSDynamicObject proto, ScriptArray arrayType, Object array, int length) {
+            super(shape, proto, arrayType, array, length);
         }
     }
 
     public static final class Mapped extends JSArgumentsObject {
 
-        protected Mapped(Shape shape, ScriptArray arrayType, Object array, int length) {
-            super(shape, arrayType, array, length);
+        protected Mapped(Shape shape, JSDynamicObject proto, ScriptArray arrayType, Object array, int length) {
+            super(shape, proto, arrayType, array, length);
             this.connectedArgumentCount = length;
         }
 

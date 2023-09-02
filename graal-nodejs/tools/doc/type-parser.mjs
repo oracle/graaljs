@@ -8,13 +8,13 @@ const jsPrimitives = {
   number: 'Number',
   string: 'String',
   symbol: 'Symbol',
-  undefined: 'Undefined'
+  undefined: 'Undefined',
 };
 
 const jsGlobalObjectsUrl = `${jsDocPrefix}Reference/Global_Objects/`;
 const jsGlobalTypes = [
   'AggregateError', 'Array', 'ArrayBuffer', 'DataView', 'Date', 'Error',
-  'EvalError', 'Function', 'Map', 'Object', 'Promise', 'RangeError',
+  'EvalError', 'Function', 'Map', 'Object', 'Promise', 'Proxy', 'RangeError',
   'ReferenceError', 'RegExp', 'Set', 'SharedArrayBuffer', 'SyntaxError',
   'TypeError', 'TypedArray', 'URIError', 'Uint8Array',
 ];
@@ -43,6 +43,7 @@ const customTypesMap = {
     `${jsDocPrefix}Reference/Global_Objects/WebAssembly/Instance`,
 
   'Blob': 'buffer.html#class-blob',
+  'File': 'buffer.html#class-file',
 
   'BroadcastChannel':
     'worker_threads.html#class-broadcastchannel-' +
@@ -126,6 +127,7 @@ const customTypesMap = {
   'fs.FSWatcher': 'fs.html#class-fsfswatcher',
   'fs.ReadStream': 'fs.html#class-fsreadstream',
   'fs.Stats': 'fs.html#class-fsstats',
+  'fs.StatFs': 'fs.html#class-fsstatfs',
   'fs.StatWatcher': 'fs.html#class-fsstatwatcher',
   'fs.WriteStream': 'fs.html#class-fswritestream',
 
@@ -183,7 +185,12 @@ const customTypesMap = {
   'PerformanceObserverEntryList':
     'perf_hooks.html#class-performanceobserverentrylist',
 
-  'readline.Interface': 'readline.html#class-interface',
+  'readline.Interface':
+    'readline.html#class-readlineinterface',
+  'readline.InterfaceConstructor':
+    'readline.html#class-interfaceconstructor',
+  'readlinePromises.Interface':
+    'readline.html#class-readlinepromisesinterface',
 
   'repl.REPLServer': 'repl.html#class-replserver',
 
@@ -201,6 +208,8 @@ const customTypesMap = {
   'Timeout': 'timers.html#class-timeout',
   'Timer': 'timers.html#timers',
 
+  'TestsStream': 'test.html#class-testsstream',
+
   'tls.SecureContext': 'tls.html#tlscreatesecurecontextoptions',
   'tls.Server': 'tls.html#class-tlsserver',
   'tls.TLSSocket': 'tls.html#class-tlstlssocket',
@@ -209,6 +218,8 @@ const customTypesMap = {
 
   'URL': 'url.html#the-whatwg-url-api',
   'URLSearchParams': 'url.html#class-urlsearchparams',
+
+  'MIMEParams': 'util.html#class-utilmimeparams',
 
   'vm.Module': 'vm.html#class-vmmodule',
   'vm.Script': 'vm.html#class-vmscript',
@@ -291,7 +302,7 @@ export function toLink(typeInput) {
       } else {
         throw new Error(
           `Unrecognized type: '${typeTextFull}'.\n` +
-          `Please, edit the type or update '${import.meta.url}'.`
+          `Please, edit the type or update '${import.meta.url}'.`,
         );
       }
     } else {

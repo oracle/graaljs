@@ -1,12 +1,9 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 #
 # Copyright 2017 the V8 project authors. All rights reserved.
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# for py2/py3 compatibility
-from __future__ import absolute_import
-from __future__ import print_function
 from functools import reduce
 
 import datetime
@@ -16,7 +13,7 @@ import sys
 import tempfile
 
 # Adds testrunner to the path hence it has to be imported at the beggining.
-from . import base_runner
+import testrunner.base_runner as base_runner
 
 from testrunner.local import utils
 from testrunner.local.variants import ALL_VARIANTS
@@ -46,7 +43,7 @@ VARIANT_ALIASES = {
   # Shortcut for the two above ('more' first - it has the longer running tests)
   'exhaustive': MORE_VARIANTS + VARIANTS,
   # Additional variants, run on a subset of bots.
-  'extra': ['nooptimization', 'future', 'no_wasm_traps', 'turboprop',
+  'extra': ['nooptimization', 'future', 'no_wasm_traps',
             'instruction_scheduling', 'always_sparkplug'],
 }
 
@@ -132,13 +129,6 @@ class StandardTestRunner(base_runner.BaseTestRunner):
     parser.add_option('--cfi-vptr',
                       help='Run tests with UBSAN cfi_vptr option.',
                       default=False, action='store_true')
-    parser.add_option('--infra-staging', help='Use new test runner features',
-                      dest='infra_staging', default=None,
-                      action='store_true')
-    parser.add_option('--no-infra-staging',
-                      help='Opt out of new test runner features',
-                      dest='infra_staging', default=None,
-                      action='store_false')
     parser.add_option('--no-sorting', '--nosorting',
                       help='Don\'t sort tests according to duration of last'
                       ' run.',

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 
 var assert = require('assert');
 var child_process = require('child_process');
+var module = require('./_unit');
 var spawnSync = child_process.spawnSync;
 
 function checkTheAnswerToLifeTheUniverseAndEverything(answer) {
@@ -102,7 +103,7 @@ describe('Spawn', function () {
             assert.match(result.stdout.toString(), /Options:/);
         });
     });
-    if (typeof java === 'object') {
+    if (module.hasJavaInterop()) {
         it('should finish gracefully when a native method is called from a wrong thread', function () {
             var code = `var vm = require('vm');
                         var ctx = org.graalvm.polyglot.Context.newBuilder("js").allowAllAccess(true).build();
@@ -151,5 +152,23 @@ describe('Spawn', function () {
             assert.strictEqual(result.stderr.toString(), '');
             assert.strictEqual(result.stdout.toString(), '');
             assert.strictEqual(result.status, 42);
+    });
+    it('should not throw when FormData are accessed', function() {
+            var result = spawnSync(process.execPath, ['-e', 'typeof FormData']);
+            assert.strictEqual(result.stderr.toString(), '');
+            assert.strictEqual(result.stdout.toString(), '');
+            assert.strictEqual(result.status, 0);
+    });
+    it('should accept creation of identical synthetic modules', function () {
+        var moduleCreation = 'new vm.SyntheticModule([], () => {}, { identifier: "foo" }).link(() => {});';
+        var code = moduleCreation + moduleCreation;
+        var result = spawnSync(process.execPath, [
+            '--experimental-vm-modules',
+            '--no-warnings=ExperimentalWarning',
+            '-e', code],
+            { env: { ...process.env, NODE_JVM_OPTIONS: (process.env.NODE_JVM_OPTIONS || '') + ' -ea' }});
+        assert.strictEqual(result.stderr.toString(), '');
+        assert.strictEqual(result.stdout.toString(), '');
+        assert.strictEqual(result.status, 0);        
     });
 });

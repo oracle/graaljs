@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
@@ -52,6 +54,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSDictionary;
+import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
@@ -76,6 +79,20 @@ public final class JSShape {
      */
     public static final int EXTERNAL_PROPERTIES_FLAG = 1 << 3;
 
+    /**
+     * Marks %Array.prototype% and prototype objects that have (or had) %Array.prototype% on their
+     * prototype chain. Setting an element on such an object invalidates the no-elements assumption.
+     */
+    public static final int ARRAY_PROTOTYPE_FLAG = 1 << 4;
+    /**
+     * Marks %Object.prototype%. Setting an element on it invalidates the no-elements assumption.
+     */
+    public static final int OBJECT_PROTOTYPE_FLAG = 1 << 5;
+    /**
+     * Marks objects, setting an element on which invalidates the no-elements assumption.
+     */
+    public static final int NO_ELEMENTS_ASSUMPTION_FLAGS = ARRAY_PROTOTYPE_FLAG | OBJECT_PROTOTYPE_FLAG;
+
     private JSShape() {
     }
 
@@ -93,10 +110,13 @@ public final class JSShape {
         return Shape.newBuilder(rootShape).addConstantProperty(JSObject.HIDDEN_PROTO, prototype, 0).build();
     }
 
+    @Idempotent
+    @NeverDefault
     public static JSClass getJSClass(Shape shape) {
         return (JSClass) shape.getDynamicType();
     }
 
+    @Idempotent
     public static Object getJSClassNoCast(Shape shape) {
         return shape.getDynamicType();
     }
@@ -118,6 +138,31 @@ public final class JSShape {
 
     public static boolean isExtensible(Shape shape) {
         return (shape.getFlags() & NOT_EXTENSIBLE_FLAG) == 0;
+    }
+
+    /**
+     * Returns true if this object is the Array.prototype or the prototype of an Array subclass.
+     */
+    public static boolean isArrayPrototypeOrDerivative(Shape shape) {
+        return (shape.getFlags() & ARRAY_PROTOTYPE_FLAG) != 0;
+    }
+
+    public static boolean isArrayPrototypeOrDerivative(JSDynamicObject obj) {
+        return isArrayPrototypeOrDerivative(obj.getShape());
+    }
+
+    /**
+     * Returns true if this object is not supposed to have elements and adding an element to it
+     * should invalidate the no-array-prototype-elements assumption, including Object.prototype,
+     * Array.prototype, and prototypes of Array subclasses, i.e. all prototype objects that are
+     * expected on the prototype chain of an Array exotic object, while the assumption is valid.
+     */
+    public static boolean hasNoElementsAssumption(Shape shape) {
+        return (shape.getFlags() & NO_ELEMENTS_ASSUMPTION_FLAGS) != 0;
+    }
+
+    public static boolean hasNoElementsAssumption(JSDynamicObject obj) {
+        return hasNoElementsAssumption(obj.getShape());
     }
 
     public static boolean isPrototypeInShape(Shape shape) {
@@ -229,6 +274,8 @@ public final class JSShape {
     public static int getDefaultShapeFlags(JSClass jsclass) {
         if (jsclass == JSDictionary.INSTANCE) {
             return EXTERNAL_PROPERTIES_FLAG;
+        } else if (jsclass == JSObjectPrototype.INSTANCE) {
+            return OBJECT_PROTOTYPE_FLAG;
         }
         return 0;
     }

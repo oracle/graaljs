@@ -41,7 +41,7 @@ function createJSHeapSnapshot(stream = getHeapSnapshot()) {
       type,
       to: toNode,
       from: fromNode,
-      name: typeof name_or_index === 'string' ? name_or_index : null
+      name: typeof name_or_index === 'string' ? name_or_index : null,
     };
     toNode.incomingEdges.push(edge);
     fromNode.outgoingEdges.push(edge);
@@ -89,7 +89,7 @@ function inspectNode(snapshot) {
 }
 
 function isEdge(edge, { node_name, edge_name }) {
-  if (edge.name !== edge_name) {
+  if (edge_name !== undefined && edge.name !== edge_name) {
     return false;
   }
   // From our internal embedded graph
@@ -130,7 +130,7 @@ class State {
           const check = typeof expectedEdge === 'function' ? expectedEdge :
             (edge) => (isEdge(edge, expectedEdge));
           const hasChild = rootNodes.some(
-            (node) => node.outgoingEdges.some(check)
+            (node) => node.outgoingEdges.some(check),
           );
           // Don't use assert with a custom message here. Otherwise the
           // inspection in the message is done eagerly and wastes a lot of CPU
@@ -142,13 +142,29 @@ class State {
           }
         }
       }
+
+      if (expectation.detachedness !== undefined) {
+        const matchedNodes = rootNodes.filter(
+          (node) => node.detachedness === expectation.detachedness);
+        if (loose) {
+          assert(matchedNodes.length >= rootNodes.length,
+                 `Expect to find at least ${rootNodes.length} with ` +
+                `detachedness ${expectation.detachedness}, ` +
+                `found ${matchedNodes.length}`);
+        } else {
+          assert.strictEqual(
+            matchedNodes.length, rootNodes.length,
+            `Expect to find ${rootNodes.length} with detachedness ` +
+            `${expectation.detachedness},  found ${matchedNodes.length}`);
+        }
+      }
     }
   }
 
   // Validate our internal embedded graph representation
   validateGraph(rootName, expected, { loose = false } = {}) {
     const rootNodes = this.embedderGraph.filter(
-      (node) => node.name === rootName
+      (node) => node.name === rootName,
     );
     if (loose) {
       assert(rootNodes.length >= expected.length,
@@ -169,7 +185,7 @@ class State {
           // inspection in the message is done eagerly and wastes a lot of CPU
           // time.
           const hasChild = rootNodes.some(
-            (node) => node.edges.some(check)
+            (node) => node.edges.some(check),
           );
           if (!hasChild) {
             throw new Error(
@@ -197,5 +213,5 @@ function validateSnapshotNodes(...args) {
 
 module.exports = {
   recordState,
-  validateSnapshotNodes
+  validateSnapshotNodes,
 };

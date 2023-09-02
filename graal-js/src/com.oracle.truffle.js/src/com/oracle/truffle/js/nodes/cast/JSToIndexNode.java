@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,11 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -53,7 +55,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
  * Implementation of the abstract operation ToIndex(value) (ES7 7.1.17).
  */
 public abstract class JSToIndexNode extends JavaScriptBaseNode {
-
+    @NeverDefault
     public static JSToIndexNode create() {
         return JSToIndexNodeGen.create();
     }
@@ -62,9 +64,9 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
 
     @Specialization
     protected long doInt(int value,
-                    @Cached @Shared("negativeIndexBranch") BranchProfile negativeIndexBranch) {
+                    @Cached @Shared("negativeIndexBranch") InlinedBranchProfile negativeIndexBranch) {
         if (value < 0) {
-            negativeIndexBranch.enter();
+            negativeIndexBranch.enter(this);
             throw Errors.createRangeErrorIndexNegative(this);
         }
         return value;
@@ -72,10 +74,10 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
 
     @Specialization
     protected long doSafeInteger(SafeInteger value,
-                    @Cached @Shared("negativeIndexBranch") BranchProfile negativeIndexBranch) {
+                    @Cached @Shared("negativeIndexBranch") InlinedBranchProfile negativeIndexBranch) {
         long longValue = value.longValue();
         if (longValue < 0) {
-            negativeIndexBranch.enter();
+            negativeIndexBranch.enter(this);
             throw Errors.createRangeErrorIndexNegative(this);
         }
         return longValue;
@@ -83,14 +85,14 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
 
     @Specialization
     protected long doDouble(double value,
-                    @Cached @Shared("negativeIndexBranch") BranchProfile negativeIndexBranch,
-                    @Cached BranchProfile tooLargeIndexBranch) {
+                    @Cached @Shared("negativeIndexBranch") InlinedBranchProfile negativeIndexBranch,
+                    @Cached @Exclusive InlinedBranchProfile tooLargeIndexBranch) {
         long integerIndex = (long) value;
         if (integerIndex < 0) {
-            negativeIndexBranch.enter();
+            negativeIndexBranch.enter(this);
             throw Errors.createRangeErrorIndexNegative(this);
         } else if (integerIndex > JSRuntime.MAX_SAFE_INTEGER_LONG) {
-            tooLargeIndexBranch.enter();
+            tooLargeIndexBranch.enter(this);
             throw Errors.createRangeErrorIndexTooLarge(this);
         } else {
             return integerIndex;
@@ -104,8 +106,8 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static long doObject(Object value,
-                    @Cached("create()") JSToNumberNode toNumberNode,
-                    @Cached("create()") JSToIndexNode recursiveToIndexNode) {
+                    @Cached JSToNumberNode toNumberNode,
+                    @Cached JSToIndexNode recursiveToIndexNode) {
         Number number = (Number) toNumberNode.execute(value);
         assert number instanceof Integer || number instanceof Double;
         return recursiveToIndexNode.executeLong(number);

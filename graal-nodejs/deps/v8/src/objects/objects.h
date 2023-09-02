@@ -9,7 +9,6 @@
 #include <memory>
 
 #include "include/v8-internal.h"
-#include "include/v8.h"
 #include "include/v8config.h"
 #include "src/base/bits.h"
 #include "src/base/build_config.h"
@@ -20,6 +19,8 @@
 #include "src/common/assert-scope.h"
 #include "src/common/checks.h"
 #include "src/common/message-template.h"
+#include "src/common/operation.h"
+#include "src/common/ptr-compr.h"
 #include "src/flags/flags.h"
 #include "src/objects/elements-kind.h"
 #include "src/objects/field-index.h"
@@ -57,15 +58,28 @@
 //             - JSModuleNamespace
 //           - JSPrimitiveWrapper
 //         - JSDate
-//         - JSFunctionOrBoundFunction
+//         - JSFunctionOrBoundFunctionOrWrappedFunction
 //           - JSBoundFunction
 //           - JSFunction
+//           - JSWrappedFunction
 //         - JSGeneratorObject
 //         - JSMapIterator
 //         - JSMessageObject
 //         - JSRegExp
 //         - JSSetIterator
+//         - JSShadowRealm
+//         - JSSharedStruct
 //         - JSStringIterator
+//         - JSTemporalCalendar
+//         - JSTemporalDuration
+//         - JSTemporalInstant
+//         - JSTemporalPlainDate
+//         - JSTemporalPlainDateTime
+//         - JSTemporalPlainMonthDay
+//         - JSTemporalPlainTime
+//         - JSTemporalPlainYearMonth
+//         - JSTemporalTimeZone
+//         - JSTemporalZonedDateTime
 //         - JSWeakCollection
 //           - JSWeakMap
 //           - JSWeakSet
@@ -87,6 +101,7 @@
 //         - WasmMemoryObject
 //         - WasmModuleObject
 //         - WasmTableObject
+//         - WasmSuspenderObject
 //       - JSProxy
 //     - FixedArrayBase
 //       - ByteArray
@@ -165,9 +180,10 @@
 //       - BreakPoint
 //       - BreakPointInfo
 //       - CachedTemplateObject
-//       - StackFrameInfo
+//       - CallSiteInfo
 //       - CodeCache
 //       - PropertyDescriptorObject
+//       - PromiseOnStack
 //       - PrototypeInfo
 //       - Microtask
 //         - CallbackTask
@@ -180,6 +196,7 @@
 //         - SourceTextModule
 //         - SyntheticModule
 //       - SourceTextModuleInfoEntry
+//       - StackFrameInfo
 //     - FeedbackCell
 //     - FeedbackVector
 //     - PreparseData
@@ -260,6 +277,16 @@ enum class OnNonExistent { kThrowReferenceError, kReturnUndefined };
 // The element types selection for CreateListFromArrayLike.
 enum class ElementTypes { kAll, kStringAndSymbol };
 
+// Currently DefineOwnPropertyIgnoreAttributes invokes the setter
+// interceptor and user-defined setters during define operations,
+// even in places where it makes more sense to invoke the definer
+// interceptor and not invoke the setter: e.g. both the definer and
+// the setter interceptors are called in Object.defineProperty().
+// kDefine allows us to implement the define semantics correctly
+// in selected locations.
+// TODO(joyee): see if we can deprecate the old behavior.
+enum class EnforceDefineSemantics { kSet, kDefine };
+
 // TODO(mythria): Move this to a better place.
 ShouldThrow GetShouldThrow(Isolate* isolate, Maybe<ShouldThrow> should_throw);
 
@@ -276,6 +303,12 @@ class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
   explicit constexpr Object(Address ptr) : TaggedImpl(ptr) {}
 
   V8_INLINE bool IsTaggedIndex() const;
+
+  // Whether the object is in the RO heap and the RO heap is shared, or in the
+  // writable shared heap.
+  V8_INLINE bool InSharedHeap() const;
+
+  V8_INLINE bool InSharedWritableHeap() const;
 
 #define IS_TYPE_FUNCTION_DECL(Type) \
   V8_INLINE bool Is##Type() const;  \
@@ -389,7 +422,8 @@ class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
 
   // ES6 section 7.1.1 ToPrimitive
   V8_WARN_UNUSED_RESULT static inline MaybeHandle<Object> ToPrimitive(
-      Handle<Object> input, ToPrimitiveHint hint = ToPrimitiveHint::kDefault);
+      Isolate* isolate, Handle<Object> input,
+      ToPrimitiveHint hint = ToPrimitiveHint::kDefault);
 
   // ES6 section 7.1.3 ToNumber
   V8_WARN_UNUSED_RESULT static inline MaybeHandle<Object> ToNumber(
@@ -516,7 +550,13 @@ class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
       LookupIterator* it, Handle<Object> value);
   V8_WARN_UNUSED_RESULT static Maybe<bool> AddDataProperty(
       LookupIterator* it, Handle<Object> value, PropertyAttributes attributes,
+      Maybe<ShouldThrow> should_throw, StoreOrigin store_origin,
+      EnforceDefineSemantics semantics = EnforceDefineSemantics::kSet);
+
+  V8_WARN_UNUSED_RESULT static Maybe<bool> TransitionAndWriteDataProperty(
+      LookupIterator* it, Handle<Object> value, PropertyAttributes attributes,
       Maybe<ShouldThrow> should_throw, StoreOrigin store_origin);
+
   V8_WARN_UNUSED_RESULT static inline MaybeHandle<Object> GetPropertyOrElement(
       Isolate* isolate, Handle<Object> object, Handle<Name> name);
   V8_WARN_UNUSED_RESULT static inline MaybeHandle<Object> GetPropertyOrElement(
@@ -647,50 +687,88 @@ class Object : public TaggedImpl<HeapObjectReferenceType::STRONG, Address> {
     bool operator()(const Object a, const Object b) const { return a < b; }
   };
 
-  template <class T, typename std::enable_if<std::is_arithmetic<T>::value,
+  template <class T, typename std::enable_if<std::is_arithmetic<T>::value ||
+                                                 std::is_enum<T>::value,
                                              int>::type = 0>
   inline T ReadField(size_t offset) const {
-    // Pointer compression causes types larger than kTaggedSize to be unaligned.
-#ifdef V8_COMPRESS_POINTERS
-    constexpr bool v8_pointer_compression_unaligned = sizeof(T) > kTaggedSize;
-#else
-    constexpr bool v8_pointer_compression_unaligned = false;
-#endif
-    if (std::is_same<T, double>::value || v8_pointer_compression_unaligned) {
-      // Bug(v8:8875) Double fields may be unaligned.
-      return base::ReadUnalignedValue<T>(field_address(offset));
-    } else {
-      return base::Memory<T>(field_address(offset));
-    }
+    return ReadMaybeUnalignedValue<T>(field_address(offset));
   }
 
-  template <class T, typename std::enable_if<std::is_arithmetic<T>::value,
+  template <class T, typename std::enable_if<std::is_arithmetic<T>::value ||
+                                                 std::is_enum<T>::value,
                                              int>::type = 0>
   inline void WriteField(size_t offset, T value) const {
-    // Pointer compression causes types larger than kTaggedSize to be unaligned.
-#ifdef V8_COMPRESS_POINTERS
-    constexpr bool v8_pointer_compression_unaligned = sizeof(T) > kTaggedSize;
-#else
-    constexpr bool v8_pointer_compression_unaligned = false;
-#endif
-    if (std::is_same<T, double>::value || v8_pointer_compression_unaligned) {
-      // Bug(v8:8875) Double fields may be unaligned.
-      base::WriteUnalignedValue<T>(field_address(offset), value);
-    } else {
-      base::Memory<T>(field_address(offset)) = value;
-    }
+    return WriteMaybeUnalignedValue<T>(field_address(offset), value);
   }
+
+  // Atomically reads a field using relaxed memory ordering. Can only be used
+  // with integral types whose size is <= kTaggedSize (to guarantee alignment).
+  template <class T,
+            typename std::enable_if<(std::is_arithmetic<T>::value ||
+                                     std::is_enum<T>::value) &&
+                                        !std::is_floating_point<T>::value,
+                                    int>::type = 0>
+  inline T Relaxed_ReadField(size_t offset) const;
+
+  // Atomically writes a field using relaxed memory ordering. Can only be used
+  // with integral types whose size is <= kTaggedSize (to guarantee alignment).
+  template <class T,
+            typename std::enable_if<(std::is_arithmetic<T>::value ||
+                                     std::is_enum<T>::value) &&
+                                        !std::is_floating_point<T>::value,
+                                    int>::type = 0>
+  inline void Relaxed_WriteField(size_t offset, T value);
+
+  //
+  // SandboxedPointer_t field accessors.
+  //
+  inline Address ReadSandboxedPointerField(size_t offset,
+                                           PtrComprCageBase cage_base) const;
+  inline void WriteSandboxedPointerField(size_t offset,
+                                         PtrComprCageBase cage_base,
+                                         Address value);
+  inline void WriteSandboxedPointerField(size_t offset, Isolate* isolate,
+                                         Address value);
 
   //
   // ExternalPointer_t field accessors.
   //
-  inline void InitExternalPointerField(size_t offset, Isolate* isolate);
+  inline void InitExternalPointerField(size_t offset, Isolate* isolate,
+                                       ExternalPointerTag tag);
   inline void InitExternalPointerField(size_t offset, Isolate* isolate,
                                        Address value, ExternalPointerTag tag);
   inline Address ReadExternalPointerField(size_t offset, Isolate* isolate,
                                           ExternalPointerTag tag) const;
   inline void WriteExternalPointerField(size_t offset, Isolate* isolate,
                                         Address value, ExternalPointerTag tag);
+
+  // If the receiver is the JSGlobalObject, the store was contextual. In case
+  // the property did not exist yet on the global object itself, we have to
+  // throw a reference error in strict mode.  In sloppy mode, we continue.
+  // Returns false if the exception was thrown, otherwise true.
+  static bool CheckContextualStoreToJSGlobalObject(
+      LookupIterator* it, Maybe<ShouldThrow> should_throw);
+
+  // Returns whether the object is safe to share across Isolates.
+  //
+  // Currently, the following kinds of values can be safely shared across
+  // Isolates:
+  // - Smis
+  // - Objects in RO space when the RO space is shared
+  // - HeapNumbers in the shared old space
+  // - Strings for which String::IsShared() is true
+  // - JSSharedStructs
+  inline bool IsShared() const;
+
+  // Returns an equivalent value that's safe to share across Isolates if
+  // possible. Acts as the identity function when value->IsShared().
+  static inline MaybeHandle<Object> Share(
+      Isolate* isolate, Handle<Object> value,
+      ShouldThrow throw_if_cannot_be_shared);
+
+  static MaybeHandle<Object> ShareSlow(Isolate* isolate,
+                                       Handle<HeapObject> value,
+                                       ShouldThrow throw_if_cannot_be_shared);
 
  protected:
   inline Address field_address(size_t offset) const {
@@ -786,8 +864,14 @@ class MapWord {
   // Create a map word from a forwarding address.
   static inline MapWord FromForwardingAddress(HeapObject object);
 
-  // View this map word as a forwarding address.
+  // View this map word as a forwarding address. The parameterless version
+  // is allowed to be used for objects allocated in the main pointer compression
+  // cage, while the second variant uses the value of the cage base explicitly
+  // and thus can be used in situations where one has to deal with both cases.
+  // Note, that the parameterless version is preferred because it avoids
+  // unnecessary recompressions.
   inline HeapObject ToForwardingAddress();
+  inline HeapObject ToForwardingAddress(PtrComprCageBase host_cage_base);
 
   inline Address ptr() { return value_; }
 
@@ -839,18 +923,6 @@ enum EnsureElementsMode {
 
 // Indicator for one component of an AccessorPair.
 enum AccessorComponent { ACCESSOR_GETTER, ACCESSOR_SETTER };
-
-enum class GetKeysConversion {
-  kKeepNumbers = static_cast<int>(v8::KeyConversionMode::kKeepNumbers),
-  kConvertToString = static_cast<int>(v8::KeyConversionMode::kConvertToString),
-  kNoNumbers = static_cast<int>(v8::KeyConversionMode::kNoNumbers)
-};
-
-enum class KeyCollectionMode {
-  kOwnOnly = static_cast<int>(v8::KeyCollectionMode::kOwnOnly),
-  kIncludePrototypes =
-      static_cast<int>(v8::KeyCollectionMode::kIncludePrototypes)
-};
 
 // Utility superclass for stack-allocated objects that must be updated
 // on gc.  It provides two ways for the gc to update instances, either

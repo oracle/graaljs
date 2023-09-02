@@ -1,3 +1,19 @@
+## 8.8.2 (2023-01-23)
+
+### Bug fixes
+
+Fix a bug that caused `allowHashBang` to be set to false when not provided, even with `ecmaVersion >= 14`.
+
+Fix an exception when passing no option object to `parse` or `new Parser`.
+
+Fix incorrect parse error on `if (0) let\n[astral identifier char]`.
+
+## 8.8.1 (2022-10-24)
+
+### Bug fixes
+
+Make type for `Comment` compatible with estree types.
+
 ## 8.8.0 (2022-07-21)
 
 ### Bug fixes

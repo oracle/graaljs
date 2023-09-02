@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,18 @@
  */
 package com.oracle.truffle.js.test.interop;
 
-import com.oracle.truffle.js.test.JSTest;
+import static com.oracle.truffle.js.runtime.JSContextOptions.ECMASCRIPT_VERSION_NAME;
+import static com.oracle.truffle.js.runtime.JSContextOptions.ECMASCRIPT_VERSION_STAGING;
+
+import java.util.function.Function;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.HostAccess;
 import org.graalvm.polyglot.Value;
 import org.junit.Assert;
 import org.junit.Test;
 
-import java.util.function.Function;
+import com.oracle.truffle.js.test.JSTest;
 
 public class ForeignDecoratorsTest {
 
@@ -57,30 +61,36 @@ public class ForeignDecoratorsTest {
 
         @SuppressWarnings("unused")
         @HostAccess.Export
-        public Function<Object, Object> decorate(Value v, Value c) {
-            hits += c.getMember("kind").toString() + "_";
-            return o1 -> 42;
+        public Object decorate(Value v, Value c) {
+            String kind = c.getMember("kind").asString();
+            hits += kind + "_";
+            if (kind.equals("class")) {
+                return v;
+            } else {
+                return (Function<Object, Object>) a -> 42;
+            }
         }
     }
 
     @Test
     public void testDecorator() {
-        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).option("js.ecmascript-version", "staging").build()) {
-            Value val = context.eval("js", "" +
-                            "var DecKlass = Java.type('com.oracle.truffle.js.test.interop.ForeignDecoratorsTest$DecoratorClass');" +
-                            "var dec = new DecKlass();" +
-                            "@dec.decorate\n" +
-                            "class C {" +
-                            "  @dec.decorate foo = 42;" +
-                            "  @dec.decorate boo() {};" +
-                            "  @dec.decorate static zoo = 12;" +
-                            "  @dec.decorate get xoo() {};" +
-                            "  @dec.decorate set xoo(v) {};" +
-                            "  @dec.decorate accessor aoo = 32;" +
-                            "};" +
-                            "dec;");
-            DecoratorClass dec = val.as(DecoratorClass.class);
-            Assert.assertEquals("method_getter_setter_field_field_accessor_class_", dec.hits);
+        try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.ALL).option(ECMASCRIPT_VERSION_NAME, ECMASCRIPT_VERSION_STAGING).build()) {
+            Value testCase = context.eval("js", """
+                            (function (dec) {
+                                @dec.decorate
+                                class C {
+                                  @dec.decorate foo = 42;
+                                  @dec.decorate boo() {}
+                                  @dec.decorate static zoo = 12;
+                                  @dec.decorate get xoo() {}
+                                  @dec.decorate set xoo(v) {}
+                                  @dec.decorate accessor aoo = 32;
+                                };
+                            })
+                            """.stripIndent());
+            var dec = new DecoratorClass();
+            testCase.executeVoid(dec);
+            Assert.assertEquals("method_getter_setter_accessor_field_field_class_", dec.hits);
         }
     }
 }

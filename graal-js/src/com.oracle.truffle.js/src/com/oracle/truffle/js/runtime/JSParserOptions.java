@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,357 +40,56 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import static com.oracle.truffle.js.runtime.JSContextOptions.ANNEX_B;
-import static com.oracle.truffle.js.runtime.JSContextOptions.BIGINT;
-import static com.oracle.truffle.js.runtime.JSContextOptions.CLASS_FIELDS;
-import static com.oracle.truffle.js.runtime.JSContextOptions.CONST_AS_VAR;
-import static com.oracle.truffle.js.runtime.JSContextOptions.ECMASCRIPT_VERSION;
-import static com.oracle.truffle.js.runtime.JSContextOptions.FUNCTION_STATEMENT_ERROR;
-import static com.oracle.truffle.js.runtime.JSContextOptions.IMPORT_ASSERTIONS;
-import static com.oracle.truffle.js.runtime.JSContextOptions.NASHORN_COMPATIBILITY_MODE;
-import static com.oracle.truffle.js.runtime.JSContextOptions.PRIVATE_FIELDS_IN;
-import static com.oracle.truffle.js.runtime.JSContextOptions.SCRIPTING;
-import static com.oracle.truffle.js.runtime.JSContextOptions.SHEBANG;
-import static com.oracle.truffle.js.runtime.JSContextOptions.STRICT;
-import static com.oracle.truffle.js.runtime.JSContextOptions.SYNTAX_EXTENSIONS;
-import static com.oracle.truffle.js.runtime.JSContextOptions.TOP_LEVEL_AWAIT;
-import static com.oracle.truffle.js.runtime.JSContextOptions.V8_INTRINSICS;
+/**
+ * Option values that affect JS language semantics, i.e. how code is parsed and translated. Must be
+ * a subset of {@link JSLanguageOptions} to ensure that code is only shared between contexts that
+ * agree on all these options (but may differ in others that do not affect code and shared state).
+ *
+ * @see JSLanguageOptions
+ */
+public record JSParserOptions(boolean strict,
+                boolean scripting,
+                boolean shebang,
+                int ecmaScriptVersion,
+                boolean syntaxExtensions,
+                boolean constAsVar,
+                boolean functionStatementError,
+                boolean dumpOnError,
+                boolean emptyStatements,
+                boolean annexB,
+                boolean allowBigInt,
+                boolean classFields,
+                boolean importAssertions,
+                boolean privateFieldsIn,
+                boolean topLevelAwait,
+                boolean v8Intrinsics) {
 
-import org.graalvm.options.OptionValues;
-
-@SuppressWarnings("hiding")
-public final class JSParserOptions {
-
-    private final boolean strict;
-    private final boolean scripting;
-    private final boolean shebang;
-    private final int ecmaScriptVersion;
-    private final boolean syntaxExtensions;
-    private final boolean constAsVar;
-    private final boolean functionStatementError;
-    private final boolean dumpOnError;
-    private final boolean emptyStatements;
-    private final boolean annexB;
-    private final boolean allowBigInt;
-    private final boolean classFields;
-    private final boolean importAssertions;
-    private final boolean privateFieldsIn;
-    private final boolean topLevelAwait;
-    private final boolean v8Intrinsics;
-
-    public JSParserOptions() {
-        this.strict = false;
-        this.scripting = false;
-        this.shebang = false;
-        this.ecmaScriptVersion = JSConfig.LatestECMAScriptVersion;
-        this.syntaxExtensions = false;
-        this.constAsVar = false;
-        this.functionStatementError = false;
-        this.dumpOnError = false;
-        this.emptyStatements = false;
-        this.annexB = JSConfig.AnnexB;
-        this.allowBigInt = true;
-        this.classFields = true;
-        this.importAssertions = false;
-        this.privateFieldsIn = false;
-        this.topLevelAwait = false;
-        this.v8Intrinsics = false;
+    public static JSParserOptions fromLanguageOptions(JSLanguageOptions options) {
+        int ecmaScriptVersion = options.ecmaScriptVersion();
+        boolean strict = options.strict();
+        boolean scripting = options.scripting();
+        boolean shebang = options.shebang();
+        boolean syntaxExtensions = options.syntaxExtensions();
+        boolean constAsVar = options.constAsVar();
+        boolean functionStatementError = options.functionStatementError();
+        boolean dumpOnError = false;
+        boolean emptyStatements = false;
+        boolean annexB = options.annexB();
+        boolean allowBigInt = options.bigInt();
+        boolean classFields = options.classFields();
+        boolean importAssertions = options.importAssertions();
+        boolean privateFieldsIn = options.privateFieldsIn();
+        boolean topLevelAwait = options.topLevelAwait();
+        boolean v8Intrinsics = options.v8Intrinsics();
+        return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
+                        classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
     }
 
-    private JSParserOptions(boolean strict, boolean scripting, boolean shebang, int ecmaScriptVersion, boolean syntaxExtensions, boolean constAsVar, boolean functionStatementError,
-                    boolean dumpOnError, boolean emptyStatements, boolean annexB, boolean allowBigInt, boolean classFields, boolean importAssertions, boolean privateFieldsIn, boolean topLevelAwait,
-                    boolean v8Intrinsics) {
-        this.strict = strict;
-        this.scripting = scripting;
-        this.shebang = shebang;
-        this.ecmaScriptVersion = ecmaScriptVersion;
-        this.syntaxExtensions = syntaxExtensions;
-        this.constAsVar = constAsVar;
-        this.functionStatementError = functionStatementError;
-        this.dumpOnError = dumpOnError;
-        this.emptyStatements = emptyStatements;
-        this.annexB = annexB;
-        this.allowBigInt = allowBigInt;
-        this.classFields = classFields;
-        this.importAssertions = importAssertions;
-        this.privateFieldsIn = privateFieldsIn;
-        this.topLevelAwait = topLevelAwait;
-        this.v8Intrinsics = v8Intrinsics;
-    }
-
-    public boolean isStrict() {
-        return strict;
-    }
-
-    public boolean isScripting() {
-        return scripting;
-    }
-
-    public boolean isShebang() {
-        return shebang;
-    }
-
-    public boolean isSyntaxExtensions() {
-        return syntaxExtensions;
-    }
-
-    public boolean isConstAsVar() {
-        return constAsVar;
-    }
-
-    public int getEcmaScriptVersion() {
-        return ecmaScriptVersion;
-    }
-
-    public boolean isES6() {
-        return ecmaScriptVersion >= 6;
-    }
-
-    public boolean isES8() {
-        return ecmaScriptVersion >= 8;
-    }
-
-    public boolean isFunctionStatementError() {
-        return functionStatementError;
-    }
-
-    public boolean isDumpOnError() {
-        return dumpOnError;
-    }
-
-    public boolean isEmptyStatements() {
-        return emptyStatements;
-    }
-
-    public boolean isAnnexB() {
-        return annexB;
-    }
-
-    public boolean isAllowBigInt() {
-        return allowBigInt;
-    }
-
-    public boolean isClassFields() {
-        return classFields;
-    }
-
-    public boolean isImportAssertions() {
-        return importAssertions;
-    }
-
-    public boolean isPrivateFieldsIn() {
-        return privateFieldsIn;
-    }
-
-    public boolean isTopLevelAwait() {
-        return topLevelAwait;
-    }
-
-    public boolean isV8Intrinsics() {
-        return v8Intrinsics;
-    }
-
-    public JSParserOptions putOptions(OptionValues optionValues) {
-        JSParserOptions opts = this;
-        int ecmaScriptVersion = ECMASCRIPT_VERSION.getValue(optionValues);
-        opts = opts.putEcmaScriptVersion(ecmaScriptVersion);
-        opts = opts.putSyntaxExtensions(SYNTAX_EXTENSIONS.hasBeenSet(optionValues) ? SYNTAX_EXTENSIONS.getValue(optionValues) : NASHORN_COMPATIBILITY_MODE.getValue(optionValues));
-        opts = opts.putScripting(SCRIPTING.getValue(optionValues));
-        opts = opts.putShebang(SHEBANG.hasBeenSet(optionValues) ? SHEBANG.getValue(optionValues) : ecmaScriptVersion >= JSConfig.ECMAScript2020);
-        opts = opts.putStrict(STRICT.getValue(optionValues));
-        opts = opts.putConstAsVar(CONST_AS_VAR.getValue(optionValues));
-        opts = opts.putFunctionStatementError(FUNCTION_STATEMENT_ERROR.getValue(optionValues));
-        opts = opts.putAnnexB(ANNEX_B.getValue(optionValues));
-        opts = opts.putAllowBigInt(BIGINT.getValue(optionValues));
-        opts = opts.putClassFields(CLASS_FIELDS.hasBeenSet(optionValues) ? CLASS_FIELDS.getValue(optionValues) : ecmaScriptVersion >= JSContextOptions.CLASS_FIELDS_ES_VERSION);
-        opts = opts.putImportAssertions(IMPORT_ASSERTIONS.getValue(optionValues));
-        opts = opts.putPrivateFieldsIn(PRIVATE_FIELDS_IN.hasBeenSet(optionValues) ? PRIVATE_FIELDS_IN.getValue(optionValues) : ecmaScriptVersion >= JSConfig.ECMAScript2022);
-        opts = opts.putTopLevelAwait(TOP_LEVEL_AWAIT.hasBeenSet(optionValues) ? TOP_LEVEL_AWAIT.getValue(optionValues) : ecmaScriptVersion >= JSConfig.ECMAScript2022);
-        opts = opts.putV8Intrinsics(V8_INTRINSICS.getValue(optionValues));
-        return opts;
-    }
-
-    public static JSParserOptions fromOptions(OptionValues optionValues) {
-        return new JSParserOptions().putOptions(optionValues);
-    }
-
-    public JSParserOptions putStrict(boolean strict) {
+    public JSParserOptions withStrict(@SuppressWarnings("hiding") boolean strict) {
         if (strict != this.strict) {
             return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
                             classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
         }
         return this;
-    }
-
-    public JSParserOptions putScripting(boolean scripting) {
-        if (scripting != this.scripting) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putShebang(boolean shebang) {
-        if (shebang != this.shebang) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putEcmaScriptVersion(int ecmaScriptVersion) {
-        if (ecmaScriptVersion != this.ecmaScriptVersion) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putSyntaxExtensions(boolean syntaxExtensions) {
-        if (syntaxExtensions != this.syntaxExtensions) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putConstAsVar(boolean constAsVar) {
-        if (constAsVar != this.constAsVar) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putFunctionStatementError(boolean functionStatementError) {
-        if (functionStatementError != this.functionStatementError) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements,
-                            annexB, allowBigInt, classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putAnnexB(boolean annexB) {
-        if (annexB != this.annexB) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putAllowBigInt(boolean allowBigInt) {
-        if (allowBigInt != this.allowBigInt) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putClassFields(boolean classFields) {
-        if (classFields != this.classFields) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putImportAssertions(boolean importAssertions) {
-        if (importAssertions != this.importAssertions) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putPrivateFieldsIn(boolean privateFieldsIn) {
-        if (privateFieldsIn != this.privateFieldsIn) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putTopLevelAwait(boolean topLevelAwait) {
-        if (topLevelAwait != this.topLevelAwait) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    public JSParserOptions putV8Intrinsics(boolean v8Intrinsics) {
-        if (v8Intrinsics != this.v8Intrinsics) {
-            return new JSParserOptions(strict, scripting, shebang, ecmaScriptVersion, syntaxExtensions, constAsVar, functionStatementError, dumpOnError, emptyStatements, annexB, allowBigInt,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics);
-        }
-        return this;
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + (annexB ? 1231 : 1237);
-        result = prime * result + (constAsVar ? 1231 : 1237);
-        result = prime * result + (dumpOnError ? 1231 : 1237);
-        result = prime * result + ecmaScriptVersion;
-        result = prime * result + (emptyStatements ? 1231 : 1237);
-        result = prime * result + (functionStatementError ? 1231 : 1237);
-        result = prime * result + (scripting ? 1231 : 1237);
-        result = prime * result + (shebang ? 1231 : 1237);
-        result = prime * result + (strict ? 1231 : 1237);
-        result = prime * result + (syntaxExtensions ? 1231 : 1237);
-        result = prime * result + (allowBigInt ? 1231 : 1237);
-        result = prime * result + (classFields ? 1231 : 1237);
-        result = prime * result + (importAssertions ? 1231 : 1237);
-        result = prime * result + (privateFieldsIn ? 1231 : 1237);
-        result = prime * result + (topLevelAwait ? 1231 : 1237);
-        result = prime * result + (v8Intrinsics ? 1231 : 1237);
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (!(obj instanceof JSParserOptions)) {
-            return false;
-        }
-        JSParserOptions other = (JSParserOptions) obj;
-        if (annexB != other.annexB) {
-            return false;
-        } else if (constAsVar != other.constAsVar) {
-            return false;
-        } else if (dumpOnError != other.dumpOnError) {
-            return false;
-        } else if (ecmaScriptVersion != other.ecmaScriptVersion) {
-            return false;
-        } else if (emptyStatements != other.emptyStatements) {
-            return false;
-        } else if (functionStatementError != other.functionStatementError) {
-            return false;
-        } else if (scripting != other.scripting) {
-            return false;
-        } else if (shebang != other.shebang) {
-            return false;
-        } else if (strict != other.strict) {
-            return false;
-        } else if (syntaxExtensions != other.syntaxExtensions) {
-            return false;
-        } else if (allowBigInt != other.allowBigInt) {
-            return false;
-        } else if (classFields != other.classFields) {
-            return false;
-        } else if (importAssertions != other.importAssertions) {
-            return false;
-        } else if (privateFieldsIn != other.privateFieldsIn) {
-            return false;
-        } else if (topLevelAwait != other.topLevelAwait) {
-            return false;
-        } else if (v8Intrinsics != other.v8Intrinsics) {
-            return false;
-        }
-        return true;
     }
 }

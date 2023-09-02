@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,14 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -96,9 +97,9 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
 
     @Specialization(guards = "!isArgumentsDisconnected(argumentsArray)")
     public Object doObject(JSArgumentsObject argumentsArray, Object value,
-                    @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
+                    @Cached @Shared("unconnected") InlinedConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
-        if (unconnected.profile(argumentIndex >= JSAbstractArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
+        if (unconnected.profile(this, argumentIndex >= JSAbstractArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
             JSAbstractArgumentsArray.disconnectIndex(argumentsArray, argumentIndex, value);
         } else {
             writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, argumentIndex, value);
@@ -108,12 +109,12 @@ public abstract class JSGuardDisconnectedArgumentWrite extends JavaScriptNode im
 
     @Specialization(guards = "isArgumentsDisconnected(argumentsArray)")
     public Object doObjectDisconnected(JSArgumentsObject argumentsArray, Object value,
-                    @Cached("createBinaryProfile()") ConditionProfile wasDisconnected,
-                    @Cached("createBinaryProfile()") @Shared("unconnected") ConditionProfile unconnected) {
+                    @Cached @Exclusive InlinedConditionProfile wasDisconnected,
+                    @Cached @Shared("unconnected") InlinedConditionProfile unconnected) {
         assert JSArgumentsArray.isJSArgumentsObject(argumentsArray);
-        if (wasDisconnected.profile(JSAbstractArgumentsArray.wasIndexDisconnected(argumentsArray, argumentIndex))) {
+        if (wasDisconnected.profile(this, JSAbstractArgumentsArray.wasIndexDisconnected(argumentsArray, argumentIndex))) {
             JSAbstractArgumentsArray.setDisconnectedIndexValue(argumentsArray, argumentIndex, value);
-        } else if (unconnected.profile(argumentIndex >= JSAbstractArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
+        } else if (unconnected.profile(this, argumentIndex >= JSAbstractArgumentsArray.getConnectedArgumentCount(argumentsArray))) {
             JSAbstractArgumentsArray.disconnectIndex(argumentsArray, argumentIndex, value);
         } else {
             writeArgumentsElementNode.executeWithTargetAndIndexAndValue(argumentsArray, argumentIndex, value);

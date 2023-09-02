@@ -141,7 +141,9 @@ class FixedSizeBlobCopyJob : public AsyncWrap, public ThreadPoolWork {
 
 class BlobBindingData : public SnapshotableObject {
  public:
-  explicit BlobBindingData(Environment* env, v8::Local<v8::Object> wrap);
+  explicit BlobBindingData(Realm* realm, v8::Local<v8::Object> wrap);
+
+  using InternalFieldInfo = InternalFieldInfoBase;
 
   SERIALIZABLE_OBJECT_METHODS()
 

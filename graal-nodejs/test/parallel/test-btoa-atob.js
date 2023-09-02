@@ -1,13 +1,9 @@
-// Flags: --expose-internals
 'use strict';
 
 require('../common');
 
 const { strictEqual, throws } = require('assert');
 const buffer = require('buffer');
-
-const { internalBinding } = require('internal/test/binding');
-const { DOMException } = internalBinding('messaging');
 
 // Exported on the global object
 strictEqual(globalThis.atob, buffer.atob);

@@ -13,18 +13,14 @@
 
 load("../assert.js");
 
-class ExpectedError extends Error {
-  name = "ExpectedError";
-}
-
 class BadIterator extends Iterator {
   get next() {
-    throw new ExpectedError();
+    throw new Error('should not reach here');
   }
 }
 class BadAsyncIterator extends AsyncIterator {
   get next() {
-    throw new ExpectedError();
+    throw new Error('should not reach here');
   }
 }
 
@@ -33,7 +29,7 @@ for (let Iter of [BadIterator, BadAsyncIterator]) {
     try {
       new Iter()[method]("not a function");
     } catch (e) {
-      if (!(e instanceof ExpectedError)) {
+      if (!(e instanceof TypeError)) {
         console.error("ERR", Iter.name, method, e);
         throw e;
       }

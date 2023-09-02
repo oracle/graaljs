@@ -39,7 +39,7 @@ RUNTIME_FUNCTION(Runtime_ThrowUnsupportedSuperError) {
 RUNTIME_FUNCTION(Runtime_ThrowConstructorNonCallableError) {
   HandleScope scope(isolate);
   DCHECK_EQ(1, args.length());
-  CONVERT_ARG_HANDLE_CHECKED(JSFunction, constructor, 0);
+  Handle<JSFunction> constructor = args.at<JSFunction>(0);
   Handle<String> name(constructor->shared().Name(), isolate);
 
   Handle<Context> context = handle(constructor->native_context(), isolate);
@@ -115,8 +115,8 @@ Object ThrowNotSuperConstructor(Isolate* isolate, Handle<Object> constructor,
 RUNTIME_FUNCTION(Runtime_ThrowNotSuperConstructor) {
   HandleScope scope(isolate);
   DCHECK_EQ(2, args.length());
-  CONVERT_ARG_HANDLE_CHECKED(Object, constructor, 0);
-  CONVERT_ARG_HANDLE_CHECKED(JSFunction, function, 1);
+  Handle<Object> constructor = args.at(0);
+  Handle<JSFunction> function = args.at<JSFunction>(1);
   return ThrowNotSuperConstructor(isolate, constructor, function);
 }
 
@@ -298,7 +298,8 @@ bool AddDescriptorsByTemplate(
   int count = 0;
   for (InternalIndex i : InternalIndex::Range(nof_descriptors)) {
     PropertyDetails details = descriptors_template->GetDetails(i);
-    if (details.location() == kDescriptor && details.kind() == kData) {
+    if (details.location() == PropertyLocation::kDescriptor &&
+        details.kind() == PropertyKind::kData) {
       count++;
     }
   }
@@ -319,15 +320,15 @@ bool AddDescriptorsByTemplate(
     Name name = descriptors_template->GetKey(i);
     DCHECK(name.IsUniqueName());
     PropertyDetails details = descriptors_template->GetDetails(i);
-    if (details.location() == kDescriptor) {
-      if (details.kind() == kData) {
+    if (details.location() == PropertyLocation::kDescriptor) {
+      if (details.kind() == PropertyKind::kData) {
         if (value.IsSmi()) {
           value = GetMethodWithSharedName(isolate, args, value);
         }
         details = details.CopyWithRepresentation(
             value.OptimalRepresentation(isolate));
       } else {
-        DCHECK_EQ(kAccessor, details.kind());
+        DCHECK_EQ(PropertyKind::kAccessor, details.kind());
         if (value.IsAccessorPair()) {
           AccessorPair pair = AccessorPair::cast(value);
           Object tmp = pair.getter();
@@ -344,11 +345,13 @@ bool AddDescriptorsByTemplate(
       UNREACHABLE();
     }
     DCHECK(value.FitsRepresentation(details.representation()));
-    if (details.location() == kDescriptor && details.kind() == kData) {
-      details = PropertyDetails(details.kind(), details.attributes(), kField,
-                                PropertyConstness::kConst,
-                                details.representation(), field_index)
-                    .set_pointer(details.pointer());
+    if (details.location() == PropertyLocation::kDescriptor &&
+        details.kind() == PropertyKind::kData) {
+      details =
+          PropertyDetails(details.kind(), details.attributes(),
+                          PropertyLocation::kField, PropertyConstness::kConst,
+                          details.representation(), field_index)
+              .set_pointer(details.pointer());
 
       property_array->set(field_index, value);
       field_index++;
@@ -422,7 +425,7 @@ bool AddDescriptorsByTemplate(
     int key_index = ComputedEntryFlags::KeyIndexBits::decode(flags);
     Smi value = Smi::FromInt(key_index + 1);  // Value follows name.
 
-    Handle<Object> key = args.at<Object>(key_index);
+    Handle<Object> key = args.at(key_index);
     DCHECK(key->IsName());
     uint32_t element;
     Handle<Name> name = Handle<Name>::cast(key);
@@ -626,7 +629,12 @@ MaybeHandle<Object> DefineClass(Isolate* isolate,
 
   Handle<JSObject> prototype = CreateClassPrototype(isolate);
   DCHECK_EQ(*constructor, args[ClassBoilerplate::kConstructorArgumentIndex]);
-  args.set_at(ClassBoilerplate::kPrototypeArgumentIndex, *prototype);
+  // Temporarily change ClassBoilerplate::kPrototypeArgumentIndex for the
+  // subsequent calls, but use a scope to make sure to change it back before
+  // returning, to not corrupt the caller's argument frame (in particular, for
+  // the interpreter, to not clobber the register frame).
+  RuntimeArguments::ChangeValueScope set_prototype_value_scope(
+      isolate, &args, ClassBoilerplate::kPrototypeArgumentIndex, *prototype);
 
   if (!InitClassConstructor(isolate, class_boilerplate, constructor_parent,
                             constructor, args) ||
@@ -656,9 +664,9 @@ MaybeHandle<Object> DefineClass(Isolate* isolate,
 RUNTIME_FUNCTION(Runtime_DefineClass) {
   HandleScope scope(isolate);
   DCHECK_LE(ClassBoilerplate::kFirstDynamicArgumentIndex, args.length());
-  CONVERT_ARG_HANDLE_CHECKED(ClassBoilerplate, class_boilerplate, 0);
-  CONVERT_ARG_HANDLE_CHECKED(JSFunction, constructor, 1);
-  CONVERT_ARG_HANDLE_CHECKED(Object, super_class, 2);
+  Handle<ClassBoilerplate> class_boilerplate = args.at<ClassBoilerplate>(0);
+  Handle<JSFunction> constructor = args.at<JSFunction>(1);
+  Handle<Object> super_class = args.at(2);
   DCHECK_EQ(class_boilerplate->arguments_count(), args.length());
 
   RETURN_RESULT_OR_FAILURE(
@@ -710,9 +718,9 @@ MaybeHandle<Object> LoadFromSuper(Isolate* isolate, Handle<Object> receiver,
 RUNTIME_FUNCTION(Runtime_LoadFromSuper) {
   HandleScope scope(isolate);
   DCHECK_EQ(3, args.length());
-  CONVERT_ARG_HANDLE_CHECKED(Object, receiver, 0);
-  CONVERT_ARG_HANDLE_CHECKED(JSObject, home_object, 1);
-  CONVERT_ARG_HANDLE_CHECKED(Name, name, 2);
+  Handle<Object> receiver = args.at(0);
+  Handle<JSObject> home_object = args.at<JSObject>(1);
+  Handle<Name> name = args.at<Name>(2);
 
   PropertyKey key(isolate, name);
 
@@ -724,11 +732,11 @@ RUNTIME_FUNCTION(Runtime_LoadFromSuper) {
 RUNTIME_FUNCTION(Runtime_LoadKeyedFromSuper) {
   HandleScope scope(isolate);
   DCHECK_EQ(3, args.length());
-  CONVERT_ARG_HANDLE_CHECKED(Object, receiver, 0);
-  CONVERT_ARG_HANDLE_CHECKED(JSObject, home_object, 1);
+  Handle<Object> receiver = args.at(0);
+  Handle<JSObject> home_object = args.at<JSObject>(1);
   // TODO(ishell): To improve performance, consider performing the to-string
   // conversion of {key} before calling into the runtime.
-  CONVERT_ARG_HANDLE_CHECKED(Object, key, 2);
+  Handle<Object> key = args.at(2);
 
   bool success;
   PropertyKey lookup_key(isolate, key, &success);
@@ -759,10 +767,10 @@ MaybeHandle<Object> StoreToSuper(Isolate* isolate, Handle<JSObject> home_object,
 RUNTIME_FUNCTION(Runtime_StoreToSuper) {
   HandleScope scope(isolate);
   DCHECK_EQ(4, args.length());
-  CONVERT_ARG_HANDLE_CHECKED(Object, receiver, 0);
-  CONVERT_ARG_HANDLE_CHECKED(JSObject, home_object, 1);
-  CONVERT_ARG_HANDLE_CHECKED(Name, name, 2);
-  CONVERT_ARG_HANDLE_CHECKED(Object, value, 3);
+  Handle<Object> receiver = args.at(0);
+  Handle<JSObject> home_object = args.at<JSObject>(1);
+  Handle<Name> name = args.at<Name>(2);
+  Handle<Object> value = args.at(3);
 
   PropertyKey key(isolate, name);
 
@@ -774,12 +782,12 @@ RUNTIME_FUNCTION(Runtime_StoreToSuper) {
 RUNTIME_FUNCTION(Runtime_StoreKeyedToSuper) {
   HandleScope scope(isolate);
   DCHECK_EQ(4, args.length());
-  CONVERT_ARG_HANDLE_CHECKED(Object, receiver, 0);
-  CONVERT_ARG_HANDLE_CHECKED(JSObject, home_object, 1);
+  Handle<Object> receiver = args.at(0);
+  Handle<JSObject> home_object = args.at<JSObject>(1);
   // TODO(ishell): To improve performance, consider performing the to-string
   // conversion of {key} before calling into the runtime.
-  CONVERT_ARG_HANDLE_CHECKED(Object, key, 2);
-  CONVERT_ARG_HANDLE_CHECKED(Object, value, 3);
+  Handle<Object> key = args.at(2);
+  Handle<Object> value = args.at(3);
 
   bool success;
   PropertyKey lookup_key(isolate, key, &success);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,11 @@
 // Script::Compile
 
 EXPORT_TO_JS(Compile) {
-    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Local<String> source = args[0].As<String>();
     Local<String> fileName = args[1].As<String>();
-    ScriptOrigin origin(fileName);
+    ScriptOrigin origin(isolate, fileName);
 
     Local<Script> script = Script::Compile(context, source, &origin).ToLocalChecked();
     int id = script->GetUnboundScript()->GetId();
@@ -57,10 +58,11 @@ EXPORT_TO_JS(Compile) {
 // Script::Run
 
 EXPORT_TO_JS(Run) {
-    Local<Context> context = args.GetIsolate()->GetCurrentContext();
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
     Local<String> source = args[0].As<String>();
     Local<String> fileName = args[1].As<String>();
-    ScriptOrigin origin(fileName);
+    ScriptOrigin origin(isolate, fileName);
 
     Local<Script> script = Script::Compile(context, source, &origin).ToLocalChecked();
     Local<Value> result = script->Run(context).ToLocalChecked();

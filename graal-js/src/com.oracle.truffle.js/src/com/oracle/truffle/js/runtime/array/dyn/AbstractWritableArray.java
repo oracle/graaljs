@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,9 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetUse
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.InlineSupport;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -62,6 +65,7 @@ import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.InlinedProfileBag;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
@@ -119,15 +123,15 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return isSupported(object, index) && rangeCheck(object, index);
     }
 
-    protected abstract int prepareInBounds(JSDynamicObject object, int index, ProfileHolder profile);
+    protected abstract int prepareInBounds(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile);
 
-    protected static void prepareInBoundsZeroBased(JSDynamicObject object, int index, ProfileHolder profile) {
+    protected static void prepareInBoundsZeroBased(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
         long length = arrayGetLength(object);
-        if (SET_SUPPORTED_PROFILE_ACCESS.inBoundsZeroBasedSetLength(profile, index >= length)) {
+        if (profile.inBoundsZeroBasedSetLength(node, index >= length)) {
             arraySetLength(object, length + 1);
         }
         int usedLength = getUsedLength(object);
-        if (SET_SUPPORTED_PROFILE_ACCESS.inBoundsZeroBasedSetUsedLength(profile, index >= usedLength)) {
+        if (profile.inBoundsZeroBasedSetUsedLength(node, index >= usedLength)) {
             arraySetUsedLength(object, usedLength + 1);
         }
     }
@@ -142,15 +146,15 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return arrayGetUsedLength(object);
     }
 
-    protected final int prepareInBoundsContiguous(JSDynamicObject object, int index, ProfileHolder profile) {
-        int internalIndex = ensureCapacityContiguous(object, prepareInBoundsFast(object, index), profile);
-        updateContiguousState(object, internalIndex, profile);
+    protected final int prepareInBoundsContiguous(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
+        int internalIndex = ensureCapacityContiguous(object, prepareInBoundsFast(object, index), node, profile);
+        updateContiguousState(object, internalIndex, node, profile);
         return internalIndex;
     }
 
-    protected final int prepareInBoundsHoles(JSDynamicObject object, int index, ProfileHolder profile) {
+    protected final int prepareInBoundsHoles(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
         int internalIndex = prepareInBoundsFast(object, index);
-        fillHoles(object, internalIndex, updateHolesState(object, internalIndex, profile), profile);
+        fillHoles(object, internalIndex, updateHolesState(object, internalIndex, node, profile), node, profile);
         return internalIndex;
     }
 
@@ -178,29 +182,30 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return index >= firstElementIndex(object) - JSConfig.MaxArrayHoleSize && index <= lastElementIndex(object) + JSConfig.MaxArrayHoleSize && index < Integer.MAX_VALUE;
     }
 
-    protected abstract int prepareSupported(JSDynamicObject object, int index, ProfileHolder profile);
+    protected abstract int prepareSupported(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile);
 
-    protected final void prepareSupportedZeroBased(JSDynamicObject object, int index, ProfileHolder profile) {
-        ensureCapacity(object, index, 0, profile);
-        prepareInBoundsZeroBased(object, index, profile);
+    protected final void prepareSupportedZeroBased(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
+        ensureCapacity(object, index, 0, node, profile);
+        prepareInBoundsZeroBased(object, index, node, profile);
     }
 
-    protected final int prepareSupportedContiguous(JSDynamicObject object, int index, ProfileHolder profile) {
-        int internalIndex = ensureCapacityContiguous(object, prepareInBoundsFast(object, index), profile);
-        updateContiguousState(object, internalIndex, profile);
+    protected final int prepareSupportedContiguous(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
+        int internalIndex = ensureCapacityContiguous(object, prepareInBoundsFast(object, index), node, profile);
+        updateContiguousState(object, internalIndex, node, profile);
         return internalIndex;
     }
 
-    protected final int prepareSupportedHoles(JSDynamicObject object, int index, ProfileHolder profile) {
+    protected final int prepareSupportedHoles(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
         int internalIndex = prepareInBoundsFast(object, index);
-        internalIndex = ensureCapacityContiguous(object, internalIndex, profile);
-        fillHoles(object, internalIndex, updateHolesState(object, internalIndex, profile), profile);
+        internalIndex = ensureCapacityContiguous(object, internalIndex, node, profile);
+        fillHoles(object, internalIndex, updateHolesState(object, internalIndex, node, profile), node, profile);
         return internalIndex;
     }
 
     @SuppressWarnings("unused")
-    protected void incrementHolesCount(JSDynamicObject object, int offset) {
-        throw Errors.shouldNotReachHere();
+    protected final void incrementHolesCount(JSDynamicObject object, int offset) {
+        assert isHolesType();
+        arraySetHoleCount(object, arrayGetHoleCount(object) + offset);
     }
 
     protected abstract void setHoleValue(JSDynamicObject object, int index);
@@ -233,23 +238,23 @@ public abstract class AbstractWritableArray extends DynamicArray {
         throw Errors.shouldNotReachHere();
     }
 
-    private int ensureCapacity(JSDynamicObject object, int internalIndex, long indexOffset, ProfileHolder profile) {
+    private int ensureCapacity(JSDynamicObject object, int internalIndex, long indexOffset, Node node, SetSupportedProfileAccess profile) {
         assert -indexOffset <= internalIndex; // 0 <= index
         int capacity = getArrayCapacity(object);
-        if (SET_SUPPORTED_PROFILE_ACCESS.ensureCapacityGrow(profile, internalIndex >= 0 && internalIndex < capacity)) {
+        if (profile.ensureCapacityGrow(node, internalIndex >= 0 && internalIndex < capacity)) {
             return 0;
         } else {
             long minCapacity;
-            if (SET_SUPPORTED_PROFILE_ACCESS.ensureCapacityGrowLeft(profile, internalIndex < 0)) {
+            if (profile.ensureCapacityGrowLeft(node, internalIndex < 0)) {
                 minCapacity = -internalIndex + (long) capacity;
             } else {
                 minCapacity = internalIndex + 1L;
             }
-            long newCapacity = minCapacity << 1;
-            if (newCapacity > SimpleArrayList.MAX_ARRAY_SIZE) {
+            long newCapacity = Math.max(minCapacity, (long) capacity + (capacity >>> 1));
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, newCapacity > SimpleArrayList.MAX_ARRAY_SIZE)) {
                 if (SimpleArrayList.MAX_ARRAY_SIZE < minCapacity) {
-                    CompilerDirectives.transferToInterpreter();
-                    throw new OutOfMemoryError();
+                    profile.enterArrayTooLargeBranch(node);
+                    throw outOfMemoryError();
                 }
                 newCapacity = SimpleArrayList.MAX_ARRAY_SIZE;
             }
@@ -267,8 +272,13 @@ public abstract class AbstractWritableArray extends DynamicArray {
         }
     }
 
-    private int ensureCapacityContiguous(JSDynamicObject object, int internalIndex, ProfileHolder profile) {
-        int offset = ensureCapacity(object, internalIndex, getIndexOffset(object), profile);
+    @TruffleBoundary
+    private static OutOfMemoryError outOfMemoryError() {
+        return new OutOfMemoryError();
+    }
+
+    private int ensureCapacityContiguous(JSDynamicObject object, int internalIndex, Node node, SetSupportedProfileAccess profile) {
+        int offset = ensureCapacity(object, internalIndex, getIndexOffset(object), node, profile);
         if (offset != 0) {
             setIndexOffset(object, getIndexOffset(object) - offset);
             setArrayOffset(object, getArrayOffset(object) + offset);
@@ -276,36 +286,36 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return internalIndex + offset;
     }
 
-    private void updateContiguousState(JSDynamicObject object, int internalIndex, ProfileHolder profile) {
+    private void updateContiguousState(JSDynamicObject object, int internalIndex, Node node, SetSupportedProfileAccess profile) {
         int offset = getArrayOffset(object);
         int used = getUsedLength(object);
-        if (SET_SUPPORTED_PROFILE_ACCESS.updateStatePrepend(profile, internalIndex < offset)) {
+        if (profile.updateStatePrepend(node, internalIndex < offset)) {
             arraySetUsedLength(object, used + 1);
             setArrayOffset(object, offset - 1);
-        } else if (SET_SUPPORTED_PROFILE_ACCESS.updateStateAppend(profile, internalIndex >= offset + used)) {
+        } else if (profile.updateStateAppend(node, internalIndex >= offset + used)) {
             arraySetUsedLength(object, used + 1);
             long length = arrayGetLength(object);
             long calcLength = getIndexOffset(object) + offset + used + 1;
-            if (SET_SUPPORTED_PROFILE_ACCESS.updateStateSetLength(profile, calcLength > length)) {
+            if (profile.updateStateSetLength(node, calcLength > length)) {
                 arraySetLength(object, calcLength);
             }
         }
     }
 
-    private int updateHolesState(JSDynamicObject object, int internalIndex, ProfileHolder profile) {
+    private int updateHolesState(JSDynamicObject object, int internalIndex, Node node, SetSupportedProfileAccess profile) {
         int offset = getArrayOffset(object);
         int used = getUsedLength(object);
         int size;
-        if (SET_SUPPORTED_PROFILE_ACCESS.updateStatePrepend(profile, internalIndex < offset)) {
+        if (profile.updateStatePrepend(node, internalIndex < offset)) {
             size = -(offset - internalIndex);
-        } else if (SET_SUPPORTED_PROFILE_ACCESS.updateStateAppend(profile, internalIndex >= offset + used)) {
+        } else if (profile.updateStateAppend(node, internalIndex >= offset + used)) {
             if (used == 0) {
                 // empty array, array offset should match the new element
                 offset = internalIndex;
             }
             size = internalIndex - (offset + used) + 1;
         } else {
-            if (SET_SUPPORTED_PROFILE_ACCESS.updateHolesStateIsHole(profile, isHolePrepared(object, internalIndex))) {
+            if (profile.updateHolesStateIsHole(node, isHolePrepared(object, internalIndex))) {
                 incrementHolesCount(object, -1);
             }
             return 0;
@@ -318,7 +328,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             used += size;
             long length = arrayGetLength(object);
             long calcLength = getIndexOffset(object) + offset + used;
-            if (SET_SUPPORTED_PROFILE_ACCESS.updateStateSetLength(profile, calcLength > length)) {
+            if (profile.updateStateSetLength(node, calcLength > length)) {
                 arraySetLength(object, calcLength);
             }
         }
@@ -328,13 +338,13 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return size;
     }
 
-    protected void fillHoles(JSDynamicObject object, int internalIndex, int grown, ProfileHolder profile) {
+    protected void fillHoles(JSDynamicObject object, int internalIndex, int grown, Node node, SetSupportedProfileAccess profile) {
         int start;
         int end;
-        if (SET_SUPPORTED_PROFILE_ACCESS.fillHolesRight(profile, grown > 1)) {
+        if (profile.fillHolesRight(node, grown > 1)) {
             start = internalIndex - grown + 1;
             end = internalIndex;
-        } else if (SET_SUPPORTED_PROFILE_ACCESS.fillHolesLeft(profile, grown < -1)) {
+        } else if (profile.fillHolesLeft(node, grown < -1)) {
             start = internalIndex + 1;
             end = internalIndex - grown;
         } else {
@@ -346,6 +356,27 @@ public abstract class AbstractWritableArray extends DynamicArray {
         for (int i = start; i < end; i++) {
             setHoleValue(object, i);
         }
+    }
+
+    protected final boolean checkFillHoles(JSDynamicObject object, int internalIndex, int grown) {
+        int start;
+        int end;
+        if (grown > 1) {
+            start = internalIndex - grown + 1;
+            end = internalIndex;
+        } else if (grown < -1) {
+            start = internalIndex + 1;
+            end = internalIndex - grown;
+        } else {
+            return true;
+        }
+
+        for (int i = start; i < end; i++) {
+            if (!isHolePrepared(object, i)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     public abstract AbstractWritableArray toDouble(JSDynamicObject object, long index, double value);
@@ -471,60 +502,60 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     @Override
-    public final ScriptArray setLengthImpl(JSDynamicObject object, long length, ProfileHolder profile) {
-        if (SET_LENGTH_PROFILE.lengthZero(profile, length == 0)) {
+    public final ScriptArray setLengthImpl(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
+        if (profile.lengthZero(node, length == 0)) {
             arraySetLength(object, length);
             return ConstantEmptyArray.createConstantEmptyArray();
-        } else if (SET_LENGTH_PROFILE.lengthLess(profile, length < length(object))) {
-            setLengthLess(object, length, profile);
+        } else if (profile.lengthLess(node, length < length(object))) {
+            setLengthLess(object, length, node, profile);
         } else {
             arraySetLength(object, length);
         }
         return this;
     }
 
-    protected abstract void setLengthLess(JSDynamicObject object, long length, ProfileHolder profile);
+    protected abstract void setLengthLess(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile);
 
-    protected void setLengthLessZeroBased(JSDynamicObject object, long length, ProfileHolder profile) {
+    protected void setLengthLessZeroBased(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
         long oldLength = arrayGetLength(object);
         arraySetLength(object, length);
-        if (SET_LENGTH_PROFILE.zeroBasedSetUsedLength(profile, getUsedLength(object) > length)) {
+        if (profile.zeroBasedSetUsedLength(node, getUsedLength(object) > length)) {
             arraySetUsedLength(object, (int) length);
         }
-        if (SET_LENGTH_PROFILE.zeroBasedClearUnusedArea(profile, length < oldLength)) {
-            clearUnusedArea(object, (int) length, (int) oldLength, 0, profile);
+        if (profile.zeroBasedClearUnusedArea(node, length < oldLength)) {
+            clearUnusedArea(object, (int) length, (int) oldLength, 0, node, profile);
         }
     }
 
-    protected final void setLengthLessContiguous(JSDynamicObject object, long length, ProfileHolder profile) {
+    protected final void setLengthLessContiguous(JSDynamicObject object, long length, Node node, SetLengthProfileAccess profile) {
         long indexOffset = getIndexOffset(object);
         int arrayOffset = getArrayOffset(object);
         arraySetLength(object, length);
-        if (SET_LENGTH_PROFILE.contiguousZeroUsed(profile, length <= indexOffset)) {
+        if (profile.contiguousZeroUsed(node, length <= indexOffset)) {
             arraySetUsedLength(object, 0);
             setIndexOffset(object, length - 1);
             setArrayOffset(object, 0);
             long arrayCapacity = getArrayCapacity(object);
-            clearUnusedArea(object, 0, (int) arrayCapacity, 0, profile);
+            clearUnusedArea(object, 0, (int) arrayCapacity, 0, node, profile);
         } else {
             int oldUsed = getUsedLength(object);
             int newUsed = Math.min(oldUsed, (int) (length - indexOffset - arrayOffset));
             int newUsedLength = (int) (previousElementIndex(object, indexOffset + arrayOffset + newUsed) + 1 - arrayOffset - indexOffset);
 
-            if (SET_LENGTH_PROFILE.contiguousNegativeUsed(profile, newUsedLength < 0)) {
+            if (profile.contiguousNegativeUsed(node, newUsedLength < 0)) {
                 newUsedLength = 0;
                 setArrayOffset(object, 0);
                 setIndexOffset(object, 0);
             }
             arraySetUsedLength(object, newUsedLength);
-            if (SET_LENGTH_PROFILE.contiguousShrinkUsed(profile, newUsedLength < oldUsed)) {
+            if (profile.contiguousShrinkUsed(node, newUsedLength < oldUsed)) {
                 if (isHolesType()) {
                     incrementHolesCount(object, -countHolesPrepared(object, arrayOffset + newUsedLength, arrayOffset + oldUsed));
-                    assert arrayGetHoleCount(object) == countHoles(object);
+                    assert assertHoleCount(object);
                 }
 
                 // use old arrayOffset
-                clearUnusedArea(object, newUsedLength, oldUsed, arrayOffset, profile);
+                clearUnusedArea(object, newUsedLength, oldUsed, arrayOffset, node, profile);
             }
         }
     }
@@ -532,9 +563,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
     /**
      * After shortening the array, the now unused area has to be cleared.
      */
-    protected void clearUnusedArea(JSDynamicObject object, int startIdx, int endIdx, int arrayOffset, ProfileHolder profile) {
+    protected void clearUnusedArea(JSDynamicObject object, int startIdx, int endIdx, int arrayOffset, Node node, SetLengthProfileAccess profile) {
         int arrayCapacity = getArrayCapacity(object);
-        if (SET_LENGTH_PROFILE.clearUnusedArea(profile, startIdx < -1 || (startIdx + arrayOffset) >= arrayCapacity)) {
+        if (profile.clearUnusedArea(node, startIdx < -1 || (startIdx + arrayOffset) >= arrayCapacity)) {
             return;
         }
         int start = startIdx + arrayOffset;
@@ -614,7 +645,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 }
             }
         }
-        assert arrayGetHoleCount(object) == countHoles(object);
+        assert assertHoleCount(object);
         return this;
     }
 
@@ -624,7 +655,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
     }
 
     @SuppressWarnings("unused")
-    public ScriptArray toNonContiguous(JSDynamicObject object, int index, Object value, ProfileHolder profile) {
+    public ScriptArray toNonContiguous(JSDynamicObject object, int index, Object value, Node node, SetSupportedProfileAccess profile) {
         return this;
     }
 
@@ -671,6 +702,9 @@ public abstract class AbstractWritableArray extends DynamicArray {
             arraySetLength(object, length + size);
             arraySetArray(object, newArray);
             arraySetUsedLength(object, usedLength + size);
+            if (isHolesType()) {
+                arraySetHoleCount(object, arrayGetHoleCount(object) + size);
+            }
             return this;
         }
     }
@@ -806,6 +840,14 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return holeCount;
     }
 
+    protected final boolean assertHoleCount(JSDynamicObject object) {
+        assert isHolesType();
+        int holeCount = arrayGetHoleCount(object);
+        int countedHoles = countHoles(object);
+        assert holeCount == countedHoles : String.format("holeCount, %d, differs from the actual count, %d", holeCount, countedHoles);
+        return true;
+    }
+
     /**
      * Move {@code len} elements from {@code src} to {@code dst}.
      */
@@ -830,6 +872,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 int newUsedLength = (int) (usedLength - internalArrayShift);
                 long newIndexOffset = indexOffset - from;
                 int newArrayOffset = (int) (arrayOffset + internalArrayShift);
+                fillWithHoles(getArrayObject(object), arrayOffset, newArrayOffset);
                 setArrayProperties(object, newLength, newUsedLength, newIndexOffset, newArrayOffset);
                 return this;
             }
@@ -837,52 +880,110 @@ public abstract class AbstractWritableArray extends DynamicArray {
         return removeRangeImpl(object, 0, from);
     }
 
-    protected interface SetSupportedProfileAccess extends ProfileAccess {
-        default boolean ensureCapacityGrow(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 0, condition);
+    protected static boolean unusedElementsAreHoles(Object[] array, int usedStart, int usedLength) {
+        for (int i = 0; i < usedStart; i++) {
+            if (array[i] != null) {
+                return false;
+            }
         }
-
-        default boolean ensureCapacityGrowLeft(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 1, condition);
+        for (int i = usedStart + usedLength; i < array.length; i++) {
+            if (array[i] != null) {
+                return false;
+            }
         }
-
-        default boolean inBoundsZeroBasedSetLength(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 2, condition);
-        }
-
-        default boolean inBoundsZeroBasedSetUsedLength(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 3, condition);
-        }
-
-        default boolean updateStatePrepend(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 4, condition);
-        }
-
-        default boolean updateStateAppend(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 5, condition);
-        }
-
-        default boolean updateStateSetLength(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 6, condition);
-        }
-
-        default boolean updateHolesStateIsHole(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 7, condition);
-        }
-
-        default boolean fillHolesLeft(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 8, condition);
-        }
-
-        default boolean fillHolesRight(ProfileHolder profile, boolean condition) {
-            return profile.profile(this, 9, condition);
-        }
+        return true;
     }
 
-    public static ProfileHolder createSetSupportedProfile() {
-        return ProfileHolder.create(10, SetSupportedProfileAccess.class);
-    }
+    public static class SetSupportedProfileAccess extends InlinedProfileBag {
 
-    protected static final SetSupportedProfileAccess SET_SUPPORTED_PROFILE_ACCESS = new SetSupportedProfileAccess() {
-    };
+        protected static final int REQUIRED_BITS = 10 * CONDITION_PROFILE_STATE_BITS + 1 * BRANCH_PROFILE_STATE_BITS;
+        private static final int ensureCapacityGrow;
+        private static final int ensureCapacityGrowLeft;
+        private static final int inBoundsZeroBasedSetLength;
+        private static final int inBoundsZeroBasedSetUsedLength;
+        private static final int updateStatePrepend;
+        private static final int updateStateAppend;
+        private static final int updateStateSetLength;
+        private static final int updateHolesStateIsHole;
+        private static final int fillHolesLeft;
+        private static final int fillHolesRight;
+        private static final int arrayTooLargeBranch;
+
+        private static final SetSupportedProfileAccess UNCACHED = new SetSupportedProfileAccess(null);
+
+        static {
+            try (var b = new Builder(REQUIRED_BITS)) {
+                ensureCapacityGrow = b.conditionProfile();
+                ensureCapacityGrowLeft = b.conditionProfile();
+                inBoundsZeroBasedSetLength = b.conditionProfile();
+                inBoundsZeroBasedSetUsedLength = b.conditionProfile();
+                updateStatePrepend = b.conditionProfile();
+                updateStateAppend = b.conditionProfile();
+                updateStateSetLength = b.conditionProfile();
+                updateHolesStateIsHole = b.conditionProfile();
+                fillHolesLeft = b.conditionProfile();
+                fillHolesRight = b.conditionProfile();
+                arrayTooLargeBranch = b.branchProfile();
+            }
+        }
+
+        @NeverDefault
+        public static SetSupportedProfileAccess getUncached() {
+            return UNCACHED;
+        }
+
+        @NeverDefault
+        public static SetSupportedProfileAccess inline(
+                        @InlineSupport.RequiredField(value = InlineSupport.StateField.class, bits = REQUIRED_BITS) InlineSupport.InlineTarget inlineTarget) {
+            return new SetSupportedProfileAccess(inlineTarget.getState(0, REQUIRED_BITS));
+        }
+
+        protected SetSupportedProfileAccess(InlineSupport.StateField stateField) {
+            super(stateField);
+        }
+
+        public final boolean ensureCapacityGrow(Node node, boolean condition) {
+            return profile(node, condition, ensureCapacityGrow);
+        }
+
+        public final boolean ensureCapacityGrowLeft(Node node, boolean condition) {
+            return profile(node, condition, ensureCapacityGrowLeft);
+        }
+
+        public final boolean inBoundsZeroBasedSetLength(Node node, boolean condition) {
+            return profile(node, condition, inBoundsZeroBasedSetLength);
+        }
+
+        public final boolean inBoundsZeroBasedSetUsedLength(Node node, boolean condition) {
+            return profile(node, condition, inBoundsZeroBasedSetUsedLength);
+        }
+
+        public final boolean updateStatePrepend(Node node, boolean condition) {
+            return profile(node, condition, updateStatePrepend);
+        }
+
+        public final boolean updateStateAppend(Node node, boolean condition) {
+            return profile(node, condition, updateStateAppend);
+        }
+
+        public final boolean updateStateSetLength(Node node, boolean condition) {
+            return profile(node, condition, updateStateSetLength);
+        }
+
+        public final boolean updateHolesStateIsHole(Node node, boolean condition) {
+            return profile(node, condition, updateHolesStateIsHole);
+        }
+
+        public final boolean fillHolesLeft(Node node, boolean condition) {
+            return profile(node, condition, fillHolesLeft);
+        }
+
+        public final boolean fillHolesRight(Node node, boolean condition) {
+            return profile(node, condition, fillHolesRight);
+        }
+
+        public final void enterArrayTooLargeBranch(Node node) {
+            enter(node, arrayTooLargeBranch);
+        }
+    }
 }

@@ -274,12 +274,13 @@ void CallOrConstructBuiltinsAssembler::CallOrConstructWithArrayLike(
   BIND(&if_done);
   {
     Label if_not_double(this), if_double(this);
-    TNode<Int32T> args_count = Int32Constant(0);  // args already on the stack
+    TNode<Int32T> args_count =
+        Int32Constant(i::JSParameterCount(0));  // args already on the stack
 
     TNode<Int32T> length = var_length.value();
     {
       Label normalize_done(this);
-      CSA_ASSERT(this, Int32LessThanOrEqual(
+      CSA_DCHECK(this, Int32LessThanOrEqual(
                            length, Int32Constant(FixedArray::kMaxLength)));
       GotoIfNot(Word32Equal(length, Int32Constant(0)), &normalize_done);
       // Make sure we don't accidentally pass along the
@@ -326,14 +327,14 @@ void CallOrConstructBuiltinsAssembler::CallOrConstructDoubleVarargs(
     TNode<Int32T> args_count, TNode<Context> context, TNode<Int32T> kind) {
   const ElementsKind new_kind = PACKED_ELEMENTS;
   const WriteBarrierMode barrier_mode = UPDATE_WRITE_BARRIER;
-  CSA_ASSERT(this, Int32LessThanOrEqual(length,
+  CSA_DCHECK(this, Int32LessThanOrEqual(length,
                                         Int32Constant(FixedArray::kMaxLength)));
   TNode<IntPtrT> intptr_length = ChangeInt32ToIntPtr(length);
-  CSA_ASSERT(this, WordNotEqual(intptr_length, IntPtrConstant(0)));
+  CSA_DCHECK(this, WordNotEqual(intptr_length, IntPtrConstant(0)));
 
   // Allocate a new FixedArray of Objects.
   TNode<FixedArray> new_elements = CAST(AllocateFixedArray(
-      new_kind, intptr_length, CodeStubAssembler::kAllowLargeObjectAllocation));
+      new_kind, intptr_length, AllocationFlag::kAllowLargeObjectAllocation));
   // CopyFixedArrayElements does not distinguish between holey and packed for
   // its first argument, so we don't need to dispatch on {kind} here.
   CopyFixedArrayElements(PACKED_DOUBLE_ELEMENTS, elements, new_kind,
@@ -438,7 +439,7 @@ void CallOrConstructBuiltinsAssembler::CallOrConstructWithSpread(
     TNode<Int32T> length = LoadAndUntagToWord32ObjectField(
         var_js_array.value(), JSArray::kLengthOffset);
     TNode<FixedArrayBase> elements = var_elements.value();
-    CSA_ASSERT(this, Int32LessThanOrEqual(
+    CSA_DCHECK(this, Int32LessThanOrEqual(
                          length, Int32Constant(FixedArray::kMaxLength)));
 
     if (!new_target) {
@@ -737,8 +738,8 @@ void CallOrConstructBuiltinsAssembler::CallFunctionTemplate(
   TNode<RawPtrT> callback = LoadForeignForeignAddressPtr(foreign);
   TNode<Object> call_data =
       LoadObjectField<Object>(call_handler_info, CallHandlerInfo::kDataOffset);
-  TailCallStub(CodeFactory::CallApiCallback(isolate()), context, callback, argc,
-               call_data, holder);
+  TailCallStub(CodeFactory::CallApiCallback(isolate()), context, callback,
+               args.GetLengthWithoutReceiver(), call_data, holder);
 }
 
 TF_BUILTIN(CallFunctionTemplate_CheckAccess, CallOrConstructBuiltinsAssembler) {

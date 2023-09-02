@@ -180,7 +180,7 @@ See [Advanced serialization for `child_process`][] for more details.
 
 <!-- YAML
 added: v10.12.0
-deprecated: v16.15.0
+deprecated: v17.6.0
 -->
 
 > Stability: 0 - Deprecated
@@ -363,7 +363,7 @@ process.on('uncaughtException', (err, origin) => {
   fs.writeSync(
     process.stderr.fd,
     `Caught exception: ${err}\n` +
-    `Exception origin: ${origin}`
+    `Exception origin: ${origin}`,
   );
 });
 
@@ -383,7 +383,7 @@ process.on('uncaughtException', (err, origin) => {
   fs.writeSync(
     process.stderr.fd,
     `Caught exception: ${err}\n` +
-    `Exception origin: ${origin}`
+    `Exception origin: ${origin}`,
   );
 });
 
@@ -648,7 +648,9 @@ The `*-deprecation` command-line flags only affect warnings that use the name
 ### Event: `'worker'`
 
 <!-- YAML
-added: v16.2.0
+added:
+  - v16.2.0
+  - v14.18.0
 -->
 
 * `worker` {Worker} The {Worker} that was created.
@@ -1105,6 +1107,23 @@ and [Cluster][] documentation), the `process.connected` property will return
 Once `process.connected` is `false`, it is no longer possible to send messages
 over the IPC channel using `process.send()`.
 
+## `process.constrainedMemory()`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+> Stability: 1 - Experimental
+
+* {number|undefined}
+
+Gets the amount of memory available to the process (in bytes) based on
+limits imposed by the OS. If there is no such constraint, or the constraint
+is unknown, `undefined` is returned.
+
+See [`uv_get_constrained_memory`][uv_get_constrained_memory] for more
+information.
+
 ## `process.cpuUsage([previousValue])`
 
 <!-- YAML
@@ -1295,7 +1314,7 @@ import { emitWarning } from 'node:process';
 // Emit a warning with a code and additional detail.
 emitWarning('Something happened!', {
   code: 'MY_WARNING',
-  detail: 'This is some additional information'
+  detail: 'This is some additional information',
 });
 // Emits:
 // (node:56338) [MY_WARNING] Warning: Something happened!
@@ -1308,7 +1327,7 @@ const { emitWarning } = require('node:process');
 // Emit a warning with a code and additional detail.
 emitWarning('Something happened!', {
   code: 'MY_WARNING',
-  detail: 'This is some additional information'
+  detail: 'This is some additional information',
 });
 // Emits:
 // (node:56338) [MY_WARNING] Warning: Something happened!
@@ -1826,7 +1845,9 @@ previous setting of `process.exitCode`.
 ## `process.getActiveResourcesInfo()`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.3.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental
@@ -2319,7 +2340,9 @@ program memory allocations.
 ## `process.memoryUsage.rss()`
 
 <!-- YAML
-added: v15.6.0
+added:
+  - v15.6.0
+  - v14.18.0
 -->
 
 * Returns: {integer}
@@ -2342,7 +2365,7 @@ console.log(memoryUsage.rss());
 ```
 
 ```cjs
-const { rss } = require('node:process');
+const { memoryUsage } = require('node:process');
 
 console.log(memoryUsage.rss());
 // 35655680
@@ -2353,6 +2376,11 @@ console.log(memoryUsage.rss());
 <!-- YAML
 added: v0.1.26
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v1.8.1
     pr-url: https://github.com/nodejs/node/pull/1077
     description: Additional arguments after `callback` are now supported.
@@ -2692,17 +2720,17 @@ tarball.
   only the source header files for the current release. This file is
   significantly smaller than the full source file and can be used for compiling
   Node.js native add-ons.
-* `libUrl` {string} an absolute URL pointing to a _`node.lib`_ file matching the
-  architecture and version of the current release. This file is used for
-  compiling Node.js native add-ons. _This property is only present on Windows
-  builds of Node.js and will be missing on all other platforms._
-* `lts` {string} a string label identifying the [LTS][] label for this release.
-  This property only exists for LTS releases and is `undefined` for all other
-  release types, including _Current_ releases.
-  Valid values include the LTS Release code names (including those
-  that are no longer supported).
-  * `'Dubnium'` for the 10.x LTS line beginning with 10.13.0.
-  * `'Erbium'` for the 12.x LTS line beginning with 12.13.0.
+* `libUrl` {string|undefined} an absolute URL pointing to a _`node.lib`_ file
+  matching the architecture and version of the current release. This file is
+  used for compiling Node.js native add-ons. _This property is only present on
+  Windows builds of Node.js and will be missing on all other platforms._
+* `lts` {string|undefined} a string label identifying the [LTS][] label for this
+  release. This property only exists for LTS releases and is `undefined` for all
+  other release types, including _Current_ releases. Valid values include the
+  LTS Release code names (including those that are no longer supported).
+  * `'Fermium'` for the 14.x LTS line beginning with 14.15.0.
+  * `'Gallium'` for the 16.x LTS line beginning with 16.13.0.
+  * `'Hydrogen'` for the 18.x LTS line beginning with 18.12.0.
     For other LTS Release code names, see [Node.js Changelog Archive](https://github.com/nodejs/node/blob/HEAD/doc/changelogs/CHANGELOG_ARCHIVE.md)
 
 <!-- eslint-skip -->
@@ -2710,10 +2738,10 @@ tarball.
 ```js
 {
   name: 'node',
-  lts: 'Erbium',
-  sourceUrl: 'https://nodejs.org/download/release/v12.18.1/node-v12.18.1.tar.gz',
-  headersUrl: 'https://nodejs.org/download/release/v12.18.1/node-v12.18.1-headers.tar.gz',
-  libUrl: 'https://nodejs.org/download/release/v12.18.1/win-x64/node.lib'
+  lts: 'Hydrogen',
+  sourceUrl: 'https://nodejs.org/download/release/v18.12.0/node-v18.12.0.tar.gz',
+  headersUrl: 'https://nodejs.org/download/release/v18.12.0/node-v18.12.0-headers.tar.gz',
+  libUrl: 'https://nodejs.org/download/release/v18.12.0/win-x64/node.lib'
 }
 ```
 
@@ -2849,6 +2877,7 @@ present.
 
 ```mjs
 import { report } from 'node:process';
+import util from 'node:util';
 
 const data = report.getReport();
 console.log(data.header.nodejsVersion);
@@ -2860,6 +2889,7 @@ fs.writeFileSync('my-report.log', util.inspect(data), 'utf8');
 
 ```cjs
 const { report } = require('node:process');
+const util = require('node:util');
 
 const data = report.getReport();
 console.log(data.header.nodejsVersion);
@@ -2878,6 +2908,7 @@ added: v11.12.0
 changes:
   - version:
      - v15.0.0
+     - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/35654
     description: This API is no longer experimental.
 -->
@@ -3178,7 +3209,7 @@ if (process.getegid && process.setegid) {
     process.setegid(501);
     console.log(`New gid: ${process.getegid()}`);
   } catch (err) {
-    console.log(`Failed to set gid: ${err}`);
+    console.error(`Failed to set gid: ${err}`);
   }
 }
 ```
@@ -3192,7 +3223,7 @@ if (process.getegid && process.setegid) {
     process.setegid(501);
     console.log(`New gid: ${process.getegid()}`);
   } catch (err) {
-    console.log(`Failed to set gid: ${err}`);
+    console.error(`Failed to set gid: ${err}`);
   }
 }
 ```
@@ -3223,7 +3254,7 @@ if (process.geteuid && process.seteuid) {
     process.seteuid(501);
     console.log(`New uid: ${process.geteuid()}`);
   } catch (err) {
-    console.log(`Failed to set uid: ${err}`);
+    console.error(`Failed to set uid: ${err}`);
   }
 }
 ```
@@ -3237,7 +3268,7 @@ if (process.geteuid && process.seteuid) {
     process.seteuid(501);
     console.log(`New uid: ${process.geteuid()}`);
   } catch (err) {
-    console.log(`Failed to set uid: ${err}`);
+    console.error(`Failed to set uid: ${err}`);
   }
 }
 ```
@@ -3268,7 +3299,7 @@ if (process.getgid && process.setgid) {
     process.setgid(501);
     console.log(`New gid: ${process.getgid()}`);
   } catch (err) {
-    console.log(`Failed to set gid: ${err}`);
+    console.error(`Failed to set gid: ${err}`);
   }
 }
 ```
@@ -3282,7 +3313,7 @@ if (process.getgid && process.setgid) {
     process.setgid(501);
     console.log(`New gid: ${process.getgid()}`);
   } catch (err) {
-    console.log(`Failed to set gid: ${err}`);
+    console.error(`Failed to set gid: ${err}`);
   }
 }
 ```
@@ -3313,7 +3344,7 @@ if (process.getgroups && process.setgroups) {
     process.setgroups([501]);
     console.log(process.getgroups()); // new groups
   } catch (err) {
-    console.log(`Failed to set groups: ${err}`);
+    console.error(`Failed to set groups: ${err}`);
   }
 }
 ```
@@ -3326,7 +3357,7 @@ if (process.getgroups && process.setgroups) {
     process.setgroups([501]);
     console.log(process.getgroups()); // new groups
   } catch (err) {
-    console.log(`Failed to set groups: ${err}`);
+    console.error(`Failed to set groups: ${err}`);
   }
 }
 ```
@@ -3357,7 +3388,7 @@ if (process.getuid && process.setuid) {
     process.setuid(501);
     console.log(`New uid: ${process.getuid()}`);
   } catch (err) {
-    console.log(`Failed to set uid: ${err}`);
+    console.error(`Failed to set uid: ${err}`);
   }
 }
 ```
@@ -3371,7 +3402,7 @@ if (process.getuid && process.setuid) {
     process.setuid(501);
     console.log(`New uid: ${process.getuid()}`);
   } catch (err) {
-    console.log(`Failed to set uid: ${err}`);
+    console.error(`Failed to set uid: ${err}`);
   }
 }
 ```
@@ -3383,7 +3414,9 @@ This feature is not available in [`Worker`][] threads.
 ## `process.setSourceMapsEnabled(val)`
 
 <!-- YAML
-added: v16.6.0
+added:
+  - v16.6.0
+  - v14.18.0
 -->
 
 > Stability: 1 - Experimental
@@ -3661,7 +3694,7 @@ import { umask } from 'node:process';
 const newmask = 0o022;
 const oldmask = umask(newmask);
 console.log(
-  `Changed umask from ${oldmask.toString(8)} to ${newmask.toString(8)}`
+  `Changed umask from ${oldmask.toString(8)} to ${newmask.toString(8)}`,
 );
 ```
 
@@ -3671,7 +3704,7 @@ const { umask } = require('node:process');
 const newmask = 0o022;
 const oldmask = umask(newmask);
 console.log(
-  `Changed umask from ${oldmask.toString(8)} to ${newmask.toString(8)}`
+  `Changed umask from ${oldmask.toString(8)} to ${newmask.toString(8)}`,
 );
 ```
 
@@ -3811,6 +3844,9 @@ cases:
   options were set, but the port number chosen was invalid or unavailable.
 * `13` **Unfinished Top-Level Await**: `await` was used outside of a function
   in the top-level code, but the passed `Promise` never resolved.
+* `14` **Snapshot Failure**: Node.js was started to build a V8 startup
+  snapshot and it failed because certain requirements of the state of
+  the application were not met.
 * `>128` **Signal Exits**: If Node.js receives a fatal signal such as
   `SIGKILL` or `SIGHUP`, then its exit code will be `128` plus the
   value of the signal code. This is a standard POSIX practice, since
@@ -3876,6 +3912,7 @@ cases:
 [process_warning]: #event-warning
 [report documentation]: report.md
 [terminal raw mode]: tty.md#readstreamsetrawmodemode
+[uv_get_constrained_memory]: https://docs.libuv.org/en/v1.x/misc.html#c.uv_get_constrained_memory
 [uv_rusage_t]: https://docs.libuv.org/en/v1.x/misc.html#c.uv_rusage_t
 [wikipedia_major_fault]: https://en.wikipedia.org/wiki/Page_fault#Major
 [wikipedia_minor_fault]: https://en.wikipedia.org/wiki/Page_fault#Minor

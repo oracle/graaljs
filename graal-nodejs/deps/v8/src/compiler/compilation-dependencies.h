@@ -93,6 +93,10 @@ class V8_EXPORT_PRIVATE CompilationDependencies : public ZoneObject {
   // Record the assumption that {site}'s {ElementsKind} doesn't change.
   void DependOnElementsKind(const AllocationSiteRef& site);
 
+  // Check that an object slot will not change during compilation.
+  void DependOnObjectSlotValue(const HeapObjectRef& object, int offset,
+                               const ObjectRef& value);
+
   void DependOnOwnConstantElement(const JSObjectRef& holder, uint32_t index,
                                   const ObjectRef& element);
 
@@ -154,10 +158,30 @@ class V8_EXPORT_PRIVATE CompilationDependencies : public ZoneObject {
       const MapRef& map, InternalIndex descriptor,
       const ObjectRef& /* Contains a FieldType underneath. */ type) const;
 
+#ifdef DEBUG
+  static bool IsFieldRepresentationDependencyOnMap(
+      const CompilationDependency* dep, const Handle<Map>& receiver_map);
+#endif  // DEBUG
+
+  struct CompilationDependencyHash {
+    size_t operator()(const CompilationDependency* dep) const;
+  };
+  struct CompilationDependencyEqual {
+    bool operator()(const CompilationDependency* lhs,
+                    const CompilationDependency* rhs) const;
+  };
+
  private:
+  bool PrepareInstall();
+  bool PrepareInstallPredictable();
+
+  using CompilationDependencySet =
+      ZoneUnorderedSet<const CompilationDependency*, CompilationDependencyHash,
+                       CompilationDependencyEqual>;
+
   Zone* const zone_;
   JSHeapBroker* const broker_;
-  ZoneForwardList<CompilationDependency const*> dependencies_;
+  CompilationDependencySet dependencies_;
 };
 
 }  // namespace compiler

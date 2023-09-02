@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,8 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeCost;
@@ -73,10 +75,12 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     private boolean propertyAssumptionCheckEnabled = true;
     @Child protected HasCacheNode cacheNode;
 
+    @NeverDefault
     public static HasPropertyCacheNode create(Object key, JSContext context, boolean hasOwnProperty) {
         return new HasPropertyCacheNode(key, context, hasOwnProperty);
     }
 
+    @NeverDefault
     public static HasPropertyCacheNode create(Object key, JSContext context) {
         return create(key, context, false);
     }
@@ -244,6 +248,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             this.readBindingNode = ReadImportBindingNode.create();
         }
 
+        @SuppressWarnings("deprecation")
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             JSModuleNamespaceObject store = (JSModuleNamespaceObject) receiverCheck.getStore(thisObj);
@@ -281,6 +286,7 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
+        @InliningCutoff
         @Override
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             if (JSDynamicObject.isJSDynamicObject(thisObj)) {

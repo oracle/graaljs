@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArrayFactory;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -73,6 +74,7 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -189,6 +191,8 @@ public class Deserializer {
                 return readHostObject();
             case ERROR:
                 return readJSError(realm);
+            case WASM_MODULE_TRANSFER:
+                return readWasmModuleTransfer();
             case SHARED_JAVA_OBJECT:
                 return readSharedJavaObject(realm);
             default:
@@ -331,7 +335,7 @@ public class Deserializer {
 
     private JSDynamicObject readJSArrayBuffer(JSContext context, JSRealm realm) {
         int byteLength = readVarInt();
-        JSDynamicObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, byteLength);
+        JSArrayBufferObject arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, byteLength);
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         for (int i = 0; i < byteLength; i++) {
             byteBuffer.put(i, buffer.get());
@@ -445,7 +449,7 @@ public class Deserializer {
         return array;
     }
 
-    private JSDynamicObject readJSArrayBufferView(JSContext context, JSRealm realm, JSDynamicObject arrayBuffer) {
+    private JSDynamicObject readJSArrayBufferView(JSContext context, JSRealm realm, JSArrayBufferObject arrayBuffer) {
         assert JSArrayBuffer.isJSDirectOrSharedArrayBuffer(arrayBuffer);
         SerializationTag arrayBufferViewTag = readTag();
         assert arrayBufferViewTag == SerializationTag.ARRAY_BUFFER_VIEW;
@@ -535,7 +539,7 @@ public class Deserializer {
             throw Errors.createError("Invalid transfer id " + id);
         }
         assignId(arrayBuffer);
-        return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, realm, arrayBuffer) : arrayBuffer;
+        return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, realm, (JSArrayBufferObject) arrayBuffer) : arrayBuffer;
     }
 
     public Object readSharedArrayBuffer(JSContext context, JSRealm realm) {
@@ -543,7 +547,14 @@ public class Deserializer {
         Object sharedArrayBuffer = NativeAccess.getSharedArrayBufferFromId(delegate, id);
         assert JSSharedArrayBuffer.isJSSharedArrayBuffer(sharedArrayBuffer);
         assignId(sharedArrayBuffer);
-        return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, realm, (JSDynamicObject) sharedArrayBuffer) : sharedArrayBuffer;
+        return (peekTag() == SerializationTag.ARRAY_BUFFER_VIEW) ? readJSArrayBufferView(context, realm, (JSArrayBufferObject) sharedArrayBuffer) : sharedArrayBuffer;
+    }
+
+    public Object readWasmModuleTransfer() {
+        int id = readVarInt();
+        Object wasmModule = NativeAccess.getWasmModuleFromId(delegate, id);
+        assert JSWebAssemblyModule.isJSWebAssemblyModule(wasmModule);
+        return assignId(wasmModule);
     }
 
     public Object readSharedJavaObject(JSRealm realm) {

@@ -22,6 +22,7 @@
 'use strict';
 
 const {
+  Boolean,
   Int8Array,
   ObjectCreate,
   ObjectKeys,
@@ -35,9 +36,13 @@ const { encodeStr, hexTable } = require('internal/querystring');
 const querystring = require('querystring');
 
 const {
-  ERR_INVALID_ARG_TYPE
+  ERR_INVALID_ARG_TYPE,
+  ERR_INVALID_URL,
 } = require('internal/errors').codes;
-const { validateString } = require('internal/validators');
+const {
+  validateString,
+  validateObject,
+} = require('internal/validators');
 
 // This ensures setURLConstructor() is called before the native
 // URL::ToObject() method is used.
@@ -50,10 +55,13 @@ const {
   domainToASCII,
   domainToUnicode,
   fileURLToPath,
-  formatSymbol,
   pathToFileURL,
   urlToHttpOptions,
 } = require('internal/url');
+
+const bindingUrl = internalBinding('url');
+
+const { getOptionValue } = require('internal/options');
 
 // Original url.parse() API
 
@@ -127,16 +135,6 @@ const {
   CHAR_LEFT_CURLY_BRACKET,
   CHAR_RIGHT_CURLY_BRACKET,
   CHAR_QUESTION_MARK,
-  CHAR_LOWERCASE_A,
-  CHAR_LOWERCASE_Z,
-  CHAR_UPPERCASE_A,
-  CHAR_UPPERCASE_Z,
-  CHAR_DOT,
-  CHAR_0,
-  CHAR_9,
-  CHAR_HYPHEN_MINUS,
-  CHAR_PLUS,
-  CHAR_UNDERSCORE,
   CHAR_DOUBLE_QUOTE,
   CHAR_SINGLE_QUOTE,
   CHAR_PERCENT,
@@ -146,9 +144,23 @@ const {
   CHAR_GRAVE_ACCENT,
   CHAR_VERTICAL_LINE,
   CHAR_AT,
+  CHAR_COLON,
 } = require('internal/constants');
 
+let urlParseWarned = false;
+
 function urlParse(url, parseQueryString, slashesDenoteHost) {
+  if (!urlParseWarned && getOptionValue('--pending-deprecation')) {
+    urlParseWarned = true;
+    process.emitWarning(
+      '`url.parse()` behavior is not standardized and prone to ' +
+      'errors that have security implications. Use the WHATWG URL API ' +
+      'instead. CVEs are not issued for `url.parse()` vulnerabilities.',
+      'DeprecationWarning',
+      'DEP0169',
+    );
+  }
+
   if (url instanceof Url) return url;
 
   const urlObject = new Url();
@@ -163,6 +175,22 @@ function isIpv6Hostname(hostname) {
     CHAR_RIGHT_SQUARE_BRACKET
   );
 }
+
+// This prevents some common spoofing bugs due to our use of IDNA toASCII. For
+// compatibility, the set of characters we use here is the *intersection* of
+// "forbidden host code point" in the WHATWG URL Standard [1] and the
+// characters in the host parsing loop in Url.prototype.parse, with the
+// following additions:
+//
+// - ':' since this could cause a "protocol spoofing" bug
+// - '@' since this could cause parts of the hostname to be confused with auth
+// - '[' and ']' since this could cause a non-IPv6 hostname to be interpreted
+//   as IPv6 by isIpv6Hostname above
+//
+// [1]: https://url.spec.whatwg.org/#forbidden-host-code-point
+const forbiddenHostChars = /[\0\t\n\r #%/:<>?@[\\\]^|]/;
+// For IPv6, permit '[', ']', and ':'.
+const forbiddenHostCharsIpv6 = /[\0\t\n\r #%/<>?@\\^|]/;
 
 Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
   validateString(url, 'url');
@@ -311,6 +339,10 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
         case CHAR_TAB:
         case CHAR_LINE_FEED:
         case CHAR_CARRIAGE_RETURN:
+          // WHATWG URL removes tabs, newlines, and carriage returns. Let's do that too.
+          rest = rest.slice(0, i) + rest.slice(i + 1);
+          i -= 1;
+          break;
         case CHAR_SPACE:
         case CHAR_DOUBLE_QUOTE:
         case CHAR_PERCENT:
@@ -385,15 +417,34 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
       this.hostname = this.hostname.toLowerCase();
     }
 
-    if (!ipv6Hostname) {
-      // IDNA Support: Returns a punycoded representation of "domain".
-      // It only converts parts of the domain name that
-      // have non-ASCII characters, i.e. it doesn't matter if
-      // you call it with a domain that already is ASCII-only.
+    if (this.hostname !== '') {
+      if (ipv6Hostname) {
+        if (forbiddenHostCharsIpv6.test(this.hostname)) {
+          throw new ERR_INVALID_URL(url);
+        }
+      } else {
+        // IDNA Support: Returns a punycoded representation of "domain".
+        // It only converts parts of the domain name that
+        // have non-ASCII characters, i.e. it doesn't matter if
+        // you call it with a domain that already is ASCII-only.
 
-      // Use lenient mode (`true`) to try to support even non-compliant
-      // URLs.
-      this.hostname = toASCII(this.hostname, true);
+        // Use lenient mode (`true`) to try to support even non-compliant
+        // URLs.
+        this.hostname = toASCII(this.hostname, true);
+
+        // Prevent two potential routes of hostname spoofing.
+        // 1. If this.hostname is empty, it must have become empty due to toASCII
+        //    since we checked this.hostname above.
+        // 2. If any of forbiddenHostChars appears in this.hostname, it must have
+        //    also gotten in due to toASCII. This is since getHostname would have
+        //    filtered them out otherwise.
+        // Rather than trying to correct this by moving the non-host part into
+        // the pathname as we've done in getHostname, throw an exception to
+        // convey the severity of this issue.
+        if (this.hostname === '' || forbiddenHostChars.test(this.hostname)) {
+          throw new ERR_INVALID_URL(url);
+        }
+      }
     }
 
     const p = this.port ? ':' + this.port : '';
@@ -478,16 +529,12 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
 function getHostname(self, rest, hostname) {
   for (let i = 0; i < hostname.length; ++i) {
     const code = hostname.charCodeAt(i);
-    const isValid = (code >= CHAR_LOWERCASE_A && code <= CHAR_LOWERCASE_Z) ||
-                    code === CHAR_DOT ||
-                    (code >= CHAR_UPPERCASE_A && code <= CHAR_UPPERCASE_Z) ||
-                    (code >= CHAR_0 && code <= CHAR_9) ||
-                    code === CHAR_HYPHEN_MINUS ||
-                    code === CHAR_PLUS ||
-                    code === CHAR_UNDERSCORE ||
-                    code > 127;
+    const isValid = (code !== CHAR_FORWARD_SLASH &&
+                     code !== CHAR_BACKWARD_SLASH &&
+                     code !== CHAR_HASH &&
+                     code !== CHAR_QUESTION_MARK &&
+                     code !== CHAR_COLON);
 
-    // Invalid host character
     if (!isValid) {
       self.hostname = hostname.slice(0, i);
       return `/${hostname.slice(i)}${rest}`;
@@ -552,13 +599,36 @@ function urlFormat(urlObject, options) {
   } else if (typeof urlObject !== 'object' || urlObject === null) {
     throw new ERR_INVALID_ARG_TYPE('urlObject',
                                    ['Object', 'string'], urlObject);
-  } else if (!(urlObject instanceof Url)) {
-    const format = urlObject[formatSymbol];
-    return format ?
-      format.call(urlObject, options) :
-      Url.prototype.format.call(urlObject);
+  } else if (urlObject instanceof URL) {
+    let fragment = true;
+    let unicode = false;
+    let search = true;
+    let auth = true;
+
+    if (options) {
+      validateObject(options, 'options');
+
+      if (options.fragment != null) {
+        fragment = Boolean(options.fragment);
+      }
+
+      if (options.unicode != null) {
+        unicode = Boolean(options.unicode);
+      }
+
+      if (options.search != null) {
+        search = Boolean(options.search);
+      }
+
+      if (options.auth != null) {
+        auth = Boolean(options.auth);
+      }
+    }
+
+    return bindingUrl.format(urlObject.href, fragment, unicode, search, auth);
   }
-  return urlObject.format();
+
+  return Url.prototype.format.call(urlObject);
 }
 
 // These characters do not need escaping:
@@ -575,7 +645,7 @@ const noEscapeAuth = new Int8Array([
   0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x40 - 0x4F
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, // 0x50 - 0x5F
   0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x60 - 0x6F
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0,  // 0x70 - 0x7F
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, // 0x70 - 0x7F
 ]);
 
 Url.prototype.format = function format() {

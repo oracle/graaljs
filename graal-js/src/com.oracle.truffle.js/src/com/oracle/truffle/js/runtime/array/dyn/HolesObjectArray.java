@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetHol
 
 import java.util.List;
 
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
@@ -63,7 +64,7 @@ public final class HolesObjectArray extends AbstractContiguousObjectArray {
         HolesObjectArray arrayType = createHolesObjectArray().setIntegrityLevel(integrityLevel);
         setArrayProperties(object, array, length, usedLength, indexOffset, arrayOffset);
         arraySetHoleCount(object, holeCount);
-        assert holeCount == arrayType.countHoles(object) : String.format("holeCount, %d, differs from the actual count, %d", holeCount, arrayType.countHoles(object));
+        assert arrayType.assertHoleCount(object);
         return arrayType;
     }
 
@@ -136,13 +137,8 @@ public final class HolesObjectArray extends AbstractContiguousObjectArray {
     }
 
     @Override
-    protected void incrementHolesCount(JSDynamicObject object, int offset) {
-        arraySetHoleCount(object, arrayGetHoleCount(object) + offset);
-    }
-
-    @Override
-    public int prepareInBounds(JSDynamicObject object, int index, ProfileHolder profile) {
-        return prepareInBoundsHoles(object, index, profile);
+    public int prepareInBounds(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
+        return prepareInBoundsHoles(object, index, node, profile);
     }
 
     @Override
@@ -151,8 +147,8 @@ public final class HolesObjectArray extends AbstractContiguousObjectArray {
     }
 
     @Override
-    public int prepareSupported(JSDynamicObject object, int index, ProfileHolder profile) {
-        return prepareSupportedHoles(object, index, profile);
+    public int prepareSupported(JSDynamicObject object, int index, Node node, SetSupportedProfileAccess profile) {
+        return prepareSupportedHoles(object, index, node, profile);
     }
 
     @Override

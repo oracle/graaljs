@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.binary;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -125,7 +126,7 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
 
     @Specialization
     protected int doDouble(double a,
-                    @Cached("create()") JSToInt32Node leftInt32Node) {
+                    @Cached JSToInt32Node leftInt32Node) {
         return leftInt32Node.executeInt(a) >> shiftValue;
     }
 
@@ -134,6 +135,7 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
         throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
+    @InliningCutoff
     @Specialization
     protected Object doOverloaded(JSOverloadedOperatorsObject a,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
@@ -146,7 +148,7 @@ public abstract class JSRightShiftConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
     protected int doGeneric(Object a,
-                    @Cached("create()") JSToNumericNode leftToNumeric,
+                    @Cached JSToNumericNode leftToNumeric,
                     @Cached("makeCopy()") JSRightShiftConstantNode innerShiftNode) {
         Object leftOperand = leftToNumeric.execute(a);
         return innerShiftNode.executeInt(leftOperand);

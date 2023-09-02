@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,9 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -73,11 +75,13 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -106,24 +110,31 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     private boolean propertyAssumptionCheckEnabled;
     @Child protected SetCacheNode cacheNode;
 
+    @NeverDefault
     public static PropertySetNode create(Object key, boolean isGlobal, JSContext context, boolean isStrict) {
         final boolean setOwnProperty = false;
         return createImpl(key, isGlobal, context, isStrict, setOwnProperty, JSAttributes.getDefault());
     }
 
+    @NeverDefault
     public static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags) {
         return createImpl(key, isGlobal, context, isStrict, setOwnProperty, attributeFlags, false, false);
     }
 
+    @NeverDefault
     public static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags, boolean declaration) {
         return createImpl(key, isGlobal, context, isStrict, setOwnProperty, attributeFlags, declaration, false);
     }
 
+    @NeverDefault
     public static PropertySetNode createImpl(Object key, boolean isGlobal, JSContext context, boolean isStrict, boolean setOwnProperty, int attributeFlags, boolean declaration,
                     boolean superProperty) {
-        return new PropertySetNode(key, context, isGlobal, isStrict, setOwnProperty, attributeFlags, declaration, superProperty);
+        boolean privateSymbol = JSRuntime.isPrivateSymbol(key);
+        int flags = attributeFlags | (privateSymbol ? JSAttributes.NOT_ENUMERABLE : 0);
+        return new PropertySetNode(key, context, isGlobal, isStrict, setOwnProperty || privateSymbol, flags, declaration, superProperty);
     }
 
+    @NeverDefault
     public static PropertySetNode createSetHidden(HiddenKey key, JSContext context) {
         return createImpl(key, false, context, false, true, 0);
     }
@@ -402,7 +413,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         public ObjectPropertySetNode(Property property, ReceiverCheckNode shapeCheck) {
             super(shapeCheck);
             this.location = property.getLocation();
-            assert JSProperty.isData(property) && JSProperty.isWritable(property) && !JSProperty.isProxy(property) : property;
+            assert JSProperty.isData(property) && JSProperty.isWritable(property) && !JSProperty.isDataSpecial(property) : property;
         }
 
         @Override
@@ -777,15 +788,16 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Child private JSToObjectNode toObjectNode;
         @Child private ForeignPropertySetNode foreignSetNode;
         private final JSClassProfile jsclassProfile = JSClassProfile.create();
-        private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isStrictSymbol = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isForeignObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isObject = ConditionProfile.create();
+        private final ConditionProfile isStrictSymbol = ConditionProfile.create();
+        private final ConditionProfile isForeignObject = ConditionProfile.create();
 
-        public GenericPropertySetNode(JSContext context) {
+        public GenericPropertySetNode() {
             super(null);
-            this.toObjectNode = JSToObjectNode.createToObjectNoCheck(context);
+            this.toObjectNode = JSToObjectNode.create();
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             if (isObject.profile(JSDynamicObject.isJSDynamicObject(thisObj))) {
@@ -795,7 +807,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             } else if (isForeignObject.profile(JSGuards.isForeignObject(thisObj))) {
                 if (foreignSetNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
-                    foreignSetNode = insert(new ForeignPropertySetNode(root.getContext()));
+                    foreignSetNode = insert(new ForeignPropertySetNode(root.getContext(), root.getKey()));
                 }
                 foreignSetNode.setValue(thisObj, value, receiver, root, guard);
             } else {
@@ -812,7 +824,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             } else if (root.isOwnProperty()) {
                 if (root.isDeclaration()) {
                     assert JSGlobal.isJSGlobalObject(thisJSObj) && !JSObject.hasProperty(thisJSObj, key);
-                    JSObjectUtil.putDeclaredDataProperty(root.getContext(), thisJSObj, key, value, root.getAttributeFlags());
+                    JSObjectUtil.defineConstantDataProperty(root.getContext(), thisJSObj, key, value, root.getAttributeFlags());
                 } else {
                     JSObject.defineOwnProperty(thisJSObj, key, PropertyDescriptor.createData(value, root.getAttributeFlags()), root.isStrict());
                 }
@@ -821,16 +833,19 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
             return setValue(thisObj, value, receiver, root, guard);
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
             return setValue(thisObj, value, receiver, root, guard);
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValueBoolean(Object thisObj, boolean value, Object receiver, PropertySetNode root, boolean guard) {
             return setValue(thisObj, value, receiver, root, guard);
@@ -845,12 +860,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Child private InteropLibrary interop;
         @Child private InteropLibrary setterInterop;
         private final BranchProfile errorBranch = BranchProfile.create();
+        private final boolean isLength;
 
-        public ForeignPropertySetNode(JSContext context) {
+        public ForeignPropertySetNode(JSContext context, Object key) {
             super(new ForeignLanguageCheckNode());
             this.context = context;
             this.export = ExportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
+            this.isLength = key.equals(JSAbstractArray.LENGTH);
         }
 
         private Object nullCheck(Object truffleObject, Object key) {
@@ -860,39 +877,36 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             return truffleObject;
         }
 
-        @Override
-        protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
+        private boolean setValueImpl(Object thisObj, Object value, PropertySetNode root) {
             Object key = root.getKey();
             Object truffleObject = nullCheck(thisObj, key);
             if (!Strings.isTString(key)) {
                 return false;
             }
+            if (isLength && interop.hasArrayElements(thisObj)) {
+                return JSInteropUtil.setArraySize(thisObj, value, root.isStrict, interop, this, errorBranch);
+            }
             return performWriteMember(truffleObject, value, root);
+        }
+
+        @Override
+        protected boolean setValueInt(Object thisObj, int value, Object receiver, PropertySetNode root, boolean guard) {
+            return setValueImpl(thisObj, value, root);
         }
 
         @Override
         protected boolean setValueDouble(Object thisObj, double value, Object receiver, PropertySetNode root, boolean guard) {
-            Object key = root.getKey();
-            Object truffleObject = nullCheck(thisObj, key);
-            if (!Strings.isTString(key)) {
-                return false;
-            }
-            return performWriteMember(truffleObject, value, root);
+            return setValueImpl(thisObj, value, root);
         }
 
+        @InliningCutoff
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
-            Object key = root.getKey();
-            Object truffleObject = nullCheck(thisObj, key);
-            if (!Strings.isTString(key)) {
-                return false;
-            }
-            Object exportedValue = export.execute(value);
-            return performWriteMember(truffleObject, exportedValue, root);
+            return setValueImpl(thisObj, export.execute(value), root);
         }
 
         private boolean performWriteMember(Object truffleObject, Object value, PropertySetNode root) {
-            if (context.getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
+            if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(truffleObject)) {
                 try {
                     interop.writeHashEntry(truffleObject, root.getKey(), value);
                     return true;
@@ -985,7 +999,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             JSDynamicObject store = receiverCheck.getStore(thisObj);
-            boolean ret = JSArray.setLength(store, value);
+            boolean ret = JSArray.setLength(store, value, this);
             if (!ret && isStrict) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorNotWritableProperty(JSArray.LENGTH, thisObj);
@@ -1000,7 +1014,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             assert JSArray.isJSFastArray(store);
             if (value < 0) {
                 errorBranch.enter();
-                throw Errors.createRangeErrorInvalidArrayLength();
+                throw Errors.createRangeErrorInvalidArrayLength(this);
             }
             arrayLengthWrite.executeVoid(store, value);
             return true;
@@ -1058,7 +1072,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
             return new PropertyProxySetNode(property, shapeCheck, isStrict());
         } else {
-            assert JSProperty.isWritable(property) && !JSProperty.isModuleNamespaceExport(property) && depth == 0 && !JSProperty.isProxy(property);
+            assert JSProperty.isWritable(property) && !JSProperty.isDataSpecial(property) && depth == 0;
             if (property.getLocation().isConstant() || !property.getLocation().canStore(value)) {
                 return createRedefinePropertyNode(key, shapeCheck, shapeCheck.getShape(), property);
             }
@@ -1077,6 +1091,11 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     private SetCacheNode createDefineNewPropertyNode(ReceiverCheckNode shapeCheck) {
         JSObjectUtil.checkForNoSuchPropertyOrMethod(context, key);
+        if (JSShape.hasNoElementsAssumption(shapeCheck.getShape())) {
+            if (context.getArrayPrototypeNoElementsAssumption().isValid() && JSRuntime.isArrayIndex(key)) {
+                context.getArrayPrototypeNoElementsAssumption().invalidate("Set element on an Array prototype");
+            }
+        }
         if (isDeclaration()) {
             return new DataPropertyPutConstantNode(key, shapeCheck);
         } else if (getAttributeFlags() == 0) {
@@ -1152,7 +1171,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @Override
     protected SetCacheNode createGenericPropertyNode() {
-        return new GenericPropertySetNode(context);
+        return new GenericPropertySetNode();
     }
 
     @Override
@@ -1179,7 +1198,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     @Override
     protected SetCacheNode createTruffleObjectPropertyNode() {
-        return new ForeignPropertySetNode(context);
+        return new ForeignPropertySetNode(context, getKey());
     }
 
     @Override
@@ -1195,16 +1214,16 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     @Override
     protected boolean canCombineShapeCheck(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
         assert shapesHaveCommonLayoutForKey(parentShape, cacheShape);
-        if (JSDynamicObject.isJSDynamicObject(thisObj) && JSProperty.isData(property)) {
-            if (JSProperty.isWritable(property) && depth == 0 && !superProperty && !JSProperty.isProxy(property)) {
-                return !property.getLocation().isConstant() && property.getLocation().canStore(value);
-            }
+        if (JSObject.isJSObject(thisObj) && JSProperty.isData(property) && !JSProperty.isDataSpecial(property) && JSProperty.isWritable(property) &&
+                        depth == 0 && !superProperty) {
+            return !property.getLocation().isConstant() && property.getLocation().canStore(value);
         }
         return false;
     }
 
     @Override
     protected SetCacheNode createCombinedIcPropertyNode(Shape parentShape, Shape cacheShape, Object thisObj, int depth, Object value, Property property) {
+        assert JSProperty.isData(property) && !JSProperty.isDataSpecial(property) : property;
         PropertyGetNode.CombinedShapeCheckNode shapeCheck = new PropertyGetNode.CombinedShapeCheckNode(parentShape, cacheShape);
 
         if (property.getLocation() instanceof com.oracle.truffle.api.object.IntLocation) {

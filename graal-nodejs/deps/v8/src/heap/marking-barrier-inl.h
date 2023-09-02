@@ -28,6 +28,8 @@ bool MarkingBarrier::MarkValue(HeapObject host, HeapObject value) {
     // visits the host object.
     return false;
   }
+  BasicMemoryChunk* target_page = BasicMemoryChunk::FromHeapObject(value);
+  if (is_shared_heap_ != target_page->InSharedHeap()) return false;
   if (WhiteToGreyAndPush(value)) {
     if (is_main_thread_barrier_) {
       incremental_marking_->RestartIfNotMarking();
@@ -38,6 +40,21 @@ bool MarkingBarrier::MarkValue(HeapObject host, HeapObject value) {
     }
   }
   return true;
+}
+
+template <typename TSlot>
+inline void MarkingBarrier::MarkRange(HeapObject host, TSlot start, TSlot end) {
+  auto* isolate = heap_->isolate();
+  for (TSlot slot = start; slot < end; ++slot) {
+    typename TSlot::TObject object = slot.Relaxed_Load();
+    HeapObject heap_object;
+    // Mark both, weak and strong edges.
+    if (object.GetHeapObject(isolate, &heap_object)) {
+      if (MarkValue(host, heap_object) && is_compacting_) {
+        collector_->RecordSlot(host, HeapObjectSlot(slot), heap_object);
+      }
+    }
+  }
 }
 
 bool MarkingBarrier::WhiteToGreyAndPush(HeapObject obj) {

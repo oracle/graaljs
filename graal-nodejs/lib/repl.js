@@ -43,7 +43,6 @@
 'use strict';
 
 const {
-  ArrayPrototypeConcat,
   ArrayPrototypeFilter,
   ArrayPrototypeFindIndex,
   ArrayPrototypeForEach,
@@ -52,6 +51,7 @@ const {
   ArrayPrototypeMap,
   ArrayPrototypePop,
   ArrayPrototypePush,
+  ArrayPrototypePushApply,
   ArrayPrototypeReverse,
   ArrayPrototypeShift,
   ArrayPrototypeSlice,
@@ -77,9 +77,7 @@ const {
   ReflectApply,
   RegExp,
   RegExpPrototypeExec,
-  RegExpPrototypeSymbolReplace,
   SafePromiseRace,
-  RegExpPrototypeSymbolSplit,
   SafeSet,
   SafeWeakSet,
   StringPrototypeCharAt,
@@ -99,19 +97,21 @@ const {
   globalThis,
 } = primordials;
 
-const { NativeModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule } = require('internal/bootstrap/loaders');
 const {
   makeRequireFunction,
-  addBuiltinLibsToObject
+  addBuiltinLibsToObject,
 } = require('internal/modules/cjs/helpers');
 const {
   isIdentifierStart,
-  isIdentifierChar
+  isIdentifierChar,
 } = require('internal/deps/acorn/acorn/dist/acorn');
 const {
   decorateErrorStack,
   isError,
-  deprecate
+  deprecate,
+  SideEffectFreeRegExpPrototypeSymbolReplace,
+  SideEffectFreeRegExpPrototypeSymbolSplit,
 } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
 const vm = require('vm');
@@ -119,9 +119,10 @@ const path = require('path');
 const fs = require('fs');
 const { Interface } = require('readline');
 const {
-  commonPrefix
+  commonPrefix,
 } = require('internal/readline/utils');
 const { Console } = require('console');
+const { shouldColorize } = require('internal/util/colors');
 const CJSModule = require('internal/modules/cjs/loader').Module;
 let _builtinLibs = ArrayPrototypeFilter(
   CJSModule.builtinModules,
@@ -130,7 +131,7 @@ let _builtinLibs = ArrayPrototypeFilter(
 const nodeSchemeBuiltinLibs = ArrayPrototypeMap(
   _builtinLibs, (lib) => `node:${lib}`);
 ArrayPrototypeForEach(
-  NativeModule.getSchemeOnlyModuleNames(),
+  BuiltinModule.getSchemeOnlyModuleNames(),
   (lib) => ArrayPrototypePush(nodeSchemeBuiltinLibs, `node:${lib}`),
 );
 const domain = require('domain');
@@ -154,7 +155,7 @@ const {
   validateObject,
 } = require('internal/validators');
 const experimentalREPLAwait = getOptionValue(
-  '--experimental-repl-await'
+  '--experimental-repl-await',
 );
 const pendingDeprecation = getOptionValue('--pending-deprecation');
 const {
@@ -166,15 +167,15 @@ const {
   setupReverseSearch,
 } = require('internal/repl/utils');
 const {
-  getOwnNonIndexProperties,
-  propertyFilter: {
+  constants: {
     ALL_PROPERTIES,
-    SKIP_SYMBOLS
-  }
+    SKIP_SYMBOLS,
+  },
+  getOwnNonIndexProperties,
 } = internalBinding('util');
 const {
   startSigintWatchdog,
-  stopSigintWatchdog
+  stopSigintWatchdog,
 } = internalBinding('contextify');
 
 const history = require('internal/repl/history');
@@ -272,11 +273,7 @@ function REPLServer(prompt,
 
   if (options.terminal && options.useColors === undefined) {
     // If possible, check if stdout supports colors or not.
-    if (options.output.hasColors) {
-      options.useColors = options.output.hasColors();
-    } else if (process.env.NODE_DISABLE_COLORS === undefined) {
-      options.useColors = true;
-    }
+    options.useColors = shouldColorize(options.output) || process.env.NODE_DISABLE_COLORS === undefined;
   }
 
   // TODO(devsnek): Add a test case for custom eval functions.
@@ -298,7 +295,7 @@ function REPLServer(prompt,
                 'DEP0141') :
       (val) => this.input = val,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
   ObjectDefineProperty(this, 'outputStream', {
     __proto__: null,
@@ -315,7 +312,7 @@ function REPLServer(prompt,
                 'DEP0141') :
       (val) => this.output = val,
     enumerable: false,
-    configurable: true
+    configurable: true,
   });
 
   this.allowBlockingCompletions = !!options.allowBlockingCompletions;
@@ -456,7 +453,7 @@ function REPLServer(prompt,
 
           // Remove all "await"s and attempt running the script
           // in order to detect if error is truly non recoverable
-          const fallbackCode = RegExpPrototypeSymbolReplace(/\bawait\b/g, code, '');
+          const fallbackCode = SideEffectFreeRegExpPrototypeSymbolReplace(/\bawait\b/g, code, '');
           try {
             vm.createScript(fallbackCode, {
               filename: file,
@@ -464,7 +461,7 @@ function REPLServer(prompt,
               importModuleDynamically: (specifier, _, importAssertions) => {
                 return asyncESM.esmLoader.import(specifier, parentURL,
                                                  importAssertions);
-              }
+              },
             });
           } catch (fallbackError) {
             if (isRecoverableError(fallbackError, fallbackCode)) {
@@ -508,7 +505,7 @@ function REPLServer(prompt,
             importModuleDynamically: (specifier, _, importAssertions) => {
               return asyncESM.esmLoader.import(specifier, parentURL,
                                                importAssertions);
-            }
+            },
           });
         } catch (e) {
           debug('parse error %j', code, e);
@@ -565,7 +562,7 @@ function REPLServer(prompt,
         try {
           const scriptOptions = {
             displayErrors: false,
-            breakOnSigint: self.breakEvalOnSigint
+            breakOnSigint: self.breakEvalOnSigint,
           };
 
           if (self.useGlobal) {
@@ -655,7 +652,7 @@ function REPLServer(prompt,
           // find the first frame with a null function name
           const idx = ArrayPrototypeFindIndex(
             ArrayPrototypeReverse(stackFrames),
-            (frame) => frame.getFunctionName() === null
+            (frame) => frame.getFunctionName() === null,
           );
           // If found, get rid of it and everything below it
           frames = ArrayPrototypeSplice(stackFrames, idx + 1);
@@ -685,25 +682,25 @@ function REPLServer(prompt,
         if (e.stack) {
           if (e.name === 'SyntaxError') {
             // Remove stack trace.
-            e.stack = RegExpPrototypeSymbolReplace(
+            e.stack = SideEffectFreeRegExpPrototypeSymbolReplace(
               /^\s+at\s.*\n?/gm,
-              RegExpPrototypeSymbolReplace(/^REPL\d+:\d+\r?\n/, e.stack, ''),
+              SideEffectFreeRegExpPrototypeSymbolReplace(/^REPL\d+:\d+\r?\n/, e.stack, ''),
               '');
             const importErrorStr = 'Cannot use import statement outside a ' +
               'module';
             if (StringPrototypeIncludes(e.message, importErrorStr)) {
               e.message = 'Cannot use import statement inside the Node.js ' +
                 'REPL, alternatively use dynamic import';
-              e.stack = RegExpPrototypeSymbolReplace(
+              e.stack = SideEffectFreeRegExpPrototypeSymbolReplace(
                 /SyntaxError:.*\n/,
                 e.stack,
                 `SyntaxError: ${e.message}\n`);
             }
           } else if (self.replMode === module.exports.REPL_MODE_STRICT) {
-            e.stack = RegExpPrototypeSymbolReplace(
+            e.stack = SideEffectFreeRegExpPrototypeSymbolReplace(
               /(\s+at\s+REPL\d+:)(\d+)/,
               e.stack,
-              (_, pre, line) => pre + (line - 1)
+              (_, pre, line) => pre + (line - 1),
             );
           }
         }
@@ -732,7 +729,7 @@ function REPLServer(prompt,
       if (errStack === '') {
         errStack = self.writer(e);
       }
-      const lines = RegExpPrototypeSymbolSplit(/(?<=\n)/, errStack);
+      const lines = SideEffectFreeRegExpPrototypeSymbolSplit(/(?<=\n)/, errStack);
       let matched = false;
 
       errStack = '';
@@ -773,7 +770,7 @@ function REPLServer(prompt,
     completer: options.completer || completer,
     terminal: options.terminal,
     historySize: options.historySize,
-    prompt
+    prompt,
   }]);
 
   self.resetContext();
@@ -799,7 +796,7 @@ function REPLServer(prompt,
           return ObjectAssign(writer.options, options);
         },
         enumerable: true,
-        configurable: true
+        configurable: true,
       });
     }
   }
@@ -844,7 +841,7 @@ function REPLServer(prompt,
         return;
       }
       self.output.write(
-        '(To exit, press Ctrl+C again or Ctrl+D or type .exit)\n'
+        '(To exit, press Ctrl+C again or Ctrl+D or type .exit)\n',
       );
       sawSIGINT = true;
     } else {
@@ -973,12 +970,12 @@ function REPLServer(prompt,
 
   const {
     clearPreview,
-    showPreview
+    showPreview,
   } = setupPreview(
     this,
     kContextId,
     kBufferedCommandSymbol,
-    preview
+    preview,
   );
 
   // Wrap readline tty to enable editor mode and pausing.
@@ -999,9 +996,8 @@ function REPLServer(prompt,
       clearPreview(key);
       if (!reverseSearch(d, key)) {
         ttyWrite(d, key);
-        if (key.name !== 'escape') {
-          showPreview();
-        }
+        const showCompletionPreview = key.name !== 'escape';
+        showPreview(showCompletionPreview);
       }
       return;
     }
@@ -1062,13 +1058,13 @@ REPLServer.prototype.close = function close() {
   if (this.terminal && this._flushing && !this._closingOnFlush) {
     this._closingOnFlush = true;
     this.once('flushHistory', () =>
-      ReflectApply(Interface.prototype.close, this, [])
+      ReflectApply(Interface.prototype.close, this, []),
     );
 
     return;
   }
   process.nextTick(() =>
-    ReflectApply(Interface.prototype.close, this, [])
+    ReflectApply(Interface.prototype.close, this, []),
   );
 };
 
@@ -1103,7 +1099,7 @@ REPLServer.prototype.createContext = function() {
       __proto__: null,
       configurable: true,
       writable: true,
-      value: _console
+      value: _console,
     });
   }
 
@@ -1114,13 +1110,13 @@ REPLServer.prototype.createContext = function() {
     __proto__: null,
     configurable: true,
     writable: true,
-    value: replModule
+    value: replModule,
   });
   ObjectDefineProperty(context, 'require', {
     __proto__: null,
     configurable: true,
     writable: true,
-    value: makeRequireFunction(replModule)
+    value: makeRequireFunction(replModule),
   });
 
   addBuiltinLibsToObject(context, '<REPL>');
@@ -1146,7 +1142,7 @@ REPLServer.prototype.resetContext = function() {
         this.underscoreAssigned = true;
         this.output.write('Expression assignment to _ now disabled.\n');
       }
-    }
+    },
   });
 
   ObjectDefineProperty(this.context, '_error', {
@@ -1160,7 +1156,7 @@ REPLServer.prototype.resetContext = function() {
         this.output.write(
           'Expression assignment to _error now disabled.\n');
       }
-    }
+    },
   });
 
   // Allow REPL extensions to extend the new context
@@ -1246,7 +1242,7 @@ function getGlobalLexicalScopeNames(contextId) {
   return sendInspectorCommand((session) => {
     let names = [];
     session.post('Runtime.globalLexicalScopeNames', {
-      executionContextId: contextId
+      executionContextId: contextId,
     }, (error, result) => {
       if (!error) names = result.names;
     });
@@ -1280,9 +1276,9 @@ function completeFSFunctions(match) {
   const completions = ArrayPrototypeMap(
     ArrayPrototypeFilter(
       fileList,
-      (dirent) => StringPrototypeStartsWith(dirent.name, baseName)
+      (dirent) => StringPrototypeStartsWith(dirent.name, baseName),
     ),
-    (d) => d.name
+    (d) => d.name,
   );
 
   return [[completions], baseName];
@@ -1337,7 +1333,9 @@ function complete(line, callback) {
       } else if (RegExpPrototypeExec(/^\.\.?\//, completeOn) !== null) {
         paths = [process.cwd()];
       } else {
-        paths = ArrayPrototypeConcat(module.paths, CJSModule.globalPaths);
+        paths = [];
+        ArrayPrototypePushApply(paths, module.paths);
+        ArrayPrototypePushApply(paths, CJSModule.globalPaths);
       }
 
       ArrayPrototypeForEach(paths, (dir) => {
@@ -1362,7 +1360,7 @@ function complete(line, callback) {
           const absolute = path.resolve(dir, dirent.name);
           if (ArrayPrototypeSome(
             gracefulReaddir(absolute) || [],
-            (subfile) => ArrayPrototypeIncludes(indexes, subfile)
+            (subfile) => ArrayPrototypeIncludes(indexes, subfile),
           )) {
             ArrayPrototypePush(group, `${subdir}${dirent.name}`);
           }
@@ -1557,7 +1555,7 @@ function complete(line, callback) {
           // behavior.
           return StringPrototypeStartsWith(
             StringPrototypeToLocaleLowerCase(str),
-            lowerCaseFilter
+            lowerCaseFilter,
           );
         });
         if (filteredGroup.length) {
@@ -1668,7 +1666,7 @@ function _memory(cmd) {
         // scope will not work for this function.
         ArrayPrototypePush(self.lines.level, {
           line: self.lines.length - 1,
-          depth: depth
+          depth: depth,
         });
       } else if (depth < 0) {
         // Going... up.
@@ -1718,7 +1716,7 @@ function defineDefaultCommands(repl) {
     action: function() {
       this.clearBufferedCommand();
       this.displayPrompt();
-    }
+    },
   });
 
   let clearMessage;
@@ -1736,14 +1734,14 @@ function defineDefaultCommands(repl) {
         this.resetContext();
       }
       this.displayPrompt();
-    }
+    },
   });
 
   repl.defineCommand('exit', {
     help: 'Exit the REPL',
     action: function() {
       this.close();
-    }
+    },
   });
 
   repl.defineCommand('help', {
@@ -1751,7 +1749,7 @@ function defineDefaultCommands(repl) {
     action: function() {
       const names = ArrayPrototypeSort(ObjectKeys(this.commands));
       const longestNameLength = MathMaxApply(
-        ArrayPrototypeMap(names, (name) => name.length)
+        ArrayPrototypeMap(names, (name) => name.length),
       );
       ArrayPrototypeForEach(names, (name) => {
         const cmd = this.commands[name];
@@ -1763,7 +1761,7 @@ function defineDefaultCommands(repl) {
       this.output.write('\nPress Ctrl+C to abort current expression, ' +
         'Ctrl+D to exit the REPL\n');
       this.displayPrompt();
-    }
+    },
   });
 
   repl.defineCommand('save', {
@@ -1776,7 +1774,7 @@ function defineDefaultCommands(repl) {
         this.output.write(`Failed to save: ${file}\n`);
       }
       this.displayPrompt();
-    }
+    },
   });
 
   repl.defineCommand('load', {
@@ -1792,14 +1790,14 @@ function defineDefaultCommands(repl) {
           this.write('\n');
         } else {
           this.output.write(
-            `Failed to load: ${file} is not a valid file\n`
+            `Failed to load: ${file} is not a valid file\n`,
           );
         }
       } catch {
         this.output.write(`Failed to load: ${file}\n`);
       }
       this.displayPrompt();
-    }
+    },
   });
   if (repl.terminal) {
     repl.defineCommand('editor', {
@@ -1808,7 +1806,7 @@ function defineDefaultCommands(repl) {
         _turnOnEditorMode(this);
         this.output.write(
           '// Entering editor mode (Ctrl+D to finish, Ctrl+C to cancel)\n');
-      }
+      },
     });
   }
 }
@@ -1825,7 +1823,7 @@ module.exports = {
   REPLServer,
   REPL_MODE_SLOPPY,
   REPL_MODE_STRICT,
-  Recoverable
+  Recoverable,
 };
 
 ObjectDefineProperty(module.exports, 'builtinModules', {
@@ -1833,7 +1831,7 @@ ObjectDefineProperty(module.exports, 'builtinModules', {
   get: () => _builtinLibs,
   set: (val) => _builtinLibs = val,
   enumerable: true,
-  configurable: true
+  configurable: true,
 });
 
 ObjectDefineProperty(module.exports, '_builtinLibs', {
@@ -1841,13 +1839,13 @@ ObjectDefineProperty(module.exports, '_builtinLibs', {
   get: pendingDeprecation ? deprecate(
     () => _builtinLibs,
     'repl._builtinLibs is deprecated. Check module.builtinModules instead',
-    'DEP0142'
+    'DEP0142',
   ) : () => _builtinLibs,
   set: pendingDeprecation ? deprecate(
     (val) => _builtinLibs = val,
     'repl._builtinLibs is deprecated. Check module.builtinModules instead',
-    'DEP0142'
+    'DEP0142',
   ) : (val) => _builtinLibs = val,
   enumerable: false,
-  configurable: true
+  configurable: true,
 });

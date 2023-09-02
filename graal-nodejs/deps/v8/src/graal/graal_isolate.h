@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,6 +130,7 @@ enum GraalAccessMethod {
     value_strict_equals,
     value_instance_of,
     value_type_of,
+    value_to_detail_string,
     object_new,
     object_set,
     object_set_index,
@@ -143,6 +144,7 @@ enum GraalAccessMethod {
     object_get_own_property_descriptor,
     object_has,
     object_has_own_property,
+    object_has_private,
     object_has_real_named_property,
     object_delete,
     object_delete_index,
@@ -155,6 +157,8 @@ enum GraalAccessMethod {
     object_get_property_names,
     object_get_own_property_names,
     object_creation_context,
+    object_create_data_property,
+    object_create_data_property_index,
     object_define_property,
     object_preview_entries,
     object_set_integrity_level,
@@ -170,9 +174,8 @@ enum GraalAccessMethod {
     array_buffer_view_buffer,
     array_buffer_view_byte_length,
     array_buffer_view_byte_offset,
-    array_buffer_is_external,
-    array_buffer_externalize,
     array_buffer_detach,
+    array_buffer_was_detached,
     typed_array_length,
     uint8_array_new,
     uint8_clamped_array_new,
@@ -271,6 +274,7 @@ enum GraalAccessMethod {
     context_get_embedder_data,
     context_get_extras_binding_object,
     context_set_promise_hooks,
+    context_is_code_generation_from_strings_allowed,
     try_catch_exception,
     try_catch_has_terminated,
     message_get_script_resource_name,
@@ -278,6 +282,8 @@ enum GraalAccessMethod {
     message_get_source_line,
     message_get_start_column,
     message_get_stack_trace,
+    message_get_start_position,
+    message_get_end_position,
     message_get,
     stack_trace_current_stack_trace,
     stack_frame_get_line_number,
@@ -324,6 +330,7 @@ enum GraalAccessMethod {
     symbol_new,
     symbol_name,
     symbol_for,
+    symbol_for_api,
     symbol_get_async_iterator,
     symbol_get_has_instance,
     symbol_get_is_concat_spreadable,
@@ -335,6 +342,8 @@ enum GraalAccessMethod {
     symbol_get_to_primitive,
     symbol_get_to_string_tag,
     symbol_get_unscopables,
+    symbol_private_for_api,
+    symbol_private_new,
     promise_result,
     promise_state,
     promise_resolver_new,
@@ -344,8 +353,6 @@ enum GraalAccessMethod {
     module_instantiate,
     module_evaluate,
     module_get_status,
-    module_get_requests_length,
-    module_get_request,
     module_get_namespace,
     module_get_identity_hash,
     module_get_exception,
@@ -389,7 +396,6 @@ enum GraalAccessMethod {
     set_new,
     set_add,
     shared_array_buffer_new,
-    shared_array_buffer_is_external,
     shared_array_buffer_get_contents,
     shared_array_buffer_externalize,
     shared_array_buffer_byte_length,
@@ -397,6 +403,8 @@ enum GraalAccessMethod {
     backing_store_register_callback,
     fixed_array_length,
     fixed_array_get,
+    wasm_module_object_get_compiled_module,
+    wasm_module_object_from_compiled_module,
 
     count // Should be the last item of GraalAccessMethod
 };
@@ -451,10 +459,12 @@ public:
     void NotifyPromiseRejectCallback(v8::PromiseRejectMessage message);
     void SetImportMetaInitializer(v8::HostInitializeImportMetaObjectCallback callback);
     void NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta, v8::Local<v8::Module> module);
-    void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyWithImportAssertionsCallback callback);
-    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
+    void SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback);
+    v8::MaybeLocal<v8::Promise> NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions);
     void SetPrepareStackTraceCallback(v8::PrepareStackTraceCallback callback);
     v8::MaybeLocal<v8::Value> NotifyPrepareStackTraceCallback(v8::Local<v8::Context> context, v8::Local<v8::Value> error, v8::Local<v8::Array> sites);
+    void SetWasmStreamingCallback(v8::WasmStreamingCallback callback);
+    v8::WasmStreamingCallback GetWasmStreamingCallback();
     void EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data);
     void RunMicrotasks();
     void Enter();
@@ -669,7 +679,6 @@ public:
     }
 
     jobject CorrectReturnValue(GraalValue* value, jobject null_replacement);
-    void Externalize(jobject java_buffer);
     v8::ArrayBuffer::Allocator* GetArrayBufferAllocator();
     void SchedulePauseOnNextStatement();
 
@@ -765,7 +774,7 @@ public:
 private:
     // Slots accessed by v8::Isolate::Get/SetData
     // They must be the first field of GraalIsolate
-    void* slot[30] = {};
+    void* slot[v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiSystemPointerSize + v8::internal::Internals::kDoubleReturnValuePlaceholderIndex + 1] = {};
     std::vector<v8::Value*> eternals;
     std::vector<v8::Context*> contexts;
     std::vector<GraalHandleContent*> handles;
@@ -786,9 +795,6 @@ private:
     jobject double_placeholder_;
     jmethodID jni_methods_[GraalAccessMethod::count];
     jfieldID jni_fields_[static_cast<int>(GraalAccessField::count)];
-    jfieldID cleanerField_;
-    jfieldID thunkField_;
-    jfieldID addressField_;
     GraalPrimitive* undefined_instance_;
     GraalPrimitive* null_instance_;
     GraalBoolean* true_instance_;
@@ -806,7 +812,7 @@ private:
     int function_template_count_;
     bool stack_check_enabled_;
     intptr_t stack_bottom_;
-    size_t stack_size_limit_;
+    ptrdiff_t stack_size_limit_;
     bool main_;
     JSExecutionAction js_execution_action_ = kJSExecutionAllowed;
     double return_value_;
@@ -850,9 +856,10 @@ private:
     v8::PromiseHook promise_hook_;
     v8::PromiseRejectCallback promise_reject_callback_;
     v8::HostInitializeImportMetaObjectCallback import_meta_initializer;
-    v8::HostImportModuleDynamicallyWithImportAssertionsCallback import_module_dynamically;
+    v8::HostImportModuleDynamicallyCallback import_module_dynamically;
     v8::FatalErrorCallback fatal_error_handler_;
     v8::PrepareStackTraceCallback prepare_stack_trace_callback_;
+    v8::WasmStreamingCallback wasm_streaming_callback_;
     v8::internal::MicrotaskQueue microtask_queue_;
 
     GraalObjectPool<GraalObject>* object_pool_;

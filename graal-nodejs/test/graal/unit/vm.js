@@ -96,4 +96,64 @@ describe('vm', function () {
             'abc'
         );
     });
+    it('should have correct globalThis', function () {
+        var sandbox = {};
+        var fooValue = 42;
+        Object.defineProperty(sandbox, 'foo', {value: fooValue});
+        Object.defineProperty(sandbox, 'setTimeout', {value: setTimeout});
+        var context = vm.createContext(sandbox);
+        assert.strictEqual(vm.runInContext('foo', context), fooValue);
+        assert.strictEqual(vm.runInContext('globalThis.foo', context), fooValue);
+        var desc = vm.runInContext('Reflect.getOwnPropertyDescriptor(globalThis, "setTimeout")', context);
+        assert.ok(desc);
+        assert.strictEqual(desc.value, setTimeout);
+        assert.strictEqual(desc.writable, false);
+        assert.strictEqual(desc.enumerable, false);
+        assert.strictEqual(desc.configurable, false);
+    });
+    it('should allow overriding globalThis', function () {
+        var sandbox = {};
+        var fooValue = 42;
+        var globalThisOverride = {foo: 43};
+        Object.defineProperty(sandbox, 'foo', {value: fooValue});
+        Object.defineProperty(sandbox, 'globalThis', {value: globalThisOverride, configurable: true, writable: true});
+        var context = vm.createContext(sandbox);
+        assert.strictEqual(vm.runInContext('foo', context), fooValue);
+        assert.strictEqual(vm.runInContext('globalThis', context), globalThisOverride);
+        assert.strictEqual(vm.runInContext('globalThis.foo', context), globalThisOverride.foo);
+        assert.strictEqual(sandbox.globalThis, globalThisOverride);
+    });
+    it('should not have "global" property', function () {
+        var context = vm.createContext();
+        assert.strictEqual(vm.runInContext('typeof global', context), 'undefined');
+        assert.strictEqual(vm.runInContext('typeof globalThis.global', context), 'undefined');
+    });
+    it('should include global own keys', function () {
+        var emptyContext = vm.createContext();
+        var context = vm.createContext({1: 'one', 3: 'three', extra: 42, [Symbol.unscopables]: 43});
+
+        for (let query of ['Object.getOwnPropertyNames(globalThis)', 'Reflect.ownKeys(globalThis)']) {
+            var globalBuiltins = vm.runInContext(query, emptyContext);
+            assert(globalBuiltins.includes('Object'), globalBuiltins);
+
+            var globalPropertyNames = vm.runInContext('globalThis[0] = "zero"; globalThis[2] = "two"; ' + query, context);
+            assert(globalPropertyNames.includes('Object'), globalPropertyNames);
+
+            // Make sure properties are in the correct order, too.
+            assert.strictEqual(globalPropertyNames[0], '0');
+            assert.strictEqual(globalPropertyNames[1], '1');
+            assert.strictEqual(globalPropertyNames[2], '2');
+            assert.strictEqual(globalPropertyNames[3], '3');
+            assert.strictEqual(globalPropertyNames[4], 'extra');
+            assert.strictEqual(globalPropertyNames[5], globalBuiltins[0]);
+
+            // Symbols of the context object are not included.
+            assert(!globalPropertyNames.includes(Symbol.unscopables), globalPropertyNames);
+        }
+
+        var globalPropertySymbols = vm.runInContext('Object.getOwnPropertySymbols(globalThis)', emptyContext);
+        // Symbols of the context object are not included.
+        assert(!globalPropertySymbols.includes(Symbol.unscopables), globalPropertySymbols);
+        assert.strictEqual(43, vm.runInContext('globalThis[Symbol.unscopables]', context));
+    });
 });

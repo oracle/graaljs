@@ -57,6 +57,9 @@ enum class SmiCheck { kOmit, kInline };
 #elif V8_TARGET_ARCH_MIPS64
 #include "src/codegen/mips64/constants-mips64.h"
 #include "src/codegen/mips64/macro-assembler-mips64.h"
+#elif V8_TARGET_ARCH_LOONG64
+#include "src/codegen/loong64/constants-loong64.h"
+#include "src/codegen/loong64/macro-assembler-loong64.h"
 #elif V8_TARGET_ARCH_S390
 #include "src/codegen/s390/constants-s390.h"
 #include "src/codegen/s390/macro-assembler-s390.h"
@@ -75,7 +78,7 @@ namespace internal {
 // defines a limit of 256 parameters but in simulator builds we provide only
 // limited support.
 #ifdef USE_SIMULATOR
-static constexpr int kMaxCParameters = 10;
+static constexpr int kMaxCParameters = 20;
 #else
 static constexpr int kMaxCParameters = 256;
 #endif
@@ -91,13 +94,13 @@ class V8_NODISCARD FrameScope {
         type_(type),
         old_has_frame_(tasm->has_frame()) {
     tasm->set_has_frame(true);
-    if (type != StackFrame::MANUAL && type_ != StackFrame::NONE) {
+    if (type != StackFrame::MANUAL && type_ != StackFrame::NO_FRAME_TYPE) {
       tasm->EnterFrame(type);
     }
   }
 
   ~FrameScope() {
-    if (type_ != StackFrame::MANUAL && type_ != StackFrame::NONE) {
+    if (type_ != StackFrame::MANUAL && type_ != StackFrame::NO_FRAME_TYPE) {
       tasm_->LeaveFrame(type_);
     }
     tasm_->set_has_frame(old_has_frame_);
@@ -107,8 +110,8 @@ class V8_NODISCARD FrameScope {
 #ifdef V8_CODE_COMMENTS
   const char* frame_name(StackFrame::Type type) {
     switch (type) {
-      case StackFrame::NONE:
-        return "Frame: NONE";
+      case StackFrame::NO_FRAME_TYPE:
+        return "Frame: NO_FRAME_TYPE";
       case StackFrame::MANUAL:
         return "Frame: MANUAL";
 #define FRAME_TYPE_CASE(type, field) \
@@ -142,7 +145,7 @@ class V8_NODISCARD FrameAndConstantPoolScope {
     if (FLAG_enable_embedded_constant_pool) {
       masm->set_constant_pool_available(true);
     }
-    if (type_ != StackFrame::MANUAL && type_ != StackFrame::NONE) {
+    if (type_ != StackFrame::MANUAL && type_ != StackFrame::NO_FRAME_TYPE) {
       masm->EnterFrame(type, !old_constant_pool_available_);
     }
   }
@@ -191,7 +194,7 @@ class V8_NODISCARD ConstantPoolUnavailableScope {
 class V8_NODISCARD AllowExternalCallThatCantCauseGC : public FrameScope {
  public:
   explicit AllowExternalCallThatCantCauseGC(MacroAssembler* masm)
-      : FrameScope(masm, StackFrame::NONE) {}
+      : FrameScope(masm, StackFrame::NO_FRAME_TYPE) {}
 };
 
 // Prevent the use of the RootArray during the lifetime of this

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1160,31 +1160,6 @@ public abstract class Environment {
 
     }
 
-    static final class ActiveScriptOrModuleRef extends VarRef {
-
-        private final FunctionEnvironment resolvedEnv;
-
-        ActiveScriptOrModuleRef(FunctionEnvironment resolvedEnv) {
-            super(null);
-            this.resolvedEnv = resolvedEnv;
-        }
-
-        @Override
-        public JavaScriptNode createReadNode() {
-            return resolvedEnv.getActiveScriptOrModule();
-        }
-
-        @Override
-        public JavaScriptNode createWriteNode(JavaScriptNode rhs) {
-            throw Errors.shouldNotReachHere();
-        }
-
-        @Override
-        public JavaScriptNode createDeleteNode() {
-            throw Errors.shouldNotReachHere();
-        }
-    }
-
     final class ActiveModuleRef extends AbstractArgumentsVarRef {
         ActiveModuleRef(int scopeLevel, int frameLevel, Environment current) {
             super(scopeLevel, frameLevel, null, current);
@@ -1202,14 +1177,6 @@ public abstract class Environment {
     }
 
     public VarRef findActiveModule() {
-        return findActiveScriptOrModule(true);
-    }
-
-    public VarRef findActiveScriptOrModule() {
-        return findActiveScriptOrModule(false);
-    }
-
-    private VarRef findActiveScriptOrModule(boolean sourceTextModule) {
         Environment current = this;
         int frameLevel = 0;
         int scopeLevel = 0;
@@ -1218,9 +1185,7 @@ public abstract class Environment {
                 if (((FunctionEnvironment) current).isScriptOrModule()) {
                     break;
                 }
-                if (sourceTextModule) {
-                    ((FunctionEnvironment) current).setNeedsParentFrame(true);
-                }
+                ((FunctionEnvironment) current).setNeedsParentFrame(true);
                 frameLevel++;
                 scopeLevel = 0;
             } else if (current instanceof BlockEnvironment && current.hasScopeFrame()) {
@@ -1229,8 +1194,8 @@ public abstract class Environment {
             current = current.getParent();
         }
         FunctionEnvironment scriptOrModuleEnv = (FunctionEnvironment) current;
-        assert !sourceTextModule || scriptOrModuleEnv.isModule();
-        return sourceTextModule ? new ActiveModuleRef(scopeLevel, frameLevel, scriptOrModuleEnv) : new ActiveScriptOrModuleRef(scriptOrModuleEnv);
+        assert scriptOrModuleEnv.isModule();
+        return new ActiveModuleRef(scopeLevel, frameLevel, scriptOrModuleEnv);
     }
 
     protected String toStringImpl(@SuppressWarnings("unused") Map<String, Integer> state) {

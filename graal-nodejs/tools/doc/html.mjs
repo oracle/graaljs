@@ -220,15 +220,18 @@ export function preprocessElements({ filename }) {
       } else if (node.type === 'code') {
         if (!node.lang) {
           console.warn(
-            `No language set in ${filename}, line ${node.position.start.line}`
+            `No language set in ${filename}, line ${node.position.start.line}`,
           );
         }
         const className = isJSFlavorSnippet(node) ?
           `language-js ${node.lang}` :
           `language-${node.lang}`;
+
         const highlighted =
           `<code class='${className}'>${(getLanguage(node.lang || '') ? highlight(node.value, { language: node.lang }) : node).value}</code>`;
         node.type = 'html';
+
+        const copyButton = '<button class="copy-button">copy</button>';
 
         if (isJSFlavorSnippet(node)) {
           const previousNode = parent.children[index - 1] || {};
@@ -253,16 +256,17 @@ export function preprocessElements({ filename }) {
               ' aria-label="Show modern ES modules syntax">' +
               previousNode.value +
               highlighted +
+              copyButton +
               '</pre>';
             node.lang = null;
             previousNode.value = '';
             previousNode.lang = null;
           } else {
             // Isolated JS snippet, no need to add the checkbox.
-            node.value = `<pre>${highlighted}</pre>`;
+            node.value = `<pre>${highlighted} ${copyButton}</pre>`;
           }
         } else {
-          node.value = `<pre>${highlighted}</pre>`;
+          node.value = `<pre>${highlighted} ${copyButton}</pre>`;
         }
       } else if (node.type === 'html' && common.isYAMLBlock(node.value)) {
         node.value = parseYAML(node.value);
@@ -302,7 +306,7 @@ export function preprocessElements({ filename }) {
               (noLinking ? '' :
                 '<a href="documentation.html#stability-index">') +
               `${prefix} ${number}${noLinking ? '' : '</a>'}`
-                .replace(/\n/g, ' ')
+                .replace(/\n/g, ' '),
           });
 
           // Remove prefix and number from text
@@ -325,27 +329,27 @@ function parseYAML(text) {
   const removed = { description: '' };
 
   if (meta.added) {
-    added.version = meta.added.join(', ');
-    added.description = `<span>Added in: ${added.version}</span>`;
+    added.version = meta.added;
+    added.description = `<span>Added in: ${added.version.join(', ')}</span>`;
   }
 
   if (meta.deprecated) {
-    deprecated.version = meta.deprecated.join(', ');
+    deprecated.version = meta.deprecated;
     deprecated.description =
-        `<span>Deprecated since: ${deprecated.version}</span>`;
+        `<span>Deprecated since: ${deprecated.version.join(', ')}</span>`;
   }
 
   if (meta.removed) {
-    removed.version = meta.removed.join(', ');
-    removed.description = `<span>Removed in: ${removed.version}</span>`;
+    removed.version = meta.removed;
+    removed.description = `<span>Removed in: ${removed.version.join(', ')}</span>`;
   }
 
   if (meta.changes.length > 0) {
-    if (added.description) meta.changes.push(added);
     if (deprecated.description) meta.changes.push(deprecated);
     if (removed.description) meta.changes.push(removed);
 
     meta.changes.sort((a, b) => versionSort(a.version, b.version));
+    if (added.description) meta.changes.push(added);
 
     result += '<details class="changelog"><summary>History</summary>\n' +
             '<table>\n<tr><th>Version</th><th>Changes</th></tr>\n';
@@ -408,7 +412,7 @@ export function buildToc({ filename, apilinks }) {
 
       if (node.depth - depth > 1) {
         throw new Error(
-          `Inappropriate heading level:\n${JSON.stringify(node)}`
+          `Inappropriate heading level:\n${JSON.stringify(node)}`,
         );
       }
 
@@ -543,7 +547,7 @@ function gtocPicker(id) {
 
   // Highlight the current module and add a link to the index
   const gtoc = gtocHTML.replace(
-    `class="nav-${id}"`, `class="nav-${id} active"`
+    `class="nav-${id}"`, `class="nav-${id} active"`,
   ).replace('</ul>', `
       <li>
         <a href="index.html">Index</a>

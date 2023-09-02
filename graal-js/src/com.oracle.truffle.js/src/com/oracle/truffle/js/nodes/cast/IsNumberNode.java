@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,10 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
@@ -49,21 +52,14 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 /**
  * @see JSRuntime#isNumber(Object)
  */
+@GenerateInline
+@GenerateCached(false)
 public abstract class IsNumberNode extends JavaScriptBaseNode {
 
-    public static IsNumberNode create() {
-        return IsNumberNodeGen.create();
-    }
-
-    public abstract boolean execute(Object value);
+    public abstract boolean execute(Node node, Object value);
 
     @Specialization
     protected static boolean doInt(@SuppressWarnings("unused") int value) {
-        return true;
-    }
-
-    @Specialization
-    protected static boolean doLong(@SuppressWarnings("unused") long value) {
         return true;
     }
 

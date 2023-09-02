@@ -257,6 +257,17 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   void Drop(int count, Condition cond = cc_always, Register reg = no_reg,
             const Operand& op = Operand(no_reg));
 
+  // We assume the size of the arguments is the pointer size.
+  // An optional mode argument is passed, which can indicate we need to
+  // explicitly add the receiver to the count.
+  enum ArgumentsCountMode { kCountIncludesReceiver, kCountExcludesReceiver };
+  enum ArgumentsCountType { kCountIsInteger, kCountIsSmi, kCountIsBytes };
+  void DropArguments(Register count, ArgumentsCountType type,
+                     ArgumentsCountMode mode);
+  void DropArgumentsAndPushNewReceiver(Register argc, Register receiver,
+                                       ArgumentsCountType type,
+                                       ArgumentsCountMode mode);
+
   // Trivial case of DropAndRet that utilizes the delay slot.
   void DropAndRet(int drop);
 
@@ -339,7 +350,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   // Registers are saved in numerical order, with higher numbered registers
   // saved in higher memory addresses.
   void MultiPush(RegList regs);
-  void MultiPushFPU(RegList regs);
+  void MultiPushFPU(DoubleRegList regs);
 
   // Calculate how much stack space (in bytes) are required to store caller
   // registers excluding those specified in the arguments.
@@ -387,7 +398,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   // Pops multiple values from the stack and load them in the
   // registers specified in regs. Pop order is the opposite as in MultiPush.
   void MultiPop(RegList regs);
-  void MultiPopFPU(RegList regs);
+  void MultiPopFPU(DoubleRegList regs);
 
   // Load Scaled Address instructions. Parameter sa (shift argument) must be
   // between [1, 31] (inclusive). On pre-r6 architectures the scratch register
@@ -459,6 +470,8 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   void SmiUntag(Register reg) { sra(reg, reg, kSmiTagSize); }
 
   void SmiUntag(Register dst, Register src) { sra(dst, src, kSmiTagSize); }
+
+  void SmiToInt32(Register smi) { SmiUntag(smi); }
 
   int CalculateStackPassedWords(int num_reg_arguments,
                                 int num_double_arguments);
@@ -795,7 +808,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
 
   // Jump the register contains a smi.
   void JumpIfSmi(Register value, Label* smi_label,
-                 Register scratch = kScratchReg, BranchDelaySlot bd = PROTECT);
+                 BranchDelaySlot bd = PROTECT);
 
   void JumpIfEqual(Register a, int32_t b, Label* dest) {
     li(kScratchReg, Operand(b));
@@ -1061,7 +1074,7 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
                                bool builtin_exit_frame = false);
 
   // Generates a trampoline to jump to the off-heap instruction stream.
-  void JumpToInstructionStream(Address entry);
+  void JumpToOffHeapInstructionStream(Address entry);
 
   // ---------------------------------------------------------------------------
   // In-place weak references.
@@ -1106,7 +1119,7 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
   }
 
   // Jump if the register contains a non-smi.
-  void JumpIfNotSmi(Register value, Label* not_smi_label, Register scratch = at,
+  void JumpIfNotSmi(Register value, Label* not_smi_label,
                     BranchDelaySlot bd = PROTECT);
 
   // Abort execution if argument is a smi, enabled via --debug-code.
@@ -1118,6 +1131,10 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
 
   // Abort execution if argument is not a JSFunction, enabled via --debug-code.
   void AssertFunction(Register object);
+
+  // Abort execution if argument is not a callable JSFunction, enabled via
+  // --debug-code.
+  void AssertCallableFunction(Register object);
 
   // Abort execution if argument is not a JSBoundFunction,
   // enabled via --debug-code.
@@ -1146,13 +1163,6 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
   void InvokePrologue(Register expected_parameter_count,
                       Register actual_parameter_count, Label* done,
                       InvokeType type);
-
-  // Compute memory operands for safepoint stack slots.
-  static int SafepointRegisterStackIndex(int reg_code);
-
-  // Needs access to SafepointRegisterStackIndex for compiled frame
-  // traversal.
-  friend class CommonFrame;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(MacroAssembler);
 };

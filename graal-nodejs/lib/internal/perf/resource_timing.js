@@ -4,7 +4,7 @@
 const { InternalPerformanceEntry } = require('internal/perf/performance_entry');
 const { SymbolToStringTag } = primordials;
 const assert = require('internal/assert');
-const { enqueue } = require('internal/perf/observe');
+const { enqueue, bufferResourceTiming } = require('internal/perf/observe');
 const { Symbol, ObjectSetPrototypeOf } = primordials;
 
 const kCacheMode = Symbol('kCacheMode');
@@ -15,7 +15,7 @@ const kInitiatorType = Symbol('kInitiatorType');
 const {
   codes: {
     ERR_ILLEGAL_CONSTRUCTOR,
-  }
+  },
 } = require('internal/errors');
 
 class InternalPerformanceResourceTiming extends InternalPerformanceEntry {
@@ -174,6 +174,7 @@ function markResourceTiming(
 
   ObjectSetPrototypeOf(resource, PerformanceResourceTiming.prototype);
   enqueue(resource);
+  bufferResourceTiming(resource);
   return resource;
 }
 

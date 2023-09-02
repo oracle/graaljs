@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -985,7 +985,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             assert !JSDynamicObject.isJSDynamicObject(thisObj);
             specialized = createTruffleObjectPropertyNode();
         } else {
-            store = wrapPrimitive(thisObj, context);
+            store = wrapPrimitive(thisObj);
         }
 
         while (store != null) {
@@ -1148,7 +1148,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
         traceRewriteMegamorphic(newNode, reason);
         if (JSConfig.TraceMegamorphicPropertyAccess) {
-            System.out.printf("MEGAMORPHIC PROPERTY ACCESS key='%s' %s\n%s\n---\n", key, getEncapsulatingSourceSection(), currentHead.debugString());
+            System.out.printf("MEGAMORPHIC PROPERTY ACCESS key='%s' reason='%s' %s\n%s\n---\n",
+                            key, reason, getEncapsulatingSourceSection(), currentHead == null ? "(empty)" : currentHead.debugString());
         }
         return newNode;
     }
@@ -1229,10 +1230,10 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    protected static final JSDynamicObject wrapPrimitive(Object thisObject, JSContext context) {
+    protected static final JSDynamicObject wrapPrimitive(Object thisObject) {
         // wrap primitives for lookup
-        Object wrapper = JSRuntime.toObjectFromPrimitive(context, thisObject, false);
-        return JSDynamicObject.isJSDynamicObject(wrapper) ? ((JSDynamicObject) wrapper) : null;
+        Object wrapper = JSRuntime.toObject(thisObject);
+        return JSObject.isJSObject(wrapper) ? ((JSObject) wrapper) : null;
     }
 
     protected final AbstractShapeCheckNode createShapeCheckNode(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal, boolean isDefine) {
@@ -1318,8 +1319,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         if (depth == 0) {
             return new InstanceofCheckNode(valueClass);
         } else {
-            assert JSRuntime.isJSPrimitive(thisObj);
-            JSDynamicObject wrapped = wrapPrimitive(thisObj, context);
+            assert JSRuntime.isJSPrimitive(thisObj) || thisObj instanceof Long;
+            JSDynamicObject wrapped = wrapPrimitive(thisObj);
             if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(wrapped, depth) && propertyAssumptionsValid(wrapped, depth, false)) {
                 return ValuePrototypeChainCheckNode.create(valueClass, wrapped.getShape(), wrapped, key, depth, context);
             } else {

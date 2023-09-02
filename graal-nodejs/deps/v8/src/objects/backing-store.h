@@ -7,8 +7,8 @@
 
 #include <memory>
 
+#include "include/v8-array-buffer.h"
 #include "include/v8-internal.h"
-#include "include/v8.h"
 #include "src/base/optional.h"
 #include "src/handles/handles.h"
 
@@ -98,6 +98,11 @@ class V8_EXPORT_PRIVATE BackingStore : public BackingStoreBase {
   bool has_guard_regions() const { return has_guard_regions_; }
   bool free_on_destruct() const { return free_on_destruct_; }
 
+  bool IsEmpty() const {
+    DCHECK_GE(byte_capacity_, byte_length_);
+    return byte_capacity_ == 0;
+  }
+
   enum ResizeOrGrowResult { kSuccess, kFailure, kRace };
 
   ResizeOrGrowResult ResizeInPlace(Isolate* isolate, size_t new_byte_length,
@@ -117,7 +122,8 @@ class V8_EXPORT_PRIVATE BackingStore : public BackingStoreBase {
   // Allocate a new, larger, backing store for this Wasm memory and copy the
   // contents of this backing store into it.
   std::unique_ptr<BackingStore> CopyWasmMemory(Isolate* isolate,
-                                               size_t new_pages);
+                                               size_t new_pages,
+                                               size_t max_pages);
 
   // Attach the given memory object to this backing store. The memory object
   // will be updated if this backing store is grown.
@@ -138,12 +144,6 @@ class V8_EXPORT_PRIVATE BackingStore : public BackingStoreBase {
   static void UpdateSharedWasmMemoryObjects(Isolate* isolate);
 #endif  // V8_ENABLE_WEBASSEMBLY
 
-  // TODO(wasm): address space limitations should be enforced in page alloc.
-  // These methods enforce a limit on the total amount of address space,
-  // which is used for both backing stores and wasm memory.
-  static bool ReserveAddressSpace(uint64_t num_bytes);
-  static void ReleaseReservation(uint64_t num_bytes);
-
   // Returns the size of the external memory owned by this backing store.
   // It is used for triggering GCs based on the external memory pressure.
   size_t PerIsolateAccountingLength() {
@@ -163,44 +163,29 @@ class V8_EXPORT_PRIVATE BackingStore : public BackingStoreBase {
     return byte_length();
   }
 
+  uint32_t id() const { return id_; }
+
  private:
   friend class GlobalBackingStoreRegistry;
 
   BackingStore(void* buffer_start, size_t byte_length, size_t max_byte_length,
                size_t byte_capacity, SharedFlag shared, ResizableFlag resizable,
                bool is_wasm_memory, bool free_on_destruct,
-               bool has_guard_regions, bool custom_deleter, bool empty_deleter)
-      : buffer_start_(buffer_start),
-        byte_length_(byte_length),
-        max_byte_length_(max_byte_length),
-        byte_capacity_(byte_capacity),
-        is_shared_(shared == SharedFlag::kShared),
-        is_resizable_(resizable == ResizableFlag::kResizable),
-        is_wasm_memory_(is_wasm_memory),
-        holds_shared_ptr_to_allocator_(false),
-        free_on_destruct_(free_on_destruct),
-        has_guard_regions_(has_guard_regions),
-        globally_registered_(false),
-        custom_deleter_(custom_deleter),
-        empty_deleter_(empty_deleter) {
-    // TODO(v8:11111): RAB / GSAB - Wasm integration.
-    DCHECK_IMPLIES(is_wasm_memory_, !is_resizable_);
-    DCHECK_IMPLIES(is_resizable_, !custom_deleter_);
-    DCHECK_IMPLIES(is_resizable_, free_on_destruct_);
-    DCHECK_IMPLIES(!is_wasm_memory && !is_resizable_,
-                   byte_length_ == max_byte_length_);
-  }
+               bool has_guard_regions, bool custom_deleter, bool empty_deleter);
   BackingStore(const BackingStore&) = delete;
   BackingStore& operator=(const BackingStore&) = delete;
   void SetAllocatorFromIsolate(Isolate* isolate);
 
   void* buffer_start_ = nullptr;
-  std::atomic<size_t> byte_length_{0};
+  std::atomic<size_t> byte_length_;
   // Max byte length of the corresponding JSArrayBuffer(s).
-  size_t max_byte_length_ = 0;
+  size_t max_byte_length_;
   // Amount of the memory allocated
-  size_t byte_capacity_ = 0;
-
+  size_t byte_capacity_;
+  // Unique ID of this backing store. Currently only used by DevTools, to
+  // identify stores used by several ArrayBuffers or WebAssembly memories
+  // (reported by the inspector as [[ArrayBufferData]] internal property)
+  uint32_t id_;
   struct DeleterInfo {
     v8::BackingStore::DeleterCallback callback;
     void* data;
@@ -253,20 +238,15 @@ class V8_EXPORT_PRIVATE BackingStore : public BackingStoreBase {
 #endif  // V8_ENABLE_WEBASSEMBLY
 };
 
-// A global, per-process mapping from buffer addresses to backing stores.
-// This is generally only used for dealing with an embedder that has not
-// migrated to the new API which should use proper pointers to manage
-// backing stores.
+// A global, per-process mapping from buffer addresses to backing stores
+// of wasm memory objects.
 class GlobalBackingStoreRegistry {
  public:
   // Register a backing store in the global registry. A mapping from the
   // {buffer_start} to the backing store object will be added. The backing
   // store will automatically unregister itself upon destruction.
+  // Only wasm memory backing stores are supported.
   static void Register(std::shared_ptr<BackingStore> backing_store);
-
-  // Look up a backing store based on the {buffer_start} pointer.
-  static std::shared_ptr<BackingStore> Lookup(void* buffer_start,
-                                              size_t length);
 
  private:
   friend class BackingStore;

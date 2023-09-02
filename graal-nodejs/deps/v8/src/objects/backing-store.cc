@@ -10,6 +10,7 @@
 #include "src/execution/isolate.h"
 #include "src/handles/global-handles.h"
 #include "src/logging/counters.h"
+#include "src/sandbox/sandbox.h"
 
 #if V8_ENABLE_WEBASSEMBLY
 #include "src/trap-handler/trap-handler.h"
@@ -38,24 +39,11 @@ constexpr uint64_t kFullGuardSize = uint64_t{10} * GB;
 
 #endif  // V8_ENABLE_WEBASSEMBLY
 
-#if V8_TARGET_ARCH_MIPS64
-// MIPS64 has a user space of 2^40 bytes on most processors,
-// address space limits needs to be smaller.
-constexpr size_t kAddressSpaceLimit = 0x8000000000L;  // 512 GiB
-#elif V8_TARGET_ARCH_RISCV64
-// RISC-V64 has a user space of 256GB on the Sv39 scheme.
-constexpr size_t kAddressSpaceLimit = 0x4000000000L;  // 256 GiB
-#elif V8_TARGET_ARCH_64_BIT
-constexpr size_t kAddressSpaceLimit = 0x10100000000L;  // 1 TiB + 4 GiB
-#else
-constexpr size_t kAddressSpaceLimit = 0xC0000000;  // 3 GiB
-#endif
-
-std::atomic<uint64_t> reserved_address_space_{0};
+std::atomic<uint32_t> next_backing_store_id_{1};
 
 // Allocation results are reported to UMA
 //
-// See wasm_memory_allocation_result in counters.h
+// See wasm_memory_allocation_result in counters-definitions.h
 enum class AllocationStatus {
   kSuccess,  // Succeeded on the first try
 
@@ -65,6 +53,21 @@ enum class AllocationStatus {
                                      // space limit
 
   kOtherFailure  // Failed for an unknown reason
+};
+
+// Attempts to allocate memory inside the sandbox currently fall back to
+// allocating memory outside of the sandbox if necessary. Once this fallback is
+// no longer allowed/possible, these cases will become allocation failures
+// instead. To track the frequency of such events, the outcome of memory
+// allocation attempts inside the sandbox is reported to UMA.
+//
+// See caged_memory_allocation_outcome in counters-definitions.h
+// This class and the entry in counters-definitions.h use the term "cage"
+// instead of "sandbox" for historical reasons.
+enum class CagedMemoryAllocationOutcome {
+  kSuccess,      // Allocation succeeded inside the cage
+  kOutsideCage,  // Allocation failed inside the cage but succeeded outside
+  kFailure,      // Allocation failed inside and outside of the cage
 };
 
 base::AddressRegion GetReservedRegion(bool has_guard_regions,
@@ -106,6 +109,28 @@ void RecordStatus(Isolate* isolate, AllocationStatus status) {
       static_cast<int>(status));
 }
 
+// When the sandbox is active, this function records the outcome of attempts to
+// allocate memory inside the sandbox which fall back to allocating memory
+// outside of the sandbox. Passing a value of nullptr for the result indicates
+// that the memory could not be allocated at all.
+void RecordSandboxMemoryAllocationResult(Isolate* isolate, void* result) {
+  // This metric is only meaningful when the sandbox is active.
+#ifdef V8_SANDBOX
+  if (GetProcessWideSandbox()->is_initialized()) {
+    CagedMemoryAllocationOutcome outcome;
+    if (result) {
+      bool allocation_in_cage = GetProcessWideSandbox()->Contains(result);
+      outcome = allocation_in_cage ? CagedMemoryAllocationOutcome::kSuccess
+                                   : CagedMemoryAllocationOutcome::kOutsideCage;
+    } else {
+      outcome = CagedMemoryAllocationOutcome::kFailure;
+    }
+    isolate->counters()->caged_memory_allocation_outcome()->AddSample(
+        static_cast<int>(outcome));
+  }
+#endif
+}
+
 inline void DebugCheckZero(void* start, size_t byte_length) {
 #if DEBUG
   // Double check memory is zero-initialized. Despite being DEBUG-only,
@@ -144,6 +169,36 @@ void BackingStore::Clear() {
   type_specific_data_.v8_api_array_buffer_allocator = nullptr;
 }
 
+BackingStore::BackingStore(void* buffer_start, size_t byte_length,
+                           size_t max_byte_length, size_t byte_capacity,
+                           SharedFlag shared, ResizableFlag resizable,
+                           bool is_wasm_memory, bool free_on_destruct,
+                           bool has_guard_regions, bool custom_deleter,
+                           bool empty_deleter)
+    : buffer_start_(buffer_start),
+      byte_length_(byte_length),
+      max_byte_length_(max_byte_length),
+      byte_capacity_(byte_capacity),
+      id_(next_backing_store_id_.fetch_add(1)),
+      is_shared_(shared == SharedFlag::kShared),
+      is_resizable_(resizable == ResizableFlag::kResizable),
+      is_wasm_memory_(is_wasm_memory),
+      holds_shared_ptr_to_allocator_(false),
+      free_on_destruct_(free_on_destruct),
+      has_guard_regions_(has_guard_regions),
+      globally_registered_(false),
+      custom_deleter_(custom_deleter),
+      empty_deleter_(empty_deleter) {
+  // TODO(v8:11111): RAB / GSAB - Wasm integration.
+  DCHECK_IMPLIES(is_wasm_memory_, !is_resizable_);
+  DCHECK_IMPLIES(is_resizable_, !custom_deleter_);
+  DCHECK_IMPLIES(is_resizable_, free_on_destruct_);
+  DCHECK_IMPLIES(!is_wasm_memory && !is_resizable_,
+                 byte_length_ == max_byte_length_);
+  DCHECK_GE(max_byte_length_, byte_length_);
+  DCHECK_GE(byte_capacity_, max_byte_length_);
+}
+
 BackingStore::~BackingStore() {
   GlobalBackingStoreRegistry::Unregister(this);
 
@@ -151,6 +206,18 @@ BackingStore::~BackingStore() {
     Clear();
     return;
   }
+
+  PageAllocator* page_allocator = GetPlatformPageAllocator();
+  // TODO(saelo) here and elsewhere in this file, replace with
+  // GetArrayBufferPageAllocator once the fallback to the platform page
+  // allocator is no longer allowed.
+#ifdef V8_SANDBOX
+  if (GetProcessWideSandbox()->Contains(buffer_start_)) {
+    page_allocator = GetSandboxPageAllocator();
+  } else {
+    DCHECK(kAllowBackingStoresOutsideSandbox);
+  }
+#endif
 
 #if V8_ENABLE_WEBASSEMBLY
   if (is_wasm_memory_) {
@@ -174,12 +241,10 @@ BackingStore::~BackingStore() {
     auto region =
         GetReservedRegion(has_guard_regions_, buffer_start_, byte_capacity_);
 
-    bool pages_were_freed =
-        region.size() == 0 /* no need to free any pages */ ||
-        FreePages(GetPlatformPageAllocator(),
-                  reinterpret_cast<void*>(region.begin()), region.size());
-    CHECK(pages_were_freed);
-    BackingStore::ReleaseReservation(reservation_size);
+    if (!region.is_empty()) {
+      FreePages(page_allocator, reinterpret_cast<void*>(region.begin()),
+                region.size());
+    }
     Clear();
     return;
   }
@@ -188,17 +253,13 @@ BackingStore::~BackingStore() {
   if (is_resizable_) {
     DCHECK(free_on_destruct_);
     DCHECK(!custom_deleter_);
-    size_t reservation_size =
-        GetReservationSize(has_guard_regions_, byte_capacity_);
     auto region =
         GetReservedRegion(has_guard_regions_, buffer_start_, byte_capacity_);
 
-    bool pages_were_freed =
-        region.size() == 0 /* no need to free any pages */ ||
-        FreePages(GetPlatformPageAllocator(),
-                  reinterpret_cast<void*>(region.begin()), region.size());
-    CHECK(pages_were_freed);
-    BackingStore::ReleaseReservation(reservation_size);
+    if (!region.is_empty()) {
+      FreePages(page_allocator, reinterpret_cast<void*>(region.begin()),
+                region.size());
+    }
     Clear();
     return;
   }
@@ -318,25 +379,6 @@ std::unique_ptr<BackingStore> BackingStore::TryAllocateWasmMemory(
 }
 #endif  // V8_ENABLE_WEBASSEMBLY
 
-bool BackingStore::ReserveAddressSpace(uint64_t num_bytes) {
-  uint64_t reservation_limit = kAddressSpaceLimit;
-  uint64_t old_count = reserved_address_space_.load(std::memory_order_relaxed);
-  while (true) {
-    if (old_count > reservation_limit) return false;
-    if (reservation_limit - old_count < num_bytes) return false;
-    if (reserved_address_space_.compare_exchange_weak(
-            old_count, old_count + num_bytes, std::memory_order_acq_rel)) {
-      return true;
-    }
-  }
-}
-
-void BackingStore::ReleaseReservation(uint64_t num_bytes) {
-  uint64_t old_reserved = reserved_address_space_.fetch_sub(num_bytes);
-  USE(old_reserved);
-  DCHECK_LE(num_bytes, old_reserved);
-}
-
 std::unique_ptr<BackingStore> BackingStore::TryAllocateAndPartiallyCommitMemory(
     Isolate* isolate, size_t byte_length, size_t max_byte_length,
     size_t page_size, size_t initial_pages, size_t maximum_pages,
@@ -379,37 +421,33 @@ std::unique_ptr<BackingStore> BackingStore::TryAllocateAndPartiallyCommitMemory(
   size_t reservation_size = GetReservationSize(guards, byte_capacity);
 
   //--------------------------------------------------------------------------
-  // 1. Enforce maximum address space reservation per engine.
-  //--------------------------------------------------------------------------
-  auto reserve_memory_space = [&] {
-    return BackingStore::ReserveAddressSpace(reservation_size);
-  };
-
-  if (!gc_retry(reserve_memory_space)) {
-    // Crash on out-of-memory if the correctness fuzzer is running.
-    if (FLAG_correctness_fuzzer_suppressions) {
-      FATAL("could not allocate wasm memory backing store");
-    }
-    RecordStatus(isolate, AllocationStatus::kAddressSpaceLimitReachedFailure);
-    TRACE_BS("BSw:try   failed to reserve address space (size %zu)\n",
-             reservation_size);
-    return {};
-  }
-
-  //--------------------------------------------------------------------------
-  // 2. Allocate pages (inaccessible by default).
+  // Allocate pages (inaccessible by default).
   //--------------------------------------------------------------------------
   void* allocation_base = nullptr;
+  PageAllocator* page_allocator = GetPlatformPageAllocator();
   auto allocate_pages = [&] {
-    allocation_base =
-        AllocatePages(GetPlatformPageAllocator(), nullptr, reservation_size,
-                      page_size, PageAllocator::kNoAccess);
+#ifdef V8_SANDBOX
+    page_allocator = GetSandboxPageAllocator();
+    allocation_base = AllocatePages(page_allocator, nullptr, reservation_size,
+                                    page_size, PageAllocator::kNoAccess);
+    if (allocation_base) return true;
+    // We currently still allow falling back to the platform page allocator if
+    // the sandbox page allocator fails. This will eventually be removed.
+    // TODO(chromium:1218005) once we forbid the fallback, we should have a
+    // single API, e.g. GetArrayBufferPageAllocator(), that returns the correct
+    // page allocator to use here depending on whether the sandbox is enabled
+    // or not.
+    if (!kAllowBackingStoresOutsideSandbox) return false;
+    page_allocator = GetPlatformPageAllocator();
+#endif
+    allocation_base = AllocatePages(page_allocator, nullptr, reservation_size,
+                                    page_size, PageAllocator::kNoAccess);
     return allocation_base != nullptr;
   };
   if (!gc_retry(allocate_pages)) {
     // Page allocator could not reserve enough pages.
-    BackingStore::ReleaseReservation(reservation_size);
     RecordStatus(isolate, AllocationStatus::kOtherFailure);
+    RecordSandboxMemoryAllocationResult(isolate, nullptr);
     TRACE_BS("BSw:try   failed to allocate pages\n");
     return {};
   }
@@ -423,26 +461,30 @@ std::unique_ptr<BackingStore> BackingStore::TryAllocateAndPartiallyCommitMemory(
   DCHECK(!guards);
   byte* buffer_start = reinterpret_cast<byte*>(allocation_base);
 #endif
+
   //--------------------------------------------------------------------------
-  // 3. Commit the initial pages (allow read/write).
+  // Commit the initial pages (allow read/write).
   //--------------------------------------------------------------------------
   size_t committed_byte_length = initial_pages * page_size;
   auto commit_memory = [&] {
     return committed_byte_length == 0 ||
-           SetPermissions(GetPlatformPageAllocator(), buffer_start,
-                          committed_byte_length, PageAllocator::kReadWrite);
+           SetPermissions(page_allocator, buffer_start, committed_byte_length,
+                          PageAllocator::kReadWrite);
   };
   if (!gc_retry(commit_memory)) {
     TRACE_BS("BSw:try   failed to set permissions (%p, %zu)\n", buffer_start,
              committed_byte_length);
+    FreePages(page_allocator, allocation_base, reservation_size);
     // SetPermissions put us over the process memory limit.
-    V8::FatalProcessOutOfMemory(nullptr, "BackingStore::AllocateMemory()");
+    // We return an empty result so that the caller can throw an exception.
+    return {};
   }
 
   DebugCheckZero(buffer_start, byte_length);  // touch the bytes.
 
   RecordStatus(isolate, did_retry ? AllocationStatus::kSuccessAfterRetry
                                   : AllocationStatus::kSuccess);
+  RecordSandboxMemoryAllocationResult(isolate, allocation_base);
 
   ResizableFlag resizable =
       is_wasm_memory ? ResizableFlag::kNotResizable : ResizableFlag::kResizable;
@@ -500,13 +542,13 @@ std::unique_ptr<BackingStore> BackingStore::AllocateWasmMemory(
 }
 
 std::unique_ptr<BackingStore> BackingStore::CopyWasmMemory(Isolate* isolate,
-                                                           size_t new_pages) {
+                                                           size_t new_pages,
+                                                           size_t max_pages) {
   // Note that we could allocate uninitialized to save initialization cost here,
   // but since Wasm memories are allocated by the page allocator, the zeroing
   // cost is already built-in.
-  // TODO(titzer): should we use a suitable maximum here?
   auto new_backing_store = BackingStore::AllocateWasmMemory(
-      isolate, new_pages, new_pages,
+      isolate, new_pages, max_pages,
       is_shared() ? SharedFlag::kShared : SharedFlag::kNotShared);
 
   if (!new_backing_store ||
@@ -814,17 +856,8 @@ inline GlobalBackingStoreRegistryImpl* impl() {
 void GlobalBackingStoreRegistry::Register(
     std::shared_ptr<BackingStore> backing_store) {
   if (!backing_store || !backing_store->buffer_start()) return;
-
-  if (!backing_store->free_on_destruct()) {
-    // If the backing store buffer is managed by the embedder,
-    // then we don't have to guarantee that there is single unique
-    // BackingStore per buffer_start() because the destructor of
-    // of the BackingStore will be a no-op in that case.
-
-    // All Wasm memory has to be registered.
-    CHECK(!backing_store->is_wasm_memory());
-    return;
-  }
+  // Only wasm memory backing stores need to be registered globally.
+  CHECK(backing_store->is_wasm_memory());
 
   base::MutexGuard scope_lock(&impl()->mutex_);
   if (backing_store->globally_registered_) return;
@@ -840,6 +873,8 @@ void GlobalBackingStoreRegistry::Register(
 void GlobalBackingStoreRegistry::Unregister(BackingStore* backing_store) {
   if (!backing_store->globally_registered_) return;
 
+  CHECK(backing_store->is_wasm_memory());
+
   DCHECK_NOT_NULL(backing_store->buffer_start());
 
   base::MutexGuard scope_lock(&impl()->mutex_);
@@ -849,26 +884,6 @@ void GlobalBackingStoreRegistry::Unregister(BackingStore* backing_store) {
     impl()->map_.erase(result);
   }
   backing_store->globally_registered_ = false;
-}
-
-std::shared_ptr<BackingStore> GlobalBackingStoreRegistry::Lookup(
-    void* buffer_start, size_t length) {
-  base::MutexGuard scope_lock(&impl()->mutex_);
-  TRACE_BS("BS:lookup   mem=%p (%zu bytes)\n", buffer_start, length);
-  const auto& result = impl()->map_.find(buffer_start);
-  if (result == impl()->map_.end()) {
-    return std::shared_ptr<BackingStore>();
-  }
-  auto backing_store = result->second.lock();
-  CHECK_EQ(buffer_start, backing_store->buffer_start());
-  if (backing_store->is_wasm_memory()) {
-    // Grow calls to shared WebAssembly threads can be triggered from different
-    // workers, length equality cannot be guaranteed here.
-    CHECK_LE(length, backing_store->byte_length());
-  } else {
-    CHECK_EQ(length, backing_store->byte_length());
-  }
-  return backing_store;
 }
 
 void GlobalBackingStoreRegistry::Purge(Isolate* isolate) {
@@ -884,7 +899,7 @@ void GlobalBackingStoreRegistry::Purge(Isolate* isolate) {
     auto backing_store = entry.second.lock();
     prevent_destruction_under_lock.emplace_back(backing_store);
     if (!backing_store) continue;  // skip entries where weak ptr is null
-    if (!backing_store->is_wasm_memory()) continue;  // skip non-wasm memory
+    CHECK(backing_store->is_wasm_memory());
     if (!backing_store->is_shared()) continue;       // skip non-shared memory
     SharedWasmMemoryData* shared_data =
         backing_store->get_shared_wasm_memory_data();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -64,11 +63,10 @@ public interface JSConstructorFactory {
 
     interface Default extends JSConstructorFactory {
         default JSConstructor createConstructorAndPrototype(JSRealm realm) {
-            JSContext ctx = realm.getContext();
             JSFunctionObject constructor = createConstructorObject(realm);
             JSDynamicObject prototype = createPrototype(realm, constructor);
             JSObjectUtil.putPrototypeData(prototype);
-            JSObjectUtil.putConstructorPrototypeProperty(ctx, constructor, prototype);
+            JSObjectUtil.putConstructorPrototypeProperty(constructor, prototype);
             fillConstructor(realm, constructor);
             return new JSConstructor(constructor, prototype);
         }
@@ -83,11 +81,10 @@ public interface JSConstructorFactory {
 
     interface WithFunctions extends JSConstructorFactory {
         default JSConstructor createConstructorAndPrototype(JSRealm realm, JSBuiltinsContainer functionBuiltins) {
-            JSContext ctx = realm.getContext();
             JSFunctionObject constructor = createConstructorObject(realm);
             JSDynamicObject prototype = createPrototype(realm, constructor);
             JSObjectUtil.putPrototypeData(prototype);
-            JSObjectUtil.putConstructorPrototypeProperty(ctx, constructor, prototype);
+            JSObjectUtil.putConstructorPrototypeProperty(constructor, prototype);
             JSObjectUtil.putFunctionsFromContainer(realm, constructor, functionBuiltins);
             fillConstructor(realm, constructor);
             return new JSConstructor(constructor, prototype);

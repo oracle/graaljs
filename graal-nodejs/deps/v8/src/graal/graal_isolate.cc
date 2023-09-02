@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,16 @@
 #include "graal_object-inl.h"
 #include "graal_string-inl.h"
 
+#if defined(__cpp_lib_filesystem)
+#include <filesystem>
+#elif defined(__POSIX__)
+// for posix platforms we have fallback implementations based on C functions
+#include <sys/stat.h> // stat
+#include <dirent.h> // opendir,readdir,closedir
+#else
+#error "Missing <filesystem>"
+#endif
+
 #ifdef __POSIX__
 
 #include <dlfcn.h>
@@ -77,25 +87,25 @@
 #endif
 
 #ifdef __APPLE__
-#define LIBNODESVM_RELPATH "/languages/nodejs/lib/libgraal-nodejs.dylib"
-#define LIBPOLYGLOT_RELPATH "/lib/polyglot/libpolyglot.dylib"
+#define LIBNODESVM_NAME    "libgraal-nodejs.dylib"
+#define LIBPOLYGLOT_NAME   "libpolyglot.dylib"
+#define LIBNODESVM_RELPATH "/languages/nodejs/lib/" LIBNODESVM_NAME
+#define LIBPOLYGLOT_RELPATH "/lib/polyglot/" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "/lib/server/libjvm.dylib"
-#define LIBJLI_RELPATH     "/lib/jli/libjli.dylib"
 // libjli.dylib has moved in JDK 12, see https://bugs.openjdk.java.net/browse/JDK-8210931
-#define LIBJLI_RELPATH2    "/lib/libjli.dylib"
-#elif defined(__sparc__)
-// SVM currently not supported
-#define LIBJVM_RELPATH     "/lib/server/libjvm.so"
-#define LIBJVM_RELPATH2    "/lib/sparcv9/server/libjvm.so"
+#define LIBJLI_RELPATH     "/lib/libjli.dylib"
 #elif defined(_WIN32)
-#define LIBNODESVM_RELPATH "\\languages\\nodejs\\lib\\graal-nodejs.dll"
-#define LIBPOLYGLOT_RELPATH "\\lib\\polyglot\\polyglot.dll"
+#define LIBNODESVM_NAME    "graal-nodejs.dll"
+#define LIBPOLYGLOT_NAME   "polyglot.dll"
+#define LIBNODESVM_RELPATH "\\languages\\nodejs\\lib\\" LIBNODESVM_NAME
+#define LIBPOLYGLOT_RELPATH "\\lib\\polyglot\\" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "\\bin\\server\\jvm.dll"
 #else
-#define LIBNODESVM_RELPATH "/languages/nodejs/lib/libgraal-nodejs.so"
-#define LIBPOLYGLOT_RELPATH "/lib/polyglot/libpolyglot.so"
+#define LIBNODESVM_NAME    "libgraal-nodejs.so"
+#define LIBPOLYGLOT_NAME   "libpolyglot.so"
+#define LIBNODESVM_RELPATH "/languages/nodejs/lib/" LIBNODESVM_NAME
+#define LIBPOLYGLOT_RELPATH "/lib/polyglot/" LIBPOLYGLOT_NAME
 #define LIBJVM_RELPATH     "/lib/server/libjvm.so"
-#define LIBJVM_RELPATH2    "/lib/amd64/server/libjvm.so"
 #endif
 
 #define EXIT_WITH_MESSAGE(env, message) { \
@@ -118,24 +128,10 @@ extern "C" void uv_key_set(uv_key_t* key, void* value) WEAK_ATTRIBUTE;
 extern "C" void* uv_key_get(uv_key_t* key) WEAK_ATTRIBUTE;
 extern "C" uv_loop_t* uv_default_loop(void) WEAK_ATTRIBUTE;
 #ifdef __POSIX__
-extern "C" int uv__cloexec_ioctl(int fd, int set) WEAK_ATTRIBUTE;
-extern "C" int uv__cloexec_fcntl(int fd, int set) WEAK_ATTRIBUTE;
+extern "C" int uv__cloexec(int fd, int set) WEAK_ATTRIBUTE;
 #endif
 
 #undef WEAK_ATTRIBUTE
-
-#ifdef __POSIX__
-#if defined(_AIX) || \
-    defined(__APPLE__) || \
-    defined(__DragonFly__) || \
-    defined(__FreeBSD__) || \
-    defined(__FreeBSD_kernel__) || \
-    defined(__linux__)
-#define uv__cloexec uv__cloexec_ioctl
-#else
-#define uv__cloexec uv__cloexec_fcntl
-#endif
-#endif
 
 // Key for the current (per-thread) isolate
 static uv_key_t current_isolate_key;
@@ -153,6 +149,8 @@ GraalIsolate* CurrentIsolate() {
 
 typedef jint(*InitJVM)(JavaVM **, void **, void *);
 typedef jint(*CreatedJVMs)(JavaVM **vmBuffer, jsize bufferLength, jsize *written);
+
+const jint REQUESTED_JNI_VERSION = JNI_VERSION_9;
 
 #ifdef __POSIX__
     static const std::string file_separator = "/";
@@ -200,6 +198,9 @@ bool ends_with(std::string const & s, std::string const & end) {
 jclass findClassExtra(JNIEnv* env, const char* name) {
     jclass loadedClass = env->FindClass(name);
     if (loadedClass == NULL) {
+#if defined(DEBUG)
+        env->ExceptionDescribe();
+#endif
         env->ExceptionClear();
         jclass engineClass = env->FindClass("org/graalvm/polyglot/Engine");
         if (engineClass == NULL) {
@@ -224,11 +225,63 @@ jclass findClassExtra(JNIEnv* env, const char* name) {
     return loadedClass;
 }
 
-#ifdef __POSIX__
-#define access access
-#else
+#ifndef __POSIX__
 #define access _access
 #endif
+
+bool file_exists(std::string const& path) {
+    return access(path.c_str(), F_OK) == 0;
+}
+
+bool is_directory(std::string const& path) {
+#ifdef __cpp_lib_filesystem
+    return std::filesystem::is_directory(path);
+#else
+    struct stat st;
+    if (stat(path.c_str(), &st) == 0) {
+        return S_ISDIR(st.st_mode);
+    }
+    return false;
+#endif
+}
+
+std::string expand_class_or_module_path(std::string const& modules_dir, bool include_dir = true, bool include_jars = true) {
+    std::string sep = "";
+    std::string module_path;
+    if (is_directory(modules_dir)) {
+        if (include_dir) {
+            module_path.append(sep);
+            module_path.append(modules_dir);
+            sep = path_separator;
+        }
+        if (include_jars) {
+#ifdef __cpp_lib_filesystem
+            for (auto const& entry : std::filesystem::directory_iterator(modules_dir)) {
+                if (entry.path().extension().string() == ".jar") {
+                    module_path.append(sep);
+                    module_path.append(entry.path().string());
+                    sep = path_separator;
+                }
+            }
+#else
+            DIR* dir = opendir(modules_dir.c_str());
+            if (dir != nullptr) {
+                dirent* entry;
+                while ((entry = readdir(dir)) != nullptr) {
+                    std::string entry_path = modules_dir + file_separator + entry->d_name;
+                    if (ends_with(entry_path, ".jar")) {
+                        module_path.append(sep);
+                        module_path.append(entry_path);
+                        sep = path_separator;
+                    }
+                }
+                closedir(dir);
+            }
+#endif
+        }
+    }
+    return module_path;
+}
 
 // Workaround for a bug in SVM's JNI_GetCreatedJavaVMs
 static JavaVM* existing_jvm = nullptr;
@@ -237,63 +290,96 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
     JavaVM *jvm;
     JNIEnv *env;
 
-    std::string node = nodeExe();
-
-    std::string node_path = up(node);
-    bool graalvm8 = ends_with(node_path, file_separator + "jre" + file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
-    bool graalvm11plus = ends_with(node_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
-    if (graalvm8 || graalvm11plus) {
+    std::string node_exe = nodeExe();
+    std::string node_bin_path = up(node_exe);
+    std::string jdk_path;
+    std::string jvmlib_path;
+    std::string standalone_home;
+    bool is_graalvm = ends_with(node_bin_path, file_separator + "languages" + file_separator + "nodejs" + file_separator + "bin");
+    bool is_jvm_standalone = false;
+    int effective_mode = kModeDefault;
+    if (is_graalvm) {
         // Part of GraalVM: take precedence over any JAVA_HOME.
         // We set environment variables to ensure these values are correctly
         // propagated to child processes.
-        std::string graalvm_home = up(node, graalvm8 ? 5 : 4);
-        SetEnv("JAVA_HOME", graalvm_home.c_str());
+        std::string graalvm_home = up(node_exe, 4); // ${graalvm_home}/languages/nodejs/bin/node
+        jdk_path = graalvm_home;
+        SetEnv("JAVA_HOME", jdk_path.c_str());
 
-#       ifdef LIBNODESVM_RELPATH
-            bool force_native = false;
-            std::string node_jvm_lib = graalvm_home + (graalvm8 ? file_separator + "jre" : "") + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
-            if (mode == kModeJVM) {
-                 // will be set to appropriate libjvm path below
-                UnsetEnv("NODE_JVM_LIB");
-            } else if (mode == kModeNative) {
-                force_native = true;
-            } else { // mode == kModeDefault
-                if (getstdenv("NODE_JVM_LIB").empty() && access(node_jvm_lib.c_str(), F_OK) == 0) {
-                    force_native = true;
-                } // else reuse NODE_JVM_LIB
-            }
-            if (force_native) {
-                SetEnv("NODE_JVM_LIB", node_jvm_lib.c_str());
-            }
-#       else
-            if (mode == kModeNative) {
-                fprintf(stderr, "`--native` mode not available.\n");
-                exit(9);
-            }
-#       endif
-    }
+        jvmlib_path = graalvm_home + (polyglot ? LIBPOLYGLOT_RELPATH : LIBNODESVM_RELPATH);
 
-    std::string jdk_path = getstdenv("JAVA_HOME");
-    if (jdk_path.empty()) {
-        fprintf(stderr, "JAVA_HOME is not set. Specify JAVA_HOME so $JAVA_HOME%s exists.\n", LIBJVM_RELPATH);
-        exit(1);
-    }
-    std::string jre_sub_dir = jdk_path + file_separator + "jre";
-    if (access(jre_sub_dir.c_str(), F_OK) != -1) {
-        jdk_path = jre_sub_dir;
-    }
-    std::string jvmlib_path = getstdenv("NODE_JVM_LIB");
-    if (jvmlib_path.empty()) {
-        jvmlib_path = jdk_path + LIBJVM_RELPATH;
-#ifdef LIBJVM_RELPATH2
-        if (access(jvmlib_path.c_str(), F_OK) == -1) {
-            jvmlib_path = jdk_path + LIBJVM_RELPATH2;
+        if (mode == kModeNative || (mode == kModeDefault && file_exists(jvmlib_path))) {
+            SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
+            effective_mode = kModeNative;
+        } else {
+            // mode == kModeJVM || (mode == kModeDefault && !file_exists(jvmlib_path))
+            std::string node_jvm_lib = getstdenv("NODE_JVM_LIB");
+            if (!node_jvm_lib.empty()) {
+                jvmlib_path = node_jvm_lib;
+            } else {
+                // Use JAVA_HOME based libjvm path.
+                jvmlib_path = jdk_path + LIBJVM_RELPATH;
+                SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
+                effective_mode = kModeJVM;
+            }
         }
-#endif
-        SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
+    } else {
+        // Assume standalone distribution with libs in ../lib.
+        standalone_home = up(node_exe, 2); // ${standalone_home}/bin/node
+
+        // SVM standalone
+        jvmlib_path = standalone_home + file_separator + "lib" + file_separator + LIBNODESVM_NAME;
+        // JVM standalone has a JDK in ${standalone_home}/jvm
+
+        if (mode == kModeNative || (mode == kModeDefault && file_exists(jvmlib_path))) {
+            SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
+            effective_mode = kModeNative;
+        } else {
+            // mode == kModeJVM || (mode == kModeDefault && !file_exists(jvmlib_path))
+            std::string jvm_subdir = standalone_home + file_separator + "jvm";
+            std::string jvm_subdir_libjvm = jvm_subdir + LIBJVM_RELPATH;
+            if (file_exists(jvm_subdir_libjvm)) {
+                is_jvm_standalone = true;
+                jdk_path = jvm_subdir;
+                jvmlib_path = jvm_subdir_libjvm;
+                SetEnv("JAVA_HOME", jvm_subdir.c_str());
+                SetEnv("NODE_JVM_LIB", jvm_subdir_libjvm.c_str());
+                effective_mode = kModeJVM;
+            } else {
+                // Try using JAVA_HOME/NODE_JVM_LIB or fail
+                jdk_path = getstdenv("JAVA_HOME");
+                std::string node_jvm_lib = getstdenv("NODE_JVM_LIB");
+                if (!node_jvm_lib.empty()) {
+                    jvmlib_path = node_jvm_lib;
+                } else if (!jdk_path.empty()) {
+                    jvmlib_path = jdk_path + LIBJVM_RELPATH;
+                    SetEnv("NODE_JVM_LIB", jvmlib_path.c_str());
+                    effective_mode = kModeJVM;
+                } else if (mode == kModeJVM) {
+                    fprintf(stderr, "JAVA_HOME is not set. Specify JAVA_HOME so $JAVA_HOME%s exists.\n", LIBJVM_RELPATH);
+                    exit(1);
+                }
+            }
+        }
     }
-    if (access(jvmlib_path.c_str(), F_OK) == -1) {
-        fprintf(stderr, "Cannot find %s. Rebuild the polyglot library with `gu rebuild-images libpolyglot`, specify JAVA_HOME so that $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
+
+    std::string verbose_graalvm_launchers_str = getstdenv("VERBOSE_GRAALVM_LAUNCHERS");
+    bool verbose_graalvm_launchers = verbose_graalvm_launchers_str == "true";
+    if (verbose_graalvm_launchers) {
+        fprintf(stderr, "mode: %s\n", effective_mode == kModeNative ? "native" : effective_mode == kModeJVM ? "jvm" : "default");
+    }
+
+    if (!file_exists(jvmlib_path)) {
+        if (is_graalvm && polyglot) {
+            fprintf(stderr, "Cannot find %s. Rebuild the polyglot library with `gu rebuild-images libpolyglot`, specify JAVA_HOME so that $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
+        } else if (mode == kModeNative) {
+            fprintf(stderr, "Cannot find %s. Specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str());
+        } else if (mode == kModeJVM) {
+            fprintf(stderr, "Cannot find %s. Specify JAVA_HOME so that $JAVA_HOME%s exists.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
+        } else {
+            // mode == kModeDefault
+            fprintf(stderr, "Cannot find %s. Specify JAVA_HOME so that $JAVA_HOME%s exists, or specify NODE_JVM_LIB directly.\n", jvmlib_path.c_str(), LIBJVM_RELPATH);
+        }
         exit(1);
     }
 
@@ -378,6 +464,28 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             options.push_back({const_cast<char*>(boot_classpath.c_str()), nullptr});
         }
 
+        std::string module_path = "";
+        std::string module_path_sep = "";
+        if (is_jvm_standalone) {
+            std::string standalone_modules_dir = standalone_home + file_separator + "modules";
+            if (is_directory(standalone_modules_dir)) {
+                module_path += module_path_sep;
+                module_path += standalone_modules_dir;
+                module_path_sep = path_separator;
+            }
+        }
+        std::string env_module_path = getstdenv("NODE_JVM_MODULE_PATH");
+        if (!env_module_path.empty()) {
+            module_path += module_path_sep;
+            module_path += env_module_path;
+            module_path_sep = path_separator;
+        }
+        if (!module_path.empty()) {
+            module_path = "--module-path=" + module_path;
+            options.push_back({const_cast<char*>(module_path.c_str()), nullptr});
+            options.push_back({const_cast<char*>("--add-modules=org.graalvm.nodejs"), nullptr});
+        }
+
         std::string classpath = "";
         std::string classpath_sep = "";
         if (!graaljs_jar_path.empty()) {
@@ -388,6 +496,15 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
             classpath += classpath_sep;
             classpath += graalnode_jar_path;
             classpath_sep = path_separator;
+        }
+        if (is_jvm_standalone) {
+            std::string standalone_jars_path = standalone_home + file_separator + "jars";
+            std::string standalone_classpath = expand_class_or_module_path(standalone_jars_path, false);
+            if (!standalone_classpath.empty()) {
+                classpath += classpath_sep;
+                classpath += standalone_classpath;
+                classpath_sep = path_separator;
+            }
         }
         if (!extra_jvm_path.empty()) {
             classpath += classpath_sep;
@@ -410,14 +527,11 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
     #if defined(DEBUG)
         std::string debugPort = getstdenv("DEBUG_PORT");
+        std::string debugParam;
         if (!debugPort.empty()) {
-            options.push_back({const_cast<char*>("-Xdebug"), nullptr});
-            options.push_back({const_cast<char*>("-Xnoagent"), nullptr});
-            std::string debugParam = "-Xrunjdwp:transport=dt_socket";
             // do not debug child processes
             UnsetEnv("DEBUG_PORT");
-            debugParam += ",server=n,suspend=y,address=";
-            debugParam += debugPort;
+            debugParam = "-agentlib:jdwp=transport=dt_socket,server=y,suspend=y,address=" + debugPort;
             options.push_back({const_cast<char*>(debugParam.c_str()), nullptr});
         }
         options.push_back({const_cast<char*>("-Dtruffle.node.js.verbose=true"), nullptr});
@@ -463,24 +577,23 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         UnsetEnv(no_spawn_options);
 
     #if __APPLE__
-        if (dlopen((jdk_path + LIBJLI_RELPATH).c_str(), RTLD_NOW) == NULL) {
-            if (dlopen((jdk_path + LIBJLI_RELPATH2).c_str(), RTLD_NOW) == NULL) {
+        if (!jdk_path.empty()) {
+            if (dlopen((jdk_path + LIBJLI_RELPATH).c_str(), RTLD_NOW) == NULL) {
                 fprintf(stderr, "warning: could not load libjli: %s\n", dlerror());
             }
         }
     #endif
 
-        std::string verbose_graalvm_launchers = getstdenv("VERBOSE_GRAALVM_LAUNCHERS");
-        if (verbose_graalvm_launchers == "true") {
-            fprintf(stderr, "load: %s ", jvmlib_path.c_str());
-            for (int i = 0; i < options.size(); i++) {
+        if (verbose_graalvm_launchers) {
+            fprintf(stderr, "load: %s", jvmlib_path.c_str());
+            for (auto i = 0; i < options.size(); i++) {
                 fprintf(stderr, " %s", options[i].optionString);
             }
             fprintf(stderr, "\n");
         }
 
         JavaVMInitArgs vm_args;
-        vm_args.version = JNI_VERSION_1_8;
+        vm_args.version = REQUESTED_JNI_VERSION;
         vm_args.nOptions = options.size();
         vm_args.options = options.data();
         vm_args.ignoreUnrecognized = false;
@@ -511,7 +624,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         }
         InitThreadLocals();
     } else {
-        if (jvm->GetEnv(reinterpret_cast<void**> (&env), JNI_VERSION_1_8) == JNI_EDETACHED) {
+        if (jvm->GetEnv(reinterpret_cast<void**> (&env), REQUESTED_JNI_VERSION) == JNI_EDETACHED) {
             jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
         }
     }
@@ -537,7 +650,7 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
 
 GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams const& params) : function_template_data(), function_template_callbacks(), jvm_(jvm), jni_env_(env), jni_methods_(), jni_fields_(),
     message_listener_(nullptr), function_template_count_(0), promise_hook_(nullptr), promise_reject_callback_(nullptr), import_meta_initializer(nullptr), import_module_dynamically(nullptr),
-    fatal_error_handler_(nullptr), prepare_stack_trace_callback_(nullptr) {
+    fatal_error_handler_(nullptr), prepare_stack_trace_callback_(nullptr), wasm_streaming_callback_(nullptr) {
 
 #ifdef __POSIX__
     lock_ = PTHREAD_MUTEX_INITIALIZER;
@@ -590,25 +703,6 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     shared_buffer_ = env->GetDirectBufferAddress(shared_buffer);
     ResetSharedBuffer();
 
-    // Externalization support
-    jclass directByteBufferClass = env->GetObjectClass(shared_buffer);
-    cleanerField_ = env->GetFieldID(directByteBufferClass, "cleaner", "Lsun/misc/Cleaner;"); // JDK 8
-    if (cleanerField_ == NULL) {
-        env->ExceptionClear();
-        cleanerField_ = env->GetFieldID(directByteBufferClass, "cleaner", "Ljdk/internal/ref/Cleaner;"); // JDK 9+
-    }
-    if (cleanerField_ == NULL) {
-        EXIT_WITH_MESSAGE(env, "DirectByteBuffer.cleaner field not found!\n")
-    }
-    jobject cleaner = env->GetObjectField(shared_buffer, cleanerField_);
-    jclass cleanerClass = env->GetObjectClass(cleaner);
-    thunkField_ = env->GetFieldID(cleanerClass, "thunk", "Ljava/lang/Runnable;");
-    if (thunkField_ == NULL) EXIT_WITH_MESSAGE(env, "Cleaner.thunk field not found!\n")
-    jobject deallocator = env->GetObjectField(cleaner, thunkField_);
-    jclass deallocatorClass = env->GetObjectClass(deallocator);
-    addressField_ = env->GetFieldID(deallocatorClass, "address", "J");
-    if (addressField_ == NULL) EXIT_WITH_MESSAGE(env, "DirectByteBuffer$Deallocator.address field not found!\n")
-
     ACCESS_METHOD(GraalAccessMethod::undefined_instance, "undefinedInstance", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::null_instance, "nullInstance", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::value_type, "valueType", "(Ljava/lang/Object;)I");
@@ -648,10 +742,11 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::value_strict_equals, "valueStrictEquals", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_instance_of, "valueInstanceOf", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::value_type_of, "valueTypeOf", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::value_to_detail_string, "valueToDetailString", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_new, "objectNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_set, "objectSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_set_index, "objectSetIndex", "(Ljava/lang/Object;ILjava/lang/Object;)Z")
-    ACCESS_METHOD(GraalAccessMethod::object_set_private, "objectSetPrivate", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::object_set_private, "objectSetPrivate", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_force_set, "objectForceSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)Z")
     ACCESS_METHOD(GraalAccessMethod::object_get, "objectGet", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_get_index, "objectGetIndex", "(Ljava/lang/Object;I)Ljava/lang/Object;")
@@ -661,6 +756,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::object_get_own_property_descriptor, "objectGetOwnPropertyDescriptor", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_has, "objectHas", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_has_own_property, "objectHasOwnProperty", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::object_has_private, "objectHasPrivate", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_has_real_named_property, "objectHasRealNamedProperty", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_delete, "objectDelete", "(Ljava/lang/Object;Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_delete_index, "objectDelete", "(Ljava/lang/Object;J)Z")
@@ -673,6 +769,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::object_get_property_names, "objectGetPropertyNames", "(Ljava/lang/Object;ZZZZZZZZ)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_get_own_property_names, "objectGetOwnPropertyNames", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_creation_context, "objectCreationContext", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::object_create_data_property, "objectCreateDataProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::object_create_data_property_index, "objectCreateDataProperty", "(Ljava/lang/Object;JLjava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::object_define_property, "objectDefineProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;ZZZZZZ)Z")
     ACCESS_METHOD(GraalAccessMethod::object_preview_entries, "objectPreviewEntries", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_set_integrity_level, "objectSetIntegrityLevel", "(Ljava/lang/Object;Z)V")
@@ -682,15 +780,14 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::array_length, "arrayLength", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_byte_length, "arrayBufferByteLength", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_new, "arrayBufferNew", "(Ljava/lang/Object;I)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::array_buffer_new_buffer, "arrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;J)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_new_buffer, "arrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_new_backing_store, "arrayBufferNewBackingStore", "(J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_get_contents, "arrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_buffer, "arrayBufferViewBuffer", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_length, "arrayBufferViewByteLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_view_byte_offset, "arrayBufferViewByteOffset", "(Ljava/lang/Object;)I")
-    ACCESS_METHOD(GraalAccessMethod::array_buffer_is_external, "arrayBufferIsExternal", "(Ljava/lang/Object;)Z")
-    ACCESS_METHOD(GraalAccessMethod::array_buffer_externalize, "arrayBufferExternalize", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::array_buffer_detach, "arrayBufferDetach", "(Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::array_buffer_was_detached, "arrayBufferWasDetached", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::typed_array_length, "typedArrayLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::uint8_array_new, "uint8ArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::uint8_clamped_array_new, "uint8ClampedArrayNew", "(Ljava/lang/Object;II)Ljava/lang/Object;")
@@ -743,7 +840,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_measure_memory, "isolateMeasureMemory", "(Ljava/lang/Object;Z)V")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
-    ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "()Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_template_new_instance, "objectTemplateNewInstance", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_accessor, "objectTemplateSetAccessor", "(Ljava/lang/Object;Ljava/lang/Object;JJLjava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_handler, "objectTemplateSetHandler", "(Ljava/lang/Object;JJJJJJJLjava/lang/Object;ZZ)V")
@@ -794,6 +891,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::message_get_source_line, "messageGetSourceLine", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::message_get_start_column, "messageGetStartColumn", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::message_get_stack_trace, "messageGetStackTrace", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::message_get_start_position, "messageGetStartPosition", "(Ljava/lang/Object;)I")
+    ACCESS_METHOD(GraalAccessMethod::message_get_end_position, "messageGetEndPosition", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::message_get, "messageGet", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::stack_trace_current_stack_trace, "stackTraceCurrentStackTrace", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::stack_frame_get_line_number, "stackFrameGetLineNumber", "(Ljava/lang/Object;)I")
@@ -809,6 +908,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::context_get_security_token, "contextGetSecurityToken", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::context_get_extras_binding_object, "contextGetExtrasBindingObject", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::context_set_promise_hooks, "contextSetPromiseHooks", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V")
+    ACCESS_METHOD(GraalAccessMethod::context_is_code_generation_from_strings_allowed, "contextIsCodeGenerationFromStringsAllowed", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::find_dynamic_object_fields, "findDynamicObjectFields", "(Ljava/lang/Object;)[Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::proxy_is_function, "proxyIsFunction", "(Ljava/lang/Object;)Z")
     ACCESS_METHOD(GraalAccessMethod::proxy_get_handler, "proxyGetHandler", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -842,6 +942,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::symbol_new, "symbolNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_name, "symbolName", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_for, "symbolFor", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::symbol_for_api, "symbolForApi", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_get_async_iterator, "symbolGetAsyncIterator", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_get_has_instance, "symbolGetHasInstance", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_get_is_concat_spreadable, "symbolGetIsConcatSpreadable", "()Ljava/lang/Object;")
@@ -853,6 +954,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::symbol_get_to_primitive, "symbolGetToPrimitive", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_get_to_string_tag, "symbolGetToStringTag", "()Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::symbol_get_unscopables, "symbolGetUnscopables", "()Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::symbol_private_for_api, "symbolPrivateForApi", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::symbol_private_new, "symbolPrivateNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_result, "promiseResult", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::promise_state, "promiseState", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::promise_resolver_new, "promiseResolverNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -862,8 +965,6 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::module_instantiate, "moduleInstantiate", "(Ljava/lang/Object;Ljava/lang/Object;J)V")
     ACCESS_METHOD(GraalAccessMethod::module_evaluate, "moduleEvaluate", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_get_status, "moduleGetStatus", "(Ljava/lang/Object;)I")
-    ACCESS_METHOD(GraalAccessMethod::module_get_requests_length, "moduleGetRequestsLength", "(Ljava/lang/Object;)I")
-    ACCESS_METHOD(GraalAccessMethod::module_get_request, "moduleGetRequest", "(Ljava/lang/Object;I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_get_namespace, "moduleGetNamespace", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::module_get_identity_hash, "moduleGetIdentityHash", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::module_get_exception, "moduleGetException", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -903,11 +1004,10 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::big_int_uint64_value, "bigIntUint64Value", "(Ljava/lang/Object;)J")
     ACCESS_METHOD(GraalAccessMethod::big_int_new, "bigIntNew", "(J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::big_int_new_from_unsigned, "bigIntNewFromUnsigned", "(J)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::big_int_new_from_words, "bigIntNewFromWords", "()Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::big_int_new_from_words, "bigIntNewFromWords", "(II[J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::big_int_word_count, "bigIntWordCount", "(Ljava/lang/Object;)I")
-    ACCESS_METHOD(GraalAccessMethod::big_int_to_words_array, "bigIntToWordsArray", "(Ljava/lang/Object;)V")
-    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_new, "sharedArrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;JZ)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_is_external, "sharedArrayBufferIsExternal", "(Ljava/lang/Object;)Z")
+    ACCESS_METHOD(GraalAccessMethod::big_int_to_words_array, "bigIntToWordsArray", "(Ljava/lang/Object;I)[J")
+    ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_new, "sharedArrayBufferNew", "(Ljava/lang/Object;Ljava/lang/Object;J)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_get_contents, "sharedArrayBufferGetContents", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_externalize, "sharedArrayBufferExternalize", "(Ljava/lang/Object;J)V")
     ACCESS_METHOD(GraalAccessMethod::script_compiler_compile_function_in_context, "scriptCompilerCompileFunctionInContext", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;[Ljava/lang/Object;[Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
@@ -915,6 +1015,8 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::fixed_array_length, "fixedArrayLength", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::fixed_array_get, "fixedArrayGet", "(Ljava/lang/Object;I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::shared_array_buffer_byte_length, "sharedArrayBufferByteLength", "(Ljava/lang/Object;)J")
+    ACCESS_METHOD(GraalAccessMethod::wasm_module_object_get_compiled_module, "wasmModuleObjectGetCompiledModule", "(Ljava/lang/Object;)Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::wasm_module_object_from_compiled_module, "wasmModuleObjectFromCompiledModule", "(Ljava/lang/Object;)Ljava/lang/Object;")
 
     int root_offset = v8::internal::Internals::kIsolateRootsOffset / v8::internal::kApiSystemPointerSize;
 
@@ -1160,7 +1262,7 @@ void GraalIsolate::InternalErrorCheck() {
 
 void GraalIsolate::InitStackOverflowCheck(intptr_t stack_bottom) {
     char* stack_size_str = getenv("NODE_STACK_SIZE");
-    size_t stack_size = 0;
+    ptrdiff_t stack_size = 0;
     if (stack_size_str != nullptr) {
         stack_size = strtol(stack_size_str, nullptr, 10);
     }
@@ -1355,7 +1457,7 @@ void GraalIsolate::NotifyImportMetaInitializer(v8::Local<v8::Object> import_meta
     }
 }
 
-void GraalIsolate::SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyWithImportAssertionsCallback callback) {
+void GraalIsolate::SetImportModuleDynamicallyCallback(v8::HostImportModuleDynamicallyCallback callback) {
     bool wasNull = import_module_dynamically == nullptr;
     bool isNull = callback == nullptr;
     if (wasNull != isNull) {
@@ -1365,9 +1467,9 @@ void GraalIsolate::SetImportModuleDynamicallyCallback(v8::HostImportModuleDynami
     import_module_dynamically = callback;
 }
 
-v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::ScriptOrModule> referrer, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions) {
+v8::MaybeLocal<v8::Promise> GraalIsolate::NotifyImportModuleDynamically(v8::Local<v8::Context> context, v8::Local<v8::Data> host_defined_options, v8::Local<v8::Value> resource_name, v8::Local<v8::String> specifier, v8::Local<v8::FixedArray> import_assertions) {
     if (import_module_dynamically != nullptr) {
-        return import_module_dynamically(context, referrer, specifier, import_assertions);
+        return import_module_dynamically(context, host_defined_options, resource_name, specifier, import_assertions);
     } else {
         return v8::MaybeLocal<v8::Promise>();
     }
@@ -1391,6 +1493,14 @@ v8::MaybeLocal<v8::Value> GraalIsolate::NotifyPrepareStackTraceCallback(v8::Loca
     }
 }
 
+void GraalIsolate::SetWasmStreamingCallback(v8::WasmStreamingCallback callback) {
+    wasm_streaming_callback_ = callback;
+}
+
+v8::WasmStreamingCallback GraalIsolate::GetWasmStreamingCallback() {
+    return wasm_streaming_callback_;
+}
+
 void GraalIsolate::EnqueueMicrotask(v8::MicrotaskCallback microtask, void* data) {
     microtasks.push_back(std::pair<v8::MicrotaskCallback, void*>(microtask, data));
 }
@@ -1412,7 +1522,7 @@ void GraalIsolate::RunMicrotasks() {
 }
 
 void GraalIsolate::Enter() {
-    if (jvm_->GetEnv(reinterpret_cast<void**> (&jni_env_), JNI_VERSION_1_8) == JNI_EDETACHED) {
+    if (jvm_->GetEnv(reinterpret_cast<void**> (&jni_env_), REQUESTED_JNI_VERSION) == JNI_EDETACHED) {
         jvm_->AttachCurrentThread(reinterpret_cast<void**> (&jni_env_), nullptr);
     }
     uv_key_set(&current_isolate_key, this);
@@ -1452,13 +1562,6 @@ void GraalIsolate::HandleEmptyCallResult() {
             }
         }
     }
-}
-
-void GraalIsolate::Externalize(jobject java_buffer) {
-    JNIEnv* env = GetJNIEnv();
-    jobject cleaner = env->GetObjectField(java_buffer, cleanerField_);
-    jobject deallocator = env->GetObjectField(cleaner, thunkField_);
-    env->SetLongField(deallocator, addressField_, (jlong) 0);
 }
 
 void GraalIsolate::SetEnv(const char * name, const char * value) {

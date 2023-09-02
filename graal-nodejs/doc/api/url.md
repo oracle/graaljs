@@ -27,7 +27,7 @@ The `node:url` module provides two APIs for working with URLs: a legacy API that
 is Node.js specific, and a newer API that implements the same
 [WHATWG URL Standard][] used by web browsers.
 
-A comparison between the WHATWG and Legacy APIs is provided below. Above the URL
+A comparison between the WHATWG and legacy APIs is provided below. Above the URL
 `'https://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash'`, properties
 of an object returned by the legacy `url.parse()` are shown. Below it are
 properties of a WHATWG `URL` object.
@@ -63,7 +63,7 @@ const myURL =
   new URL('https://user:pass@sub.example.com:8080/p/a/t/h?query=string#hash');
 ```
 
-Parsing the URL string using the Legacy API:
+Parsing the URL string using the legacy API:
 
 ```mjs
 import url from 'node:url';
@@ -129,6 +129,13 @@ return `true`.
 
 #### `new URL(input[, base])`
 
+<!--
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47339
+    description: ICU requirement is removed.
+-->
+
 * `input` {string} The absolute or relative input URL to parse. If `input`
   is relative, then `base` is required. If `input` is absolute, the `base`
   is ignored. If `input` is not a string, it is [converted to a string][] first.
@@ -171,9 +178,6 @@ automatically converted to ASCII using the [Punycode][] algorithm.
 const myURL = new URL('https://測試');
 // https://xn--g6w251d/
 ```
-
-This feature is only available if the `node` executable was compiled with
-[ICU][] enabled. If not, the domain names are passed through unchanged.
 
 In cases where it is not known in advance if `input` is an absolute URL
 and a `base` is provided, it is advised to validate that the `origin` of
@@ -252,7 +256,7 @@ console.log(myURL.hostname);
 // Prints example.org
 
 // Setting the hostname does not change the port
-myURL.hostname = 'example.com:82';
+myURL.hostname = 'example.com';
 console.log(myURL.href);
 // Prints https://example.com:81/foo
 
@@ -332,7 +336,7 @@ console.log(myURL.password);
 
 myURL.password = '123';
 console.log(myURL.href);
-// Prints https://abc:123@example.com
+// Prints https://abc:123@example.com/
 ```
 
 Invalid URL characters included in the value assigned to the `password` property
@@ -490,7 +494,7 @@ For instance, changing from `http` to `https` works:
 const u = new URL('http://example.org');
 u.protocol = 'https';
 console.log(u.href);
-// https://example.org
+// https://example.org/
 ```
 
 However, changing from `http` to a hypothetical `fish` protocol does not
@@ -500,7 +504,7 @@ because the new protocol is not special.
 const u = new URL('http://example.org');
 u.protocol = 'fish';
 console.log(u.href);
-// http://example.org
+// http://example.org/
 ```
 
 Likewise, changing from a non-special protocol to a special protocol is also
@@ -554,14 +558,14 @@ instance, the `URL` object will not percent encode the ASCII tilde (`~`)
 character, while `URLSearchParams` will always encode it:
 
 ```js
-const myUrl = new URL('https://example.org/abc?foo=~bar');
+const myURL = new URL('https://example.org/abc?foo=~bar');
 
-console.log(myUrl.search);  // prints ?foo=~bar
+console.log(myURL.search);  // prints ?foo=~bar
 
 // Modify the URL via searchParams...
-myUrl.searchParams.sort();
+myURL.searchParams.sort();
 
-console.log(myUrl.search);  // prints ?foo=%7Ebar
+console.log(myURL.search);  // prints ?foo=%7Ebar
 ```
 
 #### `url.username`
@@ -661,6 +665,27 @@ added: v16.7.0
 
 Removes the stored {Blob} identified by the given ID. Attempting to revoke a
 ID that isn't registered will silently fail.
+
+#### `URL.canParse(input[, base])`
+
+<!-- YAML
+added: v18.17.0
+-->
+
+* `input` {string} The absolute or relative input URL to parse. If `input`
+  is relative, then `base` is required. If `input` is absolute, the `base`
+  is ignored. If `input` is not a string, it is [converted to a string][] first.
+* `base` {string} The base URL to resolve against if the `input` is not
+  absolute. If `base` is not a string, it is [converted to a string][] first.
+* Returns: {boolean}
+
+Checks if an `input` relative to the `base` can be parsed to a `URL`.
+
+```js
+const isValid = URL.canParse('/foo', 'https://example.org/'); // true
+
+const isNotValid = URL.canParse('/foo'); // false
+```
 
 ### Class: `URLSearchParams`
 
@@ -762,7 +787,7 @@ joins all array elements with commas.
 ```js
 const params = new URLSearchParams({
   user: 'abc',
-  query: ['first', 'second']
+  query: ['first', 'second'],
 });
 console.log(params.getAll('query'));
 // Prints [ 'first,second' ]
@@ -852,6 +877,15 @@ Alias for [`urlSearchParams[@@iterator]()`][`urlSearchParams@@iterator()`].
 
 #### `urlSearchParams.forEach(fn[, thisArg])`
 
+<!-- YAML
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `fn` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
+-->
+
 * `fn` {Function} Invoked for each name-value pair in the query
 * `thisArg` {Object} To be used as `this` value for when `fn` is called
 
@@ -931,6 +965,14 @@ console.log(params.toString());
 // Prints foo=def&abc=def&xyz=opq
 ```
 
+#### `urlSearchParams.size`
+
+<!-- YAML
+added: v18.16.0
+-->
+
+The total number of parameter entries.
+
 #### `urlSearchParams.sort()`
 
 <!-- YAML
@@ -991,6 +1033,10 @@ for (const [name, value] of params) {
 added:
   - v7.4.0
   - v6.13.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47339
+    description: ICU requirement is removed.
 -->
 
 * `domain` {string}
@@ -1000,9 +1046,6 @@ Returns the [Punycode][] ASCII serialization of the `domain`. If `domain` is an
 invalid domain, the empty string is returned.
 
 It performs the inverse operation to [`url.domainToUnicode()`][].
-
-This feature is only available if the `node` executable was compiled with
-[ICU][] enabled. If not, the domain names are passed through unchanged.
 
 ```mjs
 import url from 'node:url';
@@ -1032,6 +1075,10 @@ console.log(url.domainToASCII('xn--iñvalid.com'));
 added:
   - v7.4.0
   - v6.13.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47339
+    description: ICU requirement is removed.
 -->
 
 * `domain` {string}
@@ -1041,9 +1088,6 @@ Returns the Unicode serialization of the `domain`. If `domain` is an invalid
 domain, the empty string is returned.
 
 It performs the inverse operation to [`url.domainToASCII()`][].
-
-This feature is only available if the `node` executable was compiled with
-[ICU][] enabled. If not, the domain names are passed through unchanged.
 
 ```mjs
 import url from 'node:url';
@@ -1206,7 +1250,14 @@ pathToFileURL('/some/path%.c');       // Correct:   file:///some/path%25.c (POSI
 ### `url.urlToHttpOptions(url)`
 
 <!-- YAML
-added: v15.7.0
+added:
+  - v15.7.0
+  - v14.18.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/46989
+    description: The returned object will also contain all the own enumerable
+                 properties of the `url` argument.
 -->
 
 * `url` {URL} The [WHATWG URL][] object to convert to an options object.
@@ -1252,7 +1303,7 @@ console.log(urlToHttpOptions(myURL));
 const { urlToHttpOptions } = require('node:url');
 const myURL = new URL('https://a:b@測試?abc#foo');
 
-console.log(urlToHttpOptions(myUrl));
+console.log(urlToHttpOptions(myURL));
 /*
 {
   protocol: 'https:',
@@ -1271,7 +1322,9 @@ console.log(urlToHttpOptions(myUrl));
 
 <!-- YAML
 changes:
-  - version: v15.13.0
+  - version:
+      - v15.13.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/37784
     description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.0.0
@@ -1285,7 +1338,9 @@ changes:
 
 <!-- YAML
 changes:
-  - version: v15.13.0
+  - version:
+      - v15.13.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/37784
     description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.0.0
@@ -1401,7 +1456,14 @@ forward-slash characters (`/`) are required following the colon in the
 <!-- YAML
 added: v0.1.25
 changes:
-  - version: v15.13.0
+  - version: v17.0.0
+    pr-url: https://github.com/nodejs/node/pull/38631
+    description: Now throws an `ERR_INVALID_URL` exception when Punycode
+                 conversion of a hostname introduces changes that could cause
+                 the URL to be re-parsed differently.
+  - version:
+      - v15.13.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/37784
     description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.0.0
@@ -1432,8 +1494,8 @@ url.format({
   pathname: '/some/path',
   query: {
     page: 1,
-    format: 'json'
-  }
+    format: 'json',
+  },
 });
 
 // => 'https://example.com/some/path?page=1&format=json'
@@ -1499,7 +1561,12 @@ The formatting process operates as follows:
 <!-- YAML
 added: v0.1.25
 changes:
-  - version: v15.13.0
+  - version: v18.13.0
+    pr-url: https://github.com/nodejs/node/pull/44919
+    description: Documentation-only deprecation.
+  - version:
+      - v15.13.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/37784
     description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.14.0
@@ -1516,7 +1583,7 @@ changes:
                  when no query string is present.
 -->
 
-> Stability: 3 - Legacy: Use the WHATWG URL API instead.
+> Stability: 0 - Deprecated: Use the WHATWG URL API instead.
 
 * `urlString` {string} The URL string to parse.
 * `parseQueryString` {boolean} If `true`, the `query` property will always
@@ -1538,23 +1605,18 @@ A `URIError` is thrown if the `auth` property is present but cannot be decoded.
 
 `url.parse()` uses a lenient, non-standard algorithm for parsing URL
 strings. It is prone to security issues such as [host name spoofing][]
-and incorrect handling of usernames and passwords.
-
-`url.parse()` is an exception to most of the legacy APIs. Despite its security
-concerns, it is legacy and not deprecated because it is:
-
-* Faster than the alternative WHATWG `URL` parser.
-* Easier to use with regards to relative URLs than the alternative WHATWG `URL` API.
-* Widely relied upon within the npm ecosystem.
-
-Use with caution.
+and incorrect handling of usernames and passwords. Do not use with untrusted
+input. CVEs are not issued for `url.parse()` vulnerabilities. Use the
+[WHATWG URL][] API instead.
 
 ### `url.resolve(from, to)`
 
 <!-- YAML
 added: v0.1.25
 changes:
-  - version: v15.13.0
+  - version:
+      - v15.13.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/37784
     description: Deprecation revoked. Status changed to "Legacy".
   - version: v11.0.0
@@ -1669,7 +1731,6 @@ console.log(myURL.origin);
 // Prints https://xn--1xa.example.com
 ```
 
-[ICU]: intl.md#options-for-building-nodejs
 [Punycode]: https://tools.ietf.org/html/rfc5891#section-4.4
 [WHATWG URL]: #the-whatwg-url-api
 [WHATWG URL Standard]: https://url.spec.whatwg.org/

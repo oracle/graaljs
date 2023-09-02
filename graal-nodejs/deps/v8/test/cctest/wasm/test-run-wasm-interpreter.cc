@@ -38,7 +38,7 @@ TEST(Run_WasmIfElse) {
 
 TEST(Run_WasmIfReturn) {
   WasmRunner<int32_t, int32_t> r(TestExecutionTier::kInterpreter);
-  BUILD(r, WASM_IF(WASM_LOCAL_GET(0), WASM_RETURN1(WASM_I32V_2(77))),
+  BUILD(r, WASM_IF(WASM_LOCAL_GET(0), WASM_RETURN(WASM_I32V_2(77))),
         WASM_I32V_2(65));
   CHECK_EQ(65, r.Call(0));
   CHECK_EQ(77, r.Call(1));
@@ -348,20 +348,19 @@ TEST(MemoryGrowInvalidSize) {
 TEST(ReferenceTypeLocals) {
   {
     WasmRunner<int32_t> r(TestExecutionTier::kInterpreter);
-    BUILD(r, WASM_REF_IS_NULL(WASM_REF_NULL(kExternRefCode)));
+    BUILD(r, WASM_REF_IS_NULL(WASM_REF_NULL(kAnyRefCode)));
     CHECK_EQ(1, r.Call());
   }
   {
     WasmRunner<int32_t> r(TestExecutionTier::kInterpreter);
-    r.AllocateLocal(kWasmExternRef);
+    r.AllocateLocal(kWasmAnyRef);
     BUILD(r, WASM_REF_IS_NULL(WASM_LOCAL_GET(0)));
     CHECK_EQ(1, r.Call());
   }
   {
     WasmRunner<int32_t> r(TestExecutionTier::kInterpreter);
-    r.AllocateLocal(kWasmExternRef);
-    BUILD(r,
-          WASM_REF_IS_NULL(WASM_LOCAL_TEE(0, WASM_REF_NULL(kExternRefCode))));
+    r.AllocateLocal(kWasmAnyRef);
+    BUILD(r, WASM_REF_IS_NULL(WASM_LOCAL_TEE(0, WASM_REF_NULL(kAnyRefCode))));
     CHECK_EQ(1, r.Call());
   }
 }
@@ -502,6 +501,45 @@ TEST(Regress1092130) {
             WASM_I32V(0)),
         WASM_DROP);
   r.Call();
+}
+
+TEST(Regress1247119) {
+  WasmRunner<uint32_t> r(TestExecutionTier::kInterpreter);
+  BUILD(r, kExprLoop, 0, kExprTry, 0, kExprUnreachable, kExprDelegate, 0,
+        kExprEnd);
+  r.Call();
+}
+
+TEST(Regress1246712) {
+  WasmRunner<uint32_t> r(TestExecutionTier::kInterpreter);
+  TestSignatures sigs;
+  const int kExpected = 1;
+  uint8_t except = r.builder().AddException(sigs.v_v());
+  BUILD(r, kExprTry, kWasmI32.value_type_code(), kExprTry,
+        kWasmI32.value_type_code(), kExprThrow, except, kExprEnd, kExprCatchAll,
+        kExprI32Const, kExpected, kExprEnd);
+  CHECK_EQ(kExpected, r.Call());
+}
+
+TEST(Regress1249306) {
+  WasmRunner<uint32_t> r(TestExecutionTier::kInterpreter);
+  BUILD(r, kExprTry, kVoid, kExprCatchAll, kExprTry, kVoid, kExprDelegate, 0,
+        kExprEnd, kExprI32Const, 0);
+  r.Call();
+}
+
+TEST(Regress1251845) {
+  WasmRunner<uint32_t, uint32_t, uint32_t, uint32_t> r(
+      TestExecutionTier::kInterpreter);
+  ValueType reps[] = {kWasmI32, kWasmI32, kWasmI32, kWasmI32};
+  FunctionSig sig_iii_i(1, 3, reps);
+  byte sig = r.builder().AddSignature(&sig_iii_i);
+  BUILD(r, kExprI32Const, 0, kExprI32Const, 0, kExprI32Const, 0, kExprTry, sig,
+        kExprI32Const, 0, kExprTry, 0, kExprTry, 0, kExprI32Const, 0, kExprTry,
+        sig, kExprUnreachable, kExprTry, 0, kExprUnreachable, kExprEnd,
+        kExprTry, sig, kExprUnreachable, kExprEnd, kExprEnd, kExprUnreachable,
+        kExprEnd, kExprEnd, kExprUnreachable, kExprEnd);
+  r.Call(0, 0, 0);
 }
 
 }  // namespace test_run_wasm_interpreter

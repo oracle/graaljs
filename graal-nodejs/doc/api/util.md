@@ -387,7 +387,9 @@ fs.access('file/that/does/not/exist', (err) => {
 ## `util.getSystemErrorMap()`
 
 <!-- YAML
-added: v16.0.0
+added:
+  - v16.0.0
+  - v14.17.0
 -->
 
 * Returns: {Map}
@@ -483,10 +485,8 @@ stream.write('With ES6');
 <!-- YAML
 added: v0.3.0
 changes:
-  - version: v16.18.0
-    pr-url: https://github.com/nodejs/node/pull/43576
-    description: add support for `maxArrayLength` when inspecting `Set` and `Map`.
   - version:
+    - v17.3.0
     - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41003
     description: The `numericSeparator` option is supported now.
@@ -586,9 +586,8 @@ changes:
   * `showProxy` {boolean} If `true`, `Proxy` inspection includes
     the [`target` and `handler`][] objects. **Default:** `false`.
   * `maxArrayLength` {integer} Specifies the maximum number of `Array`,
-    [`TypedArray`][], [`Map`][], [`Set`][], [`WeakMap`][],
-    and [`WeakSet`][] elements to include when formatting.
-    Set to `null` or `Infinity` to show all elements. Set to `0` or
+    [`TypedArray`][], [`WeakMap`][], and [`WeakSet`][] elements to include when
+    formatting. Set to `null` or `Infinity` to show all elements. Set to `0` or
     negative to show no elements. **Default:** `100`.
   * `maxStringLength` {integer} Specifies the maximum number of characters to
     include when formatting. Set to `null` or `Infinity` to show all elements.
@@ -677,7 +676,7 @@ const o = {
       'eiusmod \ntempor incididunt ut labore et dolore magna aliqua.',
     'test',
     'foo']], 4],
-  b: new Map([['za', 1], ['zb', 'test']])
+  b: new Map([['za', 1], ['zb', 'test']]),
 };
 console.log(util.inspect(o, { compact: true, depth: 5, breakLength: 80 }));
 
@@ -745,7 +744,7 @@ const assert = require('node:assert');
 const o1 = {
   b: [2, 3, 1],
   a: '`a` comes before `b`',
-  c: new Set([2, 3, 1])
+  c: new Set([2, 3, 1]),
 };
 console.log(inspect(o1, { sorted: true }));
 // { a: '`a` comes before `b`', b: [ 2, 3, 1 ], c: Set(3) { 1, 2, 3 } }
@@ -755,11 +754,11 @@ console.log(inspect(o1, { sorted: (a, b) => b.localeCompare(a) }));
 const o2 = {
   c: new Set([2, 1, 3]),
   a: '`a` comes before `b`',
-  b: [2, 3, 1]
+  b: [2, 3, 1],
 };
 assert.strict.equal(
   inspect(o1, { sorted: true }),
-  inspect(o2, { sorted: true })
+  inspect(o2, { sorted: true }),
 );
 ```
 
@@ -880,7 +879,9 @@ ignored, if not supported.
 <!-- YAML
 added: v0.1.97
 changes:
-  - version: v16.14.0
+  - version:
+      - v17.3.0
+      - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41019
     description: The inspect argument is added for more interoperability.
 -->
@@ -904,7 +905,7 @@ class Box {
     }
 
     const newOptions = Object.assign({}, options, {
-      depth: options.depth === null ? null : options.depth - 1
+      depth: options.depth === null ? null : options.depth - 1,
     });
 
     // Five space padding because that's the size of "Box< ".
@@ -1019,12 +1020,366 @@ Otherwise, returns `false`.
 See [`assert.deepStrictEqual()`][] for more information about deep strict
 equality.
 
+## Class: `util.MIMEType`
+
+<!-- YAML
+added: v18.13.0
+-->
+
+> Stability: 1 - Experimental
+
+An implementation of [the MIMEType class](https://bmeck.github.io/node-proposal-mime-api/).
+
+In accordance with browser conventions, all properties of `MIMEType` objects
+are implemented as getters and setters on the class prototype, rather than as
+data properties on the object itself.
+
+A MIME string is a structured string containing multiple meaningful
+components. When parsed, a `MIMEType` object is returned containing
+properties for each of these components.
+
+### Constructor: `new MIMEType(input)`
+
+* `input` {string} The input MIME to parse
+
+Creates a new `MIMEType` object by parsing the `input`.
+
+```mjs
+import { MIMEType } from 'node:util';
+
+const myMIME = new MIMEType('text/plain');
+```
+
+```cjs
+const { MIMEType } = require('node:util');
+
+const myMIME = new MIMEType('text/plain');
+```
+
+A `TypeError` will be thrown if the `input` is not a valid MIME. Note
+that an effort will be made to coerce the given values into strings. For
+instance:
+
+```mjs
+import { MIMEType } from 'node:util';
+const myMIME = new MIMEType({ toString: () => 'text/plain' });
+console.log(String(myMIME));
+// Prints: text/plain
+```
+
+```cjs
+const { MIMEType } = require('node:util');
+const myMIME = new MIMEType({ toString: () => 'text/plain' });
+console.log(String(myMIME));
+// Prints: text/plain
+```
+
+#### `mime.type`
+
+* {string}
+
+Gets and sets the type portion of the MIME.
+
+```mjs
+import { MIMEType } from 'node:util';
+
+const myMIME = new MIMEType('text/javascript');
+console.log(myMIME.type);
+// Prints: text
+myMIME.type = 'application';
+console.log(myMIME.type);
+// Prints: application
+console.log(String(myMIME));
+// Prints: application/javascript
+```
+
+```cjs
+const { MIMEType } = require('node:util');
+
+const myMIME = new MIMEType('text/javascript');
+console.log(myMIME.type);
+// Prints: text
+myMIME.type = 'application';
+console.log(myMIME.type);
+// Prints: application
+console.log(String(myMIME));
+// Prints: application/javascript
+```
+
+#### `mime.subtype`
+
+* {string}
+
+Gets and sets the subtype portion of the MIME.
+
+```mjs
+import { MIMEType } from 'node:util';
+
+const myMIME = new MIMEType('text/ecmascript');
+console.log(myMIME.subtype);
+// Prints: ecmascript
+myMIME.subtype = 'javascript';
+console.log(myMIME.subtype);
+// Prints: javascript
+console.log(String(myMIME));
+// Prints: text/javascript
+```
+
+```cjs
+const { MIMEType } = require('node:util');
+
+const myMIME = new MIMEType('text/ecmascript');
+console.log(myMIME.subtype);
+// Prints: ecmascript
+myMIME.subtype = 'javascript';
+console.log(myMIME.subtype);
+// Prints: javascript
+console.log(String(myMIME));
+// Prints: text/javascript
+```
+
+#### `mime.essence`
+
+* {string}
+
+Gets the essence of the MIME. This property is read only.
+Use `mime.type` or `mime.subtype` to alter the MIME.
+
+```mjs
+import { MIMEType } from 'node:util';
+
+const myMIME = new MIMEType('text/javascript;key=value');
+console.log(myMIME.essence);
+// Prints: text/javascript
+myMIME.type = 'application';
+console.log(myMIME.essence);
+// Prints: application/javascript
+console.log(String(myMIME));
+// Prints: application/javascript;key=value
+```
+
+```cjs
+const { MIMEType } = require('node:util');
+
+const myMIME = new MIMEType('text/javascript;key=value');
+console.log(myMIME.essence);
+// Prints: text/javascript
+myMIME.type = 'application';
+console.log(myMIME.essence);
+// Prints: application/javascript
+console.log(String(myMIME));
+// Prints: application/javascript;key=value
+```
+
+#### `mime.params`
+
+* {MIMEParams}
+
+Gets the [`MIMEParams`][] object representing the
+parameters of the MIME. This property is read-only. See
+[`MIMEParams`][] documentation for details.
+
+#### `mime.toString()`
+
+* Returns: {string}
+
+The `toString()` method on the `MIMEType` object returns the serialized MIME.
+
+Because of the need for standard compliance, this method does not allow users
+to customize the serialization process of the MIME.
+
+#### `mime.toJSON()`
+
+* Returns: {string}
+
+Alias for [`mime.toString()`][].
+
+This method is automatically called when an `MIMEType` object is serialized
+with [`JSON.stringify()`][].
+
+```mjs
+import { MIMEType } from 'node:util';
+
+const myMIMES = [
+  new MIMEType('image/png'),
+  new MIMEType('image/gif'),
+];
+console.log(JSON.stringify(myMIMES));
+// Prints: ["image/png", "image/gif"]
+```
+
+```cjs
+const { MIMEType } = require('node:util');
+
+const myMIMES = [
+  new MIMEType('image/png'),
+  new MIMEType('image/gif'),
+];
+console.log(JSON.stringify(myMIMES));
+// Prints: ["image/png", "image/gif"]
+```
+
+### Class: `util.MIMEParams`
+
+<!-- YAML
+added: v18.13.0
+-->
+
+The `MIMEParams` API provides read and write access to the parameters of a
+`MIMEType`.
+
+#### Constructor: `new MIMEParams()`
+
+Creates a new `MIMEParams` object by with empty parameters
+
+```mjs
+import { MIMEParams } from 'node:util';
+
+const myParams = new MIMEParams();
+```
+
+```cjs
+const { MIMEParams } = require('node:util');
+
+const myParams = new MIMEParams();
+```
+
+#### `mimeParams.delete(name)`
+
+* `name` {string}
+
+Remove all name-value pairs whose name is `name`.
+
+#### `mimeParams.entries()`
+
+* Returns: {Iterator}
+
+Returns an iterator over each of the name-value pairs in the parameters.
+Each item of the iterator is a JavaScript `Array`. The first item of the array
+is the `name`, the second item of the array is the `value`.
+
+#### `mimeParams.get(name)`
+
+* `name` {string}
+* Returns: {string} or `null` if there is no name-value pair with the given
+  `name`.
+
+Returns the value of the first name-value pair whose name is `name`. If there
+are no such pairs, `null` is returned.
+
+#### `mimeParams.has(name)`
+
+* `name` {string}
+* Returns: {boolean}
+
+Returns `true` if there is at least one name-value pair whose name is `name`.
+
+#### `mimeParams.keys()`
+
+* Returns: {Iterator}
+
+Returns an iterator over the names of each name-value pair.
+
+```mjs
+import { MIMEType } from 'node:util';
+
+const { params } = new MIMEType('text/plain;foo=0;bar=1');
+for (const name of params.keys()) {
+  console.log(name);
+}
+// Prints:
+//   foo
+//   bar
+```
+
+```cjs
+const { MIMEType } = require('node:util');
+
+const { params } = new MIMEType('text/plain;foo=0;bar=1');
+for (const name of params.keys()) {
+  console.log(name);
+}
+// Prints:
+//   foo
+//   bar
+```
+
+#### `mimeParams.set(name, value)`
+
+* `name` {string}
+* `value` {string}
+
+Sets the value in the `MIMEParams` object associated with `name` to
+`value`. If there are any pre-existing name-value pairs whose names are `name`,
+set the first such pair's value to `value`.
+
+```mjs
+import { MIMEType } from 'node:util';
+
+const { params } = new MIMEType('text/plain;foo=0;bar=1');
+params.set('foo', 'def');
+params.set('baz', 'xyz');
+console.log(params.toString());
+// Prints: foo=def&bar=1&baz=xyz
+```
+
+```cjs
+const { MIMEType } = require('node:util');
+
+const { params } = new MIMEType('text/plain;foo=0;bar=1');
+params.set('foo', 'def');
+params.set('baz', 'xyz');
+console.log(params.toString());
+// Prints: foo=def&bar=1&baz=xyz
+```
+
+#### `mimeParams.values()`
+
+* Returns: {Iterator}
+
+Returns an iterator over the values of each name-value pair.
+
+#### `mimeParams[@@iterator]()`
+
+* Returns: {Iterator}
+
+Alias for [`mimeParams.entries()`][].
+
+```mjs
+import { MIMEType } from 'node:util';
+
+const { params } = new MIMEType('text/plain;foo=bar;xyz=baz');
+for (const [name, value] of params) {
+  console.log(name, value);
+}
+// Prints:
+//   foo bar
+//   xyz baz
+```
+
+```cjs
+const { MIMEType } = require('node:util');
+
+const { params } = new MIMEType('text/plain;foo=bar;xyz=baz');
+for (const [name, value] of params) {
+  console.log(name, value);
+}
+// Prints:
+//   foo bar
+//   xyz baz
+```
+
 ## `util.parseArgs([config])`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 changes:
-  - version: v16.17.0
+  - version: v18.11.0
+    pr-url: https://github.com/nodejs/node/pull/44631
+    description: Add support for default values in input `config`.
+  - version:
+    - v18.7.0
+    - v16.17.0
     pr-url: https://github.com/nodejs/node/pull/43459
     description: add support for returning detailed parse information
                  using `tokens` in input `config` and returned properties.
@@ -1044,6 +1399,9 @@ changes:
       times. If `true`, all values will be collected in an array. If
       `false`, values for the option are last-wins. **Default:** `false`.
     * `short` {string} A single character alias for the option.
+    * `default` {string | boolean | string\[] | boolean\[]} The default option
+      value when it is not set by args. It must be of the same type as the
+      `type` property. When `multiple` is `true`, it must be an array.
   * `strict` {boolean} Should an error be thrown when unknown arguments
     are encountered, or when arguments are passed that do not match the
     `type` configured in `options`.
@@ -1073,15 +1431,15 @@ const args = ['-f', '--bar', 'b'];
 const options = {
   foo: {
     type: 'boolean',
-    short: 'f'
+    short: 'f',
   },
   bar: {
-    type: 'string'
-  }
+    type: 'string',
+  },
 };
 const {
   values,
-  positionals
+  positionals,
 } = parseArgs({ args, options });
 console.log(values, positionals);
 // Prints: [Object: null prototype] { foo: true, bar: 'b' } []
@@ -1093,15 +1451,15 @@ const args = ['-f', '--bar', 'b'];
 const options = {
   foo: {
     type: 'boolean',
-    short: 'f'
+    short: 'f',
   },
   bar: {
-    type: 'string'
-  }
+    type: 'string',
+  },
 };
 const {
   values,
-  positionals
+  positionals,
 } = parseArgs({ args, options });
 console.log(values, positionals);
 // Prints: [Object: null prototype] { foo: true, bar: 'b' } []
@@ -1112,7 +1470,7 @@ conversation in [pkgjs/parseargs][] to contribute to the design.
 
 ### `parseArgs` `tokens`
 
-Detailed parse information is available for adding custom behaviours by
+Detailed parse information is available for adding custom behaviors by
 specifying `tokens: true` in the configuration.
 The returned tokens have properties describing:
 
@@ -1577,7 +1935,9 @@ The encoding supported by the `TextEncoder` instance. Always set to `'utf-8'`.
 ## `util.toUSVString(string)`
 
 <!-- YAML
-added: v16.8.0
+added:
+  - v16.8.0
+  - v14.18.0
 -->
 
 * `string` {string}
@@ -1585,6 +1945,82 @@ added: v16.8.0
 Returns the `string` after replacing any surrogate code points
 (or equivalently, any unpaired surrogate code units) with the
 Unicode "replacement character" U+FFFD.
+
+## `util.transferableAbortController()`
+
+<!-- YAML
+added: v18.11.0
+-->
+
+> Stability: 1 - Experimental
+
+Creates and returns an {AbortController} instance whose {AbortSignal} is marked
+as transferable and can be used with `structuredClone()` or `postMessage()`.
+
+## `util.transferableAbortSignal(signal)`
+
+<!-- YAML
+added: v18.11.0
+-->
+
+> Stability: 1 - Experimental
+
+* `signal` {AbortSignal}
+* Returns: {AbortSignal}
+
+Marks the given {AbortSignal} as transferable so that it can be used with
+`structuredClone()` and `postMessage()`.
+
+```js
+const signal = transferableAbortSignal(AbortSignal.timeout(100));
+const channel = new MessageChannel();
+channel.port2.postMessage(signal, [signal]);
+```
+
+## `util.aborted(signal, resource)`
+
+<!-- YAML
+added: v18.16.0
+-->
+
+> Stability: 1 - Experimental
+
+* `signal` {AbortSignal}
+* `resource` {Object} Any non-null entity, reference to which is held weakly.
+* Returns: {Promise}
+
+Listens to abort event on the provided `signal` and
+returns a promise that is fulfilled when the `signal` is
+aborted. If the passed `resource` is garbage collected before the `signal` is
+aborted, the returned promise shall remain pending indefinitely.
+
+```cjs
+const { aborted } = require('node:util');
+
+const dependent = obtainSomethingAbortable();
+
+aborted(dependent.signal, dependent).then(() => {
+  // Do something when dependent is aborted.
+});
+
+dependent.on('event', () => {
+  dependent.abort();
+});
+```
+
+```mjs
+import { aborted } from 'node:util';
+
+const dependent = obtainSomethingAbortable();
+
+aborted(dependent.signal, dependent).then(() => {
+  // Do something when dependent is aborted.
+});
+
+dependent.on('event', () => {
+  dependent.abort();
+});
+```
 
 ## `util.types`
 
@@ -2068,12 +2504,43 @@ added: v10.0.0
 * `value` {any}
 * Returns: {boolean}
 
-Returns `true` if the value is an instance of a built-in [`Error`][] type.
+Returns `true` if the value was returned by the constructor of a
+[built-in `Error` type][].
 
 ```js
-util.types.isNativeError(new Error());  // Returns true
-util.types.isNativeError(new TypeError());  // Returns true
-util.types.isNativeError(new RangeError());  // Returns true
+console.log(util.types.isNativeError(new Error()));  // true
+console.log(util.types.isNativeError(new TypeError()));  // true
+console.log(util.types.isNativeError(new RangeError()));  // true
+```
+
+Subclasses of the native error types are also native errors:
+
+```js
+class MyError extends Error {}
+console.log(util.types.isNativeError(new MyError()));  // true
+```
+
+A value being `instanceof` a native error class is not equivalent to `isNativeError()`
+returning `true` for that value. `isNativeError()` returns `true` for errors
+which come from a different [realm][] while `instanceof Error` returns `false`
+for these errors:
+
+```js
+const vm = require('node:vm');
+const context = vm.createContext({});
+const myError = vm.runInContext('new Error()', context);
+console.log(util.types.isNativeError(myError)); // true
+console.log(myError instanceof Error); // false
+```
+
+Conversely, `isNativeError()` returns `false` for all objects which were not
+returned by the constructor of a native error. That includes values
+which are `instanceof` native errors:
+
+```js
+const myError = { __proto__: Error.prototype };
+console.log(util.types.isNativeError(myError)); // false
+console.log(myError instanceof Error); // true
 ```
 
 ### `util.types.isNumberObject(value)`
@@ -2855,6 +3322,8 @@ util.log('Timestamped message.');
 [`Int16Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int16Array
 [`Int32Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int32Array
 [`Int8Array`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Int8Array
+[`JSON.stringify()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify
+[`MIMEparams`]: #class-utilmimeparams
 [`Map`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Map
 [`Object.assign()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/assign
 [`Object.freeze()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/freeze
@@ -2872,6 +3341,8 @@ util.log('Timestamped message.');
 [`WebAssembly.Module`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Module
 [`assert.deepStrictEqual()`]: assert.md#assertdeepstrictequalactual-expected-message
 [`console.error()`]: console.md#consoleerrordata-args
+[`mime.toString()`]: #mimetostring
+[`mimeParams.entries()`]: #mimeparamsentries
 [`napi_create_external()`]: n-api.md#napi_create_external
 [`target` and `handler`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Proxy#Terminology
 [`tty.hasColors()`]: tty.md#writestreamhascolorscount-env
@@ -2884,11 +3355,13 @@ util.log('Timestamped message.');
 [`util.types.isNativeError()`]: #utiltypesisnativeerrorvalue
 [`util.types.isSharedArrayBuffer()`]: #utiltypesissharedarraybuffervalue
 [async function]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Statements/async_function
+[built-in `Error` type]: https://tc39.es/ecma262/#sec-error-objects
 [compare function]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort#Parameters
 [constructor]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/constructor
 [default sort]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/sort
 [global symbol registry]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Symbol/for
 [list of deprecated APIS]: deprecations.md#list-of-deprecated-apis
 [pkgjs/parseargs]: https://github.com/pkgjs/parseargs
+[realm]: https://tc39.es/ecma262/#realm
 [semantically incompatible]: https://github.com/nodejs/node/issues/4179
 [util.inspect.custom]: #utilinspectcustom

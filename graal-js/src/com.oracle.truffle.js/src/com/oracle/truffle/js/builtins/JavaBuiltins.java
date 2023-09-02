@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -53,11 +54,10 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaAddToClasspathNodeGen;
 import com.oracle.truffle.js.builtins.JavaBuiltinsFactory.JavaExtendNodeGen;
@@ -94,6 +94,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -300,11 +301,11 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
 
         @Specialization(guards = "isJavaInteropClass(type, typeInterop)")
-        protected TruffleString typeNameJavaInteropClass(Object type,
+        protected Object typeNameJavaInteropClass(Object type,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary typeInterop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop) {
+                        @Cached ImportValueNode importValue) {
             try {
-                return stringInterop.asTruffleString(typeInterop.getMetaQualifiedName(type));
+                return importValue.executeWithTarget(typeInterop.getMetaQualifiedName(type));
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorInteropException(type, e, "Java.typeName", this);
             }
@@ -327,16 +328,15 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             super(context, builtin);
         }
 
-        private final BranchProfile errorBranch = BranchProfile.create();
-
         @Specialization
         @TruffleBoundary(transferToInterpreterOnException = false)
-        protected Object extend(Object[] arguments) {
+        protected Object extend(Object[] arguments,
+                        @Cached InlinedBranchProfile errorBranch) {
             if (JSConfig.SubstrateVM) {
                 throw Errors.unsupported("JavaAdapter");
             }
             if (arguments.length == 0) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("Java.extend needs at least one argument.");
             }
 
@@ -346,7 +346,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 classOverrides = arguments[arguments.length - 1];
                 typesLength = arguments.length - 1;
                 if (typesLength == 0) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeError("Java.extend needs at least one type argument.");
                 }
             } else {
@@ -358,7 +358,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
             final Object[] types = new Object[typesLength];
             for (int i = 0; i < typesLength; i++) {
                 if (!isType(arguments[i], env)) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeError("Java.extend needs Java types as its arguments.");
                 }
                 types[i] = arguments[i];
@@ -392,7 +392,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @Cached ImportValueNode importValueNode,
                         @Cached("createCachedInterop()") WriteElementNode writeNode,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             JSRealm realm = getRealm();
             TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(javaArray)) {
@@ -400,7 +400,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                 try {
                     long size = interop.getArraySize(javaArray);
                     if (size < 0 || size >= Integer.MAX_VALUE) {
-                        throw Errors.createRangeErrorInvalidArrayLength();
+                        throw Errors.createRangeErrorInvalidArrayLength(this);
                     }
                     JSDynamicObject jsArray = JSArray.createEmptyChecked(getContext(), realm, size);
                     for (int i = 0; i < size; i++) {
@@ -412,7 +412,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                     // fall through
                 }
             }
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeError("Cannot convert to JavaScript array.");
         }
     }
@@ -445,7 +445,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization(guards = {"isJSObject(jsObj)"})
         protected Object to(Object jsObj, Object toType,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("typeInterop") InteropLibrary interop) {
             TruffleLanguage.Env env = getRealm().getEnv();
             Object javaType;
             boolean knownArrayClass = false;
@@ -475,7 +475,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization(guards = {"!isJSObject(obj)"}, limit = "InteropLibraryLimit")
         protected Object toNonObject(Object obj, @SuppressWarnings("unused") Object toType,
                         @CachedLibrary("obj") InteropLibrary objInterop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary typeInterop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("typeInterop") InteropLibrary typeInterop) {
             if (objInterop.hasArrayElements(obj)) {
                 return to(obj, toType, typeInterop);
             }
@@ -505,19 +505,17 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         }
     }
 
+    @ImportStatic({JSConfig.class})
     abstract static class JavaSuperNode extends JSBuiltinNode {
         JavaSuperNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        @TruffleBoundary
-        protected Object superAdapter(Object adapter) {
-            try {
-                return InteropLibrary.getUncached().readMember(adapter, "super");
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                return Undefined.instance;
-            }
+        protected Object superAdapter(Object adapter,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached ImportValueNode toJSType) {
+            return JSInteropUtil.readMemberOrDefault(adapter, Strings.SUPER, Undefined.instance, interop, toJSType, this);
         }
     }
 
@@ -672,7 +670,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization(replaces = "doString")
         protected Object doObject(Object fileName,
-                        @Cached("create()") JSToStringNode toStringNode) {
+                        @Cached JSToStringNode toStringNode) {
             return doString(toStringNode.executeString(fileName));
         }
     }

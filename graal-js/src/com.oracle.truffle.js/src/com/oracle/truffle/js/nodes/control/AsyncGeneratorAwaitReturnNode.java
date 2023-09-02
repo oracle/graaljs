@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,25 +46,24 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunction.AsyncGeneratorState;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.AsyncGeneratorRequest;
 import com.oracle.truffle.js.runtime.objects.Completion;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNode {
 
     protected final JSContext context;
-    @Child protected PropertySetNode setGeneratorState;
-    @Child protected PropertyGetNode getGeneratorQueue;
     @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
     @Child private PromiseResolveNode promiseResolveNode;
     @Child private PerformPromiseThenNode performPromiseThenNode;
@@ -73,8 +72,6 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
     AsyncGeneratorAwaitReturnNode(JSContext context) {
         super(context);
         this.context = context;
-        this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
-        this.getGeneratorQueue = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
     }
 
     public static AsyncGeneratorAwaitReturnNode create(JSContext context) {
@@ -89,8 +86,8 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
         return getErrorObjectNode.execute(ex);
     }
 
-    public final void executeAsyncGeneratorAwaitReturn(VirtualFrame frame, Object generator, ArrayDeque<AsyncGeneratorRequest> queue) {
-        setGeneratorState.setValue(generator, JSFunction.AsyncGeneratorState.AwaitingReturn);
+    public final void executeAsyncGeneratorAwaitReturn(VirtualFrame frame, JSAsyncGeneratorObject generator, ArrayDeque<AsyncGeneratorRequest> queue) {
+        generator.setAsyncGeneratorState(AsyncGeneratorState.AwaitingReturn);
         try {
             asyncGeneratorAwaitReturn(generator, queue);
         } catch (AbstractTruffleException ex) {
@@ -103,7 +100,7 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
         assert !queue.isEmpty();
         AsyncGeneratorRequest next = queue.peekFirst();
         // PromiseResolve error caught in caller
-        JSDynamicObject promise = promiseResolve(next.getCompletionValue());
+        JSPromiseObject promise = promiseResolve(next.getCompletionValue());
         if (performPromiseThenNode == null || setGeneratorNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             this.performPromiseThenNode = insert(PerformPromiseThenNode.create(context));
@@ -114,16 +111,16 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
         performPromiseThenNode.execute(promise, onFulfilled, onRejected, null);
     }
 
-    private JSDynamicObject promiseResolve(Object value) {
+    private JSPromiseObject promiseResolve(Object value) {
         if (promiseResolveNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             promiseResolveNode = insert(PromiseResolveNode.create(context));
         }
-        return promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
+        return (JSPromiseObject) promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
     }
 
-    protected final void asyncGeneratorRejectBrokenPromise(VirtualFrame frame, Object generator, AbstractTruffleException exception, ArrayDeque<AsyncGeneratorRequest> queue) {
-        setGeneratorState.setValue(generator, JSFunction.AsyncGeneratorState.Completed);
+    protected final void asyncGeneratorRejectBrokenPromise(VirtualFrame frame, JSAsyncGeneratorObject generator, AbstractTruffleException exception, ArrayDeque<AsyncGeneratorRequest> queue) {
+        generator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.Completed);
         Object error = getErrorObject(exception);
         asyncGeneratorCompleteStep(frame, Completion.Type.Throw, error, true, queue);
     }
@@ -155,7 +152,7 @@ public class AsyncGeneratorAwaitReturnNode extends AsyncGeneratorCompleteStepNod
 
             @Override
             public Object execute(VirtualFrame frame) {
-                Object generator = getThis(frame);
+                var generator = getThis(frame);
                 Object result = valueNode.execute(frame);
                 asyncGeneratorOpNode.asyncGeneratorCompleteStepAndDrainQueue(frame, generator, completionType, result);
                 return Undefined.instance;

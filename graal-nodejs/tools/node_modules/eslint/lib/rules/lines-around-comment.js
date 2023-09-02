@@ -15,7 +15,7 @@ const astUtils = require("./utils/ast-utils");
 //------------------------------------------------------------------------------
 
 /**
- * Return an array with with any line numbers that are empty.
+ * Return an array with any line numbers that are empty.
  * @param {Array} lines An array of each line of the file.
  * @returns {Array} An array of line numbers.
  */
@@ -29,7 +29,7 @@ function getEmptyLineNums(lines) {
 }
 
 /**
- * Return an array with with any line numbers that contain comments.
+ * Return an array with any line numbers that contain comments.
  * @param {Array} comments An array of comment tokens.
  * @returns {Array} An array of line numbers.
  */
@@ -57,7 +57,7 @@ module.exports = {
         docs: {
             description: "Require empty lines around comments",
             recommended: false,
-            url: "https://eslint.org/docs/rules/lines-around-comment"
+            url: "https://eslint.org/docs/latest/rules/lines-around-comment"
         },
 
         fixable: "whitespace",
@@ -113,6 +113,10 @@ module.exports = {
                     },
                     applyDefaultIgnorePatterns: {
                         type: "boolean"
+                    },
+                    afterHashbangComment: {
+                        type: "boolean",
+                        default: false
                     }
                 },
                 additionalProperties: false
@@ -134,7 +138,7 @@ module.exports = {
 
         options.beforeBlockComment = typeof options.beforeBlockComment !== "undefined" ? options.beforeBlockComment : true;
 
-        const sourceCode = context.getSourceCode();
+        const sourceCode = context.sourceCode;
 
         const lines = sourceCode.lines,
             numLines = lines.length + 1,
@@ -447,6 +451,13 @@ module.exports = {
                             checkForEmptyLine(token, {
                                 after: options.afterBlockComment,
                                 before: options.beforeBlockComment
+                            });
+                        }
+                    } else if (token.type === "Shebang") {
+                        if (options.afterHashbangComment) {
+                            checkForEmptyLine(token, {
+                                after: options.afterHashbangComment,
+                                before: false
                             });
                         }
                     }

@@ -79,7 +79,7 @@ inline uint64_t DoubleToUint64(double x);
 // Enumeration for allowing octals and ignoring junk when converting
 // strings to numbers.
 enum ConversionFlags {
-  NO_FLAGS = 0,
+  NO_CONVERSION_FLAGS = 0,
   ALLOW_HEX = 1,
   ALLOW_OCTAL = 2,
   ALLOW_IMPLICIT_OCTAL = 4,
@@ -119,6 +119,8 @@ const int kDoubleToCStringMinBufferSize = 100;
 V8_EXPORT_PRIVATE const char* DoubleToCString(double value,
                                               base::Vector<char> buffer);
 
+V8_EXPORT_PRIVATE std::unique_ptr<char[]> BigIntLiteralToDecimal(
+    LocalIsolate* isolate, base::Vector<const uint8_t> literal);
 // Convert an int to a null-terminated string. The returned string is
 // located inside the buffer, but not necessarily at the start.
 V8_EXPORT_PRIVATE const char* IntToCString(int n, base::Vector<char> buffer);

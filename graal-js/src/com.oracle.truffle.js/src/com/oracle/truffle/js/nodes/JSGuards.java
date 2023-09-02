@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes;
 
 import java.util.List;
 
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -61,7 +62,6 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
@@ -112,6 +112,7 @@ public final class JSGuards {
      * Checks if this value is a JSObject; this excludes Null and Undefined, and foreign objects
      * (values from other languages).
      */
+    @Idempotent
     public static boolean isJSObject(Object value) {
         return JSRuntime.isObject(value);
     }
@@ -147,12 +148,13 @@ public final class JSGuards {
         return JSFunction.isJSFunction(value);
     }
 
+    @Idempotent
     public static boolean isJSFunctionShape(Shape shape) {
         return shape.getDynamicType() == JSFunction.INSTANCE;
     }
 
     public static boolean isBoundJSFunction(Object value) {
-        return isJSFunction(value) && JSFunction.isBoundFunction((JSFunctionObject) value);
+        return JSFunction.isBoundFunction(value);
     }
 
     public static boolean isCallable(Object reviver) {
@@ -327,15 +329,15 @@ public final class JSGuards {
         return JSSymbol.isJSSymbol(value);
     }
 
-    public static boolean isJSTemporalTime(Object value) {
+    public static boolean isJSTemporalPlainTime(Object value) {
         return JSTemporalPlainTime.isJSTemporalPlainTime(value);
     }
 
-    public static boolean isJSTemporalDate(Object value) {
+    public static boolean isJSTemporalPlainDate(Object value) {
         return JSTemporalPlainDate.isJSTemporalPlainDate(value);
     }
 
-    public static boolean isJSTemporalDateTime(Object value) {
+    public static boolean isJSTemporalPlainDateTime(Object value) {
         return JSTemporalPlainDateTime.isJSTemporalPlainDateTime(value);
     }
 
@@ -403,6 +405,7 @@ public final class JSGuards {
         return JSWebAssemblyModule.isJSWebAssemblyModule(object);
     }
 
+    @Idempotent
     public static boolean isValidPrototype(Object prototype) {
         return isJSObject(prototype) || isJSNull(prototype);
     }
@@ -495,11 +498,23 @@ public final class JSGuards {
         return value instanceof Number && JSRuntime.isJavaPrimitive(value);
     }
 
+    public static boolean isForeignObjectOrNumber(Object a) {
+        return isForeignObject(a) || isForeignNumber(a);
+    }
+
+    public static boolean isForeignNumber(Object a) {
+        return a instanceof Number && !JSRuntime.isNumber(a);
+    }
+
     public static boolean isNullOrUndefined(Object value) {
         return JSRuntime.isNullOrUndefined(value);
     }
 
     public static boolean hasOverloadedOperators(Object value) {
         return JSOverloadedOperatorsObject.hasOverloadedOperators(value);
+    }
+
+    public static boolean longFitsInDouble(long value) {
+        return JSRuntime.longFitsInDouble(value);
     }
 }

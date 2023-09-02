@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,18 +52,18 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
  */
 public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCopyableObject {
 
-    protected JSOrdinaryObject(Shape shape) {
-        super(shape);
+    protected JSOrdinaryObject(Shape shape, JSDynamicObject proto) {
+        super(shape, proto);
     }
 
-    public static JSOrdinaryObject create(Shape shape) {
+    public static JSOrdinaryObject create(Shape shape, JSDynamicObject proto) {
         Class<? extends DynamicObject> layout = shape.getLayoutClass();
         if (layout == DefaultLayout.class) {
-            return new DefaultLayout(shape);
+            return new DefaultLayout(shape, proto);
         } else if (layout == InternalFieldLayout.class) {
-            return new InternalFieldLayout(shape);
+            return new InternalFieldLayout(shape, proto);
         } else {
-            return new BareLayout(shape);
+            return new BareLayout(shape, proto);
         }
     }
 
@@ -85,13 +85,13 @@ public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCop
     }
 
     public static final class BareLayout extends JSOrdinaryObject {
-        protected BareLayout(Shape shape) {
-            super(shape);
+        protected BareLayout(Shape shape, JSDynamicObject proto) {
+            super(shape, proto);
         }
 
         @Override
         protected JSObject copyWithoutProperties(Shape shape) {
-            return new BareLayout(shape);
+            return new BareLayout(shape, getPrototypeOf());
         }
     }
 
@@ -104,13 +104,13 @@ public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCop
         @DynamicField long p1;
         @DynamicField long p2;
 
-        protected DefaultLayout(Shape shape) {
-            super(shape);
+        protected DefaultLayout(Shape shape, JSDynamicObject proto) {
+            super(shape, proto);
         }
 
         @Override
         protected JSObject copyWithoutProperties(Shape shape) {
-            return new DefaultLayout(shape);
+            return new DefaultLayout(shape, getPrototypeOf());
         }
     }
 
@@ -125,13 +125,13 @@ public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCop
         private long[] internalPointerFields = EMPTY_LONG_ARRAY;
         private Object[] internalObjectFields = EMPTY_OBJECT_ARRAY;
 
-        protected InternalFieldLayout(Shape shape) {
-            super(shape);
+        protected InternalFieldLayout(Shape shape, JSDynamicObject proto) {
+            super(shape, proto);
         }
 
         @Override
         protected JSObject copyWithoutProperties(Shape shape) {
-            return new InternalFieldLayout(shape);
+            return new InternalFieldLayout(shape, getPrototypeOf());
         }
 
         public long getInternalFieldPointer(int index) {

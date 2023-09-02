@@ -24,7 +24,7 @@ let https;
 try {
   https = require('node:https');
 } catch (err) {
-  console.log('https support is disabled!');
+  console.error('https support is disabled!');
 }
 ```
 
@@ -42,7 +42,7 @@ let https;
 try {
   https = await import('node:https');
 } catch (err) {
-  console.log('https support is disabled!');
+  console.error('https support is disabled!');
 }
 ```
 
@@ -135,6 +135,22 @@ added: v0.1.90
 
 See [`server.close()`][] in the `node:http` module.
 
+### `server.closeAllConnections()`
+
+<!-- YAML
+added: v18.2.0
+-->
+
+See [`server.closeAllConnections()`][] in the `node:http` module.
+
+### `server.closeIdleConnections()`
+
+<!-- YAML
+added: v18.2.0
+-->
+
+See [`server.closeIdleConnections()`][] in the `node:http` module.
+
 ### `server.headersTimeout`
 
 <!-- YAML
@@ -160,9 +176,14 @@ See [`server.maxHeadersCount`][] in the `node:http` module.
 
 <!-- YAML
 added: v14.11.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41263
+    description: The default request timeout changed
+                 from no timeout to 300s (5 minutes).
 -->
 
-* {number} **Default:** `0`
+* {number} **Default:** `300000`
 
 See [`server.requestTimeout`][] in the `node:http` module.
 
@@ -220,7 +241,7 @@ const fs = require('node:fs');
 
 const options = {
   key: fs.readFileSync('test/fixtures/keys/agent2-key.pem'),
-  cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem')
+  cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem'),
 };
 
 https.createServer(options, (req, res) => {
@@ -237,7 +258,7 @@ const fs = require('node:fs');
 
 const options = {
   pfx: fs.readFileSync('test/fixtures/test_cert.pfx'),
-  passphrase: 'sample'
+  passphrase: 'sample',
 };
 
 https.createServer(options, (req, res) => {
@@ -304,13 +325,15 @@ Global instance of [`https.Agent`][] for all HTTPS client requests.
 <!-- YAML
 added: v0.3.6
 changes:
-  - version: v16.7.0
+  - version:
+      - v16.7.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/39310
     description: When using a `URL` object parsed username
                  and password will now be properly URI decoded.
   - version:
-    - v14.1.0
-    - v13.14.0
+      - v14.1.0
+      - v13.14.0
     pr-url: https://github.com/nodejs/node/pull/32786
     description: The `highWaterMark` option is accepted now.
   - version: v10.9.0
@@ -357,7 +380,7 @@ const options = {
   hostname: 'encrypted.google.com',
   port: 443,
   path: '/',
-  method: 'GET'
+  method: 'GET',
 };
 
 const req = https.request(options, (res) => {
@@ -384,7 +407,7 @@ const options = {
   path: '/',
   method: 'GET',
   key: fs.readFileSync('test/fixtures/keys/agent2-key.pem'),
-  cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem')
+  cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem'),
 };
 options.agent = new https.Agent(options);
 
@@ -403,7 +426,7 @@ const options = {
   method: 'GET',
   key: fs.readFileSync('test/fixtures/keys/agent2-key.pem'),
   cert: fs.readFileSync('test/fixtures/keys/agent2-cert.pem'),
-  agent: false
+  agent: false,
 };
 
 const req = https.request(options, (res) => {
@@ -531,6 +554,8 @@ headers: max-age=0; pin-sha256="WoiWRyIOVNa9ihaBciRSC7XHjliYS9VwUGOIud4PB18="; p
 [`net.Server`]: net.md#class-netserver
 [`new URL()`]: url.md#new-urlinput-base
 [`server.close()`]: http.md#serverclosecallback
+[`server.closeAllConnections()`]: http.md#servercloseallconnections
+[`server.closeIdleConnections()`]: http.md#servercloseidleconnections
 [`server.headersTimeout`]: http.md#serverheaderstimeout
 [`server.keepAliveTimeout`]: http.md#serverkeepalivetimeout
 [`server.listen()`]: net.md#serverlisten

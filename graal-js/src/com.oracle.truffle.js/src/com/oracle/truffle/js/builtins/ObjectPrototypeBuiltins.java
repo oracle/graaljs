@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -54,7 +55,6 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.FormatCacheNodeGen;
-import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.GetBuiltinToStringTagNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeDefineGetterOrSetterNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeHasOwnPropertyNodeGen;
 import com.oracle.truffle.js.builtins.ObjectPrototypeBuiltinsFactory.ObjectPrototypeIsPrototypeOfNodeGen;
@@ -171,7 +171,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Child private JSToObjectNode toObjectNode;
 
-        private final ConditionProfile isObject = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isObject = ConditionProfile.create();
         private final BranchProfile notAJSObjectBranch = BranchProfile.create();
 
         /**
@@ -187,7 +187,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected final Object toObject(Object target) {
             if (toObjectNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                toObjectNode = insert(JSToObjectNode.createToObject(getContext()));
+                toObjectNode = insert(JSToObjectNode.create());
             }
             return toObjectNode.execute(target);
         }
@@ -196,9 +196,9 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
          * Coerce to Object or throw TypeError. Must be the first statement (evaluation order!) and
          * executed only once.
          */
-        protected final JSDynamicObject asJSObject(Object object) {
+        protected final JSObject asJSObject(Object object) {
             if (isObject.profile(JSRuntime.isObject(object))) {
-                return (JSDynamicObject) object;
+                return (JSObject) object;
             } else {
                 throw createTypeErrorCalledOnNonObject(object);
             }
@@ -226,7 +226,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSDynamicObject(thisObj)")
+        @Specialization
         protected JSDynamicObject valueOfJSObject(JSDynamicObject thisObj) {
             return toJSObject(thisObj);
         }
@@ -260,12 +260,13 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object valueOfForeign(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
             if (interop.isNull(thisObj)) {
-                throw Errors.createTypeErrorNotObjectCoercible(thisObj, null, getContext());
+                throw Errors.createTypeErrorNotObjectCoercible(thisObj, this);
             }
             return thisObj;
         }
     }
 
+    @ImportStatic(JSConfig.class)
     public abstract static class ObjectPrototypeToStringNode extends ObjectOperation {
         @Child private PropertyGetNode getStringTagNode;
         @Child private FormatCacheNode formatCacheNode;
@@ -309,7 +310,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected TruffleString doJSProxy(JSProxyObject thisObj,
-                        @Shared("builtinTag") @Cached("create()") GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
+                        @Shared("builtinTag") @Cached GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
             // builtinTag must be read before tag because the latter may revoke the proxy
             TruffleString builtinTag = getBuiltinToStringTagNode.execute(thisObj);
             TruffleString tag = getToStringTag(thisObj);
@@ -329,8 +330,8 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return Strings.TO_STRING_VALUE_UNDEFINED;
         }
 
-        @Specialization(guards = "isForeignObject(thisObj)", limit = "1")
-        @TruffleBoundary
+        @InliningCutoff
+        @Specialization(guards = "isForeignObject(thisObj)", limit = "InteropLibraryLimit")
         protected TruffleString doForeignObject(Object thisObj,
                         @CachedLibrary("thisObj") InteropLibrary interop) {
             if (interop.isNull(thisObj)) {
@@ -379,10 +380,6 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         public abstract TruffleString execute(JSObject object);
 
-        public static GetBuiltinToStringTagNode create() {
-            return GetBuiltinToStringTagNodeGen.create();
-        }
-
         @SuppressWarnings("unused")
         @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "5")
         protected static TruffleString cached(JSObject object,
@@ -407,16 +404,16 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"stringEquals(equalsNode, cachedName, name)"}, limit = "10")
-        protected TruffleString executeCached(TruffleString name,
+        protected TruffleString doCached(TruffleString name,
                         @Cached("name") TruffleString cachedName,
-                        @Cached("executeUncached(name)") TruffleString cachedResult,
+                        @Cached("doUncached(name)") TruffleString cachedResult,
                         @Cached TruffleString.EqualNode equalsNode) {
             return cachedResult;
         }
 
         @TruffleBoundary
         @Specialization
-        protected TruffleString executeUncached(TruffleString name) {
+        protected TruffleString doUncached(TruffleString name) {
             return Strings.concatAll(Strings.BRACKET_OBJECT_SPC, name, Strings.BRACKET_CLOSE);
         }
     }
@@ -449,7 +446,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
         @Child private JSGetOwnPropertyNode getOwnPropertyNode = JSGetOwnPropertyNode.create();
-        private final ConditionProfile descNull = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile descNull = ConditionProfile.create();
 
         @Specialization
         protected boolean propertyIsEnumerable(Object obj, Object key) {
@@ -473,26 +470,26 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected boolean doJSObjectTStringKey(JSDynamicObject thisObj, TruffleString propertyName) {
+        @Specialization
+        protected boolean doJSObjectTStringKey(JSObject thisObj, TruffleString propertyName) {
             return getHasOwnPropertyNode().executeBoolean(thisObj, propertyName);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected boolean doJSObjectIntKey(JSDynamicObject thisObj, int index) {
+        @Specialization
+        protected boolean doJSObjectIntKey(JSObject thisObj, int index) {
             return getHasOwnPropertyNode().executeBoolean(thisObj, index);
         }
 
-        @Specialization(guards = "isJSObject(thisObj)", replaces = {"doJSObjectTStringKey", "doJSObjectIntKey"})
-        protected boolean doJSObjectAnyKey(JSDynamicObject thisObj, Object propName) {
+        @Specialization(replaces = {"doJSObjectTStringKey", "doJSObjectIntKey"})
+        protected boolean doJSObjectAnyKey(JSObject thisObj, Object propName) {
             Object key = getToPropertyKeyNode().execute(propName);
             return getHasOwnPropertyNode().executeBoolean(thisObj, key);
         }
 
         @Specialization(guards = "isNullOrUndefined(thisObj)")
-        protected boolean hasOwnPropertyNullOrUndefined(JSDynamicObject thisObj, Object propName) {
+        protected boolean hasOwnPropertyNullOrUndefined(Object thisObj, Object propName) {
             getToPropertyKeyNode().execute(propName); // may have side effect
-            throw Errors.createTypeErrorNotObjectCoercible(thisObj, null, getContext());
+            throw Errors.createTypeErrorNotObjectCoercible(thisObj, this);
         }
 
         @Specialization
@@ -550,11 +547,11 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        private final ConditionProfile argIsNull = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile firstPrototypeFits = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile argIsNull = ConditionProfile.create();
+        private final ConditionProfile firstPrototypeFits = ConditionProfile.create();
 
-        @Specialization(guards = "isJSObject(arg)")
-        protected boolean isPrototypeOf(Object thisObj, JSDynamicObject arg) {
+        @Specialization
+        protected boolean isPrototypeOf(Object thisObj, JSObject arg) {
             JSDynamicObject object = toJSObject(thisObj);
             if (argIsNull.profile(arg == null)) {
                 return false;
@@ -567,7 +564,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int counter = 0;
             do {
                 counter++;
-                if (counter > getContext().getContextOptions().getMaxPrototypeChainLength()) {
+                if (counter > getContext().getLanguageOptions().maxPrototypeChainLength()) {
                     throw Errors.createRangeError("prototype chain length exceeded");
                 }
                 pobj = JSObject.getPrototype(pobj);

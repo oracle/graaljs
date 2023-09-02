@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,11 +83,6 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
 
     public static final TruffleString LENGTH = Strings.constant("length");
 
-    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("String Iterator");
-    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("String Iterator.prototype");
-    public static final HiddenKey ITERATED_STRING_ID = new HiddenKey("IteratedString");
-    public static final HiddenKey STRING_ITERATOR_NEXT_INDEX_ID = new HiddenKey("StringIteratorNextIndex");
-
     public static final TruffleString REGEXP_ITERATOR_CLASS_NAME = Strings.constant("RegExp String Iterator");
     public static final TruffleString REGEXP_ITERATOR_PROTOTYPE_NAME = Strings.constant("RegExp String Iterator.prototype");
     public static final HiddenKey REGEXP_ITERATOR_ITERATING_REGEXP_ID = new HiddenKey("IteratingRegExp");
@@ -107,8 +102,19 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     }
 
     public static JSStringObject create(JSContext context, JSRealm realm, TruffleString value) {
-        JSStringObject stringObj = JSStringObject.create(realm, context.getStringFactory(), value);
-        return context.trackAllocation(stringObj);
+        JSObjectFactory factory = context.getStringFactory();
+        return create(factory, realm, factory.getPrototype(realm), value);
+    }
+
+    public static JSStringObject create(JSContext context, JSRealm realm, JSDynamicObject proto, TruffleString value) {
+        JSObjectFactory factory = context.getStringFactory();
+        return create(factory, realm, proto, value);
+    }
+
+    private static JSStringObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, TruffleString value) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSStringObject(shape, proto, value), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @TruffleBoundary
@@ -183,7 +189,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         if (receiver != thisObj) {
             return ordinarySetWithReceiver(thisObj, Strings.fromLong(index), value, receiver, isStrict, encapsulatingNode);
         }
-        if (index < getStringLength(thisObj)) {
+        if (index >= 0 && index < getStringLength(thisObj)) {
             // Indexed properties of a String are non-writable and non-configurable.
             if (isStrict) {
                 throw Errors.createTypeErrorNotWritableIndex(index, thisObj, encapsulatingNode);
@@ -246,22 +252,22 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(ctx, INSTANCE, realm.getObjectPrototype());
-        JSObject prototype = JSStringObject.create(protoShape, Strings.EMPTY_STRING);
+        JSObject prototype = JSStringObject.create(protoShape, realm.getObjectPrototype(), Strings.EMPTY_STRING);
         JSObjectUtil.setOrVerifyPrototype(ctx, prototype, realm.getObjectPrototype());
 
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         // sets the length just for the prototype
-        JSObjectUtil.putDataProperty(ctx, prototype, LENGTH, 0, JSAttributes.notConfigurableNotEnumerableNotWritable());
+        JSObjectUtil.putDataProperty(prototype, LENGTH, 0, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, StringPrototypeBuiltins.BUILTINS);
-        if (ctx.isOptionNashornCompatibilityMode() || ctx.getParserOptions().getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
+        if (ctx.isOptionNashornCompatibilityMode() || ctx.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             JSObjectUtil.putFunctionsFromContainer(realm, prototype, StringPrototypeBuiltins.EXTENSION_BUILTINS);
         }
         if (ctx.isOptionAnnexB()) {
             // trimLeft/trimRight are the same objects as trimStart/trimEnd
             Object trimStart = JSObject.get(prototype, TRIM_START);
             Object trimEnd = JSObject.get(prototype, TRIM_END);
-            JSObjectUtil.putDataProperty(ctx, prototype, TRIM_LEFT, trimStart, JSAttributes.configurableNotEnumerableWritable());
-            JSObjectUtil.putDataProperty(ctx, prototype, TRIM_RIGHT, trimEnd, JSAttributes.configurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(prototype, TRIM_LEFT, trimStart, JSAttributes.configurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(prototype, TRIM_RIGHT, trimEnd, JSAttributes.configurableNotEnumerableWritable());
         }
         return prototype;
     }

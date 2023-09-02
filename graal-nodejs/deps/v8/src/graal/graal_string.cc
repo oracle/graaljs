@@ -202,7 +202,7 @@ v8::Local<v8::String> GraalString::NewFromModifiedUtf8(v8::Isolate* isolate, con
 
     // TODO: use TruffleString constructor directly here once modified UTF-8 is supported (GR-36965)
     jstring java_string = graal_isolate->GetJNIEnv()->NewStringUTF(data);
-    
+
     JNI_CALL(jobject, java_truffle_string, graal_isolate, GraalAccessMethod::string_new, Object, java_string);
 
     GraalString* graal_string = GraalString::Allocate(graal_isolate, java_truffle_string);

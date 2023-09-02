@@ -42,6 +42,10 @@ namespace node {
 
 using BaseObjectList = std::vector<BaseObjectPtr<BaseObject>>;
 
+// Hack to have WriteHostObject inform ReadHostObject that the value
+// should be treated as a regular JS object. Used to transfer process.env.
+static const uint32_t kNormalObject = static_cast<uint32_t>(-1);
+
 BaseObject::TransferMode BaseObject::GetTransferMode() const {
   return BaseObject::TransferMode::kUntransferable;
 }
@@ -98,8 +102,17 @@ class DeserializerDelegate : public ValueDeserializer::Delegate {
     uint32_t id;
     if (!deserializer->ReadUint32(&id))
       return MaybeLocal<Object>();
-    CHECK_LT(id, host_objects_.size());
-    return host_objects_[id]->object(isolate);
+    if (id != kNormalObject) {
+      CHECK_LT(id, host_objects_.size());
+      return host_objects_[id]->object(isolate);
+    }
+    EscapableHandleScope scope(isolate);
+    Local<Context> context = isolate->GetCurrentContext();
+    Local<Value> object;
+    if (!deserializer->ReadValue(context).ToLocal(&object))
+      return MaybeLocal<Object>();
+    CHECK(object->IsObject());
+    return scope.Escape(object.As<Object>());
   }
 
   MaybeLocal<SharedArrayBuffer> GetSharedArrayBufferFromId(
@@ -291,6 +304,21 @@ class SerializerDelegate : public ValueSerializer::Delegate {
     if (env_->base_object_ctor_template()->HasInstance(object)) {
       return WriteHostObject(
           BaseObjectPtr<BaseObject> { Unwrap<BaseObject>(object) });
+    }
+
+    // Convert process.env to a regular object.
+    auto env_proxy_ctor_template = env_->env_proxy_ctor_template();
+    if (!env_proxy_ctor_template.IsEmpty() &&
+        env_proxy_ctor_template->HasInstance(object)) {
+      HandleScope scope(isolate);
+      // TODO(bnoordhuis) Prototype-less object in case process.env contains
+      // a "__proto__" key? process.env has a prototype with concomitant
+      // methods like toString(). It's probably confusing if that gets lost
+      // in transmission.
+      Local<Object> normal_object = Object::New(isolate);
+      env_->env_vars()->AssignToObject(isolate, env_->context(), normal_object);
+      serializer->WriteUint32(kNormalObject);  // Instead of a BaseObject.
+      return serializer->WriteValue(env_->context(), normal_object);
     }
 
     ThrowDataCloneError(env_->clone_unsupported_type_str());
@@ -1123,15 +1151,16 @@ Local<FunctionTemplate> GetMessagePortConstructorTemplate(Environment* env) {
     return templ;
 
   {
-    Local<FunctionTemplate> m = env->NewFunctionTemplate(MessagePort::New);
+    Isolate* isolate = env->isolate();
+    Local<FunctionTemplate> m = NewFunctionTemplate(isolate, MessagePort::New);
     m->SetClassName(env->message_port_constructor_string());
     m->InstanceTemplate()->SetInternalFieldCount(
         MessagePort::kInternalFieldCount);
     m->Inherit(HandleWrap::GetConstructorTemplate(env));
 
-    env->SetProtoMethod(m, "postMessage", MessagePort::PostMessage);
-    env->SetProtoMethod(m, "start", MessagePort::Start);
-    env->SetProtoMethod(m, "messageData", MessagePort::MessageData);
+    SetProtoMethod(isolate, m, "postMessage", MessagePort::PostMessage);
+    SetProtoMethod(isolate, m, "start", MessagePort::Start);
+    SetProtoMethod(isolate, m, "messageData", MessagePort::MessageData);
 
     env->set_message_port_constructor_template(m);
   }
@@ -1464,38 +1493,46 @@ static void InitMessaging(Local<Object> target,
                           Local<Context> context,
                           void* priv) {
   Environment* env = Environment::GetCurrent(context);
+  Isolate* isolate = env->isolate();
 
   {
-    env->SetConstructorFunction(
-        target,
-        "MessageChannel",
-        env->NewFunctionTemplate(MessageChannel));
+    SetConstructorFunction(context,
+                           target,
+                           "MessageChannel",
+                           NewFunctionTemplate(isolate, MessageChannel));
   }
 
   {
-    Local<FunctionTemplate> t = env->NewFunctionTemplate(JSTransferable::New);
+    Local<FunctionTemplate> t =
+        NewFunctionTemplate(isolate, JSTransferable::New);
     t->Inherit(BaseObject::GetConstructorTemplate(env));
     t->InstanceTemplate()->SetInternalFieldCount(
         JSTransferable::kInternalFieldCount);
-    env->SetConstructorFunction(target, "JSTransferable", t);
+    t->SetClassName(OneByteString(isolate, "JSTransferable"));
+    SetConstructorFunction(
+        context, target, "JSTransferable", t, SetConstructorFunctionFlag::NONE);
   }
 
-  env->SetConstructorFunction(
-      target,
-      env->message_port_constructor_string(),
-      GetMessagePortConstructorTemplate(env));
+  SetConstructorFunction(context,
+                         target,
+                         env->message_port_constructor_string(),
+                         GetMessagePortConstructorTemplate(env),
+                         SetConstructorFunctionFlag::NONE);
 
   // These are not methods on the MessagePort prototype, because
   // the browser equivalents do not provide them.
-  env->SetMethod(target, "stopMessagePort", MessagePort::Stop);
-  env->SetMethod(target, "checkMessagePort", MessagePort::CheckType);
-  env->SetMethod(target, "drainMessagePort", MessagePort::Drain);
-  env->SetMethod(target, "receiveMessageOnPort", MessagePort::ReceiveMessage);
-  env->SetMethod(target, "moveMessagePortToContext",
-                 MessagePort::MoveToContext);
-  env->SetMethod(target, "setDeserializerCreateObjectFunction",
-                 SetDeserializerCreateObjectFunction);
-  env->SetMethod(target, "broadcastChannel", BroadcastChannel);
+  SetMethod(context, target, "stopMessagePort", MessagePort::Stop);
+  SetMethod(context, target, "checkMessagePort", MessagePort::CheckType);
+  SetMethod(context, target, "drainMessagePort", MessagePort::Drain);
+  SetMethod(
+      context, target, "receiveMessageOnPort", MessagePort::ReceiveMessage);
+  SetMethod(
+      context, target, "moveMessagePortToContext", MessagePort::MoveToContext);
+  SetMethod(context,
+            target,
+            "setDeserializerCreateObjectFunction",
+            SetDeserializerCreateObjectFunction);
+  SetMethod(context, target, "broadcastChannel", BroadcastChannel);
 
   {
     Local<Function> domexception = GetDOMException(context).ToLocalChecked();
@@ -1527,6 +1564,6 @@ static void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 }  // namespace worker
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(messaging, node::worker::InitMessaging)
-NODE_MODULE_EXTERNAL_REFERENCE(messaging,
-                               node::worker::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(messaging, node::worker::InitMessaging)
+NODE_BINDING_EXTERNAL_REFERENCE(messaging,
+                                node::worker::RegisterExternalReferences)

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,8 @@ package com.oracle.truffle.js.builtins.helper;
 import java.util.ArrayList;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
@@ -193,28 +194,27 @@ public final class ReplaceStringParser<T> {
         }
     }
 
-    private final JSContext context;
     private final TruffleString replaceStr;
     private final int maxGroupNumber; // exclusive
     private final boolean parseNamedCaptureGroups;
     private int index = 0;
 
-    private ReplaceStringParser(JSContext context, TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
-        this.context = context;
+    private ReplaceStringParser(TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
         this.replaceStr = replaceStr;
         this.maxGroupNumber = maxGroupNumber;
         this.parseNamedCaptureGroups = parseNamedCaptureGroups;
     }
 
-    public static <T, R> R process(JSContext context, TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups, BranchProfile hasDollarProfile, Consumer<T, R> consumer, T node) {
-        new ReplaceStringParser<T>(context, replaceStr, maxGroupNumber, parseNamedCaptureGroups).process(consumer, node, hasDollarProfile);
+    public static <T, R> R process(JSContext context, TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups, Consumer<T, R> consumer, T node,
+                    Node profileNode, InlinedBranchProfile hasDollarBranch) {
+        new ReplaceStringParser<T>(replaceStr, maxGroupNumber, parseNamedCaptureGroups).process(consumer, node, profileNode, hasDollarBranch, context);
         return consumer.getResult();
     }
 
     @TruffleBoundary
     public static Token[] parse(JSContext context, TruffleString replaceStr, int maxGroupNumber, boolean parseNamedCaptureGroups) {
         TokenConsumer consumer = new TokenConsumer();
-        new ReplaceStringParser<Void>(context, replaceStr, maxGroupNumber, parseNamedCaptureGroups).process(consumer, null, BranchProfile.create());
+        new ReplaceStringParser<Void>(replaceStr, maxGroupNumber, parseNamedCaptureGroups).process(consumer, null, null, InlinedBranchProfile.getUncached(), context);
         return consumer.getResult();
     }
 
@@ -244,9 +244,9 @@ public final class ReplaceStringParser<T> {
         return consumer.getResult();
     }
 
-    public void process(Consumer<T, ?> consumer, T node, BranchProfile hasDollarProfile) {
+    public void process(Consumer<T, ?> consumer, T node, Node profileNode, InlinedBranchProfile hasDollarBranch, JSContext context) {
         while (hasNext()) {
-            parseNextDollar(consumer, node, hasDollarProfile);
+            parseNextDollar(consumer, node, profileNode, hasDollarBranch, context);
         }
     }
 
@@ -254,14 +254,14 @@ public final class ReplaceStringParser<T> {
         return index < Strings.length(replaceStr);
     }
 
-    private void parseNextDollar(Consumer<T, ?> consumer, T node, BranchProfile hasDollarProfile) {
+    private void parseNextDollar(Consumer<T, ?> consumer, T node, Node profileNode, InlinedBranchProfile hasDollarBranch, JSContext context) {
         assert hasNext();
         int dollarPos = Strings.indexOf(replaceStr, '$', index);
         if (dollarPos < 0 || dollarPos + 1 == Strings.length(replaceStr)) {
             literal(consumer, node, Strings.length(replaceStr), Strings.length(replaceStr));
             return;
         }
-        hasDollarProfile.enter();
+        hasDollarBranch.enter(profileNode);
         char ch = Strings.charAt(replaceStr, dollarPos + 1);
         switch (ch) {
             case '$':

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,9 @@ package com.oracle.truffle.js.nodes.interop;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -78,8 +80,9 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value, Object thiz, boolean bindMemberFunctions);
 
+    @Idempotent
     protected final boolean isInteropCompletePromises() {
-        return getLanguage().getJSContext().getContextOptions().isMLEMode();
+        return getLanguage().getJSContext().getLanguageOptions().isMLEMode();
     }
 
     @Specialization(guards = {"!bindFunctions", "!isInteropCompletePromises() || !isAsyncFunction(function)"})
@@ -163,6 +166,7 @@ public abstract class ExportValueNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorFormat("Cannot convert to TruffleObject: %s", value == null ? null : value.getClass().getSimpleName());
     }
 
+    @NeverDefault
     public static ExportValueNode create() {
         return ExportValueNodeGen.create();
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
@@ -129,13 +129,13 @@ public abstract class ReadImportBindingNode extends JavaScriptNode {
 
     @Specialization(guards = {"resolution.isNamespace()"})
     final Object doGetNamespace(ExportResolution.Resolved resolution,
-                    @Cached BranchProfile slowPath) {
+                    @Cached InlinedBranchProfile slowPath) {
         JSModuleRecord module = resolution.getModule();
         assert module.getStatus().compareTo(Status.Linked) >= 0 : module.getStatus();
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.FASTPATH_PROBABILITY, module.getNamespace() != null)) {
             return module.getNamespace();
         } else {
-            slowPath.enter();
+            slowPath.enter(this);
             return getLanguage().getJSContext().getEvaluator().getModuleNamespace(module);
         }
     }

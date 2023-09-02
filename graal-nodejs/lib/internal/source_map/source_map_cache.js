@@ -41,6 +41,8 @@ const esmSourceMapCache = new SafeMap();
 // The generated sources is not mutable, so we can use a Map without memory concerns:
 const generatedSourceMapCache = new SafeMap();
 const kLeadingProtocol = /^\w+:\/\//;
+const kSourceMappingURLMagicComment = /\/[*/]#\s+sourceMappingURL=(?<sourceMappingURL>[^\s]+)/g;
+const kSourceURLMagicComment = /\/[*/]#\s+sourceURL=(?<sourceURL>[^\s]+)/g;
 
 const { fileURLToPath, pathToFileURL, URL } = require('internal/url');
 let SourceMap;
@@ -58,12 +60,12 @@ function setSourceMapsEnabled(val) {
 
   const {
     setSourceMapsEnabled,
-    setPrepareStackTraceCallback
+    setPrepareStackTraceCallback,
   } = internalBinding('errors');
   setSourceMapsEnabled(val);
   if (val) {
     const {
-      prepareStackTrace
+      prepareStackTrace,
     } = require('internal/source_map/prepare_stack_trace');
     setPrepareStackTraceCallback(prepareStackTrace);
   } else if (sourceMapsEnabled !== undefined) {
@@ -77,7 +79,39 @@ function setSourceMapsEnabled(val) {
   sourceMapsEnabled = val;
 }
 
-function maybeCacheSourceMap(filename, content, cjsModuleInstance, isGeneratedSource) {
+function extractSourceURLMagicComment(content) {
+  let match;
+  let matchSourceURL;
+  // A while loop is used here to get the last occurrence of sourceURL.
+  // This is needed so that we don't match sourceURL in string literals.
+  while ((match = RegExpPrototypeExec(kSourceURLMagicComment, content))) {
+    matchSourceURL = match;
+  }
+  if (matchSourceURL == null) {
+    return null;
+  }
+  let sourceURL = matchSourceURL.groups.sourceURL;
+  if (sourceURL != null && RegExpPrototypeExec(kLeadingProtocol, sourceURL) === null) {
+    sourceURL = pathToFileURL(sourceURL).href;
+  }
+  return sourceURL;
+}
+
+function extractSourceMapURLMagicComment(content) {
+  let match;
+  let lastMatch;
+  // A while loop is used here to get the last occurrence of sourceMappingURL.
+  // This is needed so that we don't match sourceMappingURL in string literals.
+  while ((match = RegExpPrototypeExec(kSourceMappingURLMagicComment, content))) {
+    lastMatch = match;
+  }
+  if (lastMatch == null) {
+    return null;
+  }
+  return lastMatch.groups.sourceMappingURL;
+}
+
+function maybeCacheSourceMap(filename, content, cjsModuleInstance, isGeneratedSource, sourceURL, sourceMapURL) {
   const sourceMapsEnabled = getSourceMapsEnabled();
   if (!(process.env.NODE_V8_COVERAGE || sourceMapsEnabled)) return;
   try {
@@ -87,34 +121,53 @@ function maybeCacheSourceMap(filename, content, cjsModuleInstance, isGeneratedSo
     debug(err);
     return;
   }
-  const match = RegExpPrototypeExec(
-    /\/[*/]#\s+sourceMappingURL=(?<sourceMappingURL>[^\s]+)/,
-    content,
-  );
-  if (match) {
-    const data = dataFromUrl(filename, match.groups.sourceMappingURL);
-    const url = data ? null : match.groups.sourceMappingURL;
-    if (cjsModuleInstance) {
-      cjsSourceMapCache.set(cjsModuleInstance, {
-        filename,
-        lineLengths: lineLengths(content),
-        data,
-        url
-      });
-    } else if (isGeneratedSource) {
-      generatedSourceMapCache.set(filename, {
-        lineLengths: lineLengths(content),
-        data,
-        url
-      });
-    } else {
-      // If there is no cjsModuleInstance and is not generated source assume we are in a
-      // "modules/esm" context.
-      esmSourceMapCache.set(filename, {
-        lineLengths: lineLengths(content),
-        data,
-        url
-      });
+
+  if (sourceMapURL === undefined) {
+    sourceMapURL = extractSourceMapURLMagicComment(content);
+  }
+
+  // Bail out when there is no source map url.
+  if (typeof sourceMapURL !== 'string') {
+    return;
+  }
+
+  if (sourceURL === undefined) {
+    sourceURL = extractSourceURLMagicComment(content);
+  }
+
+  const data = dataFromUrl(filename, sourceMapURL);
+  const url = data ? null : sourceMapURL;
+  if (cjsModuleInstance) {
+    cjsSourceMapCache.set(cjsModuleInstance, {
+      filename,
+      lineLengths: lineLengths(content),
+      data,
+      url,
+      sourceURL,
+    });
+  } else if (isGeneratedSource) {
+    const entry = {
+      lineLengths: lineLengths(content),
+      data,
+      url,
+      sourceURL,
+    };
+    generatedSourceMapCache.set(filename, entry);
+    if (sourceURL) {
+      generatedSourceMapCache.set(sourceURL, entry);
+    }
+  } else {
+    // If there is no cjsModuleInstance and is not generated source assume we are in a
+    // "modules/esm" context.
+    const entry = {
+      lineLengths: lineLengths(content),
+      data,
+      url,
+      sourceURL,
+    };
+    esmSourceMapCache.set(filename, entry);
+    if (sourceURL) {
+      esmSourceMapCache.set(sourceURL, entry);
     }
   }
 }
@@ -123,19 +176,12 @@ function maybeCacheGeneratedSourceMap(content) {
   const sourceMapsEnabled = getSourceMapsEnabled();
   if (!(process.env.NODE_V8_COVERAGE || sourceMapsEnabled)) return;
 
-  const matchSourceURL = RegExpPrototypeExec(
-    /\/[*/]#\s+sourceURL=(?<sourceURL>[^\s]+)/,
-    content
-  );
-  if (matchSourceURL == null) {
+  const sourceURL = extractSourceURLMagicComment(content);
+  if (sourceURL === null) {
     return;
   }
-  let sourceURL = matchSourceURL.groups.sourceURL;
-  if (RegExpPrototypeExec(kLeadingProtocol, sourceURL) === null) {
-    sourceURL = pathToFileURL(sourceURL).href;
-  }
   try {
-    maybeCacheSourceMap(sourceURL, content, null, true);
+    maybeCacheSourceMap(sourceURL, content, null, true, sourceURL);
   } catch (err) {
     // This can happen if the filename is not a valid URL.
     // If we fail to cache the source map, we should not fail the whole process.
@@ -249,31 +295,27 @@ function appendCJSCache(obj) {
     obj[ObjectGetValueSafe(value, 'filename')] = {
       lineLengths: ObjectGetValueSafe(value, 'lineLengths'),
       data: ObjectGetValueSafe(value, 'data'),
-      url: ObjectGetValueSafe(value, 'url')
+      url: ObjectGetValueSafe(value, 'url'),
     };
   }
 }
 
-function findSourceMap(sourceURL, isGenerated) {
+function findSourceMap(sourceURL) {
   if (RegExpPrototypeExec(kLeadingProtocol, sourceURL) === null) {
     sourceURL = pathToFileURL(sourceURL).href;
   }
   if (!SourceMap) {
     SourceMap = require('internal/source_map/source_map').SourceMap;
   }
-  let sourceMap;
-  if (isGenerated) {
-    sourceMap = generatedSourceMapCache.get(sourceURL);
-  } else {
-    sourceMap = esmSourceMapCache.get(sourceURL);
-    if (sourceMap === undefined) {
-      for (const value of cjsSourceMapCache) {
-        const filename = ObjectGetValueSafe(value, 'filename');
-        if (sourceURL === filename) {
-          sourceMap = {
-            data: ObjectGetValueSafe(value, 'data')
-          };
-        }
+  let sourceMap = esmSourceMapCache.get(sourceURL) ?? generatedSourceMapCache.get(sourceURL);
+  if (sourceMap === undefined) {
+    for (const value of cjsSourceMapCache) {
+      const filename = ObjectGetValueSafe(value, 'filename');
+      const cachedSourceURL = ObjectGetValueSafe(value, 'sourceURL');
+      if (sourceURL === filename || sourceURL === cachedSourceURL) {
+        sourceMap = {
+          data: ObjectGetValueSafe(value, 'data'),
+        };
       }
     }
   }

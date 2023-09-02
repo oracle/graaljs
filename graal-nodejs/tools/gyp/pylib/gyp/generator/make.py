@@ -156,6 +156,31 @@ cmd_alink_thin = rm -f $@ && $(AR.$(TOOLSET)) crsT $@ $(filter %.o,$^)
 quiet_cmd_link = LINK($(TOOLSET)) $@
 cmd_link = $(LINK.$(TOOLSET)) -o $@ $(GYP_LDFLAGS) $(LDFLAGS.$(TOOLSET)) -Wl,--start-group $(LD_INPUTS) $(LIBS) -Wl,--end-group
 
+# Note: this does not handle spaces in paths
+define xargs
+  $(1) $(word 1,$(2))
+$(if $(word 2,$(2)),$(call xargs,$(1),$(wordlist 2,$(words $(2)),$(2))))
+endef
+
+define write-to-file
+  @: >$(1)
+$(call xargs,@printf "%s\\n" >>$(1),$(2))
+endef
+
+OBJ_FILE_LIST := ar-file-list
+
+define create_archive
+        rm -f $(1) $(1).$(OBJ_FILE_LIST); mkdir -p `dirname $(1)`
+        $(call write-to-file,$(1).$(OBJ_FILE_LIST),$(filter %.o,$(2)))
+        $(AR.$(TOOLSET)) crs $(1) @$(1).$(OBJ_FILE_LIST)
+endef
+
+define create_thin_archive
+        rm -f $(1) $(OBJ_FILE_LIST); mkdir -p `dirname $(1)`
+        $(call write-to-file,$(1).$(OBJ_FILE_LIST),$(filter %.o,$(2)))
+        $(AR.$(TOOLSET)) crsT $(1) @$(1).$(OBJ_FILE_LIST)
+endef
+
 # We support two kinds of shared objects (.so):
 # 1) shared_library, which is just bundling together many dependent libraries
 # into a link line.
@@ -199,6 +224,31 @@ cmd_alink = rm -f $@ && $(AR.$(TOOLSET)) crs $@ $(filter %.o,$^)
 
 quiet_cmd_alink_thin = AR($(TOOLSET)) $@
 cmd_alink_thin = rm -f $@ && $(AR.$(TOOLSET)) crsT $@ $(filter %.o,$^)
+
+# Note: this does not handle spaces in paths
+define xargs
+  $(1) $(word 1,$(2))
+$(if $(word 2,$(2)),$(call xargs,$(1),$(wordlist 2,$(words $(2)),$(2))))
+endef
+
+define write-to-file
+  @: >$(1)
+$(call xargs,@printf "%s\\n" >>$(1),$(2))
+endef
+
+OBJ_FILE_LIST := ar-file-list
+
+define create_archive
+        rm -f $(1) $(1).$(OBJ_FILE_LIST); mkdir -p `dirname $(1)`
+        $(call write-to-file,$(1).$(OBJ_FILE_LIST),$(filter %.o,$(2)))
+        $(AR.$(TOOLSET)) crs $(1) @$(1).$(OBJ_FILE_LIST)
+endef
+
+define create_thin_archive
+        rm -f $(1) $(OBJ_FILE_LIST); mkdir -p `dirname $(1)`
+        $(call write-to-file,$(1).$(OBJ_FILE_LIST),$(filter %.o,$(2)))
+        $(AR.$(TOOLSET)) crsT $(1) @$(1).$(OBJ_FILE_LIST)
+endef
 
 # Due to circular dependencies between libraries :(, we wrap the
 # special "figure out circular dependencies" flags around the entire
@@ -1809,21 +1859,35 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
                 self.flavor not in ("mac", "openbsd", "netbsd", "win")
                 and not self.is_standalone_static_library
             ):
-                self.WriteDoCmd(
-                    [self.output_binary],
-                    link_deps,
-                    "alink_thin",
-                    part_of_all,
-                    postbuilds=postbuilds,
-                )
+                if self.flavor in ("linux", "android"):
+                    self.WriteMakeRule(
+                        [self.output_binary],
+                        link_deps,
+                        actions=["$(call create_thin_archive,$@,$^)"],
+                    )
+                else:
+                    self.WriteDoCmd(
+                        [self.output_binary],
+                        link_deps,
+                        "alink_thin",
+                        part_of_all,
+                        postbuilds=postbuilds,
+                    )
             else:
-                self.WriteDoCmd(
-                    [self.output_binary],
-                    link_deps,
-                    "alink",
-                    part_of_all,
-                    postbuilds=postbuilds,
-                )
+                if self.flavor in ("linux", "android"):
+                    self.WriteMakeRule(
+                        [self.output_binary],
+                        link_deps,
+                        actions=["$(call create_archive,$@,$^)"],
+                    )
+                else:
+                    self.WriteDoCmd(
+                        [self.output_binary],
+                        link_deps,
+                        "alink",
+                        part_of_all,
+                        postbuilds=postbuilds,
+                    )
         elif self.type == "shared_library":
             self.WriteLn(
                 "%s: LD_INPUTS := %s"
@@ -1841,9 +1905,15 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
             )
             # z/OS has a .so target as well as a sidedeck .x target
             if self.flavor == "zos":
-                self.WriteLn('%s: %s' % (
-                    QuoteSpaces(self.GetSharedObjectFromSidedeck(self.output_binary)),
-                    QuoteSpaces(self.output_binary)))
+                self.WriteLn(
+                    "%s: %s"
+                    % (
+                        QuoteSpaces(
+                            self.GetSharedObjectFromSidedeck(self.output_binary)
+                        ),
+                        QuoteSpaces(self.output_binary),
+                    )
+                )
         elif self.type == "loadable_module":
             for link_dep in link_deps:
                 assert " " not in link_dep, (
@@ -1930,21 +2000,28 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
                 )
                 if self.flavor != "zos":
                     installable_deps.append(install_path)
-            if self.flavor == 'zos' and self.type == 'shared_library':
+            if self.flavor == "zos" and self.type == "shared_library":
                 # lib.target/libnode.so has a dependency on $(obj).target/libnode.so
-                self.WriteDoCmd([self.GetSharedObjectFromSidedeck(install_path)],
-                                [self.GetSharedObjectFromSidedeck(self.output)], 'copy',
-                                comment='Copy this to the %s output path.' %
-                                file_desc, part_of_all=part_of_all)
+                self.WriteDoCmd(
+                    [self.GetSharedObjectFromSidedeck(install_path)],
+                    [self.GetSharedObjectFromSidedeck(self.output)],
+                    "copy",
+                    comment="Copy this to the %s output path." % file_desc,
+                    part_of_all=part_of_all,
+                )
                 # Create a symlink of libnode.x to libnode.version.x
-                self.WriteDoCmd([self.GetUnversionedSidedeckFromSidedeck(install_path)],
-                                [install_path], 'symlink',
-                                comment='Symlnk this to the %s output path.' %
-                                file_desc, part_of_all=part_of_all)
+                self.WriteDoCmd(
+                    [self.GetUnversionedSidedeckFromSidedeck(install_path)],
+                    [install_path],
+                    "symlink",
+                    comment="Symlnk this to the %s output path." % file_desc,
+                    part_of_all=part_of_all,
+                )
                 # Place libnode.version.so and libnode.x symlink in lib.target dir
                 installable_deps.append(self.GetSharedObjectFromSidedeck(install_path))
                 installable_deps.append(
-                    self.GetUnversionedSidedeckFromSidedeck(install_path))
+                    self.GetUnversionedSidedeckFromSidedeck(install_path)
+                )
             if self.output != self.alias and self.alias != self.target:
                 self.WriteMakeRule(
                     [self.alias],
@@ -1952,13 +2029,13 @@ $(obj).$(TOOLSET)/$(TARGET)/%%.o: $(obj)/%%%s FORCE_DO_CMD
                     comment="Short alias for building this %s." % file_desc,
                     phony=True,
                 )
-            if self.flavor == 'zos' and self.type == 'shared_library':
+            if self.flavor == "zos" and self.type == "shared_library":
                 # Make sure that .x symlink target is run
                 self.WriteMakeRule(
-                    ['all'],
+                    ["all"],
                     [
                         self.GetUnversionedSidedeckFromSidedeck(install_path),
-                        self.GetSharedObjectFromSidedeck(install_path)
+                        self.GetSharedObjectFromSidedeck(install_path),
                     ],
                     comment='Add %s to "all" target.' % file_desc,
                     phony=True,

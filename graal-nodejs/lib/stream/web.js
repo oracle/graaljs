@@ -30,6 +30,11 @@ const {
   TextDecoderStream,
 } = require('internal/webstreams/encoding');
 
+const {
+  CompressionStream,
+  DecompressionStream,
+} = require('internal/webstreams/compression');
+
 module.exports = {
   ReadableStream,
   ReadableStreamDefaultReader,
@@ -46,4 +51,6 @@ module.exports = {
   CountQueuingStrategy,
   TextEncoderStream,
   TextDecoderStream,
+  CompressionStream,
+  DecompressionStream,
 };

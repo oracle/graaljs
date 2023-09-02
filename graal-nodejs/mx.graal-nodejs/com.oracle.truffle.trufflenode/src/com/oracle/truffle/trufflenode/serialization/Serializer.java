@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,6 +88,11 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandlerObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryObject;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -103,7 +108,7 @@ import com.oracle.truffle.trufflenode.threading.JavaMessagePortData;
  */
 public class Serializer {
     static final byte VERSION = (byte) 0xFF; // SerializationTag::kVersion
-    static final byte LATEST_VERSION = (byte) 13; // kLatestVersion
+    static final byte LATEST_VERSION = (byte) 15; // kLatestVersion
     static final String NATIVE_UTF16_ENCODING = (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) ? "UTF-16BE" : "UTF-16LE";
 
     public static final TruffleString COULD_NOT_BE_CLONED = Strings.constant(" could not be cloned.");
@@ -197,11 +202,13 @@ public class Serializer {
         } else if (value instanceof Symbol) {
             NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(value), COULD_NOT_BE_CLONED));
         } else if (env.isHostObject(value) && access.getCurrentMessagePortData() != null) {
-            JavaMessagePortData messagePort = access.getCurrentMessagePortData();
-            writeTag(SerializationTag.SHARED_JAVA_OBJECT);
-            writeVarInt(messagePort.getMessagePortDataPointer());
-            assignId(value);
-            messagePort.enqueueJavaRef(env.asHostObject(value));
+            writeSharedJavaObject(value);
+        } else if (value instanceof Long) {
+            if (access.getCurrentMessagePortData() != null) {
+                writeSharedJavaObject(env.asBoxedGuestValue(value));
+            } else {
+                writeIntOrDouble(((Long) value).doubleValue());
+            }
         } else {
             writeObject(value);
         }
@@ -254,17 +261,26 @@ public class Serializer {
             writeJSDataView((JSDataViewObject) object);
         } else if (JSError.isJSError(object)) {
             writeJSError((JSErrorObject) object);
+        } else if (JSWebAssemblyModule.isJSWebAssemblyModule(object)) {
+            writeJSWebAssemblyModule((JSWebAssemblyModuleObject) object);
+        } else if (JSWebAssemblyMemory.isJSWebAssemblyMemory(object)) {
+            writeJSWebAssemblyMemory((JSWebAssemblyMemoryObject) object);
         } else if (JSProxy.isJSProxy(object)) {
             JSProxyObject proxy = (JSProxyObject) object;
-            boolean callable = JSRuntime.isCallableProxy(proxy);
-            TruffleString objectStr;
-            if (callable) {
-                objectStr = JSRuntime.safeToString(JSProxy.getTargetNonProxy(proxy));
+            if (proxy.getProxyHandler() instanceof JSUncheckedProxyHandlerObject) {
+                // instance of an ObjectTemplate with a property handler
+                writeHostObject(proxy);
             } else {
-                objectStr = HASH_BRACKETS_OBJECT;
+                boolean callable = JSRuntime.isCallableProxy(proxy);
+                TruffleString objectStr;
+                if (callable) {
+                    objectStr = JSRuntime.safeToString(JSProxy.getTargetNonProxy(proxy));
+                } else {
+                    objectStr = HASH_BRACKETS_OBJECT;
+                }
+                TruffleString message = Strings.concat(objectStr, COULD_NOT_BE_CLONED);
+                NativeAccess.throwDataCloneError(delegate, message);
             }
-            TruffleString message = Strings.concat(objectStr, COULD_NOT_BE_CLONED);
-            NativeAccess.throwDataCloneError(delegate, message);
         } else if (JSFunction.isJSFunction(object)) {
             NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(object), COULD_NOT_BE_CLONED));
         } else if (JSDynamicObject.isJSDynamicObject(object)) {
@@ -291,7 +307,7 @@ public class Serializer {
         int idx = 0;
         do {
             byte b = (byte) rest;
-            b |= 0x80;
+            b |= (byte) 0x80;
             bytes[idx] = b;
             idx++;
             rest >>>= 7;
@@ -392,6 +408,17 @@ public class Serializer {
         int id = NativeAccess.getSharedArrayBufferId(delegate, sharedArrayBuffer);
         writeTag(SerializationTag.SHARED_ARRAY_BUFFER);
         writeVarInt(id);
+    }
+
+    private void writeJSWebAssemblyModule(JSWebAssemblyModuleObject wasmModule) {
+        int id = NativeAccess.getWasmModuleTransferId(delegate, wasmModule);
+        writeTag(SerializationTag.WASM_MODULE_TRANSFER);
+        writeVarInt(id);
+    }
+
+    private void writeJSWebAssemblyMemory(JSWebAssemblyMemoryObject wasmMemory) {
+        // non-shared WebAssembly.Memory cannot be cloned
+        NativeAccess.throwDataCloneError(delegate, Strings.concat(JSRuntime.safeToString(wasmMemory), COULD_NOT_BE_CLONED));
     }
 
     private void writeJSObject(JSDynamicObject object) {
@@ -592,6 +619,14 @@ public class Serializer {
         }
     }
 
+    private void writeSharedJavaObject(Object value) {
+        JavaMessagePortData messagePort = access.getCurrentMessagePortData();
+        writeTag(SerializationTag.SHARED_JAVA_OBJECT);
+        writeVarInt(messagePort.getMessagePortDataPointer());
+        assignId(value);
+        messagePort.enqueueJavaRef(env.asHostObject(value));
+    }
+
     private void writeHostObject(Object object) {
         writeTag(SerializationTag.HOST_OBJECT);
         NativeAccess.writeHostObject(delegate, object);
@@ -608,6 +643,7 @@ public class Serializer {
     public void release(ByteBuffer targetBuffer) {
         buffer.flip();
         targetBuffer.put(buffer);
+        buffer.clear();
     }
 
     private void assignId(Object object) {

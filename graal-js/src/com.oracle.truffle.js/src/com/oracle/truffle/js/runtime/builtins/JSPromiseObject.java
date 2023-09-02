@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,14 +41,20 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public final class JSPromiseObject extends JSNonProxyObject {
     private int promiseState;
+    private boolean promiseIsHandled;
+    private Object promiseResult;
+    private SimpleArrayList<PromiseReactionRecord> promiseFulfillReactions;
+    private SimpleArrayList<PromiseReactionRecord> promiseRejectReactions;
 
-    protected JSPromiseObject(Shape shape, int promiseState) {
-        super(shape);
+    protected JSPromiseObject(Shape shape, JSDynamicObject proto, int promiseState) {
+        super(shape, proto);
         this.promiseState = promiseState;
     }
 
@@ -60,11 +66,41 @@ public final class JSPromiseObject extends JSNonProxyObject {
         this.promiseState = promiseState;
     }
 
-    public static JSPromiseObject create(JSRealm realm, JSObjectFactory factory, int promiseState) {
-        return factory.initProto(new JSPromiseObject(factory.getShape(realm), promiseState), realm);
+    public boolean isHandled() {
+        return promiseIsHandled;
     }
 
-    public static JSPromiseObject create(Shape shape, int promiseState) {
-        return new JSPromiseObject(shape, promiseState);
+    public void setIsHandled(boolean handled) {
+        this.promiseIsHandled = handled;
+    }
+
+    public Object getPromiseResult() {
+        return promiseResult;
+    }
+
+    public void setPromiseResult(Object promiseResult) {
+        this.promiseResult = promiseResult;
+    }
+
+    public SimpleArrayList<PromiseReactionRecord> getPromiseFulfillReactions() {
+        return promiseFulfillReactions;
+    }
+
+    public SimpleArrayList<PromiseReactionRecord> getPromiseRejectReactions() {
+        return promiseRejectReactions;
+    }
+
+    public void allocatePromiseReactions() {
+        promiseFulfillReactions = new SimpleArrayList<>();
+        promiseRejectReactions = new SimpleArrayList<>();
+    }
+
+    public void clearPromiseReactions() {
+        promiseFulfillReactions = null;
+        promiseRejectReactions = null;
+    }
+
+    public static JSPromiseObject create(Shape shape, JSDynamicObject proto, int promiseState) {
+        return new JSPromiseObject(shape, proto, promiseState);
     }
 }

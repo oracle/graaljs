@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -84,7 +83,7 @@ public abstract class IteratorGetNextValueNode extends JavaScriptNode {
     @Child private PropertyGetNode getValueNode;
     @Child private PropertyGetNode getDoneNode;
     @Child private JSFunctionCallNode methodCallNode;
-    @Child private IsJSObjectNode isObjectNode;
+    @Child private IsObjectNode isObjectNode;
     @Child private JavaScriptNode doneResultNode;
     @Child private JSToBooleanNode toBooleanNode;
     private final boolean setDone;
@@ -95,7 +94,7 @@ public abstract class IteratorGetNextValueNode extends JavaScriptNode {
         this.getValueNode = PropertyGetNode.create(Strings.VALUE, false, context);
         this.getDoneNode = PropertyGetNode.create(Strings.DONE, false, context);
         this.methodCallNode = JSFunctionCallNode.createCall();
-        this.isObjectNode = IsJSObjectNode.create();
+        this.isObjectNode = IsObjectNode.create();
         this.toBooleanNode = JSToBooleanNode.create();
         this.doneResultNode = doneNode;
         this.setDone = setDone;
@@ -112,7 +111,7 @@ public abstract class IteratorGetNextValueNode extends JavaScriptNode {
 
     private Object iteratorNext(IteratorRecord iteratorRecord) {
         Object next = iteratorRecord.getNextMethod();
-        JSDynamicObject iterator = iteratorRecord.getIterator();
+        Object iterator = iteratorRecord.getIterator();
         Object result = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, next));
         if (!isObjectNode.executeBoolean(result)) {
             throw Errors.createTypeErrorIterResultNotAnObject(result, this);

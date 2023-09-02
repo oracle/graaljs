@@ -28,12 +28,12 @@ const { readFileSync } = require('fs');
 const { extname, isAbsolute } = require('path');
 const {
   hasEsmSyntax,
-  loadNativeModule,
+  loadBuiltinModule,
   stripBOM,
 } = require('internal/modules/cjs/helpers');
 const {
   Module: CJSModule,
-  cjsParseCache
+  cjsParseCache,
 } = require('internal/modules/cjs/loader');
 const internalURLModule = require('internal/url');
 const createDynamicModule = require(
@@ -45,7 +45,7 @@ let debug = require('internal/util/debuglog').debuglog('esm', (fn) => {
 const { emitExperimentalWarning } = require('internal/util');
 const {
   ERR_UNKNOWN_BUILTIN_MODULE,
-  ERR_INVALID_RETURN_PROPERTY_VALUE
+  ERR_INVALID_RETURN_PROPERTY_VALUE,
 } = require('internal/errors').codes;
 const { maybeCacheSourceMap } = require('internal/source_map/source_map_cache');
 const moduleWrap = internalBinding('module_wrap');
@@ -87,7 +87,7 @@ function assertBufferSource(body, allowString, hookName) {
     `${allowString ? 'string, ' : ''}array buffer, or typed array`,
     hookName,
     'source',
-    body
+    body,
   );
 }
 
@@ -137,7 +137,7 @@ function enrichCJSError(err, content, filename) {
     // asynchronous warning would be emitted.
     emitWarningSync(
       'To load an ES module, set "type": "module" in the package.json or use ' +
-      'the .mjs extension.'
+      'the .mjs extension.',
     );
   }
 }
@@ -254,7 +254,7 @@ translators.set('builtin', async function builtinStrategy(url) {
   debug(`Translating BuiltinModule ${url}`);
   // Slice 'node:' scheme
   const id = StringPrototypeSlice(url, 5);
-  const module = loadNativeModule(id, url);
+  const module = loadBuiltinModule(id, url);
   if (!StringPrototypeStartsWith(url, 'node:') || !module) {
     throw new ERR_UNKNOWN_BUILTIN_MODULE(url);
   }
@@ -299,7 +299,7 @@ translators.set('json', async function jsonStrategy(url, source) {
     const exports = JSONParse(stripBOM(source));
     module = {
       exports,
-      loaded: true
+      loaded: true,
     };
   } catch (err) {
     // TODO (BridgeAR): We could add a NodeCore error that wraps the JSON

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,9 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putConstructorProperty;
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFromContainer;
-
 import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.object.Shape;
@@ -67,26 +64,33 @@ public final class JSSharedArrayBuffer extends JSAbstractBuffer implements JSCon
     private JSSharedArrayBuffer() {
     }
 
-    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, int length) {
-        return createSharedArrayBuffer(context, realm, DirectByteBufferHelper.allocateDirect(length));
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, int length) {
+        return createSharedArrayBuffer(context, realm, proto, DirectByteBufferHelper.allocateDirect(length));
     }
 
     public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, ByteBuffer buffer) {
-        assert buffer != null;
         JSObjectFactory factory = context.getSharedArrayBufferFactory();
-        JSArrayBufferObject obj = JSArrayBufferObject.createSharedArrayBuffer(factory.getShape(realm), buffer, new JSAgentWaiterList());
-        factory.initProto(obj, realm);
-        assert isJSSharedArrayBuffer(obj);
-        return context.trackAllocation(obj);
+        return createSharedArrayBuffer(realm, factory.getPrototype(realm), buffer, factory);
+    }
+
+    public static JSArrayBufferObject createSharedArrayBuffer(JSContext context, JSRealm realm, JSDynamicObject proto, ByteBuffer buffer) {
+        JSObjectFactory factory = context.getSharedArrayBufferFactory();
+        return createSharedArrayBuffer(realm, proto, buffer, factory);
+    }
+
+    private static JSArrayBufferObject createSharedArrayBuffer(JSRealm realm, JSDynamicObject proto, ByteBuffer buffer, JSObjectFactory factory) {
+        assert buffer != null;
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSArrayBufferObject.Shared(shape, proto, buffer, new JSAgentWaiterList()), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext context = realm.getContext();
         JSObject arrayBufferPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        putConstructorProperty(context, arrayBufferPrototype, ctor);
-        putFunctionsFromContainer(realm, arrayBufferPrototype, SharedArrayBufferPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(arrayBufferPrototype, BYTE_LENGTH, realm.lookupAccessor(SharedArrayBufferPrototypeBuiltins.BUILTINS, BYTE_LENGTH));
+        JSObjectUtil.putConstructorProperty(arrayBufferPrototype, ctor);
+        JSObjectUtil.putFunctionsFromContainer(realm, arrayBufferPrototype, SharedArrayBufferPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putAccessorsFromContainer(realm, arrayBufferPrototype, SharedArrayBufferPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(arrayBufferPrototype, CLASS_NAME);
         return arrayBufferPrototype;
     }

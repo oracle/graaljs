@@ -110,20 +110,20 @@ expectWarning('DeprecationWarning', [
 
 expectWarning('DeprecationWarning', {
   DEP0XXX: 'Foobar is deprecated',
-  DEP0XX2: 'Baz is also deprecated'
+  DEP0XX2: 'Baz is also deprecated',
 });
 
 expectWarning({
   DeprecationWarning: {
     DEP0XXX: 'Foobar is deprecated',
-    DEP0XX1: 'Baz is also deprecated'
+    DEP0XX1: 'Baz is also deprecated',
   },
   Warning: [
     ['Multiple array entries are fine', 'SpecialWarningCode'],
     ['No code is also fine'],
   ],
   SingleEntry: ['This will also work', 'WarningCode'],
-  SingleString: 'Single string entries without code will also work'
+  SingleString: 'Single string entries without code will also work',
 });
 ```
 
@@ -642,6 +642,12 @@ environment variables.
 If set, `NODE_COMMON_PORT`'s value overrides the `common.PORT` default value of
 12346\.
 
+### `NODE_REGENERATE_SNAPSHOTS`
+
+If set, test snapshots for a the current test are regenerated.
+for example `NODE_REGENERATE_SNAPSHOTS=1 out/Release/node test/parallel/test-runner-output.mjs`
+will update all the test runner output snapshots.
+
 ### `NODE_SKIP_FLAG_CHECK`
 
 If set, command line arguments passed to individual tests are not validated.
@@ -720,7 +726,7 @@ validateSnapshotNodes('TLSWRAP', [
       { name: 'enc_out' },
       { name: 'enc_in' },
       { name: 'TLSWrap' },
-    ]
+    ],
   },
 ]);
 ```
@@ -1021,6 +1027,15 @@ Avoid calling it more than once in an asynchronous context as one call
 might refresh the temporary directory of a different context, causing
 the test to fail somewhat mysteriously.
 
+### `hasEnoughSpace(size)`
+
+* `size` [\<number>][<number>] Required size, in bytes.
+
+Returns `true` if the available blocks of the file system underlying `path`
+are likely sufficient to hold a single file of `size` bytes. This is useful for
+skipping tests that require hundreds of megabytes or even gigabytes of temporary
+files, but it is inaccurate and susceptible to race conditions.
+
 ## UDP pair helper
 
 The `common/udppair` module exports a function `makeUDPPair` and a class
@@ -1032,7 +1047,7 @@ an `emitReceived()` API for actin as if data has been received on it.
 `makeUDPPair` returns an object `{ clientSide, serverSide }` where each side
 is an `FakeUDPWrap` connected to the other side.
 
-There is no difference between cient or server side beyond their names.
+There is no difference between client or server side beyond their names.
 
 ## WPT Module
 

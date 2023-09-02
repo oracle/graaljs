@@ -31,6 +31,7 @@
 #include "node_context_data.h"
 #include "node_internals.h"
 #include "node_perf_common.h"
+#include "node_realm-inl.h"
 #include "util-inl.h"
 #include "uv.h"
 #include "v8.h"
@@ -196,48 +197,6 @@ inline Environment* Environment::GetCurrent(
   return GetCurrent(info.GetIsolate()->GetCurrentContext());
 }
 
-template <typename T, typename U>
-inline T* Environment::GetBindingData(const v8::PropertyCallbackInfo<U>& info) {
-  return GetBindingData<T>(info.GetIsolate()->GetCurrentContext());
-}
-
-template <typename T>
-inline T* Environment::GetBindingData(
-    const v8::FunctionCallbackInfo<v8::Value>& info) {
-  return GetBindingData<T>(info.GetIsolate()->GetCurrentContext());
-}
-
-template <typename T>
-inline T* Environment::GetBindingData(v8::Local<v8::Context> context) {
-  BindingDataStore* map = static_cast<BindingDataStore*>(
-      context->GetAlignedPointerFromEmbedderData(
-          ContextEmbedderIndex::kBindingListIndex));
-  DCHECK_NOT_NULL(map);
-  auto it = map->find(T::type_name);
-  if (UNLIKELY(it == map->end())) return nullptr;
-  T* result = static_cast<T*>(it->second.get());
-  DCHECK_NOT_NULL(result);
-  DCHECK_EQ(result->env(), GetCurrent(context));
-  return result;
-}
-
-template <typename T>
-inline T* Environment::AddBindingData(
-    v8::Local<v8::Context> context,
-    v8::Local<v8::Object> target) {
-  DCHECK_EQ(GetCurrent(context), this);
-  // This won't compile if T is not a BaseObject subclass.
-  BaseObjectPtr<T> item = MakeDetachedBaseObject<T>(this, target);
-  BindingDataStore* map = static_cast<BindingDataStore*>(
-      context->GetAlignedPointerFromEmbedderData(
-          ContextEmbedderIndex::kBindingListIndex));
-  DCHECK_NOT_NULL(map);
-  auto result = map->emplace(T::type_name, item);
-  CHECK(result.second);
-  DCHECK_EQ(GetBindingData<T>(context), item.get());
-  return item.get();
-}
-
 inline v8::Isolate* Environment::isolate() const {
   return isolate_;
 }
@@ -320,6 +279,10 @@ inline AsyncHooks* Environment::async_hooks() {
 
 inline ImmediateInfo* Environment::immediate_info() {
   return &immediate_info_;
+}
+
+inline AliasedInt32Array& Environment::timeout_info() {
+  return timeout_info_;
 }
 
 inline TickInfo* Environment::tick_info() {
@@ -614,15 +577,7 @@ inline void Environment::set_can_call_into_js(bool can_call_into_js) {
 }
 
 inline bool Environment::has_run_bootstrapping_code() const {
-  return has_run_bootstrapping_code_;
-}
-
-inline void Environment::DoneBootstrapping() {
-  has_run_bootstrapping_code_ = true;
-  // This adjusts the return value of base_object_created_after_bootstrap() so
-  // that tests that check the count do not have to account for internally
-  // created BaseObjects.
-  base_object_created_by_bootstrap_ = base_object_count_;
+  return principal_realm_->has_run_bootstrapping_code();
 }
 
 inline bool Environment::has_serialized_options() const {
@@ -655,7 +610,8 @@ inline bool Environment::owns_inspector() const {
 }
 
 inline bool Environment::should_create_inspector() const {
-  return (flags_ & EnvironmentFlags::kNoCreateInspector) == 0;
+  return (flags_ & EnvironmentFlags::kNoCreateInspector) == 0 &&
+         !options_->test_runner && !options_->watch_mode;
 }
 
 inline bool Environment::tracks_unmanaged_fds() const {
@@ -669,6 +625,15 @@ inline bool Environment::hide_console_windows() const {
 inline bool Environment::no_global_search_paths() const {
   return (flags_ & EnvironmentFlags::kNoGlobalSearchPaths) ||
          !options_->global_search_paths;
+}
+
+inline bool Environment::no_browser_globals() const {
+  // configure --no-browser-globals
+#ifdef NODE_NO_BROWSER_GLOBALS
+  return true;
+#else
+  return flags_ & EnvironmentFlags::kNoBrowserGlobals;
+#endif
 }
 
 bool Environment::filehandle_close_warning() const {
@@ -742,6 +707,12 @@ inline IsolateData* Environment::isolate_data() const {
   return isolate_data_;
 }
 
+template <typename T>
+inline void Environment::ForEachRealm(T&& iterator) const {
+  // TODO(legendecas): iterate over more realms bound to the environment.
+  iterator(principal_realm());
+}
+
 inline void Environment::ThrowError(const char* errmsg) {
   ThrowError(v8::Exception::Error, errmsg);
 }
@@ -778,71 +749,12 @@ inline void Environment::ThrowUVException(int errorno,
       UVException(isolate(), errorno, syscall, message, path, dest));
 }
 
-void Environment::AddCleanupHook(CleanupCallback fn, void* arg) {
-  auto insertion_info = cleanup_hooks_.emplace(CleanupHookCallback {
-    fn, arg, cleanup_hook_counter_++
-  });
-  // Make sure there was no existing element with these values.
-  CHECK_EQ(insertion_info.second, true);
+void Environment::AddCleanupHook(CleanupQueue::Callback fn, void* arg) {
+  cleanup_queue_.Add(fn, arg);
 }
 
-void Environment::RemoveCleanupHook(CleanupCallback fn, void* arg) {
-  CleanupHookCallback search { fn, arg, 0 };
-  cleanup_hooks_.erase(search);
-}
-
-size_t CleanupHookCallback::Hash::operator()(
-    const CleanupHookCallback& cb) const {
-  return std::hash<void*>()(cb.arg_);
-}
-
-bool CleanupHookCallback::Equal::operator()(
-    const CleanupHookCallback& a, const CleanupHookCallback& b) const {
-  return a.fn_ == b.fn_ && a.arg_ == b.arg_;
-}
-
-BaseObject* CleanupHookCallback::GetBaseObject() const {
-  if (fn_ == BaseObject::DeleteMe)
-    return static_cast<BaseObject*>(arg_);
-  else
-    return nullptr;
-}
-
-template <typename T>
-void Environment::ForEachBaseObject(T&& iterator) {
-  for (const auto& hook : cleanup_hooks_) {
-    BaseObject* obj = hook.GetBaseObject();
-    if (obj != nullptr)
-      iterator(obj);
-  }
-}
-
-template <typename T>
-void Environment::ForEachBindingData(T&& iterator) {
-  BindingDataStore* map = static_cast<BindingDataStore*>(
-      context()->GetAlignedPointerFromEmbedderData(
-          ContextEmbedderIndex::kBindingListIndex));
-  DCHECK_NOT_NULL(map);
-  for (auto& it : *map) {
-    iterator(it.first, it.second);
-  }
-}
-
-void Environment::modify_base_object_count(int64_t delta) {
-  base_object_count_ += delta;
-}
-
-int64_t Environment::base_object_created_after_bootstrap() const {
-  return base_object_count_ - base_object_created_by_bootstrap_;
-}
-
-int64_t Environment::base_object_count() const {
-  return base_object_count_;
-}
-
-void Environment::set_main_utf16(std::unique_ptr<v8::String::Value> str) {
-  CHECK(!main_utf16_);
-  main_utf16_ = std::move(str);
+void Environment::RemoveCleanupHook(CleanupQueue::Callback fn, void* arg) {
+  cleanup_queue_.Remove(fn, arg);
 }
 
 void Environment::set_process_exit_handler(
@@ -866,6 +778,16 @@ void Environment::set_process_exit_handler(
 #undef VY
 #undef VP
 
+#define V(PropertyName, TypeName)                                              \
+  inline v8::Local<TypeName> IsolateData::PropertyName() const {               \
+    return PropertyName##_.Get(isolate_);                                      \
+  }                                                                            \
+  inline void IsolateData::set_##PropertyName(v8::Local<TypeName> value) {     \
+    PropertyName##_.Set(isolate_, value);                                      \
+  }
+  PER_ISOLATE_TEMPLATE_PROPERTIES(V)
+#undef V
+
 #define VP(PropertyName, StringValue) V(v8::Private, PropertyName)
 #define VY(PropertyName, StringValue) V(v8::Symbol, PropertyName)
 #define VS(PropertyName, StringValue) V(v8::String, PropertyName)
@@ -881,19 +803,35 @@ void Environment::set_process_exit_handler(
 #undef VY
 #undef VP
 
-#define V(PropertyName, TypeName)                                             \
-  inline v8::Local<TypeName> Environment::PropertyName() const {              \
-    return PersistentToLocal::Strong(PropertyName ## _);                      \
-  }                                                                           \
-  inline void Environment::set_ ## PropertyName(v8::Local<TypeName> value) {  \
-    PropertyName ## _.Reset(isolate(), value);                                \
+#define V(PropertyName, TypeName)                                              \
+  inline v8::Local<TypeName> Environment::PropertyName() const {               \
+    return isolate_data()->PropertyName();                                     \
+  }                                                                            \
+  inline void Environment::set_##PropertyName(v8::Local<TypeName> value) {     \
+    DCHECK(isolate_data()->PropertyName().IsEmpty());                          \
+    isolate_data()->set_##PropertyName(value);                                 \
   }
-  ENVIRONMENT_STRONG_PERSISTENT_TEMPLATES(V)
-  ENVIRONMENT_STRONG_PERSISTENT_VALUES(V)
+  PER_ISOLATE_TEMPLATE_PROPERTIES(V)
+#undef V
+
+#define V(PropertyName, TypeName)                                              \
+  inline v8::Local<TypeName> Environment::PropertyName() const {               \
+    DCHECK_NOT_NULL(principal_realm_);                                         \
+    return principal_realm_->PropertyName();                                   \
+  }                                                                            \
+  inline void Environment::set_##PropertyName(v8::Local<TypeName> value) {     \
+    DCHECK_NOT_NULL(principal_realm_);                                         \
+    principal_realm_->set_##PropertyName(value);                               \
+  }
+  PER_REALM_STRONG_PERSISTENT_VALUES(V)
 #undef V
 
 v8::Local<v8::Context> Environment::context() const {
-  return PersistentToLocal::Strong(context_);
+  return principal_realm()->context();
+}
+
+Realm* Environment::principal_realm() const {
+  return principal_realm_.get();
 }
 
 inline void Environment::set_heap_snapshot_near_heap_limit(uint32_t limit) {

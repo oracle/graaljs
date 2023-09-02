@@ -14,8 +14,6 @@ const {
 const {
   kWeakHandler,
 } = require('internal/event_target');
-const { internalBinding } = require('internal/test/binding');
-const { DOMException } = internalBinding('messaging');
 
 const { setTimeout: sleep } = require('timers/promises');
 
@@ -59,9 +57,9 @@ const { setTimeout: sleep } = require('timers/promises');
   }));
   first.abort();
   second.abort();
-  const firstTrusted = Reflect.getOwnPropertyDescriptor(ev1, 'isTrusted').get;
-  const secondTrusted = Reflect.getOwnPropertyDescriptor(ev2, 'isTrusted').get;
-  const untrusted = Reflect.getOwnPropertyDescriptor(ev3, 'isTrusted').get;
+  const firstTrusted = Reflect.getOwnPropertyDescriptor(Object.getPrototypeOf(ev1), 'isTrusted').get;
+  const secondTrusted = Reflect.getOwnPropertyDescriptor(Object.getPrototypeOf(ev2), 'isTrusted').get;
+  const untrusted = Reflect.getOwnPropertyDescriptor(Object.getPrototypeOf(ev3), 'isTrusted').get;
   strictEqual(firstTrusted, secondTrusted);
   strictEqual(untrusted, firstTrusted);
 }
@@ -247,9 +245,29 @@ const { setTimeout: sleep } = require('timers/promises');
 
 {
   // Test abortSignal.throwIfAborted()
-  throws(() => AbortSignal.abort().throwIfAborted(), { code: 20 });
+  throws(() => AbortSignal.abort().throwIfAborted(), {
+    code: 20,
+    name: 'AbortError',
+  });
 
   // Does not throw because it's not aborted.
   const ac = new AbortController();
   ac.signal.throwIfAborted();
+}
+
+{
+  const originalDesc = Reflect.getOwnPropertyDescriptor(AbortSignal.prototype, 'aborted');
+  const actualReason = new Error();
+  Reflect.defineProperty(AbortSignal.prototype, 'aborted', { value: false });
+  throws(() => AbortSignal.abort(actualReason).throwIfAborted(), actualReason);
+  Reflect.defineProperty(AbortSignal.prototype, 'aborted', originalDesc);
+}
+
+{
+  const originalDesc = Reflect.getOwnPropertyDescriptor(AbortSignal.prototype, 'reason');
+  const actualReason = new Error();
+  const fakeExcuse = new Error();
+  Reflect.defineProperty(AbortSignal.prototype, 'reason', { value: fakeExcuse });
+  throws(() => AbortSignal.abort(actualReason).throwIfAborted(), actualReason);
+  Reflect.defineProperty(AbortSignal.prototype, 'reason', originalDesc);
 }

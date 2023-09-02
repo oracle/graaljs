@@ -13,7 +13,7 @@ const {
 const {
   codes: {
     ERR_INVALID_ARG_TYPE,
-  }
+  },
 } = require('internal/errors');
 const {
   validateFunction,
@@ -122,6 +122,9 @@ function unsubscribe(name, subscription) {
   }
 
   channels[name].decRef();
+  if (channels[name].getRef() === 0) {
+    delete channels[name];
+  }
   return true;
 }
 
@@ -141,5 +144,5 @@ module.exports = {
   hasSubscribers,
   subscribe,
   unsubscribe,
-  Channel
+  Channel,
 };

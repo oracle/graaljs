@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,38 +42,33 @@ package com.oracle.truffle.js.nodes.control;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CallTarget;
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.DirectCallNode;
-import com.oracle.truffle.api.nodes.NodeCost;
-import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
+import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.promise.AsyncRootNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
+import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
-    @NodeInfo(cost = NodeCost.NONE, language = "JavaScript")
-    public static final class TopLevelAwaitModuleRootNode extends JavaScriptRootNode {
+    public static final class TopLevelAwaitModuleRootNode extends AbstractFunctionRootNode {
 
         private final JSContext context;
-        private final String functionName;
 
         @Child private JavaScriptNode functionBody;
         @Child private JSFunctionCallNode callResolveNode;
@@ -81,17 +76,16 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         @Child private JSWriteFrameSlotNode writeAsyncResult;
         @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
 
-        TopLevelAwaitModuleRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, SourceSection functionSourceSection, String functionName) {
-            super(context.getLanguage(), functionSourceSection, null);
+        TopLevelAwaitModuleRootNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, SourceSection functionSourceSection, ScriptOrModule activeScriptOrModule) {
+            super(context.getLanguage(), functionSourceSection, null, activeScriptOrModule);
             this.context = context;
             this.functionBody = body;
             this.callResolveNode = JSFunctionCallNode.createCall();
-            this.functionName = functionName;
             this.writeAsyncResult = asyncResult;
         }
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public Object executeInRealm(VirtualFrame frame) {
             Object[] arguments = frame.getArguments();
             VirtualFrame asyncFrame = JSArguments.getResumeExecutionContext(arguments);
             PromiseCapabilityRecord promiseCapability = (PromiseCapabilityRecord) JSArguments.getResumeGeneratorOrPromiseCapability(arguments);
@@ -130,9 +124,6 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
         @Override
         public String getName() {
-            if (functionName != null && !functionName.isEmpty()) {
-                return functionName;
-            }
             return ":top-level-await-module";
         }
 
@@ -153,22 +144,21 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
     private final JSContext context;
 
-    @CompilationFinal private volatile CallTarget resumptionTarget;
-
-    @Child private JavaScriptNode moduleBodyNode;
     @Child private JSWriteFrameSlotNode writeAsyncResult;
-    @Child private volatile DirectCallNode asyncCallNode;
     @Child private JSWriteFrameSlotNode writeAsyncContextNode;
+    private final TopLevelAwaitModuleRootNode resumptionRootNode;
+    @Child private volatile DirectCallNode asyncCallNode;
 
-    private TopLevelAwaitModuleBodyNode(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncResult, JSWriteFrameSlotNode writeAsyncContextNode) {
+    private TopLevelAwaitModuleBodyNode(JSContext context, JSWriteFrameSlotNode writeAsyncContextNode, TopLevelAwaitModuleRootNode resumptionRootNode) {
         this.context = context;
-        this.moduleBodyNode = body;
         this.writeAsyncContextNode = writeAsyncContextNode;
-        this.writeAsyncResult = asyncResult;
+        this.resumptionRootNode = resumptionRootNode;
     }
 
-    public static JavaScriptNode create(JSContext context, JavaScriptNode body, JSWriteFrameSlotNode asyncContext, JSWriteFrameSlotNode writeAsyncContextNode) {
-        return new TopLevelAwaitModuleBodyNode(context, body, asyncContext, writeAsyncContextNode);
+    public static JavaScriptNode create(JSContext context, JavaScriptNode moduleBody, JSWriteFrameSlotNode writeAsyncResult, JSWriteFrameSlotNode writeAsyncContext,
+                    SourceSection functionSourceSection, ScriptOrModule activeScriptOrModule) {
+        var resumptionRootNode = new TopLevelAwaitModuleRootNode(context, moduleBody, writeAsyncResult, functionSourceSection, activeScriptOrModule);
+        return new TopLevelAwaitModuleBodyNode(context, writeAsyncContext, resumptionRootNode);
     }
 
     @Override
@@ -179,7 +169,7 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         PromiseCapabilityRecord promiseCapability = (JSArguments.getUserArgumentCount(arguments) >= 2 ? (PromiseCapabilityRecord) JSArguments.getUserArgument(arguments, 1) : null);
         ensureAsyncCallTargetInitialized();
         if (promiseCapability != null) {
-            writeAsyncContextNode.executeWrite(moduleFrame, AsyncRootNode.createAsyncContext(resumptionTarget, promiseCapability, moduleFrame));
+            writeAsyncContextNode.executeWrite(moduleFrame, AsyncRootNode.createAsyncContext(asyncCallNode.getCallTarget(), promiseCapability, moduleFrame));
         }
         Object unusedInitialResult = null;
         asyncCallNode.call(JSArguments.createResumeArguments(moduleFrame, promiseCapability, Completion.Type.Normal, unusedInitialResult));
@@ -192,35 +182,30 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
         }
     }
 
-    private boolean asyncCallTargetInitializationRequired() {
-        return resumptionTarget == null || asyncCallNode == null;
-    }
-
     private void ensureAsyncCallTargetInitialized() {
-        if (asyncCallTargetInitializationRequired()) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+        if (asyncCallNode == null) {
             initializeAsyncCallTarget();
         }
     }
 
     private void initializeAsyncCallTarget() {
-        CompilerAsserts.neverPartOfCompilation();
-        atomic(() -> {
-            if (asyncCallTargetInitializationRequired()) {
-                TopLevelAwaitModuleRootNode asyncRootNode = new TopLevelAwaitModuleRootNode(context, moduleBodyNode, writeAsyncResult, getRootNode().getSourceSection(), "");
-                this.resumptionTarget = asyncRootNode.getCallTarget();
-                this.asyncCallNode = insert(DirectCallNode.create(resumptionTarget));
-                // these children have been transferred to the async root node and are now disowned
-                this.moduleBodyNode = null;
-                this.writeAsyncResult = null;
-            }
-        });
+        CompilerDirectives.transferToInterpreterAndInvalidate();
+        this.asyncCallNode = insert(DirectCallNode.create(resumptionRootNode.getCallTarget()));
     }
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(context, cloneUninitialized(moduleBodyNode, materializedTags), cloneUninitialized(writeAsyncResult, materializedTags),
-                        cloneUninitialized(writeAsyncContextNode, materializedTags));
+        return new TopLevelAwaitModuleBodyNode(context,
+                        cloneUninitialized(writeAsyncContextNode, materializedTags),
+                        resumptionRootNode);
     }
 
+    @Override
+    public InstrumentableNode materializeInstrumentableNodes(Set<Class<? extends Tag>> materializedTags) {
+        if (!materializedTags.isEmpty()) {
+            // ensure resumption call target is visible to instrumentation.
+            resumptionRootNode.getCallTarget();
+        }
+        return this;
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,14 @@
  */
 package com.oracle.truffle.js.nodes.binary;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 
 public abstract class JSCompareNode extends JSBinaryNode {
 
     protected JSCompareNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
     }
-
-    @Child private JSStringToNumberNode stringToNumberNode;
 
     @Override
     public final Object execute(VirtualFrame frame) {
@@ -61,14 +56,6 @@ public abstract class JSCompareNode extends JSBinaryNode {
 
     @Override
     public abstract boolean executeBoolean(VirtualFrame frame);
-
-    protected double stringToDouble(TruffleString value) {
-        if (stringToNumberNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            stringToNumberNode = insert(JSStringToNumberNode.create());
-        }
-        return stringToNumberNode.executeString(value);
-    }
 
     @Override
     public final boolean isResultAlwaysOfType(Class<?> clazz) {

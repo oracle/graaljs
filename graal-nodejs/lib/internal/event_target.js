@@ -32,7 +32,7 @@ const {
     ERR_EVENT_RECURSION,
     ERR_MISSING_ARGS,
     ERR_INVALID_THIS,
-  }
+  },
 } = require('internal/errors');
 const { validateObject, validateString } = require('internal/validators');
 
@@ -42,6 +42,7 @@ const {
   kEnumerableProperty,
 } = require('internal/util');
 const { inspect } = require('util');
+const webidl = require('internal/webidl');
 
 const kIsEventTarget = SymbolFor('nodejs.event_target');
 const kIsNodeEventTarget = Symbol('kIsNodeEventTarget');
@@ -56,7 +57,7 @@ const kEvents = Symbol('kEvents');
 const kIsBeingDispatched = Symbol('kIsBeingDispatched');
 const kStop = Symbol('kStop');
 const kTarget = Symbol('kTarget');
-const kHandlers = Symbol('khandlers');
+const kHandlers = Symbol('kHandlers');
 const kWeakHandler = Symbol('kWeak');
 
 const kHybridDispatch = SymbolFor('nodejs.internal.kHybridDispatch');
@@ -68,30 +69,35 @@ const kTrustEvent = Symbol('kTrustEvent');
 
 const { now } = require('internal/perf/utils');
 
-// TODO(joyeecheung): V8 snapshot does not support instance member
-// initializers for now:
-// https://bugs.chromium.org/p/v8/issues/detail?id=10704
 const kType = Symbol('type');
-const kDefaultPrevented = Symbol('defaultPrevented');
-const kCancelable = Symbol('cancelable');
-const kTimestamp = Symbol('timestamp');
-const kBubbles = Symbol('bubbles');
-const kComposed = Symbol('composed');
-const kPropagationStopped = Symbol('propagationStopped');
 const kDetail = Symbol('detail');
 
 const isTrustedSet = new SafeWeakSet();
 const isTrusted = ObjectGetOwnPropertyDescriptor({
   get isTrusted() {
     return isTrustedSet.has(this);
-  }
+  },
 }, 'isTrusted').get;
+
+const isTrustedDescriptor = {
+  __proto__: null,
+  configurable: false,
+  enumerable: true,
+  get: isTrusted,
+};
 
 function isEvent(value) {
   return typeof value?.[kType] === 'string';
 }
 
 class Event {
+  #cancelable = false;
+  #bubbles = false;
+  #composed = false;
+  #defaultPrevented = false;
+  #timestamp = now();
+  #propagationStopped = false;
+
   /**
    * @param {string} type
    * @param {{
@@ -105,25 +111,15 @@ class Event {
       throw new ERR_MISSING_ARGS('type');
     validateObject(options, 'options');
     const { bubbles, cancelable, composed } = options;
-    this[kCancelable] = !!cancelable;
-    this[kBubbles] = !!bubbles;
-    this[kComposed] = !!composed;
+    this.#cancelable = !!cancelable;
+    this.#bubbles = !!bubbles;
+    this.#composed = !!composed;
 
     this[kType] = `${type}`;
-    this[kDefaultPrevented] = false;
-    this[kTimestamp] = now();
-    this[kPropagationStopped] = false;
     if (options?.[kTrustEvent]) {
       isTrustedSet.add(this);
     }
 
-    // isTrusted is special (LegacyUnforgeable)
-    ObjectDefineProperty(this, 'isTrusted', {
-      __proto__: null,
-      get: isTrusted,
-      enumerable: true,
-      configurable: false
-    });
     this[kTarget] = null;
     this[kIsBeingDispatched] = false;
   }
@@ -136,14 +132,14 @@ class Event {
       return name;
 
     const opts = ObjectAssign({}, options, {
-      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
+      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth,
     });
 
     return `${name} ${inspect({
       type: this[kType],
-      defaultPrevented: this[kDefaultPrevented],
-      cancelable: this[kCancelable],
-      timeStamp: this[kTimestamp],
+      defaultPrevented: this.#defaultPrevented,
+      cancelable: this.#cancelable,
+      timeStamp: this.#timestamp,
     }, opts)}`;
   }
 
@@ -156,7 +152,7 @@ class Event {
   preventDefault() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    this[kDefaultPrevented] = true;
+    this.#defaultPrevented = true;
   }
 
   /**
@@ -201,7 +197,7 @@ class Event {
   get cancelable() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kCancelable];
+    return this.#cancelable;
   }
 
   /**
@@ -210,7 +206,7 @@ class Event {
   get defaultPrevented() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kCancelable] && this[kDefaultPrevented];
+    return this.#cancelable && this.#defaultPrevented;
   }
 
   /**
@@ -219,7 +215,7 @@ class Event {
   get timeStamp() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kTimestamp];
+    return this.#timestamp;
   }
 
 
@@ -241,7 +237,7 @@ class Event {
   get returnValue() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return !this.defaultPrevented;
+    return !this.#cancelable || !this.#defaultPrevented;
   }
 
   /**
@@ -250,7 +246,7 @@ class Event {
   get bubbles() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kBubbles];
+    return this.#bubbles;
   }
 
   /**
@@ -259,7 +255,7 @@ class Event {
   get composed() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kComposed];
+    return this.#composed;
   }
 
   /**
@@ -277,7 +273,7 @@ class Event {
   get cancelBubble() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    return this[kPropagationStopped];
+    return this.#propagationStopped;
   }
 
   /**
@@ -294,7 +290,7 @@ class Event {
   stopPropagation() {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
-    this[kPropagationStopped] = true;
+    this.#propagationStopped = true;
   }
 
   static NONE = 0;
@@ -328,6 +324,11 @@ ObjectDefineProperties(
     eventPhase: kEnumerableProperty,
     cancelBubble: kEnumerableProperty,
     stopPropagation: kEnumerableProperty,
+    // Don't conform to the spec with isTrusted. The spec defines it as
+    // LegacyUnforgeable but defining it in the constructor has a big
+    // performance impact and the property doesn't seem to be useful outside of
+    // browsers.
+    isTrusted: isTrustedDescriptor,
   });
 
 function isCustomEvent(value) {
@@ -390,7 +391,7 @@ let weakListenersState = null;
 let objectToWeakListenerMap = null;
 function weakListeners() {
   weakListenersState ??= new SafeFinalizationRegistry(
-    (listener) => listener.remove()
+    (listener) => listener.remove(),
   );
   objectToWeakListenerMap ??= new SafeWeakMap();
   return { registry: weakListenersState, map: objectToWeakListenerMap };
@@ -577,7 +578,7 @@ class EventTarget {
       process.emitWarning(w);
       return;
     }
-    type = String(type);
+    type = webidl.converters.DOMString(type);
 
     if (signal) {
       if (signal.aborted) {
@@ -638,10 +639,12 @@ class EventTarget {
   removeEventListener(type, listener, options = kEmptyObject) {
     if (!isEventTarget(this))
       throw new ERR_INVALID_THIS('EventTarget');
+    if (arguments.length < 2)
+      throw new ERR_MISSING_ARGS('type', 'listener');
     if (!validateEventListener(listener))
       return;
 
-    type = String(type);
+    type = webidl.converters.DOMString(type);
     const capture = options?.capture === true;
 
     const root = this[kEvents].get(type);
@@ -668,6 +671,8 @@ class EventTarget {
   dispatchEvent(event) {
     if (!isEventTarget(this))
       throw new ERR_INVALID_THIS('EventTarget');
+    if (arguments.length < 1)
+      throw new ERR_MISSING_ARGS('event');
 
     if (!(event instanceof Event))
       throw new ERR_INVALID_ARG_TYPE('event', 'Event', event);
@@ -762,7 +767,7 @@ class EventTarget {
       return name;
 
     const opts = ObjectAssign({}, options, {
-      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
+      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth,
     });
 
     return `${name} ${inspect({}, opts)}`;
@@ -779,7 +784,7 @@ ObjectDefineProperties(EventTarget.prototype, {
     enumerable: false,
     configurable: true,
     value: 'EventTarget',
-  }
+  },
 });
 
 function initNodeEventTarget(self) {
@@ -823,7 +828,7 @@ class NodeEventTarget extends EventTarget {
   }
 
   /**
-   * @param {string} [type]
+   * @param {string} type
    * @returns {number}
    */
   listenerCount(type) {
@@ -915,7 +920,7 @@ class NodeEventTarget extends EventTarget {
   }
 
   /**
-   * @param {string} type
+   * @param {string} [type]
    * @returns {NodeEventTarget}
    */
   removeAllListeners(type) {
@@ -979,7 +984,7 @@ function validateEventListenerOptions(options) {
     passive: Boolean(options.passive),
     signal: options.signal,
     weak: options[kWeakHandler],
-    isNodeStyleListener: Boolean(options[kIsNodeStyleListener])
+    isNodeStyleListener: Boolean(options[kIsNodeStyleListener]),
   };
 }
 
@@ -1055,7 +1060,7 @@ function defineEventHandler(emitter, name) {
       this[kHandlers].set(name, wrappedHandler);
     },
     configurable: true,
-    enumerable: true
+    enumerable: true,
   });
 }
 

@@ -32,12 +32,14 @@ const {
   ArrayPrototypeSort,
   ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
+  ArrayPrototypePushApply,
   NumberIsInteger,
   ObjectAssign,
   ObjectDefineProperty,
   ObjectPrototypeHasOwnProperty,
   RegExpPrototypeExec,
   SafeSet,
+  StringPrototypeIncludes,
   StringPrototypeSlice,
   StringPrototypeToUpperCase,
 } = primordials;
@@ -54,7 +56,7 @@ let debug = require('internal/util/debuglog').debuglog(
   'child_process',
   (fn) => {
     debug = fn;
-  }
+  },
 );
 const { Buffer } = require('buffer');
 const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
@@ -76,7 +78,9 @@ const { getValidatedPath } = require('internal/fs/utils');
 const {
   isInt32,
   validateAbortSignal,
+  validateArray,
   validateBoolean,
+  validateFunction,
   validateObject,
   validateString,
 } = require('internal/validators');
@@ -85,7 +89,7 @@ const {
   getValidStdio,
   setupChannel,
   ChildProcess,
-  stdioStringToArray
+  stdioStringToArray,
 } = child_process;
 
 const MAX_BUFFER = 1024 * 1024;
@@ -122,23 +126,23 @@ function fork(modulePath, args = [], options) {
 
   if (args == null) {
     args = [];
-  } else if (typeof args !== 'object') {
-    throw new ERR_INVALID_ARG_VALUE('args', args);
-  } else if (!ArrayIsArray(args)) {
+  } else if (typeof args === 'object' && !ArrayIsArray(args)) {
     options = args;
     args = [];
+  } else {
+    validateArray(args, 'args');
   }
 
-  if (options == null) {
-    options = {};
-  } else if (typeof options !== 'object') {
-    throw new ERR_INVALID_ARG_VALUE('options', options);
-  } else {
-    options = { ...options };
+  if (options != null) {
+    validateObject(options, 'options');
   }
+  options = { ...options, shell: false };
+  options.execPath = options.execPath || process.execPath;
+  validateArgumentNullCheck(options.execPath, 'options.execPath');
 
   // Prepare arguments for fork:
   execArgv = options.execArgv || process.execArgv;
+  validateArgumentsNullCheck(execArgv, 'options.execArgv');
 
   if (execArgv === process.execArgv && process._eval != null) {
     const index = ArrayPrototypeLastIndexOf(execArgv, process._eval);
@@ -163,9 +167,6 @@ function fork(modulePath, args = [], options) {
     throw new ERR_CHILD_PROCESS_IPC_REQUIRED('options.stdio');
   }
 
-  options.execPath = options.execPath || process.execPath;
-  options.shell = false;
-
   return spawn(options.execPath, args, options);
 }
 
@@ -184,6 +185,9 @@ function _forkChild(fd, serializationMode) {
 }
 
 function normalizeExecArgs(command, options, callback) {
+  validateString(command, 'command');
+  validateArgumentNullCheck(command, 'command');
+
   if (typeof options === 'function') {
     callback = options;
     options = undefined;
@@ -196,7 +200,7 @@ function normalizeExecArgs(command, options, callback) {
   return {
     file: command,
     options: options,
-    callback: callback
+    callback: callback,
   };
 }
 
@@ -251,8 +255,48 @@ const customPromiseExecFunction = (orig) => {
 ObjectDefineProperty(exec, promisify.custom, {
   __proto__: null,
   enumerable: false,
-  value: customPromiseExecFunction(exec)
+  value: customPromiseExecFunction(exec),
 });
+
+function normalizeExecFileArgs(file, args, options, callback) {
+  if (ArrayIsArray(args)) {
+    args = ArrayPrototypeSlice(args);
+  } else if (args != null && typeof args === 'object') {
+    callback = options;
+    options = args;
+    args = null;
+  } else if (typeof args === 'function') {
+    callback = args;
+    options = null;
+    args = null;
+  }
+
+  if (args == null) {
+    args = [];
+  }
+
+  if (typeof options === 'function') {
+    callback = options;
+  } else if (options != null) {
+    validateObject(options, 'options');
+  }
+
+  if (options == null) {
+    options = kEmptyObject;
+  }
+
+  if (callback != null) {
+    validateFunction(callback, 'callback');
+  }
+
+  // Validate argv0, if present.
+  if (options.argv0 != null) {
+    validateString(options.argv0, 'options.argv0');
+    validateArgumentNullCheck(options.argv0, 'options.argv0');
+  }
+
+  return { file, args, options, callback };
+}
 
 /**
  * Spawns the specified file as a shell.
@@ -279,35 +323,8 @@ ObjectDefineProperty(exec, promisify.custom, {
  *   ) => any} [callback]
  * @returns {ChildProcess}
  */
-function execFile(file, args = [], options, callback) {
-  if (args == null) {
-    args = [];
-  } else if (typeof args === 'object') {
-    if (!ArrayIsArray(args)) {
-      callback = options;
-      options = args;
-      args = [];
-    }
-  } else if (typeof args === 'function') {
-    callback = args;
-    options = {};
-    args = [];
-  } else {
-    throw new ERR_INVALID_ARG_VALUE('args', args);
-  }
-
-  if (options == null) {
-    options = {};
-  } else if (typeof options === 'function') {
-    callback = options;
-    options = {};
-  } else if (typeof options !== 'object') {
-    throw new ERR_INVALID_ARG_VALUE('options', options);
-  }
-
-  if (callback && typeof callback !== 'function') {
-    throw new ERR_INVALID_ARG_VALUE('callback', callback);
-  }
+function execFile(file, args, options, callback) {
+  ({ file, args, options, callback } = normalizeExecFileArgs(file, args, options, callback));
 
   options = {
     encoding: 'utf8',
@@ -317,7 +334,7 @@ function execFile(file, args = [], options, callback) {
     cwd: null,
     env: null,
     shell: false,
-    ...options
+    ...options,
   };
 
   // Validate the timeout, if present.
@@ -336,7 +353,7 @@ function execFile(file, args = [], options, callback) {
     signal: options.signal,
     uid: options.uid,
     windowsHide: !!options.windowsHide,
-    windowsVerbatimArguments: !!options.windowsVerbatimArguments
+    windowsVerbatimArguments: !!options.windowsVerbatimArguments,
   });
 
   let encoding;
@@ -395,14 +412,14 @@ function execFile(file, args = [], options, callback) {
       return;
     }
 
-    if (args.length !== 0)
+    if (args?.length)
       cmd += ` ${ArrayPrototypeJoin(args, ' ')}`;
 
     if (!ex) {
       ex = genericNodeError(`Command failed: ${cmd}\n${stderr}`, {
         code: code < 0 ? getSystemErrorName(code) : code,
         killed: child.killed || killed,
-        signal: signal
+        signal: signal,
       });
     }
 
@@ -513,7 +530,7 @@ function execFile(file, args = [], options, callback) {
 ObjectDefineProperty(execFile, promisify.custom, {
   __proto__: null,
   enumerable: false,
-  value: customPromiseExecFunction(execFile)
+  value: customPromiseExecFunction(execFile),
 });
 
 function copyProcessEnvToEnv(env, name, optionEnv) {
@@ -526,6 +543,7 @@ function copyProcessEnvToEnv(env, name, optionEnv) {
 
 function normalizeSpawnArguments(file, args, options) {
   validateString(file, 'file');
+  validateArgumentNullCheck(file, 'file');
 
   if (file.length === 0)
     throw new ERR_INVALID_ARG_VALUE('file', file, 'cannot be empty');
@@ -540,6 +558,8 @@ function normalizeSpawnArguments(file, args, options) {
     options = args;
     args = [];
   }
+
+  validateArgumentsNullCheck(args, 'args');
 
   if (options === undefined)
     options = kEmptyObject;
@@ -579,6 +599,7 @@ function normalizeSpawnArguments(file, args, options) {
   // Validate argv0, if present.
   if (options.argv0 != null) {
     validateString(options.argv0, 'options.argv0');
+    validateArgumentNullCheck(options.argv0, 'options.argv0');
   }
 
   // Validate windowsHide, if present.
@@ -594,6 +615,7 @@ function normalizeSpawnArguments(file, args, options) {
   }
 
   if (options.shell) {
+    validateArgumentNullCheck(options.shell, 'options.shell');
     const command = ArrayPrototypeJoin([file, ...args], ' ');
     // Set the shell, switches, and commands.
     if (process.platform === 'win32') {
@@ -664,19 +686,21 @@ function normalizeSpawnArguments(file, args, options) {
         }
         sawKey.add(uppercaseKey);
         return true;
-      }
+      },
     );
   }
 
   for (const key of envKeys) {
     const value = env[key];
     if (value !== undefined) {
+      validateArgumentNullCheck(key, `options.env['${key}']`);
+      validateArgumentNullCheck(value, `options.env['${key}']`);
       ArrayPrototypePush(envPairs, `${key}=${value}`);
     }
   }
 
   if (!env.LD_LIBRARY_PATH) {
-    var graalNodeKeys = ['LD_LIBRARY_PATH', 'JAVA_HOME', 'GRAAL_SDK_JAR_PATH', 'LAUNCHER_COMMON_JAR_PATH', 'GRAALJS_JAR_PATH', 'TRUFFLENODE_JAR_PATH', 'NODE_JVM_OPTIONS', 'NODE_JVM_LIB', 'NODE_STACK_SIZE', 'NODE_JVM_CLASSPATH', 'NODE_JVM_BOOTCLASSPATH', 'ICU4J_DATA_PATH'];
+    var graalNodeKeys = ['LD_LIBRARY_PATH', 'JAVA_HOME', 'GRAAL_SDK_JAR_PATH', 'LAUNCHER_COMMON_JAR_PATH', 'GRAALJS_JAR_PATH', 'TRUFFLENODE_JAR_PATH', 'NODE_JVM_OPTIONS', 'NODE_JVM_LIB', 'NODE_STACK_SIZE', 'NODE_JVM_CLASSPATH', 'NODE_JVM_MODULE_PATH', 'NODE_JVM_BOOTCLASSPATH', 'ICU4J_DATA_PATH'];
     graalNodeKeys.forEach(function(key) {
       var origValue = process.env[key];
       if (origValue && !env[key]) {
@@ -698,12 +722,12 @@ function normalizeSpawnArguments(file, args, options) {
   };
 }
 
-function abortChildProcess(child, killSignal) {
+function abortChildProcess(child, killSignal, reason) {
   if (!child)
     return;
   try {
     if (child.kill(killSignal)) {
-      child.emit('error', new AbortError());
+      child.emit('error', new AbortError(undefined, { cause: reason }));
     }
   } catch (err) {
     child.emit('error', err);
@@ -773,7 +797,7 @@ function spawn(file, args, options) {
     }
 
     function onAbortListener() {
-      abortChildProcess(child, killSignal);
+      abortChildProcess(child, killSignal, options.signal.reason);
     }
   }
 
@@ -813,7 +837,7 @@ function spawn(file, args, options) {
 function spawnSync(file, args, options) {
   options = {
     maxBuffer: MAX_BUFFER,
-    ...normalizeSpawnArguments(file, args, options)
+    ...normalizeSpawnArguments(file, args, options),
   };
 
   debug('spawnSync', options);
@@ -875,7 +899,7 @@ function checkExecSyncError(ret, args, cmd) {
 
 /**
  * Spawns a file as a shell synchronously.
- * @param {string} command
+ * @param {string} file
  * @param {string[]} [args]
  * @param {{
  *   cwd?: string;
@@ -893,17 +917,18 @@ function checkExecSyncError(ret, args, cmd) {
  *   }} [options]
  * @returns {Buffer | string}
  */
-function execFileSync(command, args, options) {
-  options = normalizeSpawnArguments(command, args, options);
+function execFileSync(file, args, options) {
+  ({ file, args, options } = normalizeExecFileArgs(file, args, options));
 
   const inheritStderr = !options.stdio;
-  const ret = spawnSync(options.file,
-                        ArrayPrototypeSlice(options.args, 1), options);
+  const ret = spawnSync(file, args, options);
 
   if (inheritStderr && ret.stderr)
     process.stderr.write(ret.stderr);
 
-  const err = checkExecSyncError(ret, options.args, undefined);
+  const errArgs = [options.argv0 || file];
+  ArrayPrototypePushApply(errArgs, args);
+  const err = checkExecSyncError(ret, errArgs);
 
   if (err)
     throw err;
@@ -948,6 +973,20 @@ function execSync(command, options) {
 }
 
 
+function validateArgumentNullCheck(arg, propName) {
+  if (typeof arg === 'string' && StringPrototypeIncludes(arg, '\u0000')) {
+    throw new ERR_INVALID_ARG_VALUE(propName, arg, 'must be a string without null bytes');
+  }
+}
+
+
+function validateArgumentsNullCheck(args, propName) {
+  for (let i = 0; i < args.length; ++i) {
+    validateArgumentNullCheck(args[i], `${propName}[${i}]`);
+  }
+}
+
+
 function validateTimeout(timeout) {
   if (timeout != null && !(NumberIsInteger(timeout) && timeout >= 0)) {
     throw new ERR_OUT_OF_RANGE('timeout', 'an unsigned integer', timeout);
@@ -983,5 +1022,5 @@ module.exports = {
   execSync,
   fork,
   spawn,
-  spawnSync
+  spawnSync,
 };

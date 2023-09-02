@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,16 +43,6 @@ var assert = require('assert');
 var module = require('./_unit');
 
 describe('V8', function () {
-    describe('Initialize', function () {
-        it('should return true', function () {
-            assert.strictEqual(module.V8Obj_Initialize(), true);
-        });
-    });
-    describe.skip('Dispose', function () {
-        it('should shut down V8', function () {
-            assert.strictEqual(module.V8Obj_Dispose(), true);
-        });
-    });
     describe('SetEntropySource', function () {
         it('should be possible to set entropy source callback', function () {
             assert.strictEqual(module.V8Obj_SetEntropySource(), true);

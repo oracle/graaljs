@@ -3,7 +3,7 @@
 # Copyright 2017-2022 The OpenSSL Project Authors. All Rights Reserved.
 # Copyright (c) 2017, Oracle and/or its affiliates.  All rights reserved.
 #
-# Licensed under the OpenSSL license (the "License").  You may not use
+# Licensed under the Apache License 2.0 (the "License").  You may not use
 # this file except in compliance with the License.  You can obtain a copy
 # in the file LICENSE in the source distribution or at
 # https://www.openssl.org/source/license.html
@@ -39,22 +39,27 @@ cd $SRCTOP
 rm -rf venv-cryptography
 python -m venv venv-cryptography
 . ./venv-cryptography/bin/activate
+# Upgrade pip to always have latest
+pip install -U pip
 
 cd pyca-cryptography
 
-pip install .[test]
+echo "------------------------------------------------------------------"
+echo "Building cryptography and installing test requirements"
+echo "------------------------------------------------------------------"
+LDFLAGS="-L$O_LIB" CFLAGS="-I$O_BINC -I$O_SINC " pip install .[test]
 pip install -e vectors
 
 echo "------------------------------------------------------------------"
-echo "Building cryptography"
+echo "Print linked libraries"
 echo "------------------------------------------------------------------"
-CFLAGS="-I$O_BINC -I$O_SINC -L$O_LIB" pip install .
+ldd $(find ../venv-cryptography/lib/ -iname '*.so')
+
 
 echo "------------------------------------------------------------------"
 echo "Running tests"
 echo "------------------------------------------------------------------"
-
-CFLAGS="-I$O_BINC -I$O_SINC -L$O_LIB" pytest -n auto tests --wycheproof-root=../wycheproof
+pytest -n auto tests --wycheproof-root=../wycheproof
 
 cd ../
 deactivate

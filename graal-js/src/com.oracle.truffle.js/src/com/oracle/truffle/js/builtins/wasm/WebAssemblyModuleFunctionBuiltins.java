@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.wasm.WebAssemblyModuleFunctionBuiltinsFactory.WebAssemblyModuleCustomSectionsNodeGen;
@@ -263,10 +262,10 @@ public class WebAssemblyModuleFunctionBuiltins extends JSBuiltinsContainer.Switc
 
     }
 
-    private static TruffleString asTString(Object string) throws UnsupportedMessageException {
+    private static TruffleString asTString(Object string) {
         if (string instanceof String) {
             return Strings.fromJavaString((String) string);
         }
-        return InteropLibrary.getUncached(string).asTruffleString(string);
+        return Strings.interopAsTruffleString(string);
     }
 }

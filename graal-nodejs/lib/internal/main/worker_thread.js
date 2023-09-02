@@ -10,29 +10,17 @@ const {
   ObjectDefineProperty,
   PromisePrototypeThen,
   RegExpPrototypeExec,
-  globalThis: { Atomics },
+  globalThis: {
+    Atomics,
+    SharedArrayBuffer,
+  },
 } = primordials;
 
 const {
-  patchProcessObject,
-  setupCoverageHooks,
-  setupInspectorHooks,
-  setupWarningHandler,
-  setupFetch,
-  setupWebCrypto,
-  setupCustomEvent,
-  setupDebugEnv,
-  setupPerfHooks,
-  initializeDeprecations,
-  initializeWASI,
-  initializeCJSLoader,
-  initializeESMLoader,
-  initializeFrozenIntrinsics,
-  initializeReport,
-  initializeSourceMapsHandlers,
-  loadPreloadModules,
-  setupTraceCategoryState
-} = require('internal/bootstrap/pre_execution');
+  prepareWorkerThreadExecution,
+  setupUserModules,
+  markBootstrapComplete,
+} = require('internal/process/pre_execution');
 
 // Passed by Graal.js init phase during global module loading.
 const SharedMemMessagingInit = typeof graalExtension === 'undefined' ? arguments[arguments.length - 1] : graalExtension;
@@ -42,7 +30,7 @@ if (!SharedMemMessagingInit) {
 
 const {
   threadId,
-  getEnvMessagePort
+  getEnvMessagePort,
 } = internalBinding('worker');
 
 const workerIo = require('internal/worker/io');
@@ -58,35 +46,20 @@ const {
     STDIO_PAYLOAD,
     STDIO_WANTS_MORE_DATA,
   },
-  kStdioWantsMoreDataCallback
+  kStdioWantsMoreDataCallback,
 } = workerIo;
 
 const {
-  onGlobalUncaughtException
+  onGlobalUncaughtException,
 } = require('internal/process/execution');
 
-const publicWorker = require('worker_threads');
 let debug = require('internal/util/debuglog').debuglog('worker', (fn) => {
   debug = fn;
 });
 
 const assert = require('internal/assert');
 
-patchProcessObject();
-setupInspectorHooks();
-setupDebugEnv();
-
-setupWarningHandler();
-setupFetch();
-setupWebCrypto();
-setupCustomEvent();
-initializeSourceMapsHandlers();
-
-// Since worker threads cannot switch cwd, we do not need to
-// overwrite the process.env.NODE_V8_COVERAGE variable.
-if (process.env.NODE_V8_COVERAGE) {
-  setupCoverageHooks(process.env.NODE_V8_COVERAGE);
-}
+prepareWorkerThreadExecution();
 
 debug(`[${threadId}] is setting up worker child environment`);
 
@@ -104,13 +77,13 @@ if (process.env.NODE_CHANNEL_FD) {
   ObjectDefineProperty(process, 'channel', {
     __proto__: null,
     enumerable: false,
-    get: workerThreadSetup.unavailable('process.channel')
+    get: workerThreadSetup.unavailable('process.channel'),
   });
 
   ObjectDefineProperty(process, 'connected', {
     __proto__: null,
     enumerable: false,
-    get: workerThreadSetup.unavailable('process.connected')
+    get: workerThreadSetup.unavailable('process.connected'),
   });
 
   process.send = workerThreadSetup.unavailable('process.send()');
@@ -131,48 +104,41 @@ port.on('message', (message) => {
       publicPort,
       manifestSrc,
       manifestURL,
-      hasStdin
+      hasStdin,
     } = message;
-
-    setupTraceCategoryState();
-    setupPerfHooks();
-    initializeReport();
-    if (manifestSrc) {
-      require('internal/process/policy').setup(manifestSrc, manifestURL);
-    }
-    initializeDeprecations();
-    initializeWASI();
-    initializeCJSLoader();
-    initializeESMLoader();
 
     if (argv !== undefined) {
       ArrayPrototypePushApply(process.argv, argv);
     }
+
+    const publicWorker = require('worker_threads');
     publicWorker.parentPort = publicPort;
     publicWorker.workerData = workerData;
 
     require('internal/worker').assignEnvironmentData(environmentData);
 
-    // The counter is only passed to the workers created by the main thread, not
-    // to workers created by other workers.
-    let cachedCwd = '';
-    let lastCounter = -1;
-    const originalCwd = process.cwd;
+    if (SharedArrayBuffer !== undefined && Atomics !== undefined) {
+      // The counter is only passed to the workers created by the main thread,
+      // not to workers created by other workers.
+      let cachedCwd = '';
+      let lastCounter = -1;
+      const originalCwd = process.cwd;
 
-    process.cwd = function() {
-      const currentCounter = Atomics.load(cwdCounter, 0);
-      if (currentCounter === lastCounter)
+      process.cwd = function() {
+        const currentCounter = Atomics.load(cwdCounter, 0);
+        if (currentCounter === lastCounter)
+          return cachedCwd;
+        lastCounter = currentCounter;
+        cachedCwd = originalCwd();
         return cachedCwd;
-      lastCounter = currentCounter;
-      cachedCwd = originalCwd();
-      return cachedCwd;
-    };
-    workerIo.sharedCwdCounter = cwdCounter;
+      };
+      workerIo.sharedCwdCounter = cwdCounter;
+    }
 
-    const CJSLoader = require('internal/modules/cjs/loader');
-    assert(!CJSLoader.hasLoadedAnyUserCJSModule);
-    loadPreloadModules();
-    initializeFrozenIntrinsics();
+    if (manifestSrc) {
+      require('internal/process/policy').setup(manifestSrc, manifestURL);
+    }
+    setupUserModules();
 
     if (!hasStdin)
       process.stdin.push(null);
@@ -203,6 +169,7 @@ port.on('message', (message) => {
       // runMain here might be monkey-patched by users in --require.
       // XXX: the monkey-patchability here should probably be deprecated.
       ArrayPrototypeSplice(process.argv, 1, 0, filename);
+      const CJSLoader = require('internal/modules/cjs/loader');
       CJSLoader.Module.runMain(filename);
     }
   } else if (message.type === STDIO_PAYLOAD) {
@@ -213,7 +180,7 @@ port.on('message', (message) => {
   } else {
     assert(
       message.type === STDIO_WANTS_MORE_DATA,
-      `Unknown worker message type ${message.type}`
+      `Unknown worker message type ${message.type}`,
     );
     const { stream } = message;
     process[stream][kStdioWantsMoreDataCallback]();
@@ -259,7 +226,7 @@ function workerOnGlobalUncaughtException(error, fromPromise) {
   if (serialized)
     port.postMessage({
       type: ERROR_MESSAGE,
-      error: serialized
+      error: serialized,
     });
   else
     port.postMessage({ type: COULD_NOT_SERIALIZE_ERROR });

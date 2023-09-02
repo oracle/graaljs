@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,30 @@
  */
 package com.oracle.truffle.js.test;
 
-import com.oracle.truffle.js.runtime.Strings;
+import static org.hamcrest.CoreMatchers.startsWith;
+import static org.junit.Assert.assertThat;
+import static org.junit.Assert.assertTrue;
+import static org.junit.Assert.fail;
+
+import java.util.function.Consumer;
+
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
+import org.graalvm.polyglot.PolyglotException;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSErrorType;
+import com.oracle.truffle.js.runtime.Strings;
 
 public abstract class JSTest {
+
+    static {
+        System.setProperty("polyglot.engine.WarnInterpreterOnly", "false");
+    }
+
     protected TestHelper testHelper;
 
     @Before
@@ -72,5 +86,24 @@ public abstract class JSTest {
 
     public static void assertTStringEquals(String a, Object b) {
         Assert.assertEquals(Strings.fromJavaString(a), b);
+    }
+
+    public static void assertThrows(Runnable test, Consumer<PolyglotException> exceptionVerifier) {
+        try {
+            test.run();
+            fail("should have thrown");
+        } catch (PolyglotException e) {
+            exceptionVerifier.accept(e);
+        }
+    }
+
+    public static void assertThrows(Runnable test, JSErrorType expectedJSError) {
+        try {
+            test.run();
+            fail("should have thrown " + expectedJSError.name());
+        } catch (PolyglotException e) {
+            assertTrue(e.isGuestException());
+            assertThat(e.getMessage(), startsWith(expectedJSError.name()));
+        }
     }
 }

@@ -19,7 +19,6 @@ const {
   ArrayPrototypeIndexOf,
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
-  ArrayPrototypePop,
   ArrayPrototypePush,
   ArrayPrototypeSlice,
   ArrayPrototypeSplice,
@@ -151,7 +150,7 @@ const maybeOverridePrepareStackTrace = (globalThis, error, trace) => {
 };
 
 const aggregateTwoErrors = hideStackFrames((innerError, outerError) => {
-  if (innerError && outerError) {
+  if (innerError && outerError && innerError !== outerError) {
     if (ArrayIsArray(outerError.errors)) {
       // If `outerError` is already an `AggregateError`.
       ArrayPrototypePush(outerError.errors, innerError);
@@ -166,6 +165,13 @@ const aggregateTwoErrors = hideStackFrames((innerError, outerError) => {
     return err;
   }
   return innerError || outerError;
+});
+
+const aggregateErrors = hideStackFrames((errors, message, code) => {
+  // eslint-disable-next-line no-restricted-syntax
+  const err = new AggregateError(new SafeArrayIterator(errors), message);
+  err.code = errors[0]?.code;
+  return err;
 });
 
 // Lazily loaded
@@ -184,6 +190,12 @@ function lazyInternalUtilInspect() {
   return internalUtilInspect;
 }
 
+let utilColors;
+function lazyUtilColors() {
+  utilColors ??= require('internal/util/colors');
+  return utilColors;
+}
+
 let buffer;
 function lazyBuffer() {
   buffer ??= require('buffer').Buffer;
@@ -191,6 +203,12 @@ function lazyBuffer() {
 }
 
 function isErrorStackTraceLimitWritable() {
+  // Do no touch Error.stackTraceLimit as V8 would attempt to install
+  // it again during deserialization.
+  if (require('v8').startupSnapshot.isBuildingSnapshot()) {
+    return false;
+  }
+
   const desc = ObjectGetOwnPropertyDescriptor(Error, 'stackTraceLimit');
   if (desc === undefined) {
     return ObjectIsExtensible(Error);
@@ -309,7 +327,7 @@ class SystemError extends Error {
             lazyBuffer().from(value.toString()) : undefined;
         },
         enumerable: true,
-        configurable: true
+        configurable: true,
       });
     }
 
@@ -325,7 +343,7 @@ class SystemError extends Error {
             lazyBuffer().from(value.toString()) : undefined;
         },
         enumerable: true,
-        configurable: true
+        configurable: true,
       });
     }
   }
@@ -338,7 +356,7 @@ class SystemError extends Error {
     return lazyInternalUtilInspect().inspect(this, {
       ...ctx,
       getters: true,
-      customInspect: false
+      customInspect: false,
     });
   }
 }
@@ -433,7 +451,7 @@ function getMessage(key, args, self) {
     assert(
       msg.length <= args.length, // Default options do not count.
       `Code: ${key}; The provided arguments length (${args.length}) does not ` +
-        `match the required ones (${msg.length}).`
+        `match the required ones (${msg.length}).`,
     );
     return ReflectApply(msg, self, args);
   }
@@ -444,7 +462,7 @@ function getMessage(key, args, self) {
   assert(
     expectedLength === args.length,
     `Code: ${key}; The provided arguments length (${args.length}) does not ` +
-      `match the required ones (${expectedLength}).`
+      `match the required ones (${expectedLength}).`,
   );
   if (args.length === 0)
     return msg;
@@ -487,7 +505,6 @@ const captureLargerStackTrace = hideStackFrames(
  * function UVException using a context object with data assembled in C++.
  * The goal is to migrate them to ERR_* errors later when compatibility is
  * not a concern.
- *
  * @param {object} ctx
  * @returns {Error}
  */
@@ -539,7 +556,6 @@ const uvException = hideStackFrames(function uvException(ctx) {
  * This creates an error compatible with errors produced in the C++
  * This function should replace the deprecated
  * `exceptionWithHostPort()` function.
- *
  * @param {number} err - A libuv error number
  * @param {string} syscall
  * @param {string} address
@@ -579,7 +595,6 @@ const uvExceptionWithHostPort = hideStackFrames(
 
 /**
  * This used to be util._errnoException().
- *
  * @param {number} err - A libuv error number
  * @param {string} syscall
  * @param {string} [original]
@@ -713,7 +728,6 @@ let maxStack_ErrorMessage;
  * Returns true if `err.name` and `err.message` are equal to engine-specific
  * values indicating max call stack size has been exceeded.
  * "Maximum call stack size exceeded" in V8.
- *
  * @param {Error} err
  * @returns {boolean}
  */
@@ -773,7 +787,7 @@ const fatalExceptionStackEnhancers = {
     // However, fatal error are handled differently and we cannot easily
     // highlight them. On Windows, detecting whether a console supports
     // ANSI escape sequences is not reliable.
-    if (process.platform === 'win32') {
+    if (isWindows) {
       const info = internalBinding('os').getOSInformation();
       const ver = ArrayPrototypeMap(StringPrototypeSplit(info[2], '.'),
                                     Number);
@@ -784,35 +798,30 @@ const fatalExceptionStackEnhancers = {
     const {
       inspect,
       inspectDefaultOptions: {
-        colors: defaultColors
-      }
+        colors: defaultColors,
+      },
     } = lazyInternalUtilInspect();
-    const colors = useColors &&
-                   ((internalBinding('util').guessHandleType(2) === 'TTY' &&
-                   require('internal/tty').hasColors()) ||
-                   defaultColors);
+    const colors = useColors && (lazyUtilColors().shouldColorize(process.stderr) || defaultColors);
     try {
       return inspect(error, {
         colors,
         customInspect: false,
-        depth: MathMax(inspect.defaultOptions.depth, 5)
+        depth: MathMax(inspect.defaultOptions.depth, 5),
       });
     } catch {
       return originalStack;
     }
-  }
+  },
 };
 
+const {
+  privateSymbols: {
+    arrow_message_private_symbol,
+  },
+} = internalBinding('util');
 // Ensures the printed error line is from user code.
-let _kArrowMessagePrivateSymbol, _setHiddenValue;
 function setArrowMessage(err, arrowMessage) {
-  if (!_kArrowMessagePrivateSymbol) {
-    ({
-      arrow_message_private_symbol: _kArrowMessagePrivateSymbol,
-      setHiddenValue: _setHiddenValue,
-    } = internalBinding('util'));
-  }
-  _setHiddenValue(err, _kArrowMessagePrivateSymbol, arrowMessage);
+  err[arrow_message_private_symbol] = arrowMessage;
 }
 
 // Hide stack lines before the first user code line.
@@ -823,7 +832,7 @@ function hideInternalStackFrames(error) {
       frames = ArrayPrototypeFilter(
         stackFrames,
         (frm) => !StringPrototypeStartsWith(frm.getFileName() || '',
-                                            'node:internal')
+                                            'node:internal'),
       );
     }
     ArrayPrototypeUnshift(frames, error);
@@ -847,7 +856,6 @@ class AbortError extends Error {
 
 /**
  * This creates a generic Node.js error.
- *
  * @param {string} message The error message.
  * @param {object} errorProperties Object with additional properties to be added to the error.
  * @returns {Error}
@@ -884,9 +892,23 @@ function determineSpecificType(value) {
   return `type ${typeof value} (${inspected})`;
 }
 
+/**
+ * Create a list string in the form like 'A and B' or 'A, B, ..., and Z'.
+ * We cannot use Intl.ListFormat because it's not available in
+ * --without-intl builds.
+ * @param {string[]} array An array of strings.
+ * @param {string} [type] The list type to be inserted before the last element.
+ * @returns {string}
+ */
+function formatList(array, type = 'and') {
+  return array.length < 3 ? ArrayPrototypeJoin(array, ` ${type} `) :
+    `${ArrayPrototypeJoin(ArrayPrototypeSlice(array, 0, -1), ', ')}, ${type} ${array[array.length - 1]}`;
+}
+
 module.exports = {
   AbortError,
   aggregateTwoErrors,
+  aggregateErrors,
   captureLargerStackTrace,
   codes,
   connResetException,
@@ -897,6 +919,7 @@ module.exports = {
   errnoException,
   exceptionWithHostPort,
   fatalExceptionStackEnhancers,
+  formatList,
   genericNodeError,
   getMessage,
   hideInternalStackFrames,
@@ -934,6 +957,9 @@ module.exports = {
 //
 // Note: Node.js specific errors must begin with the prefix ERR_
 
+E('ERR_ACCESS_DENIED',
+  'Access to this API has been restricted. Permission: %s',
+  Error);
 E('ERR_AMBIGUOUS_ARGUMENT', 'The "%s" argument is ambiguous. %s', TypeError);
 E('ERR_ARG_NOT_ITERABLE', '%s must be iterable', TypeError);
 E('ERR_ASSERTION', '%s', Error);
@@ -1134,6 +1160,8 @@ E('ERR_HTTP2_TRAILERS_NOT_READY',
   'Trailing headers cannot be sent until after the wantTrailers event is ' +
   'emitted', Error);
 E('ERR_HTTP2_UNSUPPORTED_PROTOCOL', 'protocol "%s" is unsupported.', Error);
+E('ERR_HTTP_BODY_NOT_ALLOWED',
+  'Adding content for this request method or response status is not allowed.', Error);
 E('ERR_HTTP_CONTENT_LENGTH_MISMATCH',
   'Response body\'s content-length of %s byte(s) does not match the content-length of %s byte(s) set in header', Error);
 E('ERR_HTTP_HEADERS_SENT',
@@ -1142,6 +1170,8 @@ E('ERR_HTTP_INVALID_HEADER_VALUE',
   'Invalid value "%s" for header "%s"', TypeError);
 E('ERR_HTTP_INVALID_STATUS_CODE', 'Invalid status code: %s', RangeError);
 E('ERR_HTTP_REQUEST_TIMEOUT', 'Request timeout', Error);
+E('ERR_HTTP_SOCKET_ASSIGNED',
+  'ServerResponse has an already assigned socket', Error);
 E('ERR_HTTP_SOCKET_ENCODING',
   'Changing the socket encoding is not allowed per RFC7230 Section 3.', Error);
 E('ERR_HTTP_TRAILER_INVALID',
@@ -1226,39 +1256,20 @@ E('ERR_INVALID_ARG_TYPE',
     }
 
     if (types.length > 0) {
-      if (types.length > 2) {
-        const last = ArrayPrototypePop(types);
-        msg += `one of type ${ArrayPrototypeJoin(types, ', ')}, or ${last}`;
-      } else if (types.length === 2) {
-        msg += `one of type ${types[0]} or ${types[1]}`;
-      } else {
-        msg += `of type ${types[0]}`;
-      }
+      msg += `${types.length > 1 ? 'one of type' : 'of type'} ${formatList(types, 'or')}`;
       if (instances.length > 0 || other.length > 0)
         msg += ' or ';
     }
 
     if (instances.length > 0) {
-      if (instances.length > 2) {
-        const last = ArrayPrototypePop(instances);
-        msg +=
-          `an instance of ${ArrayPrototypeJoin(instances, ', ')}, or ${last}`;
-      } else {
-        msg += `an instance of ${instances[0]}`;
-        if (instances.length === 2) {
-          msg += ` or ${instances[1]}`;
-        }
-      }
+      msg += `an instance of ${formatList(instances, 'or')}`;
       if (other.length > 0)
         msg += ' or ';
     }
 
     if (other.length > 0) {
-      if (other.length > 2) {
-        const last = ArrayPrototypePop(other);
-        msg += `one of ${ArrayPrototypeJoin(other, ', ')}, or ${last}`;
-      } else if (other.length === 2) {
-        msg += `one of ${other[0]} or ${other[1]}`;
+      if (other.length > 1) {
+        msg += `one of ${formatList(other, 'or')}`;
       } else {
         if (StringPrototypeToLowerCase(other[0]) !== other[0])
           msg += 'an ';
@@ -1281,8 +1292,6 @@ E('ERR_INVALID_ARG_VALUE', (name, value, reason = 'is invalid') => {
 E('ERR_INVALID_ASYNC_ID', 'Invalid %s value: %s', RangeError);
 E('ERR_INVALID_BUFFER_SIZE',
   'Buffer size must be a multiple of %s', RangeError);
-E('ERR_INVALID_CALLBACK',
-  'Callback must be a function. Received %O', TypeError);
 E('ERR_INVALID_CHAR',
   // Using a default argument here is important so the argument is not counted
   // towards `Function#length`.
@@ -1304,6 +1313,10 @@ E('ERR_INVALID_FILE_URL_PATH', 'File URL path %s', TypeError);
 E('ERR_INVALID_HANDLE_TYPE', 'This handle type cannot be sent', TypeError);
 E('ERR_INVALID_HTTP_TOKEN', '%s must be a valid HTTP token ["%s"]', TypeError);
 E('ERR_INVALID_IP_ADDRESS', 'Invalid IP address: %s', TypeError);
+E('ERR_INVALID_MIME_SYNTAX', (production, str, invalidIndex) => {
+  const msg = invalidIndex !== -1 ? ` at ${invalidIndex}` : '';
+  return `The MIME syntax for a ${production} in "${str}" is invalid` + msg;
+}, TypeError);
 E('ERR_INVALID_MODULE_SPECIFIER', (request, reason, base = undefined) => {
   return `Invalid module "${request}" ${reason}${base ?
     ` imported from ${base}` : ''}`;
@@ -1387,7 +1400,7 @@ E(
   '"%s" did not call the next hook in its chain and did not' +
   ' explicitly signal a short circuit. If this is intentional, include' +
   ' `shortCircuit: true` in the hook\'s return.',
-  Error
+  Error,
 );
 E('ERR_MANIFEST_ASSERT_INTEGRITY',
   (moduleURL, realIntegrities) => {
@@ -1398,7 +1411,7 @@ E('ERR_MANIFEST_ASSERT_INTEGRITY',
       const sri = ArrayPrototypeJoin(
         ArrayFrom(realIntegrities.entries(),
                   ({ 0: alg, 1: dgs }) => `${alg}-${dgs}`),
-        ' '
+        ' ',
       );
       msg += ` Integrities found are: ${sri}`;
     } else {
@@ -1434,20 +1447,9 @@ E('ERR_MISSING_ARGS',
       args,
       (a) => (ArrayIsArray(a) ?
         ArrayPrototypeJoin(ArrayPrototypeMap(a, wrap), ' or ') :
-        wrap(a))
+        wrap(a)),
     );
-    switch (len) {
-      case 1:
-        msg += `${args[0]} argument`;
-        break;
-      case 2:
-        msg += `${args[0]} and ${args[1]} arguments`;
-        break;
-      default:
-        msg += ArrayPrototypeJoin(ArrayPrototypeSlice(args, 0, len - 1), ', ');
-        msg += `, and ${args[len - 1]} arguments`;
-        break;
-    }
+    msg += `${formatList(args)} argument${len > 1 ? 's' : ''}`;
     return `${msg} must be specified`;
   }, TypeError);
 E('ERR_MISSING_OPTION', '%s is required', TypeError);
@@ -1559,7 +1561,7 @@ E('ERR_SOCKET_BAD_PORT', (name, port, allowZero = true) => {
   assert(typeof allowZero === 'boolean',
          "The 'allowZero' argument must be of type boolean.");
   const operator = allowZero ? '>=' : '>';
-  return `${name} should be ${operator} 0 and < 65536. Received ${port}.`;
+  return `${name} should be ${operator} 0 and < 65536. Received ${determineSpecificType(port)}.`;
 }, RangeError);
 E('ERR_SOCKET_BAD_TYPE',
   'Bad socket type specified. Valid types are: udp4, udp6', TypeError);
@@ -1567,6 +1569,9 @@ E('ERR_SOCKET_BUFFER_SIZE',
   'Could not get or set buffer size',
   SystemError);
 E('ERR_SOCKET_CLOSED', 'Socket is closed', Error);
+E('ERR_SOCKET_CLOSED_BEFORE_CONNECTION',
+  'Socket closed before the connection was established',
+  Error);
 E('ERR_SOCKET_DGRAM_IS_CONNECTED', 'Already connected', Error);
 E('ERR_SOCKET_DGRAM_NOT_CONNECTED', 'Not connected', Error);
 E('ERR_SOCKET_DGRAM_NOT_RUNNING', 'Not running', Error);
@@ -1587,10 +1592,25 @@ E('ERR_STREAM_WRAP', 'Stream has StringDecoder set or is in objectMode', Error);
 E('ERR_STREAM_WRITE_AFTER_END', 'write after end', Error);
 E('ERR_SYNTHETIC', 'JavaScript Callstack', Error);
 E('ERR_SYSTEM_ERROR', 'A system error occurred', SystemError);
+E('ERR_TAP_LEXER_ERROR', function(errorMsg) {
+  hideInternalStackFrames(this);
+  return errorMsg;
+}, Error);
+E('ERR_TAP_PARSER_ERROR', function(errorMsg, details, tokenCausedError, source) {
+  hideInternalStackFrames(this);
+  this.cause = tokenCausedError;
+  const { column, line, start, end } = tokenCausedError.location;
+  const errorDetails = `${details} at line ${line}, column ${column} (start ${start}, end ${end})`;
+  return errorMsg + errorDetails;
+}, SyntaxError);
+E('ERR_TAP_VALIDATION_ERROR', function(errorMsg) {
+  hideInternalStackFrames(this);
+  return errorMsg;
+}, Error);
 E('ERR_TEST_FAILURE', function(error, failureType) {
   hideInternalStackFrames(this);
-  assert(typeof failureType === 'string',
-         "The 'failureType' argument must be of type string.");
+  assert(typeof failureType === 'string' || typeof failureType === 'symbol',
+         "The 'failureType' argument must be of type string or symbol.");
 
   let msg = error?.message ?? error;
 
@@ -1665,7 +1685,7 @@ E('ERR_UNKNOWN_SIGNAL', 'Unknown signal: %s', TypeError);
 E('ERR_UNSUPPORTED_DIR_IMPORT', "Directory import '%s' is not supported " +
 'resolving ES modules imported from %s', Error);
 E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url, supported) => {
-  let msg = `Only URLs with a scheme in: ${ArrayPrototypeJoin(supported, ', ')} are supported by the default ESM loader`;
+  let msg = `Only URLs with a scheme in: ${formatList(supported)} are supported by the default ESM loader`;
   if (isWindows && url.protocol.length === 2) {
     msg +=
       '. On Windows, absolute paths must be valid file:// URLs';
@@ -1673,6 +1693,7 @@ E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url, supported) => {
   msg += `. Received protocol '${url.protocol}'`;
   return msg;
 }, Error);
+E('ERR_USE_AFTER_CLOSE', '%s was closed', Error);
 
 // This should probably be a `TypeError`.
 E('ERR_VALID_PERFORMANCE_ENTRY_TYPE',
@@ -1692,6 +1713,7 @@ E('ERR_VM_MODULE_NOT_MODULE',
   'Provided module is not an instance of Module', Error);
 E('ERR_VM_MODULE_STATUS', 'Module status %s', Error);
 E('ERR_WASI_ALREADY_STARTED', 'WASI instance has already started', Error);
+E('ERR_WEBASSEMBLY_RESPONSE', 'WebAssembly response %s', TypeError);
 E('ERR_WORKER_INIT_FAILED', 'Worker initialization failure: %s', Error);
 E('ERR_WORKER_INVALID_EXEC_ARGV', (errors, msg = 'invalid execArgv flags') =>
   `Initiated Worker with ${msg}: ${ArrayPrototypeJoin(errors, ', ')}`,

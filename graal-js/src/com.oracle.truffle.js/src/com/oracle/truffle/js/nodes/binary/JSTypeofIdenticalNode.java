@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.js.parser.ir.Expression;
 import com.oracle.js.parser.ir.LiteralNode;
 import com.oracle.js.parser.ir.UnaryNode;
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -332,6 +333,7 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
         }
     }
 
+    @InliningCutoff
     @Specialization(guards = {"isForeignObject(value)"}, limit = "InteropLibraryLimit")
     protected final boolean doForeignObject(Object value,
                     @CachedLibrary("value") InteropLibrary interop) {
@@ -345,14 +347,17 @@ public abstract class JSTypeofIdenticalNode extends JSUnaryNode {
             } else if (type == Type.Number) {
                 return interop.isNumber(value);
             } else if (type == Type.Function) {
-                return interop.isExecutable(value) || interop.isInstantiable(value) || isHostSymbolInNashornCompatMode(value);
+                return isFunction(value, interop);
             } else if (type == Type.Object) {
-                return !interop.isExecutable(value) && !interop.isInstantiable(value) && !interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value) &&
-                                !isHostSymbolInNashornCompatMode(value);
+                return (!interop.isBoolean(value) && !interop.isString(value) && !interop.isNumber(value)) && !isFunction(value, interop);
             } else {
                 return false;
             }
         }
+    }
+
+    private boolean isFunction(Object value, InteropLibrary interop) {
+        return interop.isExecutable(value) || interop.isInstantiable(value) || isHostSymbolInNashornCompatMode(value);
     }
 
     private boolean isHostSymbolInNashornCompatMode(Object value) {

@@ -45,6 +45,13 @@ static void PlatformWorkerThread(void* data) {
   }
 }
 
+static int GetActualThreadPoolSize(int thread_pool_size) {
+  if (thread_pool_size < 1) {
+    thread_pool_size = uv_available_parallelism() - 1;
+  }
+  return std::max(thread_pool_size, 1);
+}
+
 }  // namespace
 
 class WorkerThreadsTaskRunner::DelayedTaskScheduler {
@@ -324,17 +331,24 @@ void PerIsolatePlatformData::DecreaseHandleCount() {
 }
 
 NodePlatform::NodePlatform(int thread_pool_size,
-                           v8::TracingController* tracing_controller) {
+                           v8::TracingController* tracing_controller,
+                           v8::PageAllocator* page_allocator) {
   if (tracing_controller != nullptr) {
     tracing_controller_ = tracing_controller;
   } else {
     tracing_controller_ = new v8::TracingController();
   }
+
+  // V8 will default to its built in allocator if none is provided.
+  page_allocator_ = page_allocator;
+
   // TODO(addaleax): It's a bit icky that we use global state here, but we can't
   // really do anything about it unless V8 starts exposing a way to access the
   // current v8::Platform instance.
   SetTracingController(tracing_controller_);
   DCHECK_EQ(GetTracingController(), tracing_controller_);
+
+  thread_pool_size = GetActualThreadPoolSize(thread_pool_size);
   worker_thread_task_runner_ =
       std::make_shared<WorkerThreadsTaskRunner>(thread_pool_size);
 }
@@ -401,7 +415,7 @@ int NodePlatform::NumberOfWorkerThreads() {
 }
 
 void PerIsolatePlatformData::RunForegroundTask(std::unique_ptr<Task> task) {
-  if (isolate_->IsExecutionTerminating()) return task->Run();
+  if (isolate_->IsExecutionTerminating()) return;
   DebugSealHandleScope scope(isolate_);
   Environment* env = Environment::GetCurrent(isolate_);
   if (env != nullptr) {
@@ -549,6 +563,10 @@ Platform::StackTracePrinter NodePlatform::GetStackTracePrinter() {
     DumpBacktrace(stderr);
     fflush(stderr);
   };
+}
+
+v8::PageAllocator* NodePlatform::GetPageAllocator() {
+  return page_allocator_;
 }
 
 template <class T>

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.interop.ScopeVariables;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 
@@ -176,10 +175,6 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
 
     public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
         return JSTypesGen.expectLong(execute(frame));
-    }
-
-    public SafeInteger executeSafeInteger(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectSafeInteger(execute(frame));
     }
 
     /**
@@ -418,8 +413,8 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
 
     @ExportMessage
     final Object getScope(Frame frame, boolean nodeEnter,
-                    @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false) Node blockNode,
-                    @Cached(value = "findFrameScopeNode(blockNode)", allowUncached = true, adopt = false) Node frameBlockNode) throws UnsupportedMessageException {
+                    @Cached(value = "findBlockScopeNode(this)", allowUncached = true, adopt = false, neverDefault = false) Node blockNode,
+                    @Cached(value = "findFrameScopeNode(blockNode)", allowUncached = true, adopt = false, neverDefault = false) Node frameBlockNode) throws UnsupportedMessageException {
         if (hasScope(frame)) {
             Frame functionFrame;
             Frame scopeFrame;

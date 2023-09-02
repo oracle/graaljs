@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,8 +46,9 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
 import com.oracle.truffle.js.nodes.access.IteratorNextNode;
@@ -56,15 +57,13 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public class YieldStarNode extends AbstractYieldNode implements ResumableNode.WithObjectState {
-    @Child private GetIteratorBaseNode getIteratorNode;
+    @Child private GetIteratorNode getIteratorNode;
     @Child private IteratorNextNode iteratorNextNode;
     @Child private IteratorCompleteNode iteratorCompleteNode;
     @Child private IteratorValueNode iteratorValueNode;
@@ -73,23 +72,25 @@ public class YieldStarNode extends AbstractYieldNode implements ResumableNode.Wi
     @Child private JSFunctionCallNode callThrowNode;
     @Child private JSFunctionCallNode callReturnNode;
     @Child private IteratorCloseNode iteratorCloseNode;
+    @Child private IsObjectNode isObjectNode;
     private final BranchProfile errorBranch = BranchProfile.create();
 
     protected YieldStarNode(JSContext context, int stateSlot, JavaScriptNode expression, JavaScriptNode yieldValue, ReturnNode returnNode, YieldResultNode yieldResultNode) {
         super(context, stateSlot, expression, yieldValue, returnNode, yieldResultNode);
-        this.getIteratorNode = GetIteratorBaseNode.create();
+        this.getIteratorNode = GetIteratorNode.create();
         this.iteratorNextNode = IteratorNextNode.create();
-        this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+        this.iteratorCompleteNode = IteratorCompleteNode.create();
         this.iteratorValueNode = IteratorValueNode.create();
         this.getThrowMethodNode = GetMethodNode.create(context, Strings.THROW);
         this.getReturnMethodNode = GetMethodNode.create(context, Strings.RETURN);
         this.callThrowNode = JSFunctionCallNode.createCall();
         this.callReturnNode = JSFunctionCallNode.createCall();
         this.iteratorCloseNode = IteratorCloseNode.create(context);
+        this.isObjectNode = IsObjectNode.create();
     }
 
     private Object executeBegin(VirtualFrame frame) {
-        IteratorRecord iteratorRecord = getIteratorNode.execute(expression.execute(frame));
+        IteratorRecord iteratorRecord = getIteratorNode.execute(null, expression.execute(frame));
         Object received = Undefined.instance;
         Object innerResult = iteratorNextNode.execute(iteratorRecord, received);
         if (iteratorCompleteNode.execute(innerResult)) {
@@ -132,12 +133,12 @@ public class YieldStarNode extends AbstractYieldNode implements ResumableNode.Wi
     }
 
     private Object resumeReturn(VirtualFrame frame, IteratorRecord iteratorRecord, Object received) {
-        JSDynamicObject iterator = iteratorRecord.getIterator();
+        Object iterator = iteratorRecord.getIterator();
         Object returnMethod = getReturnMethodNode.executeWithTarget(iterator);
         if (returnMethod == Undefined.instance) {
             return returnValue(frame, received);
         } else {
-            JSDynamicObject innerReturnResult = callReturnMethod(iterator, received, returnMethod);
+            Object innerReturnResult = callReturnMethod(iterator, received, returnMethod);
             if (iteratorCompleteNode.execute(innerReturnResult)) {
                 return returnValue(frame, iteratorValueNode.execute(innerReturnResult));
             }
@@ -146,10 +147,10 @@ public class YieldStarNode extends AbstractYieldNode implements ResumableNode.Wi
     }
 
     private Object resumeThrow(VirtualFrame frame, IteratorRecord iteratorRecord, Object received) {
-        JSDynamicObject iterator = iteratorRecord.getIterator();
+        Object iterator = iteratorRecord.getIterator();
         Object throwMethod = getThrowMethodNode.executeWithTarget(iterator);
         if (throwMethod != Undefined.instance) {
-            JSDynamicObject innerResult = callThrowMethod(iterator, received, throwMethod);
+            Object innerResult = callThrowMethod(iterator, received, throwMethod);
             if (iteratorCompleteNode.execute(innerResult)) {
                 return iteratorValueNode.execute(innerResult);
             }
@@ -161,22 +162,22 @@ public class YieldStarNode extends AbstractYieldNode implements ResumableNode.Wi
         }
     }
 
-    private JSDynamicObject callThrowMethod(JSDynamicObject iterator, Object received, Object throwMethod) {
+    private Object callThrowMethod(Object iterator, Object received, Object throwMethod) {
         Object innerResult = callThrowNode.executeCall(JSArguments.createOneArg(iterator, throwMethod, received));
-        if (!JSRuntime.isObject(innerResult)) {
+        if (!isObjectNode.executeBoolean(innerResult)) {
             errorBranch.enter();
             throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
         }
-        return (JSDynamicObject) innerResult;
+        return innerResult;
     }
 
-    private JSDynamicObject callReturnMethod(JSDynamicObject iterator, Object received, Object returnMethod) {
+    private Object callReturnMethod(Object iterator, Object received, Object returnMethod) {
         Object innerResult = callReturnNode.executeCall(JSArguments.createOneArg(iterator, returnMethod, received));
-        if (!JSRuntime.isObject(innerResult)) {
+        if (!isObjectNode.executeBoolean(innerResult)) {
             errorBranch.enter();
             throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
         }
-        return (JSDynamicObject) innerResult;
+        return innerResult;
     }
 
     @Override

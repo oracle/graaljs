@@ -14,7 +14,7 @@ const {
 } = internalBinding('crypto');
 
 const {
-  getHashLength,
+  getBlockSize,
   hasAnyNotIn,
   jobPromise,
   normalizeHashName,
@@ -28,12 +28,6 @@ const {
   lazyDOMException,
   promisify,
 } = require('internal/util');
-
-const {
-  codes: {
-    ERR_MISSING_OPTION,
-  }
-} = require('internal/errors');
 
 const {
   generateKey: _generateKey,
@@ -50,11 +44,9 @@ const generateKey = promisify(_generateKey);
 async function hmacGenerateKey(algorithm, extractable, keyUsages) {
   const { hash, name } = algorithm;
   let { length } = algorithm;
-  if (hash === undefined)
-    throw new ERR_MISSING_OPTION('algorithm.hash');
 
   if (length === undefined)
-    length = getHashLength(hash.name);
+    length = getBlockSize(hash.name);
 
   validateBitLength(length, 'algorithm.length', true);
 
@@ -66,10 +58,9 @@ async function hmacGenerateKey(algorithm, extractable, keyUsages) {
   }
 
   const key = await generateKey('hmac', { length }).catch((err) => {
-    // TODO(@panva): add err as cause to DOMException
     throw lazyDOMException(
       'The operation failed for an operation-specific reason',
-      'OperationError');
+      { name: 'OperationError', cause: err });
   });
 
   return new InternalCryptoKey(
@@ -79,16 +70,24 @@ async function hmacGenerateKey(algorithm, extractable, keyUsages) {
     extractable);
 }
 
+function getAlgorithmName(hash) {
+  switch (hash) {
+    case 'SHA-1': // Fall through
+    case 'SHA-256': // Fall through
+    case 'SHA-384': // Fall through
+    case 'SHA-512': // Fall through
+      return `HS${hash.slice(4)}`;
+    default:
+      throw lazyDOMException('Unsupported digest algorithm', 'DataError');
+  }
+}
+
 async function hmacImportKey(
   format,
   keyData,
   algorithm,
   extractable,
   keyUsages) {
-  const { hash } = algorithm;
-  if (hash === undefined)
-    throw new ERR_MISSING_OPTION('algorithm.hash');
-
   const usagesSet = new SafeSet(keyUsages);
   if (hasAnyNotIn(usagesSet, ['sign', 'verify'])) {
     throw lazyDOMException(
@@ -116,16 +115,16 @@ async function hmacImportKey(
       break;
     }
     case 'jwk': {
-      if (keyData == null || typeof keyData !== 'object')
-        throw lazyDOMException('Invalid JWK keyData', 'DataError');
+      if (!keyData.kty)
+        throw lazyDOMException('Invalid keyData', 'DataError');
 
       if (keyData.kty !== 'oct')
-        throw lazyDOMException('Invalid key type', 'DataError');
+        throw lazyDOMException('Invalid JWK "kty" Parameter', 'DataError');
 
       if (usagesSet.size > 0 &&
           keyData.use !== undefined &&
           keyData.use !== 'sig') {
-        throw lazyDOMException('Invalid use type', 'DataError');
+        throw lazyDOMException('Invalid JWK "use" Parameter', 'DataError');
       }
 
       validateKeyOps(keyData.key_ops, usagesSet);
@@ -133,32 +132,16 @@ async function hmacImportKey(
       if (keyData.ext !== undefined &&
           keyData.ext === false &&
           extractable === true) {
-        throw lazyDOMException('JWK is not extractable', 'DataError');
+        throw lazyDOMException(
+          'JWK "ext" Parameter and extractable mismatch',
+          'DataError');
       }
 
       if (keyData.alg !== undefined) {
-        if (typeof keyData.alg !== 'string')
-          throw lazyDOMException('Invalid alg', 'DataError');
-        switch (keyData.alg) {
-          case 'HS1':
-            if (algorithm.hash.name !== 'SHA-1')
-              throw lazyDOMException('Digest algorithm mismatch', 'DataError');
-            break;
-          case 'HS256':
-            if (algorithm.hash.name !== 'SHA-256')
-              throw lazyDOMException('Digest algorithm mismatch', 'DataError');
-            break;
-          case 'HS384':
-            if (algorithm.hash.name !== 'SHA-384')
-              throw lazyDOMException('Digest algorithm mismatch', 'DataError');
-            break;
-          case 'HS512':
-            if (algorithm.hash.name !== 'SHA-512')
-              throw lazyDOMException('Digest algorithm mismatch', 'DataError');
-            break;
-          default:
-            throw lazyDOMException('Unsupported digest algorithm', 'DataError');
-        }
+        if (keyData.alg !== getAlgorithmName(algorithm.hash.name))
+          throw lazyDOMException(
+            'JWK "alg" does not match the requested algorithm',
+            'DataError');
       }
 
       const handle = new KeyObjectHandle();
@@ -184,7 +167,7 @@ async function hmacImportKey(
 
 function hmacSignVerify(key, data, algorithm, signature) {
   const mode = signature === undefined ? kSignJobModeSign : kSignJobModeVerify;
-  return jobPromise(new HmacJob(
+  return jobPromise(() => new HmacJob(
     kCryptoJobAsync,
     mode,
     normalizeHashName(key.algorithm.hash.name),

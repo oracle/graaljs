@@ -253,7 +253,7 @@ FileHandle* FileHandle::New(BindingData* binding_data,
 }
 
 void FileHandle::New(const FunctionCallbackInfo<Value>& args) {
-  BindingData* binding_data = Environment::GetBindingData<BindingData>(args);
+  BindingData* binding_data = Realm::GetBindingData<BindingData>(args);
   Environment* env = binding_data->env();
   CHECK(args.IsConstructCall());
   CHECK(args[0]->IsInt32());
@@ -302,7 +302,9 @@ FileHandle::TransferData::~TransferData() {
   if (fd_ > 0) {
     uv_fs_t close_req;
     CHECK_NE(fd_, -1);
+    FS_SYNC_TRACE_BEGIN(close);
     CHECK_EQ(0, uv_fs_close(nullptr, &close_req, fd_, nullptr));
+    FS_SYNC_TRACE_END(close);
     uv_fs_req_cleanup(&close_req);
   }
 }
@@ -311,7 +313,7 @@ BaseObjectPtr<BaseObject> FileHandle::TransferData::Deserialize(
     Environment* env,
     v8::Local<v8::Context> context,
     std::unique_ptr<worker::TransferData> self) {
-  BindingData* bd = Environment::GetBindingData<BindingData>(context);
+  BindingData* bd = Realm::GetBindingData<BindingData>(context);
   if (bd == nullptr) return {};
 
   int fd = fd_;
@@ -327,7 +329,9 @@ inline void FileHandle::Close() {
   if (closed_ || closing_) return;
   uv_fs_t req;
   CHECK_NE(fd_, -1);
+  FS_SYNC_TRACE_BEGIN(close);
   int ret = uv_fs_close(env()->event_loop(), &req, fd_, nullptr);
+  FS_SYNC_TRACE_END(close);
   uv_fs_req_cleanup(&req);
 
   struct err_detail { int ret; int fd; };
@@ -460,7 +464,10 @@ MaybeLocal<Promise> FileHandle::ClosePromise() {
 
   CloseReq* req = new CloseReq(env(), close_req_obj, promise, object());
   auto AfterClose = uv_fs_callback_t{[](uv_fs_t* req) {
-    BaseObjectPtr<CloseReq> close(CloseReq::from_req(req));
+    CloseReq* req_wrap = CloseReq::from_req(req);
+    FS_ASYNC_TRACE_END1(
+        req->fs_type, req_wrap, "result", static_cast<int>(req->result))
+    BaseObjectPtr<CloseReq> close(req_wrap);
     CHECK(close);
     close->file_handle()->AfterClose();
     if (!close->env()->can_call_into_js()) return;
@@ -474,6 +481,7 @@ MaybeLocal<Promise> FileHandle::ClosePromise() {
     }
   }};
   CHECK_NE(fd_, -1);
+  FS_ASYNC_TRACE_BEGIN0(UV_FS_CLOSE, req)
   int ret = req->Dispatch(uv_fs_close, fd_, AfterClose);
   if (ret < 0) {
     req->Reject(UVException(isolate, ret, "close"));
@@ -569,7 +577,7 @@ int FileHandle::ReadStart() {
   read_wrap->buffer_ = EmitAlloc(recommended_read);
 
   current_read_ = std::move(read_wrap);
-
+  FS_ASYNC_TRACE_BEGIN0(UV_FS_READ, current_read_.get())
   current_read_->Dispatch(uv_fs_read,
                           fd_,
                           &current_read_->buffer_,
@@ -579,6 +587,8 @@ int FileHandle::ReadStart() {
     FileHandle* handle;
     {
       FileHandleReadWrap* req_wrap = FileHandleReadWrap::from_req(req);
+      FS_ASYNC_TRACE_END1(
+          req->fs_type, req_wrap, "result", static_cast<int>(req->result))
       handle = req_wrap->file_handle_;
       CHECK_EQ(handle->current_read_.get(), req_wrap);
     }
@@ -652,9 +662,12 @@ int FileHandle::DoShutdown(ShutdownWrap* req_wrap) {
   FileHandleCloseWrap* wrap = static_cast<FileHandleCloseWrap*>(req_wrap);
   closing_ = true;
   CHECK_NE(fd_, -1);
+  FS_ASYNC_TRACE_BEGIN0(UV_FS_CLOSE, wrap)
   wrap->Dispatch(uv_fs_close, fd_, uv_fs_callback_t{[](uv_fs_t* req) {
     FileHandleCloseWrap* wrap = static_cast<FileHandleCloseWrap*>(
         FileHandleCloseWrap::from_req(req));
+    FS_ASYNC_TRACE_END1(
+        req->fs_type, wrap, "result", static_cast<int>(req->result))
     FileHandle* handle = static_cast<FileHandle*>(wrap->stream());
     handle->AfterClose();
 
@@ -675,6 +688,10 @@ void FSReqCallback::ResolveStat(const uv_stat_t* stat) {
   Resolve(FillGlobalStatsArray(binding_data(), use_bigint(), stat));
 }
 
+void FSReqCallback::ResolveStatFs(const uv_statfs_t* stat) {
+  Resolve(FillGlobalStatFsArray(binding_data(), use_bigint(), stat));
+}
+
 void FSReqCallback::Resolve(Local<Value> value) {
   Local<Value> argv[2] {
     Null(env()->isolate()),
@@ -691,7 +708,7 @@ void FSReqCallback::SetReturnValue(const FunctionCallbackInfo<Value>& args) {
 
 void NewFSReqCallback(const FunctionCallbackInfo<Value>& args) {
   CHECK(args.IsConstructCall());
-  BindingData* binding_data = Environment::GetBindingData<BindingData>(args);
+  BindingData* binding_data = Realm::GetBindingData<BindingData>(args);
   new FSReqCallback(binding_data, args.This(), args[0]->IsTrue());
 }
 
@@ -764,6 +781,16 @@ void AfterStat(uv_fs_t* req) {
       req->fs_type, req_wrap, "result", static_cast<int>(req->result))
   if (after.Proceed()) {
     req_wrap->ResolveStat(&req->statbuf);
+  }
+}
+
+void AfterStatFs(uv_fs_t* req) {
+  FSReqBase* req_wrap = FSReqBase::from_req(req);
+  FSReqAfterScope after(req_wrap, req);
+  FS_ASYNC_TRACE_END1(
+      req->fs_type, req_wrap, "result", static_cast<int>(req->result))
+  if (after.Proceed()) {
+    req_wrap->ResolveStatFs(static_cast<uv_statfs_t*>(req->ptr));
   }
 }
 
@@ -1023,7 +1050,7 @@ static void InternalModuleReadJSON(const FunctionCallbackInfo<Value>& args) {
   } while (static_cast<size_t>(numchars) == kBlockSize);
 
   size_t start = 0;
-  if (offset >= 3 && 0 == memcmp(&chars[0], "\xEF\xBB\xBF", 3)) {
+  if (offset >= 3 && 0 == memcmp(chars.data(), "\xEF\xBB\xBF", 3)) {
     start = 3;  // Skip UTF-8 BOM.
   }
 
@@ -1088,7 +1115,7 @@ static void InternalModuleStat(const FunctionCallbackInfo<Value>& args) {
 }
 
 static void Stat(const FunctionCallbackInfo<Value>& args) {
-  BindingData* binding_data = Environment::GetBindingData<BindingData>(args);
+  BindingData* binding_data = Realm::GetBindingData<BindingData>(args);
   Environment* env = binding_data->env();
 
   const int argc = args.Length();
@@ -1121,7 +1148,7 @@ static void Stat(const FunctionCallbackInfo<Value>& args) {
 }
 
 static void LStat(const FunctionCallbackInfo<Value>& args) {
-  BindingData* binding_data = Environment::GetBindingData<BindingData>(args);
+  BindingData* binding_data = Realm::GetBindingData<BindingData>(args);
   Environment* env = binding_data->env();
 
   const int argc = args.Length();
@@ -1155,7 +1182,7 @@ static void LStat(const FunctionCallbackInfo<Value>& args) {
 }
 
 static void FStat(const FunctionCallbackInfo<Value>& args) {
-  BindingData* binding_data = Environment::GetBindingData<BindingData>(args);
+  BindingData* binding_data = Realm::GetBindingData<BindingData>(args);
   Environment* env = binding_data->env();
 
   const int argc = args.Length();
@@ -1186,6 +1213,48 @@ static void FStat(const FunctionCallbackInfo<Value>& args) {
   }
 }
 
+static void StatFs(const FunctionCallbackInfo<Value>& args) {
+  BindingData* binding_data = Realm::GetBindingData<BindingData>(args);
+  Environment* env = binding_data->env();
+
+  const int argc = args.Length();
+  CHECK_GE(argc, 2);
+
+  BufferValue path(env->isolate(), args[0]);
+  CHECK_NOT_NULL(*path);
+
+  bool use_bigint = args[1]->IsTrue();
+  FSReqBase* req_wrap_async = GetReqWrap(args, 2, use_bigint);
+  if (req_wrap_async != nullptr) {  // statfs(path, use_bigint, req)
+    FS_ASYNC_TRACE_BEGIN1(
+        UV_FS_STATFS, req_wrap_async, "path", TRACE_STR_COPY(*path))
+    AsyncCall(env,
+              req_wrap_async,
+              args,
+              "statfs",
+              UTF8,
+              AfterStatFs,
+              uv_fs_statfs,
+              *path);
+  } else {  // statfs(path, use_bigint, undefined, ctx)
+    CHECK_EQ(argc, 4);
+    FSReqWrapSync req_wrap_sync;
+    FS_SYNC_TRACE_BEGIN(statfs);
+    int err =
+        SyncCall(env, args[3], &req_wrap_sync, "statfs", uv_fs_statfs, *path);
+    FS_SYNC_TRACE_END(statfs);
+    if (err != 0) {
+      return;  // error info is in ctx
+    }
+
+    Local<Value> arr = FillGlobalStatFsArray(
+        binding_data,
+        use_bigint,
+        static_cast<const uv_statfs_t*>(req_wrap_sync.req.ptr));
+    args.GetReturnValue().Set(arr);
+  }
+}
+
 static void Symlink(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   Isolate* isolate = env->isolate();
@@ -1211,7 +1280,7 @@ static void Symlink(const FunctionCallbackInfo<Value>& args) {
                           TRACE_STR_COPY(*path))
     AsyncDestCall(env, req_wrap_async, args, "symlink", *path, path.length(),
                   UTF8, AfterNoArgs, uv_fs_symlink, *target, *path, flags);
-  } else {  // symlink(target, path, flags, undefinec, ctx)
+  } else {  // symlink(target, path, flags, undefined, ctx)
     CHECK_EQ(argc, 5);
     FSReqWrapSync req_wrap_sync;
     FS_SYNC_TRACE_BEGIN(symlink);
@@ -1571,7 +1640,7 @@ int MKDirpAsync(uv_loop_t* loop,
           std::string dirname = path.substr(0,
                                             path.find_last_of(kPathSeparator));
           if (dirname != path) {
-            req_wrap->continuation_data()->PushPath(std::move(path));
+            req_wrap->continuation_data()->PushPath(path);
             req_wrap->continuation_data()->PushPath(std::move(dirname));
           } else if (req_wrap->continuation_data()->paths().size() == 0) {
             err = UV_EEXIST;
@@ -1860,7 +1929,7 @@ static void Open(const FunctionCallbackInfo<Value>& args) {
 }
 
 static void OpenFileHandle(const FunctionCallbackInfo<Value>& args) {
-  BindingData* binding_data = Environment::GetBindingData<BindingData>(args);
+  BindingData* binding_data = Realm::GetBindingData<BindingData>(args);
   Environment* env = binding_data->env();
   Isolate* isolate = env->isolate();
 
@@ -2544,104 +2613,125 @@ static void Mkdtemp(const FunctionCallbackInfo<Value>& args) {
 void BindingData::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("stats_field_array", stats_field_array);
   tracker->TrackField("stats_field_bigint_array", stats_field_bigint_array);
+  tracker->TrackField("statfs_field_array", statfs_field_array);
+  tracker->TrackField("statfs_field_bigint_array", statfs_field_bigint_array);
   tracker->TrackField("file_handle_read_wrap_freelist",
                       file_handle_read_wrap_freelist);
 }
 
-BindingData::BindingData(Environment* env, v8::Local<v8::Object> wrap)
-    : SnapshotableObject(env, wrap, type_int),
-      stats_field_array(env->isolate(), kFsStatsBufferLength),
-      stats_field_bigint_array(env->isolate(), kFsStatsBufferLength) {
-  wrap->Set(env->context(),
-            FIXED_ONE_BYTE_STRING(env->isolate(), "statValues"),
+BindingData::BindingData(Realm* realm, v8::Local<v8::Object> wrap)
+    : SnapshotableObject(realm, wrap, type_int),
+      stats_field_array(realm->isolate(), kFsStatsBufferLength),
+      stats_field_bigint_array(realm->isolate(), kFsStatsBufferLength),
+      statfs_field_array(realm->isolate(), kFsStatFsBufferLength),
+      statfs_field_bigint_array(realm->isolate(), kFsStatFsBufferLength) {
+  Isolate* isolate = realm->isolate();
+  Local<Context> context = realm->context();
+  wrap->Set(context,
+            FIXED_ONE_BYTE_STRING(isolate, "statValues"),
             stats_field_array.GetJSArray())
       .Check();
 
-  wrap->Set(env->context(),
-            FIXED_ONE_BYTE_STRING(env->isolate(), "bigintStatValues"),
+  wrap->Set(context,
+            FIXED_ONE_BYTE_STRING(isolate, "bigintStatValues"),
             stats_field_bigint_array.GetJSArray())
+      .Check();
+
+  wrap->Set(context,
+            FIXED_ONE_BYTE_STRING(isolate, "statFsValues"),
+            statfs_field_array.GetJSArray())
+      .Check();
+
+  wrap->Set(context,
+            FIXED_ONE_BYTE_STRING(isolate, "bigintStatFsValues"),
+            statfs_field_bigint_array.GetJSArray())
       .Check();
 }
 
 void BindingData::Deserialize(Local<Context> context,
                               Local<Object> holder,
                               int index,
-                              InternalFieldInfo* info) {
+                              InternalFieldInfoBase* info) {
   DCHECK_EQ(index, BaseObject::kEmbedderType);
   HandleScope scope(context->GetIsolate());
-  Environment* env = Environment::GetCurrent(context);
-  BindingData* binding = env->AddBindingData<BindingData>(context, holder);
+  Realm* realm = Realm::GetCurrent(context);
+  BindingData* binding = realm->AddBindingData<BindingData>(context, holder);
   CHECK_NOT_NULL(binding);
 }
 
-void BindingData::PrepareForSerialization(Local<Context> context,
+bool BindingData::PrepareForSerialization(Local<Context> context,
                                           v8::SnapshotCreator* creator) {
   CHECK(file_handle_read_wrap_freelist.empty());
   // We'll just re-initialize the buffers in the constructor since their
   // contents can be thrown away once consumed in the previous call.
   stats_field_array.Release();
   stats_field_bigint_array.Release();
+  statfs_field_array.Release();
+  statfs_field_bigint_array.Release();
+  // Return true because we need to maintain the reference to the binding from
+  // JS land.
+  return true;
 }
 
-InternalFieldInfo* BindingData::Serialize(int index) {
+InternalFieldInfoBase* BindingData::Serialize(int index) {
   DCHECK_EQ(index, BaseObject::kEmbedderType);
-  InternalFieldInfo* info = InternalFieldInfo::New(type());
+  InternalFieldInfo* info =
+      InternalFieldInfoBase::New<InternalFieldInfo>(type());
   return info;
 }
-
-// TODO(addaleax): Remove once we're on C++17.
-constexpr FastStringKey BindingData::type_name;
 
 void Initialize(Local<Object> target,
                 Local<Value> unused,
                 Local<Context> context,
                 void* priv) {
-  Environment* env = Environment::GetCurrent(context);
+  Realm* realm = Realm::GetCurrent(context);
+  Environment* env = realm->env();
   Isolate* isolate = env->isolate();
   BindingData* const binding_data =
-      env->AddBindingData<BindingData>(context, target);
+      realm->AddBindingData<BindingData>(context, target);
   if (binding_data == nullptr) return;
 
-  env->SetMethod(target, "access", Access);
-  env->SetMethod(target, "close", Close);
-  env->SetMethod(target, "open", Open);
-  env->SetMethod(target, "openFileHandle", OpenFileHandle);
-  env->SetMethod(target, "read", Read);
-  env->SetMethod(target, "readBuffers", ReadBuffers);
-  env->SetMethod(target, "fdatasync", Fdatasync);
-  env->SetMethod(target, "fsync", Fsync);
-  env->SetMethod(target, "rename", Rename);
-  env->SetMethod(target, "ftruncate", FTruncate);
-  env->SetMethod(target, "rmdir", RMDir);
-  env->SetMethod(target, "mkdir", MKDir);
-  env->SetMethod(target, "readdir", ReadDir);
-  env->SetMethod(target, "internalModuleReadJSON", InternalModuleReadJSON);
-  env->SetMethod(target, "internalModuleStat", InternalModuleStat);
-  env->SetMethod(target, "stat", Stat);
-  env->SetMethod(target, "lstat", LStat);
-  env->SetMethod(target, "fstat", FStat);
-  env->SetMethod(target, "link", Link);
-  env->SetMethod(target, "symlink", Symlink);
-  env->SetMethod(target, "readlink", ReadLink);
-  env->SetMethod(target, "unlink", Unlink);
-  env->SetMethod(target, "writeBuffer", WriteBuffer);
-  env->SetMethod(target, "writeBuffers", WriteBuffers);
-  env->SetMethod(target, "writeString", WriteString);
-  env->SetMethod(target, "realpath", RealPath);
-  env->SetMethod(target, "copyFile", CopyFile);
+  SetMethod(context, target, "access", Access);
+  SetMethod(context, target, "close", Close);
+  SetMethod(context, target, "open", Open);
+  SetMethod(context, target, "openFileHandle", OpenFileHandle);
+  SetMethod(context, target, "read", Read);
+  SetMethod(context, target, "readBuffers", ReadBuffers);
+  SetMethod(context, target, "fdatasync", Fdatasync);
+  SetMethod(context, target, "fsync", Fsync);
+  SetMethod(context, target, "rename", Rename);
+  SetMethod(context, target, "ftruncate", FTruncate);
+  SetMethod(context, target, "rmdir", RMDir);
+  SetMethod(context, target, "mkdir", MKDir);
+  SetMethod(context, target, "readdir", ReadDir);
+  SetMethod(context, target, "internalModuleReadJSON", InternalModuleReadJSON);
+  SetMethod(context, target, "internalModuleStat", InternalModuleStat);
+  SetMethod(context, target, "stat", Stat);
+  SetMethod(context, target, "lstat", LStat);
+  SetMethod(context, target, "fstat", FStat);
+  SetMethod(context, target, "statfs", StatFs);
+  SetMethod(context, target, "link", Link);
+  SetMethod(context, target, "symlink", Symlink);
+  SetMethod(context, target, "readlink", ReadLink);
+  SetMethod(context, target, "unlink", Unlink);
+  SetMethod(context, target, "writeBuffer", WriteBuffer);
+  SetMethod(context, target, "writeBuffers", WriteBuffers);
+  SetMethod(context, target, "writeString", WriteString);
+  SetMethod(context, target, "realpath", RealPath);
+  SetMethod(context, target, "copyFile", CopyFile);
 
-  env->SetMethod(target, "chmod", Chmod);
-  env->SetMethod(target, "fchmod", FChmod);
+  SetMethod(context, target, "chmod", Chmod);
+  SetMethod(context, target, "fchmod", FChmod);
 
-  env->SetMethod(target, "chown", Chown);
-  env->SetMethod(target, "fchown", FChown);
-  env->SetMethod(target, "lchown", LChown);
+  SetMethod(context, target, "chown", Chown);
+  SetMethod(context, target, "fchown", FChown);
+  SetMethod(context, target, "lchown", LChown);
 
-  env->SetMethod(target, "utimes", UTimes);
-  env->SetMethod(target, "futimes", FUTimes);
-  env->SetMethod(target, "lutimes", LUTimes);
+  SetMethod(context, target, "utimes", UTimes);
+  SetMethod(context, target, "futimes", FUTimes);
+  SetMethod(context, target, "lutimes", LUTimes);
 
-  env->SetMethod(target, "mkdtemp", Mkdtemp);
+  SetMethod(context, target, "mkdtemp", Mkdtemp);
 
   target
       ->Set(context,
@@ -2654,11 +2744,11 @@ void Initialize(Local<Object> target,
   StatWatcher::Initialize(env, target);
 
   // Create FunctionTemplate for FSReqCallback
-  Local<FunctionTemplate> fst = env->NewFunctionTemplate(NewFSReqCallback);
+  Local<FunctionTemplate> fst = NewFunctionTemplate(isolate, NewFSReqCallback);
   fst->InstanceTemplate()->SetInternalFieldCount(
       FSReqBase::kInternalFieldCount);
   fst->Inherit(AsyncWrap::GetConstructorTemplate(env));
-  env->SetConstructorFunction(target, "FSReqCallback", fst);
+  SetConstructorFunction(context, target, "FSReqCallback", fst);
 
   // Create FunctionTemplate for FileHandleReadWrap. There’s no need
   // to do anything in the constructor, so we only store the instance template.
@@ -2683,14 +2773,14 @@ void Initialize(Local<Object> target,
   env->set_fsreqpromise_constructor_template(fpo);
 
   // Create FunctionTemplate for FileHandle
-  Local<FunctionTemplate> fd = env->NewFunctionTemplate(FileHandle::New);
+  Local<FunctionTemplate> fd = NewFunctionTemplate(isolate, FileHandle::New);
   fd->Inherit(AsyncWrap::GetConstructorTemplate(env));
-  env->SetProtoMethod(fd, "close", FileHandle::Close);
-  env->SetProtoMethod(fd, "releaseFD", FileHandle::ReleaseFD);
+  SetProtoMethod(isolate, fd, "close", FileHandle::Close);
+  SetProtoMethod(isolate, fd, "releaseFD", FileHandle::ReleaseFD);
   Local<ObjectTemplate> fdt = fd->InstanceTemplate();
   fdt->SetInternalFieldCount(FileHandle::kInternalFieldCount);
   StreamBase::AddMethods(env, fd);
-  env->SetConstructorFunction(target, "FileHandle", fd);
+  SetConstructorFunction(context, target, "FileHandle", fd);
   env->set_fd_constructor_template(fdt);
 
   // Create FunctionTemplate for FileHandle::CloseReq
@@ -2736,6 +2826,7 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(Stat);
   registry->Register(LStat);
   registry->Register(FStat);
+  registry->Register(StatFs);
   registry->Register(Link);
   registry->Register(Symlink);
   registry->Register(ReadLink);
@@ -2770,5 +2861,5 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 
 }  // end namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(fs, node::fs::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(fs, node::fs::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(fs, node::fs::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(fs, node::fs::RegisterExternalReferences)

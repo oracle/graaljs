@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,10 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 
 import java.util.Locale;
 
-import com.ibm.icu.text.DateTimePatternGenerator;
-import com.ibm.icu.text.DisplayContext;
-import com.ibm.icu.text.LocaleDisplayNames;
-import com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.text.DateTimePatternGenerator;
+import org.graalvm.shadowed.com.ibm.icu.text.DisplayContext;
+import org.graalvm.shadowed.com.ibm.icu.text.LocaleDisplayNames;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -96,9 +96,8 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject displayNamesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, displayNamesPrototype, ctor);
+        JSObjectUtil.putConstructorProperty(displayNamesPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, displayNamesPrototype, DisplayNamesPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(displayNamesPrototype, TO_STRING_TAG);
         return displayNamesPrototype;
@@ -113,12 +112,12 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         return INSTANCE.createConstructorAndPrototype(realm, DisplayNamesFunctionBuiltins.BUILTINS);
     }
 
-    public static JSDisplayNamesObject create(JSContext context, JSRealm realm) {
+    public static JSDisplayNamesObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getDisplayNamesFactory();
-        JSDisplayNamesObject obj = new JSDisplayNamesObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return obj;
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSDisplayNamesObject(shape, proto, state), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static class InternalState {
@@ -133,12 +132,12 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
 
         JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
             JSObject result = JSOrdinary.create(context, realm);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_FALLBACK, Strings.fromJavaString(fallback), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_FALLBACK, Strings.fromJavaString(fallback), JSAttributes.getDefault());
             if (languageDisplay != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LANGUAGE_DISPLAY, Strings.fromJavaString(languageDisplay), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LANGUAGE_DISPLAY, Strings.fromJavaString(languageDisplay), JSAttributes.getDefault());
             }
             return result;
         }
@@ -225,14 +224,14 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject displayNamesObject) {
-        InternalState state = getInternalState(displayNamesObject);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSDisplayNamesObject displayNamesObject) {
+        InternalState state = displayNamesObject.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
     }
 
     @TruffleBoundary
-    public static Object of(JSDynamicObject displayNamesObject, String code) {
-        InternalState state = getInternalState(displayNamesObject);
+    public static Object of(JSDisplayNamesObject displayNamesObject, String code) {
+        InternalState state = displayNamesObject.getInternalState();
         String type = state.type;
         LocaleDisplayNames displayNames = state.displayNames;
         String result;
@@ -269,11 +268,6 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
                 throw Errors.shouldNotReachHere(type);
         }
         return (result == null) ? Undefined.instance : Strings.fromJavaString(result);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject displayNamesObject) {
-        assert isJSDisplayNames(displayNamesObject);
-        return ((JSDisplayNamesObject) displayNamesObject).getInternalState();
     }
 
     @Override

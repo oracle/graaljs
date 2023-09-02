@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -200,6 +201,7 @@ public final class DefinePropertyUtil {
             return true;
         }
         Property currentProperty = getPropertyByKey(thisObj, key);
+        assert !JSProperty.isDataSpecial(currentProperty) || JSProperty.isProxy(currentProperty) : currentProperty;
 
         if (JSProperty.isProxy(currentProperty) && descriptor.isDataDescriptor()) {
             PropertyProxy proxy = (PropertyProxy) JSDynamicObject.getOrNull(thisObj, key);
@@ -279,6 +281,12 @@ public final class DefinePropertyUtil {
         boolean configurable = descriptor.getIfHasConfigurable(false);
 
         JSContext context = JSObject.getJSContext(thisObj);
+        if (JSShape.hasNoElementsAssumption(thisObj)) {
+            if (context.getArrayPrototypeNoElementsAssumption().isValid() && JSRuntime.isArrayIndex(key)) {
+                context.getArrayPrototypeNoElementsAssumption().invalidate("DefineOwnProperty on an Array prototype");
+            }
+        }
+
         if (descriptor.isGenericDescriptor() || descriptor.isDataDescriptor()) {
             return definePropertyNewData(thisObj, key, descriptor, enumerable, configurable, context);
         } else {
@@ -292,7 +300,7 @@ public final class DefinePropertyUtil {
             assert !doThrow; // should have thrown
             return false;
         }
-        JSObjectUtil.putAccessorProperty(context, thisObj, key, accessor, JSAttributes.fromConfigurableEnumerable(configurable, enumerable));
+        JSObjectUtil.defineAccessorProperty(context, thisObj, key, accessor, JSAttributes.fromConfigurableEnumerable(configurable, enumerable));
         return true;
     }
 
@@ -301,9 +309,9 @@ public final class DefinePropertyUtil {
 
         int attributes = JSAttributes.fromConfigurableEnumerableWritable(configurable, enumerable, writable);
         if (descriptor.hasValue()) {
-            JSObjectUtil.putDataProperty(context, thisObj, key, descriptor.getValue(), attributes);
+            JSObjectUtil.defineDataProperty(context, thisObj, key, descriptor.getValue(), attributes);
         } else {
-            JSObjectUtil.putDeclaredDataProperty(context, thisObj, key, Undefined.instance, attributes);
+            JSObjectUtil.defineConstantDataProperty(context, thisObj, key, Undefined.instance, attributes);
         }
         return true;
     }

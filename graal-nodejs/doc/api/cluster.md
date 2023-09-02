@@ -17,10 +17,10 @@ server ports.
 ```mjs
 import cluster from 'node:cluster';
 import http from 'node:http';
-import { cpus } from 'node:os';
+import { availableParallelism } from 'node:os';
 import process from 'node:process';
 
-const numCPUs = cpus().length;
+const numCPUs = availableParallelism();
 
 if (cluster.isPrimary) {
   console.log(`Primary ${process.pid} is running`);
@@ -48,7 +48,7 @@ if (cluster.isPrimary) {
 ```cjs
 const cluster = require('node:cluster');
 const http = require('node:http');
-const numCPUs = require('node:os').cpus().length;
+const numCPUs = require('node:os').availableParallelism();
 const process = require('node:process');
 
 if (cluster.isPrimary) {
@@ -273,7 +273,7 @@ process of the number of HTTP requests received by the workers:
 ```mjs
 import cluster from 'node:cluster';
 import http from 'node:http';
-import { cpus } from 'node:os';
+import { availableParallelism } from 'node:os';
 import process from 'node:process';
 
 if (cluster.isPrimary) {
@@ -292,7 +292,7 @@ if (cluster.isPrimary) {
   }
 
   // Start workers and listen for messages containing notifyRequest
-  const numCPUs = cpus().length;
+  const numCPUs = availableParallelism();
   for (let i = 0; i < numCPUs; i++) {
     cluster.fork();
   }
@@ -335,7 +335,7 @@ if (cluster.isPrimary) {
   }
 
   // Start workers and listen for messages containing notifyRequest
-  const numCPUs = require('node:os').cpus().length;
+  const numCPUs = require('node:os').availableParallelism();
   for (let i = 0; i < numCPUs; i++) {
     cluster.fork();
   }
@@ -452,8 +452,8 @@ added: v6.0.0
 
 * {boolean}
 
-This property is `true` if the worker exited due to `.kill()` or
-`.disconnect()`. If the worker exited any other way, it is `false`. If the
+This property is `true` if the worker exited due to `.disconnect()`.
+If the worker exited any other way, it is `false`. If the
 worker has not exited, it is `undefined`.
 
 The boolean [`worker.exitedAfterDisconnect`][] allows distinguishing between
@@ -507,10 +507,10 @@ because of exiting or being signaled). Otherwise, it returns `false`.
 ```mjs
 import cluster from 'node:cluster';
 import http from 'node:http';
-import { cpus } from 'node:os';
+import { availableParallelism } from 'node:os';
 import process from 'node:process';
 
-const numCPUs = cpus().length;
+const numCPUs = availableParallelism();
 
 if (cluster.isPrimary) {
   console.log(`Primary ${process.pid} is running`);
@@ -540,7 +540,7 @@ if (cluster.isPrimary) {
 ```cjs
 const cluster = require('node:cluster');
 const http = require('node:http');
-const numCPUs = require('node:os').cpus().length;
+const numCPUs = require('node:os').availableParallelism();
 const process = require('node:process');
 
 if (cluster.isPrimary) {
@@ -577,19 +577,14 @@ added: v0.9.12
 * `signal` {string} Name of the kill signal to send to the worker
   process. **Default:** `'SIGTERM'`
 
-This function will kill the worker. In the primary, it does this
-by disconnecting the `worker.process`, and once disconnected, killing
-with `signal`. In the worker, it does it by disconnecting the channel,
-and then exiting with code `0`.
+This function will kill the worker. In the primary worker, it does this by
+disconnecting the `worker.process`, and once disconnected, killing with
+`signal`. In the worker, it does it by killing the process with `signal`.
 
-Because `kill()` attempts to gracefully disconnect the worker process, it is
-susceptible to waiting indefinitely for the disconnect to complete. For example,
-if the worker enters an infinite loop, a graceful disconnect will never occur.
-If the graceful disconnect behavior is not needed, use `worker.process.kill()`.
+The `kill()` function kills the worker process without waiting for a graceful
+disconnect, it has the same behavior as `worker.process.kill()`.
 
-Causes `.exitedAfterDisconnect` to be set.
-
-This method is aliased as `worker.destroy()` for backward compatibility.
+This method is aliased as `worker.destroy()` for backwards compatibility.
 
 In a worker, `process.kill()` exists, but it is not this function;
 it is [`kill()`][].
@@ -855,6 +850,8 @@ added: v0.8.1
 deprecated: v16.0.0
 -->
 
+> Stability: 0 - Deprecated
+
 Deprecated alias for [`cluster.isPrimary`][].
 
 ## `cluster.isPrimary`
@@ -938,7 +935,8 @@ changes:
     **Default:** `false`.
   * `stdio` {Array} Configures the stdio of forked processes. Because the
     cluster module relies on IPC to function, this configuration must contain an
-    `'ipc'` entry. When this option is provided, it overrides `silent`.
+    `'ipc'` entry. When this option is provided, it overrides `silent`. See
+    [`child_process.spawn()`][]'s [`stdio`][].
   * `uid` {number} Sets the user identity of the process. (See setuid(2).)
   * `gid` {number} Sets the group identity of the process. (See setgid(2).)
   * `inspectPort` {number|Function} Sets inspector port of worker.
@@ -963,6 +961,8 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/7838
     description: The `stdio` option is supported now.
 -->
+
+> Stability: 0 - Deprecated
 
 Deprecated alias for [`.setupPrimary()`][].
 
@@ -992,12 +992,12 @@ import cluster from 'node:cluster';
 cluster.setupPrimary({
   exec: 'worker.js',
   args: ['--use', 'https'],
-  silent: true
+  silent: true,
 });
 cluster.fork(); // https worker
 cluster.setupPrimary({
   exec: 'worker.js',
-  args: ['--use', 'http']
+  args: ['--use', 'http'],
 });
 cluster.fork(); // http worker
 ```
@@ -1008,12 +1008,12 @@ const cluster = require('node:cluster');
 cluster.setupPrimary({
   exec: 'worker.js',
   args: ['--use', 'https'],
-  silent: true
+  silent: true,
 });
 cluster.fork(); // https worker
 cluster.setupPrimary({
   exec: 'worker.js',
-  args: ['--use', 'http']
+  args: ['--use', 'http'],
 });
 cluster.fork(); // http worker
 ```
@@ -1093,6 +1093,7 @@ for (const worker of Object.values(cluster.workers)) {
 [`.setupPrimary()`]: #clustersetupprimarysettings
 [`ChildProcess.send()`]: child_process.md#subprocesssendmessage-sendhandle-options-callback
 [`child_process.fork()`]: child_process.md#child_processforkmodulepath-args-options
+[`child_process.spawn()`]: child_process.md#child_processspawncommand-args-options
 [`child_process` event: `'exit'`]: child_process.md#event-exit
 [`child_process` event: `'message'`]: child_process.md#event-message
 [`cluster.isPrimary`]: #clusterisprimary
@@ -1101,5 +1102,6 @@ for (const worker of Object.values(cluster.workers)) {
 [`kill()`]: process.md#processkillpid-signal
 [`process` event: `'message'`]: process.md#event-message
 [`server.close()`]: net.md#event-close
+[`stdio`]: child_process.md#optionsstdio
 [`worker.exitedAfterDisconnect`]: #workerexitedafterdisconnect
 [`worker_threads`]: worker_threads.md

@@ -9,12 +9,13 @@
 #include "src/base/flags.h"
 #include "src/codegen/interface-descriptors.h"
 #include "src/codegen/machine-type.h"
-#include "src/codegen/register-arch.h"
+#include "src/codegen/register.h"
 #include "src/codegen/reglist.h"
 #include "src/codegen/signature.h"
 #include "src/common/globals.h"
 #include "src/compiler/frame.h"
 #include "src/compiler/operator.h"
+#include "src/execution/encoded-c-signature.h"
 #include "src/runtime/runtime.h"
 #include "src/zone/zone.h"
 
@@ -35,7 +36,8 @@ class OptimizedCompilationInfo;
 
 namespace compiler {
 
-const RegList kNoCalleeSaved = 0;
+constexpr RegList kNoCalleeSaved;
+constexpr DoubleRegList kNoCalleeSavedFp;
 
 class OsrHelper;
 
@@ -252,10 +254,13 @@ class V8_EXPORT_PRIVATE CallDescriptor final
                  LocationSignature* location_sig, size_t param_slot_count,
                  Operator::Properties properties,
                  RegList callee_saved_registers,
-                 RegList callee_saved_fp_registers, Flags flags,
+                 DoubleRegList callee_saved_fp_registers, Flags flags,
                  const char* debug_name = "",
                  StackArgumentOrder stack_order = StackArgumentOrder::kDefault,
-                 const RegList allocatable_registers = 0,
+#if V8_ENABLE_WEBASSEMBLY
+                 const wasm::FunctionSig* wasm_sig = nullptr,
+#endif
+                 const RegList allocatable_registers = {},
                  size_t return_slot_count = 0)
       : kind_(kind),
         target_type_(target_type),
@@ -269,7 +274,11 @@ class V8_EXPORT_PRIVATE CallDescriptor final
         allocatable_registers_(allocatable_registers),
         flags_(flags),
         stack_order_(stack_order),
-        debug_name_(debug_name) {}
+#if V8_ENABLE_WEBASSEMBLY
+        wasm_sig_(wasm_sig),
+#endif
+        debug_name_(debug_name) {
+  }
 
   CallDescriptor(const CallDescriptor&) = delete;
   CallDescriptor& operator=(const CallDescriptor&) = delete;
@@ -292,6 +301,9 @@ class V8_EXPORT_PRIVATE CallDescriptor final
 
   // Returns {true} if this descriptor is a call to a Wasm C API function.
   bool IsWasmCapiFunction() const { return kind_ == kCallWasmCapiFunction; }
+
+  // Returns the wasm signature for this call based on the real parameter types.
+  const wasm::FunctionSig* wasm_sig() const { return wasm_sig_; }
 #endif  // V8_ENABLE_WEBASSEMBLY
 
   bool RequiresFrameAsIncoming() const {
@@ -299,14 +311,33 @@ class V8_EXPORT_PRIVATE CallDescriptor final
 #if V8_ENABLE_WEBASSEMBLY
     if (IsWasmFunctionCall()) return true;
 #endif  // V8_ENABLE_WEBASSEMBLY
+    if (CalleeSavedRegisters() != kNoCalleeSaved) return true;
     return false;
   }
 
   // The number of return values from this call.
   size_t ReturnCount() const { return location_sig_->return_count(); }
 
-  // The number of C parameters to this call.
+  // The number of C parameters to this call. The following invariant
+  // should hold true:
+  // ParameterCount() == GPParameterCount() + FPParameterCount()
   size_t ParameterCount() const { return location_sig_->parameter_count(); }
+
+  // The number of general purpose C parameters to this call.
+  size_t GPParameterCount() const {
+    if (!gp_param_count_) {
+      ComputeParamCounts();
+    }
+    return gp_param_count_.value();
+  }
+
+  // The number of floating point C parameters to this call.
+  size_t FPParameterCount() const {
+    if (!fp_param_count_) {
+      ComputeParamCounts();
+    }
+    return fp_param_count_.value();
+  }
 
   // The number of stack parameter slots to the call.
   size_t ParameterSlotCount() const { return param_slot_count_; }
@@ -384,7 +415,9 @@ class V8_EXPORT_PRIVATE CallDescriptor final
   RegList CalleeSavedRegisters() const { return callee_saved_registers_; }
 
   // Get the callee-saved FP registers, if any, across this call.
-  RegList CalleeSavedFPRegisters() const { return callee_saved_fp_registers_; }
+  DoubleRegList CalleeSavedFPRegisters() const {
+    return callee_saved_fp_registers_;
+  }
 
   const char* debug_name() const { return debug_name_; }
 
@@ -413,10 +446,14 @@ class V8_EXPORT_PRIVATE CallDescriptor final
   RegList AllocatableRegisters() const { return allocatable_registers_; }
 
   bool HasRestrictedAllocatableRegisters() const {
-    return allocatable_registers_ != 0;
+    return !allocatable_registers_.is_empty();
   }
 
+  EncodedCSignature ToEncodedCSignature() const;
+
  private:
+  void ComputeParamCounts() const;
+
   friend class Linkage;
 
   const Kind kind_;
@@ -427,13 +464,19 @@ class V8_EXPORT_PRIVATE CallDescriptor final
   const size_t return_slot_count_;
   const Operator::Properties properties_;
   const RegList callee_saved_registers_;
-  const RegList callee_saved_fp_registers_;
+  const DoubleRegList callee_saved_fp_registers_;
   // Non-zero value means restricting the set of allocatable registers for
   // register allocator to use.
   const RegList allocatable_registers_;
   const Flags flags_;
   const StackArgumentOrder stack_order_;
+#if V8_ENABLE_WEBASSEMBLY
+  const wasm::FunctionSig* wasm_sig_;
+#endif
   const char* const debug_name_;
+
+  mutable base::Optional<size_t> gp_param_count_;
+  mutable base::Optional<size_t> fp_param_count_;
 };
 
 DEFINE_OPERATORS_FOR_FLAGS(CallDescriptor::Flags)

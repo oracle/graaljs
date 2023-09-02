@@ -23,12 +23,13 @@
 
 const {
   ArrayIsArray,
-  ArrayPrototypeConcat,
   ArrayPrototypeFilter,
   ArrayPrototypeIncludes,
   ArrayPrototypeIndexOf,
   ArrayPrototypeJoin,
+  ArrayPrototypeMap,
   ArrayPrototypePush,
+  ArrayPrototypePushApply,
   ArrayPrototypeSlice,
   ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
@@ -71,14 +72,14 @@ const cjsParseCache = new SafeWeakMap();
 // Set first due to cycle with ESM loader functions.
 module.exports = {
   wrapSafe, Module, toRealPath, readPackageScope, cjsParseCache,
-  get hasLoadedAnyUserCJSModule() { return hasLoadedAnyUserCJSModule; }
+  get hasLoadedAnyUserCJSModule() { return hasLoadedAnyUserCJSModule; },
 };
 
-const { NativeModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule } = require('internal/bootstrap/loaders');
 const {
   maybeCacheSourceMap,
 } = require('internal/source_map/source_map_cache');
-const { pathToFileURL, fileURLToPath, isURLInstance } = require('internal/url');
+const { pathToFileURL, fileURLToPath, isURL } = require('internal/url');
 const {
   deprecate,
   emitExperimentalWarning,
@@ -86,7 +87,8 @@ const {
   filterOwnProperties,
   setOwnProperty,
 } = require('internal/util');
-const vm = require('vm');
+const { Script } = require('vm');
+const { internalCompileFunction } = require('internal/vm');
 const assert = require('internal/assert');
 const fs = require('fs');
 const internalFS = require('internal/fs/utils');
@@ -96,9 +98,14 @@ const { internalModuleStat } = internalBinding('fs');
 const packageJsonReader = require('internal/modules/package_json_reader');
 const { safeGetenv } = internalBinding('credentials');
 const {
+  privateSymbols: {
+    require_private_symbol,
+  },
+} = internalBinding('util');
+const {
   cjsConditions,
   hasEsmSyntax,
-  loadNativeModule,
+  loadBuiltinModule,
   makeRequireFunction,
   normalizeReferrerURL,
   stripBOM,
@@ -106,6 +113,7 @@ const {
 const { getOptionValue } = require('internal/options');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
+const shouldReportRequiredModules = process.env.WATCH_REPORT_DEPENDENCIES;
 // Do not eagerly grab .manifest, it may be in TDZ
 const policy = getOptionValue('--experimental-policy') ?
   require('internal/process/policy') :
@@ -128,13 +136,14 @@ const { validateString } = require('internal/validators');
 const pendingDeprecation = getOptionValue('--pending-deprecation');
 
 const {
-  CHAR_FORWARD_SLASH,
   CHAR_BACKWARD_SLASH,
-  CHAR_COLON
+  CHAR_COLON,
+  CHAR_DOT,
+  CHAR_FORWARD_SLASH,
 } = require('internal/constants');
 
 const {
-  isProxy
+  isProxy,
 } = require('internal/util/types');
 
 const asyncESM = require('internal/process/esm_loader');
@@ -143,7 +152,7 @@ const { kEvaluated } = internalBinding('module_wrap');
 const {
   encodedSepRegEx,
   packageExportsResolve,
-  packageImportsResolve
+  packageImportsResolve,
 } = require('internal/modules/esm/resolve');
 
 const isWindows = process.platform === 'win32';
@@ -151,8 +160,22 @@ const isWindows = process.platform === 'win32';
 const relativeResolveCache = ObjectCreate(null);
 
 let requireDepth = 0;
-let statCache = null;
 let isPreloading = false;
+let statCache = null;
+
+function internalRequire(module, id) {
+  validateString(id, 'id');
+  if (id === '') {
+    throw new ERR_INVALID_ARG_VALUE('id', id,
+                                    'must be a non-empty string');
+  }
+  requireDepth++;
+  try {
+    return Module._load(id, module, /* isMain */ false);
+  } finally {
+    requireDepth--;
+  }
+}
 
 function stat(filename) {
   filename = path.toNamespacedPath(filename);
@@ -186,6 +209,18 @@ function updateChildren(parent, child, scan) {
     ArrayPrototypePush(children, child);
 }
 
+function reportModuleToWatchMode(filename) {
+  if (shouldReportRequiredModules && process.send) {
+    process.send({ 'watch:require': [filename] });
+  }
+}
+
+function reportModuleNotFoundToWatchMode(basePath, extensions) {
+  if (shouldReportRequiredModules && process.send) {
+    process.send({ 'watch:require': ArrayPrototypeMap(extensions, (ext) => path.resolve(`${basePath}${ext}`)) });
+  }
+}
+
 const moduleParentCache = new SafeWeakMap();
 function Module(id = '', parent) {
   this.id = id;
@@ -196,20 +231,30 @@ function Module(id = '', parent) {
   this.filename = null;
   this.loaded = false;
   this.children = [];
+  let redirects;
+  if (policy?.manifest) {
+    const moduleURL = pathToFileURL(id);
+    redirects = policy.manifest.getDependencyMapper(moduleURL);
+    // TODO(rafaelgss): remove the necessity of this branch
+    setOwnProperty(this, 'require', makeRequireFunction(this, redirects));
+    // eslint-disable-next-line no-proto
+    setOwnProperty(this.__proto__, 'require', makeRequireFunction(this, redirects));
+  }
+  this[require_private_symbol] = internalRequire;
 }
 
 const builtinModules = [];
-for (const { 0: id, 1: mod } of NativeModule.map) {
+for (const { 0: id, 1: mod } of BuiltinModule.map) {
   if (mod.canBeRequiredByUsers &&
-    NativeModule.canBeRequiredWithoutScheme(id)) {
+    BuiltinModule.canBeRequiredWithoutScheme(id)) {
     ArrayPrototypePush(builtinModules, id);
   }
 }
 
 const allBuiltins = new SafeSet(
-  ArrayPrototypeFlatMap(builtinModules, (bm) => [bm, `node:${bm}`])
+  ArrayPrototypeFlatMap(builtinModules, (bm) => [bm, `node:${bm}`]),
 );
-NativeModule.getSchemeOnlyModuleNames().forEach((builtin) => allBuiltins.add(`node:${builtin}`));
+BuiltinModule.getSchemeOnlyModuleNames().forEach((builtin) => allBuiltins.add(`node:${builtin}`));
 
 ObjectFreeze(builtinModules);
 Module.builtinModules = builtinModules;
@@ -243,7 +288,7 @@ let wrapperProxy = new Proxy(wrapper, {
   defineProperty(target, property, descriptor) {
     patched = true;
     return ObjectDefineProperty(target, property, descriptor);
-  }
+  },
 });
 
 ObjectDefineProperty(Module, 'wrap', {
@@ -255,7 +300,7 @@ ObjectDefineProperty(Module, 'wrap', {
   set(value) {
     patched = true;
     wrap = value;
-  }
+  },
 });
 
 ObjectDefineProperty(Module, 'wrapper', {
@@ -267,12 +312,12 @@ ObjectDefineProperty(Module, 'wrapper', {
   set(value) {
     patched = true;
     wrapperProxy = value;
-  }
+  },
 });
 
 const isPreloadingDesc = { get() { return isPreloading; } };
 ObjectDefineProperty(Module.prototype, 'isPreloading', isPreloadingDesc);
-ObjectDefineProperty(NativeModule.prototype, 'isPreloading', isPreloadingDesc);
+ObjectDefineProperty(BuiltinModule.prototype, 'isPreloading', isPreloadingDesc);
 
 function getModuleParent() {
   return moduleParentCache.get(this);
@@ -288,13 +333,13 @@ ObjectDefineProperty(Module.prototype, 'parent', {
     getModuleParent,
     'module.parent is deprecated due to accuracy issues. Please use ' +
       'require.main to find program entry point instead.',
-    'DEP0144'
+    'DEP0144',
   ) : getModuleParent,
   set: pendingDeprecation ? deprecate(
     setModuleParent,
     'module.parent is deprecated due to accuracy issues. Please use ' +
       'require.main to find program entry point instead.',
-    'DEP0144'
+    'DEP0144',
   ) : setModuleParent,
 });
 
@@ -392,7 +437,7 @@ function tryPackage(requestPath, exts, isMain, originalPath) {
       // eslint-disable-next-line no-restricted-syntax
       const err = new Error(
         `Cannot find module '${filename}'. ` +
-        'Please verify that the package.json has a valid "main" entry'
+        'Please verify that the package.json has a valid "main" entry',
       );
       err.code = 'MODULE_NOT_FOUND';
       err.path = path.resolve(requestPath, 'package.json');
@@ -405,7 +450,7 @@ function tryPackage(requestPath, exts, isMain, originalPath) {
         `Invalid 'main' field in '${jsonPath}' of '${pkg}'. ` +
           'Please either fix that or report it to the module author',
         'DeprecationWarning',
-        'DEP0128'
+        'DEP0128',
       );
     }
   }
@@ -432,7 +477,7 @@ function tryFile(requestPath, isMain) {
 
 function toRealPath(requestPath) {
   return fs.realpathSync(requestPath, {
-    [internalFS.realpathCacheKey]: realpathCache
+    [internalFS.realpathCacheKey]: realpathCache,
   });
 }
 
@@ -497,7 +542,7 @@ function trySelf(parentPath, request) {
   try {
     return finalizeEsmResolution(packageExportsResolve(
       pathToFileURL(pkgPath + '/package.json'), expansion, pkg,
-      pathToFileURL(parentPath), cjsConditions), request, parentPath, pkgPath);
+      pathToFileURL(parentPath), cjsConditions), parentPath, pkgPath);
   } catch (e) {
     if (e.code === 'ERR_MODULE_NOT_FOUND')
       throw createEsmNotFoundErr(request, pkgPath + '/package.json');
@@ -521,7 +566,7 @@ function resolveExports(nmPath, request) {
     try {
       return finalizeEsmResolution(packageExportsResolve(
         pathToFileURL(pkgPath + '/package.json'), '.' + expansion, pkg, null,
-        cjsConditions), request, null, pkgPath);
+        cjsConditions), null, pkgPath);
     } catch (e) {
       if (e.code === 'ERR_MODULE_NOT_FOUND')
         throw createEsmNotFoundErr(request, pkgPath + '/package.json');
@@ -530,7 +575,12 @@ function resolveExports(nmPath, request) {
   }
 }
 
-const trailingSlashRegex = /(?:^|\/)\.?\.$/;
+/**
+ * @param {string} request a relative or absolute file path
+ * @param {Array<string>} paths file system directories to search as file paths
+ * @param {boolean} isMain if the request is the main app entry point
+ * @returns {string | false}
+ */
 Module._findPath = function(request, paths, isMain) {
   const absoluteRequest = path.isAbsolute(request);
   if (absoluteRequest) {
@@ -545,18 +595,42 @@ Module._findPath = function(request, paths, isMain) {
     return entry;
 
   let exts;
-  let trailingSlash = request.length > 0 &&
-    StringPrototypeCharCodeAt(request, request.length - 1) ===
-    CHAR_FORWARD_SLASH;
-  if (!trailingSlash) {
-    trailingSlash = RegExpPrototypeExec(trailingSlashRegex, request) !== null;
+  const trailingSlash = request.length > 0 &&
+    (StringPrototypeCharCodeAt(request, request.length - 1) === CHAR_FORWARD_SLASH || (
+      StringPrototypeCharCodeAt(request, request.length - 1) === CHAR_DOT &&
+      (
+        request.length === 1 ||
+        StringPrototypeCharCodeAt(request, request.length - 2) === CHAR_FORWARD_SLASH ||
+        (StringPrototypeCharCodeAt(request, request.length - 2) === CHAR_DOT && (
+          request.length === 2 ||
+          StringPrototypeCharCodeAt(request, request.length - 3) === CHAR_FORWARD_SLASH
+        ))
+      )
+    ));
+
+  const isRelative = StringPrototypeCharCodeAt(request, 0) === CHAR_DOT &&
+    (
+      request.length === 1 ||
+      StringPrototypeCharCodeAt(request, 1) === CHAR_FORWARD_SLASH ||
+      (isWindows && StringPrototypeCharCodeAt(request, 1) === CHAR_BACKWARD_SLASH) ||
+      (StringPrototypeCharCodeAt(request, 1) === CHAR_DOT && ((
+        request.length === 2 ||
+        StringPrototypeCharCodeAt(request, 2) === CHAR_FORWARD_SLASH) ||
+        (isWindows && StringPrototypeCharCodeAt(request, 2) === CHAR_BACKWARD_SLASH)))
+    );
+  let insidePath = true;
+  if (isRelative) {
+    const normalizedRequest = path.normalize(request);
+    if (StringPrototypeStartsWith(normalizedRequest, '..')) {
+      insidePath = false;
+    }
   }
 
   // For each path
   for (let i = 0; i < paths.length; i++) {
-    // Don't search further if path doesn't exist
+    // Don't search further if path doesn't exist and request is inside the path
     const curPath = paths[i];
-    if (curPath && _stat(curPath) < 1) continue;
+    if (insidePath && curPath && _stat(curPath) < 1) continue;
 
     if (!absoluteRequest) {
       const exportsResolved = resolveExports(curPath, request);
@@ -610,6 +684,12 @@ Module._findPath = function(request, paths, isMain) {
       Module._pathCache[cacheKey] = filename;
       return filename;
     }
+
+    const extensions = [''];
+    if (exts !== undefined) {
+      ArrayPrototypePushApply(extensions, exts);
+    }
+    reportModuleNotFoundToWatchMode(basePath, extensions);
   }
 
   return false;
@@ -649,7 +729,7 @@ if (isWindows) {
         if (p !== nmLen)
           ArrayPrototypePush(
             paths,
-            StringPrototypeSlice(from, 0, last) + '\\node_modules'
+            StringPrototypeSlice(from, 0, last) + '\\node_modules',
           );
         last = i;
         p = 0;
@@ -684,7 +764,7 @@ if (isWindows) {
         if (p !== nmLen)
           ArrayPrototypePush(
             paths,
-            StringPrototypeSlice(from, 0, last) + '/node_modules'
+            StringPrototypeSlice(from, 0, last) + '/node_modules',
           );
         last = i;
         p = 0;
@@ -705,8 +785,13 @@ if (isWindows) {
 }
 
 Module._resolveLookupPaths = function(request, parent) {
-  if (NativeModule.canBeRequiredByUsers(request) &&
-      NativeModule.canBeRequiredWithoutScheme(request)) {
+  if ((
+    StringPrototypeStartsWith(request, 'node:') &&
+    BuiltinModule.canBeRequiredByUsers(StringPrototypeSlice(request, 5))
+  ) || (
+    BuiltinModule.canBeRequiredByUsers(request) &&
+    BuiltinModule.canBeRequiredWithoutScheme(request)
+  )) {
     debug('looking for %j in []', request);
     return null;
   }
@@ -718,9 +803,12 @@ Module._resolveLookupPaths = function(request, parent) {
       StringPrototypeCharAt(request, 1) !== '/' &&
       (!isWindows || StringPrototypeCharAt(request, 1) !== '\\'))) {
 
-    let paths = modulePaths;
+    let paths;
     if (parent?.paths?.length) {
-      paths = ArrayPrototypeConcat(parent.paths, paths);
+      paths = ArrayPrototypeSlice(modulePaths);
+      ArrayPrototypeUnshiftApply(paths, parent.paths);
+    } else {
+      paths = modulePaths;
     }
 
     debug('looking for %j in %j', request, paths);
@@ -747,7 +835,7 @@ Module._resolveLookupPaths = function(request, parent) {
 function emitCircularRequireWarning(prop) {
   process.emitWarning(
     `Accessing non-existent property '${String(prop)}' of module exports ` +
-    'inside circular dependency'
+    'inside circular dependency',
   );
 }
 
@@ -770,7 +858,7 @@ const CircularRequirePrototypeWarningProxy = new Proxy({}, {
       return ObjectGetOwnPropertyDescriptor(target, prop);
     emitCircularRequireWarning(prop);
     return undefined;
-  }
+  },
 });
 
 function getExportsForCircularRequire(module) {
@@ -793,7 +881,7 @@ function getExportsForCircularRequire(module) {
 // Check the cache for the requested file.
 // 1. If a module already exists in the cache: return its exports object.
 // 2. If the module is native: call
-//    `NativeModule.prototype.compileForPublicLoader()` and return the exports.
+//    `BuiltinModule.prototype.compileForPublicLoader()` and return the exports.
 // 3. Otherwise, create a new module for the file and save it to the cache.
 //    Then have it load  the file contents before returning its exports
 //    object.
@@ -806,6 +894,7 @@ Module._load = function(request, parent, isMain) {
     // cache key names.
     relResolveCacheIdentifier = `${parent.path}\x00${request}`;
     const filename = relativeResolveCache[relResolveCacheIdentifier];
+    reportModuleToWatchMode(filename);
     if (filename !== undefined) {
       const cachedModule = Module._cache[filename];
       if (cachedModule !== undefined) {
@@ -822,7 +911,7 @@ Module._load = function(request, parent, isMain) {
     // Slice 'node:' prefix
     const id = StringPrototypeSlice(request, 5);
 
-    const module = loadNativeModule(id, request);
+    const module = loadBuiltinModule(id, request);
     if (!module?.canBeRequiredByUsers) {
       throw new ERR_UNKNOWN_BUILTIN_MODULE(request);
     }
@@ -844,9 +933,9 @@ Module._load = function(request, parent, isMain) {
     }
   }
 
-  const mod = loadNativeModule(filename, request);
+  const mod = loadBuiltinModule(filename, request);
   if (mod?.canBeRequiredByUsers &&
-      NativeModule.canBeRequiredWithoutScheme(filename)) {
+      BuiltinModule.canBeRequiredWithoutScheme(filename)) {
     return mod.exports;
   }
 
@@ -854,9 +943,12 @@ Module._load = function(request, parent, isMain) {
   const module = cachedModule || new Module(filename, parent);
 
   if (isMain) {
-    process.mainModule = module;
+    setOwnProperty(process, 'mainModule', module);
+    setOwnProperty(module.require, 'main', process.mainModule);
     module.id = '.';
   }
+
+  reportModuleToWatchMode(filename);
 
   Module._cache[filename] = module;
   if (parent !== undefined) {
@@ -895,10 +987,10 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   if (
     (
       StringPrototypeStartsWith(request, 'node:') &&
-      NativeModule.canBeRequiredByUsers(StringPrototypeSlice(request, 5))
+      BuiltinModule.canBeRequiredByUsers(StringPrototypeSlice(request, 5))
     ) || (
-      NativeModule.canBeRequiredByUsers(request) &&
-      NativeModule.canBeRequiredWithoutScheme(request)
+      BuiltinModule.canBeRequiredByUsers(request) &&
+      BuiltinModule.canBeRequiredWithoutScheme(request)
     )
   ) {
     return request;
@@ -947,7 +1039,7 @@ Module._resolveFilename = function(request, parent, isMain, options) {
       try {
         return finalizeEsmResolution(
           packageImportsResolve(request, pathToFileURL(parentPath),
-                                cjsConditions), parentPath, request,
+                                cjsConditions), parentPath,
           pkg.path);
       } catch (e) {
         if (e.code === 'ERR_MODULE_NOT_FOUND')
@@ -968,7 +1060,7 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   }
 
   // Look up the filename first, since that's the cache key.
-  const filename = Module._findPath(request, paths, isMain, false);
+  const filename = Module._findPath(request, paths, isMain);
   if (filename) return filename;
   const requireStack = [];
   for (let cursor = parent;
@@ -988,18 +1080,12 @@ Module._resolveFilename = function(request, parent, isMain, options) {
   throw err;
 };
 
-function finalizeEsmResolution(match, request, parentPath, pkgPath) {
-  const { resolved, exact } = match;
+function finalizeEsmResolution(resolved, parentPath, pkgPath) {
   if (RegExpPrototypeExec(encodedSepRegEx, resolved) !== null)
     throw new ERR_INVALID_MODULE_SPECIFIER(
       resolved, 'must not include encoded "/" or "\\" characters', parentPath);
   const filename = fileURLToPath(resolved);
-  let actual = tryFile(filename);
-  if (!exact && !actual) {
-    const exts = ObjectKeys(Module._extensions);
-    actual = tryExtensions(filename, exts, false) ||
-      tryPackage(filename, exts, false, request);
-  }
+  const actual = tryFile(filename);
   if (actual)
     return actual;
   const err = createEsmNotFoundErr(filename,
@@ -1043,9 +1129,9 @@ Module.prototype.load = function(filename) {
     esmLoader.cjsCache.set(this, exports);
 };
 
-
 // Loads a module at the given file path. Returns that module's
 // `exports` property.
+// Note: when using the experimental policy mechanism this function is overridden
 Module.prototype.require = function(id) {
   validateString(id, 'id');
   if (id === '') {
@@ -1060,7 +1146,6 @@ Module.prototype.require = function(id) {
   }
 };
 
-
 // Resolved path to process.argv[1] will be lazily placed here
 // (needed for setting breakpoint when called with --inspect-brk)
 let resolvedArgv;
@@ -1069,19 +1154,28 @@ let hasPausedEntry = false;
 function wrapSafe(filename, content, cjsModuleInstance) {
   if (patched) {
     const wrapper = Module.wrap(content);
-    return vm.runInThisContext(wrapper, {
+    const script = new Script(wrapper, {
       filename,
       lineOffset: 0,
-      displayErrors: true,
       importModuleDynamically: async (specifier, _, importAssertions) => {
         const loader = asyncESM.esmLoader;
         return loader.import(specifier, normalizeReferrerURL(filename),
                              importAssertions);
       },
     });
+
+    // Cache the source map for the module if present.
+    if (script.sourceMapURL) {
+      maybeCacheSourceMap(filename, content, this, false, undefined, script.sourceMapURL);
+    }
+
+    return script.runInThisContext({
+      displayErrors: true,
+    });
   }
+
   try {
-    return vm.compileFunction(content, [
+    const result = internalCompileFunction(content, [
       'exports',
       'require',
       'module',
@@ -1095,6 +1189,13 @@ function wrapSafe(filename, content, cjsModuleInstance) {
                              importAssertions);
       },
     });
+
+    // Cache the source map for the module if present.
+    if (result.sourceMapURL) {
+      maybeCacheSourceMap(filename, content, this, false, undefined, result.sourceMapURL);
+    }
+
+    return result.function;
   } catch (err) {
     if (process.mainModule === cjsModuleInstance)
       enrichCJSError(err, content);
@@ -1109,13 +1210,13 @@ function wrapSafe(filename, content, cjsModuleInstance) {
 Module.prototype._compile = function(content, filename) {
   let moduleURL;
   let redirects;
-  if (policy?.manifest) {
+  const manifest = policy?.manifest;
+  if (manifest) {
     moduleURL = pathToFileURL(filename);
-    redirects = policy.manifest.getDependencyMapper(moduleURL);
-    policy.manifest.assertIntegrity(moduleURL, content);
+    redirects = manifest.getDependencyMapper(moduleURL);
+    manifest.assertIntegrity(moduleURL, content);
   }
 
-  maybeCacheSourceMap(filename, content, this);
   const compiledWrapper = wrapSafe(filename, content, this);
 
   let inspectorWrapper = null;
@@ -1262,7 +1363,7 @@ const createRequireError = 'must be a file URL object, file URL string, or ' +
 function createRequire(filename) {
   let filepath;
 
-  if (isURLInstance(filename) ||
+  if (isURL(filename) ||
       (typeof filename === 'string' && !path.isAbsolute(filename))) {
     try {
       filepath = fileURLToPath(filename);
@@ -1300,7 +1401,7 @@ Module._initPaths = function() {
   if (nodePath) {
     ArrayPrototypeUnshiftApply(paths, ArrayPrototypeFilter(
       StringPrototypeSplit(nodePath, path.delimiter),
-      Boolean
+      Boolean,
     ));
   }
 
@@ -1329,14 +1430,14 @@ Module._preloadModules = function(requests) {
     }
   }
   for (let n = 0; n < requests.length; n++)
-    parent.require(requests[n]);
+    internalRequire(parent, requests[n]);
   isPreloading = false;
 };
 
 Module.syncBuiltinESMExports = function syncBuiltinESMExports() {
-  for (const mod of NativeModule.map.values()) {
+  for (const mod of BuiltinModule.map.values()) {
     if (mod.canBeRequiredByUsers &&
-        NativeModule.canBeRequiredWithoutScheme(mod.id)) {
+        BuiltinModule.canBeRequiredWithoutScheme(mod.id)) {
       mod.syncExports();
     }
   }
@@ -1345,6 +1446,15 @@ Module.syncBuiltinESMExports = function syncBuiltinESMExports() {
 Module.isBuiltin = function isBuiltin(moduleName) {
   return allBuiltins.has(moduleName);
 };
+
+ObjectDefineProperty(Module.prototype, 'constructor', {
+  __proto__: null,
+  get: function() {
+    return policy ? undefined : Module;
+  },
+  configurable: false,
+  enumerable: false,
+});
 
 // Backwards compatibility
 Module.Module = Module;

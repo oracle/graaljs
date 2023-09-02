@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putConstructorProperty;
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putDataProperty;
-import static com.oracle.truffle.js.runtime.objects.JSObjectUtil.putFunctionsFromContainer;
-
 import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.HiddenKey;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins;
@@ -88,15 +84,10 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
 
     public static final TruffleString CLASS_NAME = Strings.constant("Array");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Array.prototype");
-    public static final TruffleString ITERATOR_CLASS_NAME = Strings.constant("Array Iterator");
-    public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Array Iterator.prototype");
-    public static final TruffleString ENTRIES = Strings.constant("entries");
 
     public static final JSArray INSTANCE = new JSArray();
 
     static final ArrayLengthProxyProperty ARRAY_LENGTH_PROPERTY_PROXY = new ArrayLengthProxyProperty();
-
-    public static final HiddenKey ARRAY_ITERATION_KIND_ID = new HiddenKey("ArrayIterationKind");
 
     private JSArray() {
     }
@@ -138,6 +129,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return createConstantEmptyArray(context, realm, (int) length);
     }
 
+    public static JSArrayObject createEmptyChecked(JSContext context, JSRealm realm, JSDynamicObject proto, long length) {
+        assert 0 <= length && length <= Integer.MAX_VALUE;
+        return createConstantEmptyArray(context, realm, proto, null, (int) length);
+    }
+
     public static JSArrayObject createEmptyZeroLength(JSContext context, JSRealm realm) {
         return createConstantEmptyArray(context, realm);
     }
@@ -155,22 +151,44 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
-        return createImpl(context, realm, arrayType, array, null, length, usedLength, indexOffset, arrayOffset, holeCount);
+        return createDefaultProto(context, realm, arrayType, array, null, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    public static JSArrayObject create(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset,
+    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, ScriptArray arrayType, Object array, long length) {
+        return create(context, realm, proto, arrayType, array, length, 0);
+    }
+
+    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, ScriptArray arrayType, Object array, long length, int usedLength) {
+        return create(context, realm, proto, arrayType, array, length, usedLength, 0, 0);
+    }
+
+    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset) {
+        return create(context, realm, proto, arrayType, array, length, usedLength, indexOffset, arrayOffset, 0);
+    }
+
+    public static JSArrayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, ScriptArray arrayType, Object array, long length, int usedLength, int indexOffset, int arrayOffset,
                     int holeCount) {
-        return createImpl(context, realm, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+        return createWithProto(context, realm, proto, arrayType, array, null, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
-    private static JSArrayObject createImpl(JSContext context, JSRealm realm, ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset,
-                    int arrayOffset, int holeCount) {
-        // (array, arrayType, allocSite, length, usedLength, indexOffset, arrayOffset, holeCount)
-        assert JSRuntime.isRepresentableAsUnsignedInt(length);
+    public static JSArrayObject createDefaultProto(JSContext context, JSRealm realm,
+                    ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         JSObjectFactory factory = context.getArrayFactory();
-        JSArrayObject obj = JSArrayObject.create(factory.getShape(realm), arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return createImpl(factory, realm, factory.getPrototype(realm), arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+    }
+
+    public static JSArrayObject createWithProto(JSContext context, JSRealm realm, JSDynamicObject prototype,
+                    ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+        JSObjectFactory factory = context.getArrayFactory();
+        return createImpl(factory, realm, prototype, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+    }
+
+    private static JSArrayObject createImpl(JSObjectFactory factory, JSRealm realm, JSDynamicObject prototype,
+                    ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
+        assert JSRuntime.isRepresentableAsUnsignedInt(length);
+        var shape = factory.getShape(realm, prototype);
+        var newObj = factory.initProto(new JSArrayObject(shape, prototype, arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount), realm, prototype);
+        return factory.trackAllocation(newObj);
     }
 
     public static boolean isJSArray(Object obj) {
@@ -200,19 +218,23 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         JSContext ctx = realm.getContext();
 
         Shape protoShape = JSShape.createPrototypeShape(ctx, INSTANCE, realm.getObjectPrototype());
-        JSObject arrayPrototype = JSArrayObject.createEmpty(protoShape, ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
+        JSObject arrayPrototype = JSArrayObject.createEmpty(protoShape, realm.getObjectPrototype(), ConstantEmptyPrototypeArray.createConstantEmptyPrototypeArray());
         JSObjectUtil.setOrVerifyPrototype(ctx, arrayPrototype, realm.getObjectPrototype());
 
-        putConstructorProperty(ctx, arrayPrototype, ctor);
-        putFunctionsFromContainer(realm, arrayPrototype, ArrayPrototypeBuiltins.BUILTINS);
+        // Mark as an Array prototype
+        JSDynamicObject.setObjectFlags(arrayPrototype, JSDynamicObject.getObjectFlags(arrayPrototype) | JSShape.ARRAY_PROTOTYPE_FLAG);
+        assert isArrayPrototype(arrayPrototype);
+
+        JSObjectUtil.putConstructorProperty(arrayPrototype, ctor);
+        JSObjectUtil.putFunctionsFromContainer(realm, arrayPrototype, ArrayPrototypeBuiltins.BUILTINS);
         // sets the length just for the prototype
         // putProxyProperty(arrayPrototype, ARRAY_LENGTH_PROXY_PROPERTY);
         JSObjectUtil.putProxyProperty(arrayPrototype, LENGTH, ARRAY_LENGTH_PROPERTY_PROXY, JSAttributes.notConfigurableNotEnumerableWritable());
         if (ctx.getEcmaScriptVersion() >= 6) {
             // The initial value of the @@iterator property is the same function object as the
             // initial value of the Array.prototype.values property.
-            putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_ITERATOR, JSDynamicObject.getOrNull(arrayPrototype, Strings.VALUES), JSAttributes.getDefaultNotEnumerable());
-            putDataProperty(ctx, arrayPrototype, Symbol.SYMBOL_UNSCOPABLES, createUnscopables(ctx, unscopableNameList(ctx)), JSAttributes.configurableNotEnumerableNotWritable());
+            JSObjectUtil.putDataProperty(arrayPrototype, Symbol.SYMBOL_ITERATOR, JSDynamicObject.getOrNull(arrayPrototype, Strings.VALUES), JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(arrayPrototype, Symbol.SYMBOL_UNSCOPABLES, createUnscopables(ctx, unscopableNameList(ctx)), JSAttributes.configurableNotEnumerableNotWritable());
         }
         return arrayPrototype;
     }
@@ -223,11 +245,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             names.add(Strings.AT);
         }
         names.add(Strings.COPY_WITHIN);
-        names.add(JSArray.ENTRIES);
+        names.add(Strings.ENTRIES);
         names.add(Strings.FILL);
         names.add(Strings.FIND);
         names.add(Strings.FIND_INDEX);
-        if (context.getEcmaScriptVersion() >= JSConfig.StagingECMAScriptVersion) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2023) {
             names.add(Strings.FIND_LAST);
             names.add(Strings.FIND_LAST_INDEX);
         }
@@ -239,10 +261,15 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
             names.add(Strings.GROUP);
             names.add(Strings.GROUP_TO_MAP);
         }
-        if (context.getEcmaScriptVersion() >= 7) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2016) {
             names.add(Strings.INCLUDES);
         }
         names.add(Strings.KEYS);
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2023) {
+            names.add(Strings.TO_REVERSED);
+            names.add(Strings.TO_SORTED);
+            names.add(Strings.TO_SPLICED);
+        }
         names.add(Strings.VALUES);
         assert isSorted(names);
         return names;
@@ -260,7 +287,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     private static JSObject createUnscopables(JSContext context, List<TruffleString> unscopableNames) {
         JSObject unscopables = JSOrdinary.createWithNullPrototypeInit(context);
         for (Object name : unscopableNames) {
-            putDataProperty(context, unscopables, name, true, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(unscopables, name, true, JSAttributes.getDefault());
         }
         return unscopables;
     }
@@ -292,17 +319,17 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         @Override
         public boolean set(JSDynamicObject store, Object value) {
             assert isJSArray(store);
-            return JSArray.setLength(store, value);
+            return JSArray.setLength(store, value, null);
         }
     }
 
     @TruffleBoundary
-    public static boolean setLength(JSDynamicObject store, Object value) {
+    public static boolean setLength(JSDynamicObject store, Object value, Node originatingNode) {
         long arrLength = 0;
         if (value instanceof Integer && (int) value >= 0) {
             arrLength = (int) value;
         } else {
-            arrLength = toArrayLengthOrRangeError(value);
+            arrLength = toArrayLengthOrRangeError(value, originatingNode);
         }
 
         assert arrLength >= 0;
@@ -318,13 +345,13 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return createConstantEmptyArray(context, realm, 0);
     }
 
-    public static JSArrayObject createConstantEmptyArray(JSContext context, JSRealm realm, ArrayAllocationSite site) {
-        return createConstantEmptyArray(context, realm, site, 0);
+    public static JSArrayObject createConstantEmptyArray(JSContext context, JSRealm realm, JSDynamicObject prototype, ArrayAllocationSite site) {
+        return createConstantEmptyArray(context, realm, prototype, site, 0);
     }
 
-    public static JSArrayObject createConstantEmptyArray(JSContext context, JSRealm realm, ArrayAllocationSite site, int capacity) {
+    public static JSArrayObject createConstantEmptyArray(JSContext context, JSRealm realm, JSDynamicObject prototype, ArrayAllocationSite site, int capacity) {
         ScriptArray arrayType = ScriptArray.createConstantEmptyArray();
-        return create(context, realm, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, site, capacity, 0, 0, 0, 0);
+        return createWithProto(context, realm, prototype, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, site, capacity, 0, 0, 0, 0);
     }
 
     public static JSArrayObject createConstantByteArray(JSContext context, JSRealm realm, byte[] byteArray) {
@@ -359,6 +386,14 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return create(context, realm, ZeroBasedDoubleArray.createZeroBasedDoubleArray(), doubleArray, doubleArray.length, doubleArray.length, 0, 0);
     }
 
+    public static JSArrayObject createZeroBasedIntArray(JSContext context, JSRealm realm, JSDynamicObject proto, int[] intArray) {
+        return create(context, realm, proto, ZeroBasedIntArray.createZeroBasedIntArray(), intArray, intArray.length, intArray.length, 0, 0);
+    }
+
+    public static JSArrayObject createZeroBasedDoubleArray(JSContext context, JSRealm realm, JSDynamicObject proto, double[] doubleArray) {
+        return create(context, realm, proto, ZeroBasedDoubleArray.createZeroBasedDoubleArray(), doubleArray, doubleArray.length, doubleArray.length, 0, 0);
+    }
+
     public static JSArrayObject createZeroBasedObjectArray(JSContext context, JSRealm realm, Object[] objectArray) {
         return create(context, realm, ZeroBasedObjectArray.createZeroBasedObjectArray(), objectArray, objectArray.length, objectArray.length, 0, 0);
     }
@@ -369,6 +404,10 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
 
     public static JSArrayObject createSparseArray(JSContext context, JSRealm realm, long length) {
         return create(context, realm, SparseArray.createSparseArray(), SparseArray.createArrayMap(), length);
+    }
+
+    public static JSArrayObject createSparseArray(JSContext context, JSRealm realm, JSDynamicObject proto, long length) {
+        return create(context, realm, proto, SparseArray.createSparseArray(), SparseArray.createArrayMap(), length);
     }
 
     public static JSArrayObject createLazyRegexArray(JSContext context, JSRealm realm, int length) {
@@ -383,11 +422,11 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_RESULT_ID, regexResult);
         JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_ORIGINAL_INPUT_ID, input);
         JSObjectUtil.putProxyProperty(obj, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault());
-        JSObjectUtil.putDataProperty(context, obj, JSRegExp.INPUT, input, JSAttributes.getDefault());
-        JSObjectUtil.putDataProperty(context, obj, JSRegExp.GROUPS, groups, JSAttributes.getDefault());
+        JSObjectUtil.putDataProperty(obj, JSRegExp.INPUT, input, JSAttributes.getDefault());
+        JSObjectUtil.putDataProperty(obj, JSRegExp.GROUPS, groups, JSAttributes.getDefault());
         if (context.isOptionRegexpMatchIndices()) {
             JSArrayObject indices = createLazyRegexIndicesArray(context, realm, length, regexResult, indicesGroups);
-            JSObjectUtil.putDataProperty(context, obj, JSRegExp.INDICES, indices, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(obj, JSRegExp.INDICES, indices, JSAttributes.getDefault());
         }
         assert isJSArray(obj);
         return obj;
@@ -404,7 +443,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         Object[] array = new Object[length];
         JSArrayObject obj = create(context, realm, LazyRegexResultIndicesArray.createLazyRegexResultIndicesArray(), array, length);
         JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_RESULT_ID, regexResult);
-        JSObjectUtil.putDataProperty(context, obj, JSRegExp.GROUPS, indicesGroups, JSAttributes.getDefault());
+        JSObjectUtil.putDataProperty(obj, JSRegExp.GROUPS, indicesGroups, JSAttributes.getDefault());
         assert isJSArray(obj);
         return obj;
     }
@@ -417,5 +456,9 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getArrayPrototype();
+    }
+
+    public static boolean isArrayPrototype(JSDynamicObject object) {
+        return isJSArray(object) && JSShape.isArrayPrototypeOrDerivative(object);
     }
 }

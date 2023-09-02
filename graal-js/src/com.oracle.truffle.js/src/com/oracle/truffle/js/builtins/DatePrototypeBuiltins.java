@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,9 +43,11 @@ package com.oracle.truffle.js.builtins;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDateNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDayNodeGen;
@@ -78,7 +80,7 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStrin
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateValueOfNodeGen;
-import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -99,7 +101,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 /**
@@ -320,8 +322,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             this.isUTC = isUTC;
         }
 
-        private final ConditionProfile isDate = ConditionProfile.createBinaryProfile();
-        protected final ConditionProfile isNaN = ConditionProfile.createBinaryProfile();
+        private final ConditionProfile isDate = ConditionProfile.create();
+        protected final ConditionProfile isNaN = ConditionProfile.create();
         @Child private InteropLibrary interopLibrary;
 
         /**
@@ -358,8 +360,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
-        protected JSDynamicObject createDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, Object locales, Object options) {
-            JSDynamicObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
+        protected JSDateTimeFormatObject createDateTimeFormat(InitializeDateTimeFormatNode initDateTimeFormatNode, Object locales, Object options) {
+            JSDateTimeFormatObject dateTimeFormatObj = JSDateTimeFormat.create(getContext(), getRealm());
             initDateTimeFormatNode.executeInit(dateTimeFormatObj, locales, options);
             return dateTimeFormatObj;
         }
@@ -424,7 +426,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            JSDynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
+            JSDateTimeFormatObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
             return JSDateTimeFormat.format(formatter, t);
         }
     }
@@ -492,7 +494,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            JSDynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
+            JSDateTimeFormatObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
             return JSDateTimeFormat.format(formatter, t);
         }
     }
@@ -528,7 +530,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             if (isNaN.profile(Double.isNaN(t))) {
                 return JSDate.INVALID_DATE_STRING;
             }
-            JSDynamicObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
+            JSDateTimeFormatObject formatter = createDateTimeFormat(initDateTimeFormatNode, locales, options);
             return JSDateTimeFormat.format(formatter, t);
         }
     }
@@ -859,7 +861,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         public JSDateToJSONNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            toObjectNode = JSToObjectNode.createToObject(context);
+            toObjectNode = JSToObjectNode.create();
             toPrimitiveNode = JSToPrimitiveNode.createHintNumber();
         }
 
@@ -896,29 +898,28 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
     public abstract static class JSDateToPrimitiveNode extends JSBuiltinNode {
 
-        private final ConditionProfile isHintNumber = ConditionProfile.createBinaryProfile();
-        private final ConditionProfile isHintStringOrDefault = ConditionProfile.createBinaryProfile();
-        @Child private IsJSObjectNode isObjectNode;
         @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveHintNumber;
         @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveHintString;
 
         public JSDateToPrimitiveNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.isObjectNode = IsJSObjectNode.create();
         }
 
         @Specialization
-        protected Object toPrimitive(Object obj, Object hint) {
+        protected final Object toPrimitive(Object obj, Object hint,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached InlinedConditionProfile isHintNumber,
+                        @Cached InlinedConditionProfile isHintStringOrDefault) {
             if (!isObjectNode.executeBoolean(obj)) {
                 throw Errors.createTypeErrorNotAnObject(obj);
             }
-            if (isHintNumber.profile(Strings.HINT_NUMBER.equals(hint))) {
+            if (isHintNumber.profile(this, Strings.HINT_NUMBER.equals(hint))) {
                 if (ordinaryToPrimitiveHintNumber == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     ordinaryToPrimitiveHintNumber = insert(OrdinaryToPrimitiveNode.createHintNumber());
                 }
                 return ordinaryToPrimitiveHintNumber.execute(obj);
-            } else if (isHintStringOrDefault.profile(Strings.HINT_STRING.equals(hint) || Strings.HINT_DEFAULT.equals(hint))) {
+            } else if (isHintStringOrDefault.profile(this, Strings.HINT_STRING.equals(hint) || Strings.HINT_DEFAULT.equals(hint))) {
                 if (ordinaryToPrimitiveHintString == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     ordinaryToPrimitiveHintString = insert(OrdinaryToPrimitiveNode.createHintString());

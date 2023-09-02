@@ -4,15 +4,16 @@ const {
   validateFunction,
 } = require('internal/validators');
 const {
-  ERR_NOT_BUILDING_SNAPSHOT,
-  ERR_DUPLICATE_STARTUP_SNAPSHOT_MAIN_FUNCTION
+  codes: {
+    ERR_NOT_BUILDING_SNAPSHOT,
+    ERR_DUPLICATE_STARTUP_SNAPSHOT_MAIN_FUNCTION,
+  },
 } = require('internal/errors');
 
 const {
   setSerializeCallback,
   setDeserializeCallback,
   setDeserializeMainFunction: _setDeserializeMainFunction,
-  markBootstrapComplete
 } = internalBinding('mksnapshot');
 
 function isBuildingSnapshot() {
@@ -55,8 +56,6 @@ function runSerializeCallbacks() {
     const { 0: callback, 1: data } = serializeCallbacks.shift();
     callback(data);
   }
-  // Remove the hooks from the snapshot.
-  require('v8').startupSnapshot = undefined;
 }
 
 function addSerializeCallback(callback, data) {
@@ -87,12 +86,14 @@ function setDeserializeMainFunction(callback, data) {
 
   _setDeserializeMainFunction(function deserializeMain() {
     const {
-      prepareMainThreadExecution
-    } = require('internal/bootstrap/pre_execution');
+      prepareMainThreadExecution,
+      markBootstrapComplete,
+    } = require('internal/process/pre_execution');
 
     // This should be in sync with run_main_module.js until we make that
     // a built-in main function.
-    prepareMainThreadExecution(true);
+    // TODO(joyeecheung): make a copy of argv[0] and insert it as argv[1].
+    prepareMainThreadExecution(false);
     markBootstrapComplete();
     callback(data);
   });
@@ -106,6 +107,6 @@ module.exports = {
     addDeserializeCallback,
     addSerializeCallback,
     setDeserializeMainFunction,
-    isBuildingSnapshot
-  }
+    isBuildingSnapshot,
+  },
 };

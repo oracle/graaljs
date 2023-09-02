@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,7 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
@@ -61,7 +61,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
@@ -83,6 +82,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
@@ -105,8 +105,9 @@ public abstract class JSObject extends JSDynamicObject {
     public static final TruffleString NO_SUCH_METHOD_NAME = Strings.constant("__noSuchMethod__");
     protected static final String[] EMPTY_STRING_ARRAY = new String[0];
 
-    protected JSObject(Shape shape) {
+    protected JSObject(Shape shape, JSDynamicObject proto) {
         super(shape);
+        assert proto != null && (JSObjectFactory.hasInObjectProto(shape) || JSObjectFactory.verifyPrototype(shape, proto));
     }
 
     protected JSObject copyWithoutProperties(@SuppressWarnings("unused") Shape shape) {
@@ -126,17 +127,11 @@ public abstract class JSObject extends JSDynamicObject {
         return true;
     }
 
-    @ImportStatic({JSGuards.class, JSObject.class})
     @ExportMessage
     public abstract static class GetMembers {
-        @Specialization(guards = {"cachedJSClass != null", "getJSClass(target) == cachedJSClass"})
-        public static Object nonArrayCached(JSObject target, @SuppressWarnings("unused") boolean internal,
-                        @Cached("getJSClass(target)") @SuppressWarnings("unused") JSClass cachedJSClass) {
-            return InteropArray.create(JSObject.enumerableOwnNames(target));
-        }
 
-        @Specialization(replaces = "nonArrayCached")
-        public static Object nonArrayUncached(JSObject target, @SuppressWarnings("unused") boolean internal) {
+        @Specialization
+        public static Object nonArray(JSObject target, @SuppressWarnings("unused") boolean internal) {
             return InteropArray.create(JSObject.enumerableOwnNames(target));
         }
     }
@@ -163,9 +158,10 @@ public abstract class JSObject extends JSDynamicObject {
     public final Object readMember(String key,
                     @CachedLibrary("this") @SuppressWarnings("unused") InteropLibrary self,
                     @Cached(value = "create(language(self).getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Cached(value = "language(self).bindMemberFunctions()", allowUncached = true) boolean bindMemberFunctions,
+                    @Cached(value = "language(self).bindMemberFunctions()", allowUncached = true, neverDefault = false) boolean bindMemberFunctions,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString,
                     @Cached @Exclusive ExportValueNode exportNode) throws UnknownIdentifierException {
-        TruffleString tStringKey = Strings.fromJavaString(key);
+        TruffleString tStringKey = Strings.fromJavaString(fromJavaString, key);
         JSDynamicObject target = this;
         Object result;
         if (readNode == null) {
@@ -189,7 +185,8 @@ public abstract class JSObject extends JSDynamicObject {
     public final void writeMember(String key, Object value,
                     @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
                     @Cached ImportValueNode castValueNode,
-                    @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode)
+                    @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString)
                     throws UnknownIdentifierException, UnsupportedMessageException {
         JSDynamicObject target = this;
         if (testIntegrityLevel(true)) {
@@ -198,7 +195,7 @@ public abstract class JSObject extends JSDynamicObject {
         if (!keyInfo.execute(target, key, KeyInfoNode.WRITABLE)) {
             throw UnknownIdentifierException.create(key);
         }
-        TruffleString tStringKey = Strings.fromJavaString(key);
+        TruffleString tStringKey = Strings.fromJavaString(fromJavaString, key);
         Object importedValue = castValueNode.executeWithTarget(value);
         if (writeNode == null) {
             JSObject.set(target, tStringKey, importedValue, true, null);
@@ -220,11 +217,12 @@ public abstract class JSObject extends JSDynamicObject {
     }
 
     @ExportMessage
-    public final void removeMember(String key) throws UnsupportedMessageException {
+    public final void removeMember(String key,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString) throws UnsupportedMessageException {
         if (testIntegrityLevel(false)) {
             throw UnsupportedMessageException.create();
         }
-        JSObject.delete(this, Strings.fromJavaString(key), true);
+        JSObject.delete(this, Strings.fromJavaString(fromJavaString, key), true);
     }
 
     @ExportMessage
@@ -237,12 +235,13 @@ public abstract class JSObject extends JSDynamicObject {
     public final Object invokeMember(String id, Object[] args,
                     @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropInvokeNode callNode,
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaString,
                     @Cached @Exclusive ExportValueNode exportNode) throws UnsupportedMessageException, UnknownIdentifierException {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
         JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
         try {
-            Object result = callNode.execute(this, Strings.fromJavaString(id), args);
+            Object result = callNode.execute(this, Strings.fromJavaString(fromJavaString, id), args);
             return exportNode.execute(result);
         } finally {
             language.interopBoundaryExit(realm);
@@ -349,10 +348,14 @@ public abstract class JSObject extends JSDynamicObject {
         return JSObject.getJSClass(obj).get(obj, key);
     }
 
-    @TruffleBoundary
     public static Object getMethod(JSDynamicObject obj, Object name) {
+        return getMethod(obj, obj, name);
+    }
+
+    @TruffleBoundary
+    public static Object getMethod(JSDynamicObject obj, Object receiver, Object name) {
         assert JSRuntime.isPropertyKey(name);
-        Object result = JSRuntime.nullToUndefined(JSObject.getJSClass(obj).getMethodHelper(obj, obj, name, null));
+        Object result = JSRuntime.nullToUndefined(JSObject.getJSClass(obj).getMethodHelper(obj, receiver, name, null));
         return (result == Null.instance) ? Undefined.instance : result;
     }
 
@@ -643,6 +646,7 @@ public abstract class JSObject extends JSDynamicObject {
         return testIntegrityLevel(obj, false);
     }
 
+    @NeverDefault
     public static ScriptArray getArray(JSDynamicObject obj) {
         assert hasArray(obj);
         if (obj instanceof JSArrayBase) {

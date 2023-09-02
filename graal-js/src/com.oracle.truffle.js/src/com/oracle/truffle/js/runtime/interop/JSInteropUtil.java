@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,15 @@
  */
 package com.oracle.truffle.js.runtime.interop;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.interop.ArityException;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -52,14 +57,23 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
+import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Utility class for interop operations. Provides methods that can be used in Cached annotations of
@@ -77,6 +91,43 @@ public final class JSInteropUtil {
         } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(foreignObj, e, "getArraySize", originatingNode);
         }
+    }
+
+    public static boolean setArraySize(Object obj, Object value, boolean isStrict, InteropLibrary interop, Node originatingNode, BranchProfile errorBranch) {
+        long newLen = JSAbstractArray.toArrayLengthOrRangeError(value, originatingNode);
+        long oldLen;
+        try {
+            oldLen = interop.getArraySize(obj);
+        } catch (UnsupportedMessageException e) {
+            if (errorBranch != null) {
+                errorBranch.enter();
+            }
+            throw Errors.createTypeErrorInteropException(obj, e, "getArraySize", originatingNode);
+        }
+        String message = null;
+        try {
+            if (newLen < oldLen) {
+                message = "removeArrayElement";
+                for (long idx = oldLen - 1; idx >= newLen; idx--) {
+                    interop.removeArrayElement(obj, idx);
+                }
+            } else {
+                message = "writeArrayElement";
+                for (long idx = oldLen; idx < newLen; idx++) {
+                    interop.writeArrayElement(obj, idx, Undefined.instance);
+                }
+            }
+        } catch (InteropException e) {
+            if (isStrict) {
+                if (errorBranch != null) {
+                    errorBranch.enter();
+                }
+                throw Errors.createTypeErrorInteropException(obj, e, message, originatingNode);
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue) {
@@ -125,7 +176,11 @@ public final class JSInteropUtil {
         }
     }
 
-    public static Object toPrimitiveOrDefault(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
+    /**
+     * Converts foreign objects to JS primitive values, coercing all numbers to double precision.
+     */
+    @InliningCutoff
+    public static Object toPrimitiveOrDefaultLossy(Object obj, Object defaultValue, InteropLibrary interop, Node originatingNode) {
         if (interop.isNull(obj)) {
             return Null.instance;
         }
@@ -133,12 +188,47 @@ public final class JSInteropUtil {
             if (interop.isBoolean(obj)) {
                 return interop.asBoolean(obj);
             } else if (interop.isString(obj)) {
-                return interop.asTruffleString(obj);
+                return Strings.interopAsTruffleString(obj, interop);
+            } else if (interop.isNumber(obj)) {
+                if (interop.fitsInInt(obj)) {
+                    return interop.asInt(obj);
+                } else if (interop.fitsInDouble(obj)) {
+                    return interop.asDouble(obj);
+                } else if (interop.fitsInLong(obj)) {
+                    return (double) interop.asLong(obj);
+                } else if (interop.fitsInBigInteger(obj)) {
+                    return BigInt.doubleValueOf(interop.asBigInteger(obj));
+                }
+            }
+        } catch (UnsupportedMessageException e) {
+            throw Errors.createTypeErrorUnboxException(obj, e, originatingNode);
+        }
+        return defaultValue;
+    }
+
+    /**
+     * Converts a foreign object to a JS primitive value. Attempts to keep the precise numeric value
+     * when converting foreign numbers, relevant for comparisons and ToString/ToBigInt conversion.
+     * Returned BigInt values are marked as foreign so that they are handled correctly by subsequent
+     * ToNumeric, ToNumber (i.e., coerced to double), or ToBigInt.
+     */
+    @InliningCutoff
+    public static Object toPrimitiveOrDefaultLossless(Object obj, Object defaultValue, InteropLibrary interop, TruffleString.SwitchEncodingNode switchEncoding, Node originatingNode) {
+        if (interop.isNull(obj)) {
+            return Null.instance;
+        }
+        try {
+            if (interop.isBoolean(obj)) {
+                return interop.asBoolean(obj);
+            } else if (interop.isString(obj)) {
+                return Strings.interopAsTruffleString(obj, interop, switchEncoding);
             } else if (interop.isNumber(obj)) {
                 if (interop.fitsInInt(obj)) {
                     return interop.asInt(obj);
                 } else if (interop.fitsInLong(obj)) {
                     return interop.asLong(obj);
+                } else if (interop.fitsInBigInteger(obj)) {
+                    return BigInt.fromForeignBigInteger(interop.asBigInteger(obj));
                 } else if (interop.fitsInDouble(obj)) {
                     return interop.asDouble(obj);
                 }
@@ -161,8 +251,7 @@ public final class JSInteropUtil {
             List<Object> keys = new ArrayList<>((int) size);
             for (int i = 0; i < size; i++) {
                 Object key = keysInterop.readArrayElement(keysObj, i);
-                assert InteropLibrary.getUncached().isString(key);
-                keys.add(InteropLibrary.getUncached().asTruffleString(key));
+                keys.add(Strings.interopAsTruffleString(key));
             }
             return keys;
         } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
@@ -221,6 +310,7 @@ public final class JSInteropUtil {
         return getOwnProperty(object, propertyKey, InteropLibrary.getUncached(), ImportValueNode.getUncached(), TruffleString.ReadCharUTF16Node.getUncached());
     }
 
+    @InliningCutoff
     public static PropertyDescriptor getOwnProperty(Object object, TruffleString propertyKey, InteropLibrary interop, ImportValueNode importValueNode, TruffleString.ReadCharUTF16Node charAtNode) {
         try {
             String key = Strings.toJavaString(propertyKey);
@@ -239,6 +329,7 @@ public final class JSInteropUtil {
         return null;
     }
 
+    @InliningCutoff
     public static PropertyDescriptor getExistingMemberProperty(Object object, String key, InteropLibrary interop, ImportValueNode importValueNode) throws InteropException {
         assert interop.hasMembers(object) && interop.isMemberExisting(object, key);
         if (interop.isMemberReadable(object, key)) {
@@ -251,6 +342,7 @@ public final class JSInteropUtil {
         return null;
     }
 
+    @InliningCutoff
     public static PropertyDescriptor getArrayElementProperty(Object object, long index, InteropLibrary interop, ImportValueNode importValueNode) throws InteropException {
         assert interop.hasArrayElements(object) && JSRuntime.isArrayIndex(index);
         if (interop.isArrayElementExisting(object, index) && interop.isArrayElementReadable(object, index)) {
@@ -259,6 +351,114 @@ public final class JSInteropUtil {
                             true,
                             interop.isArrayElementWritable(object, index),
                             interop.isArrayElementRemovable(object, index));
+        }
+        return null;
+    }
+
+    @TruffleBoundary
+    public static String formatError(Object error, InteropLibrary interopExc, InteropLibrary interopStr) {
+        if (interopExc.isException(error)) {
+            try {
+                String message = null;
+                if (interopExc.hasExceptionMessage(error)) {
+                    message = interopStr.asString(interopExc.getExceptionMessage(error));
+                }
+                StringBuilder sb = new StringBuilder();
+                sb.append(Objects.requireNonNullElse(message, "Error"));
+
+                if (interopExc.hasExceptionStackTrace(error)) {
+                    Object stackTrace = interopExc.getExceptionStackTrace(error);
+                    InteropLibrary interopST = InteropLibrary.getUncached(stackTrace);
+                    long length = interopST.getArraySize(stackTrace);
+                    for (long i = 0; i < length; i++) {
+                        Object stackTraceElement = interopST.readArrayElement(stackTrace, i);
+                        InteropLibrary interopSTE = InteropLibrary.getUncached(stackTraceElement);
+
+                        String name = "";
+                        SourceSection sourceLocation = null;
+                        if (interopSTE.hasExecutableName(stackTraceElement)) {
+                            name = interopStr.asString(interopSTE.getExecutableName(stackTraceElement));
+                        }
+                        if (interopSTE.hasSourceLocation(stackTraceElement)) {
+                            sourceLocation = interopSTE.getSourceLocation(stackTraceElement);
+                        }
+
+                        String className = "";
+                        if (interopSTE.hasDeclaringMetaObject(stackTraceElement)) {
+                            Object metaObject = interopSTE.getDeclaringMetaObject(stackTraceElement);
+                            className = interopStr.asString(InteropLibrary.getUncached(metaObject).getMetaQualifiedName(metaObject));
+                        }
+
+                        if (name.isEmpty() && sourceLocation == null) {
+                            continue;
+                        }
+
+                        sb.append('\n');
+                        sb.append("    at ");
+                        if (!className.isEmpty()) {
+                            sb.append(className).append('.');
+                        }
+                        if (!name.isEmpty()) {
+                            sb.append(name);
+                        } else {
+                            sb.append(JSError.ANONYMOUS_FUNCTION_NAME);
+                        }
+                        if (sourceLocation != null) {
+                            sb.append(" (").append(formatSourceLocation(sourceLocation)).append(")");
+                        }
+                    }
+                }
+                return sb.toString();
+            } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
+                assert false : e;
+            }
+        }
+
+        return JSRuntime.safeToString(error).toString();
+    }
+
+    private static String formatSourceLocation(SourceSection sourceSection) {
+        if (sourceSection == null) {
+            return "Unknown";
+        }
+        StringBuilder sb = new StringBuilder();
+        sb.append(sourceSection.getSource().getName());
+
+        sb.append(":");
+        sb.append(sourceSection.getStartLine());
+        if (sourceSection.getStartLine() < sourceSection.getEndLine()) {
+            sb.append("-").append(sourceSection.getEndLine());
+        }
+        sb.append(":");
+        sb.append(sourceSection.getCharIndex());
+        if (sourceSection.getCharLength() > 1) {
+            sb.append("-").append(sourceSection.getCharEndIndex() - 1);
+        }
+        return sb.toString();
+    }
+
+    public static ByteBuffer wasmMemoryAsByteBuffer(JSArrayBufferObject interopArrayBuffer, InteropLibrary interop, JSRealm realm) {
+        assert JSArrayBuffer.isJSInteropArrayBuffer(interopArrayBuffer);
+        Object memAsByteBuffer = realm.getWASMMemAsByteBuffer();
+        if (memAsByteBuffer == null) {
+            return null;
+        }
+        try {
+            Object interopBuffer = JSArrayBuffer.getInteropBuffer(interopArrayBuffer);
+            if (interopBuffer == null) {
+                assert JSArrayBuffer.isDetachedBuffer(interopArrayBuffer);
+                return null;
+            }
+            Object bufferObject = interop.execute(memAsByteBuffer, interopBuffer);
+            TruffleLanguage.Env env = realm.getEnv();
+            if (env.isHostObject(bufferObject)) {
+                Object buffer = env.asHostObject(bufferObject);
+                if (buffer instanceof ByteBuffer) {
+                    return (ByteBuffer) buffer;
+                }
+            }
+        } catch (UnsupportedTypeException | ArityException | UnsupportedMessageException e) {
+            throw CompilerDirectives.shouldNotReachHere(e);
         }
         return null;
     }

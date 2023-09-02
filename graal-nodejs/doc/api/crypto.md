@@ -23,12 +23,12 @@ console.log(hash);
 ```
 
 ```cjs
-const crypto = require('node:crypto');
+const { createHmac } = require('node:crypto');
 
 const secret = 'abcdefg';
-const hash = crypto.createHmac('sha256', secret)
-                   .update('I love cupcakes')
-                   .digest('hex');
+const hash = createHmac('sha256', secret)
+               .update('I love cupcakes')
+               .digest('hex');
 console.log(hash);
 // Prints:
 //   c0fa1bc00531bd78ef38c628449c5102aeabd49b5dc3a2a516ea6ea959d6658e
@@ -49,7 +49,7 @@ let crypto;
 try {
   crypto = require('node:crypto');
 } catch (err) {
-  console.log('crypto support is disabled!');
+  console.error('crypto support is disabled!');
 }
 ```
 
@@ -67,7 +67,7 @@ let crypto;
 try {
   crypto = await import('node:crypto');
 } catch (err) {
-  console.log('crypto support is disabled!');
+  console.error('crypto support is disabled!');
 }
 ```
 
@@ -78,7 +78,7 @@ added: v0.11.8
 -->
 
 SPKAC is a Certificate Signing Request mechanism originally implemented by
-Netscape and was specified formally as part of [HTML5's `keygen` element][].
+Netscape and was specified formally as part of HTML5's `keygen` element.
 
 `<keygen>` is deprecated since [HTML 5.2][] and new projects
 should not use this element anymore.
@@ -178,8 +178,8 @@ console.log(Certificate.verifySpkac(Buffer.from(spkac)));
 ```
 
 ```cjs
-const { Certificate } = require('node:crypto');
 const { Buffer } = require('node:buffer');
+const { Certificate } = require('node:crypto');
 
 const spkac = getSpkacSomehow();
 console.log(Certificate.verifySpkac(Buffer.from(spkac)));
@@ -292,8 +292,8 @@ console.log(cert.verifySpkac(Buffer.from(spkac)));
 ```
 
 ```cjs
-const { Certificate } = require('node:crypto');
 const { Buffer } = require('node:buffer');
+const { Certificate } = require('node:crypto');
 
 const cert = Certificate();
 const spkac = getSpkacSomehow();
@@ -327,7 +327,7 @@ Example: Using `Cipher` objects as streams:
 const {
   scrypt,
   randomFill,
-  createCipheriv
+  createCipheriv,
 } = await import('node:crypto');
 
 const algorithm = 'aes-192-cbc';
@@ -360,7 +360,7 @@ scrypt(password, 'salt', 24, (err, key) => {
 const {
   scrypt,
   randomFill,
-  createCipheriv
+  createCipheriv,
 } = require('node:crypto');
 
 const algorithm = 'aes-192-cbc';
@@ -398,13 +398,13 @@ import {
 } from 'node:fs';
 
 import {
-  pipeline
+  pipeline,
 } from 'node:stream';
 
 const {
   scrypt,
   randomFill,
-  createCipheriv
+  createCipheriv,
 } = await import('node:crypto');
 
 const algorithm = 'aes-192-cbc';
@@ -437,7 +437,7 @@ const {
 } = require('node:fs');
 
 const {
-  pipeline
+  pipeline,
 } = require('node:stream');
 
 const {
@@ -475,7 +475,7 @@ Example: Using the [`cipher.update()`][] and [`cipher.final()`][] methods:
 const {
   scrypt,
   randomFill,
-  createCipheriv
+  createCipheriv,
 } = await import('node:crypto');
 
 const algorithm = 'aes-192-cbc';
@@ -659,7 +659,7 @@ Example: Using `Decipher` objects as streams:
 import { Buffer } from 'node:buffer';
 const {
   scryptSync,
-  createDecipheriv
+  createDecipheriv,
 } = await import('node:crypto');
 
 const algorithm = 'aes-192-cbc';
@@ -739,7 +739,7 @@ import {
 import { Buffer } from 'node:buffer';
 const {
   scryptSync,
-  createDecipheriv
+  createDecipheriv,
 } = await import('node:crypto');
 
 const algorithm = 'aes-192-cbc';
@@ -789,7 +789,7 @@ Example: Using the [`decipher.update()`][] and [`decipher.final()`][] methods:
 import { Buffer } from 'node:buffer';
 const {
   scryptSync,
-  createDecipheriv
+  createDecipheriv,
 } = await import('node:crypto');
 
 const algorithm = 'aes-192-cbc';
@@ -987,7 +987,7 @@ Instances of the `DiffieHellman` class can be created using the
 import assert from 'node:assert';
 
 const {
-  createDiffieHellman
+  createDiffieHellman,
 } = await import('node:crypto');
 
 // Generate Alice's keys...
@@ -1060,11 +1060,16 @@ added: v0.5.0
 * `encoding` {string} The [encoding][] of the return value.
 * Returns: {Buffer | string}
 
-Generates private and public Diffie-Hellman key values, and returns
+Generates private and public Diffie-Hellman key values unless they have been
+generated or computed already, and returns
 the public key in the specified `encoding`. This key should be
 transferred to the other party.
 If `encoding` is provided a string is returned; otherwise a
 [`Buffer`][] is returned.
+
+This function is a thin wrapper around [`DH_generate_key()`][]. In particular,
+once a private key has been generated or set, calling this function only updates
+the public key but does not generate a new private key.
 
 ### `diffieHellman.getGenerator([encoding])`
 
@@ -1131,6 +1136,10 @@ Sets the Diffie-Hellman private key. If the `encoding` argument is provided,
 `privateKey` is expected
 to be a string. If no `encoding` is provided, `privateKey` is expected
 to be a [`Buffer`][], `TypedArray`, or `DataView`.
+
+This function does not automatically compute the associated public key. Either
+[`diffieHellman.setPublicKey()`][] or [`diffieHellman.generateKeys()`][] can be
+used to manually provide the public key or to automatically derive it.
 
 ### `diffieHellman.setPublicKey(publicKey[, encoding])`
 
@@ -1215,7 +1224,7 @@ Instances of the `ECDH` class can be created using the
 import assert from 'node:assert';
 
 const {
-  createECDH
+  createECDH,
 } = await import('node:crypto');
 
 // Generate Alice's keys...
@@ -1291,7 +1300,7 @@ Example (uncompressing a key):
 ```mjs
 const {
   createECDH,
-  ECDH
+  ECDH,
 } = await import('node:crypto');
 
 const ecdh = createECDH('secp256k1');
@@ -1463,7 +1472,7 @@ Example (obtaining a shared secret):
 ```mjs
 const {
   createECDH,
-  createHash
+  createHash,
 } = await import('node:crypto');
 
 const alice = createECDH('secp256k1');
@@ -1473,7 +1482,7 @@ const bob = createECDH('secp256k1');
 // keys. It would be unwise to use such a predictable private key in a real
 // application.
 alice.setPrivateKey(
-  createHash('sha256').update('alice', 'utf8').digest()
+  createHash('sha256').update('alice', 'utf8').digest(),
 );
 
 // Bob uses a newly generated cryptographically strong
@@ -1500,7 +1509,7 @@ const bob = createECDH('secp256k1');
 // keys. It would be unwise to use such a predictable private key in a real
 // application.
 alice.setPrivateKey(
-  createHash('sha256').update('alice', 'utf8').digest()
+  createHash('sha256').update('alice', 'utf8').digest(),
 );
 
 // Bob uses a newly generated cryptographically strong
@@ -1537,7 +1546,7 @@ Example: Using `Hash` objects as streams:
 
 ```mjs
 const {
-  createHash
+  createHash,
 } = await import('node:crypto');
 
 const hash = createHash('sha256');
@@ -1607,7 +1616,7 @@ Example: Using the [`hash.update()`][] and [`hash.digest()`][] methods:
 
 ```mjs
 const {
-  createHash
+  createHash,
 } = await import('node:crypto');
 
 const hash = createHash('sha256');
@@ -1653,7 +1662,7 @@ its [`hash.digest()`][] method has been called.
 ```mjs
 // Calculate a rolling hash.
 const {
-  createHash
+  createHash,
 } = await import('node:crypto');
 
 const hash = createHash('sha256');
@@ -1751,7 +1760,7 @@ Example: Using `Hmac` objects as streams:
 
 ```mjs
 const {
-  createHmac
+  createHmac,
 } = await import('node:crypto');
 
 const hmac = createHmac('sha256', 'a secret');
@@ -1799,7 +1808,7 @@ Example: Using `Hmac` and piped streams:
 import { createReadStream } from 'node:fs';
 import { stdout } from 'node:process';
 const {
-  createHmac
+  createHmac,
 } = await import('node:crypto');
 
 const hmac = createHmac('sha256', 'a secret');
@@ -1827,7 +1836,7 @@ Example: Using the [`hmac.update()`][] and [`hmac.digest()`][] methods:
 
 ```mjs
 const {
-  createHmac
+  createHmac,
 } = await import('node:crypto');
 
 const hmac = createHmac('sha256', 'a secret');
@@ -1936,7 +1945,7 @@ const { subtle } = webcrypto;
 const key = await subtle.generateKey({
   name: 'HMAC',
   hash: 'SHA-256',
-  length: 256
+  length: 256,
 }, true, ['sign', 'verify']);
 
 const keyObject = KeyObject.from(key);
@@ -1956,7 +1965,7 @@ const {
   const key = await subtle.generateKey({
     name: 'HMAC',
     hash: 'SHA-256',
-    length: 256
+    length: 256,
   }, true, ['sign', 'verify']);
 
   const keyObject = KeyObject.from(key);
@@ -2093,7 +2102,7 @@ PKCS#1 and SEC1 encryption.
 ### `keyObject.equals(otherKeyObject)`
 
 <!-- YAML
-added: v16.15.0
+added: v17.7.0
 -->
 
 * `otherKeyObject`: {KeyObject} A `KeyObject` with which to
@@ -2153,11 +2162,11 @@ Example: Using `Sign` and [`Verify`][] objects as streams:
 const {
   generateKeyPairSync,
   createSign,
-  createVerify
+  createVerify,
 } = await import('node:crypto');
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', {
-  namedCurve: 'sect239k1'
+  namedCurve: 'sect239k1',
 });
 
 const sign = createSign('SHA256');
@@ -2180,7 +2189,7 @@ const {
 } = require('node:crypto');
 
 const { privateKey, publicKey } = generateKeyPairSync('ec', {
-  namedCurve: 'sect239k1'
+  namedCurve: 'sect239k1',
 });
 
 const sign = createSign('SHA256');
@@ -2201,7 +2210,7 @@ Example: Using the [`sign.update()`][] and [`verify.update()`][] methods:
 const {
   generateKeyPairSync,
   createSign,
-  createVerify
+  createVerify,
 } = await import('node:crypto');
 
 const { privateKey, publicKey } = generateKeyPairSync('rsa', {
@@ -2496,36 +2505,37 @@ added: v15.6.0
 <!-- YAML
 added: v15.6.0
 changes:
-  - version: v16.15.0
-    pr-url: https://github.com/nodejs/node/pull/41569
-    description: The subject option can now be set to `'default'`.
-  - version: v16.14.1
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41600
+    description: The subject option now defaults to `'default'`.
+  - version:
+      - v17.5.0
+      - v16.14.1
     pr-url: https://github.com/nodejs/node/pull/41599
     description: The `wildcards`, `partialWildcards`, `multiLabelWildcards`, and
                  `singleLabelSubdomains` options have been removed since they
                  had no effect.
+  - version: v17.5.0
+    pr-url: https://github.com/nodejs/node/pull/41569
+    description: The subject option can now be set to `'default'`.
 -->
 
 * `email` {string}
 * `options` {Object}
   * `subject` {string} `'default'`, `'always'`, or `'never'`.
-    **Default:** `'always'`.
-  * `wildcards` {boolean} **Default:** `true`.
-  * `partialWildcards` {boolean} **Default:** `true`.
-  * `multiLabelWildcards` {boolean} **Default:** `false`.
-  * `singleLabelSubdomains` {boolean} **Default:** `false`.
+    **Default:** `'default'`.
 * Returns: {string|undefined} Returns `email` if the certificate matches,
   `undefined` if it does not.
 
 Checks whether the certificate matches the given email address.
 
+If the `'subject'` option is undefined or set to `'default'`, the certificate
+subject is only considered if the subject alternative name extension either does
+not exist or does not contain any email addresses.
+
 If the `'subject'` option is set to `'always'` and if the subject alternative
 name extension either does not exist or does not contain a matching email
 address, the certificate subject is considered.
-
-If the `'subject'` option is set to `'default'`, the certificate subject is only
-considered if the subject alternative name extension either does not exist or
-does not contain any email addresses.
 
 If the `'subject'` option is set to `'never'`, the certificate subject is never
 considered, even if the certificate contains no subject alternative names.
@@ -2535,7 +2545,10 @@ considered, even if the certificate contains no subject alternative names.
 <!-- YAML
 added: v15.6.0
 changes:
-  - version: v16.15.0
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41600
+    description: The subject option now defaults to `'default'`.
+  - version: v17.5.0
     pr-url: https://github.com/nodejs/node/pull/41569
     description: The subject option can now be set to `'default'`.
 -->
@@ -2543,7 +2556,7 @@ changes:
 * `name` {string}
 * `options` {Object}
   * `subject` {string} `'default'`, `'always'`, or `'never'`.
-    **Default:** `'always'`.
+    **Default:** `'default'`.
   * `wildcards` {boolean} **Default:** `true`.
   * `partialWildcards` {boolean} **Default:** `true`.
   * `multiLabelWildcards` {boolean} **Default:** `false`.
@@ -2559,14 +2572,14 @@ or it might contain wildcards (e.g., `*.example.com`). Because host name
 comparisons are case-insensitive, the returned subject name might also differ
 from the given `name` in capitalization.
 
+If the `'subject'` option is undefined or set to `'default'`, the certificate
+subject is only considered if the subject alternative name extension either does
+not exist or does not contain any DNS names. This behavior is consistent with
+[RFC 2818][] ("HTTP Over TLS").
+
 If the `'subject'` option is set to `'always'` and if the subject alternative
 name extension either does not exist or does not contain a matching DNS name,
 the certificate subject is considered.
-
-If the `'subject'` option is set to `'default'`, the certificate subject is only
-considered if the subject alternative name extension either does not exist or
-does not contain any DNS names. This behavior is consistent with [RFC 2818][]
-("HTTP Over TLS").
 
 If the `'subject'` option is set to `'never'`, the certificate subject is never
 considered, even if the certificate contains no subject alternative names.
@@ -2576,7 +2589,9 @@ considered, even if the certificate contains no subject alternative names.
 <!-- YAML
 added: v15.6.0
 changes:
-  - version: v16.14.1
+  - version:
+      - v17.5.0
+      - v16.14.1
     pr-url: https://github.com/nodejs/node/pull/41571
     description: The `options` argument has been removed since it had no effect.
 -->
@@ -2641,7 +2656,9 @@ The SHA-256 fingerprint of this certificate.
 ### `x509.fingerprint512`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.2.0
+  - v16.14.0
 -->
 
 * Type: {string}
@@ -2659,7 +2676,9 @@ commonly used to sign certificates.
 <!-- YAML
 added: v15.6.0
 changes:
-  - version: v16.13.2
+  - version:
+      - v17.3.1
+      - v16.13.2
     pr-url: https://github.com/nodejs-private/node-private/pull/300
     description: Parts of this string may be encoded as JSON string literals
                  in response to CVE-2021-44532.
@@ -2760,7 +2779,9 @@ The complete subject of this certificate.
 <!-- YAML
 added: v15.6.0
 changes:
-  - version: v16.13.2
+  - version:
+      - v17.3.1
+      - v16.13.2
     pr-url: https://github.com/nodejs-private/node-private/pull/300
     description: Parts of this string may be encoded as JSON string literals
                  in response to CVE-2021-44532.
@@ -2903,6 +2924,12 @@ This property is deprecated. Please use `crypto.setFips()` and
 
 <!-- YAML
 added: v15.8.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `candidate` {ArrayBuffer|SharedArrayBuffer|TypedArray|Buffer|DataView|bigint}
@@ -2949,7 +2976,7 @@ Checks the primality of the `candidate`.
 added: v0.1.94
 deprecated: v10.0.0
 changes:
-  - version: v16.17.0
+  - version: v17.9.0
     pr-url: https://github.com/nodejs/node/pull/42427
     description: The `authTagLength` option is now optional when using the
                  `chacha20-poly1305` cipher and defaults to 16 bytes.
@@ -3017,7 +3044,7 @@ Adversaries][] for details.
 <!-- YAML
 added: v0.1.94
 changes:
-  - version: v16.17.0
+  - version: v17.9.0
     pr-url: https://github.com/nodejs/node/pull/42427
     description: The `authTagLength` option is now optional when using the
                  `chacha20-poly1305` cipher and defaults to 16 bytes.
@@ -3090,7 +3117,7 @@ given IV will be.
 added: v0.1.94
 deprecated: v10.0.0
 changes:
-  - version: v16.17.0
+  - version: v17.9.0
     pr-url: https://github.com/nodejs/node/pull/42427
     description: The `authTagLength` option is now optional when using the
                  `chacha20-poly1305` cipher and defaults to 16 bytes.
@@ -3136,7 +3163,7 @@ to create the `Decipher` object.
 <!-- YAML
 added: v0.1.94
 changes:
-  - version: v16.17.0
+  - version: v17.9.0
     pr-url: https://github.com/nodejs/node/pull/42427
     description: The `authTagLength` option is now optional when using the
                  `chacha20-poly1305` cipher and defaults to 16 bytes.
@@ -3303,11 +3330,11 @@ Example: generating the sha256 sum of a file
 
 ```mjs
 import {
-  createReadStream
+  createReadStream,
 } from 'node:fs';
 import { argv } from 'node:process';
 const {
-  createHash
+  createHash,
 } = await import('node:crypto');
 
 const filename = argv[2];
@@ -3383,17 +3410,21 @@ On recent releases of OpenSSL, `openssl list -digest-algorithms` will
 display the available digest algorithms.
 
 The `key` is the HMAC key used to generate the cryptographic HMAC hash. If it is
-a [`KeyObject`][], its type must be `secret`.
+a [`KeyObject`][], its type must be `secret`. If it is a string, please consider
+[caveats when using strings as inputs to cryptographic APIs][]. If it was
+obtained from a cryptographically secure source of entropy, such as
+[`crypto.randomBytes()`][] or [`crypto.generateKey()`][], its length should not
+exceed the block size of `algorithm` (e.g., 512 bits for SHA-256).
 
 Example: generating the sha256 HMAC of a file
 
 ```mjs
 import {
-  createReadStream
+  createReadStream,
 } from 'node:fs';
 import { argv } from 'node:process';
 const {
-  createHmac
+  createHmac,
 } = await import('node:crypto');
 
 const filename = argv[2];
@@ -3530,7 +3561,7 @@ and it will be impossible to extract the private key from the returned object.
 <!-- YAML
 added: v11.6.0
 changes:
-  - version: v16.18.0
+  - version: v18.8.0
     pr-url: https://github.com/nodejs/node/pull/44201
     description: The key can now be zero-length.
   - version: v15.0.0
@@ -3609,6 +3640,12 @@ Both keys must have the same `asymmetricKeyType`, which must be one of `'dh'`
 
 <!-- YAML
 added: v15.0.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `type`: {string} The intended use of the generated secret key. Currently
@@ -3629,10 +3666,10 @@ Asynchronously generates a new random secret key of the given `length`. The
 
 ```mjs
 const {
-  generateKey
+  generateKey,
 } = await import('node:crypto');
 
-generateKey('hmac', { length: 64 }, (err, key) => {
+generateKey('hmac', { length: 512 }, (err, key) => {
   if (err) throw err;
   console.log(key.export().toString('hex'));  // 46e..........620
 });
@@ -3643,17 +3680,25 @@ const {
   generateKey,
 } = require('node:crypto');
 
-generateKey('hmac', { length: 64 }, (err, key) => {
+generateKey('hmac', { length: 512 }, (err, key) => {
   if (err) throw err;
   console.log(key.export().toString('hex'));  // 46e..........620
 });
 ```
+
+The size of a generated HMAC key should not exceed the block size of the
+underlying hash function. See [`crypto.createHmac()`][] for more information.
 
 ### `crypto.generateKeyPair(type, options, callback)`
 
 <!-- YAML
 added: v10.12.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v16.10.0
     pr-url: https://github.com/nodejs/node/pull/39927
     description: Add ability to define `RSASSA-PSS-params` sequence parameters
@@ -3694,6 +3739,8 @@ changes:
   * `generator`: {number} Custom generator (DH). **Default:** `2`.
   * `groupName`: {string} Diffie-Hellman group name (DH). See
     [`crypto.getDiffieHellman()`][].
+  * `paramEncoding`: {string} Must be `'named'` or `'explicit'` (EC).
+    **Default:** `'named'`.
   * `publicKeyEncoding`: {Object} See [`keyObject.export()`][].
   * `privateKeyEncoding`: {Object} See [`keyObject.export()`][].
 * `callback`: {Function}
@@ -3713,21 +3760,21 @@ It is recommended to encode public keys as `'spki'` and private keys as
 
 ```mjs
 const {
-  generateKeyPair
+  generateKeyPair,
 } = await import('node:crypto');
 
 generateKeyPair('rsa', {
   modulusLength: 4096,
   publicKeyEncoding: {
     type: 'spki',
-    format: 'pem'
+    format: 'pem',
   },
   privateKeyEncoding: {
     type: 'pkcs8',
     format: 'pem',
     cipher: 'aes-256-cbc',
-    passphrase: 'top secret'
-  }
+    passphrase: 'top secret',
+  },
 }, (err, publicKey, privateKey) => {
   // Handle errors and use the generated key pair.
 });
@@ -3742,14 +3789,14 @@ generateKeyPair('rsa', {
   modulusLength: 4096,
   publicKeyEncoding: {
     type: 'spki',
-    format: 'pem'
+    format: 'pem',
   },
   privateKeyEncoding: {
     type: 'pkcs8',
     format: 'pem',
     cipher: 'aes-256-cbc',
-    passphrase: 'top secret'
-  }
+    passphrase: 'top secret',
+  },
 }, (err, publicKey, privateKey) => {
   // Handle errors and use the generated key pair.
 });
@@ -3806,6 +3853,8 @@ changes:
   * `generator`: {number} Custom generator (DH). **Default:** `2`.
   * `groupName`: {string} Diffie-Hellman group name (DH). See
     [`crypto.getDiffieHellman()`][].
+  * `paramEncoding`: {string} Must be `'named'` or `'explicit'` (EC).
+    **Default:** `'named'`.
   * `publicKeyEncoding`: {Object} See [`keyObject.export()`][].
   * `privateKeyEncoding`: {Object} See [`keyObject.export()`][].
 * Returns: {Object}
@@ -3825,7 +3874,7 @@ and to keep the passphrase confidential.
 
 ```mjs
 const {
-  generateKeyPairSync
+  generateKeyPairSync,
 } = await import('node:crypto');
 
 const {
@@ -3835,14 +3884,14 @@ const {
   modulusLength: 4096,
   publicKeyEncoding: {
     type: 'spki',
-    format: 'pem'
+    format: 'pem',
   },
   privateKeyEncoding: {
     type: 'pkcs8',
     format: 'pem',
     cipher: 'aes-256-cbc',
-    passphrase: 'top secret'
-  }
+    passphrase: 'top secret',
+  },
 });
 ```
 
@@ -3858,14 +3907,14 @@ const {
   modulusLength: 4096,
   publicKeyEncoding: {
     type: 'spki',
-    format: 'pem'
+    format: 'pem',
   },
   privateKeyEncoding: {
     type: 'pkcs8',
     format: 'pem',
     cipher: 'aes-256-cbc',
-    passphrase: 'top secret'
-  }
+    passphrase: 'top secret',
+  },
 });
 ```
 
@@ -3894,10 +3943,10 @@ Synchronously generates a new random secret key of the given `length`. The
 
 ```mjs
 const {
-  generateKeySync
+  generateKeySync,
 } = await import('node:crypto');
 
-const key = generateKeySync('hmac', { length: 64 });
+const key = generateKeySync('hmac', { length: 512 });
 console.log(key.export().toString('hex'));  // e89..........41e
 ```
 
@@ -3906,14 +3955,23 @@ const {
   generateKeySync,
 } = require('node:crypto');
 
-const key = generateKeySync('hmac', { length: 64 });
+const key = generateKeySync('hmac', { length: 512 });
 console.log(key.export().toString('hex'));  // e89..........41e
 ```
+
+The size of a generated HMAC key should not exceed the block size of the
+underlying hash function. See [`crypto.createHmac()`][] for more information.
 
 ### `crypto.generatePrime(size[, options[, callback]])`
 
 <!-- YAML
 added: v15.8.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `size` {number} The size (in bits) of the prime to generate.
@@ -4035,7 +4093,7 @@ added: v0.9.3
 
 ```mjs
 const {
-  getCiphers
+  getCiphers,
 } = await import('node:crypto');
 
 console.log(getCiphers()); // ['aes-128-cbc', 'aes-128-ccm', ...]
@@ -4059,7 +4117,7 @@ added: v2.3.0
 
 ```mjs
 const {
-  getCurves
+  getCurves,
 } = await import('node:crypto');
 
 console.log(getCurves()); // ['Oakley-EC2N-3', 'Oakley-EC2N-4', ...]
@@ -4096,7 +4154,7 @@ Example (obtaining a shared secret):
 
 ```mjs
 const {
-  getDiffieHellman
+  getDiffieHellman,
 } = await import('node:crypto');
 const alice = getDiffieHellman('modp14');
 const bob = getDiffieHellman('modp14');
@@ -4150,7 +4208,7 @@ added: v0.9.3
 
 ```mjs
 const {
-  getHashes
+  getHashes,
 } = await import('node:crypto');
 
 console.log(getHashes()); // ['DSA', 'DSA-SHA', 'DSA-SHA1', ...]
@@ -4164,14 +4222,32 @@ const {
 console.log(getHashes()); // ['DSA', 'DSA-SHA', 'DSA-SHA1', ...]
 ```
 
+### `crypto.getRandomValues(typedArray)`
+
+<!-- YAML
+added: v17.4.0
+-->
+
+* `typedArray` {Buffer|TypedArray|DataView|ArrayBuffer}
+* Returns: {Buffer|TypedArray|DataView|ArrayBuffer} Returns `typedArray`.
+
+A convenient alias for [`crypto.webcrypto.getRandomValues()`][]. This
+implementation is not compliant with the Web Crypto spec, to write
+web-compatible code use [`crypto.webcrypto.getRandomValues()`][] instead.
+
 ### `crypto.hkdf(digest, ikm, salt, info, keylen, callback)`
 
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v16.18.0
+  - version: v18.8.0
     pr-url: https://github.com/nodejs/node/pull/44201
     description: The input keying material can now be zero-length.
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `digest` {string} The digest algorithm to use.
@@ -4201,7 +4277,7 @@ of the input arguments specify invalid values or types.
 ```mjs
 import { Buffer } from 'node:buffer';
 const {
-  hkdf
+  hkdf,
 } = await import('node:crypto');
 
 hkdf('sha512', 'key', 'salt', 'info', 64, (err, derivedKey) => {
@@ -4227,7 +4303,7 @@ hkdf('sha512', 'key', 'salt', 'info', 64, (err, derivedKey) => {
 <!-- YAML
 added: v15.0.0
 changes:
-  - version: v16.18.0
+  - version: v18.8.0
     pr-url: https://github.com/nodejs/node/pull/44201
     description: The input keying material can now be zero-length.
 -->
@@ -4257,7 +4333,7 @@ types, or if the derived key cannot be generated.
 ```mjs
 import { Buffer } from 'node:buffer';
 const {
-  hkdfSync
+  hkdfSync,
 } = await import('node:crypto');
 
 const derivedKey = hkdfSync('sha512', 'key', 'salt', 'info', 64);
@@ -4279,6 +4355,11 @@ console.log(Buffer.from(derivedKey).toString('hex'));  // '24156e2...5391653'
 <!-- YAML
 added: v0.5.5
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v15.0.0
     pr-url: https://github.com/nodejs/node/pull/35093
     description: The password and salt arguments can also be ArrayBuffer
@@ -4332,7 +4413,7 @@ When passing strings for `password` or `salt`, please consider
 
 ```mjs
 const {
-  pbkdf2
+  pbkdf2,
 } = await import('node:crypto');
 
 pbkdf2('secret', 'salt', 100000, 64, 'sha512', (err, derivedKey) => {
@@ -4349,28 +4430,6 @@ const {
 pbkdf2('secret', 'salt', 100000, 64, 'sha512', (err, derivedKey) => {
   if (err) throw err;
   console.log(derivedKey.toString('hex'));  // '3745e48...08d59ae'
-});
-```
-
-The `crypto.DEFAULT_ENCODING` property can be used to change the way the
-`derivedKey` is passed to the callback. This property, however, has been
-deprecated and use should be avoided.
-
-```mjs
-import crypto from 'node:crypto';
-crypto.DEFAULT_ENCODING = 'hex';
-crypto.pbkdf2('secret', 'salt', 100000, 512, 'sha512', (err, derivedKey) => {
-  if (err) throw err;
-  console.log(derivedKey);  // '3745e48...aa39b34'
-});
-```
-
-```cjs
-const crypto = require('node:crypto');
-crypto.DEFAULT_ENCODING = 'hex';
-crypto.pbkdf2('secret', 'salt', 100000, 512, 'sha512', (err, derivedKey) => {
-  if (err) throw err;
-  console.log(derivedKey);  // '3745e48...aa39b34'
 });
 ```
 
@@ -4427,7 +4486,7 @@ When passing strings for `password` or `salt`, please consider
 
 ```mjs
 const {
-  pbkdf2Sync
+  pbkdf2Sync,
 } = await import('node:crypto');
 
 const key = pbkdf2Sync('secret', 'salt', 100000, 64, 'sha512');
@@ -4441,24 +4500,6 @@ const {
 
 const key = pbkdf2Sync('secret', 'salt', 100000, 64, 'sha512');
 console.log(key.toString('hex'));  // '3745e48...08d59ae'
-```
-
-The `crypto.DEFAULT_ENCODING` property may be used to change the way the
-`derivedKey` is returned. This property, however, is deprecated and use
-should be avoided.
-
-```mjs
-import crypto from 'node:crypto';
-crypto.DEFAULT_ENCODING = 'hex';
-const key = crypto.pbkdf2Sync('secret', 'salt', 100000, 512, 'sha512');
-console.log(key);  // '3745e48...aa39b34'
-```
-
-```cjs
-const crypto = require('node:crypto');
-crypto.DEFAULT_ENCODING = 'hex';
-const key = crypto.pbkdf2Sync('secret', 'salt', 100000, 512, 'sha512');
-console.log(key);  // '3745e48...aa39b34'
 ```
 
 An array of supported digest functions can be retrieved using
@@ -4654,6 +4695,11 @@ be passed instead of a public key.
 <!-- YAML
 added: v0.5.8
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v9.0.0
     pr-url: https://github.com/nodejs/node/pull/16454
     description: Passing `null` as the `callback` argument now throws
@@ -4678,7 +4724,7 @@ If an error occurs, `err` will be an `Error` object; otherwise it is `null`. The
 ```mjs
 // Asynchronous
 const {
-  randomBytes
+  randomBytes,
 } = await import('node:crypto');
 
 randomBytes(256, (err, buf) => {
@@ -4706,7 +4752,7 @@ there is a problem generating the bytes.
 ```mjs
 // Synchronous
 const {
-  randomBytes
+  randomBytes,
 } = await import('node:crypto');
 
 const buf = randomBytes(256);
@@ -4834,6 +4880,11 @@ added:
   - v7.10.0
   - v6.13.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v9.0.0
     pr-url: https://github.com/nodejs/node/pull/15231
     description: The `buffer` argument may be any `TypedArray` or `DataView`.
@@ -4970,6 +5021,12 @@ request.
 added:
   - v14.10.0
   - v12.19.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `min` {integer} Start of random range (inclusive). **Default:** `0`.
@@ -4988,7 +5045,7 @@ generated synchronously.
 ```mjs
 // Asynchronous
 const {
-  randomInt
+  randomInt,
 } = await import('node:crypto');
 
 randomInt(3, (err, n) => {
@@ -5012,7 +5069,7 @@ randomInt(3, (err, n) => {
 ```mjs
 // Synchronous
 const {
-  randomInt
+  randomInt,
 } = await import('node:crypto');
 
 const n = randomInt(3);
@@ -5032,7 +5089,7 @@ console.log(`Random number chosen from (0, 1, 2): ${n}`);
 ```mjs
 // With `min` argument
 const {
-  randomInt
+  randomInt,
 } = await import('node:crypto');
 
 const n = randomInt(1, 7);
@@ -5052,7 +5109,9 @@ console.log(`The dice rolled: ${n}`);
 ### `crypto.randomUUID([options])`
 
 <!-- YAML
-added: v15.6.0
+added:
+  - v15.6.0
+  - v14.17.0
 -->
 
 * `options` {Object}
@@ -5071,6 +5130,11 @@ cryptographic pseudorandom number generator.
 <!-- YAML
 added: v10.5.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v15.0.0
     pr-url: https://github.com/nodejs/node/pull/35093
     description: The password and salt arguments can also be ArrayBuffer
@@ -5122,7 +5186,7 @@ or types.
 
 ```mjs
 const {
-  scrypt
+  scrypt,
 } = await import('node:crypto');
 
 // Using the factory defaults.
@@ -5203,7 +5267,7 @@ or types.
 
 ```mjs
 const {
-  scryptSync
+  scryptSync,
 } = await import('node:crypto');
 // Using the factory defaults.
 
@@ -5288,6 +5352,11 @@ Throws an error if FIPS mode is not available.
 <!-- YAML
 added: v12.0.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v15.12.0
     pr-url: https://github.com/nodejs/node/pull/37500
     description: Optional callback argument added.
@@ -5337,6 +5406,16 @@ additional properties can be passed:
 
 If the `callback` function is provided this function uses libuv's threadpool.
 
+### `crypto.subtle`
+
+<!-- YAML
+added: v17.4.0
+-->
+
+* Type: {SubtleCrypto}
+
+A convenient alias for [`crypto.webcrypto.subtle`][].
+
 ### `crypto.timingSafeEqual(a, b)`
 
 <!-- YAML
@@ -5383,6 +5462,11 @@ not introduce timing vulnerabilities.
 <!-- YAML
 added: v12.0.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v15.12.0
     pr-url: https://github.com/nodejs/node/pull/37500
     description: Optional callback argument added.
@@ -5500,7 +5584,7 @@ When passing strings to cryptographic APIs, consider the following factors.
 
 The Crypto module was added to Node.js before there was the concept of a
 unified Stream API, and before there were [`Buffer`][] objects for handling
-binary data. As such, the many of the `crypto` defined classes have methods not
+binary data. As such, many `crypto` classes have methods not
 typically found on other Node.js classes that implement the [streams][stream]
 API (e.g. `update()`, `final()`, or `digest()`). Also, many methods accepted
 and returned `'latin1'` encoded strings by default rather than `Buffer`s. This
@@ -5528,6 +5612,10 @@ Based on the recommendations of [NIST SP 800-131A][]:
   smaller than 2048 bits and are not recommended.
 
 See the reference for other recommendations and details.
+
+Some algorithms that have known weaknesses and are of little relevance in
+practice are only available through the [legacy provider][], which is not
+enabled by default.
 
 ### CCM mode
 
@@ -5565,7 +5653,7 @@ import { Buffer } from 'node:buffer';
 const {
   createCipheriv,
   createDecipheriv,
-  randomBytes
+  randomBytes,
 } = await import('node:crypto');
 
 const key = 'keykeykeykeykeykeykeykey';
@@ -5574,11 +5662,11 @@ const nonce = randomBytes(12);
 const aad = Buffer.from('0123456789', 'hex');
 
 const cipher = createCipheriv('aes-192-ccm', key, nonce, {
-  authTagLength: 16
+  authTagLength: 16,
 });
 const plaintext = 'Hello world';
 cipher.setAAD(aad, {
-  plaintextLength: Buffer.byteLength(plaintext)
+  plaintextLength: Buffer.byteLength(plaintext),
 });
 const ciphertext = cipher.update(plaintext, 'utf8');
 cipher.final();
@@ -5587,11 +5675,11 @@ const tag = cipher.getAuthTag();
 // Now transmit { ciphertext, nonce, tag }.
 
 const decipher = createDecipheriv('aes-192-ccm', key, nonce, {
-  authTagLength: 16
+  authTagLength: 16,
 });
 decipher.setAuthTag(tag);
 decipher.setAAD(aad, {
-  plaintextLength: ciphertext.length
+  plaintextLength: ciphertext.length,
 });
 const receivedPlaintext = decipher.update(ciphertext, null, 'utf8');
 
@@ -5618,11 +5706,11 @@ const nonce = randomBytes(12);
 const aad = Buffer.from('0123456789', 'hex');
 
 const cipher = createCipheriv('aes-192-ccm', key, nonce, {
-  authTagLength: 16
+  authTagLength: 16,
 });
 const plaintext = 'Hello world';
 cipher.setAAD(aad, {
-  plaintextLength: Buffer.byteLength(plaintext)
+  plaintextLength: Buffer.byteLength(plaintext),
 });
 const ciphertext = cipher.update(plaintext, 'utf8');
 cipher.final();
@@ -5631,11 +5719,11 @@ const tag = cipher.getAuthTag();
 // Now transmit { ciphertext, nonce, tag }.
 
 const decipher = createDecipheriv('aes-192-ccm', key, nonce, {
-  authTagLength: 16
+  authTagLength: 16,
 });
 decipher.setAuthTag(tag);
 decipher.setAAD(aad, {
-  plaintextLength: ciphertext.length
+  plaintextLength: ciphertext.length,
 });
 const receivedPlaintext = decipher.update(ciphertext, null, 'utf8');
 
@@ -5646,6 +5734,86 @@ try {
 }
 
 console.log(receivedPlaintext);
+```
+
+### FIPS mode
+
+When using OpenSSL 3, Node.js supports FIPS 140-2 when used with an appropriate
+OpenSSL 3 provider, such as the [FIPS provider from OpenSSL 3][] which can be
+installed by following the instructions in [OpenSSL's FIPS README file][].
+
+For FIPS support in Node.js you will need:
+
+* A correctly installed OpenSSL 3 FIPS provider.
+* An OpenSSL 3 [FIPS module configuration file][].
+* An OpenSSL 3 configuration file that references the FIPS module
+  configuration file.
+
+Node.js will need to be configured with an OpenSSL configuration file that
+points to the FIPS provider. An example configuration file looks like this:
+
+```text
+nodejs_conf = nodejs_init
+
+.include /<absolute path>/fipsmodule.cnf
+
+[nodejs_init]
+providers = provider_sect
+
+[provider_sect]
+default = default_sect
+# The fips section name should match the section name inside the
+# included fipsmodule.cnf.
+fips = fips_sect
+
+[default_sect]
+activate = 1
+```
+
+where `fipsmodule.cnf` is the FIPS module configuration file generated from the
+FIPS provider installation step:
+
+```bash
+openssl fipsinstall
+```
+
+Set the `OPENSSL_CONF` environment variable to point to
+your configuration file and `OPENSSL_MODULES` to the location of the FIPS
+provider dynamic library. e.g.
+
+```bash
+export OPENSSL_CONF=/<path to configuration file>/nodejs.cnf
+export OPENSSL_MODULES=/<path to openssl lib>/ossl-modules
+```
+
+FIPS mode can then be enabled in Node.js either by:
+
+* Starting Node.js with `--enable-fips` or `--force-fips` command line flags.
+* Programmatically calling `crypto.setFips(true)`.
+
+Optionally FIPS mode can be enabled in Node.js via the OpenSSL configuration
+file. e.g.
+
+```text
+nodejs_conf = nodejs_init
+
+.include /<absolute path>/fipsmodule.cnf
+
+[nodejs_init]
+providers = provider_sect
+alg_section = algorithm_sect
+
+[provider_sect]
+default = default_sect
+# The fips section name should match the section name inside the
+# included fipsmodule.cnf.
+fips = fips_sect
+
+[default_sect]
+activate = 1
+
+[algorithm_sect]
+default_properties = fips=yes
 ```
 
 ## Crypto constants
@@ -5666,7 +5834,7 @@ See the [list of SSL OP Flags][] for details.
   <tr>
     <td><code>SSL_OP_ALL</code></td>
     <td>Applies multiple bug workarounds within OpenSSL. See
-    <a href="https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html">https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html</a>
+    <a href="https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set_options.html">https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set_options.html</a>
     for detail.</td>
   </tr>
   <tr>
@@ -5678,13 +5846,13 @@ See the [list of SSL OP Flags][] for details.
     <td><code>SSL_OP_ALLOW_UNSAFE_LEGACY_RENEGOTIATION</code></td>
     <td>Allows legacy insecure renegotiation between OpenSSL and unpatched
     clients or servers. See
-    <a href="https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html">https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html</a>.</td>
+    <a href="https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set_options.html">https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set_options.html</a>.</td>
   </tr>
   <tr>
     <td><code>SSL_OP_CIPHER_SERVER_PREFERENCE</code></td>
     <td>Attempts to use the server's preferences instead of the client's when
     selecting a cipher. Behavior depends on protocol version. See
-    <a href="https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html">https://www.openssl.org/docs/man1.0.2/ssl/SSL_CTX_set_options.html</a>.</td>
+    <a href="https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set_options.html">https://www.openssl.org/docs/man3.0/man3/SSL_CTX_set_options.html</a>.</td>
   </tr>
   <tr>
     <td><code>SSL_OP_CISCO_ANYCONNECT</code></td>
@@ -5705,42 +5873,8 @@ See the [list of SSL OP Flags][] for details.
     workaround added in OpenSSL 0.9.6d.</td>
   </tr>
   <tr>
-    <td><code>SSL_OP_EPHEMERAL_RSA</code></td>
-    <td>Instructs OpenSSL to always use the tmp_rsa key when performing RSA
-    operations.</td>
-  </tr>
-  <tr>
     <td><code>SSL_OP_LEGACY_SERVER_CONNECT</code></td>
     <td>Allows initial connection to servers that do not support RI.</td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_MICROSOFT_BIG_SSLV3_BUFFER</code></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_MICROSOFT_SESS_ID_BUG</code></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_MSIE_SSLV2_RSA_PADDING</code></td>
-    <td>Instructs OpenSSL to disable the workaround for a man-in-the-middle
-    protocol-version vulnerability in the SSL 2.0 server implementation.</td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_NETSCAPE_CA_DN_BUG</code></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_NETSCAPE_CHALLENGE_BUG</code></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_NETSCAPE_DEMO_CIPHER_CHANGE_BUG</code></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_NETSCAPE_REUSE_CIPHER_CHANGE_BUG</code></td>
-    <td></td>
   </tr>
   <tr>
     <td><code>SSL_OP_NO_COMPRESSION</code></td>
@@ -5792,46 +5926,12 @@ See the [list of SSL OP Flags][] for details.
     <td>Instructs OpenSSL to turn off TLS v1.3</td>
   </tr>
   <tr>
-    <td><code>SSL_OP_PKCS1_CHECK_1</code></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_PKCS1_CHECK_2</code></td>
-    <td></td>
-  </tr>
-  <tr>
     <td><code>SSL_OP_PRIORITIZE_CHACHA</code></td>
     <td>Instructs OpenSSL server to prioritize ChaCha20-Poly1305
     when the client does.
     This option has no effect if
     <code>SSL_OP_CIPHER_SERVER_PREFERENCE</code>
     is not enabled.</td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_SINGLE_DH_USE</code></td>
-    <td>Instructs OpenSSL to always create a new key when using
-    temporary/ephemeral DH parameters.</td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_SINGLE_ECDH_USE</code></td>
-    <td>Instructs OpenSSL to always create a new key when using
-    temporary/ephemeral ECDH parameters.</td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_SSLEAY_080_CLIENT_DH_BUG</code></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_SSLREF2_REUSE_CERT_TYPE_BUG</code></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_TLS_BLOCK_PADDING_BUG</code></td>
-    <td></td>
-  </tr>
-  <tr>
-    <td><code>SSL_OP_TLS_D5_BUG</code></td>
-    <td></td>
   </tr>
   <tr>
     <td><code>SSL_OP_TLS_ROLLBACK_BUG</code></td>
@@ -5995,14 +6095,16 @@ See the [list of SSL OP Flags][] for details.
 [CVE-2021-44532]: https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2021-44532
 [Caveats]: #support-for-weak-or-compromised-algorithms
 [Crypto constants]: #crypto-constants
+[FIPS module configuration file]: https://www.openssl.org/docs/man3.0/man5/fips_config.html
+[FIPS provider from OpenSSL 3]: https://www.openssl.org/docs/man3.0/man7/crypto.html#FIPS-provider
 [HTML 5.2]: https://www.w3.org/TR/html52/changes.html#features-removed
-[HTML5's `keygen` element]: https://developer.mozilla.org/en-US/docs/Web/HTML/Element/keygen
 [JWK]: https://tools.ietf.org/html/rfc7517
 [NIST SP 800-131A]: https://nvlpubs.nist.gov/nistpubs/SpecialPublications/NIST.SP.800-131Ar1.pdf
 [NIST SP 800-132]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-132.pdf
 [NIST SP 800-38D]: https://nvlpubs.nist.gov/nistpubs/Legacy/SP/nistspecialpublication800-38d.pdf
 [Nonce-Disrespecting Adversaries]: https://github.com/nonce-disrespect/nonce-disrespect
-[OpenSSL's SPKAC implementation]: https://www.openssl.org/docs/man1.1.0/apps/openssl-spkac.html
+[OpenSSL's FIPS README file]: https://github.com/openssl/openssl/blob/openssl-3.0/README-FIPS.md
+[OpenSSL's SPKAC implementation]: https://www.openssl.org/docs/man3.0/man1/openssl-spkac.html
 [RFC 1421]: https://www.rfc-editor.org/rfc/rfc1421.txt
 [RFC 2409]: https://www.rfc-editor.org/rfc/rfc2409.txt
 [RFC 2818]: https://www.rfc-editor.org/rfc/rfc2818.txt
@@ -6015,8 +6117,9 @@ See the [list of SSL OP Flags][] for details.
 [Web Crypto API documentation]: webcrypto.md
 [`BN_is_prime_ex`]: https://www.openssl.org/docs/man1.1.1/man3/BN_is_prime_ex.html
 [`Buffer`]: buffer.md
+[`DH_generate_key()`]: https://www.openssl.org/docs/man3.0/man3/DH_generate_key.html
 [`DiffieHellmanGroup`]: #class-diffiehellmangroup
-[`EVP_BytesToKey`]: https://www.openssl.org/docs/man1.1.0/crypto/EVP_BytesToKey.html
+[`EVP_BytesToKey`]: https://www.openssl.org/docs/man3.0/man3/EVP_BytesToKey.html
 [`KeyObject`]: #class-keyobject
 [`Sign`]: #class-sign
 [`String.prototype.normalize()`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/String/normalize
@@ -6037,6 +6140,7 @@ See the [list of SSL OP Flags][] for details.
 [`crypto.createSecretKey()`]: #cryptocreatesecretkeykey-encoding
 [`crypto.createSign()`]: #cryptocreatesignalgorithm-options
 [`crypto.createVerify()`]: #cryptocreateverifyalgorithm-options
+[`crypto.generateKey()`]: #cryptogeneratekeytype-options-callback
 [`crypto.getCurves()`]: #cryptogetcurves
 [`crypto.getDiffieHellman()`]: #cryptogetdiffiehellmangroupname
 [`crypto.getHashes()`]: #cryptogethashes
@@ -6047,8 +6151,11 @@ See the [list of SSL OP Flags][] for details.
 [`crypto.randomBytes()`]: #cryptorandombytessize-callback
 [`crypto.randomFill()`]: #cryptorandomfillbuffer-offset-size-callback
 [`crypto.scrypt()`]: #cryptoscryptpassword-salt-keylen-options-callback
+[`crypto.webcrypto.getRandomValues()`]: webcrypto.md#cryptogetrandomvaluestypedarray
+[`crypto.webcrypto.subtle`]: webcrypto.md#class-subtlecrypto
 [`decipher.final()`]: #decipherfinaloutputencoding
 [`decipher.update()`]: #decipherupdatedata-inputencoding-outputencoding
+[`diffieHellman.generateKeys()`]: #diffiehellmangeneratekeysencoding
 [`diffieHellman.setPublicKey()`]: #diffiehellmansetpublickeypublickey-encoding
 [`ecdh.generateKeys()`]: #ecdhgeneratekeysencoding-format
 [`ecdh.setPrivateKey()`]: #ecdhsetprivatekeyprivatekey-encoding
@@ -6071,6 +6178,7 @@ See the [list of SSL OP Flags][] for details.
 [certificate object]: tls.md#certificate-object
 [encoding]: buffer.md#buffers-and-character-encodings
 [initialization vector]: https://en.wikipedia.org/wiki/Initialization_vector
+[legacy provider]: cli.md#--openssl-legacy-provider
 [list of SSL OP Flags]: https://wiki.openssl.org/index.php/List_of_SSL_OP_Flags#Table_of_Options
 [modulo bias]: https://en.wikipedia.org/wiki/Fisher%E2%80%93Yates_shuffle#Modulo_bias
 [safe integers]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Number/isSafeInteger

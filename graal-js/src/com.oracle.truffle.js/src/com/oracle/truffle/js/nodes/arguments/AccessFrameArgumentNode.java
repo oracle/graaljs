@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.Set;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.RepeatableNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
@@ -78,6 +77,6 @@ public final class AccessFrameArgumentNode extends JavaScriptNode implements Rep
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new AccessFrameArgumentNode(NodeUtil.cloneNode(accessFrame), argIndex);
+        return new AccessFrameArgumentNode(accessFrame, argIndex);
     }
 }

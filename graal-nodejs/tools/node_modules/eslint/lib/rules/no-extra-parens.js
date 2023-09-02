@@ -8,7 +8,7 @@
 // Rule Definition
 //------------------------------------------------------------------------------
 
-const { isParenthesized: isParenthesizedRaw } = require("eslint-utils");
+const { isParenthesized: isParenthesizedRaw } = require("@eslint-community/eslint-utils");
 const astUtils = require("./utils/ast-utils.js");
 
 /** @type {import('../shared/types').Rule} */
@@ -19,7 +19,7 @@ module.exports = {
         docs: {
             description: "Disallow unnecessary parentheses",
             recommended: false,
-            url: "https://eslint.org/docs/rules/no-extra-parens"
+            url: "https://eslint.org/docs/latest/rules/no-extra-parens"
         },
 
         fixable: "code",
@@ -52,7 +52,8 @@ module.exports = {
                                 enforceForArrowConditionals: { type: "boolean" },
                                 enforceForSequenceExpressions: { type: "boolean" },
                                 enforceForNewInMemberExpressions: { type: "boolean" },
-                                enforceForFunctionPrototypeMethods: { type: "boolean" }
+                                enforceForFunctionPrototypeMethods: { type: "boolean" },
+                                allowParensAfterCommentPattern: { type: "string" }
                             },
                             additionalProperties: false
                         }
@@ -69,7 +70,7 @@ module.exports = {
     },
 
     create(context) {
-        const sourceCode = context.getSourceCode();
+        const sourceCode = context.sourceCode;
 
         const tokensToIgnore = new WeakSet();
         const precedence = astUtils.getPrecedence;
@@ -86,6 +87,7 @@ module.exports = {
             context.options[1].enforceForNewInMemberExpressions === false;
         const IGNORE_FUNCTION_PROTOTYPE_METHODS = ALL_NODES && context.options[1] &&
             context.options[1].enforceForFunctionPrototypeMethods === false;
+        const ALLOW_PARENS_AFTER_COMMENT_PATTERN = ALL_NODES && context.options[1] && context.options[1].allowParensAfterCommentPattern;
 
         const PRECEDENCE_OF_ASSIGNMENT_EXPR = precedence({ type: "AssignmentExpression" });
         const PRECEDENCE_OF_UPDATE_EXPR = precedence({ type: "UpdateExpression" });
@@ -401,6 +403,19 @@ module.exports = {
 
                 if (isIIFE(node) && !isParenthesised(node.callee)) {
                     return;
+                }
+
+                if (ALLOW_PARENS_AFTER_COMMENT_PATTERN) {
+                    const commentsBeforeLeftParenToken = sourceCode.getCommentsBefore(leftParenToken);
+                    const totalCommentsBeforeLeftParenTokenCount = commentsBeforeLeftParenToken.length;
+                    const ignorePattern = new RegExp(ALLOW_PARENS_AFTER_COMMENT_PATTERN, "u");
+
+                    if (
+                        totalCommentsBeforeLeftParenTokenCount > 0 &&
+                        ignorePattern.test(commentsBeforeLeftParenToken[totalCommentsBeforeLeftParenTokenCount - 1].value)
+                    ) {
+                        return;
+                    }
                 }
             }
 
@@ -751,6 +766,38 @@ module.exports = {
             return false;
         }
 
+        /**
+         * Checks if the left-hand side of an assignment is an identifier, the operator is one of
+         * `=`, `&&=`, `||=` or `??=` and the right-hand side is an anonymous class or function.
+         *
+         * As per https://tc39.es/ecma262/#sec-assignment-operators-runtime-semantics-evaluation, an
+         * assignment involving one of the operators `=`, `&&=`, `||=` or `??=` where the right-hand
+         * side is an anonymous class or function and the left-hand side is an *unparenthesized*
+         * identifier has different semantics than other assignments.
+         * Specifically, when an expression like `foo = function () {}` is evaluated, `foo.name`
+         * will be set to the string "foo", i.e. the identifier name. The same thing does not happen
+         * when evaluating `(foo) = function () {}`.
+         * Since the parenthesizing of the identifier in the left-hand side is significant in this
+         * special case, the parentheses, if present, should not be flagged as unnecessary.
+         * @param {ASTNode} node an AssignmentExpression node.
+         * @returns {boolean} `true` if the left-hand side of the assignment is an identifier, the
+         * operator is one of `=`, `&&=`, `||=` or `??=` and the right-hand side is an anonymous
+         * class or function; otherwise, `false`.
+         */
+        function isAnonymousFunctionAssignmentException({ left, operator, right }) {
+            if (left.type === "Identifier" && ["=", "&&=", "||=", "??="].includes(operator)) {
+                const rhsType = right.type;
+
+                if (rhsType === "ArrowFunctionExpression") {
+                    return true;
+                }
+                if ((rhsType === "FunctionExpression" || rhsType === "ClassExpression") && !right.id) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
         return {
             ArrayExpression(node) {
                 node.elements
@@ -789,7 +836,8 @@ module.exports = {
             },
 
             AssignmentExpression(node) {
-                if (canBeAssignmentTarget(node.left) && hasExcessParens(node.left)) {
+                if (canBeAssignmentTarget(node.left) && hasExcessParens(node.left) &&
+                    (!isAnonymousFunctionAssignmentException(node) || isParenthesisedTwice(node.left))) {
                     report(node.left);
                 }
 

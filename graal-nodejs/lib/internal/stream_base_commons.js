@@ -13,21 +13,21 @@ const {
   kArrayBufferOffset,
   kBytesWritten,
   kLastWriteWasAsync,
-  streamBaseState
+  streamBaseState,
 } = internalBinding('stream_wrap');
 const { UV_EOF } = internalBinding('uv');
 const {
-  errnoException
+  errnoException,
 } = require('internal/errors');
 const { owner_symbol } = require('internal/async_hooks').symbols;
 const {
   kTimeout,
   setUnrefTimeout,
-  getTimerDuration
+  getTimerDuration,
 } = require('internal/timers');
 const { isUint8Array } = require('internal/util/types');
 const { clearTimeout } = require('timers');
-const { validateCallback } = require('internal/validators');
+const { validateFunction } = require('internal/validators');
 
 const kMaybeDestroy = Symbol('kMaybeDestroy');
 const kUpdateTimer = Symbol('kUpdateTimer');
@@ -249,7 +249,7 @@ function setStreamTimeout(msecs, callback) {
 
   if (msecs === 0) {
     if (callback !== undefined) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
       this.removeListener('timeout', callback);
     }
   } else {
@@ -257,7 +257,7 @@ function setStreamTimeout(msecs, callback) {
     if (this[kSession]) this[kSession][kUpdateTimer]();
 
     if (callback !== undefined) {
-      validateCallback(callback);
+      validateFunction(callback, 'callback');
       this.once('timeout', callback);
     }
   }
@@ -276,5 +276,5 @@ module.exports = {
   setStreamTimeout,
   kBuffer,
   kBufferCb,
-  kBufferGen
+  kBufferGen,
 };

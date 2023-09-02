@@ -4,6 +4,7 @@ const {
   ArrayFrom,
   MathMax,
   MathMin,
+  ObjectDefineProperties,
   ObjectDefineProperty,
   PromiseResolve,
   PromiseReject,
@@ -45,6 +46,7 @@ const {
   createDeferredPromise,
   customInspectSymbol: kInspect,
   kEmptyObject,
+  kEnumerableProperty,
 } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
 
@@ -55,12 +57,12 @@ const {
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_THIS,
     ERR_BUFFER_TOO_LARGE,
-  }
+  },
 } = require('internal/errors');
 
 const {
-  validateObject,
   isUint32,
+  validateDictionary,
 } = require('internal/validators');
 
 const kHandle = Symbol('kHandle');
@@ -78,6 +80,7 @@ let ReadableStream;
 let URL;
 
 const enc = new TextEncoder();
+let dec;
 
 // Yes, lazy loading is annoying but because of circular
 // references between the url, internal/blob, and buffer
@@ -89,6 +92,7 @@ function lazyURL(id) {
 }
 
 function lazyReadableStream(options) {
+  // eslint-disable-next-line no-global-assign
   ReadableStream ??=
     require('internal/webstreams/readablestream').ReadableStream;
   return new ReadableStream(options);
@@ -134,17 +138,17 @@ class Blob {
    * }} [options]
    * @constructs {Blob}
    */
-  constructor(sources = [], options = kEmptyObject) {
+  constructor(sources = [], options) {
     if (sources === null ||
         typeof sources[SymbolIterator] !== 'function' ||
         typeof sources === 'string') {
       throw new ERR_INVALID_ARG_TYPE('sources', 'a sequence', sources);
     }
-    validateObject(options, 'options');
+    validateDictionary(options, 'options');
     let {
       type = '',
       endings = 'transparent',
-    } = options;
+    } = options ?? kEmptyObject;
 
     endings = `${endings}`;
     if (endings !== 'transparent' && endings !== 'native')
@@ -177,7 +181,7 @@ class Blob {
 
     const opts = {
       ...options,
-      depth: options.depth == null ? null : options.depth - 1
+      depth: options.depth == null ? null : options.depth - 1,
     };
 
     return `Blob ${inspect({
@@ -192,7 +196,7 @@ class Blob {
     const length = this[kLength];
     return {
       data: { handle, type, length },
-      deserializeInfo: 'internal/blob:ClonedBlob'
+      deserializeInfo: 'internal/blob:ClonedBlob',
     };
   }
 
@@ -310,7 +314,8 @@ class Blob {
     if (!isBlob(this))
       throw new ERR_INVALID_THIS('Blob');
 
-    const dec = new TextDecoder();
+    dec ??= new TextDecoder();
+
     return dec.decode(await this.arrayBuffer());
   }
 
@@ -337,7 +342,7 @@ class Blob {
           controller.enqueue(new Uint8Array(this[kState], this[kIndex], kMaxChunkSize));
           this[kIndex] += kMaxChunkSize;
         }
-      }
+      },
     });
   }
 }
@@ -359,6 +364,15 @@ ObjectDefineProperty(Blob.prototype, SymbolToStringTag, {
   __proto__: null,
   configurable: true,
   value: 'Blob',
+});
+
+ObjectDefineProperties(Blob.prototype, {
+  size: kEnumerableProperty,
+  type: kEnumerableProperty,
+  slice: kEnumerableProperty,
+  stream: kEnumerableProperty,
+  text: kEnumerableProperty,
+  arrayBuffer: kEnumerableProperty,
 });
 
 function resolveObjectURL(url) {

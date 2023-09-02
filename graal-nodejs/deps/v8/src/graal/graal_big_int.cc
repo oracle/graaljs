@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,13 +70,11 @@ v8::MaybeLocal<v8::BigInt> GraalBigInt::NewFromWords(v8::Local<v8::Context> cont
     }
 
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-    graal_isolate->ResetSharedBuffer();
-    graal_isolate->WriteInt32ToSharedBuffer(sign_bit);
-    graal_isolate->WriteInt32ToSharedBuffer(word_count);
-    for (int i = 0; i < word_count; i++) {
-        graal_isolate->WriteInt64ToSharedBuffer(static_cast<int64_t> (words[i]));
-    }
-    JNI_CALL(jobject, java_big_int, graal_isolate, GraalAccessMethod::big_int_new_from_words, Object);
+    JNIEnv* env = graal_isolate->GetJNIEnv();
+    jlongArray java_words = env->NewLongArray(word_count);
+    env->SetLongArrayRegion(java_words, 0, word_count, (jlong*) words);
+    JNI_CALL(jobject, java_big_int, graal_isolate, GraalAccessMethod::big_int_new_from_words, Object, sign_bit, word_count, java_words);
+    env->DeleteLocalRef(java_words);
     GraalBigInt* graal_big_int = new GraalBigInt(graal_isolate, java_big_int);
     v8::Local<v8::BigInt> v8_big_int = reinterpret_cast<v8::BigInt*> (graal_big_int);
     return v8_big_int;
@@ -113,12 +111,15 @@ int GraalBigInt::WordCount() const {
 
 void GraalBigInt::ToWordsArray(int* sign_bit, int* word_count, uint64_t* words) const {
     GraalIsolate* graal_isolate = Isolate();
-    JNI_CALL_VOID(graal_isolate, GraalAccessMethod::big_int_to_words_array, GetJavaObject());
-    graal_isolate->ResetSharedBuffer();
-    int count = graal_isolate->ReadInt32FromSharedBuffer();
-    *word_count = count;
-    *sign_bit = graal_isolate->ReadInt32FromSharedBuffer();
-    for (int i = 0; i < count; i++) {
-        words[i] = static_cast<uint64_t> (graal_isolate->ReadInt64FromSharedBuffer());
+    int original_word_count = *word_count;
+    JNI_CALL(jobject, java_result, graal_isolate, GraalAccessMethod::big_int_to_words_array, Object, GetJavaObject(), original_word_count);
+    JNIEnv* env = graal_isolate->GetJNIEnv();
+    jlongArray java_array = (jlongArray) java_result;
+    jlong* java_elements = env->GetLongArrayElements(java_array, NULL);
+    *sign_bit = (int) java_elements[0];
+    *word_count = (int) java_elements[1];
+    for (int i = 0; i < std::min(*word_count, original_word_count); i++) {
+        words[i] = java_elements[i + 2];
     }
+    env->ReleaseLongArrayElements(java_array, java_elements, JNI_ABORT);
 }

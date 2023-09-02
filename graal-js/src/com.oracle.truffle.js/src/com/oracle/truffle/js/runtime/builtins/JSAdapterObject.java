@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,8 +53,8 @@ public final class JSAdapterObject extends JSClassObject {
     private final JSDynamicObject adaptee;
     private final JSDynamicObject overrides;
 
-    protected JSAdapterObject(Shape shape, JSDynamicObject adaptee, JSDynamicObject overrides) {
-        super(shape);
+    protected JSAdapterObject(Shape shape, JSDynamicObject proto, JSDynamicObject adaptee, JSDynamicObject overrides) {
+        super(shape, proto);
         this.adaptee = adaptee;
         this.overrides = overrides;
     }

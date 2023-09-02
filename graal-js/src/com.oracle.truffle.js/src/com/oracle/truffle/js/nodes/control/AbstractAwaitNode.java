@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,19 +77,20 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public abstract class AbstractAwaitNode extends JavaScriptNode implements ResumableNode, SuspendNode {
 
@@ -101,14 +102,13 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
     @Child private PerformPromiseThenNode performPromiseThenNode;
     @Child private PromiseResolveNode promiseResolveNode;
     @Child private JSFunctionCallNode callPromiseResolveNode;
-    @Child private PropertySetNode setPromiseIsHandledNode;
     @Child private PropertySetNode setAsyncContextNode;
     @Child private PropertySetNode setAsyncTargetNode;
     @Child private PropertySetNode setAsyncCallNode;
     @Child private PropertySetNode setAsyncGeneratorNode;
     protected final JSContext context;
-    private final ConditionProfile asyncTypeProf = ConditionProfile.createBinaryProfile();
-    private final ConditionProfile resumptionTypeProf = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile asyncTypeProf = ConditionProfile.create();
+    private final ConditionProfile resumptionTypeProf = ConditionProfile.create();
     private final BranchProfile saveStackBranch = BranchProfile.create();
 
     static final HiddenKey ASYNC_CONTEXT = new HiddenKey("AsyncContext");
@@ -158,7 +158,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
             context.notifyPromiseHook(-1 /* parent info */, parentPromise);
         }
 
-        JSDynamicObject promise = promiseResolve(value);
+        JSPromiseObject promise = promiseResolve(value);
         JSFunctionObject onFulfilled = createAwaitFulfilledFunction(resumeTarget, asyncContext, generatorOrCapability);
         JSFunctionObject onRejected = createAwaitRejectedFunction(resumeTarget, asyncContext, generatorOrCapability);
         PromiseCapabilityRecord throwawayCapability = newThrowawayCapability();
@@ -209,14 +209,14 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         return filteredStackTrace;
     }
 
-    private JSDynamicObject promiseResolve(Object value) {
+    private JSPromiseObject promiseResolve(Object value) {
         if (context.usePromiseResolve()) {
-            return promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
+            return (JSPromiseObject) promiseResolveNode.execute(getRealm().getPromiseConstructor(), value);
         } else {
             PromiseCapabilityRecord promiseCapability = newPromiseCapability();
             Object resolve = promiseCapability.getResolve();
             callPromiseResolveNode.executeCall(JSArguments.createOneArg(Undefined.instance, resolve, value));
-            return promiseCapability.getPromise();
+            return (JSPromiseObject) promiseCapability.getPromise();
         }
     }
 
@@ -224,12 +224,8 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
             return null;
         }
-        if (setPromiseIsHandledNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            setPromiseIsHandledNode = insert(PropertySetNode.createSetHidden(JSPromise.PROMISE_IS_HANDLED, context));
-        }
         PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
-        setPromiseIsHandledNode.setValueBoolean(throwawayCapability.getPromise(), true);
+        ((JSPromiseObject) throwawayCapability.getPromise()).setIsHandled(true);
         return throwawayCapability;
     }
 
@@ -247,7 +243,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         } else {
             assert result.isThrow();
             Object reason = result.getValue();
-            throw UserScriptException.create(reason, this, context.getContextOptions().getStackTraceLimit());
+            throw UserScriptException.create(reason, this, context.getLanguageOptions().stackTraceLimit());
         }
     }
 
@@ -351,31 +347,28 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
             JSDynamicObject currPromise = nextPromise;
             nextPromise = null;
 
-            Object fulfillReactions = null;
-            if (JSPromise.isPending(currPromise)) {
+            if (currPromise instanceof JSPromiseObject currPromiseObj && JSPromise.isPending(currPromiseObj)) {
                 // only pending promises have reactions
-                fulfillReactions = JSObjectUtil.getHiddenProperty(currPromise, JSPromise.PROMISE_FULFILL_REACTIONS);
-            }
-            if (fulfillReactions instanceof SimpleArrayList<?> && ((SimpleArrayList<?>) fulfillReactions).size() == 1) {
-                SimpleArrayList<?> fulfillList = (SimpleArrayList<?>) fulfillReactions;
-                PromiseReactionRecord reaction = (PromiseReactionRecord) fulfillList.get(0);
-                Object handler = reaction.getHandler();
-                if (JSFunction.isJSFunction(handler)) {
-                    JSFunctionObject handlerFunction = (JSFunctionObject) handler;
-                    RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
-                    if (rootNode instanceof AsyncHandlerRootNode) {
-                        AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction);
-                        if (result.stackTraceElement != null) {
-                            stackTrace.add(result.stackTraceElement);
+                var fulfillReactions = currPromiseObj.getPromiseFulfillReactions();
+                if (fulfillReactions != null && fulfillReactions.size() == 1) {
+                    PromiseReactionRecord reaction = fulfillReactions.get(0);
+                    JobCallback handler = reaction.getHandler();
+                    if (handler != null && handler.callback() instanceof JSFunctionObject handlerFunction) {
+                        RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
+                        if (rootNode instanceof AsyncHandlerRootNode) {
+                            AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction);
+                            if (result.stackTraceElement != null) {
+                                stackTrace.add(result.stackTraceElement);
+                            }
+                            nextPromise = result.promise;
+                            continue;
                         }
-                        nextPromise = result.promise;
+                    }
+                    if (reaction.getCapability() != null) {
+                        // follow the promise chain
+                        nextPromise = reaction.getCapability().getPromise();
                         continue;
                     }
-                }
-                if (reaction.getCapability() != null) {
-                    // follow the promise chain
-                    nextPromise = reaction.getCapability().getPromise();
-                    continue;
                 }
             }
         } while (nextPromise != null);

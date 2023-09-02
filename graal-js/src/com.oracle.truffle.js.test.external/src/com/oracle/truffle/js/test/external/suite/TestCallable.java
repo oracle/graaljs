@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,7 +76,7 @@ public class TestCallable extends AbstractTestCallable {
     private final Source[] prequelSources;
     private final Source testSource;
     private final File scriptFile;
-    private final Context.Builder contextBuilder;
+    protected final Context.Builder contextBuilder;
 
     public TestCallable(TestSuite suite, Source[] prequelSources, Source testSource, File scriptFile, int ecmaScriptVersion) {
         this(suite, prequelSources, testSource, scriptFile, ecmaScriptVersion, Collections.emptyMap());
@@ -101,6 +101,8 @@ public class TestCallable extends AbstractTestCallable {
         contextBuilder.option(JSContextOptions.STRICT_NAME, Boolean.toString(false));
         contextBuilder.options(suite.getCommonOptions());
         contextBuilder.options(extraOptions);
+        contextBuilder.option(JSContextOptions.LOCALE_NAME, suite.getConfig().getLocale());
+        contextBuilder.timeZone(suite.getConfig().getTimeZone());
         if (getConfig().isShareEngine()) {
             contextBuilder.engine(suite.getSharedEngine());
         } else {
@@ -232,7 +234,7 @@ public class TestCallable extends AbstractTestCallable {
                 }
             };
             Object fn = JSFunction.create(realm, JSFunctionData.create(context, rootNode.getCallTarget(), 4, EVAL_USING_SNAPSHOT_NAME));
-            JSObjectUtil.putDataProperty(context, realm.getGlobalObject(), EVAL_USING_SNAPSHOT_NAME, fn);
+            JSObjectUtil.putDataProperty(realm.getGlobalObject(), EVAL_USING_SNAPSHOT_NAME, fn);
         } finally {
             polyglotContext.leave();
         }

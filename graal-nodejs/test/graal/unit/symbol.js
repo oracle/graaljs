@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -113,6 +113,33 @@ describe('Symbol', function () {
             var symbol1 = module.Symbol_For(description);
             var symbol2 = Symbol.for(description);
             assert.strictEqual(symbol1, symbol2);
+        });
+        it('should return a registered symbol', function () {
+            var description = 'my_symbol';
+            var symbol = module.Symbol_For(description);
+            assert.strictEqual(Symbol.keyFor(symbol), description);
+        });
+    });
+    describe('ForApi', function () {
+        it('should return Symbol', function () {
+            assert.strictEqual(typeof module.Symbol_ForApi('some_description'), 'symbol');
+        });
+        it('should return the same symbol when invoked multiple times', function () {
+            var description = 'another_description';
+            var symbol1 = module.Symbol_ForApi(description);
+            var symbol2 = module.Symbol_ForApi(description);
+            assert.strictEqual(symbol1, symbol2);
+        });
+        it('should not return the same symbol as Symbol.for()', function () {
+            var description = 'yet_another_description';
+            var symbol1 = module.Symbol_ForApi(description);
+            var symbol2 = Symbol.for(description);
+            assert.notStrictEqual(symbol1, symbol2);
+        });
+        it('should return an unregistered symbol', function () {
+            var description = 'my_symbol';
+            var symbol = module.Symbol_ForApi(description);
+            assert.strictEqual(Symbol.keyFor(symbol), undefined);
         });
     });
 });

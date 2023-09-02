@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -97,6 +98,7 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealmObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
@@ -185,6 +187,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return Errors.createTypeError(exception, this);
         }
 
+        @NeverDefault
         public static GetWrappedValueNode create() {
             return GetWrappedValueNodeGen.create();
         }
@@ -294,9 +297,9 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         private ScriptNode parseScript(String sourceCode) {
             CompilerAsserts.neverPartOfCompilation();
-            assert !getContext().getContextOptions().isDisableEval();
+            assert getContext().getLanguageOptions().allowEval();
             Source source = Source.newBuilder(JavaScriptLanguage.ID, sourceCode, Evaluator.EVAL_SOURCE_NAME).build();
-            return getContext().getEvaluator().parseEval(getContext(), this, source);
+            return getContext().getEvaluator().parseEval(getContext(), this, source, null);
         }
 
         @TruffleBoundary
@@ -352,7 +355,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
             var onFulfilled = JSFunction.create(callerRealm, functionData);
             setExportNameStringNode.setValue(onFulfilled, exportNameString);
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
-            return performPromiseThenNode.execute(innerCapability.getPromise(), onFulfilled, callerRealm.getThrowTypeErrorFunction(), promiseCapability);
+            return performPromiseThenNode.execute((JSPromiseObject) innerCapability.getPromise(), onFulfilled, callerRealm.getThrowTypeErrorFunction(), promiseCapability);
         }
 
         private static JSFunctionData createExportGetterImpl(JSContext context) {

@@ -1,8 +1,8 @@
 #include "env-inl.h"
 #include "memory_tracker.h"
 #include "node.h"
+#include "node_builtins.h"
 #include "node_i18n.h"
-#include "node_native_module_env.h"
 #include "node_options.h"
 #include "util-inl.h"
 
@@ -86,4 +86,4 @@ static void Initialize(Local<Object> target,
 
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(config, node::Initialize)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(config, node::Initialize)

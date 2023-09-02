@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,9 +44,17 @@ import static com.oracle.truffle.js.builtins.OperatorsBuiltins.checkOverloadedOp
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
@@ -58,9 +66,6 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 
 public abstract class JSToNumericNode extends JavaScriptBaseNode {
-
-    @Child private JSToNumberNode toNumberNode;
-    @Child private JSToPrimitiveNode toPrimitiveNode;
 
     /**
      * Whether this node implements the ToNumeric spec functions or the ToNumericOperand spec
@@ -77,14 +82,17 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         this.toNumericOperand = toNumericOperand;
     }
 
+    @NeverDefault
     public static JSToNumericNode create(boolean toNumericOperand) {
         return JSToNumericNodeGen.create(toNumericOperand);
     }
 
+    @NeverDefault
     public static JSToNumericNode create() {
         return create(false);
     }
 
+    @NeverDefault
     public static JSToNumericNode createToNumericOperand() {
         return create(true);
     }
@@ -120,14 +128,14 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization
-    protected Object doBigInt(BigInt value) {
+    @Specialization(guards = "!value.isForeign()")
+    protected static BigInt doBigInt(BigInt value) {
         return value;
     }
 
-    @Specialization(guards = "isJSBigInt(value)")
-    protected Object doJSBigInt(Object value) {
-        return toPrimitive(value);
+    @Specialization(guards = "value.isForeign()")
+    protected static double doForeignBigInt(BigInt value) {
+        return value.doubleValue();
     }
 
     @Specialization(guards = {"isToNumericOperand()"})
@@ -136,49 +144,40 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         return arg;
     }
 
-    @Specialization(guards = {"isToNumericOperand()", "!isJSBigInt(value)", "!hasOverloadedOperators(value)"})
-    protected Object doToNumericOperandOther(Object value) {
-        Object primValue = toPrimitive(value);
-        if (JSRuntime.isBigInt(primValue)) {
-            return primValue;
+    @Specialization(guards = {"isToNumericOperand()", "!hasOverloadedOperators(value)"})
+    protected final Object doToNumericOperandOther(Object value,
+                    @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached PrimitiveToNumericOrNullNode numericOrNullNode,
+                    @Shared @Cached JSToNumberNode toNumberNode) {
+        Object primValue = toPrimitiveNode.execute(value);
+        Object alreadyNumeric = numericOrNullNode.execute(this, primValue);
+        if (alreadyNumeric != null) {
+            return alreadyNumeric;
         }
-        return toNumber(primValue);
+        return toNumberNode.executeNumber(primValue);
     }
 
-    @Specialization(guards = {"!isToNumericOperand()", "!isJSBigInt(value)"})
-    protected Object doToNumericOther(Object value) {
-        Object primValue = toPrimitive(value);
-        if (JSRuntime.isBigInt(primValue)) {
-            return primValue;
+    @Specialization(guards = {"!isToNumericOperand()", "!isBigInt(value)"})
+    protected final Object doToNumericOther(Object value,
+                    @Shared @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached PrimitiveToNumericOrNullNode numericOrNullNode,
+                    @Shared @Cached JSToNumberNode toNumberNode) {
+        Object primValue = toPrimitiveNode.execute(value);
+        Object alreadyNumeric = numericOrNullNode.execute(this, primValue);
+        if (alreadyNumeric != null) {
+            return alreadyNumeric;
         }
-        return toNumber(primValue);
+        return toNumberNode.executeNumber(primValue);
     }
 
-    private Number toNumber(Object value) {
-        if (toNumberNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toNumberNode = insert(JSToNumberNode.create());
-        }
-        return toNumberNode.executeNumber(value);
-    }
-
-    private Object toPrimitive(Object value) {
-        if (toPrimitiveNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toPrimitiveNode = insert(JSToPrimitiveNode.createHintNumber());
-        }
-        return toPrimitiveNode.execute(value);
-    }
-
-    protected boolean isToNumericOperand() {
+    @Idempotent
+    protected final boolean isToNumericOperand() {
         return toNumericOperand;
     }
 
     public abstract static class JSToNumericWrapperNode extends JSUnaryNode {
 
-        @Child private JSToNumericNode toNumericNode;
-
-        private final boolean toNumericOperand;
+        protected final boolean toNumericOperand;
 
         protected JSToNumericWrapperNode(JavaScriptNode operand, boolean toNumericOperand) {
             super(operand);
@@ -186,11 +185,8 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
-            if (toNumericNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toNumericNode = insert(JSToNumericNode.create(toNumericOperand));
-            }
+        protected static Object doDefault(Object value,
+                        @Cached("create(toNumericOperand)") JSToNumericNode toNumericNode) {
             return toNumericNode.execute(value);
         }
 
@@ -202,6 +198,37 @@ public abstract class JSToNumericNode extends JavaScriptBaseNode {
         @Override
         public String expressionToString() {
             return getOperand().expressionToString();
+        }
+    }
+
+    /**
+     * Returns true if the value is already a numeric value that should not be converted ToNumber.
+     */
+    @ImportStatic(JSToNumericNode.class)
+    @GenerateInline
+    @GenerateCached(false)
+    protected abstract static class PrimitiveToNumericOrNullNode extends JavaScriptBaseNode {
+
+        public abstract Object execute(Node node, Object value);
+
+        @Specialization(guards = "!value.isForeign()")
+        protected static BigInt doBigInt(BigInt value) {
+            return value;
+        }
+
+        @Specialization(guards = "value.isForeign()")
+        protected static double doForeignBigInt(BigInt value) {
+            return value.doubleValue();
+        }
+
+        @Specialization
+        protected static double doLong(long value) {
+            return value;
+        }
+
+        @Fallback
+        protected static Object doOther(@SuppressWarnings("unused") Object value) {
+            return null;
         }
     }
 }

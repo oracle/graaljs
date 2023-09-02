@@ -12,7 +12,7 @@
 #include "src/objects/internal-index.h"
 #include "src/objects/objects.h"
 #include "torque-generated/bit-fields.h"
-#include "torque-generated/field-offsets.h"
+#include "torque-generated/visitor-lists.h"
 
 // Has to be the last include (doesn't have include guards):
 #include "src/objects/object-macros.h"
@@ -46,6 +46,8 @@ enum InstanceType : uint16_t;
   V(JSApiObject)                        \
   V(JSArrayBuffer)                      \
   V(JSDataView)                         \
+  V(JSExternalObject)                   \
+  V(JSFinalizationRegistry)             \
   V(JSFunction)                         \
   V(JSObject)                           \
   V(JSObjectFast)                       \
@@ -54,7 +56,9 @@ enum InstanceType : uint16_t;
   V(JSWeakCollection)                   \
   V(Map)                                \
   V(NativeContext)                      \
+  V(Oddball)                            \
   V(PreparseData)                       \
+  V(PromiseOnStack)                     \
   V(PropertyArray)                      \
   V(PropertyCell)                       \
   V(PrototypeInfo)                      \
@@ -68,14 +72,18 @@ enum InstanceType : uint16_t;
   V(Symbol)                             \
   V(SyntheticModule)                    \
   V(TransitionArray)                    \
+  IF_WASM(V, WasmApiFunctionRef)        \
   IF_WASM(V, WasmArray)                 \
   IF_WASM(V, WasmCapiFunctionData)      \
   IF_WASM(V, WasmExportedFunctionData)  \
   IF_WASM(V, WasmFunctionData)          \
   IF_WASM(V, WasmIndirectFunctionTable) \
   IF_WASM(V, WasmInstanceObject)        \
+  IF_WASM(V, WasmInternalFunction)      \
   IF_WASM(V, WasmJSFunctionData)        \
+  IF_WASM(V, WasmOnFulfilledData)       \
   IF_WASM(V, WasmStruct)                \
+  IF_WASM(V, WasmSuspenderObject)       \
   IF_WASM(V, WasmTypeInfo)              \
   V(WeakCell)
 
@@ -352,10 +360,6 @@ class Map : public TorqueGeneratedMap<Map, HeapObject> {
   int ComputeMinObjectSlack(Isolate* isolate);
   inline int InstanceSizeFromSlack(int slack) const;
 
-  // Completes inobject slack tracking for the transition tree starting at this
-  // initial map.
-  V8_EXPORT_PRIVATE void CompleteInobjectSlackTracking(Isolate* isolate);
-
   // Tells whether the object in the prototype property will be used
   // for instances created from this function.  If the prototype
   // property is set to a value that is not a JSObject, the prototype
@@ -415,8 +419,6 @@ class Map : public TorqueGeneratedMap<Map, HeapObject> {
   inline bool has_sloppy_arguments_elements() const;
   inline bool has_fast_sloppy_arguments_elements() const;
   inline bool has_fast_string_wrapper_elements() const;
-  inline bool has_typed_array_elements() const;
-  inline bool has_rab_gsab_typed_array_elements() const;
   inline bool has_typed_array_or_rab_gsab_typed_array_elements() const;
   inline bool has_any_typed_array_or_wasm_array_elements() const;
   inline bool has_dictionary_elements() const;
@@ -565,6 +567,7 @@ class Map : public TorqueGeneratedMap<Map, HeapObject> {
   // The field also overlaps with the native context pointer for context maps,
   // and with the Wasm type info for WebAssembly object maps.
   DECL_ACCESSORS(constructor_or_back_pointer, Object)
+  DECL_RELAXED_ACCESSORS(constructor_or_back_pointer, Object)
   DECL_ACCESSORS(native_context, NativeContext)
   DECL_ACCESSORS(native_context_or_null, Object)
   DECL_ACCESSORS(wasm_type_info, WasmTypeInfo)
@@ -849,6 +852,12 @@ class Map : public TorqueGeneratedMap<Map, HeapObject> {
   static inline bool CanHaveFastTransitionableElementsKind(
       InstanceType instance_type);
   inline bool CanHaveFastTransitionableElementsKind() const;
+
+  // Maps for Wasm objects can use certain fields for other purposes.
+  inline uint8_t WasmByte1() const;
+  inline uint8_t WasmByte2() const;
+  inline void SetWasmByte1(uint8_t value);
+  inline void SetWasmByte2(uint8_t value);
 
  private:
   // This byte encodes either the instance size without the in-object slack or

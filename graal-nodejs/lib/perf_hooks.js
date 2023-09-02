@@ -18,15 +18,19 @@ const {
   PerformanceMark,
   PerformanceMeasure,
 } = require('internal/perf/usertiming');
-const { InternalPerformance } = require('internal/perf/performance');
+const {
+  Performance,
+  performance,
+} = require('internal/perf/performance');
 
 const {
-  createHistogram
+  createHistogram,
 } = require('internal/histogram');
 
 const monitorEventLoopDelay = require('internal/perf/event_loop_delay');
 
 module.exports = {
+  Performance,
   PerformanceEntry,
   PerformanceMark,
   PerformanceMeasure,
@@ -35,12 +39,12 @@ module.exports = {
   PerformanceResourceTiming,
   monitorEventLoopDelay,
   createHistogram,
-  performance: new InternalPerformance(),
+  performance,
 };
 
 ObjectDefineProperty(module.exports, 'constants', {
   __proto__: null,
   configurable: false,
   enumerable: true,
-  value: constants
+  value: constants,
 });

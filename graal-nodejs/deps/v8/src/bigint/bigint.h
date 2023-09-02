@@ -227,12 +227,48 @@ void Add(RWDigits Z, Digits X, Digits Y);
 // Addition of signed integers. Returns true if the result is negative.
 bool AddSigned(RWDigits Z, Digits X, bool x_negative, Digits Y,
                bool y_negative);
+// Z := X + 1
+void AddOne(RWDigits Z, Digits X);
 
 // Z := X - Y. Requires X >= Y.
 void Subtract(RWDigits Z, Digits X, Digits Y);
 // Subtraction of signed integers. Returns true if the result is negative.
 bool SubtractSigned(RWDigits Z, Digits X, bool x_negative, Digits Y,
                     bool y_negative);
+// Z := X - 1
+void SubtractOne(RWDigits Z, Digits X);
+
+// The bitwise operations assume that negative BigInts are represented as
+// sign+magnitude. Their behavior depends on the sign of the inputs: negative
+// inputs perform an implicit conversion to two's complement representation.
+// Z := X & Y
+void BitwiseAnd_PosPos(RWDigits Z, Digits X, Digits Y);
+// Call this for a BigInt x = (magnitude=X, negative=true).
+void BitwiseAnd_NegNeg(RWDigits Z, Digits X, Digits Y);
+// Positive X, negative Y. Callers must swap arguments as needed.
+void BitwiseAnd_PosNeg(RWDigits Z, Digits X, Digits Y);
+void BitwiseOr_PosPos(RWDigits Z, Digits X, Digits Y);
+void BitwiseOr_NegNeg(RWDigits Z, Digits X, Digits Y);
+void BitwiseOr_PosNeg(RWDigits Z, Digits X, Digits Y);
+void BitwiseXor_PosPos(RWDigits Z, Digits X, Digits Y);
+void BitwiseXor_NegNeg(RWDigits Z, Digits X, Digits Y);
+void BitwiseXor_PosNeg(RWDigits Z, Digits X, Digits Y);
+void LeftShift(RWDigits Z, Digits X, digit_t shift);
+// RightShiftState is provided by RightShift_ResultLength and used by the actual
+// RightShift to avoid some recomputation.
+struct RightShiftState {
+  bool must_round_down = false;
+};
+void RightShift(RWDigits Z, Digits X, digit_t shift,
+                const RightShiftState& state);
+
+// Z := (least significant n bits of X, interpreted as a signed n-bit integer).
+// Returns true if the result is negative; Z will hold the absolute value.
+bool AsIntN(RWDigits Z, Digits X, bool x_negative, int n);
+// Z := (least significant n bits of X).
+void AsUintN_Pos(RWDigits Z, Digits X, int n);
+// Same, but X is the absolute value of a negative BigInt.
+void AsUintN_Neg(RWDigits Z, Digits X, int n);
 
 enum class Status { kOk, kInterrupted };
 
@@ -262,7 +298,13 @@ class Processor {
   // upon return will be set to the actual length of the result string.
   Status ToString(char* out, int* out_length, Digits X, int radix, bool sign);
 
+  // Z := the contents of {accumulator}.
+  // Assume that this leaves {accumulator} in unusable state.
   Status FromString(RWDigits Z, FromStringAccumulator* accumulator);
+
+ protected:
+  // Use {Destroy} or {Destroyer} instead of the destructor directly.
+  ~Processor() = default;
 };
 
 inline int AddResultLength(int x_length, int y_length) {
@@ -301,6 +343,47 @@ int ToStringResultLength(Digits X, int radix, bool sign);
 // In DEBUG builds, the result of {ToString} will be initialized to this value.
 constexpr char kStringZapValue = '?';
 
+inline int BitwiseAnd_PosPos_ResultLength(int x_length, int y_length) {
+  return std::min(x_length, y_length);
+}
+inline int BitwiseAnd_NegNeg_ResultLength(int x_length, int y_length) {
+  // Result length growth example: -2 & -3 = -4 (2-bit inputs, 3-bit result).
+  return std::max(x_length, y_length) + 1;
+}
+inline int BitwiseAnd_PosNeg_ResultLength(int x_length) { return x_length; }
+inline int BitwiseOrResultLength(int x_length, int y_length) {
+  return std::max(x_length, y_length);
+}
+inline int BitwiseXor_PosPos_ResultLength(int x_length, int y_length) {
+  return std::max(x_length, y_length);
+}
+inline int BitwiseXor_NegNeg_ResultLength(int x_length, int y_length) {
+  return std::max(x_length, y_length);
+}
+inline int BitwiseXor_PosNeg_ResultLength(int x_length, int y_length) {
+  // Result length growth example: 3 ^ -1 == -4 (2-bit inputs, 3-bit result).
+  return std::max(x_length, y_length) + 1;
+}
+inline int LeftShift_ResultLength(int x_length,
+                                  digit_t x_most_significant_digit,
+                                  digit_t shift) {
+  int digit_shift = static_cast<int>(shift / kDigitBits);
+  int bits_shift = static_cast<int>(shift % kDigitBits);
+  bool grow = bits_shift != 0 &&
+              (x_most_significant_digit >> (kDigitBits - bits_shift)) != 0;
+  return x_length + digit_shift + grow;
+}
+int RightShift_ResultLength(Digits X, bool x_sign, digit_t shift,
+                            RightShiftState* state);
+
+// Returns -1 if this "asIntN" operation would be a no-op.
+int AsIntNResultLength(Digits X, bool x_negative, int n);
+// Returns -1 if this "asUintN" operation would be a no-op.
+int AsUintN_Pos_ResultLength(Digits X, int n);
+inline int AsUintN_Neg_ResultLength(int n) {
+  return ((n - 1) / kDigitBits) + 1;
+}
+
 // Support for parsing BigInts from Strings, using an Accumulator object
 // for intermediate state.
 
@@ -336,32 +419,35 @@ class FromStringAccumulator {
   // So for sufficiently large N, setting max_digits=N here will not actually
   // allow parsing BigInts with N digits. We can fix that if/when anyone cares.
   explicit FromStringAccumulator(int max_digits)
-      : max_digits_(std::max(max_digits - kStackParts, kStackParts)) {}
+      : max_digits_(std::max(max_digits, kStackParts)) {}
 
   // Step 2: Call this method to read all characters.
-  // {Char} should be a character type, such as uint8_t or uint16_t.
-  // {end} should be one past the last character (i.e. {start == end} would
-  // indicate an empty string).
-  // Returns the current position when an invalid character is encountered.
-  template <class Char>
-  ALWAYS_INLINE const Char* Parse(const Char* start, const Char* end,
-                                  digit_t radix);
+  // {CharIt} should be a forward iterator and
+  // std::iterator_traits<CharIt>::value_type shall be a character type, such as
+  // uint8_t or uint16_t. {end} should be one past the last character (i.e.
+  // {start == end} would indicate an empty string). Returns the current
+  // position when an invalid character is encountered.
+  template <class CharIt>
+  ALWAYS_INLINE CharIt Parse(CharIt start, CharIt end, digit_t radix);
 
   // Step 3: Check if a result is available, and determine its required
-  // allocation size.
+  // allocation size (guaranteed to be <= max_digits passed to the constructor).
   Result result() { return result_; }
   int ResultLength() {
     return std::max(stack_parts_used_, static_cast<int>(heap_parts_.size()));
   }
 
   // Step 4: Use BigIntProcessor::FromString() to retrieve the result into an
-  // {RWDigits} struct allocated for the size returned by step 2.
+  // {RWDigits} struct allocated for the size returned by step 3.
 
  private:
   friend class ProcessorImpl;
 
-  ALWAYS_INLINE bool AddPart(digit_t multiplier, digit_t part,
-                             bool is_last = false);
+  template <class CharIt>
+  ALWAYS_INLINE CharIt ParsePowerTwo(CharIt start, CharIt end, digit_t radix);
+
+  ALWAYS_INLINE bool AddPart(digit_t multiplier, digit_t part, bool is_last);
+  ALWAYS_INLINE bool AddPart(digit_t part);
 
   digit_t stack_parts_[kStackParts];
   std::vector<digit_t> heap_parts_;
@@ -371,6 +457,7 @@ class FromStringAccumulator {
   Result result_{Result::kOk};
   int stack_parts_used_{0};
   bool inline_everything_{false};
+  uint8_t radix_{0};
 };
 
 // The rest of this file is the inlineable implementation of
@@ -403,11 +490,50 @@ static constexpr uint8_t kCharValue[] = {
     25,  26,  27,  28,  29,  30,  31,  32,   // 112..119
     33,  34,  35,  255, 255, 255, 255, 255,  // 120..127  'z' == 122
 };
-template <class Char>
-const Char* FromStringAccumulator::Parse(const Char* start, const Char* end,
-                                         digit_t radix) {
+
+// A space- and time-efficient way to map {2,4,8,16,32} to {1,2,3,4,5}.
+static constexpr uint8_t kCharBits[] = {1, 2, 3, 0, 4, 0, 0, 0, 5};
+
+template <class CharIt>
+CharIt FromStringAccumulator::ParsePowerTwo(CharIt current, CharIt end,
+                                            digit_t radix) {
+  radix_ = static_cast<uint8_t>(radix);
+  const int char_bits = kCharBits[radix >> 2];
+  int bits_left;
+  bool done = false;
+  do {
+    digit_t part = 0;
+    bits_left = kDigitBits;
+    while (true) {
+      digit_t d;  // Numeric value of the current character {c}.
+      uint32_t c = *current;
+      if (c > 127 || (d = bigint::kCharValue[c]) >= radix) {
+        done = true;
+        break;
+      }
+
+      if (bits_left < char_bits) break;
+      bits_left -= char_bits;
+      part = (part << char_bits) | d;
+
+      ++current;
+      if (current == end) {
+        done = true;
+        break;
+      }
+    }
+    if (!AddPart(part)) return current;
+  } while (!done);
+  // We use the unused {last_multiplier_} field to
+  // communicate how many bits are unused in the last part.
+  last_multiplier_ = bits_left;
+  return current;
+}
+
+template <class CharIt>
+CharIt FromStringAccumulator::Parse(CharIt start, CharIt end, digit_t radix) {
   BIGINT_H_DCHECK(2 <= radix && radix <= 36);
-  const Char* current = start;
+  CharIt current = start;
 #if !HAVE_BUILTIN_MUL_OVERFLOW
   const digit_t kMaxMultiplier = (~digit_t{0}) / radix;
 #endif
@@ -417,12 +543,15 @@ const Char* FromStringAccumulator::Parse(const Char* start, const Char* end,
   static constexpr int kInlineThreshold = kStackParts * kDigitBits * 100 / 517;
   inline_everything_ = (end - start) <= kInlineThreshold;
 #endif
+  if (!inline_everything_ && (radix & (radix - 1)) == 0) {
+    return ParsePowerTwo(start, end, radix);
+  }
   bool done = false;
   do {
     digit_t multiplier = 1;
     digit_t part = 0;
     while (true) {
-      digit_t d;
+      digit_t d;  // Numeric value of the current character {c}.
       uint32_t c = *current;
       if (c > 127 || (d = bigint::kCharValue[c]) >= radix) {
         done = true;
@@ -478,6 +607,10 @@ bool FromStringAccumulator::AddPart(digit_t multiplier, digit_t part,
     BIGINT_H_DCHECK(max_multiplier_ == 0 || max_multiplier_ == multiplier);
     max_multiplier_ = multiplier;
   }
+  return AddPart(part);
+}
+
+bool FromStringAccumulator::AddPart(digit_t part) {
   if (stack_parts_used_ < kStackParts) {
     stack_parts_[stack_parts_used_++] = part;
     return true;
@@ -489,7 +622,7 @@ bool FromStringAccumulator::AddPart(digit_t multiplier, digit_t part,
       heap_parts_.push_back(stack_parts_[i]);
     }
   }
-  if (static_cast<int>(heap_parts_.size()) >= max_digits_ && !is_last) {
+  if (static_cast<int>(heap_parts_.size()) >= max_digits_) {
     result_ = Result::kMaxSizeExceeded;
     return false;
   }

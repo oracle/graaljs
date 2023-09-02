@@ -33,10 +33,6 @@ void LogSecret(
     const unsigned char* secret,
     size_t secretlen);
 
-bool SetALPN(const SSLPointer& ssl, const std::string& alpn);
-
-bool SetALPN(const SSLPointer& ssl, v8::Local<v8::Value> alpn);
-
 v8::MaybeLocal<v8::Value> GetSSLOCSPResponse(
     Environment* env,
     SSL* ssl,
@@ -74,18 +70,6 @@ v8::MaybeLocal<v8::Value> GetValidationErrorCode(Environment* env, int err);
 
 v8::MaybeLocal<v8::Value> GetCert(Environment* env, const SSLPointer& ssl);
 
-v8::MaybeLocal<v8::Value> GetCipherName(
-    Environment* env,
-    const SSLPointer& ssl);
-
-v8::MaybeLocal<v8::Value> GetCipherStandardName(
-    Environment* env,
-    const SSLPointer& ssl);
-
-v8::MaybeLocal<v8::Value> GetCipherVersion(
-    Environment* env,
-    const SSLPointer& ssl);
-
 v8::MaybeLocal<v8::Object> GetCipherInfo(
     Environment* env,
     const SSLPointer& ssl);
@@ -109,8 +93,7 @@ v8::MaybeLocal<v8::Object> ECPointToBuffer(
 
 v8::MaybeLocal<v8::Object> X509ToObject(
     Environment* env,
-    X509* cert,
-    bool names_as_string = false);
+    X509* cert);
 
 v8::MaybeLocal<v8::Value> GetValidTo(
     Environment* env,
@@ -128,6 +111,10 @@ v8::MaybeLocal<v8::Value> GetFingerprintDigest(
     X509* cert);
 
 v8::MaybeLocal<v8::Value> GetKeyUsage(Environment* env, X509* cert);
+v8::MaybeLocal<v8::Value> GetCurrentCipherName(Environment* env,
+                                               const SSLPointer& ssl);
+v8::MaybeLocal<v8::Value> GetCurrentCipherVersion(Environment* env,
+                                                  const SSLPointer& ssl);
 
 v8::MaybeLocal<v8::Value> GetSerialNumber(Environment* env, X509* cert);
 

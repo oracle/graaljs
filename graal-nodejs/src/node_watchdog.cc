@@ -34,6 +34,7 @@ namespace node {
 using v8::Context;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
+using v8::Isolate;
 using v8::Local;
 using v8::Object;
 using v8::Value;
@@ -44,8 +45,7 @@ Watchdog::Watchdog(v8::Isolate* isolate, uint64_t ms, bool* timed_out)
   int rc;
   rc = uv_loop_init(&loop_);
   if (rc != 0) {
-    FatalError("node::Watchdog::Watchdog()",
-               "Failed to initialize uv loop.");
+    OnFatalError("node::Watchdog::Watchdog()", "Failed to initialize uv loop.");
   }
 
   rc = uv_async_init(&loop_, &async_, [](uv_async_t* signal) {
@@ -123,15 +123,17 @@ SignalPropagation SigintWatchdog::HandleSigint() {
 }
 
 void TraceSigintWatchdog::Init(Environment* env, Local<Object> target) {
-  Local<FunctionTemplate> constructor = env->NewFunctionTemplate(New);
+  Isolate* isolate = env->isolate();
+  Local<FunctionTemplate> constructor = NewFunctionTemplate(isolate, New);
   constructor->InstanceTemplate()->SetInternalFieldCount(
       TraceSigintWatchdog::kInternalFieldCount);
   constructor->Inherit(HandleWrap::GetConstructorTemplate(env));
 
-  env->SetProtoMethod(constructor, "start", Start);
-  env->SetProtoMethod(constructor, "stop", Stop);
+  SetProtoMethod(isolate, constructor, "start", Start);
+  SetProtoMethod(isolate, constructor, "stop", Stop);
 
-  env->SetConstructorFunction(target, "TraceSigintWatchdog", constructor);
+  SetConstructorFunction(
+      env->context(), target, "TraceSigintWatchdog", constructor);
 }
 
 void TraceSigintWatchdog::New(const FunctionCallbackInfo<Value>& args) {
@@ -432,4 +434,4 @@ static void Initialize(Local<Object> target,
 
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(watchdog, node::watchdog::Initialize)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(watchdog, node::watchdog::Initialize)

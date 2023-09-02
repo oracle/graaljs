@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,28 +42,17 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
-public final class JSWrapForValidAsyncIteratorObject extends JSNonProxyObject {
-    private final IteratorRecord iterated;
+public final class JSWrapForValidAsyncIteratorObject extends JSIteratorRecordObject {
 
-    protected JSWrapForValidAsyncIteratorObject(Shape shape, IteratorRecord iterated) {
-        super(shape);
-        this.iterated = iterated;
-    }
-
-    public IteratorRecord getIterated() {
-        return iterated;
+    protected JSWrapForValidAsyncIteratorObject(Shape shape, JSDynamicObject proto, IteratorRecord iterated) {
+        super(shape, proto, iterated);
     }
 
     @Override
     public TruffleString getClassName() {
         return JSAsyncIterator.CLASS_NAME;
-    }
-
-    public static JSWrapForValidAsyncIteratorObject create(JSRealm realm, JSObjectFactory factory, IteratorRecord iterated) {
-        return factory.initProto(new JSWrapForValidAsyncIteratorObject(factory.getShape(realm), iterated), realm);
     }
 }

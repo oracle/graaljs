@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,27 +72,28 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     }
 
     public static JSNumberObject create(JSContext context, JSRealm realm, Number value) {
-        JSNumberObject obj = JSNumberObject.create(realm, context.getNumberFactory(), value);
-        return context.trackAllocation(obj);
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), value);
     }
 
-    private static Number getNumberField(JSDynamicObject obj) {
-        assert isJSNumber(obj);
-        return ((JSNumberObject) obj).getNumber();
+    public static JSNumberObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Number value) {
+        JSObjectFactory factory = context.getNumberFactory();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSNumberObject(shape, proto, value), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static Number valueOf(JSDynamicObject obj) {
-        return getNumberField(obj);
+        return ((JSNumberObject) obj).getNumber();
     }
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext context = realm.getContext();
         Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-        JSObject numberPrototype = JSNumberObject.create(protoShape, 0);
+        JSObject numberPrototype = JSNumberObject.create(protoShape, realm.getObjectPrototype(), 0);
         JSObjectUtil.setOrVerifyPrototype(context, numberPrototype, realm.getObjectPrototype());
 
-        JSObjectUtil.putConstructorProperty(context, numberPrototype, ctor);
+        JSObjectUtil.putConstructorProperty(numberPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberPrototype, NumberPrototypeBuiltins.BUILTINS);
         return numberPrototype;
     }
@@ -108,15 +109,15 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
         WithFunctions.super.fillConstructor(realm, constructor);
 
         JSContext context = realm.getContext();
-        JSObjectUtil.putDataProperty(context, constructor, Strings.NAN, Double.NaN);
-        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
-        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
-        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MAX_VALUE, Double.MAX_VALUE);
-        JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MIN_VALUE, Double.MIN_VALUE);
+        JSObjectUtil.putDataProperty(constructor, Strings.NAN, Double.NaN);
+        JSObjectUtil.putDataProperty(constructor, Strings.CAPS_POSITIVE_INFINITY, Double.POSITIVE_INFINITY);
+        JSObjectUtil.putDataProperty(constructor, Strings.CAPS_NEGATIVE_INFINITY, Double.NEGATIVE_INFINITY);
+        JSObjectUtil.putDataProperty(constructor, Strings.CAPS_MAX_VALUE, Double.MAX_VALUE);
+        JSObjectUtil.putDataProperty(constructor, Strings.CAPS_MIN_VALUE, Double.MIN_VALUE);
         if (context.getEcmaScriptVersion() >= 6) {
-            JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_EPSILON, NUMBER_EPSILON);
-            JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MAX_SAFE_INTEGER, MAX_SAFE_INTEGER);
-            JSObjectUtil.putDataProperty(context, constructor, Strings.CAPS_MIN_SAFE_INTEGER, MIN_SAFE_INTEGER);
+            JSObjectUtil.putDataProperty(constructor, Strings.CAPS_EPSILON, NUMBER_EPSILON);
+            JSObjectUtil.putDataProperty(constructor, Strings.CAPS_MAX_SAFE_INTEGER, MAX_SAFE_INTEGER);
+            JSObjectUtil.putDataProperty(constructor, Strings.CAPS_MIN_SAFE_INTEGER, MIN_SAFE_INTEGER);
         }
     }
 

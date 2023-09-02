@@ -62,7 +62,7 @@ public:
     void SetHandler(const v8::IndexedPropertyHandlerConfiguration& configuration);
     void SetCallAsFunctionHandler(v8::FunctionCallback callback, v8::Local<v8::Value> data);
 
-    inline int InternalFieldCount() {
+    inline int InternalFieldCount() const {
         return internal_field_count_;
     }
 protected:

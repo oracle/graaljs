@@ -67,6 +67,7 @@ public enum SerializationTag {
     SHARED_ARRAY_BUFFER('u'), // kSharedArrayBuffer
     ARRAY_BUFFER_TRANSFER('t'), // kArrayBufferTransfer
     ARRAY_BUFFER_VIEW('V'), // kArrayBufferView
+    WASM_MODULE_TRANSFER('w'), // kWasmModuleTransfer
     BEGIN_JS_MAP(';'), // kBeginJSMap
     END_JS_MAP(':'), // kEndJSMap
     BEGIN_JS_SET('\''), // kBeginJSSet

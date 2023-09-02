@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * ES6 7.4.4 IteratorValue(iterResult).
@@ -74,6 +76,7 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object iterResult);
 
+    @NeverDefault
     public static IteratorValueNode create() {
         return IteratorValueNodeGen.create();
     }
@@ -88,7 +91,7 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object doIteratorNext(JSDynamicObject iterResult,
-                    @Cached(value = "createGetValueNode()", uncached = "uncachedGetValueNode()") PropertyGetNode getValueNode) {
+                    @Cached(value = "createGetValueNode()", uncached = "getNullNode()") PropertyGetNode getValueNode) {
         return getValueNode != null ? getValueNode.getValue(iterResult) : JSObject.get(iterResult, Strings.VALUE);
     }
 
@@ -98,7 +101,9 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
                     @Cached ImportValueNode importValueNode) {
         try {
             return importValueNode.executeWithTarget(interop.readMember(obj, Strings.VALUE_JLS));
-        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
+        } catch (UnknownIdentifierException e) {
+            return Undefined.instance;
+        } catch (UnsupportedMessageException e) {
             throw Errors.createTypeErrorInteropException(obj, e, Strings.VALUE_JLS, this);
         }
     }
@@ -123,11 +128,8 @@ public abstract class IteratorValueNode extends JavaScriptBaseNode {
         }
     }
 
+    @NeverDefault
     PropertyGetNode createGetValueNode() {
         return PropertyGetNode.create(Strings.VALUE, getLanguage().getJSContext());
-    }
-
-    static PropertyGetNode uncachedGetValueNode() {
-        return null;
     }
 }

@@ -159,7 +159,6 @@ bool MipsDebugger::GetValue(const char* desc, int64_t* value) {
   } else {
     return SScanF(desc, "%" SCNu64, reinterpret_cast<uint64_t*>(value)) == 1;
   }
-  return false;
 }
 
 bool MipsDebugger::SetBreakpoint(Instruction* breakpc) {
@@ -2039,7 +2038,6 @@ double Simulator::ReadD(int64_t addr, Instruction* instr) {
   PrintF("Unaligned (double) read at 0x%08" PRIx64 " , pc=0x%08" V8PRIxPTR "\n",
          addr, reinterpret_cast<intptr_t>(instr));
   base::OS::Abort();
-  return 0;
 }
 
 void Simulator::WriteD(int64_t addr, double value, Instruction* instr) {
@@ -2209,12 +2207,11 @@ void Simulator::Format(Instruction* instr, const char* format) {
 // 64-bit value. With the code below we assume that all runtime calls return
 // 64 bits of result. If they don't, the v1 result register contains a bogus
 // value, which is fine because it is caller-saved.
-
-using SimulatorRuntimeCall = ObjectPair (*)(int64_t arg0, int64_t arg1,
-                                            int64_t arg2, int64_t arg3,
-                                            int64_t arg4, int64_t arg5,
-                                            int64_t arg6, int64_t arg7,
-                                            int64_t arg8, int64_t arg9);
+using SimulatorRuntimeCall = ObjectPair (*)(
+    int64_t arg0, int64_t arg1, int64_t arg2, int64_t arg3, int64_t arg4,
+    int64_t arg5, int64_t arg6, int64_t arg7, int64_t arg8, int64_t arg9,
+    int64_t arg10, int64_t arg11, int64_t arg12, int64_t arg13, int64_t arg14,
+    int64_t arg15, int64_t arg16, int64_t arg17, int64_t arg18, int64_t arg19);
 
 // These prototypes handle the four types of FP calls.
 using SimulatorRuntimeCompareCall = int64_t (*)(double darg0, double darg1);
@@ -2256,7 +2253,17 @@ void Simulator::SoftwareInterrupt() {
     int64_t arg7 = get_register(a7);
     int64_t arg8 = stack_pointer[0];
     int64_t arg9 = stack_pointer[1];
-    STATIC_ASSERT(kMaxCParameters == 10);
+    int64_t arg10 = stack_pointer[2];
+    int64_t arg11 = stack_pointer[3];
+    int64_t arg12 = stack_pointer[4];
+    int64_t arg13 = stack_pointer[5];
+    int64_t arg14 = stack_pointer[6];
+    int64_t arg15 = stack_pointer[7];
+    int64_t arg16 = stack_pointer[8];
+    int64_t arg17 = stack_pointer[9];
+    int64_t arg18 = stack_pointer[10];
+    int64_t arg19 = stack_pointer[11];
+    STATIC_ASSERT(kMaxCParameters == 20);
 
     bool fp_call =
         (redirection->type() == ExternalReference::BUILTIN_FP_FP_CALL) ||
@@ -2330,7 +2337,6 @@ void Simulator::SoftwareInterrupt() {
             break;
           default:
             UNREACHABLE();
-            break;
         }
       }
       switch (redirection->type()) {
@@ -2365,7 +2371,6 @@ void Simulator::SoftwareInterrupt() {
         }
         default:
           UNREACHABLE();
-          break;
       }
       if (::v8::internal::FLAG_trace_sim) {
         switch (redirection->type()) {
@@ -2379,7 +2384,6 @@ void Simulator::SoftwareInterrupt() {
             break;
           default:
             UNREACHABLE();
-            break;
         }
       }
     } else if (redirection->type() == ExternalReference::DIRECT_API_CALL) {
@@ -2428,12 +2432,17 @@ void Simulator::SoftwareInterrupt() {
             "Call to host function at %p "
             "args %08" PRIx64 " , %08" PRIx64 " , %08" PRIx64 " , %08" PRIx64
             " , %08" PRIx64 " , %08" PRIx64 " , %08" PRIx64 " , %08" PRIx64
-            " , %08" PRIx64 " , %08" PRIx64 " \n",
+            " , %08" PRIx64 " , %08" PRIx64 " , %08" PRIx64 " , %08" PRIx64
+            " , %08" PRIx64 " , %08" PRIx64 " , %08" PRIx64 " , %08" PRIx64
+            " , %08" PRIx64 " , %08" PRIx64 " , %08" PRIx64 " , %08" PRIx64
+            " \n",
             reinterpret_cast<void*>(FUNCTION_ADDR(target)), arg0, arg1, arg2,
-            arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+            arg3, arg4, arg5, arg6, arg7, arg8, arg9, arg10, arg11, arg12,
+            arg13, arg14, arg15, arg16, arg17, arg18, arg19);
       }
-      ObjectPair result =
-          target(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7, arg8, arg9);
+      ObjectPair result = target(arg0, arg1, arg2, arg3, arg4, arg5, arg6, arg7,
+                                 arg8, arg9, arg10, arg11, arg12, arg13, arg14,
+                                 arg15, arg16, arg17, arg18, arg19);
       set_register(v0, (int64_t)(result.x));
       set_register(v1, (int64_t)(result.y));
     }
@@ -4404,7 +4413,6 @@ void Simulator::DecodeTypeRegisterSPECIAL3() {
             default:
               alu_out = 0x12345678;
               UNREACHABLE();
-              break;
           }
           break;
         }
@@ -4503,7 +4511,6 @@ void Simulator::DecodeTypeRegisterSPECIAL3() {
             default:
               alu_out = 0x12345678;
               UNREACHABLE();
-              break;
           }
           break;
         }
@@ -4542,7 +4549,6 @@ int Simulator::DecodeMsaDataFormat() {
         break;
       default:
         UNREACHABLE();
-        break;
     }
   } else {
     int DF[] = {MSA_BYTE, MSA_HALF, MSA_WORD, MSA_DWORD};
@@ -4587,7 +4593,6 @@ int Simulator::DecodeMsaDataFormat() {
         break;
       default:
         UNREACHABLE();
-        break;
     }
   }
   return df;
@@ -4967,7 +4972,6 @@ void Simulator::DecodeTypeMsaELM() {
         case SPLATI:
         case INSVE:
           UNIMPLEMENTED();
-          break;
         default:
           UNREACHABLE();
       }
@@ -7187,7 +7191,6 @@ void Simulator::DecodeTypeImmediate() {
                 }
                 default:
                   UNREACHABLE();
-                  break;
               }
               break;
             }
@@ -7273,7 +7276,6 @@ void Simulator::DecodeTypeImmediate() {
           break;
         default:
           UNREACHABLE();
-          break;
       }
       break;
     default:
@@ -7297,13 +7299,15 @@ void Simulator::DecodeTypeImmediate() {
 
 // Type 3: instructions using a 26 bytes immediate. (e.g. j, jal).
 void Simulator::DecodeTypeJump() {
-  SimInstruction simInstr = instr_;
+  // instr_ will be overwritten by BranchDelayInstructionDecode(), so we save
+  // the result of IsLinkingInstruction now.
+  bool isLinkingInstr = instr_.IsLinkingInstruction();
   // Get current pc.
   int64_t current_pc = get_pc();
   // Get unchanged bits of pc.
   int64_t pc_high_bits = current_pc & 0xFFFFFFFFF0000000;
   // Next pc.
-  int64_t next_pc = pc_high_bits | (simInstr.Imm26Value() << 2);
+  int64_t next_pc = pc_high_bits | (instr_.Imm26Value() << 2);
 
   // Execute branch delay slot.
   // We don't check for end_sim_pc. First it should not be met as the current pc
@@ -7314,7 +7318,7 @@ void Simulator::DecodeTypeJump() {
 
   // Update pc and ra if necessary.
   // Do this after the branch delay execution.
-  if (simInstr.IsLinkingInstruction()) {
+  if (isLinkingInstr) {
     set_register(31, current_pc + 2 * kInstrSize);
   }
   set_pc(next_pc);

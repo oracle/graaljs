@@ -2,6 +2,7 @@
 const {
   ArrayPrototypeForEach,
   FunctionPrototypeBind,
+  PromiseResolve,
   SafeMap,
 } = primordials;
 const {
@@ -13,32 +14,50 @@ const {
     ERR_TEST_FAILURE,
   },
 } = require('internal/errors');
-const { getOptionValue } = require('internal/options');
-const { kCancelledByParent, Test, ItTest, Suite } = require('internal/test_runner/test');
+const { kEmptyObject } = require('internal/util');
+const { kCancelledByParent, Test, Suite } = require('internal/test_runner/test');
+const {
+  parseCommandLine,
+  setupTestReporters,
+} = require('internal/test_runner/utils');
+const { bigint: hrtime } = process.hrtime;
 
-const isTestRunner = getOptionValue('--test');
 const testResources = new SafeMap();
-const root = new Test({ __proto__: null, name: '<root>' });
-let wasRootSetup = false;
+
+function createTestTree(options = kEmptyObject) {
+  return setup(new Test({ __proto__: null, ...options, name: '<root>' }));
+}
 
 function createProcessEventHandler(eventName, rootTest) {
   return (err) => {
-    // Check if this error is coming from a test. If it is, fail the test.
-    const test = testResources.get(executionAsyncId());
-
-    if (!test) {
+    if (!rootTest.harness.bootstrapComplete) {
+      // Something went wrong during the asynchronous portion of bootstrapping
+      // the test runner. Since the test runner is not setup properly, we can't
+      // do anything but throw the error.
       throw err;
     }
 
-    if (test.finished) {
-      // If the test is already finished, report this as a top level
-      // diagnostic since this is a malformed test.
-      const msg = `Warning: Test "${test.name}" generated asynchronous ` +
-        'activity after the test ended. This activity created the error ' +
-        `"${err}" and would have caused the test to fail, but instead ` +
-        `triggered an ${eventName} event.`;
+    // Check if this error is coming from a test. If it is, fail the test.
+    const test = testResources.get(executionAsyncId());
+
+    if (!test || test.finished) {
+      // If the test is already finished or the resource that created the error
+      // is not mapped to a Test, report this as a top level diagnostic.
+      let msg;
+
+      if (test) {
+        msg = `Warning: Test "${test.name}" generated asynchronous ` +
+          'activity after the test ended. This activity created the error ' +
+          `"${err}" and would have caused the test to fail, but instead ` +
+          `triggered an ${eventName} event.`;
+      } else {
+        msg = 'Warning: A resource generated asynchronous activity after ' +
+          `the test ended. This activity created the error "${err}" which ` +
+          `triggered an ${eventName} event, caught by the test runner.`;
+      }
 
       rootTest.diagnostic(msg);
+      process.exitCode = 1;
       return;
     }
 
@@ -47,10 +66,53 @@ function createProcessEventHandler(eventName, rootTest) {
   };
 }
 
+function configureCoverage(rootTest, globalOptions) {
+  if (!globalOptions.coverage) {
+    return null;
+  }
+
+  const { setupCoverage } = require('internal/test_runner/coverage');
+
+  try {
+    return setupCoverage();
+  } catch (err) {
+    const msg = `Warning: Code coverage could not be enabled. ${err}`;
+
+    rootTest.diagnostic(msg);
+    process.exitCode = 1;
+  }
+}
+
+function collectCoverage(rootTest, coverage) {
+  if (!coverage) {
+    return null;
+  }
+
+  let summary = null;
+
+  try {
+    summary = coverage.summary();
+    coverage.cleanup();
+  } catch (err) {
+    const op = summary ? 'clean up' : 'report';
+    const msg = `Warning: Could not ${op} code coverage. ${err}`;
+
+    rootTest.diagnostic(msg);
+    process.exitCode = 1;
+  }
+
+  return summary;
+}
+
 function setup(root) {
-  if (wasRootSetup) {
+  if (root.startTime !== null) {
     return root;
   }
+
+  // Parse the command line options before the hook is enabled. We don't want
+  // global input validation errors to end up in the uncaughtException handler.
+  const globalOptions = parseCommandLine();
+
   const hook = createHook({
     init(asyncId, type, triggerAsyncId, resource) {
       if (resource instanceof Test) {
@@ -66,7 +128,7 @@ function setup(root) {
     },
     destroy(asyncId) {
       testResources.delete(asyncId);
-    }
+    },
   });
 
   hook.enable();
@@ -75,62 +137,19 @@ function setup(root) {
     createProcessEventHandler('uncaughtException', root);
   const rejectionHandler =
     createProcessEventHandler('unhandledRejection', root);
-
-  const exitHandler = () => {
-    root.postRun(new ERR_TEST_FAILURE(
+  const coverage = configureCoverage(root, globalOptions);
+  const exitHandler = async () => {
+    await root.run(new ERR_TEST_FAILURE(
       'Promise resolution is still pending but the event loop has already resolved',
       kCancelledByParent));
 
-    let passCount = 0;
-    let failCount = 0;
-    let skipCount = 0;
-    let todoCount = 0;
-    let cancelledCount = 0;
-
-    for (let i = 0; i < root.subtests.length; i++) {
-      const test = root.subtests[i];
-
-      // Check SKIP and TODO tests first, as those should not be counted as
-      // failures.
-      if (test.skipped) {
-        skipCount++;
-      } else if (test.isTodo) {
-        todoCount++;
-      } else if (test.cancelled) {
-        cancelledCount++;
-      } else if (!test.passed) {
-        failCount++;
-      } else {
-        passCount++;
-      }
-    }
-
-    root.reporter.plan(root.indent, root.subtests.length);
-
-    for (let i = 0; i < root.diagnostics.length; i++) {
-      root.reporter.diagnostic(root.indent, root.diagnostics[i]);
-    }
-
-    root.reporter.diagnostic(root.indent, `tests ${root.subtests.length}`);
-    root.reporter.diagnostic(root.indent, `pass ${passCount}`);
-    root.reporter.diagnostic(root.indent, `fail ${failCount}`);
-    root.reporter.diagnostic(root.indent, `cancelled ${cancelledCount}`);
-    root.reporter.diagnostic(root.indent, `skipped ${skipCount}`);
-    root.reporter.diagnostic(root.indent, `todo ${todoCount}`);
-    root.reporter.diagnostic(root.indent, `duration_ms ${process.uptime()}`);
-
-    root.reporter.push(null);
     hook.disable();
     process.removeListener('unhandledRejection', rejectionHandler);
     process.removeListener('uncaughtException', exceptionHandler);
-
-    if (failCount > 0 || cancelledCount > 0) {
-      process.exitCode = 1;
-    }
   };
 
-  const terminationHandler = () => {
-    exitHandler();
+  const terminationHandler = async () => {
+    await exitHandler();
     process.exit();
   };
 
@@ -138,55 +157,82 @@ function setup(root) {
   process.on('unhandledRejection', rejectionHandler);
   process.on('beforeExit', exitHandler);
   // TODO(MoLow): Make it configurable to hook when isTestRunner === false.
-  if (isTestRunner) {
+  if (globalOptions.isTestRunner) {
     process.on('SIGINT', terminationHandler);
     process.on('SIGTERM', terminationHandler);
   }
 
-  root.reporter.pipe(process.stdout);
-  root.reporter.version();
-
-  wasRootSetup = true;
+  root.harness = {
+    __proto__: null,
+    bootstrapComplete: false,
+    coverage: FunctionPrototypeBind(collectCoverage, null, root, coverage),
+    counters: {
+      __proto__: null,
+      all: 0,
+      failed: 0,
+      passed: 0,
+      cancelled: 0,
+      skipped: 0,
+      todo: 0,
+      topLevel: 0,
+      suites: 0,
+    },
+    shouldColorizeTestFiles: false,
+  };
+  root.startTime = hrtime();
   return root;
 }
 
-function test(name, options, fn) {
-  const subtest = setup(root).createSubtest(Test, name, options, fn);
-  return subtest.start();
+let globalRoot;
+let reportersSetup;
+function getGlobalRoot() {
+  if (!globalRoot) {
+    globalRoot = createTestTree();
+    globalRoot.reporter.once('test:fail', () => {
+      process.exitCode = 1;
+    });
+    reportersSetup = setupTestReporters(globalRoot);
+  }
+  return globalRoot;
+}
+
+async function startSubtest(subtest) {
+  await reportersSetup;
+  getGlobalRoot().harness.bootstrapComplete = true;
+  await subtest.start();
 }
 
 function runInParentContext(Factory) {
   function run(name, options, fn, overrides) {
-    const parent = testResources.get(executionAsyncId()) || setup(root);
+    const parent = testResources.get(executionAsyncId()) || getGlobalRoot();
     const subtest = parent.createSubtest(Factory, name, options, fn, overrides);
-    if (parent === root) {
-      subtest.start();
+    if (!(parent instanceof Suite)) {
+      return startSubtest(subtest);
     }
+    return PromiseResolve();
   }
 
-  const cb = (name, options, fn) => {
-    run(name, options, fn);
-  };
-
-  ArrayPrototypeForEach(['skip', 'todo'], (keyword) => {
-    cb[keyword] = (name, options, fn) => {
+  const test = (name, options, fn) => run(name, options, fn);
+  ArrayPrototypeForEach(['skip', 'todo', 'only'], (keyword) => {
+    test[keyword] = (name, options, fn) => {
       run(name, options, fn, { [keyword]: true });
     };
   });
-  return cb;
+  return test;
 }
 
 function hook(hook) {
   return (fn, options) => {
-    const parent = testResources.get(executionAsyncId()) || setup(root);
+    const parent = testResources.get(executionAsyncId()) || getGlobalRoot();
     parent.createHook(hook, fn, options);
   };
 }
 
 module.exports = {
-  test: FunctionPrototypeBind(test, root),
+  createTestTree,
+  test: runInParentContext(Test),
   describe: runInParentContext(Suite),
-  it: runInParentContext(ItTest),
+  it: runInParentContext(Test),
   before: hook('before'),
   after: hook('after'),
   beforeEach: hook('beforeEach'),

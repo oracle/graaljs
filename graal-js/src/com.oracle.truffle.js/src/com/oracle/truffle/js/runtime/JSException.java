@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@ import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -94,7 +95,11 @@ public final class JSException extends GraalJSException {
     }
 
     private JSException(JSErrorType type, String message, SourceSection sourceLocation, JSRealm realm, int stackTraceLimit, boolean isIncompleteSource) {
-        super(message, sourceLocation, stackTraceLimit);
+        this(type, message, null, sourceLocation, realm, stackTraceLimit, isIncompleteSource);
+    }
+
+    private JSException(JSErrorType type, String message, Throwable cause, SourceSection sourceLocation, JSRealm realm, int stackTraceLimit, boolean isIncompleteSource) {
+        super(message, cause, sourceLocation, stackTraceLimit);
         CompilerAsserts.neverPartOfCompilation("JSException constructor");
         this.type = type;
         this.exceptionObj = null;
@@ -140,13 +145,18 @@ public final class JSException extends GraalJSException {
         return fillInStackTrace(new JSException(type, message, sourceLocation, realm, getStackTraceLimit(realm), isIncompleteSource), false);
     }
 
+    public static JSException create(JSErrorType type, String message, Throwable cause, SourceSection sourceLocation, boolean isIncompleteSource) {
+        JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
+        return fillInStackTrace(new JSException(type, message, cause, sourceLocation, realm, getStackTraceLimit(realm), isIncompleteSource), false);
+    }
+
     public static int getStackTraceLimit(JSRealm realm) {
-        JSDynamicObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
+        JSFunctionObject errorConstructor = realm.getErrorConstructor(JSErrorType.Error);
         DynamicObjectLibrary lib = DynamicObjectLibrary.getUncached();
         if (JSProperty.isData(lib.getPropertyFlagsOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, JSProperty.ACCESSOR))) {
             Object stackTraceLimit = lib.getOrDefault(errorConstructor, JSError.STACK_TRACE_LIMIT_PROPERTY_NAME, Undefined.instance);
             if (JSRuntime.isNumber(stackTraceLimit)) {
-                final long limit = JSRuntime.toInteger(stackTraceLimit);
+                final long limit = JSRuntime.toInteger((Number) stackTraceLimit);
                 return (int) Math.max(0, Math.min(limit, Integer.MAX_VALUE));
             }
         }

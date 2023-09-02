@@ -5,7 +5,9 @@
 #include "src/heap/cppgc/visitor.h"
 
 #include "src/base/sanitizer/msan.h"
+#include "src/heap/cppgc/caged-heap.h"
 #include "src/heap/cppgc/gc-info-table.h"
+#include "src/heap/cppgc/heap-base.h"
 #include "src/heap/cppgc/heap-object-header.h"
 #include "src/heap/cppgc/heap-page.h"
 #include "src/heap/cppgc/object-view.h"
@@ -30,7 +32,7 @@ namespace {
 
 void TraceConservatively(ConservativeTracingVisitor* conservative_visitor,
                          const HeapObjectHeader& header) {
-  const auto object_view = ObjectView(header);
+  const auto object_view = ObjectView<>(header);
   Address* object = reinterpret_cast<Address*>(object_view.Start());
   for (size_t i = 0; i < (object_view.Size() / sizeof(Address)); ++i) {
     Address maybe_ptr = object[i];
@@ -50,6 +52,11 @@ void TraceConservatively(ConservativeTracingVisitor* conservative_visitor,
 
 void ConservativeTracingVisitor::TraceConservativelyIfNeeded(
     const void* address) {
+#if defined(CPPGC_CAGED_HEAP)
+  // TODO(chromium:1056170): Add support for SIMD in stack scanning.
+  if (V8_LIKELY(!heap_.caged_heap().IsOnHeap(address))) return;
+#endif
+
   const BasePage* page = reinterpret_cast<const BasePage*>(
       page_backend_.Lookup(static_cast<ConstAddress>(address)));
 

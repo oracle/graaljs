@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -138,7 +138,7 @@ void GraalNotifyPromiseRejectionTracker(JNIEnv* env, jclass nativeAccess, jobjec
 
 void GraalNotifyImportMetaInitializer(JNIEnv* env, jclass nativeAccess, jobject java_import_meta, jobject java_module);
 
-jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_referrer, jobject java_specifier, jobject java_import_assertions);
+jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_host_defined_options, jobject java_resource_name, jobject java_specifier, jobject java_import_assertions);
 
 jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_specifier, jobject java_import_assertions, jobject java_referrer);
 
@@ -150,12 +150,18 @@ void GraalThrowDataCloneError(JNIEnv* env, jclass nativeAccess, jlong delegate, 
 
 jint GraalGetSharedArrayBufferId(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject sharedArrayBuffer);
 
+jint GraalGetWasmModuleTransferId(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject wasmModule);
+
 jobject GraalGetSharedArrayBufferFromId(JNIEnv* env, jclass nativeAccess, jlong delegate, jint id);
+
+jobject GraalGetWasmModuleFromId(JNIEnv* env, jclass nativeAccess, jlong delegate, jint id);
 
 jobject GraalExecutePrepareStackTraceCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_error, jobject java_stack_trace);
 
 jobject GraalSyntheticModuleEvaluationSteps(JNIEnv* env, jclass nativeAccess, jlong callback, jobject java_context, jobject java_module);
 
 void GraalExecuteInterruptCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong data);
+
+void GraalNotifyWasmStreamingCallback(JNIEnv* env, jclass nativeAccess, jobject response, jobject resolve, jobject reject);
 
 #endif /* CALLBACKS_H_ */

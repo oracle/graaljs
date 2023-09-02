@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -206,15 +206,19 @@ public class ForeignObjectToPrimitiveTest {
     public void testHostInstantToPrimitive() {
         try (Context context = newContext()) {
             Value isLooselyEqual = makeIsLooselyEqual(context);
+            Value minus = makeMinus(context);
 
             long epochMilli = 1645568542000L; // 2022-02-22T22:22:22Z
+            String expectedString = "2022-02-22T22:22:22Z";
             Instant instant = Instant.ofEpochMilli(epochMilli);
-            assertEquals(instant.toString(), toString(context, instant));
-            assertEquals(String.valueOf(epochMilli), valueOf(context, instant));
-            assertTrue("string == instant", isLooselyEqual.execute(String.valueOf(epochMilli), instant).asBoolean());
-            assertTrue("instant == string", isLooselyEqual.execute(instant, String.valueOf(epochMilli)).asBoolean());
-            assertTrue("number == instant", isLooselyEqual.execute(epochMilli, instant).asBoolean());
-            assertTrue("instant == number", isLooselyEqual.execute(instant, epochMilli).asBoolean());
+            assertEquals(expectedString, instant.toString());
+            assertEquals(expectedString, toString(context, instant));
+            assertEquals(expectedString, valueOf(context, instant));
+            assertEquals(epochMilli, toNumber(context, instant).asLong());
+            assertTrue("string == instant", isLooselyEqual.execute(expectedString, instant).asBoolean());
+            assertTrue("instant == string", isLooselyEqual.execute(instant, expectedString).asBoolean());
+            assertEquals("number == instant", 0, minus.execute(epochMilli, instant).asInt());
+            assertEquals("instant == number", 0, minus.execute(instant, epochMilli).asInt());
 
             // isIdentical
             assertTrue("instant == instant", isLooselyEqual.execute(instant, instant).asBoolean());
@@ -233,5 +237,13 @@ public class ForeignObjectToPrimitiveTest {
 
     private static Value makeIsLooselyEqual(Context context) {
         return context.eval(ID, "(function(a, b){return a == b;})");
+    }
+
+    private static Value toNumber(Context context, Object value) {
+        return context.eval(ID, "Number").execute(value);
+    }
+
+    private static Value makeMinus(Context context) {
+        return context.eval(ID, "(function(a, b){return a - b;})");
     }
 }

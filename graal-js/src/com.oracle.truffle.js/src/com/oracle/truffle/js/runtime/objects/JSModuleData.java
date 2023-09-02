@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,10 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import com.oracle.js.parser.ir.Module;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.source.Source;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 
 /**
@@ -53,14 +55,19 @@ public final class JSModuleData extends ScriptOrModule {
     /** Module parse node. */
     private final Module module;
 
-    private final JSFunctionData functionData;
-    private final FrameDescriptor frameDescriptor;
+    @CompilationFinal private JSFunctionData functionData;
+    @CompilationFinal private FrameDescriptor frameDescriptor;
 
     public JSModuleData(Module module, Source source, JSFunctionData functionData, FrameDescriptor frameDescriptor) {
         super(functionData.getContext(), source);
         this.module = module;
         this.functionData = functionData;
         this.frameDescriptor = frameDescriptor;
+    }
+
+    public JSModuleData(Module module, JSContext context, Source source) {
+        super(context, source);
+        this.module = module;
     }
 
     public Module getModule() {
@@ -77,6 +84,12 @@ public final class JSModuleData extends ScriptOrModule {
 
     public boolean isTopLevelAsync() {
         return functionData.isAsync();
+    }
+
+    public void setFunctionData(JSFunctionData functionData) {
+        assert this.functionData == null;
+        this.functionData = functionData;
+        this.frameDescriptor = functionData.getRootNode().getFrameDescriptor();
     }
 
 }

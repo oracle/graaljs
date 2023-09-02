@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSNonProxy.GET_SYMBOL_SPECI
 
 import java.lang.invoke.MethodHandles;
 import java.lang.invoke.VarHandle;
-import java.nio.charset.Charset;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -66,6 +65,7 @@ import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.TruffleLanguage.ContextReference;
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.AllocationReporter;
 import com.oracle.truffle.api.nodes.Node;
@@ -84,6 +84,8 @@ import com.oracle.truffle.js.runtime.builtins.JSArgumentsArray;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSArrayIterator;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncGenerator;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -94,13 +96,16 @@ import com.oracle.truffle.js.runtime.builtins.JSDictionary;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistryObject;
+import com.oracle.truffle.js.runtime.builtins.JSForInIterator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSGenerator;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
+import com.oracle.truffle.js.runtime.builtins.JSMapIterator;
 import com.oracle.truffle.js.runtime.builtins.JSModuleNamespace;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -109,9 +114,11 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
 import com.oracle.truffle.js.runtime.builtins.JSShadowRealm;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSStringIterator;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
@@ -120,6 +127,8 @@ import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextSnapshot;
+import com.oracle.truffle.js.runtime.builtins.asynccontext.JSAsyncContextVariable;
 import com.oracle.truffle.js.runtime.builtins.intl.JSCollator;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDisplayNames;
@@ -157,6 +166,7 @@ import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
+import com.oracle.truffle.js.runtime.util.StableContextOptionValue;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TimeProfiler;
 
@@ -167,7 +177,6 @@ public class JSContext {
     private final Evaluator evaluator;
 
     private final JavaScriptLanguage language;
-    private TruffleLanguage.Env initialEnvironment;
 
     private final Shape emptyShape;
     private final Shape emptyShapePrototypeInObject;
@@ -216,6 +225,7 @@ public class JSContext {
     private final Assumption globalObjectPristineAssumption;
 
     private final Map<TruffleString, Symbol> symbolRegistry = new ConcurrentHashMap<>();
+    private final Map<TruffleString, Symbol> privateSymbolRegistry = new ConcurrentHashMap<>();
 
     private final Object nodeFactory;
 
@@ -362,22 +372,6 @@ public class JSContext {
         RegExp$7,
         RegExp$8,
         RegExp$9,
-        SymbolGetDescription,
-        MapGetSize,
-        SetGetSize,
-        ArrayBufferViewLength,
-        ArrayBufferViewBuffer,
-        ArrayBufferViewByteLength,
-        ArrayBufferViewByteByteOffset,
-        ArrayBufferViewToString,
-        DataViewBuffer,
-        DataViewByteLength,
-        DataViewByteOffset,
-        CollatorGetCompare,
-        NumberFormatGetFormat,
-        DateTimeFormatGetFormat,
-        SegmenterBreakType,
-        SegmenterPosition,
         FunctionAsyncIterator,
         IsGraalRuntime,
         SetUnhandledPromiseRejectionHandler,
@@ -385,60 +379,13 @@ public class JSContext {
         AsyncModuleExecutionRejected,
         TopLevelAwaitResolve,
         TopLevelAwaitReject,
-        WebAssemblyInstanceGetExports,
-        WebAssemblyMemoryGetBuffer,
-        WebAssemblyTableGetLength,
-        WebAssemblyGlobalGetValue,
-        WebAssemblyGlobalSetValue,
         WebAssemblySourceInstantiation,
         FinishImportModuleDynamicallyReject,
         FinishImportModuleDynamicallyResolve,
-        TemporalTimeCalendar,
-        TemporalTimeHour,
-        TemporalTimeMinute,
-        TemporalTimeSecond,
-        TemporalTimeMillisecond,
-        TemporalTimeMicrosecond,
-        TemporalTimeNanosecond,
-        TemporalDurationYears,
-        TemporalDurationMonths,
-        TemporalDurationWeeks,
-        TemporalDurationDays,
-        TemporalDurationHours,
-        TemporalDurationMinutes,
-        TemporalDurationSeconds,
-        TemporalDurationMilliseconds,
-        TemporalDurationMicroseconds,
-        TemporalDurationNanoseconds,
-        TemporalDurationSign,
-        TemporalDurationBlank,
-        TemporalCalendarId,
-        TemporalPlainYearMonthCalendar,
-        TemporalPlainYearMonthYear,
-        TemporalPlainYearMonthMonth,
-        TemporalPlainYearMonthMonthCode,
-        TemporalPlainYearMonthDaysInYear,
-        TemporalPlainYearMonthDaysInMonth,
-        TemporalPlainYearMonthMonthsInYear,
-        TemporalPlainYearMonthInLeapYear,
-        TemporalPlainMonthDayCalendar,
-        TemporalPlainMonthDayMonthCode,
-        TemporalPlainMonthDayDay,
-        TemporalDateCalendar,
-        TemporalDateYear,
-        TemporalDateMonth,
-        TemporalDateMonthCode,
-        TemporalDateDay,
-        TemporalDateDayOfWeek,
-        TemporalDateDayOfYear,
-        TemporalDateWeekOfYear,
-        TemporalDateDaysInWeek,
-        TemporalDateDaysInMonth,
-        TemporalDateDaysInYear,
-        TemporalDateMonthsInYear,
-        TemporalDateInLeapYear,
         ExportGetter,
         OrdinaryWrappedFunctionCall,
+        DecoratorContextAddInitializer,
+        DedentCallback
     }
 
     @CompilationFinal(dimensions = 1) private final JSFunctionData[] builtinFunctionData;
@@ -460,7 +407,13 @@ public class JSContext {
 
     @CompilationFinal private AllocationReporter allocationReporter;
 
-    private final JSContextOptions contextOptions;
+    private final JSLanguageOptions languageOptions;
+    private final JSParserOptions parserOptions;
+
+    private final StableContextOptionValue<Boolean> optionRegexpStaticResult;
+    private final StableContextOptionValue<Boolean> optionV8CompatibilityMode;
+    private final StableContextOptionValue<Boolean> optionDirectByteBuffer;
+    private final StableContextOptionValue<Long> optionTimerResolution;
 
     private final Map<Builtin, JSFunctionData> builtinFunctionDataMap = new ConcurrentHashMap<>();
     private final Map<TruffleString, JSFunctionData> namedEmptyFunctionsDataMap = new ConcurrentHashMap<>();
@@ -489,6 +442,7 @@ public class JSContext {
     private final JSObjectFactory arrayFactory;
     private final JSObjectFactory iteratorFactory;
     private final JSObjectFactory asyncIteratorFactory;
+    private final JSObjectFactory arrayIteratorFactory;
     private final JSObjectFactory wrapForIteratorFactory;
     private final JSObjectFactory wrapForAsyncIteratorFactory;
     private final JSObjectFactory lazyRegexArrayFactory;
@@ -497,6 +451,7 @@ public class JSContext {
     private final JSObjectFactory numberFactory;
     private final JSObjectFactory bigIntFactory;
     private final JSObjectFactory stringFactory;
+    private final JSObjectFactory stringIteratorFactory;
     private final JSObjectFactory regExpFactory;
     private final JSObjectFactory dateFactory;
     private final JSObjectFactory nonStrictArgumentsFactory;
@@ -506,7 +461,9 @@ public class JSContext {
 
     private final JSObjectFactory symbolFactory;
     private final JSObjectFactory mapFactory;
+    private final JSObjectFactory mapIteratorFactory;
     private final JSObjectFactory setFactory;
+    private final JSObjectFactory setIteratorFactory;
     private final JSObjectFactory weakRefFactory;
     private final JSObjectFactory weakMapFactory;
     private final JSObjectFactory weakSetFactory;
@@ -524,8 +481,12 @@ public class JSContext {
     private final JSObjectFactory enumerateIteratorFactory;
     private final JSObjectFactory forInIteratorFactory;
     private final JSObjectFactory generatorObjectFactory;
+    private final JSObjectFactory generatorObjectPrototypeFactory;
+    private final JSObjectFactory iteratorHelperObjectFactory;
     private final JSObjectFactory asyncGeneratorObjectFactory;
+    private final JSObjectFactory asyncGeneratorObjectPrototypeFactory;
     private final JSObjectFactory asyncFromSyncIteratorFactory;
+    private final JSObjectFactory asyncIteratorHelperObjectFactory;
 
     private final JSObjectFactory collatorFactory;
     private final JSObjectFactory numberFormatFactory;
@@ -564,11 +525,12 @@ public class JSContext {
     private final JSObjectFactory webAssemblyGlobalFactory;
 
     private final JSObjectFactory shadowRealmFactory;
+    private final JSObjectFactory asyncContextSnapshotFactory;
+    private final JSObjectFactory asyncContextVariableFactory;
 
     private final int factoryCount;
 
     @CompilationFinal private Locale locale;
-    @CompilationFinal private Charset charset;
 
     private final Set<TruffleString> supportedImportAssertions;
 
@@ -591,16 +553,19 @@ public class JSContext {
         }
     }
 
-    protected JSContext(Evaluator evaluator, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
-        this.contextOptions = contextOptions;
+    protected JSContext(Evaluator evaluator, JavaScriptLanguage lang, JSLanguageOptions languageOptions, TruffleLanguage.Env env) {
+        this.language = lang;
+        this.languageOptions = languageOptions;
+        this.parserOptions = JSParserOptions.fromLanguageOptions(languageOptions);
 
         if (env != null) { // env could still be null
             setAllocationReporter(env);
-            this.contextOptions.setOptionValues(env.getOptions());
         }
 
-        this.language = lang;
-        this.initialEnvironment = env;
+        this.optionRegexpStaticResult = new StableContextOptionValue<>(JSContextOptions::isRegexpStaticResult, JSContextOptions.REGEXP_STATIC_RESULT, JSContextOptions.REGEXP_STATIC_RESULT_NAME);
+        this.optionV8CompatibilityMode = new StableContextOptionValue<>(JSContextOptions::isV8CompatibilityMode, JSContextOptions.V8_COMPATIBILITY_MODE, JSContextOptions.V8_COMPATIBILITY_MODE_NAME);
+        this.optionDirectByteBuffer = new StableContextOptionValue<>(JSContextOptions::isDirectByteBuffer, JSContextOptions.DIRECT_BYTE_BUFFER, JSContextOptions.DIRECT_BYTE_BUFFER_NAME);
+        this.optionTimerResolution = new StableContextOptionValue<>(JSContextOptions::getTimerResolution, JSContextOptions.TIMER_RESOLUTION, JSContextOptions.TIMER_RESOLUTION_NAME);
 
         this.sharedRootNode = new SharedRootNode();
 
@@ -635,7 +600,7 @@ public class JSContext {
 
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
-        this.timeProfiler = contextOptions.isProfileTime() ? new TimeProfiler() : null;
+        this.timeProfiler = languageOptions.profileTime() ? new TimeProfiler() : null;
 
         this.singleRealmAssumption = Truffle.getRuntime().createAssumption("single realm");
 
@@ -668,6 +633,7 @@ public class JSContext {
         this.arrayFactory = builder.create(JSArray.INSTANCE);
         this.iteratorFactory = builder.create(JSIterator.INSTANCE);
         this.asyncIteratorFactory = builder.create(JSAsyncIterator.INSTANCE);
+        this.arrayIteratorFactory = builder.create(JSArrayIterator.INSTANCE);
         this.wrapForIteratorFactory = builder.create(JSWrapForValidIterator.INSTANCE);
         this.wrapForAsyncIteratorFactory = builder.create(JSWrapForValidAsyncIterator.INSTANCE);
         this.lazyRegexArrayFactory = builder.create(JSArray.INSTANCE);
@@ -676,12 +642,15 @@ public class JSContext {
         this.numberFactory = builder.create(JSNumber.INSTANCE);
         this.bigIntFactory = builder.create(JSBigInt.INSTANCE);
         this.stringFactory = builder.create(JSString.INSTANCE);
+        this.stringIteratorFactory = builder.create(JSStringIterator.INSTANCE);
         this.regExpFactory = builder.create(JSRegExp.INSTANCE);
         this.dateFactory = builder.create(JSDate.INSTANCE);
 
         this.symbolFactory = builder.create(JSSymbol.INSTANCE);
         this.mapFactory = builder.create(JSMap.INSTANCE);
+        this.mapIteratorFactory = builder.create(JSMapIterator.INSTANCE);
         this.setFactory = builder.create(JSSet.INSTANCE);
+        this.setIteratorFactory = builder.create(JSSetIterator.INSTANCE);
         this.weakRefFactory = builder.create(JSWeakRef.INSTANCE);
         this.weakMapFactory = builder.create(JSWeakMap.INSTANCE);
         this.weakSetFactory = builder.create(JSWeakSet.INSTANCE);
@@ -708,11 +677,15 @@ public class JSContext {
         this.nonStrictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsArray.INSTANCE);
         this.strictArgumentsFactory = builder.create(objectPrototypeSupplier, JSArgumentsArray.INSTANCE);
         this.enumerateIteratorFactory = builder.create(JSRealm::getEnumerateIteratorPrototype, JSFunction::makeInitialEnumerateIteratorShape);
-        this.forInIteratorFactory = builder.create(JSRealm::getForInIteratorPrototype, JSFunction::makeInitialForInIteratorShape);
+        this.forInIteratorFactory = builder.create(JSForInIterator.INSTANCE);
 
-        this.generatorObjectFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
-        this.asyncGeneratorObjectFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
-        this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, ordinaryObjectShapeSupplier);
+        this.generatorObjectFactory = builder.create(JSGenerator.INSTANCE);
+        this.generatorObjectPrototypeFactory = builder.create(JSRealm::getGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
+        this.iteratorHelperObjectFactory = builder.create(JSRealm::getIteratorHelperPrototype, JSGenerator.INSTANCE);
+        this.asyncGeneratorObjectFactory = builder.create(JSAsyncGenerator.INSTANCE);
+        this.asyncGeneratorObjectPrototypeFactory = builder.create(JSRealm::getAsyncGeneratorObjectPrototype, ordinaryObjectShapeSupplier);
+        this.asyncFromSyncIteratorFactory = builder.create(JSRealm::getAsyncFromSyncIteratorPrototype, JSIterator.INSTANCE);
+        this.asyncIteratorHelperObjectFactory = builder.create(JSRealm::getAsyncIteratorHelperPrototype, JSAsyncGenerator.INSTANCE);
 
         this.collatorFactory = builder.create(JSCollator.INSTANCE);
         this.numberFormatFactory = builder.create(JSNumberFormat.INSTANCE);
@@ -753,18 +726,20 @@ public class JSContext {
         this.webAssemblyGlobalFactory = builder.create(JSWebAssemblyGlobal.INSTANCE);
 
         this.shadowRealmFactory = builder.create(JSShadowRealm.INSTANCE);
+        this.asyncContextSnapshotFactory = builder.create(JSAsyncContextSnapshot.INSTANCE);
+        this.asyncContextVariableFactory = builder.create(JSAsyncContextVariable.INSTANCE);
 
         this.factoryCount = builder.finish();
 
         this.regExpGroupsEmptyShape = JSRegExp.makeInitialGroupsObjectShape(this);
 
-        this.regexOptions = createRegexOptions(contextOptions);
+        this.regexOptions = createRegexOptions(languageOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
-        this.supportedImportAssertions = contextOptions.isImportAssertions() ? Set.of(TYPE_IMPORT_ASSERTION) : Set.of();
+        this.supportedImportAssertions = languageOptions.importAssertions() ? Set.of(TYPE_IMPORT_ASSERTION) : Set.of();
 
-        if (contextOptions.getUnhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
-            setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, contextOptions.getUnhandledRejectionsMode()));
+        if (languageOptions.unhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
+            setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, languageOptions.unhandledRejectionsMode()));
         }
     }
 
@@ -777,7 +752,7 @@ public class JSContext {
     }
 
     public final JSParserOptions getParserOptions() {
-        return contextOptions.getParserOptions();
+        return parserOptions;
     }
 
     public final Object getEmbedderData() {
@@ -820,8 +795,14 @@ public class JSContext {
         return globalObjectPristineAssumption;
     }
 
-    public static JSContext createContext(Evaluator evaluator, JSContextOptions contextOptions, JavaScriptLanguage lang, TruffleLanguage.Env env) {
-        return new JSContext(evaluator, contextOptions, lang, env);
+    public static JSContext createContext(Evaluator evaluator, JavaScriptLanguage language, TruffleLanguage.Env env) {
+        JSContextOptions contextOptions = JSContextOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions());
+        JSLanguageOptions languageOptions = JSLanguageOptions.fromContextOptions(contextOptions);
+        JSContext context = new JSContext(evaluator, language, languageOptions, env);
+        if (!env.isPreInitialization()) {
+            context.updateStableOptions(contextOptions, StableContextOptionValue.UpdateKind.INITIALIZE);
+        }
+        return context;
     }
 
     public JSRealm createRealm(TruffleLanguage.Env env) {
@@ -839,12 +820,12 @@ public class JSContext {
         newRealm.setupGlobals();
 
         if (isTop) {
-            if (contextOptions.isTest262Mode() || contextOptions.isTestV8Mode()) {
-                newRealm.setAgent(new DebugJSAgent(getPromiseRejectionTracker(), contextOptions.canAgentBlock()));
+            if (languageOptions.test262Mode() || languageOptions.testV8Mode()) {
+                newRealm.setAgent(new DebugJSAgent(getPromiseRejectionTracker(), languageOptions.agentCanBlock()));
             } else {
                 newRealm.setAgent(new MainJSAgent(getPromiseRejectionTracker()));
             }
-            if (contextOptions.isV8RealmBuiltin()) {
+            if (languageOptions.v8RealmBuiltin()) {
                 newRealm.initRealmList();
                 newRealm.addToRealmList(newRealm);
             }
@@ -890,12 +871,17 @@ public class JSContext {
         return symbolRegistry;
     }
 
+    public final Map<TruffleString, Symbol> getPrivateSymbolRegistry() {
+        return privateSymbolRegistry;
+    }
+
     /**
-     * ECMA 8.4.1 EnqueueJob.
+     * ES abstract operation HostEnqueuePromiseJob.
      */
-    public final void promiseEnqueueJob(JSRealm realm, JSFunctionObject job) {
+    public final void enqueuePromiseJob(JSRealm realm, JSFunctionObject job) {
         invalidatePromiseQueueNotUsedAssumption();
-        realm.getAgent().enqueuePromiseJob(job);
+        JSAgent agent = realm.getAgent();
+        agent.enqueuePromiseJob(job);
     }
 
     public final void signalAsyncWaiterRecordUsage() {
@@ -972,6 +958,10 @@ public class JSContext {
         return asyncIteratorFactory;
     }
 
+    public final JSObjectFactory getArrayIteratorFactory() {
+        return arrayIteratorFactory;
+    }
+
     public final JSObjectFactory getWrapForIteratorFactory() {
         return wrapForIteratorFactory;
     }
@@ -990,6 +980,10 @@ public class JSContext {
 
     public final JSObjectFactory getStringFactory() {
         return stringFactory;
+    }
+
+    public final JSObjectFactory getStringIteratorFactory() {
+        return stringIteratorFactory;
     }
 
     public final JSObjectFactory getBooleanFactory() {
@@ -1040,6 +1034,10 @@ public class JSContext {
         return mapFactory;
     }
 
+    public final JSObjectFactory getMapIteratorFactory() {
+        return mapIteratorFactory;
+    }
+
     public final JSObjectFactory getFinalizationRegistryFactory() {
         return finalizationRegistryFactory;
     }
@@ -1054,6 +1052,10 @@ public class JSContext {
 
     public final JSObjectFactory getSetFactory() {
         return setFactory;
+    }
+
+    public final JSObjectFactory getSetIteratorFactory() {
+        return setIteratorFactory;
     }
 
     public final JSObjectFactory getWeakSetFactory() {
@@ -1109,12 +1111,28 @@ public class JSContext {
         return generatorObjectFactory;
     }
 
+    public final JSObjectFactory getGeneratorObjectPrototypeFactory() {
+        return generatorObjectPrototypeFactory;
+    }
+
+    public final JSObjectFactory getIteratorHelperObjectFactory() {
+        return iteratorHelperObjectFactory;
+    }
+
     public final JSObjectFactory getAsyncGeneratorObjectFactory() {
         return asyncGeneratorObjectFactory;
     }
 
+    public final JSObjectFactory getAsyncGeneratorObjectPrototypeFactory() {
+        return asyncGeneratorObjectPrototypeFactory;
+    }
+
     public final JSObjectFactory getAsyncFromSyncIteratorFactory() {
         return asyncFromSyncIteratorFactory;
+    }
+
+    public final JSObjectFactory getAsyncIteratorHelperObjectFactory() {
+        return asyncIteratorHelperObjectFactory;
     }
 
     public final JSObjectFactory getCollatorFactory() {
@@ -1245,27 +1263,35 @@ public class JSContext {
         return shadowRealmFactory;
     }
 
+    public final JSObjectFactory getAsyncContextSnapshotFactory() {
+        return asyncContextSnapshotFactory;
+    }
+
+    public final JSObjectFactory getAsyncContextVariableFactory() {
+        return asyncContextVariableFactory;
+    }
+
     private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";
     private static final String REGEX_OPTION_DUMP_AUTOMATA = "DumpAutomata";
     private static final String REGEX_OPTION_STEP_EXECUTION = "StepExecution";
     private static final String REGEX_OPTION_ALWAYS_EAGER = "AlwaysEager";
     private static final String REGEX_OPTION_VALIDATE = "Validate=true";
 
-    private static String createRegexOptions(JSContextOptions contextOptions) {
-        StringBuilder options = new StringBuilder();
-        if (contextOptions.isRegexRegressionTestMode()) {
-            options.append(REGEX_OPTION_REGRESSION_TEST_MODE).append("=true,");
+    private static String createRegexOptions(JSLanguageOptions jsOptions) {
+        StringBuilder regexOptions = new StringBuilder();
+        if (jsOptions.regexRegressionTestMode()) {
+            regexOptions.append(REGEX_OPTION_REGRESSION_TEST_MODE).append("=true,");
         }
-        if (contextOptions.isRegexDumpAutomata()) {
-            options.append(REGEX_OPTION_DUMP_AUTOMATA).append("=true,");
+        if (jsOptions.regexDumpAutomata()) {
+            regexOptions.append(REGEX_OPTION_DUMP_AUTOMATA).append("=true,");
         }
-        if (contextOptions.isRegexStepExecution()) {
-            options.append(REGEX_OPTION_STEP_EXECUTION).append("=true,");
+        if (jsOptions.regexStepExecution()) {
+            regexOptions.append(REGEX_OPTION_STEP_EXECUTION).append("=true,");
         }
-        if (contextOptions.isRegexAlwaysEager()) {
-            options.append(REGEX_OPTION_ALWAYS_EAGER).append("=true,");
+        if (jsOptions.regexAlwaysEager()) {
+            regexOptions.append(REGEX_OPTION_ALWAYS_EAGER).append("=true,");
         }
-        return options.toString();
+        return regexOptions.toString();
     }
 
     public String getRegexOptions() {
@@ -1279,8 +1305,8 @@ public class JSContext {
     public Object getTRegexEmptyResult() {
         if (tRegexEmptyResult == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            tRegexEmptyResult = TRegexUtil.InvokeExecMethodNode.getUncached().execute(RegexCompilerInterface.compile("[]", "", this, JSRealm.get(null)), "", 0);
-            assert !TRegexUtil.TRegexResultAccessor.getUncached().isMatch(tRegexEmptyResult);
+            tRegexEmptyResult = TRegexUtil.InvokeExecMethodNode.getUncached().execute(null, RegexCompilerInterface.compile("[]", "", this, JSRealm.get(null)), "", 0);
+            assert !TRegexUtil.TRegexResultAccessor.isMatch(tRegexEmptyResult, null, TRegexUtil.InteropReadBooleanMemberNode.getUncached());
         }
         return tRegexEmptyResult;
     }
@@ -1307,14 +1333,6 @@ public class JSContext {
 
     public JavaScriptLanguage getLanguage() {
         return language;
-    }
-
-    private TruffleLanguage.Env getInitialEnvironment() {
-        return initialEnvironment;
-    }
-
-    public void clearInitialEnvironment() {
-        this.initialEnvironment = null;
     }
 
     public CallTarget getEmptyFunctionCallTarget() {
@@ -1435,15 +1453,16 @@ public class JSContext {
     }
 
     public int getEcmaScriptVersion() {
-        return contextOptions.getEcmaScriptVersion();
+        return languageOptions.ecmaScriptVersion();
     }
 
+    @Idempotent
     public int getPropertyCacheLimit() {
-        return contextOptions.getPropertyCacheLimit();
+        return languageOptions.propertyCacheLimit();
     }
 
     public int getFunctionCacheLimit() {
-        return contextOptions.getFunctionCacheLimit();
+        return languageOptions.functionCacheLimit();
     }
 
     void setAllocationReporter(TruffleLanguage.Env env) {
@@ -1466,102 +1485,80 @@ public class JSContext {
     }
 
     public boolean isOptionAnnexB() {
-        return contextOptions.isAnnexB();
+        return languageOptions.annexB();
     }
 
     public boolean isOptionIntl402() {
-        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option intl-402 accessed during context pre-initialization.";
-        return contextOptions.isIntl402();
+        return languageOptions.intl402();
     }
 
     public boolean isOptionRegexpMatchIndices() {
-        return contextOptions.isRegexpMatchIndices();
+        return languageOptions.regexpMatchIndices();
+    }
+
+    public boolean isOptionRegexpUnicodeSets() {
+        return languageOptions.regexpUnicodeSets();
     }
 
     public boolean isOptionRegexpStaticResult() {
-        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option static-regex-result accessed during context pre-initialization.";
-        return contextOptions.isRegexpStaticResult();
-    }
-
-    public boolean isOptionRegexpStaticResultInContextInit() {
-        return contextOptions.isRegexpStaticResult();
+        return optionRegexpStaticResult.get();
     }
 
     public boolean isOptionSharedArrayBuffer() {
-        return contextOptions.isSharedArrayBuffer();
-    }
-
-    public boolean isOptionAtomics() {
-        return contextOptions.isAtomics();
+        return languageOptions.sharedArrayBuffer();
     }
 
     public boolean isOptionTemporal() {
-        return contextOptions.isTemporal();
+        return languageOptions.temporal();
     }
 
     public boolean isOptionV8CompatibilityMode() {
-        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option v8-compat accessed during context pre-initialization.";
-        return contextOptions.isV8CompatibilityMode();
+        return optionV8CompatibilityMode.get();
     }
 
-    /**
-     * Returns whether the v8-compat option is set or not. This method is the same as
-     * {@link #isOptionV8CompatibilityMode()}, but it does not trigger an assertion error when used
-     * during context pre-initialization. It is meant to be used for taking decisions which can be
-     * undone during context-patching.
-     */
-    public boolean isOptionV8CompatibilityModeInContextInit() {
-        return contextOptions.isV8CompatibilityMode();
-    }
-
+    @Idempotent
     public boolean isOptionNashornCompatibilityMode() {
-        return contextOptions.isNashornCompatibilityMode();
-    }
-
-    public boolean isOptionDebugBuiltin() {
-        return contextOptions.isDebugBuiltin();
+        return languageOptions.nashornCompatibilityMode();
     }
 
     public boolean isOptionMleBuiltin() {
-        return contextOptions.isMLEMode();
+        return languageOptions.isMLEMode();
     }
 
     public boolean isOptionDirectByteBuffer() {
-        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option direct-byte-buffer accessed during context pre-initialization.";
-        return contextOptions.isDirectByteBuffer();
+        return optionDirectByteBuffer.get();
     }
 
     public boolean isOptionParseOnly() {
-        return contextOptions.isParseOnly();
+        return languageOptions.parseOnly();
     }
 
     public boolean isOptionDisableWith() {
-        return contextOptions.isDisableWith();
+        return languageOptions.disableWith();
     }
 
     public boolean isOptionAsyncStackTraces() {
-        return contextOptions.isAsyncStackTraces();
+        return languageOptions.asyncStackTraces();
     }
 
     public boolean isOptionForeignObjectPrototype() {
-        return contextOptions.hasForeignObjectPrototype();
+        return languageOptions.hasForeignObjectPrototype();
     }
 
     public long getTimerResolution() {
-        assert !(getInitialEnvironment() != null && getInitialEnvironment().isPreInitialization()) : "Patchable option timer-resolution accessed during context pre-initialization.";
-        return contextOptions.getTimerResolution();
+        return optionTimerResolution.get();
     }
 
     public long getFunctionArgumentsLimit() {
-        return contextOptions.getFunctionArgumentsLimit();
+        return languageOptions.functionArgumentsLimit();
     }
 
     public int getStringLengthLimit() {
-        return contextOptions.getStringLengthLimit();
+        return languageOptions.stringLengthLimit();
     }
 
     public boolean usePromiseResolve() {
-        return contextOptions.isAwaitOptimization();
+        return languageOptions.awaitOptimization();
     }
 
     public final void setPrepareStackTraceCallback(PrepareStackTraceCallback callback) {
@@ -1743,10 +1740,11 @@ public class JSContext {
         return singleRealmAssumption;
     }
 
-    public JSContextOptions getContextOptions() {
-        return contextOptions;
+    public JSLanguageOptions getLanguageOptions() {
+        return languageOptions;
     }
 
+    @Idempotent
     public final boolean isMultiContext() {
         return isMultiContext;
     }
@@ -1809,7 +1807,7 @@ public class JSContext {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
-                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments), JSContext.this);
+                Object obj = JSRuntime.requireObjectCoercible(JSArguments.getThisObject(arguments));
                 if (JSArguments.getUserArgumentCount(arguments) < 1) {
                     return Undefined.instance;
                 }
@@ -1832,7 +1830,7 @@ public class JSContext {
 
     private JSFunctionData protoGetterFunction() {
         CallTarget callTarget = new JavaScriptRootNode(getLanguage(), null, null) {
-            @Child private JSToObjectNode toObjectNode = JSToObjectNode.createToObject(JSContext.this);
+            @Child private JSToObjectNode toObjectNode = JSToObjectNode.create();
             @Child private GetPrototypeNode getPrototypeNode = GetPrototypeNode.create();
 
             @Override
@@ -1848,17 +1846,9 @@ public class JSContext {
     }
 
     public void checkEvalAllowed() {
-        if (contextOptions.isDisableEval()) {
+        if (!languageOptions.allowEval()) {
             throw Errors.createEvalDisabled();
         }
-    }
-
-    public boolean isOptionLoadFromURL() {
-        return contextOptions.isLoadFromURL();
-    }
-
-    public boolean isOptionLoadFromClasspath() {
-        return contextOptions.isLoadFromClasspath();
     }
 
     public Locale getLocale() {
@@ -1873,31 +1863,11 @@ public class JSContext {
 
     @TruffleBoundary
     private Locale getLocaleImpl() {
-        String name = getContextOptions().getLocale();
+        String name = getLanguageOptions().locale();
         if (name.isEmpty()) {
             return Locale.getDefault();
         } else {
             return Locale.forLanguageTag(name);
-        }
-    }
-
-    public Charset getCharset() {
-        Charset chrset = charset;
-        if (chrset == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            chrset = getCharsetImpl();
-            charset = chrset;
-        }
-        return chrset;
-    }
-
-    @TruffleBoundary
-    private Charset getCharsetImpl() {
-        String name = getContextOptions().getCharset();
-        if (name.isEmpty()) {
-            return Charset.defaultCharset();
-        } else {
-            return Charset.forName(name);
         }
     }
 
@@ -1920,7 +1890,7 @@ public class JSContext {
     }
 
     public boolean isOptionTopLevelAwait() {
-        return getContextOptions().isTopLevelAwait();
+        return getLanguageOptions().topLevelAwait();
     }
 
     public final Set<TruffleString> getSupportedImportAssertions() {
@@ -1929,5 +1899,12 @@ public class JSContext {
 
     public static TruffleString getTypeImportAssertion() {
         return TYPE_IMPORT_ASSERTION;
+    }
+
+    void updateStableOptions(JSContextOptions contextOptions, StableContextOptionValue.UpdateKind kind) {
+        optionRegexpStaticResult.update(contextOptions, kind);
+        optionV8CompatibilityMode.update(contextOptions, kind);
+        optionDirectByteBuffer.update(contextOptions, kind);
+        optionTimerResolution.update(contextOptions, kind);
     }
 }

@@ -18,13 +18,6 @@ const {
 } = internalBinding('crypto');
 
 const {
-  codes: {
-    ERR_MISSING_OPTION,
-  }
-} = require('internal/errors');
-
-const {
-  getArrayBufferOrView,
   getUsagesUnion,
   hasAnyNotIn,
   jobPromise,
@@ -54,21 +47,18 @@ const {
 
 const generateKeyPair = promisify(_generateKeyPair);
 
-function verifyAcceptableEcKeyUse(name, type, usages) {
+function verifyAcceptableEcKeyUse(name, isPublic, usages) {
   let checkSet;
   switch (name) {
     case 'ECDH':
-      checkSet = ['deriveKey', 'deriveBits'];
+      checkSet = isPublic ? [] : ['deriveKey', 'deriveBits'];
       break;
     case 'ECDSA':
-      switch (type) {
-        case 'private':
-          checkSet = ['sign'];
-          break;
-        case 'public':
-          checkSet = ['verify'];
-          break;
-      }
+      checkSet = isPublic ? ['verify'] : ['sign'];
+      break;
+    default:
+      throw lazyDOMException(
+        'The algorithm is not supported', 'NotSupportedError');
   }
   if (hasAnyNotIn(usages, checkSet)) {
     throw lazyDOMException(
@@ -79,9 +69,12 @@ function verifyAcceptableEcKeyUse(name, type, usages) {
 
 function createECPublicKeyRaw(namedCurve, keyData) {
   const handle = new KeyObjectHandle();
-  keyData = getArrayBufferOrView(keyData, 'keyData');
-  if (handle.initECRaw(kNamedCurveAliases[namedCurve], keyData))
-    return new PublicKeyObject(handle);
+
+  if (!handle.initECRaw(kNamedCurveAliases[namedCurve], keyData)) {
+    throw lazyDOMException('Invalid keyData', 'DataError');
+  }
+
+  return new PublicKeyObject(handle);
 }
 
 async function ecGenerateKey(algorithm, extractable, keyUsages) {
@@ -112,10 +105,9 @@ async function ecGenerateKey(algorithm, extractable, keyUsages) {
   }
 
   const keypair = await generateKeyPair('ec', { namedCurve }).catch((err) => {
-    // TODO(@panva): add err as cause to DOMException
     throw lazyDOMException(
       'The operation failed for an operation-specific reason',
-      'OperationError');
+      { name: 'OperationError', cause: err });
   });
 
   let publicUsages;
@@ -151,7 +143,7 @@ async function ecGenerateKey(algorithm, extractable, keyUsages) {
 }
 
 function ecExportKey(key, format) {
-  return jobPromise(new ECKeyExportJob(
+  return jobPromise(() => new ECKeyExportJob(
     kCryptoJobAsync,
     format,
     key[kKeyObject][kHandle]));
@@ -176,42 +168,52 @@ async function ecImportKey(
   const usagesSet = new SafeSet(keyUsages);
   switch (format) {
     case 'spki': {
-      verifyAcceptableEcKeyUse(name, 'public', usagesSet);
-      keyObject = createPublicKey({
-        key: keyData,
-        format: 'der',
-        type: 'spki'
-      });
+      verifyAcceptableEcKeyUse(name, true, usagesSet);
+      try {
+        keyObject = createPublicKey({
+          key: keyData,
+          format: 'der',
+          type: 'spki',
+        });
+      } catch (err) {
+        throw lazyDOMException(
+          'Invalid keyData', { name: 'DataError', cause: err });
+      }
       break;
     }
     case 'pkcs8': {
-      verifyAcceptableEcKeyUse(name, 'private', usagesSet);
-      keyObject = createPrivateKey({
-        key: keyData,
-        format: 'der',
-        type: 'pkcs8'
-      });
+      verifyAcceptableEcKeyUse(name, false, usagesSet);
+      try {
+        keyObject = createPrivateKey({
+          key: keyData,
+          format: 'der',
+          type: 'pkcs8',
+        });
+      } catch (err) {
+        throw lazyDOMException(
+          'Invalid keyData', { name: 'DataError', cause: err });
+      }
       break;
     }
     case 'jwk': {
-      if (keyData == null || typeof keyData !== 'object')
-        throw lazyDOMException('Invalid JWK keyData', 'DataError');
+      if (!keyData.kty)
+        throw lazyDOMException('Invalid keyData', 'DataError');
       if (keyData.kty !== 'EC')
-        throw lazyDOMException('Invalid key type', 'DataError');
+        throw lazyDOMException('Invalid JWK "kty" Parameter', 'DataError');
       if (keyData.crv !== namedCurve)
-        throw lazyDOMException('Named curve mismatch', 'DataError');
+        throw lazyDOMException(
+          'JWK "crv" does not match the requested algorithm',
+          'DataError');
 
-      if (keyData.d !== undefined) {
-        verifyAcceptableEcKeyUse(name, 'private', usagesSet);
-      } else {
-        verifyAcceptableEcKeyUse(name, 'public', usagesSet);
-      }
+      verifyAcceptableEcKeyUse(
+        name,
+        keyData.d === undefined,
+        usagesSet);
 
       if (usagesSet.size > 0 && keyData.use !== undefined) {
-        if (algorithm.name === 'ECDSA' && keyData.use !== 'sig')
-          throw lazyDOMException('Invalid use type', 'DataError');
-        if (algorithm.name === 'ECDH' && keyData.use !== 'enc')
-          throw lazyDOMException('Invalid use type', 'DataError');
+        const checkUse = name === 'ECDH' ? 'enc' : 'sig';
+        if (keyData.use !== checkUse)
+          throw lazyDOMException('Invalid JWK "use" Parameter', 'DataError');
       }
 
       validateKeyOps(keyData.key_ops, usagesSet);
@@ -219,12 +221,12 @@ async function ecImportKey(
       if (keyData.ext !== undefined &&
           keyData.ext === false &&
           extractable === true) {
-        throw lazyDOMException('JWK is not extractable', 'DataError');
+        throw lazyDOMException(
+          'JWK "ext" Parameter and extractable mismatch',
+          'DataError');
       }
 
       if (algorithm.name === 'ECDSA' && keyData.alg !== undefined) {
-        if (typeof keyData.alg !== 'string')
-          throw lazyDOMException('Invalid alg', 'DataError');
         let algNamedCurve;
         switch (keyData.alg) {
           case 'ES256': algNamedCurve = 'P-256'; break;
@@ -232,23 +234,23 @@ async function ecImportKey(
           case 'ES512': algNamedCurve = 'P-521'; break;
         }
         if (algNamedCurve !== namedCurve)
-          throw lazyDOMException('Named curve mismatch', 'DataError');
+          throw lazyDOMException(
+            'JWK "alg" does not match the requested algorithm',
+            'DataError');
       }
 
       const handle = new KeyObjectHandle();
       const type = handle.initJwk(keyData, namedCurve);
       if (type === undefined)
-        throw lazyDOMException('Invalid JWK keyData', 'DataError');
+        throw lazyDOMException('Invalid JWK', 'DataError');
       keyObject = type === kKeyTypePrivate ?
         new PrivateKeyObject(handle) :
         new PublicKeyObject(handle);
       break;
     }
     case 'raw': {
-      verifyAcceptableEcKeyUse(name, 'public', usagesSet);
+      verifyAcceptableEcKeyUse(name, true, usagesSet);
       keyObject = createECPublicKeyRaw(namedCurve, keyData);
-      if (keyObject === undefined)
-        throw lazyDOMException('Unable to import EC key', 'OperationError');
       break;
     }
   }
@@ -263,7 +265,7 @@ async function ecImportKey(
   }
 
   const {
-    namedCurve: checkNamedCurve
+    namedCurve: checkNamedCurve,
   } = keyObject[kHandle].keyDetail({});
   if (kNamedCurveAliases[namedCurve] !== checkNamedCurve)
     throw lazyDOMException('Named curve mismatch', 'DataError');
@@ -282,11 +284,9 @@ function ecdsaSignVerify(key, data, { name, hash }, signature) {
   if (key.type !== type)
     throw lazyDOMException(`Key must be a ${type} key`, 'InvalidAccessError');
 
-  if (hash === undefined)
-    throw new ERR_MISSING_OPTION('algorithm.hash');
   const hashname = normalizeHashName(hash.name);
 
-  return jobPromise(new SignJob(
+  return jobPromise(() => new SignJob(
     kCryptoJobAsync,
     mode,
     key[kKeyObject][kHandle],

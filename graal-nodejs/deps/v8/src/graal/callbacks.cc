@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,6 +65,7 @@
 #include "graal_set.h"
 #include "graal_string.h"
 #include "graal_symbol.h"
+#include "graal_wasm_streaming.h"
 #include "jni.h"
 #include <array>
 #include <stdlib.h>
@@ -113,15 +114,18 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("notifyPromiseRejectionTracker", "(Ljava/lang/Object;ILjava/lang/Object;)V", &GraalNotifyPromiseRejectionTracker),
     CALLBACK("notifyImportMetaInitializer", "(Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyImportMetaInitializer),
     CALLBACK("executeResolveCallback", "(JLjava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteResolveCallback),
-    CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
+    CALLBACK("executeImportModuleDynamicallyCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecuteImportModuleDynamicallyCallback),
     CALLBACK("executePrepareStackTraceCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalExecutePrepareStackTraceCallback),
     CALLBACK("writeHostObject", "(JLjava/lang/Object;)V", &GraalWriteHostObject),
     CALLBACK("readHostObject", "(J)Ljava/lang/Object;", &GraalReadHostObject),
     CALLBACK("throwDataCloneError", "(JLjava/lang/Object;)V", &GraalThrowDataCloneError),
     CALLBACK("getSharedArrayBufferId", "(JLjava/lang/Object;)I", &GraalGetSharedArrayBufferId),
+    CALLBACK("getWasmModuleTransferId", "(JLjava/lang/Object;)I", &GraalGetWasmModuleTransferId),
     CALLBACK("getSharedArrayBufferFromId", "(JI)Ljava/lang/Object;", &GraalGetSharedArrayBufferFromId),
+    CALLBACK("getWasmModuleFromId", "(JI)Ljava/lang/Object;", &GraalGetWasmModuleFromId),
     CALLBACK("syntheticModuleEvaluationSteps", "(JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalSyntheticModuleEvaluationSteps),
     CALLBACK("executeInterruptCallback", "(JJ)V", &GraalExecuteInterruptCallback),
+    CALLBACK("notifyWasmStreamingCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyWasmStreamingCallback),
  };
 
 static const int CALLBACK_COUNT = sizeof(callbacks) / sizeof(*callbacks);
@@ -622,7 +626,10 @@ void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong d
         v8::WeakCallbackInfo<void>::Callback second_callback = nullptr;
         v8::Isolate* isolate = v8::Isolate::GetCurrent();
         v8::WeakCallbackInfo<void> callback_info = v8::WeakCallbackInfo<void>(isolate, (void*) data, internalFields, &second_callback);
-        v8_callback(callback_info);
+        {
+            v8::HandleScope scope(isolate);
+            v8_callback(callback_info);
+        }
         if (second_callback) {
             v8::HandleScope scope(isolate);
             second_callback(callback_info);
@@ -633,7 +640,10 @@ void GraalWeakCallback(JNIEnv* env, jclass nativeAccess, jlong callback, jlong d
         v8::WeakCallbackInfo<void>::Callback second_callback = nullptr;
         v8::Isolate* isolate = v8::Isolate::GetCurrent();
         v8::WeakCallbackInfo<void> callback_info = v8::WeakCallbackInfo<void>(isolate, internalFields[v8::kInternalFieldsInWeakCallback], internalFields, &second_callback);
-        v8_callback(callback_info);
+        {
+            v8::HandleScope scope(isolate);
+            v8_callback(callback_info);
+        }
         if (second_callback) {
             v8::HandleScope scope(isolate);
             second_callback(callback_info);
@@ -744,18 +754,20 @@ jobject GraalExecuteResolveCallback(JNIEnv* env, jclass nativeAccess, jlong call
     }
 }
 
-jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_referrer, jobject java_specifier, jobject java_import_assertions) {
+jobject GraalExecuteImportModuleDynamicallyCallback(JNIEnv* env, jclass nativeAccess, jobject java_context, jobject java_host_defined_options, jobject java_resource_name, jobject java_specifier, jobject java_import_assertions) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
     GraalContext* graal_context = GraalContext::Allocate(graal_isolate, java_context);
-    GraalScriptOrModule* graal_referrer = GraalScriptOrModule::Allocate(graal_isolate, java_referrer);
+    GraalData* graal_host_defined_options = GraalFixedArray::Allocate(graal_isolate, java_host_defined_options);
+    GraalString* graal_resource_name = GraalString::Allocate(graal_isolate, java_resource_name);
     GraalString* graal_specifier = GraalString::Allocate(graal_isolate, java_specifier);
     GraalFixedArray* graal_import_assertions = GraalFixedArray::Allocate(graal_isolate, java_import_assertions);
     v8::Local<v8::Context> v8_context = reinterpret_cast<v8::Context*> (graal_context);
-    v8::Local<v8::ScriptOrModule> v8_referrer = reinterpret_cast<v8::ScriptOrModule*> (graal_referrer);
+    v8::Local<v8::Data> v8_host_defined_options = reinterpret_cast<v8::Data*> (graal_host_defined_options);
+    v8::Local<v8::Value> v8_resource_name = reinterpret_cast<v8::Value*> (graal_resource_name);
     v8::Local<v8::String> v8_specifier = reinterpret_cast<v8::String*> (graal_specifier);
     v8::Local<v8::FixedArray> v8_import_assertions = reinterpret_cast<v8::FixedArray*> (graal_import_assertions);
-    v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleDynamically(v8_context, v8_referrer, v8_specifier, v8_import_assertions);
+    v8::MaybeLocal<v8::Promise> v8_result = graal_isolate->NotifyImportModuleDynamically(v8_context, v8_host_defined_options, v8_resource_name, v8_specifier, v8_import_assertions);
     if (v8_result.IsEmpty()) {
         return NULL;
     } else {
@@ -786,18 +798,18 @@ jobject GraalExecutePrepareStackTraceCallback(JNIEnv* env, jclass nativeAccess, 
 
 void GraalWriteHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject java_object) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
-    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
+    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::HandleScope scope(isolate);
     GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, java_object);
     v8::Object* object = reinterpret_cast<v8::Object*> (graal_value);
-    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
     d->WriteHostObject(isolate, object);
 }
 
 jobject GraalReadHostObject(JNIEnv* env, jclass nativeAccess, jlong delegate) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
-    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
     v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::HandleScope scope(isolate);
     v8::ValueDeserializer::Delegate* d = reinterpret_cast<v8::ValueDeserializer::Delegate*> (delegate);
     v8::Local<v8::Object> object = d->ReadHostObject(isolate).ToLocalChecked();
     GraalValue* graal_value = reinterpret_cast<GraalValue*> (*object);
@@ -815,8 +827,8 @@ void GraalThrowDataCloneError(JNIEnv* env, jclass nativeAccess, jlong delegate, 
 
 jint GraalGetSharedArrayBufferId(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject sharedArrayBuffer) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
-    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
     v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::HandleScope scope(isolate);
     GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, sharedArrayBuffer);
     v8::SharedArrayBuffer* object = reinterpret_cast<v8::SharedArrayBuffer*> (graal_value);
     v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
@@ -824,10 +836,21 @@ jint GraalGetSharedArrayBufferId(JNIEnv* env, jclass nativeAccess, jlong delegat
     return maybe_id.IsJust() ? maybe_id.FromJust() : -1;
 }
 
+jint GraalGetWasmModuleTransferId(JNIEnv* env, jclass nativeAccess, jlong delegate, jobject wasmModule) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::HandleScope scope(isolate);
+    GraalValue* graal_value = GraalValue::FromJavaObject(graal_isolate, wasmModule);
+    v8::WasmModuleObject* object = reinterpret_cast<v8::WasmModuleObject*> (graal_value);
+    v8::ValueSerializer::Delegate* d = reinterpret_cast<v8::ValueSerializer::Delegate*> (delegate);
+    v8::Maybe<uint32_t> maybe_id = d->GetWasmModuleTransferId(isolate, object);
+    return maybe_id.IsJust() ? maybe_id.FromJust() : -1;
+}
+
 jobject GraalGetSharedArrayBufferFromId(JNIEnv* env, jclass nativeAccess, jlong delegate, jint id) {
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
-    v8::HandleScope scope(reinterpret_cast<v8::Isolate*> (graal_isolate));
     v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::HandleScope scope(isolate);
     v8::ValueDeserializer::Delegate* d = reinterpret_cast<v8::ValueDeserializer::Delegate*> (delegate);
     v8::MaybeLocal<v8::SharedArrayBuffer> v8_maybe_buffer = d->GetSharedArrayBufferFromId(isolate, id);
     if (v8_maybe_buffer.IsEmpty()) {
@@ -835,6 +858,21 @@ jobject GraalGetSharedArrayBufferFromId(JNIEnv* env, jclass nativeAccess, jlong 
     } else {
         v8::Local<v8::SharedArrayBuffer> v8_buffer = v8_maybe_buffer.ToLocalChecked();
         return reinterpret_cast<GraalHandleContent*> (*v8_buffer)->GetJavaObject();
+    }
+}
+
+jobject GraalGetWasmModuleFromId(JNIEnv* env, jclass nativeAccess, jlong delegate, jint id) {
+    GraalIsolate* graal_isolate = CurrentIsolateChecked();
+    v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
+    v8::HandleScope scope(isolate);
+    v8::ValueDeserializer::Delegate* d = reinterpret_cast<v8::ValueDeserializer::Delegate*> (delegate);
+    v8::MaybeLocal<v8::WasmModuleObject> v8_maybe_module = d->GetWasmModuleFromId(isolate, id);
+    if (v8_maybe_module.IsEmpty()) {
+        return nullptr;
+    } else {
+        v8::Local<v8::WasmModuleObject> v8_module = v8_maybe_module.ToLocalChecked();
+        jobject java_module = reinterpret_cast<GraalHandleContent*> (*v8_module)->GetJavaObject();
+        return env->NewLocalRef(java_module);
     }
 }
 
@@ -859,4 +897,25 @@ void GraalExecuteInterruptCallback(JNIEnv* env, jclass nativeAccess, jlong callb
     GraalIsolate* graal_isolate = CurrentIsolateChecked();
     v8::Isolate* isolate = reinterpret_cast<v8::Isolate*> (graal_isolate);
     ((v8::InterruptCallback) callback)(isolate, (void*) data);
+}
+
+void GraalNotifyWasmStreamingCallback(JNIEnv* env, jclass nativeAccess, jobject response, jobject resolve, jobject reject) {
+    GraalIsolate* isolate = CurrentIsolateChecked();
+    v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (isolate);
+    v8::WasmStreamingCallback callback = isolate->GetWasmStreamingCallback();
+    
+    std::array<GraalValue*, 2> values;
+    v8::HandleScope scope(v8_isolate);
+    int i = 1;
+    values[i++] = GraalValue::FromJavaObject(isolate, response);
+    GraalValue* graal_this = isolate->GetUndefined();
+    GraalValue* graal_new_target = isolate->GetUndefined();
+    v8::WasmStreaming::WasmStreamingImpl* wasm_streaming_impl = new v8::WasmStreaming::WasmStreamingImpl(isolate, resolve, reject);
+    v8::WasmStreaming* wasm_streaming = new v8::WasmStreaming(std::unique_ptr<v8::WasmStreaming::WasmStreamingImpl>(wasm_streaming_impl));
+    v8::Local<v8::External> v8_external = GraalExternal::New(v8_isolate, wasm_streaming);
+    GraalValue* graal_data = reinterpret_cast<GraalValue*> (*v8_external);
+    GraalFunctionCallbackArguments callbackArgs(isolate, graal_this, graal_new_target, graal_data, values.data(), 1, false, true);
+
+    GraalFunctionCallbackInfo info(callbackArgs);
+    callback(info);
 }

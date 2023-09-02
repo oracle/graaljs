@@ -44,6 +44,7 @@ const tls = require('tls');
 const { Agent: HttpAgent } = require('_http_agent');
 const {
   Server: HttpServer,
+  setupConnectionsTracking,
   storeHTTPOptions,
   _connectionListener,
 } = require('_http_server');
@@ -51,7 +52,7 @@ const { ClientRequest } = require('_http_client');
 let debug = require('internal/util/debuglog').debuglog('https', (fn) => {
   debug = fn;
 });
-const { URL, urlToHttpOptions, searchParamsSymbol } = require('internal/url');
+const { URL, urlToHttpOptions, isURL } = require('internal/url');
 
 function Server(opts, requestListener) {
   if (!(this instanceof Server)) return new Server(opts, requestListener);
@@ -84,13 +85,15 @@ function Server(opts, requestListener) {
   });
 
   this.timeout = 0;
-  this.keepAliveTimeout = 5000;
   this.maxHeadersCount = null;
-  this.headersTimeout = 60 * 1000; // 60 seconds
-  this.requestTimeout = 0;
+  setupConnectionsTracking(this);
 }
 ObjectSetPrototypeOf(Server.prototype, tls.Server.prototype);
 ObjectSetPrototypeOf(Server, tls.Server);
+
+Server.prototype.closeAllConnections = HttpServer.prototype.closeAllConnections;
+
+Server.prototype.closeIdleConnections = HttpServer.prototype.closeIdleConnections;
 
 Server.prototype.setTimeout = HttpServer.prototype.setTimeout;
 
@@ -139,7 +142,7 @@ function createConnection(port, host, options) {
       debug('reuse session for %j', options._agentKey);
       options = {
         session,
-        ...options
+        ...options,
       };
     }
   }
@@ -175,7 +178,7 @@ function createConnection(port, host, options) {
  *   maxCachedSessions?: number;
  *   servername?: string;
  *   }} [options]
- * @returns {Agent}
+ * @constructor
  */
 function Agent(options) {
   if (!(this instanceof Agent))
@@ -190,7 +193,7 @@ function Agent(options) {
 
   this._sessionCache = {
     map: {},
-    list: []
+    list: [],
   };
 }
 ObjectSetPrototypeOf(Agent.prototype, HttpAgent.prototype);
@@ -341,9 +344,7 @@ function request(...args) {
   if (typeof args[0] === 'string') {
     const urlStr = ArrayPrototypeShift(args);
     options = urlToHttpOptions(new URL(urlStr));
-  } else if (args[0] && args[0][searchParamsSymbol] &&
-             args[0][searchParamsSymbol][searchParamsSymbol]) {
-    // url.URL instance
+  } else if (isURL(args[0])) {
     options = urlToHttpOptions(ArrayPrototypeShift(args));
   }
 
@@ -399,5 +400,5 @@ module.exports = {
   Server,
   createServer,
   get,
-  request
+  request,
 };

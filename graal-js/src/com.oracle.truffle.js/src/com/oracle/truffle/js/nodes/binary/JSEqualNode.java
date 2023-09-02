@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,25 +42,31 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IsPrimitiveNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantNullNode;
 import com.oracle.truffle.js.nodes.access.JSConstantNode.JSConstantUndefinedNode;
+import com.oracle.truffle.js.nodes.cast.JSStringToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
+import com.oracle.truffle.js.nodes.cast.LongToBigIntNode;
 import com.oracle.truffle.js.nodes.unary.JSIsNullOrUndefinedNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -84,6 +90,7 @@ public abstract class JSEqualNode extends JSCompareNode {
         super(left, right);
     }
 
+    @NeverDefault
     public static JSEqualNode create() {
         return JSEqualNodeGen.create(null, null);
     }
@@ -120,6 +127,11 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
+    protected static boolean doLong(long a, long b) {
+        return a == b;
+    }
+
+    @Specialization
     protected static boolean doDouble(double a, double b) {
         return a == b;
     }
@@ -130,8 +142,9 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doDoubleString(double a, TruffleString b) {
-        return doDouble(a, stringToDouble(b));
+    protected static boolean doDoubleString(double a, TruffleString b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doDouble(a, stringToDouble.execute(b));
     }
 
     @Specialization
@@ -155,8 +168,9 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doBooleanString(boolean a, TruffleString b) {
-        return doBooleanDouble(a, stringToDouble(b));
+    protected static boolean doBooleanString(boolean a, TruffleString b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doBooleanDouble(a, stringToDouble.execute(b));
     }
 
     @SuppressWarnings("unused")
@@ -172,33 +186,35 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doStringDouble(TruffleString a, double b) {
-        return doDouble(stringToDouble(a), b);
+    protected static boolean doStringDouble(TruffleString a, double b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doDouble(stringToDouble.execute(a), b);
     }
 
     @Specialization
-    protected boolean doStringBoolean(TruffleString a, boolean b) {
-        return doDoubleBoolean(stringToDouble(a), b);
+    protected static boolean doStringBoolean(TruffleString a, boolean b,
+                    @Shared @Cached JSStringToNumberNode stringToDouble) {
+        return doDoubleBoolean(stringToDouble.execute(a), b);
     }
 
     @Specialization
-    protected boolean doStringBigInt(TruffleString a, BigInt b) {
+    protected static boolean doStringBigInt(TruffleString a, BigInt b) {
         BigInt aBigInt = JSRuntime.stringToBigInt(a);
         return (aBigInt != null) ? aBigInt.compareTo(b) == 0 : false;
     }
 
     @Specialization
-    protected boolean doBigIntString(BigInt a, TruffleString b) {
+    protected static boolean doBigIntString(BigInt a, TruffleString b) {
         return doStringBigInt(b, a);
     }
 
     @Specialization
-    protected boolean doBooleanBigInt(boolean a, BigInt b) {
+    protected static boolean doBooleanBigInt(boolean a, BigInt b) {
         return doBigInt(a ? BigInt.ONE : BigInt.ZERO, b);
     }
 
     @Specialization
-    protected boolean doBigIntBoolean(BigInt a, boolean b) {
+    protected static boolean doBigIntBoolean(BigInt a, boolean b) {
         return doBooleanBigInt(b, a);
     }
 
@@ -220,14 +236,16 @@ public abstract class JSEqualNode extends JSCompareNode {
         return isNullish(a, aInterop);
     }
 
+    @InliningCutoff
     @Specialization(guards = {"hasOverloadedOperators(a) || hasOverloadedOperators(b)"})
-    protected boolean doOverloaded(Object a, Object b,
+    protected static boolean doOverloaded(Object a, Object b,
+                    @Bind("this") Node node,
                     @Cached("createHintDefault(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
-                    @Cached("create()") JSToBooleanNode toBooleanNode) {
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode) {
         if (a == b) {
             return true;
         } else {
-            return toBooleanNode.executeBoolean(overloadedOperatorNode.execute(a, b));
+            return toBooleanNode.executeBoolean(node, overloadedOperatorNode.execute(a, b));
         }
     }
 
@@ -247,8 +265,9 @@ public abstract class JSEqualNode extends JSCompareNode {
         return a == b;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isPrimitiveNode.executeBoolean(b)"}, limit = "1")
-    protected boolean doJSObjectVsPrimitive(JSObject a, Object b,
+    protected static boolean doJSObjectVsPrimitive(JSObject a, Object b,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("isPrimitive") @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
@@ -259,8 +278,9 @@ public abstract class JSEqualNode extends JSCompareNode {
         return nestedEqualNode.executeBoolean(toPrimitiveNode.execute(a), b);
     }
 
+    @InliningCutoff
     @Specialization(guards = {"!hasOverloadedOperators(b)", "isPrimitiveNode.executeBoolean(a)"}, limit = "1")
-    protected boolean doJSObjectVsPrimitive(Object a, JSObject b,
+    protected static boolean doJSObjectVsPrimitive(Object a, JSObject b,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("isPrimitive") @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
@@ -272,12 +292,12 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doBigIntAndInt(BigInt a, int b) {
-        return a.compareTo(BigInt.valueOf(b)) == 0;
+    protected static boolean doBigIntAndInt(BigInt a, int b) {
+        return a.compareValueTo(b) == 0;
     }
 
     @Specialization
-    protected boolean doBigIntAndNumber(BigInt a, double b) {
+    protected static boolean doBigIntAndNumber(BigInt a, double b) {
         if (Double.isNaN(b)) {
             return false;
         }
@@ -285,12 +305,12 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @Specialization
-    protected boolean doIntAndBigInt(int a, BigInt b) {
-        return b.compareTo(BigInt.valueOf(a)) == 0;
+    protected static boolean doIntAndBigInt(int a, BigInt b) {
+        return b.compareValueTo(a) == 0;
     }
 
     @Specialization
-    protected boolean doNumberAndBigInt(double a, BigInt b) {
+    protected static boolean doNumberAndBigInt(double a, BigInt b) {
         return doBigIntAndNumber(b, a);
     }
 
@@ -300,33 +320,32 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isSymbol(b)", "!isObject(b)"})
-    protected static boolean doSymbolNotSymbol(Symbol a, Object b) {
+    @Specialization(guards = {"!isSymbol(b)", "!isObjectNode.executeBoolean(b)"})
+    protected static boolean doSymbolNotSymbol(Symbol a, Object b,
+                    @Shared("isObject") @Cached IsObjectNode isObjectNode) {
         return false;
     }
 
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isSymbol(a)", "!isObject(a)"})
-    protected static boolean doSymbolNotSymbol(Object a, Symbol b) {
+    @Specialization(guards = {"!isSymbol(a)", "!isObjectNode.executeBoolean(a)"})
+    protected static boolean doSymbolNotSymbol(Object a, Symbol b,
+                    @Shared("isObject") @Cached IsObjectNode isObjectNode) {
         return false;
     }
 
+    @InliningCutoff
     @Specialization(guards = "isAForeign || isBForeign")
-    protected boolean doForeign(Object a, Object b,
-                    @Bind("isForeignObject(a)") boolean isAForeign,
-                    @Bind("isForeignObject(b)") boolean isBForeign,
+    protected final boolean doForeign(Object a, Object b,
+                    @Bind("isForeignObjectOrNumber(a)") boolean isAForeign,
+                    @Bind("isForeignObjectOrNumber(b)") boolean isBForeign,
                     @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
                     @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
                     @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
                     @Shared("isPrimitive") @Cached IsPrimitiveNode isPrimitiveNode,
-                    @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
+                    @Shared("equal") @Cached JSEqualNode nestedEqualNode,
+                    @Cached LongToBigIntNode longToBigIntA,
+                    @Cached LongToBigIntNode longToBigIntB) {
         assert a != null && b != null;
-        boolean isAPrimitive = isPrimitiveNode.executeBoolean(a);
-        boolean isBPrimitive = isPrimitiveNode.executeBoolean(b);
-        if (!isAPrimitive && !isBPrimitive) {
-            // If both are of type Object, don't attempt ToPrimitive conversion.
-            return aInterop.isIdentical(a, b, bInterop);
-        }
         // If at least one is nullish => both need to be nullish to be equal
         if (isNullish(a, aInterop)) {
             return isNullish(b, bInterop);
@@ -334,28 +353,21 @@ public abstract class JSEqualNode extends JSCompareNode {
             assert !isNullish(a, bInterop);
             return false;
         }
+        boolean isAPrimitive = isPrimitiveNode.executeBoolean(a);
+        boolean isBPrimitive = isPrimitiveNode.executeBoolean(b);
+        if (!isAPrimitive && !isBPrimitive) {
+            // If both are of type Object, don't attempt ToPrimitive conversion.
+            return aInterop.isIdentical(a, b, bInterop);
+        }
         // If one of them is primitive, we attempt to convert the other one ToPrimitive.
         // Foreign primitive values always have to be converted to JS primitive values.
-        Object primLeft = !isAPrimitive || isAForeign ? toPrimitiveNode.execute(a) : a;
-        Object primRight = !isBPrimitive || isBForeign ? toPrimitiveNode.execute(b) : b;
+        Object primA = !isAPrimitive || isAForeign ? toPrimitiveNode.execute(a) : a;
+        Object primB = !isBPrimitive || isBForeign ? toPrimitiveNode.execute(b) : b;
         // Now that both are primitive values, we can compare them using normal JS semantics.
-        assert !JSGuards.isForeignObject(primLeft) && !JSGuards.isForeignObject(primRight);
-        return nestedEqualNode.executeBoolean(primLeft, primRight);
-    }
-
-    @Specialization(guards = {"isJavaNumber(a)", "isJavaNumber(b)"})
-    protected static boolean doNumber(Number a, Number b) {
-        return doDouble(JSRuntime.doubleValue(a), JSRuntime.doubleValue(b));
-    }
-
-    @Specialization(guards = "isJavaNumber(a)")
-    protected boolean doNumberString(Object a, TruffleString b) {
-        return doDoubleString(JSRuntime.doubleValue((Number) a), b);
-    }
-
-    @Specialization(guards = "isJavaNumber(b)")
-    protected boolean doStringNumber(TruffleString a, Object b) {
-        return doStringDouble(a, JSRuntime.doubleValue((Number) b));
+        assert !JSGuards.isForeignObject(primA) && !JSGuards.isForeignObject(primB);
+        primA = longToBigIntA.execute(this, primA);
+        primB = longToBigIntB.execute(this, primB);
+        return nestedEqualNode.executeBoolean(primA, primB);
     }
 
     @Fallback

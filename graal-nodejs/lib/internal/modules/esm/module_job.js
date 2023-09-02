@@ -12,7 +12,8 @@ const {
   ReflectApply,
   RegExpPrototypeExec,
   RegExpPrototypeSymbolReplace,
-  SafePromiseAll,
+  SafePromiseAllReturnArrayLike,
+  SafePromiseAllReturnVoid,
   SafeSet,
   StringPrototypeIncludes,
   StringPrototypeSplit,
@@ -42,7 +43,7 @@ const CJSGlobalLike = [
 const isCommonJSGlobalLikeNotDefinedError = (errorMessage) =>
   ArrayPrototypeSome(
     CJSGlobalLike,
-    (globalLike) => errorMessage === `${globalLike} is not defined`
+    (globalLike) => errorMessage === `${globalLike} is not defined`,
   );
 
 /* A ModuleJob tracks the loading of a single Module, and the ModuleJobs of
@@ -80,9 +81,9 @@ class ModuleJob {
       });
 
       if (promises !== undefined)
-        await SafePromiseAll(promises);
+        await SafePromiseAllReturnVoid(promises);
 
-      return SafePromiseAll(dependencyJobs);
+      return SafePromiseAllReturnArrayLike(dependencyJobs);
     };
     // Promise for the list of all dependencyJobs.
     this.linked = link();
@@ -110,7 +111,7 @@ class ModuleJob {
       }
       jobsInGraph.add(moduleJob);
       const dependencyJobs = await moduleJob.linked;
-      return SafePromiseAll(dependencyJobs, addJobsToDependencyGraph);
+      return SafePromiseAllReturnVoid(dependencyJobs, addJobsToDependencyGraph);
     };
     await addJobsToDependencyGraph(this);
 
@@ -135,7 +136,7 @@ class ModuleJob {
         const parentFileUrl = RegExpPrototypeSymbolReplace(
           /:\d+$/,
           splitStack[0],
-          ''
+          '',
         );
         const { 1: childSpecifier, 2: name } = RegExpPrototypeExec(
           /module '(.*)' does not provide an export named '(.+)'/,
@@ -215,7 +216,7 @@ class ModuleJob {
       }
       throw e;
     }
-    return { module: this.module };
+    return { __proto__: null, module: this.module };
   }
 }
 ObjectSetPrototypeOf(ModuleJob.prototype, null);

@@ -32,9 +32,7 @@ const {
   ContextifyScript,
   MicrotaskQueue,
   makeContext,
-  isContext: _isContext,
   constants,
-  compileFunction: _compileFunction,
   measureMemory: _measureMemory,
 } = internalBinding('contextify');
 const {
@@ -42,10 +40,6 @@ const {
   ERR_INVALID_ARG_TYPE,
 } = require('internal/errors').codes;
 const {
-  isArrayBufferView,
-} = require('internal/util/types');
-const {
-  validateArray,
   validateBoolean,
   validateBuffer,
   validateFunction,
@@ -60,6 +54,10 @@ const {
   kEmptyObject,
   kVmBreakFirstLineSymbol,
 } = require('internal/util');
+const {
+  internalCompileFunction,
+  isContext,
+} = require('internal/vm');
 const kParsingContext = Symbol('script parsing context');
 
 class Script extends ContextifyScript {
@@ -84,12 +82,8 @@ class Script extends ContextifyScript {
     validateString(filename, 'options.filename');
     validateInt32(lineOffset, 'options.lineOffset');
     validateInt32(columnOffset, 'options.columnOffset');
-    if (cachedData !== undefined && !isArrayBufferView(cachedData)) {
-      throw new ERR_INVALID_ARG_TYPE(
-        'options.cachedData',
-        ['Buffer', 'TypedArray', 'DataView'],
-        cachedData
-      );
+    if (cachedData !== undefined) {
+      validateBuffer(cachedData, 'options.cachedData');
     }
     validateBoolean(produceCachedData, 'options.produceCachedData');
 
@@ -213,12 +207,6 @@ function getContextOptions(options) {
   return contextOptions;
 }
 
-function isContext(object) {
-  validateObject(object, 'object', { allowArray: true });
-
-  return _isContext(object);
-}
-
 let defaultContextNameIndex = 1;
 function createContext(contextObject = {}, options = kEmptyObject) {
   if (isContext(contextObject)) {
@@ -231,7 +219,7 @@ function createContext(contextObject = {}, options = kEmptyObject) {
     name = `VM Context ${defaultContextNameIndex++}`,
     origin,
     codeGeneration,
-    microtaskMode
+    microtaskMode,
   } = options;
 
   validateString(name, 'options.name');
@@ -248,14 +236,12 @@ function createContext(contextObject = {}, options = kEmptyObject) {
     validateBoolean(wasm, 'options.codeGeneration.wasm');
   }
 
-  let microtaskQueue = null;
-  if (microtaskMode !== undefined) {
-    validateOneOf(microtaskMode, 'options.microtaskMode',
-                  ['afterEvaluate', undefined]);
-
-    if (microtaskMode === 'afterEvaluate')
-      microtaskQueue = new MicrotaskQueue();
-  }
+  validateOneOf(microtaskMode,
+                'options.microtaskMode',
+                ['afterEvaluate', undefined]);
+  const microtaskQueue = microtaskMode === 'afterEvaluate' ?
+    new MicrotaskQueue() :
+    null;
 
   makeContext(contextObject, name, origin, strings, wasm, microtaskQueue);
   return contextObject;
@@ -288,7 +274,7 @@ function runInContext(code, contextifiedObject, options) {
   if (typeof options === 'string') {
     options = {
       filename: options,
-      [kParsingContext]: contextifiedObject
+      [kParsingContext]: contextifiedObject,
     };
   } else {
     options = { ...options, [kParsingContext]: contextifiedObject };
@@ -314,83 +300,7 @@ function runInThisContext(code, options) {
 }
 
 function compileFunction(code, params, options = kEmptyObject) {
-  validateString(code, 'code');
-  if (params !== undefined) {
-    validateArray(params, 'params');
-    ArrayPrototypeForEach(params,
-                          (param, i) => validateString(param, `params[${i}]`));
-  }
-
-  const {
-    filename = '',
-    columnOffset = 0,
-    lineOffset = 0,
-    cachedData = undefined,
-    produceCachedData = false,
-    parsingContext = undefined,
-    contextExtensions = [],
-    importModuleDynamically,
-  } = options;
-
-  validateString(filename, 'options.filename');
-  validateUint32(columnOffset, 'options.columnOffset');
-  validateUint32(lineOffset, 'options.lineOffset');
-  if (cachedData !== undefined)
-    validateBuffer(cachedData, 'options.cachedData');
-  validateBoolean(produceCachedData, 'options.produceCachedData');
-  if (parsingContext !== undefined) {
-    if (
-      typeof parsingContext !== 'object' ||
-      parsingContext === null ||
-      !isContext(parsingContext)
-    ) {
-      throw new ERR_INVALID_ARG_TYPE(
-        'options.parsingContext',
-        'Context',
-        parsingContext
-      );
-    }
-  }
-  validateArray(contextExtensions, 'options.contextExtensions');
-  ArrayPrototypeForEach(contextExtensions, (extension, i) => {
-    const name = `options.contextExtensions[${i}]`;
-    validateObject(extension, name, { nullable: true });
-  });
-
-  const result = _compileFunction(
-    code,
-    filename,
-    lineOffset,
-    columnOffset,
-    cachedData,
-    produceCachedData,
-    parsingContext,
-    contextExtensions,
-    params
-  );
-
-  if (produceCachedData) {
-    result.function.cachedDataProduced = result.cachedDataProduced;
-  }
-
-  if (result.cachedData) {
-    result.function.cachedData = result.cachedData;
-  }
-
-  if (importModuleDynamically !== undefined) {
-    validateFunction(importModuleDynamically,
-                     'options.importModuleDynamically');
-    const { importModuleDynamicallyWrap } =
-      require('internal/vm/module');
-    const { callbackMap } = internalBinding('module_wrap');
-    const wrapped = importModuleDynamicallyWrap(importModuleDynamically);
-    const func = result.function;
-    callbackMap.set(result.cacheKey, {
-      importModuleDynamically: (s, _k, i) => wrapped(s, func, i),
-    });
-  }
-
-  return result.function;
+  return internalCompileFunction(code, params, options).function;
 }
 
 const measureMemoryModes = {

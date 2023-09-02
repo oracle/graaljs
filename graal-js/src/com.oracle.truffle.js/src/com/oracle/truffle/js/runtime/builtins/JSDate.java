@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,10 +45,10 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneOffset;
 
-import com.ibm.icu.impl.Grego;
-import com.ibm.icu.text.DateFormat;
-import com.ibm.icu.util.GregorianCalendar;
-import com.ibm.icu.util.TimeZone;
+import org.graalvm.shadowed.com.ibm.icu.impl.Grego;
+import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
+import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
+import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -140,18 +140,18 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
         JSObject datePrototype;
         if (ctx.getEcmaScriptVersion() < 6) {
             Shape protoShape = JSShape.createPrototypeShape(realm.getContext(), INSTANCE, realm.getObjectPrototype());
-            datePrototype = JSDateObject.create(protoShape, Double.NaN);
+            datePrototype = JSDateObject.create(protoShape, realm.getObjectPrototype(), Double.NaN);
             JSObjectUtil.setOrVerifyPrototype(ctx, datePrototype, realm.getObjectPrototype());
         } else {
             datePrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         }
 
-        JSObjectUtil.putConstructorProperty(ctx, datePrototype, ctor);
+        JSObjectUtil.putConstructorProperty(datePrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, datePrototype, DatePrototypeBuiltins.BUILTINS);
 
         if (ctx.isOptionAnnexB()) {
             Object utcStringFunction = JSDynamicObject.getOrNull(datePrototype, Strings.TO_UTC_STRING);
-            JSObjectUtil.putDataProperty(ctx, datePrototype, Strings.TO_GMT_STRING, utcStringFunction, JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putDataProperty(datePrototype, Strings.TO_GMT_STRING, utcStringFunction, JSAttributes.getDefaultNotEnumerable());
         }
         return datePrototype;
     }
@@ -563,9 +563,18 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
 
     public static JSDateObject create(JSContext context, JSRealm realm, double timeMillis) {
         JSObjectFactory factory = context.getDateFactory();
-        JSDateObject obj = JSDateObject.create(factory.getShape(realm), timeMillis);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return create(factory, realm, factory.getPrototype(realm), timeMillis);
+    }
+
+    public static JSDateObject create(JSContext context, JSRealm realm, JSDynamicObject proto, double timeMillis) {
+        JSObjectFactory factory = context.getDateFactory();
+        return create(factory, realm, proto, timeMillis);
+    }
+
+    private static JSDateObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, double timeMillis) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSDateObject(shape, proto, timeMillis), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static double setTime(JSDateObject thisDate, double time) {

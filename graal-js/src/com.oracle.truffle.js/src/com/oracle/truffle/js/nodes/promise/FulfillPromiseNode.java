@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,25 +41,14 @@
 package com.oracle.truffle.js.nodes.promise;
 
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 
 public class FulfillPromiseNode extends JavaScriptBaseNode {
-    @Child private PropertyGetNode getPromiseFulfillReactions;
-    @Child private PropertySetNode setPromiseResult;
-    @Child private PropertySetNode setPromiseFulfillReactions;
-    @Child private PropertySetNode setPromiseRejectReactions;
     @Child private TriggerPromiseReactionsNode triggerPromiseReactions;
 
     protected FulfillPromiseNode(JSContext context) {
-        this.getPromiseFulfillReactions = PropertyGetNode.createGetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
-        this.setPromiseResult = PropertySetNode.createSetHidden(JSPromise.PROMISE_RESULT, context);
-        this.setPromiseFulfillReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_FULFILL_REACTIONS, context);
-        this.setPromiseRejectReactions = PropertySetNode.createSetHidden(JSPromise.PROMISE_REJECT_REACTIONS, context);
         this.triggerPromiseReactions = TriggerPromiseReactionsNode.create(context);
     }
 
@@ -67,12 +56,11 @@ public class FulfillPromiseNode extends JavaScriptBaseNode {
         return new FulfillPromiseNode(context);
     }
 
-    public Object execute(JSDynamicObject promise, Object value) {
+    public Object execute(JSPromiseObject promise, Object value) {
         assert JSPromise.isPending(promise);
-        Object reactions = getPromiseFulfillReactions.getValue(promise);
-        setPromiseResult.setValue(promise, value);
-        setPromiseFulfillReactions.setValue(promise, Undefined.instance);
-        setPromiseRejectReactions.setValue(promise, Undefined.instance);
+        var reactions = promise.getPromiseFulfillReactions();
+        promise.setPromiseResult(value);
+        promise.clearPromiseReactions();
         JSPromise.setPromiseState(promise, JSPromise.FULFILLED);
         return triggerPromiseReactions.execute(reactions, value);
     }

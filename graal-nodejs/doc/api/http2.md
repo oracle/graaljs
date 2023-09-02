@@ -3,7 +3,9 @@
 <!-- YAML
 added: v8.4.0
 changes:
-  - version: v15.3.0
+  - version:
+      - v15.3.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/36070
     description: It is possible to abort a request with an AbortSignal.
   - version: v15.0.0
@@ -41,7 +43,7 @@ let http2;
 try {
   http2 = require('node:http2');
 } catch (err) {
-  console.log('http2 support is disabled!');
+  console.error('http2 support is disabled!');
 }
 ```
 
@@ -59,7 +61,7 @@ let http2;
 try {
   http2 = await import('node:http2');
 } catch (err) {
-  console.log('http2 support is disabled!');
+  console.error('http2 support is disabled!');
 }
 ```
 
@@ -88,7 +90,7 @@ const fs = require('node:fs');
 
 const server = http2.createSecureServer({
   key: fs.readFileSync('localhost-privkey.pem'),
-  cert: fs.readFileSync('localhost-cert.pem')
+  cert: fs.readFileSync('localhost-cert.pem'),
 });
 server.on('error', (err) => console.error(err));
 
@@ -96,7 +98,7 @@ server.on('stream', (stream, headers) => {
   // stream is a Duplex
   stream.respond({
     'content-type': 'text/html; charset=utf-8',
-    ':status': 200
+    ':status': 200,
   });
   stream.end('<h1>Hello World</h1>');
 });
@@ -119,7 +121,7 @@ The following illustrates an HTTP/2 client:
 const http2 = require('node:http2');
 const fs = require('node:fs');
 const client = http2.connect('https://localhost:8443', {
-  ca: fs.readFileSync('localhost-cert.pem')
+  ca: fs.readFileSync('localhost-cert.pem'),
 });
 client.on('error', (err) => console.error(err));
 
@@ -325,7 +327,7 @@ session.on('stream', (stream, headers, flags) => {
   // ...
   stream.respond({
     ':status': 200,
-    'content-type': 'text/plain; charset=utf-8'
+    'content-type': 'text/plain; charset=utf-8',
   });
   stream.write('hello ');
   stream.end('world');
@@ -346,13 +348,13 @@ const server = http2.createServer();
 server.on('stream', (stream, headers) => {
   stream.respond({
     'content-type': 'text/html; charset=utf-8',
-    ':status': 200
+    ':status': 200,
   });
   stream.on('error', (error) => console.error(error));
   stream.end('<h1>Hello World</h1>');
 });
 
-server.listen(80);
+server.listen(8000);
 ```
 
 Even though HTTP/2 streams and network sockets are not in a 1:1 correspondence,
@@ -529,6 +531,12 @@ frames have been acknowledged.
 
 <!-- YAML
 added: v8.9.3
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `payload` {Buffer|TypedArray|DataView} Optional ping payload.
@@ -587,7 +595,9 @@ A prototype-less object describing the current remote settings of this
 #### `http2session.setLocalWindowSize(windowSize)`
 
 <!-- YAML
-added: v15.3.0
+added:
+  - v15.3.0
+  - v14.18.0
 -->
 
 * `windowSize` {number}
@@ -612,6 +622,12 @@ server.on('connect', (session) => {
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `msecs` {number}
@@ -675,6 +691,12 @@ An object describing the current status of this `Http2Session`.
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `settings` {HTTP/2 Settings Object}
@@ -949,7 +971,7 @@ const http2 = require('node:http2');
 const clientSession = http2.connect('https://localhost:1234');
 const {
   HTTP2_HEADER_PATH,
-  HTTP2_HEADER_STATUS
+  HTTP2_HEADER_STATUS,
 } = http2.constants;
 
 const req = clientSession.request({ [HTTP2_HEADER_PATH]: '/' });
@@ -1016,7 +1038,7 @@ encoding.
 ```js
 stream.respond({
   'content-type': 'text/html; charset=utf-8',
-  ':status': 200
+  ':status': 200,
 });
 ```
 
@@ -1202,6 +1224,12 @@ See [`net.Socket.bufferSize`][] for details.
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `code` {number} Unsigned 32-bit integer identifying the error code.
@@ -1347,6 +1375,12 @@ value will be `undefined` after the `Http2Stream` instance is destroyed.
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `msecs` {number}
@@ -1551,6 +1585,12 @@ accepts push streams, `false` otherwise. Settings are the same for every
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `headers` {HTTP/2 Headers Object}
@@ -1691,7 +1731,7 @@ server.on('stream', (stream) => {
   const headers = {
     'content-length': stat.size,
     'last-modified': stat.mtime.toUTCString(),
-    'content-type': 'text/plain; charset=utf-8'
+    'content-type': 'text/plain; charset=utf-8',
   };
   stream.respondWithFD(fd, headers);
   stream.on('close', () => fs.closeSync(fd));
@@ -1736,7 +1776,7 @@ server.on('stream', (stream) => {
   const headers = {
     'content-length': stat.size,
     'last-modified': stat.mtime.toUTCString(),
-    'content-type': 'text/plain; charset=utf-8'
+    'content-type': 'text/plain; charset=utf-8',
   };
   stream.respondWithFD(fd, headers, { waitForTrailers: true });
   stream.on('wantTrailers', () => {
@@ -1810,7 +1850,7 @@ server.on('stream', (stream) => {
       }
     } catch (err) {
       // Perform actual error handling.
-      console.log(err);
+      console.error(err);
     }
     stream.end();
   }
@@ -1982,7 +2022,7 @@ const {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_HEADER_STATUS,
-  HTTP2_HEADER_CONTENT_TYPE
+  HTTP2_HEADER_CONTENT_TYPE,
 } = http2.constants;
 
 const server = http2.createServer();
@@ -1992,7 +2032,7 @@ server.on('stream', (stream, headers, flags) => {
   // ...
   stream.respond({
     [HTTP2_HEADER_STATUS]: 200,
-    [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8'
+    [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
   });
   stream.write('hello ');
   stream.end('world');
@@ -2035,6 +2075,11 @@ closed, although the server has already stopped allowing new sessions. See
 <!-- YAML
 added: v8.4.0
 changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
   - version: v13.0.0
     pr-url: https://github.com/nodejs/node/pull/27558
     description: The default timeout changed from 120s to 0 (no timeout).
@@ -2050,7 +2095,7 @@ on the `Http2Server` after `msecs` milliseconds.
 
 The given callback is registered as a listener on the `'timeout'` event.
 
-In case if `callback` is not a function, a new `ERR_INVALID_CALLBACK`
+In case if `callback` is not a function, a new `ERR_INVALID_ARG_TYPE`
 error will be thrown.
 
 #### `server.timeout`
@@ -2076,7 +2121,9 @@ value only affects new connections to the server, not any existing connections.
 #### `server.updateSettings([settings])`
 
 <!-- YAML
-added: v15.1.0
+added:
+  - v15.1.0
+  - v14.17.0
 -->
 
 * `settings` {HTTP/2 Settings Object}
@@ -2195,7 +2242,7 @@ const {
   HTTP2_HEADER_METHOD,
   HTTP2_HEADER_PATH,
   HTTP2_HEADER_STATUS,
-  HTTP2_HEADER_CONTENT_TYPE
+  HTTP2_HEADER_CONTENT_TYPE,
 } = http2.constants;
 
 const options = getOptionsSomehow();
@@ -2207,7 +2254,7 @@ server.on('stream', (stream, headers, flags) => {
   // ...
   stream.respond({
     [HTTP2_HEADER_STATUS]: 200,
-    [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8'
+    [HTTP2_HEADER_CONTENT_TYPE]: 'text/plain; charset=utf-8',
   });
   stream.write('hello ');
   stream.end('world');
@@ -2260,6 +2307,12 @@ closed, although the server has already stopped allowing new sessions. See
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `msecs` {number} **Default:** `120000` (2 minutes)
@@ -2272,7 +2325,7 @@ on the `Http2SecureServer` after `msecs` milliseconds.
 
 The given callback is registered as a listener on the `'timeout'` event.
 
-In case if `callback` is not a function, a new `ERR_INVALID_CALLBACK`
+In case if `callback` is not a function, a new `ERR_INVALID_ARG_TYPE`
 error will be thrown.
 
 #### `server.timeout`
@@ -2298,7 +2351,9 @@ value only affects new connections to the server, not any existing connections.
 #### `server.updateSettings([settings])`
 
 <!-- YAML
-added: v15.1.0
+added:
+  - v15.1.0
+  - v14.17.0
 -->
 
 * `settings` {HTTP/2 Settings Object}
@@ -2458,12 +2513,12 @@ const server = http2.createServer();
 server.on('stream', (stream, headers) => {
   stream.respond({
     'content-type': 'text/html; charset=utf-8',
-    ':status': 200
+    ':status': 200,
   });
   stream.end('<h1>Hello World</h1>');
 });
 
-server.listen(80);
+server.listen(8000);
 ```
 
 ### `http2.createSecureServer(options[, onRequestHandler])`
@@ -2590,7 +2645,7 @@ const fs = require('node:fs');
 
 const options = {
   key: fs.readFileSync('server-key.pem'),
-  cert: fs.readFileSync('server-cert.pem')
+  cert: fs.readFileSync('server-cert.pem'),
 };
 
 // Create a secure HTTP/2 server
@@ -2599,12 +2654,12 @@ const server = http2.createSecureServer(options);
 server.on('stream', (stream, headers) => {
   stream.respond({
     'content-type': 'text/html; charset=utf-8',
-    ':status': 200
+    ':status': 200,
   });
   stream.end('<h1>Hello World</h1>');
 });
 
-server.listen(80);
+server.listen(8443);
 ```
 
 ### `http2.connect(authority[, options][, listener])`
@@ -2798,7 +2853,9 @@ the given `Buffer` as generated by `http2.getPackedSettings()`.
 ### `http2.sensitiveHeaders`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 * {symbol}
@@ -2818,7 +2875,7 @@ to send more than one value per header field).
 const headers = {
   ':status': '200',
   'content-type': 'text-plain',
-  'ABC': ['has', 'more', 'than', 'one', 'value']
+  'ABC': ['has', 'more', 'than', 'one', 'value'],
 };
 
 stream.respond(headers);
@@ -2869,7 +2926,7 @@ const headers = {
   'content-type': 'text-plain',
   'cookie': 'some-cookie',
   'other-sensitive-header': 'very secret data',
-  [http2.sensitiveHeaders]: ['cookie', 'other-sensitive-header']
+  [http2.sensitiveHeaders]: ['cookie', 'other-sensitive-header'],
 };
 
 stream.respond(headers);
@@ -3055,7 +3112,7 @@ const client = http2.connect('http://localhost:8001');
 // for CONNECT requests or an error will be thrown.
 const req = client.request({
   ':method': 'CONNECT',
-  ':authority': `localhost:${port}`
+  ':authority': 'localhost:8000',
 });
 
 req.on('response', (headers) => {
@@ -3151,7 +3208,7 @@ const key = readFileSync('./key.pem');
 
 const server = createSecureServer(
   { cert, key, allowHTTP1: true },
-  onRequest
+  onRequest,
 ).listen(4443);
 
 function onRequest(req, res) {
@@ -3161,7 +3218,7 @@ function onRequest(req, res) {
   res.writeHead(200, { 'content-type': 'application/json' });
   res.end(JSON.stringify({
     alpnProtocol,
-    httpVersion: req.httpVersion
+    httpVersion: req.httpVersion,
   }));
 }
 ```
@@ -3551,6 +3608,12 @@ See [`response.socket`][].
 
 <!-- YAML
 added: v8.4.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `headers` {HTTP/2 Headers Object} An object describing the headers
@@ -3710,7 +3773,7 @@ Removes a header that has been queued for implicit sending.
 response.removeHeader('Content-Encoding');
 ```
 
-### `response.req`
+#### `response.req`
 
 <!-- YAML
 added: v15.7.0
@@ -3927,6 +3990,36 @@ added: v8.4.0
 Sends a status `100 Continue` to the client, indicating that the request body
 should be sent. See the [`'checkContinue'`][] event on `Http2Server` and
 `Http2SecureServer`.
+
+#### `response.writeEarlyHints(hints)`
+
+<!-- YAML
+added: v18.11.0
+-->
+
+* `hints` {Object}
+
+Sends a status `103 Early Hints` to the client with a Link header,
+indicating that the user agent can preload/preconnect the linked resources.
+The `hints` is an object containing the values of headers to be sent with
+early hints message.
+
+**Example**
+
+```js
+const earlyHintsLink = '</styles.css>; rel=preload; as=style';
+response.writeEarlyHints({
+  'link': earlyHintsLink,
+});
+
+const earlyHintsLinks = [
+  '</styles.css>; rel=preload; as=style',
+  '</scripts.js>; rel=preload; as=script',
+];
+response.writeEarlyHints({
+  'link': earlyHintsLinks,
+});
+```
 
 #### `response.writeHead(statusCode[, statusMessage][, headers])`
 

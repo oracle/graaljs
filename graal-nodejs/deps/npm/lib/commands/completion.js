@@ -29,32 +29,23 @@
 // as an array.
 //
 
-const fs = require('@npmcli/fs')
+const fs = require('fs/promises')
 const nopt = require('nopt')
+const { resolve } = require('path')
 
 const { definitions, shorthands } = require('../utils/config/index.js')
-const { aliases, cmdList, plumbing } = require('../utils/cmd-list.js')
-const aliasNames = Object.keys(aliases)
-const fullList = cmdList.concat(aliasNames).filter(c => !plumbing.includes(c))
+const { commands, aliases } = require('../utils/cmd-list.js')
 const configNames = Object.keys(definitions)
 const shorthandNames = Object.keys(shorthands)
 const allConfs = configNames.concat(shorthandNames)
 const { isWindowsShell } = require('../utils/is-windows.js')
-const fileExists = async (file) => {
-  try {
-    const stat = await fs.stat(file)
-    return stat.isFile()
-  } catch {
-    return false
-  }
-}
+const fileExists = (file) => fs.stat(file).then(s => s.isFile()).catch(() => false)
 
 const BaseCommand = require('../base-command.js')
 
 class Completion extends BaseCommand {
   static description = 'Tab Completion for npm'
   static name = 'completion'
-  static ignoreImplicitWorkspace = false
 
   // completion for the completion command
   async completion (opts) {
@@ -62,7 +53,6 @@ class Completion extends BaseCommand {
       return
     }
 
-    const { resolve } = require('path')
     const [bashExists, zshExists] = await Promise.all([
       fileExists(resolve(process.env.HOME, '.bashrc')),
       fileExists(resolve(process.env.HOME, '.zshrc')),
@@ -87,13 +77,11 @@ class Completion extends BaseCommand {
       })
     }
 
-    const { COMP_CWORD, COMP_LINE, COMP_POINT } = process.env
+    const { COMP_CWORD, COMP_LINE, COMP_POINT, COMP_FISH } = process.env
 
     // if the COMP_* isn't in the env, then just dump the script.
-    if (COMP_CWORD === undefined ||
-      COMP_LINE === undefined ||
-      COMP_POINT === undefined) {
-      return dumpScript()
+    if (COMP_CWORD === undefined || COMP_LINE === undefined || COMP_POINT === undefined) {
+      return dumpScript(resolve(this.npm.npmRoot, 'lib', 'utils', 'completion.sh'))
     }
 
     // ok we're actually looking at the envs and outputting the suggestions
@@ -119,6 +107,7 @@ class Completion extends BaseCommand {
     partialWords.push(partialWord)
 
     const opts = {
+      isFish: COMP_FISH === 'true',
       words,
       w,
       word,
@@ -150,9 +139,9 @@ class Completion extends BaseCommand {
     // take a little shortcut and use npm's arg parsing logic.
     // don't have to worry about the last arg being implicitly
     // boolean'ed, since the last block will catch that.
-    const types = Object.entries(definitions).reduce((types, [key, def]) => {
-      types[key] = def.type
-      return types
+    const types = Object.entries(definitions).reduce((acc, [key, def]) => {
+      acc[key] = def.type
+      return acc
     }, {})
     const parsed = opts.conf =
       nopt(types, shorthands, partialWords.slice(0, -1), 0)
@@ -196,10 +185,7 @@ class Completion extends BaseCommand {
   }
 }
 
-const dumpScript = async () => {
-  const { resolve } = require('path')
-  const p = resolve(__dirname, '..', 'utils', 'completion.sh')
-
+const dumpScript = async (p) => {
   const d = (await fs.readFile(p, 'utf8')).replace(/^#!.*?\n/, '')
   await new Promise((res, rej) => {
     let done = false
@@ -275,7 +261,8 @@ const isFlag = word => {
 // complete against the npm commands
 // if they all resolve to the same thing, just return the thing it already is
 const cmdCompl = (opts, npm) => {
-  const matches = fullList.filter(c => c.startsWith(opts.partialWord))
+  const allCommands = commands.concat(Object.keys(aliases))
+  const matches = allCommands.filter(c => c.startsWith(opts.partialWord))
   if (!matches.length) {
     return matches
   }
@@ -285,7 +272,7 @@ const cmdCompl = (opts, npm) => {
     return [...derefs]
   }
 
-  return fullList
+  return allCommands
 }
 
 module.exports = Completion

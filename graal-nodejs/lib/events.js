@@ -67,7 +67,7 @@ const {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_THIS,
     ERR_OUT_OF_RANGE,
-    ERR_UNHANDLED_ERROR
+    ERR_UNHANDLED_ERROR,
   },
   genericNodeError,
 } = require('internal/errors');
@@ -95,7 +95,7 @@ let EventEmitterAsyncResource;
 function lazyEventEmitterAsyncResource() {
   if (EventEmitterAsyncResource === undefined) {
     const {
-      AsyncResource
+      AsyncResource,
     } = require('async_hooks');
 
     const kEventEmitter = Symbol('kEventEmitter');
@@ -216,6 +216,7 @@ module.exports = EventEmitter;
 module.exports.once = once;
 module.exports.on = on;
 module.exports.getEventListeners = getEventListeners;
+module.exports.getMaxListeners = getMaxListeners;
 // Backwards-compat with node 0.10.x
 EventEmitter.EventEmitter = EventEmitter;
 
@@ -232,7 +233,7 @@ ObjectDefineProperty(EventEmitter, 'captureRejections', {
 
     EventEmitter.prototype[kCapture] = value;
   },
-  enumerable: true
+  enumerable: true,
 });
 
 ObjectDefineProperty(EventEmitter, 'EventEmitterAsyncResource', {
@@ -250,7 +251,7 @@ ObjectDefineProperty(EventEmitter.prototype, kCapture, {
   __proto__: null,
   value: false,
   writable: true,
-  enumerable: false
+  enumerable: false,
 });
 
 EventEmitter.prototype._events = undefined;
@@ -279,7 +280,7 @@ ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
                                  arg);
     }
     defaultMaxListeners = arg;
-  }
+  },
 });
 
 ObjectDefineProperties(EventEmitter, {
@@ -296,7 +297,7 @@ ObjectDefineProperties(EventEmitter, {
     enumerable: false,
     configurable: false,
     writable: false,
-  }
+  },
 });
 
 /**
@@ -480,7 +481,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
         ObjectDefineProperty(er, kEnhanceStackBeforeInspector, {
           __proto__: null,
           value: FunctionPrototypeBind(enhanceStackTrace, this, er, capture),
-          configurable: true
+          configurable: true,
         });
       } catch {
         // Continue regardless of error.
@@ -835,17 +836,34 @@ EventEmitter.prototype.listenerCount = listenerCount;
  * Returns the number of listeners listening to event name
  * specified as `type`.
  * @param {string | symbol} type
+ * @param {Function} listener
  * @returns {number}
  */
-function listenerCount(type) {
+function listenerCount(type, listener) {
   const events = this._events;
 
   if (events !== undefined) {
     const evlistener = events[type];
 
     if (typeof evlistener === 'function') {
+      if (listener != null) {
+        return listener === evlistener ? 1 : 0;
+      }
+
       return 1;
     } else if (evlistener !== undefined) {
+      if (listener != null) {
+        let matching = 0;
+
+        for (let i = 0, l = evlistener.length; i < l; i++) {
+          if (evlistener[i] === listener || evlistener[i].listener === listener) {
+            matching++;
+          }
+        }
+
+        return matching;
+      }
+
       return evlistener.length;
     }
   }
@@ -911,6 +929,23 @@ function getEventListeners(emitterOrTarget, type) {
     }
     return listeners;
   }
+  throw new ERR_INVALID_ARG_TYPE('emitter',
+                                 ['EventEmitter', 'EventTarget'],
+                                 emitterOrTarget);
+}
+
+/**
+ * Returns the max listeners set.
+ * @param {EventEmitter | EventTarget} emitterOrTarget
+ * @returns {number}
+ */
+function getMaxListeners(emitterOrTarget) {
+  if (typeof emitterOrTarget?.getMaxListeners === 'function') {
+    return _getMaxListeners(emitterOrTarget);
+  } else if (emitterOrTarget?.[kMaxEventTargetListeners]) {
+    return emitterOrTarget[kMaxEventTargetListeners];
+  }
+
   throw new ERR_INVALID_ARG_TYPE('emitter',
                                  ['EventEmitter', 'EventTarget'],
                                  emitterOrTarget);
@@ -1002,7 +1037,7 @@ function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
  * @param {{ signal: AbortSignal; }} [options]
  * @returns {AsyncIterator}
  */
-function on(emitter, event, options) {
+function on(emitter, event, options = kEmptyObject) {
   const signal = options?.signal;
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)
@@ -1075,7 +1110,7 @@ function on(emitter, event, options) {
 
     [SymbolAsyncIterator]() {
       return this;
-    }
+    },
   }, AsyncIteratorPrototype);
 
   eventTargetAgnosticAddListener(emitter, event, eventHandler);
@@ -1090,8 +1125,6 @@ function on(emitter, event, options) {
       abortListener,
       { once: true });
   }
-
-  return iterator;
 
   function abortListener() {
     errorHandler(new AbortError(undefined, { cause: signal?.reason }));
@@ -1120,4 +1153,5 @@ function on(emitter, event, options) {
 
     iterator.return();
   }
+  return iterator;
 }

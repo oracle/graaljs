@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,15 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
@@ -73,7 +75,6 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
     @Child private JSToBooleanNode toBooleanNode;
     @Child private JSToPropertyKeyNode toPropertyKeyNode;
     @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
-    private final BranchProfile errorBranch = BranchProfile.create();
 
     public JSProxyHasPropertyNode(JSContext context) {
         this.callNode = JSFunctionCallNode.createCall();
@@ -82,6 +83,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
         this.toBooleanNode = JSToBooleanNode.create();
     }
 
+    @NeverDefault
     public static JSProxyHasPropertyNode create(JSContext context) {
         return JSProxyHasPropertyNodeGen.create(context);
     }
@@ -90,17 +92,21 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
 
     @Specialization
     protected boolean doGeneric(JSDynamicObject proxy, Object key,
-                    @Cached("createBinaryProfile()") ConditionProfile trapFunProfile) {
+                    @Cached InlinedConditionProfile trapFunProfile,
+                    @Cached InlinedBranchProfile errorBranch) {
         assert JSProxy.isJSProxy(proxy);
         Object propertyKey = toPropertyKeyNode.execute(key);
+        if (JSRuntime.isPrivateSymbol(propertyKey)) {
+            return false;
+        }
         JSDynamicObject handler = JSProxy.getHandler(proxy);
         if (handler == Null.instance) {
-            errorBranch.enter();
+            errorBranch.enter(this);
             throw Errors.createTypeErrorProxyRevoked(JSProxy.HAS, this);
         }
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGetter.executeWithTarget(handler);
-        if (trapFunProfile.profile(trapFun == Undefined.instance)) {
+        if (trapFunProfile.profile(this, trapFun == Undefined.instance)) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.hasProperty((JSDynamicObject) target, propertyKey);
             } else {
@@ -115,7 +121,7 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
             boolean trapResult = toBooleanNode.executeBoolean(callResult);
             if (!trapResult) {
                 if (!JSProxy.checkPropertyIsSettable(target, propertyKey)) {
-                    errorBranch.enter();
+                    errorBranch.enter(this);
                     throw Errors.createTypeError("Proxy can't successfully access a non-writable, non-configurable property", this);
                 }
             }
@@ -123,9 +129,10 @@ public abstract class JSProxyHasPropertyNode extends JavaScriptBaseNode {
         }
     }
 
+    @InliningCutoff
     private boolean maybeHasInPrototype(Object target, Object propertyKey) {
         assert JSRuntime.isPropertyKey(propertyKey);
-        if (getLanguage().getJSContext().getContextOptions().hasForeignObjectPrototype()) {
+        if (getLanguage().getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
             if (foreignObjectPrototypeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());

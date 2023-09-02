@@ -14,6 +14,7 @@
 namespace v8 {
 
 class CFunctionInfo;
+class StructBodyDescriptor;
 
 namespace internal {
 
@@ -40,6 +41,8 @@ class TemplateInfo : public TorqueGeneratedTemplateInfo<TemplateInfo, Struct> {
   inline bool should_cache() const;
   inline bool is_cached() const;
 
+  using BodyDescriptor = StructBodyDescriptor;
+
   TQ_OBJECT_CONSTRUCTORS(TemplateInfo)
 };
 
@@ -49,6 +52,9 @@ class FunctionTemplateRareData
                                                      Struct> {
  public:
   DECL_VERIFIER(FunctionTemplateRareData)
+
+  using BodyDescriptor = StructBodyDescriptor;
+
   TQ_OBJECT_CONSTRUCTORS(FunctionTemplateRareData)
 };
 
@@ -123,8 +129,10 @@ class FunctionTemplateInfo
   // safely read concurrently.
   DECL_BOOLEAN_ACCESSORS(published)
 
-  DECL_INT_ACCESSORS(allowed_receiver_range_start)
-  DECL_INT_ACCESSORS(allowed_receiver_range_end)
+  // This specifies the permissable range of instance type of objects that can
+  // be allowed to be used as receivers with the given template.
+  DECL_INT16_ACCESSORS(allowed_receiver_instance_type_range_start)
+  DECL_INT16_ACCESSORS(allowed_receiver_instance_type_range_end)
   // End flag bits ---------------------
 
   // Dispatched behavior.
@@ -157,6 +165,7 @@ class FunctionTemplateInfo
   inline bool instantiated();
 
   bool BreakAtEntry();
+  bool HasInstanceType();
 
   // Helper function for cached accessors.
   static base::Optional<Name> TryGetCachedPropertyName(Isolate* isolate,
@@ -173,7 +182,10 @@ class FunctionTemplateInfo
   // Bit position in the flag, from least significant bit position.
   DEFINE_TORQUE_GENERATED_FUNCTION_TEMPLATE_INFO_FLAGS()
 
+  using BodyDescriptor = StructBodyDescriptor;
+
  private:
+  static constexpr int kNoJSApiObjectType = 0;
   static inline FunctionTemplateRareData EnsureFunctionTemplateRareData(
       Isolate* isolate, Handle<FunctionTemplateInfo> function_template_info);
 
@@ -197,6 +209,8 @@ class ObjectTemplateInfo
   // Starting from given object template's constructor walk up the inheritance
   // chain till a function template that has an instance template is found.
   inline ObjectTemplateInfo GetParent(Isolate* isolate);
+
+  using BodyDescriptor = StructBodyDescriptor;
 
  private:
   DEFINE_TORQUE_GENERATED_OBJECT_TEMPLATE_INFO_FLAGS()

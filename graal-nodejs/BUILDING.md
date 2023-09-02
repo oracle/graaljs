@@ -29,7 +29,7 @@ file a new issue.
     * [Running Coverage](#running-coverage)
     * [Building the documentation](#building-the-documentation)
     * [Building a debug build](#building-a-debug-build)
-    * [Building an ASAN build](#building-an-asan-build)
+    * [Building an ASan build](#building-an-asan-build)
     * [Speeding up frequent rebuilds when developing](#speeding-up-frequent-rebuilds-when-developing)
     * [Troubleshooting Unix and macOS builds](#troubleshooting-unix-and-macos-builds)
   * [Windows](#windows)
@@ -100,46 +100,37 @@ Node.js does not support a platform version if a vendor has expired support
 for it. In other words, Node.js does not support running on End-of-Life (EoL)
 platforms. This is true regardless of entries in the table below.
 
-| Operating System | Architectures    | Versions                        | Support Type                                    | Notes                                     |
-| ---------------- | ---------------- | ------------------------------- | ----------------------------------------------- | ----------------------------------------- |
-| GNU/Linux        | x64              | kernel >= 3.10, glibc >= 2.17   | Tier 1                                          | e.g. Ubuntu 16.04[^1], Debian 9, EL 7[^2] |
-| GNU/Linux        | x64              | kernel >= 3.10, musl >= 1.1.19  | Experimental                                    | e.g. Alpine 3.8                           |
-| GNU/Linux        | x86              | kernel >= 3.10, glibc >= 2.17   | Experimental                                    | Downgraded as of Node.js 10               |
-| GNU/Linux        | arm64            | kernel >= 4.5, glibc >= 2.17    | Tier 1                                          | e.g. Ubuntu 16.04, Debian 9, EL 7[^3]     |
-| GNU/Linux        | armv7            | kernel >= 4.14, glibc >= 2.24   | Tier 1                                          | e.g. Ubuntu 18.04, Debian 9               |
-| GNU/Linux        | armv6            | kernel >= 4.14, glibc >= 2.24   | Experimental                                    | Downgraded as of Node.js 12               |
-| GNU/Linux        | ppc64le >=power8 | kernel >= 3.10.0, glibc >= 2.17 | Tier 2                                          | e.g. Ubuntu 16.04[^1], EL 7[^2]           |
-| GNU/Linux        | s390x            | kernel >= 3.10.0, glibc >= 2.17 | Tier 2                                          | e.g. EL 7[^2]                             |
-| Windows          | x64, x86 (WoW64) | >= Windows 8.1/2012 R2          | Tier 1                                          | [^4],[^5]                                 |
-| Windows          | x86 (native)     | >= Windows 8.1/2012 R2          | Tier 1 (running) / Experimental (compiling)[^6] |                                           |
-| Windows          | x64, x86         | Windows Server 2012 (not R2)    | Experimental                                    |                                           |
-| Windows          | arm64            | >= Windows 10                   | Tier 2 (compiling) / Experimental (running)     |                                           |
-| macOS            | x64              | >= 10.13                        | Tier 1                                          | For notes about compilation see [^7]      |
-| macOS            | arm64            | >= 11                           | Tier 1                                          |                                           |
-| SmartOS          | x64              | >= 18                           | Tier 2                                          |                                           |
-| AIX              | ppc64be >=power7 | >= 7.2 TL04                     | Tier 2                                          |                                           |
-| FreeBSD          | x64              | >= 12.2                         | Experimental                                    |                                           |
+| Operating System | Architectures    | Versions                          | Support Type                                    | Notes                                |
+| ---------------- | ---------------- | --------------------------------- | ----------------------------------------------- | ------------------------------------ |
+| GNU/Linux        | x64              | kernel >= 4.18[^1], glibc >= 2.28 | Tier 1                                          | e.g. Ubuntu 20.04, Debian 10, RHEL 8 |
+| GNU/Linux        | x64              | kernel >= 3.10, musl >= 1.1.19    | Experimental                                    | e.g. Alpine 3.8                      |
+| GNU/Linux        | x86              | kernel >= 3.10, glibc >= 2.17     | Experimental                                    | Downgraded as of Node.js 10          |
+| GNU/Linux        | arm64            | kernel >= 4.18[^1], glibc >= 2.28 | Tier 1                                          | e.g. Ubuntu 20.04, Debian 10, RHEL 8 |
+| GNU/Linux        | armv7            | kernel >= 4.18[^1], glibc >= 2.28 | Tier 1                                          | e.g. Ubuntu 20.04, Debian 10         |
+| GNU/Linux        | armv6            | kernel >= 4.14, glibc >= 2.24     | Experimental                                    | Downgraded as of Node.js 12          |
+| GNU/Linux        | ppc64le >=power8 | kernel >= 4.18[^1], glibc >= 2.28 | Tier 2                                          | e.g. Ubuntu 20.04, RHEL 8            |
+| GNU/Linux        | s390x            | kernel >= 4.18[^1], glibc >= 2.28 | Tier 2                                          | e.g. RHEL 8                          |
+| Windows          | x64, x86 (WoW64) | >= Windows 10/Server 2016         | Tier 1                                          | [^2],[^3]                            |
+| Windows          | x86 (native)     | >= Windows 10/Server 2016         | Tier 1 (running) / Experimental (compiling)[^4] |                                      |
+| Windows          | x64, x86         | Windows 8.1/Server 2012           | Experimental                                    |                                      |
+| Windows          | arm64            | >= Windows 10                     | Tier 2 (compiling) / Experimental (running)     |                                      |
+| macOS            | x64              | >= 10.15                          | Tier 1                                          | For notes about compilation see [^5] |
+| macOS            | arm64            | >= 11                             | Tier 1                                          |                                      |
+| SmartOS          | x64              | >= 18                             | Tier 2                                          |                                      |
+| AIX              | ppc64be >=power8 | >= 7.2 TL04                       | Tier 2                                          |                                      |
+| FreeBSD          | x64              | >= 12.4                           | Experimental                                    |                                      |
 
-[^1]: GCC 8 is not provided on the base platform. Users will
-    need the
-    [Toolchain test builds PPA](https://launchpad.net/\~ubuntu-toolchain-r/+archive/ubuntu/test?field.series_filter=xenial)
-    or similar to source a newer compiler.
+[^1]: Older kernel versions may work. However official Node.js release
+    binaries are [built on RHEL 8 systems](#official-binary-platforms-and-toolchains)
+    with kernel 4.18.
 
-[^2]: GCC 8 is not provided on the base platform. Users will
-    need the
-    [devtoolset-8](https://www.softwarecollections.org/en/scls/rhscl/devtoolset-8/)
-    or later to source a newer compiler.
-
-[^3]: Older kernel versions may work for ARM64. However the
-    Node.js test infrastructure only tests >= 4.5.
-
-[^4]: On Windows, running Node.js in Windows terminal emulators
+[^2]: On Windows, running Node.js in Windows terminal emulators
     like `mintty` requires the usage of [winpty](https://github.com/rprichard/winpty)
     for the tty channels to work (e.g. `winpty node.exe script.js`).
     In "Git bash" if you call the node shell alias (`node` without the `.exe`
     extension), `winpty` is used automatically.
 
-[^5]: The Windows Subsystem for Linux (WSL) is not
+[^3]: The Windows Subsystem for Linux (WSL) is not
     supported, but the GNU/Linux build process and binaries should work. The
     community will only address issues that reproduce on native GNU/Linux
     systems. Issues that only reproduce on WSL should be reported in the
@@ -147,13 +138,12 @@ platforms. This is true regardless of entries in the table below.
     Windows binary (`node.exe`) in WSL will not work without workarounds such as
     stdio redirection.
 
-[^6]: Running Node.js on x86 Windows should work and binaries
+[^4]: Running Node.js on x86 Windows should work and binaries
     are provided. However, tests in our infrastructure only run on WoW64.
     Furthermore, compiling on x86 Windows is Experimental and
     may not be possible.
 
-[^7]: Our macOS x64 Binaries are compiled with 10.13 as a target.
-    However there is no guarantee compiling on 10.13 will work as Xcode11 is
+[^5]: Our macOS x64 Binaries are compiled with 10.15 as a target. Xcode11 is
     required to compile.
 
 ### Supported toolchains
@@ -173,21 +163,19 @@ Binaries at <https://nodejs.org/download/release/> are produced on:
 | Binary package          | Platform and Toolchain                                                                                        |
 | ----------------------- | ------------------------------------------------------------------------------------------------------------- |
 | aix-ppc64               | AIX 7.2 TL04 on PPC64BE with GCC 8                                                                            |
-| darwin-x64              | macOS 10.15, Xcode Command Line Tools 11 with -mmacosx-version-min=10.13                                      |
-| darwin-arm64 (and .pkg) | macOS 11 (arm64), Xcode Command Line Tools 12 with -mmacosx-version-min=10.13                                 |
-| linux-arm64             | CentOS 7 with devtoolset-8 / GCC 8[^8]                                                                        |
+| darwin-x64              | macOS 10.15, Xcode Command Line Tools 11 with -mmacosx-version-min=10.15                                      |
+| darwin-arm64 (and .pkg) | macOS 11 (arm64), Xcode Command Line Tools 12 with -mmacosx-version-min=10.15                                 |
+| linux-arm64             | RHEL 8 with GCC 8[^6]                                                                                         |
 | linux-armv7l            | Cross-compiled on Ubuntu 18.04 x64 with [custom GCC toolchain](https://github.com/rvagg/rpi-newer-crosstools) |
-| linux-ppc64le           | CentOS 7 with devtoolset-8 / GCC 8[^8]                                                                        |
-| linux-s390x             | RHEL 7 with devtoolset-8 / GCC 8[^8]                                                                          |
-| linux-x64               | CentOS 7 with devtoolset-8 / GCC 8[^8]                                                                        |
+| linux-ppc64le           | RHEL 8 with GCC 8[^6]                                                                                         |
+| linux-s390x             | RHEL 8 with GCC 8[^6]                                                                                         |
+| linux-x64               | RHEL 8 with GCC 8[^6]                                                                                         |
 | win-x64 and win-x86     | Windows 2012 R2 (x64) with Visual Studio 2019                                                                 |
 
-[^8]: The Enterprise Linux devtoolset-8 allows us to compile binaries with GCC 8
-    but linked to the glibc and libstdc++ versions of the host platforms
-    (CentOS 7 / RHEL 7). Therefore, binaries produced on these systems are
-    compatible with glibc >= 2.17 and libstdc++ >= 6.0.20 (`GLIBCXX_3.4.20`).
-    These are available on distributions natively supporting GCC 4.9, such as
-    Ubuntu 14.04 and Debian 8.
+[^6]: Binaries produced on these systems are compatible with glibc >= 2.28
+    and libstdc++ >= 6.0.25 (`GLIBCXX_3.4.25`). These are available on
+    distributions natively supporting GCC 8.1 or higher, such as Debian 10,
+    RHEL 8 and Ubuntu 20.04.
 
 #### OpenSSL asm support
 
@@ -220,10 +208,9 @@ Supported platforms and toolchains change with each major version of Node.js.
 This document is only valid for the current major version of Node.js.
 Consult previous versions of this document for older versions of Node.js:
 
-* [Node.js 17](https://github.com/nodejs/node/blob/v17.x/BUILDING.md)
+* [Node.js 19](https://github.com/nodejs/node/blob/v19.x/BUILDING.md)
+* [Node.js 18](https://github.com/nodejs/node/blob/v18.x/BUILDING.md)
 * [Node.js 16](https://github.com/nodejs/node/blob/v16.x/BUILDING.md)
-* [Node.js 14](https://github.com/nodejs/node/blob/v14.x/BUILDING.md)
-* [Node.js 12](https://github.com/nodejs/node/blob/v12.x/BUILDING.md)
 
 ## Building Node.js on supported platforms
 
@@ -237,7 +224,7 @@ The Node.js project supports Python >= 3 for building and testing.
 
 * `gcc` and `g++` >= 8.3 or newer
 * GNU Make 3.81 or newer
-* Python 3.6, 3.7, 3.8, 3.9, or 3.10 (see note above)
+* Python >=3.6 <=3.11 (see note above)
   * For test coverage, your Python installation must include pip.
 
 Installation via Linux package manager can be achieved with:
@@ -253,7 +240,7 @@ FreeBSD and OpenBSD users may also need to install `libexecinfo`.
 #### macOS prerequisites
 
 * Xcode Command Line Tools >= 11 for macOS
-* Python 3.6, 3.7, 3.8, 3.9, or 3.10 (see note above)
+* Python >=3.6 <=3.11 (see note above)
   * For test coverage, your Python installation must include pip.
 
 macOS users can install the `Xcode Command Line Tools` by running
@@ -354,11 +341,16 @@ the `--help` option:
 $ tools/test.py --help
 ```
 
+> Note: On Windows you should use `python3` executable.
+> Example: `python3 tools/test.py test/message`
+
 You can usually run tests directly with node:
 
 ```text
-$ ./node ./test/parallel/test-stream2-transform.js
+$ ./node test/parallel/test-stream2-transform.js
 ```
+
+> Info: `./node` points to your local Node.js build.
 
 Remember to recompile with `make -j4` in between test runs if you change code in
 the `lib` or `src` directories.
@@ -509,16 +501,16 @@ $ gdb /opt/node-debug/node core.node.8.1535359906
 $ backtrace
 ```
 
-#### Building an ASAN build
+#### Building an ASan build
 
-[ASAN](https://github.com/google/sanitizers) can help detect various memory
-related bugs. ASAN builds are currently only supported on linux.
+[ASan](https://github.com/google/sanitizers) can help detect various memory
+related bugs. ASan builds are currently only supported on linux.
 If you want to check it on Windows or macOS or you want a consistent toolchain
 on Linux, you can try [Docker](https://www.docker.com/products/docker-desktop)
 (using an image like `gengjiawen/node-build:2020-02-14`).
 
 The `--debug` is not necessary and will slow down build and testing, but it can
-show clear stacktrace if ASAN hits an issue.
+show clear stacktrace if ASan hits an issue.
 
 ```console
 $  ./configure --debug --enable-asan && make -j4
@@ -577,7 +569,7 @@ to run it again before invoking `make -j4`.
 
 ##### Option 1: Manual install
 
-* [Python 3.10](https://www.microsoft.com/en-us/p/python-310/9pjpw5ldxlz5)
+* [Python 3.11](https://apps.microsoft.com/store/detail/python-311/9NRWMJP3717K)
 * The "Desktop development with C++" workload from
   [Visual Studio 2019](https://visualstudio.microsoft.com/vs/older-downloads/#visual-studio-2019-and-other-products) or
   the "C++ build tools" workload from the
@@ -672,7 +664,7 @@ Be sure you have downloaded and extracted
 a folder. Then run:
 
 ```console
-$ source ./android-configure /path/to/your/android-ndk target_arch android_sdk_version
+$ ./android-configure <path to the Android NDK> <Android SDK version> <target architecture>
 $ make -j4
 ```
 
@@ -800,243 +792,12 @@ $ ./configure --openssl-conf-name=<some_conf_name>
 
 ## Building Node.js with FIPS-compliant OpenSSL
 
-The current version of Node.js supports FIPS when statically and
-dynamically linking with OpenSSL 3.0.0 by using the configuration flag
-`--openssl-is-fips`.
+Node.js supports FIPS when statically or dynamically linked with OpenSSL 3 via
+[OpenSSL's provider model](https://www.openssl.org/docs/man3.0/man7/crypto.html#OPENSSL-PROVIDERS).
+It is not necessary to rebuild Node.js to enable support for FIPS.
 
-### FIPS support when statically linking OpenSSL
-
-FIPS can be supported by specifying the configuration flag `--openssl-is-fips`:
-
-```console
-$ ./configure --openssl-is-fips
-$ make -j8
-```
-
-The above command will build and install the FIPS module into the out directory.
-This includes building fips.so, running the `installfips` command that generates
-the FIPS configuration file (fipsmodule.cnf), copying and updating openssl.cnf
-to include the correct path to fipsmodule.cnf and finally uncomment the fips
-section.
-
-We can then run node specifying `--enable-fips`:
-
-```console
-$ ./node --enable-fips  -p 'crypto.getFips()'
-1
-```
-
-The above will use the Node.js default locations for OpenSSL 3.0:
-
-```console
-$ ./out/Release/openssl-cli version -m -d
-OPENSSLDIR: "/nodejs/openssl/out/Release/obj.target/deps/openssl"
-MODULESDIR: "/nodejs/openssl/out/Release/obj.target/deps/openssl/lib/openssl-modules"
-```
-
-The OpenSSL configuration files will be found in `OPENSSLDIR` directory above:
-
-```console
-$ ls -w 1 out/Release/obj.target/deps/openssl/*.cnf
-out/Release/obj.target/deps/openssl/fipsmodule.cnf
-out/Release/obj.target/deps/openssl/openssl.cnf
-```
-
-And the FIPS module will be located in the `MODULESDIR` directory:
-
-```console
-$ ls out/Release/obj.target/deps/openssl/lib/openssl-modules/
-fips.so
-```
-
-### Configuring and building quictls/openssl for FIPS
-
-For quictls/openssl 3.0 it is possible to enable FIPS when dynamically linking.
-If you want to build Node.js using openssl-3.0.0+quic, you can follow these
-steps:
-
-**clone OpenSSL source and prepare build**
-
-```bash
-git clone git@github.com:quictls/openssl.git
-
-cd openssl
-
-./config \
-  --prefix=/path/to/install/dir/ \
-  shared \
-  enable-fips \
-  linux-x86_64
-```
-
-The `/path/to/install/dir` is the path in which the `make install` instructions
-will publish the OpenSSL libraries and such. We will also use this path
-(and sub-paths) later when compiling Node.js.
-
-**compile and install OpenSSL**
-
-```console
-make -j8
-make install
-make install_ssldirs
-make install_fips
-```
-
-After the OpenSSL (including FIPS) modules have been compiled and installed
-(into the `/path/to/install/dir`) by the above instructions we also need to
-update the OpenSSL configuration file located under
-`/path/to/install/dir/ssl/openssl.cnf`. Right next to this file, you should
-find the `fipsmodule.cnf` file - let's add the following to the end of the
-`openssl.cnf` file.
-
-**alter openssl.cnf**
-
-```text
-.include fipsmodule.cnf
-
-# List of providers to load
-[provider_sect]
-default = default_sect
-# The fips section name should match the section name inside the
-# included /path/to/install/dir/ssl/fipsmodule.cnf.
-fips = fips_sect
-
-[default_sect]
-activate = 1
-```
-
-You can e.g. accomplish this by running the following command - be sure to
-replace `/path/to/install/dir/` with the path you have selected. Please make
-sure that you specify an absolute path for the `.include fipsmodule.cnf` line -
-using relative paths did not work on my system!
-
-**alter openssl.cnf using a script**
-
-```console
-cat <<EOT >> /path/to/install/dir/ssl/openssl.cnf
-.include /path/to/install/dir/ssl/fipsmodule.cnf
-
-# List of providers to load
-[provider_sect]
-default = default_sect
-# The fips section name should match the section name inside the
-# included /path/to/install/dir/ssl/fipsmodule.cnf.
-fips = fips_sect
-
-[default_sect]
-activate = 1
-EOT
-```
-
-As you might have picked a non-custom path for your OpenSSL install dir, we
-have to export the following two environment variables in order for Node.js to
-find our OpenSSL modules we built beforehand:
-
-```console
-export OPENSSL_CONF=/path/to/install/dir/ssl/openssl.cnf
-export OPENSSL_MODULES=/path/to/install/dir/lib/ossl-modules
-```
-
-**build Node.js**
-
-```console
-./configure \
-  --shared-openssl \
-  --shared-openssl-libpath=/path/to/install/dir/lib \
-  --shared-openssl-includes=/path/to/install/dir/include \
-  --shared-openssl-libname=crypto,ssl \
-  --openssl-is-fips
-
-export LD_LIBRARY_PATH=/path/to/install/dir/lib
-
-make -j8
-```
-
-**verify the produced executable**
-
-```console
-ldd ./node
-    linux-vdso.so.1 (0x00007ffd7917b000)
-    libcrypto.so.81.3 => /path/to/install/dir/lib/libcrypto.so.81.3 (0x00007fd911321000)
-    libssl.so.81.3 => /path/to/install/dir/lib/libssl.so.81.3 (0x00007fd91125e000)
-    libdl.so.2 => /usr/lib64/libdl.so.2 (0x00007fd911232000)
-    libstdc++.so.6 => /usr/lib64/libstdc++.so.6 (0x00007fd911039000)
-    libm.so.6 => /usr/lib64/libm.so.6 (0x00007fd910ef3000)
-    libgcc_s.so.1 => /usr/lib64/libgcc_s.so.1 (0x00007fd910ed9000)
-    libpthread.so.0 => /usr/lib64/libpthread.so.0 (0x00007fd910eb5000)
-    libc.so.6 => /usr/lib64/libc.so.6 (0x00007fd910cec000)
-    /lib64/ld-linux-x86-64.so.2 (0x00007fd9117f2000)
-```
-
-If the `ldd` command says that `libcrypto` cannot be found one needs to set
-`LD_LIBRARY_PATH` to point to the directory used above for
-`--shared-openssl-libpath` (see previous step).
-
-**verify the OpenSSL version**
-
-```console
-./node -p process.versions.openssl
-3.0.0-alpha16+quic
-```
-
-**verify that FIPS is available**
-
-```console
-./node -p 'process.config.variables.openssl_is_fips'
-true
-
-./node --enable-fips -p 'crypto.getFips()'
-1
-```
-
-FIPS support can then be enable via the OpenSSL configuration file or
-using `--enable-fips` or `--force-fips` command line options to the Node.js
-executable. See sections
-[Enabling FIPS using Node.js options](#enabling-fips-using-node.js-options) and
-[Enabling FIPS using OpenSSL config](#enabling-fips-using-openssl-config) below.
-
-### Enabling FIPS using Node.js options
-
-This is done using one of the Node.js options `--enable-fips` or
-`--force-fips`, for example:
-
-```console
-$ node --enable-fips -p 'crypto.getFips()'
-```
-
-### Enabling FIPS using OpenSSL config
-
-This example show that using OpenSSL's configuration file, FIPS can be enabled
-without specifying the `--enable-fips` or `--force-fips` options by setting
-`default_properties = fips=yes` in the FIPS configuration file. See
-[link](https://github.com/openssl/openssl/blob/master/README-FIPS.md#loading-the-fips-module-at-the-same-time-as-other-providers)
-for details.
-
-For this to work the OpenSSL configuration file (default openssl.cnf) needs to
-be updated. The following shows an example:
-
-```console
-openssl_conf = openssl_init
-
-.include /path/to/install/dir/ssl/fipsmodule.cnf
-
-[openssl_init]
-providers = prov
-alg_section = algorithm_sect
-
-[prov]
-fips = fips_sect
-default = default_sect
-
-[default_sect]
-activate = 1
-
-[algorithm_sect]
-default_properties = fips=yes
-```
-
-After this change Node.js can be run without the `--enable-fips` or `--force-fips`
-options.
+See [FIPS mode](./doc/api/crypto.md#fips-mode) for more information on how to
+enable FIPS support in Node.js.
 
 ## Building Node.js with external core modules
 
@@ -1061,6 +822,44 @@ To make `./myModule.js` available via `require('myModule')` and
 ```console
 > .\vcbuild link-module './myModule.js' link-module './myModule2.js'
 ```
+
+## Building to use shared dependencies at runtime
+
+By default Node.js is built so that all dependencies are bundled into
+the Node.js binary itself. This provides a single binary that includes
+the correct versions of all dependencies on which it depends.
+
+Some Node.js distributions, however, prefer to manage dependencies.
+A number of `configure` options are provided to support this use case.
+
+* For dependencies with native code, the first set of options allow
+  Node.js to be built so that it uses a shared library
+  at runtime instead of building and including the dependency
+  in the Node.js binary itself. These options are in the
+  `Shared libraries` section of the `configure` help
+  (run `./configure --help` to get the complete list).
+  They provide the ability to enable the use of a shared library,
+  to set the name of the shared library, and to set the paths that
+  contain the include and shared library files.
+
+* For dependencies with JavaScript code (including WASM), the second
+  set of options allow the Node.js binary to be built so that it loads
+  the JavaScript for dependencies at runtime instead of being built into
+  the Node.js binary itself. These options are in the `Shared builtins`
+  section of the `configure` help
+  (run `./configure --help` to get the complete list). They
+  provide the ability to set the path to an external JavaScript file
+  for the dependency to be used at runtime.
+
+It is the responsibility of any distribution
+shipping with these options to:
+
+* ensure that the shared dependencies available at runtime
+  match what is expected by the Node.js binary. A
+  mismatch may result in crashes or unexpected behavior.
+* fully test that Node.js operates as expected with the
+  external dependencies. There may be little or no test coverage
+  within the Node.js project CI for these non-default options.
 
 ## Note for downstream distributors of Node.js
 

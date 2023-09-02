@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,25 +40,39 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.interop.UnsupportedMessageException;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeGetStackTraceNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeToStringNodeGen;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeCauseNodeGen;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeMessageNodeGen;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeNameNodeGen;
+import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeStackNodeGen;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.GraalJSException;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -112,67 +126,44 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
         }
     }
 
+    @ImportStatic(Strings.class)
     public abstract static class ErrorPrototypeToStringNode extends JSBuiltinNode {
-
-        @Child private PropertyGetNode getNameNode;
-        @Child private PropertyGetNode getMessageNode;
-        @Child private JSToStringNode toStringNode;
 
         public ErrorPrototypeToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected Object toStringNonObject(Object thisObj,
-                        @Cached TruffleString.ConcatNode concatNode) {
-            TruffleString name = toStringConv(thisObj);
-            String message = Strings.toJavaString(Strings.concat(concatNode, Strings.METHOD_ERROR_PROTOTYPE_TO_STRING_CALLED_ON_INCOMPATIBLE_RECEIVER, name));
-            throw Errors.createTypeError(message, this);
+        @TruffleBoundary
+        @Specialization(guards = "!isObjectNode.executeBoolean(thisObj)", limit = "1")
+        protected final Object toStringNonObject(Object thisObj,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }
 
-        @Specialization(guards = "isJSObject(errorObj)")
-        protected Object toStringObject(JSDynamicObject errorObj) {
-            Object objName = getName(errorObj);
-            TruffleString strName = (objName == Undefined.instance) ? Strings.UC_ERROR : toStringConv(objName);
-            Object objMessage = getMessage(errorObj);
-            TruffleString strMessage = (objMessage == Undefined.instance) ? Strings.EMPTY_STRING : toStringConv(objMessage);
+        @Specialization(guards = "isObjectNode.executeBoolean(errorObj)", limit = "1")
+        protected static Object toStringObject(Object errorObj,
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                        @Cached("create(NAME, false, getContext())") PropertyGetNode getNameNode,
+                        @Cached("create(MESSAGE, false, getContext())") PropertyGetNode getMessageNode,
+                        @Cached JSToStringNode toStringNode) {
+            Object objName = getNameNode.getValue(errorObj);
+            TruffleString strName = (objName == Undefined.instance) ? Strings.UC_ERROR : toStringNode.executeString(objName);
+            Object objMessage = getMessageNode.getValue(errorObj);
+            TruffleString strMessage = (objMessage == Undefined.instance) ? Strings.EMPTY_STRING : toStringNode.executeString(objMessage);
             if (Strings.length(strName) == 0) {
                 return strMessage;
             }
             if (Strings.length(strMessage) == 0) {
                 return strName;
             }
-            return toStringIntl(strName, strMessage);
-        }
-
-        private TruffleString toStringConv(Object value) {
-            if (toStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toStringNode = insert(JSToStringNode.create());
-            }
-            return toStringNode.executeString(value);
+            return concatNameAndMessage(strName, strMessage);
         }
 
         @TruffleBoundary
-        private static Object toStringIntl(TruffleString strName, TruffleString strMessage) {
+        private static Object concatNameAndMessage(TruffleString strName, TruffleString strMessage) {
             return Strings.concatAll(strName, Strings.COLON_SPACE, strMessage);
         }
 
-        protected Object getName(JSDynamicObject errObj) {
-            if (getNameNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getNameNode = insert(PropertyGetNode.create(JSError.NAME, false, getContext()));
-            }
-            return getNameNode.getValue(errObj);
-        }
-
-        protected Object getMessage(JSDynamicObject errObj) {
-            if (getMessageNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getMessageNode = insert(PropertyGetNode.create(JSError.MESSAGE, false, getContext()));
-            }
-            return getMessageNode.getValue(errObj);
-        }
     }
 
     public abstract static class ErrorPrototypeGetStackTraceNode extends JSBuiltinNode {
@@ -181,13 +172,8 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             super(context, builtin);
         }
 
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject getStackTrace(Object thisObj) {
-            throw Errors.createTypeErrorNotAnObject(thisObj);
-        }
-
-        @Specialization(guards = "isJSObject(thisObj)")
-        protected JSDynamicObject getStackTrace(JSDynamicObject thisObj) {
+        @Specialization
+        protected JSDynamicObject getStackTrace(JSObject thisObj) {
             // get original exception from special exception property; call
             // Throwable#getStackTrace(), transform it a bit and turn it into a JSArray
             Object exception = JSDynamicObject.getOrNull(thisObj, JSError.EXCEPTION_PROPERTY_NAME);
@@ -203,5 +189,155 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
                 return new StackTraceElement[0];
             }
         }
+
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected JSDynamicObject getStackTrace(Object thisObj) {
+            throw Errors.createTypeErrorNotAnObject(thisObj);
+        }
     }
+
+    public static final class ForeignErrorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ForeignErrorPrototypeBuiltins.ForeignError> {
+        public static final JSBuiltinsContainer BUILTINS = new ForeignErrorPrototypeBuiltins();
+
+        protected ForeignErrorPrototypeBuiltins() {
+            super(JSError.PROTOTYPE_NAME, ForeignError.class);
+        }
+
+        public enum ForeignError implements BuiltinEnum<ForeignError> {
+            cause(0),
+            message(0),
+            name(0),
+            stack(0);
+
+            private final int length;
+
+            ForeignError(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+
+            @Override
+            public boolean isGetter() {
+                return true;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ForeignError builtinEnum) {
+            switch (builtinEnum) {
+                case cause:
+                    return ForeignErrorPrototypeCauseNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case message:
+                    return ForeignErrorPrototypeMessageNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case name:
+                    return ForeignErrorPrototypeNameNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case stack:
+                    return ForeignErrorPrototypeStackNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            }
+            return null;
+        }
+    }
+
+    @ImportStatic(JSConfig.class)
+    public abstract static class ForeignErrorPrototypeMessageNode extends JSBuiltinNode {
+
+        public ForeignErrorPrototypeMessageNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object getMessage(Object error,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached ImportValueNode importNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (interop.hasExceptionMessage(error)) {
+                try {
+                    Object message = interop.getExceptionMessage(error);
+                    return importNode.executeWithTarget(message);
+                } catch (UnsupportedMessageException umex) {
+                    errorBranch.enter(this);
+                    throw Errors.createTypeErrorInteropException(error, umex, "getExceptionMessage", this);
+                }
+            }
+            return Strings.EMPTY_STRING;
+        }
+
+    }
+
+    @ImportStatic(JSConfig.class)
+    public abstract static class ForeignErrorPrototypeNameNode extends JSBuiltinNode {
+
+        public ForeignErrorPrototypeNameNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(limit = "InteropLibraryLimit")
+        protected Object getName(Object error,
+                        @CachedLibrary("error") InteropLibrary interop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interopMeta,
+                        @Cached ImportValueNode importNode) {
+            try {
+                if (interop.isException(error) && interop.hasMetaObject(error)) {
+                    return importNode.executeWithTarget(interopMeta.getMetaQualifiedName(interop.getMetaObject(error)));
+                }
+            } catch (UnsupportedMessageException e) {
+                // Interop contract violation
+                assert false : e;
+            }
+            return Strings.UC_ERROR;
+        }
+
+    }
+
+    @ImportStatic(JSConfig.class)
+    public abstract static class ForeignErrorPrototypeStackNode extends JSBuiltinNode {
+
+        public ForeignErrorPrototypeStackNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object getStack(Object error,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interopStr,
+                        @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
+            if (interop.hasExceptionStackTrace(error)) {
+                String stack = JSInteropUtil.formatError(error, interop, interopStr);
+                return Strings.fromJavaString(fromJavaStringNode, stack);
+            }
+            return Undefined.instance;
+        }
+
+    }
+
+    @ImportStatic(JSConfig.class)
+    public abstract static class ForeignErrorPrototypeCauseNode extends JSBuiltinNode {
+
+        public ForeignErrorPrototypeCauseNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object getCause(Object error,
+                        @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
+                        @Cached ImportValueNode importNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (interop.hasExceptionCause(error)) {
+                try {
+                    Object cause = interop.getExceptionCause(error);
+                    return importNode.executeWithTarget(cause);
+                } catch (UnsupportedMessageException umex) {
+                    errorBranch.enter(this);
+                    throw Errors.createTypeErrorInteropException(error, umex, "getExceptionCause", this);
+                }
+            }
+            return Undefined.instance;
+        }
+
+    }
+
 }

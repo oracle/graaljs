@@ -20,8 +20,10 @@ const {
 const {
   validateArray,
   validateBoolean,
+  validateBooleanArray,
   validateObject,
   validateString,
+  validateStringArray,
   validateUnion,
 } = require('internal/validators');
 
@@ -34,6 +36,7 @@ const {
   isOptionLikeValue,
   isShortOptionAndValue,
   isShortOptionGroup,
+  useDefaultValueOption,
   objectGetOwn,
   optionsGetOwn,
 } = require('internal/util/parse_args/utils');
@@ -70,7 +73,6 @@ function getMainArgs() {
 
 /**
  * In strict mode, throw for possible usage errors like --foo --bar
- *
  * @param {object} token - from tokens as available from parseArgs
  */
 function checkOptionLikeValue(token) {
@@ -88,7 +90,6 @@ To specify an option argument starting with a dash use ${example}.`;
 
 /**
  * In strict mode, throw for usage errors.
- *
  * @param {object} config - from config passed to parseArgs
  * @param {object} token - from tokens as available from parseArgs
  */
@@ -113,7 +114,6 @@ function checkOptionUsage(config, token) {
 
 /**
  * Store the option value in `values`.
- *
  * @param {string} longOption - long option name e.g. 'foo'
  * @param {string|undefined} optionValue - value from user args
  * @param {object} options - option configs, from parseArgs({ options })
@@ -144,11 +144,27 @@ function storeOption(longOption, optionValue, options, values) {
 }
 
 /**
+ * Store the default option value in `values`.
+ * @param {string} longOption - long option name e.g. 'foo'
+ * @param {string
+ *         | boolean
+ *         | string[]
+ *         | boolean[]} optionValue - default value from option config
+ * @param {object} values - option values returned in `values` by parseArgs
+ */
+function storeDefaultOption(longOption, optionValue, values) {
+  if (longOption === '__proto__') {
+    return; // No. Just no.
+  }
+
+  values[longOption] = optionValue;
+}
+
+/**
  * Process args and turn into identified tokens:
  * - option (along with value, if any)
  * - positional
  * - option-terminator
- *
  * @param {string[]} args - from parseArgs({ args }) or mainArgs
  * @param {object} options - option configs, from parseArgs({ options })
  */
@@ -174,7 +190,7 @@ function argsToTokens(args, options) {
       ArrayPrototypePushApply(
         tokens, ArrayPrototypeMap(remainingArgs, (arg) => {
           return { kind: 'positional', index: ++index, value: arg };
-        })
+        }),
       );
       break; // Finished processing args, leave while loop.
     }
@@ -290,7 +306,8 @@ const parseArgs = (config = kEmptyObject) => {
       validateObject(optionConfig, `options.${longOption}`);
 
       // type is required
-      validateUnion(objectGetOwn(optionConfig, 'type'), `options.${longOption}.type`, ['string', 'boolean']);
+      const optionType = objectGetOwn(optionConfig, 'type');
+      validateUnion(optionType, `options.${longOption}.type`, ['string', 'boolean']);
 
       if (ObjectHasOwn(optionConfig, 'short')) {
         const shortOption = optionConfig.short;
@@ -299,15 +316,31 @@ const parseArgs = (config = kEmptyObject) => {
           throw new ERR_INVALID_ARG_VALUE(
             `options.${longOption}.short`,
             shortOption,
-            'must be a single character'
+            'must be a single character',
           );
         }
       }
 
+      const multipleOption = objectGetOwn(optionConfig, 'multiple');
       if (ObjectHasOwn(optionConfig, 'multiple')) {
-        validateBoolean(optionConfig.multiple, `options.${longOption}.multiple`);
+        validateBoolean(multipleOption, `options.${longOption}.multiple`);
       }
-    }
+
+      const defaultValue = objectGetOwn(optionConfig, 'default');
+      if (defaultValue !== undefined) {
+        let validator;
+        switch (optionType) {
+          case 'string':
+            validator = multipleOption ? validateStringArray : validateString;
+            break;
+
+          case 'boolean':
+            validator = multipleOption ? validateBooleanArray : validateBoolean;
+            break;
+        }
+        validator(defaultValue, `options.${longOption}.default`);
+      }
+    },
   );
 
   // Phase 1: identify tokens
@@ -335,6 +368,20 @@ const parseArgs = (config = kEmptyObject) => {
       ArrayPrototypePush(result.positionals, token.value);
     }
   });
+
+  // Phase 3: fill in default values for missing args
+  ArrayPrototypeForEach(ObjectEntries(options), ({ 0: longOption,
+                                                   1: optionConfig }) => {
+    const mustSetDefault = useDefaultValueOption(longOption,
+                                                 optionConfig,
+                                                 result.values);
+    if (mustSetDefault) {
+      storeDefaultOption(longOption,
+                         objectGetOwn(optionConfig, 'default'),
+                         result.values);
+    }
+  });
+
 
   return result;
 };

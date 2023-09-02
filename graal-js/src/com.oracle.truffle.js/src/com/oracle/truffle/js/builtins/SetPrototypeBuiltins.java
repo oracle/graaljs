@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.CreateSetIteratorNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetAddNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetClearNodeGen;
@@ -59,15 +60,14 @@ import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsSubsetO
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetIsSupersetOfNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetSymmetricDifferenceNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetUnionNodeGen;
+import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.SetGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
-import com.oracle.truffle.js.nodes.access.CreateObjectNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorBaseNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -79,9 +79,11 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
+import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
 import com.oracle.truffle.js.runtime.builtins.JSSetObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSHashMap;
 
@@ -104,7 +106,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         has(1),
         forEach(1),
         values(0),
-        entries(0);
+        entries(0),
+        size(0);
 
         private final int length;
 
@@ -115,6 +118,11 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Override
         public int getLength() {
             return length;
+        }
+
+        @Override
+        public boolean isGetter() {
+            return this == size;
         }
     }
 
@@ -135,6 +143,8 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 return CreateSetIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_VALUE, args().withThis().createArgumentNodes(context));
             case entries:
                 return CreateSetIteratorNodeGen.create(context, builtin, JSRuntime.ITERATION_KIND_KEY_PLUS_VALUE, args().withThis().createArgumentNodes(context));
+            case size:
+                return SetGetSizeNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -302,7 +312,6 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     protected abstract static class JSSetNewOperation extends JSSetOperation {
 
-        @Child protected GetIteratorBaseNode getIteratorNode;
         @Child protected IteratorStepNode iteratorStepNode;
         @Child protected IteratorValueNode iteratorValueNode;
         @Child protected IteratorCloseNode iteratorCloseNode;
@@ -316,18 +325,18 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
 
         protected JSSetNewOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            getIteratorNode = GetIteratorBaseNode.create();
             iteratorStepNode = IteratorStepNode.create();
             iteratorValueNode = IteratorValueNode.create();
             iteratorCloseNode = IteratorCloseNode.create(context);
         }
 
-        protected Object addEntryFromIterable(Object target, Object iterable, Object adder) {
+        protected Object addEntryFromIterable(Object target, Object iterable, Object adder,
+                        GetIteratorNode getIteratorNode) {
             if (!isCallable(adder)) {
                 adderError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
@@ -344,7 +353,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             }
         }
 
-        protected final void iteratorCloseAbrupt(JSDynamicObject iterator) {
+        protected final void iteratorCloseAbrupt(Object iterator) {
             if (iteratorCloseNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
@@ -408,10 +417,11 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization
-        protected JSDynamicObject union(JSSetObject set, Object iterable) {
+        protected JSDynamicObject union(JSSetObject set, Object iterable,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode) {
             JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
             Object adder = getAddFunction(newSet);
-            addEntryFromIterable(newSet, iterable, adder);
+            addEntryFromIterable(newSet, iterable, adder, getIteratorNode);
             return newSet;
         }
 
@@ -427,18 +437,18 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     public abstract static class JSSetIntersectionNode extends JSSetNewOperation {
 
-        private final BranchProfile hasError = BranchProfile.create();
-
         public JSSetIntersectionNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject intersection(JSSetObject set, Object iterable) {
+        protected JSDynamicObject intersection(JSSetObject set, Object iterable,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InlinedBranchProfile hasError) {
             JSDynamicObject newSet = (JSDynamicObject) constructSet();
             Object hasCheck = getHasFunction(set);
             if (!isCallable(hasCheck)) {
-                hasError.enter();
+                hasError.enter(this);
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object adder = getAddFunction(newSet);
@@ -446,7 +456,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 adderError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
@@ -478,21 +488,21 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     public abstract static class JSSetDifferenceNode extends JSSetNewOperation {
 
-        private final BranchProfile removerError = BranchProfile.create();
-
         public JSSetDifferenceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject difference(JSSetObject set, Object iterable) {
+        protected JSDynamicObject difference(JSSetObject set, Object iterable,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InlinedBranchProfile removerError) {
             JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
             if (!isCallable(remover)) {
-                removerError.enter();
+                removerError.enter(this);
                 throw Errors.createTypeErrorCallableExpected();
             }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
@@ -521,18 +531,18 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     public abstract static class JSSetSymmetricDifferenceNode extends JSSetNewOperation {
 
-        private final BranchProfile removerError = BranchProfile.create();
-
         public JSSetSymmetricDifferenceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject symmetricDifference(JSSetObject set, Object iterable) {
+        protected JSDynamicObject symmetricDifference(JSSetObject set, Object iterable,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InlinedBranchProfile removerError) {
             JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
             Object remover = getRemoveFunction(newSet);
             if (!isCallable(remover)) {
-                removerError.enter();
+                removerError.enter(this);
                 throw Errors.createTypeErrorCallableExpected();
             }
             Object adder = getAddFunction(newSet);
@@ -542,7 +552,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                 adderError.enter();
                 throw Errors.createTypeErrorCallableExpected();
             }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
@@ -574,26 +584,26 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     public abstract static class JSSetIsSubsetOfNode extends JSSetNewOperation {
 
-        private final BranchProfile needCreateNewBranch = BranchProfile.create();
-        private final BranchProfile isObjectError = BranchProfile.create();
-
         public JSSetIsSubsetOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Boolean isSubsetOf(JSSetObject set, Object iterable) {
-            IteratorRecord iteratorRecord = getIteratorNode.execute(set);
+        protected Boolean isSubsetOf(JSSetObject set, Object iterable,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InlinedBranchProfile needCreateNewBranch,
+                        @Cached InlinedBranchProfile isObjectError) {
+            IteratorRecord iteratorRecord = getIteratorNode.execute(this, set);
             if (!JSRuntime.isObject(iterable)) {
-                isObjectError.enter();
+                isObjectError.enter(this);
                 throw Errors.createTypeErrorNotIterable(iterable, this);
             }
             JSDynamicObject otherSet = (JSDynamicObject) iterable;
             Object hasCheck = getHasFunction(otherSet);
             if (!isCallable(hasCheck)) {
-                needCreateNewBranch.enter();
+                needCreateNewBranch.enter(this);
                 otherSet = (JSDynamicObject) constructSet();
-                addEntryFromIterable(otherSet, iterable, getAddFunction(otherSet));
+                addEntryFromIterable(otherSet, iterable, getAddFunction(otherSet), getIteratorNode);
                 hasCheck = getHasFunction(otherSet);
             }
             try {
@@ -627,20 +637,20 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     public abstract static class JSSetIsSupersetOfNode extends JSSetNewOperation {
 
-        private final BranchProfile hasError = BranchProfile.create();
-
         public JSSetIsSupersetOfNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Boolean isSupersetOf(JSSetObject set, Object iterable) {
+        protected Boolean isSupersetOf(JSSetObject set, Object iterable,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InlinedBranchProfile notCallableError) {
             Object hasCheck = getHasFunction(set);
             if (!isCallable(hasCheck)) {
-                hasError.enter();
+                notCallableError.enter(this);
                 throw Errors.createTypeErrorCallableExpected();
             }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
@@ -672,20 +682,20 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
      */
     public abstract static class JSSetIsDisjointFromNode extends JSSetNewOperation {
 
-        private final BranchProfile hasError = BranchProfile.create();
-
         public JSSetIsDisjointFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Boolean isDisjointFrom(JSSetObject set, Object iterable) {
+        protected Boolean isDisjointFrom(JSSetObject set, Object iterable,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InlinedBranchProfile notCallableError) {
             Object hasCheck = getHasFunction(set);
             if (!isCallable(hasCheck)) {
-                hasError.enter();
+                notCallableError.enter(this);
                 throw Errors.createTypeErrorCallableExpected();
             }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(iterable);
+            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
             try {
                 while (true) {
                     Object next = iteratorStepNode.execute(iteratorRecord);
@@ -745,34 +755,43 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
     }
 
-    public abstract static class CreateSetIteratorNode extends JSBuiltinNode {
-        private final int iterationKind;
-        @Child private CreateObjectNode.CreateObjectWithPrototypeNode createObjectNode;
-        @Child private PropertySetNode setNextIndexNode;
-        @Child private PropertySetNode setIteratedObjectNode;
-        @Child private PropertySetNode setIterationKindNode;
+    /**
+     * Implementation of the Set.prototype.size getter.
+     */
+    public abstract static class SetGetSizeNode extends JSBuiltinNode {
 
-        public CreateSetIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
+        public SetGetSizeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.iterationKind = iterationKind;
-            this.createObjectNode = CreateObjectNode.createOrdinaryWithPrototype(context);
-            this.setIteratedObjectNode = PropertySetNode.createSetHidden(JSRuntime.ITERATED_OBJECT_ID, context);
-            this.setNextIndexNode = PropertySetNode.createSetHidden(JSRuntime.ITERATOR_NEXT_INDEX, context);
-            this.setIterationKindNode = PropertySetNode.createSetHidden(JSSet.SET_ITERATION_KIND_ID, context);
         }
 
         @Specialization
-        protected JSDynamicObject doSet(JSSetObject set) {
-            JSDynamicObject iterator = createObjectNode.execute(getRealm().getSetIteratorPrototype());
-            setIteratedObjectNode.setValue(iterator, set);
-            setNextIndexNode.setValue(iterator, JSSet.getInternalSet(set).getEntries());
-            setIterationKindNode.setValueInt(iterator, iterationKind);
-            return iterator;
+        protected static int doSet(JSSetObject thisObj) {
+            return JSSet.getSetSize(thisObj);
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = {"!isJSSet(thisObj)"})
+        protected static int notSet(@SuppressWarnings("unused") Object thisObj) {
+            throw Errors.createTypeErrorSetExpected();
+        }
+    }
+
+    public abstract static class CreateSetIteratorNode extends JSBuiltinNode {
+        private final int iterationKind;
+
+        protected CreateSetIteratorNode(JSContext context, JSBuiltin builtin, int iterationKind) {
+            super(context, builtin);
+            this.iterationKind = iterationKind;
+        }
+
+        @Specialization
+        protected final JSObject doSet(JSSetObject set) {
+            return JSSetIterator.create(getContext(), getRealm(), set, JSSet.getInternalSet(set).getEntries(), iterationKind);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected JSDynamicObject doIncompatibleReceiver(Object thisObj) {
+        protected static JSObject doIncompatibleReceiver(Object thisObj) {
             throw Errors.createTypeError("not a Set");
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,6 +57,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -65,8 +66,8 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
 
     TypedArray arrayType;
 
-    protected JSTypedArrayObject(Shape shape, TypedArray arrayType, JSArrayBufferObject arrayBuffer, int length, int offset) {
-        super(shape, arrayBuffer, length, offset);
+    protected JSTypedArrayObject(Shape shape, JSDynamicObject proto, TypedArray arrayType, JSArrayBufferObject arrayBuffer, int length, int offset) {
+        super(shape, proto, arrayBuffer, length, offset);
         this.arrayType = arrayType;
     }
 
@@ -79,8 +80,8 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         return arrayType;
     }
 
-    public static JSTypedArrayObject create(Shape shape, TypedArray arrayType, JSArrayBufferObject arrayBuffer, int length, int offset) {
-        return new JSTypedArrayObject(shape, arrayType, arrayBuffer, length, offset);
+    public static JSTypedArrayObject create(Shape shape, JSDynamicObject proto, TypedArray arrayType, JSArrayBufferObject arrayBuffer, int length, int offset) {
+        return new JSTypedArrayObject(shape, proto, arrayType, arrayBuffer, length, offset);
     }
 
     @Override

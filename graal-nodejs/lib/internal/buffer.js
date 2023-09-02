@@ -12,7 +12,7 @@ const {
 const {
   ERR_BUFFER_OUT_OF_BOUNDS,
   ERR_INVALID_ARG_TYPE,
-  ERR_OUT_OF_RANGE
+  ERR_OUT_OF_RANGE,
 } = require('internal/errors').codes;
 const { validateNumber } = require('internal/validators');
 const {
@@ -30,11 +30,13 @@ const {
   hexWrite,
   ucs2Write,
   utf8Write,
-  getZeroFillToggle
+  getZeroFillToggle,
 } = internalBinding('buffer');
+
 const {
-  untransferable_object_private_symbol,
-  setHiddenValue,
+  privateSymbols: {
+    untransferable_object_private_symbol,
+  },
 } = internalBinding('util');
 
 // Temporary buffers to convert numbers.
@@ -1048,7 +1050,7 @@ function addBufferPrototypeMethods(proto) {
 function markAsUntransferable(obj) {
   if ((typeof obj !== 'object' && typeof obj !== 'function') || obj === null)
     return;  // This object is a primitive and therefore already untransferable.
-  setHiddenValue(obj, untransferable_object_private_symbol, true);
+  obj[untransferable_object_private_symbol] = true;
 }
 
 // A toggle used to access the zero fill setting of the array buffer allocator
@@ -1080,5 +1082,5 @@ module.exports = {
   createUnsafeBuffer,
   readUInt16BE,
   readUInt32BE,
-  reconnectZeroFillToggle
+  reconnectZeroFillToggle,
 };

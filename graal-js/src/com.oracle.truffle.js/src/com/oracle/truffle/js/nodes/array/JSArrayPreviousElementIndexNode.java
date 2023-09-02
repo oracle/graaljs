@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,14 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.ValueProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -66,6 +70,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
         super(context);
     }
 
+    @NeverDefault
     public static JSArrayPreviousElementIndexNode create(JSContext context) {
         return JSArrayPreviousElementIndexNodeGen.create(context);
     }
@@ -90,31 +95,33 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
         return getArrayType(object).previousElementIndex(object, currentIndex);
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"isArray", "!hasPrototypeElements(object)", "getArrayType(object) == cachedArrayType",
                     "cachedArrayType.hasHoles(object)"}, limit = "MAX_CACHED_ARRAY_TYPES")
     public long previousWithHolesCached(JSDynamicObject object, long currentIndex, boolean isArray,
+                    @Bind("this") Node node,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
-                    @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isMinusOne) {
+                    @Cached("create(context)") @Shared("prevElementIndex") JSArrayPreviousElementIndexNode previousElementIndexNode,
+                    @Cached @Shared("isMinusOne") InlinedConditionProfile isMinusOne) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
-        return holesArrayImpl(object, currentIndex, isArray, cachedArrayType, previousElementIndexNode, isMinusOne);
+        return holesArrayImpl(object, currentIndex, isArray, cachedArrayType, node, previousElementIndexNode, isMinusOne);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "previousWithHolesCached")
     public long previousWithHolesUncached(JSDynamicObject object, long currentIndex, boolean isArray,
-                    @Cached("create(context)") JSArrayPreviousElementIndexNode previousElementIndexNode,
-                    @Cached("createBinaryProfile()") ConditionProfile isMinusOne,
-                    @Cached("createClassProfile()") ValueProfile arrayTypeProfile) {
+                    @Cached("create(context)") @Shared("prevElementIndex") JSArrayPreviousElementIndexNode previousElementIndexNode,
+                    @Cached @Shared("isMinusOne") InlinedConditionProfile isMinusOne,
+                    @Cached InlinedExactClassProfile arrayTypeProfile) {
         assert isSupportedArray(object);
-        ScriptArray arrayType = arrayTypeProfile.profile(getArrayType(object));
-        return holesArrayImpl(object, currentIndex, isArray, arrayType, previousElementIndexNode, isMinusOne);
+        ScriptArray arrayType = arrayTypeProfile.profile(this, getArrayType(object));
+        return holesArrayImpl(object, currentIndex, isArray, arrayType, this, previousElementIndexNode, isMinusOne);
     }
 
     private long holesArrayImpl(JSDynamicObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray, ScriptArray array,
-                    JSArrayPreviousElementIndexNode previousElementIndexNode, ConditionProfile isMinusOne) {
+                    Node node, JSArrayPreviousElementIndexNode previousElementIndexNode, InlinedConditionProfile isMinusOne) {
         long previousIndex = array.previousElementIndex(object, currentIndex);
         long minusOne = (currentIndex - 1);
-        if (isMinusOne.profile(previousIndex == minusOne)) {
+        if (isMinusOne.profile(node, previousIndex == minusOne)) {
             return previousIndex;
         }
 
@@ -133,7 +140,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
 
     @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, currentIndex)"})
     public long previousObjectViaEnumeration(JSDynamicObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long currentIndexMinusOne = currentIndex - 1;
         if (hasPropertyNode.executeBoolean(object, currentIndexMinusOne)) {
             return currentIndexMinusOne;
@@ -144,7 +151,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, currentIndex)", "isSuitableForEnumBasedProcessing(object, currentIndex)"})
     public long previousObjectViaFullEnumeration(JSDynamicObject object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long currentIndexMinusOne = currentIndex - 1;
         if (hasPropertyNode.executeBoolean(object, currentIndexMinusOne)) {
             return currentIndexMinusOne;
@@ -155,7 +162,7 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, currentIndex)"})
     public long previousObjectViaIteration(Object object, long currentIndex, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create()") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
         long index = currentIndex - 1;
         while (index >= 0 && !hasPropertyNode.executeBoolean(object, index)) {
             index--;

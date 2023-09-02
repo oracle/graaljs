@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,11 +42,14 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.Assumption;
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -59,6 +62,8 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexCompiledRegexAccessor;
+import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
 
 /**
  * Contains builtin methods for {@linkplain JSRegExp}.
@@ -103,11 +108,6 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         RegExpBuiltin(int length, TruffleString key) {
             this.key = key;
             this.length = length;
-        }
-
-        @Override
-        public TruffleString getName() {
-            return prependAccessorPrefix(key);
         }
 
         @Override
@@ -184,21 +184,16 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
     abstract static class GetStaticRegExpResultNode extends JavaScriptBaseNode {
 
         private final JSContext context;
-        @Child private TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
 
         GetStaticRegExpResultNode(JSContext context) {
             this.context = context;
         }
 
-        static GetStaticRegExpResultNode create(JSContext context) {
-            return RegExpBuiltinsFactory.GetStaticRegExpResultNodeGen.create(context);
-        }
-
         abstract Object execute();
 
         @Specialization
-        Object get() {
-            return getRealm().getStaticRegexResult(context, compiledRegexAccessor);
+        Object get(@Cached(inline = true) TRegexUtil.InvokeExecMethodNode invokeExec) {
+            return getRealm().getStaticRegexResult(context, this, invokeExec);
         }
     }
 
@@ -243,8 +238,6 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
      */
     abstract static class JSRegExpStaticResultMultilineNode extends JSBuiltinNode {
 
-        @Child private TRegexUtil.TRegexCompiledRegexSingleFlagAccessor multilineAccessor = TRegexUtil.TRegexCompiledRegexSingleFlagAccessor.create(TRegexUtil.Props.Flags.MULTILINE);
-
         JSRegExpStaticResultMultilineNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -255,22 +248,27 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         }
 
         @Specialization(assumptions = "getStaticResultUnusedAssumption()", guards = "!getContext().isOptionNashornCompatibilityMode()")
-        boolean getMultilineLazy() {
+        boolean getMultilineLazy(
+                        @Cached @Shared("multiline") TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getMultilineFlag) {
             Object compiledRegex = getRealm().getStaticRegexResultCompiledRegex();
             if (compiledRegex != null) {
-                return multilineAccessor.get(compiledRegex);
+                return getMultilineFlag.execute(this, compiledRegex, TRegexUtil.Props.Flags.MULTILINE);
             } else {
                 return false;
             }
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization
-        boolean getMultilineEager(@Cached("createGetResultNode()") GetStaticRegExpResultNode getResultNode,
-                        @Cached("create()") TRegexUtil.TRegexResultAccessor resultAccessor) {
+        boolean getMultilineEager(
+                        @Bind("this") Node node,
+                        @Cached("create(getContext())") GetStaticRegExpResultNode getResultNode,
+                        @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached @Shared("multiline") TRegexUtil.TRegexCompiledRegexSingleFlagAccessorNode getMultilineFlag) {
             Object compiledRegex = getRealm().getStaticRegexResultCompiledRegex();
             Object result = getResultNode.execute();
-            if (!getContext().isOptionNashornCompatibilityMode() && resultAccessor.isMatch(result)) {
-                return multilineAccessor.get(compiledRegex);
+            if (TRegexResultAccessor.isMatch(result, node, readIsMatch) && !getContext().isOptionNashornCompatibilityMode()) {
+                return getMultilineFlag.execute(node, compiledRegex, TRegexUtil.Props.Flags.MULTILINE);
             } else {
                 return false;
             }
@@ -279,28 +277,37 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
         Assumption getStaticResultUnusedAssumption() {
             return getContext().getRegExpStaticResultUnusedAssumption();
         }
-
-        GetStaticRegExpResultNode createGetResultNode() {
-            return GetStaticRegExpResultNode.create(getContext());
-        }
     }
 
     abstract static class JSRegExpStaticResultPropertyNode extends JSBuiltinNode {
 
         @Child GetStaticRegExpResultNode getResultNode;
-        @Child TRegexUtil.TRegexCompiledRegexAccessor compiledRegexAccessor;
-        @Child TRegexUtil.TRegexResultAccessor resultAccessor;
 
         JSRegExpStaticResultPropertyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            getResultNode = GetStaticRegExpResultNode.create(context);
-            compiledRegexAccessor = TRegexUtil.TRegexCompiledRegexAccessor.create();
-            resultAccessor = TRegexUtil.TRegexResultAccessor.create();
+            getResultNode = RegExpBuiltinsFactory.GetStaticRegExpResultNodeGen.create(context);
         }
 
-        TruffleString getInput() {
+        protected final TruffleString getInput() {
             return getRealm().getStaticRegexResultOriginalInputString();
         }
+
+        protected final boolean isMatchResult(Object result, TRegexUtil.InteropReadBooleanMemberNode readIsMatch) {
+            return TRegexResultAccessor.isMatch(result, this, readIsMatch);
+        }
+
+        protected final int groupCount(Object compiledRegex, TRegexUtil.InteropReadIntMemberNode readGroupCount) {
+            return TRegexCompiledRegexAccessor.groupCount(compiledRegex, this, readGroupCount);
+        }
+
+        protected final int captureGroupStart(Object result, int groupNumber, TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart) {
+            return TRegexResultAccessor.captureGroupStart(result, groupNumber, this, getStart);
+        }
+
+        protected final int captureGroupEnd(Object result, int groupNumber, TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd) {
+            return TRegexResultAccessor.captureGroupEnd(result, groupNumber, this, getEnd);
+        }
+
     }
 
     abstract static class JSRegExpStaticResultGetGroupNode extends JSRegExpStaticResultPropertyNode {
@@ -315,18 +322,23 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         TruffleString getGroup(VirtualFrame frame,
-                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
+                        @Cached TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached(inline = true) TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd) {
             JSRealm realm = getRealm();
             checkStaticRegexResultPropertyGet(getContext(), realm, JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
-            if (resultAccessor.isMatch(result) && compiledRegexAccessor.groupCount(realm.getStaticRegexResultCompiledRegex()) > groupNumber) {
-                int start = resultAccessor.captureGroupStart(result, groupNumber);
+            if (isMatchResult(result, readIsMatch) && groupCount(realm.getStaticRegexResultCompiledRegex(), readGroupCount) > groupNumber) {
+                int start = captureGroupStart(result, groupNumber, getStart);
                 if (start >= 0) {
-                    return Strings.substring(getContext(), substringNode, getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber) - start);
+                    return Strings.substring(getContext(), substringNode, getInput(), start, captureGroupEnd(result, groupNumber, getEnd) - start);
                 }
             }
             return Strings.EMPTY_STRING;
         }
+
     }
 
     abstract static class JSRegExpStaticResultLastParenNode extends JSRegExpStaticResultPropertyNode {
@@ -337,16 +349,20 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         TruffleString lastParen(VirtualFrame frame,
-                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
+                        @Cached TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached(inline = true) TRegexUtil.InteropReadIntMemberNode readGroupCount,
+                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart,
+                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd) {
             JSRealm realm = getRealm();
             checkStaticRegexResultPropertyGet(getContext(), realm, JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
-            if (resultAccessor.isMatch(result)) {
-                int groupNumber = compiledRegexAccessor.groupCount(realm.getStaticRegexResultCompiledRegex()) - 1;
+            if (isMatchResult(result, readIsMatch)) {
+                int groupNumber = groupCount(realm.getStaticRegexResultCompiledRegex(), readGroupCount) - 1;
                 if (groupNumber > 0) {
-                    int start = resultAccessor.captureGroupStart(result, groupNumber);
+                    int start = captureGroupStart(result, groupNumber, getStart);
                     if (start >= 0) {
-                        return Strings.substring(getContext(), substringNode, getInput(), start, resultAccessor.captureGroupEnd(result, groupNumber) - start);
+                        return Strings.substring(getContext(), substringNode, getInput(), start, captureGroupEnd(result, groupNumber, getEnd) - start);
                     }
                 }
             }
@@ -362,11 +378,13 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         TruffleString leftContext(VirtualFrame frame,
-                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
+                        @Cached TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getStart) {
             checkStaticRegexResultPropertyGet(getContext(), getRealm(), JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
-            if (resultAccessor.isMatch(result)) {
-                int start = resultAccessor.captureGroupStart(result, 0);
+            if (isMatchResult(result, readIsMatch)) {
+                int start = captureGroupStart(result, 0, getStart);
                 return Strings.substring(getContext(), substringNode, getInput(), 0, start);
             } else {
                 return Strings.EMPTY_STRING;
@@ -382,11 +400,13 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
 
         @Specialization
         TruffleString rightContext(VirtualFrame frame,
-                        @Cached TruffleString.SubstringByteIndexNode substringNode) {
+                        @Cached TruffleString.SubstringByteIndexNode substringNode,
+                        @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch,
+                        @Cached(inline = true) TRegexUtil.InvokeGetGroupBoundariesMethodNode getEnd) {
             checkStaticRegexResultPropertyGet(getContext(), getRealm(), JSFrameUtil.getThisObj(frame));
             Object result = getResultNode.execute();
-            if (resultAccessor.isMatch(result)) {
-                int end = resultAccessor.captureGroupEnd(result, 0);
+            if (isMatchResult(result, readIsMatch)) {
+                int end = captureGroupEnd(result, 0, getEnd);
                 return Strings.substring(getContext(), substringNode, getInput(), end);
             } else {
                 return Strings.EMPTY_STRING;

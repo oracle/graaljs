@@ -30,7 +30,7 @@ However, not all command-line options are supported (or behave exactly identical
 Modules might require that native modules are (re-)compiled against the v8.h file.
 
 Since GraalVM 21.1, Node.js and all related executables (e.g., `node`, `npm`, etc.) are not included by default in the GraalVM binary.
-Node.js support is now packaged in a separate component that can be installed with the _GraalVM Updater_ using `$GRAALVM/bin/gu install nodejs`.
+Node.js support is now packaged in a separate component that can be installed with the _GraalVM Updater_ using `$JAVA_HOME/bin/gu install nodejs`.
 
 - **Internals:**
 GraalVM is implemented on top of a JVM, and thus has a different internal architecture than Node.js based on V8.

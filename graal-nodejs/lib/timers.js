@@ -25,12 +25,12 @@ const {
   MathTrunc,
   ObjectCreate,
   ObjectDefineProperty,
-  SymbolToPrimitive
+  SymbolToPrimitive,
 } = primordials;
 
 const {
   immediateInfo,
-  toggleImmediateRef
+  toggleImmediateRef,
 } = internalBinding('timers');
 const L = require('internal/linkedlist');
 const {
@@ -40,7 +40,7 @@ const {
   decRefCount,
   immediateInfoFields: {
     kCount,
-    kRefCount
+    kRefCount,
   },
   kRefed,
   kHasPrimitive,
@@ -50,23 +50,23 @@ const {
   immediateQueue,
   active,
   unrefActive,
-  insert
+  insert,
 } = require('internal/timers');
 const {
   promisify: { custom: customPromisify },
-  deprecate
+  deprecate,
 } = require('internal/util');
 let debug = require('internal/util/debuglog').debuglog('timer', (fn) => {
   debug = fn;
 });
-const { validateCallback } = require('internal/validators');
+const { validateFunction } = require('internal/validators');
 
 let timersPromises;
 
 const {
   destroyHooksExist,
   // The needed emit*() functions.
-  emitDestroy
+  emitDestroy,
 } = require('internal/async_hooks');
 
 // This stores all the known timer async ids to allow users to clearTimeout and
@@ -138,7 +138,7 @@ function enroll(item, msecs) {
  * @returns {Timeout}
  */
 function setTimeout(callback, after, arg1, arg2, arg3) {
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   let i, args;
   switch (arguments.length) {
@@ -174,7 +174,7 @@ ObjectDefineProperty(setTimeout, customPromisify, {
     if (!timersPromises)
       timersPromises = require('timers/promises');
     return timersPromises.setTimeout;
-  }
+  },
 });
 
 /**
@@ -208,7 +208,7 @@ function clearTimeout(timer) {
  * @returns {Timeout}
  */
 function setInterval(callback, repeat, arg1, arg2, arg3) {
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   let i, args;
   switch (arguments.length) {
@@ -277,7 +277,7 @@ Timeout.prototype[SymbolToPrimitive] = function() {
  * @returns {Immediate}
  */
 function setImmediate(callback, arg1, arg2, arg3) {
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   let i, args;
   switch (arguments.length) {
@@ -309,7 +309,7 @@ ObjectDefineProperty(setImmediate, customPromisify, {
     if (!timersPromises)
       timersPromises = require('timers/promises');
     return timersPromises.setImmediate;
-  }
+  },
 });
 
 /**
@@ -360,5 +360,5 @@ module.exports = {
   enroll: deprecate(
     enroll,
     'timers.enroll() is deprecated. Please use setTimeout instead.',
-    'DEP0095')
+    'DEP0095'),
 };

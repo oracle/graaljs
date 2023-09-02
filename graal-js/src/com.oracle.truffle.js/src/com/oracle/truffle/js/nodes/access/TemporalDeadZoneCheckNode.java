@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,20 +43,19 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.FrameSlotKind;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.nodes.NodeUtil;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 
 public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     @Child private JavaScriptNode child;
     @Child private ScopeFrameNode levelFrameNode;
-    private final BranchProfile deadBranch = BranchProfile.create();
+    @CompilationFinal private boolean seenDead;
 
     private TemporalDeadZoneCheckNode(int slot, Object identifier, ScopeFrameNode levelFrameNode, JavaScriptNode child) {
         super(slot, identifier);
@@ -67,7 +66,10 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
     private void checkNotDead(VirtualFrame frame) {
         Frame levelFrame = levelFrameNode.executeFrame(frame);
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, levelFrame.getTag(slot) == FrameSlotKind.Illegal.tag)) {
-            deadBranch.enter();
+            if (!seenDead) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                seenDead = true;
+            }
             throw Errors.createReferenceErrorNotDefined(getIdentifier(), this);
         }
     }
@@ -112,6 +114,6 @@ public final class TemporalDeadZoneCheckNode extends FrameSlotNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return new TemporalDeadZoneCheckNode(getSlotIndex(), getIdentifier(), NodeUtil.cloneNode(levelFrameNode), cloneUninitialized(child, materializedTags));
+        return new TemporalDeadZoneCheckNode(getSlotIndex(), getIdentifier(), levelFrameNode, cloneUninitialized(child, materializedTags));
     }
 }

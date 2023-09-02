@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,11 +44,11 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
-import com.ibm.icu.impl.ICUResourceBundle;
-import com.ibm.icu.text.ListFormatter;
-import com.ibm.icu.text.SimpleFormatter;
-import com.ibm.icu.util.ULocale;
-import com.ibm.icu.util.UResourceBundle;
+import org.graalvm.shadowed.com.ibm.icu.impl.ICUResourceBundle;
+import org.graalvm.shadowed.com.ibm.icu.text.ListFormatter;
+import org.graalvm.shadowed.com.ibm.icu.text.SimpleFormatter;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.util.UResourceBundle;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -99,9 +99,8 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject listFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, listFormatPrototype, ctor);
+        JSObjectUtil.putConstructorProperty(listFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, listFormatPrototype, ListFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(listFormatPrototype, TO_STRING_TAG);
         return listFormatPrototype;
@@ -117,12 +116,12 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         return INSTANCE.createConstructorAndPrototype(realm, ListFormatFunctionBuiltins.BUILTINS);
     }
 
-    public static JSListFormatObject create(JSContext context, JSRealm realm) {
+    public static JSListFormatObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getListFormatFactory();
-        JSListFormatObject obj = new JSListFormatObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSListFormatObject(shape, proto, state), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @TruffleBoundary
@@ -183,18 +182,18 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         }
     }
 
-    public static ListFormatter getListFormatterProperty(JSDynamicObject obj) {
-        return getInternalState(obj).listFormatter;
+    public static ListFormatter getListFormatterProperty(JSListFormatObject obj) {
+        return obj.getInternalState().listFormatter;
     }
 
     @TruffleBoundary
-    public static TruffleString format(JSDynamicObject listFormatObj, List<String> list) {
+    public static TruffleString format(JSListFormatObject listFormatObj, List<String> list) {
         ListFormatter listFormatter = getListFormatterProperty(listFormatObj);
         return Strings.fromJavaString(listFormatter.format(list));
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDynamicObject listFormatObj, List<String> list) {
+    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSListFormatObject listFormatObj, List<String> list) {
         if (list.size() == 0) {
             return JSArray.createConstantEmptyArray(context, realm);
         }
@@ -234,11 +233,11 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
         private String type = IntlUtil.CONJUNCTION;
         private String style = IntlUtil.LONG;
 
-        JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            JSDynamicObject result = JSOrdinary.create(context, realm);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
+        JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSObject result = JSOrdinary.create(context, realm);
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(locale), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
             return result;
         }
 
@@ -266,14 +265,9 @@ public final class JSListFormat extends JSNonProxy implements JSConstructorFacto
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject listFormatObj) {
-        InternalState state = getInternalState(listFormatObj);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSListFormatObject listFormatObj) {
+        InternalState state = listFormatObj.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject obj) {
-        assert isJSListFormat(obj);
-        return ((JSListFormatObject) obj).getInternalState();
     }
 
     @Override

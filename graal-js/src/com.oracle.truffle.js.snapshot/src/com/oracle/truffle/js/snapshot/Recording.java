@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1110,9 +1110,10 @@ public class Recording {
         private final Map<Object, Integer> varIndexMap = new HashMap<>();
 
         private static Object getKey(Object node) {
-            if (node == null || JSRuntime.isJSPrimitive(node) || node.getClass().isEnum()) {
+            if (node == null || JSRuntime.isJSPrimitive(node) || node instanceof Long || node.getClass().isEnum()) {
                 return node;
             } else {
+                assert !JSRuntime.isJavaPrimitive(node) : node;
                 class IdentityKey {
                     private final Object obj;
 
@@ -1295,7 +1296,7 @@ public class Recording {
 
     private Inst encode(Object arg, Class<?> declaredType, Type genericType) {
         Inst enc;
-        if (arg == null || JSRuntime.isJSPrimitive(arg) || arg == Dead.instance()) {
+        if (arg == null || JSRuntime.isJSPrimitive(arg) || arg instanceof Long || arg == Dead.instance()) {
             enc = dumpConst(arg, unboxedType(arg, declaredType));
         } else if (arg.getClass().isEnum()) {
             enc = dumpConst(arg, declaredType);

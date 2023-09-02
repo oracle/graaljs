@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,14 +41,18 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
+/**
+ * CreateDataPropertyOrThrow abstract operation.
+ */
 public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
     protected final JSContext context;
     protected final Object key;
@@ -63,15 +67,22 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
         this.enumerable = enumerable;
     }
 
+    @NeverDefault
     public static CreateDataPropertyNode create(JSContext context, Object key) {
         return CreateDataPropertyNodeGen.create(context, key, true);
     }
 
+    @NeverDefault
     public static CreateDataPropertyNode createNonEnumerable(JSContext context, Object key) {
         return CreateDataPropertyNodeGen.create(context, key, false);
     }
 
     public abstract void executeVoid(Object object, Object value);
+
+    public final void executeVoid(Object object, Object propertyKey, Object value) {
+        assert propertyKey.equals(this.key);
+        executeVoid(object, value);
+    }
 
     @Specialization(guards = {"context.getPropertyCacheLimit() > 0", "isObject.executeBoolean(object)"})
     protected static void doCached(Object object, Object value,
@@ -79,8 +90,8 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
         propertyCache.setValue(object, value);
     }
 
-    @Specialization(guards = {"context.getPropertyCacheLimit() == 0", "isJSObject(object)"})
-    protected final void doUncached(JSDynamicObject object, Object value) {
+    @Specialization(guards = {"context.getPropertyCacheLimit() == 0"})
+    protected final void doUncached(JSObject object, Object value) {
         if (enumerable) {
             JSRuntime.createDataPropertyOrThrow(object, key, value);
         } else {
@@ -93,6 +104,7 @@ public abstract class CreateDataPropertyNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorNotAnObject(object, this);
     }
 
+    @NeverDefault
     protected final PropertySetNode makeDefinePropertyCache() {
         if (enumerable) {
             return PropertySetNode.createImpl(key, false, context, true, true, JSAttributes.getDefault());

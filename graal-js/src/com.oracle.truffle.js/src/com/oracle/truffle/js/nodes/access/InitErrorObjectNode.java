@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -94,22 +94,22 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         return new InitErrorObjectNode(context, defaultColumnNumber);
     }
 
-    public JSDynamicObject execute(JSDynamicObject errorObj, GraalJSException exception, TruffleString messageOpt) {
+    public JSObject execute(JSObject errorObj, GraalJSException exception, TruffleString messageOpt) {
         return execute(errorObj, exception, messageOpt, null);
     }
 
-    public JSDynamicObject execute(JSDynamicObject errorObj, GraalJSException exception, TruffleString messageOpt, JSDynamicObject errorsOpt) {
+    public JSObject execute(JSObject errorObj, GraalJSException exception, TruffleString messageOpt, JSObject errorsOpt) {
         return execute(errorObj, exception, messageOpt, errorsOpt, Undefined.instance);
     }
 
-    public JSDynamicObject execute(JSDynamicObject errorObj, GraalJSException exception, TruffleString messageOpt, JSDynamicObject errorsOpt, Object options) {
+    public JSObject execute(JSObject errorObj, GraalJSException exception, TruffleString messageOpt, JSObject errorsOpt, Object options) {
         if (messageOpt != null) {
             Properties.putWithFlags(setMessage, errorObj, JSError.MESSAGE, messageOpt, JSError.MESSAGE_ATTRIBUTES);
         }
         if (errorsOpt != null) {
             Properties.putWithFlags(setErrorsNode(), errorObj, JSError.ERRORS_NAME, errorsOpt, JSError.ERRORS_ATTRIBUTES);
         }
-        if (context.getContextOptions().isErrorCauseEnabled() && options != Undefined.instance) {
+        if (context.getLanguageOptions().errorCause() && options != Undefined.instance) {
             installErrorCause(errorObj, options);
         }
 
@@ -126,7 +126,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
         return errorObj;
     }
 
-    private void installErrorCause(JSDynamicObject errorObj, Object options) {
+    private void installErrorCause(JSObject errorObj, Object options) {
         if (installErrorCauseNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             installErrorCauseNode = insert(new InstallErrorCauseNode(context));
@@ -148,10 +148,10 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
             return DefineStackPropertyNodeGen.create();
         }
 
-        abstract void execute(JSDynamicObject errorObj);
+        abstract void execute(JSObject errorObj);
 
         @Specialization(limit = "3")
-        void doCached(JSDynamicObject errorObj,
+        void doCached(JSObject errorObj,
                         @CachedLibrary("errorObj") DynamicObjectLibrary objectLibrary) {
             Property stackProperty = Properties.getProperty(objectLibrary, errorObj, JSError.STACK_NAME);
             int attrs = JSAttributes.getDefaultNotEnumerable();

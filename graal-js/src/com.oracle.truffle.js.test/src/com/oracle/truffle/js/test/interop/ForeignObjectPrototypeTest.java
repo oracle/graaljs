@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
+import java.math.BigInteger;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.List;
@@ -371,6 +372,12 @@ public class ForeignObjectPrototypeTest {
             return true;
         }
 
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final boolean fitsInBigInteger() {
+            return true;
+        }
+
         @ExportMessage
         @SuppressWarnings("static-method")
         final byte asByte() {
@@ -407,5 +414,10 @@ public class ForeignObjectPrototypeTest {
             return 0.0D;
         }
 
+        @SuppressWarnings("static-method")
+        @ExportMessage
+        final BigInteger asBigInteger() {
+            return BigInteger.ZERO;
+        }
     }
 }

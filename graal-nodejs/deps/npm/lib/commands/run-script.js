@@ -1,5 +1,4 @@
 const { resolve } = require('path')
-const chalk = require('chalk')
 const runScript = require('@npmcli/run-script')
 const { isServerPackage } = runScript
 const rpj = require('read-package-json-fast')
@@ -18,14 +17,6 @@ const cmdList = [
   'version',
 ].reduce((l, p) => l.concat(['pre' + p, p, 'post' + p]), [])
 
-const nocolor = {
-  reset: s => s,
-  bold: s => s,
-  dim: s => s,
-  blue: s => s,
-  green: s => s,
-}
-
 const BaseCommand = require('../base-command.js')
 class RunScript extends BaseCommand {
   static description = 'Run arbitrary package scripts'
@@ -41,6 +32,7 @@ class RunScript extends BaseCommand {
 
   static name = 'run-script'
   static usage = ['<command> [-- <args>]']
+  static workspaces = true
   static ignoreImplicitWorkspace = false
   static isShellout = true
 
@@ -50,6 +42,9 @@ class RunScript extends BaseCommand {
       // find the script name
       const json = resolve(this.npm.localPrefix, 'package.json')
       const { scripts = {} } = await rpj(json).catch(er => ({}))
+      if (opts.isFish) {
+        return Object.keys(scripts).map(s => `${s}\t${scripts[s].slice(0, 30)}`)
+      }
       return Object.keys(scripts)
     }
   }
@@ -62,11 +57,11 @@ class RunScript extends BaseCommand {
     }
   }
 
-  async execWorkspaces (args, filters) {
+  async execWorkspaces (args) {
     if (args.length) {
-      return this.runWorkspaces(args, filters)
+      return this.runWorkspaces(args)
     } else {
-      return this.listWorkspaces(args, filters)
+      return this.listWorkspaces(args)
     }
   }
 
@@ -117,16 +112,15 @@ class RunScript extends BaseCommand {
       args,
       scriptShell,
       stdio: 'inherit',
-      stdioString: true,
       pkg,
       banner: !this.npm.silent,
     }
 
-    for (const [event, args] of events) {
+    for (const [ev, evArgs] of events) {
       await runScript({
         ...opts,
-        event,
-        args,
+        event: ev,
+        args: evArgs,
       })
     }
   }
@@ -135,7 +129,6 @@ class RunScript extends BaseCommand {
     path = path || this.npm.localPrefix
     const { scripts, name, _id } = await rpj(`${path}/package.json`)
     const pkgid = _id || name
-    const color = this.npm.color
 
     if (!scripts) {
       return []
@@ -167,7 +160,7 @@ class RunScript extends BaseCommand {
       const list = cmdList.includes(script) ? cmds : runScripts
       list.push(script)
     }
-    const colorize = color ? chalk : nocolor
+    const colorize = this.npm.chalk
 
     if (cmds.length) {
       this.npm.output(
@@ -201,7 +194,7 @@ class RunScript extends BaseCommand {
 
   async runWorkspaces (args, filters) {
     const res = []
-    await this.setWorkspaces(filters)
+    await this.setWorkspaces()
 
     for (const workspacePath of this.workspacePaths) {
       const pkg = await rpj(`${workspacePath}/package.json`)
@@ -234,7 +227,7 @@ class RunScript extends BaseCommand {
   }
 
   async listWorkspaces (args, filters) {
-    await this.setWorkspaces(filters)
+    await this.setWorkspaces()
 
     if (this.npm.silent) {
       return

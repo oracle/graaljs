@@ -7,6 +7,8 @@
 .*
 # Exclude specific dotfiles that we want to track.
 !deps/**/.*
+!.devcontainer/
+!.devcontainer/.devcontainer.json
 !test/fixtures/**/.*
 !.checkstyle_checks.xml
 !.clang-format
@@ -15,7 +17,6 @@
 !.eslintignore
 !.eslintrc.js
 !.eslintrc.yaml
-!.flake8
 !.gitattributes
 !.github
 !.gitignore
@@ -132,6 +133,7 @@ tools/*/*.i.tmp
 # === Rules for test artifacts ===
 /*.tap
 /*.xml
+/v8*-tap.json
 /node_trace.*.log
 # coverage related
 /gcovr
@@ -150,10 +152,11 @@ tools/*/*.i.tmp
 /deps/npm/node_modules/.bin/
 # Respect V8's .gitignore
 !deps/v8/**
-# Ignore the libuv book and GitHub templates
-/deps/uv/.github/
+# Ignore the libuv book
 /deps/uv/docs/code/
 /deps/uv/docs/src/guide/
+# Ignore .github directories
+/deps/**/.github/
 # Ignore dependencies fetched by tools/v8/fetch_deps.py
 /deps/.cipd
 

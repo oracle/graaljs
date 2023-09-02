@@ -280,6 +280,15 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   void Drop(int count, Condition cond = cc_always, Register reg = no_reg,
             const Operand& op = Operand(no_reg));
 
+  enum ArgumentsCountMode { kCountIncludesReceiver, kCountExcludesReceiver };
+  enum ArgumentsCountType { kCountIsInteger, kCountIsSmi, kCountIsBytes };
+  void DropArguments(Register count, ArgumentsCountType type,
+                     ArgumentsCountMode mode, Register scratch = no_reg);
+  void DropArgumentsAndPushNewReceiver(Register argc, Register receiver,
+                                       ArgumentsCountType type,
+                                       ArgumentsCountMode mode,
+                                       Register scratch = no_reg);
+
   // Trivial case of DropAndRet that utilizes the delay slot.
   void DropAndRet(int drop);
 
@@ -361,8 +370,8 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   // Registers are saved in numerical order, with higher numbered registers
   // saved in higher memory addresses.
   void MultiPush(RegList regs);
-  void MultiPushFPU(RegList regs);
-  void MultiPushMSA(RegList regs);
+  void MultiPushFPU(DoubleRegList regs);
+  void MultiPushMSA(DoubleRegList regs);
 
   // Calculate how much stack space (in bytes) are required to store caller
   // registers excluding those specified in the arguments.
@@ -409,8 +418,8 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   // Pops multiple values from the stack and load them in the
   // registers specified in regs. Pop order is the opposite as in MultiPush.
   void MultiPop(RegList regs);
-  void MultiPopFPU(RegList regs);
-  void MultiPopMSA(RegList regs);
+  void MultiPopFPU(DoubleRegList regs);
+  void MultiPopMSA(DoubleRegList regs);
 
 #define DEFINE_INSTRUCTION(instr)                          \
   void instr(Register rd, Register rs, const Operand& rt); \
@@ -473,6 +482,18 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
 #undef DEFINE_INSTRUCTION2
 #undef DEFINE_INSTRUCTION3
 
+  void SmiTag(Register dst, Register src) {
+    STATIC_ASSERT(kSmiTag == 0);
+    if (SmiValuesAre32Bits()) {
+      dsll32(dst, src, 0);
+    } else {
+      DCHECK(SmiValuesAre31Bits());
+      Addu(dst, src, src);
+    }
+  }
+
+  void SmiTag(Register reg) { SmiTag(reg, reg); }
+
   void SmiUntag(Register dst, const MemOperand& src);
   void SmiUntag(Register dst, Register src) {
     if (SmiValuesAre32Bits()) {
@@ -484,6 +505,31 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   }
 
   void SmiUntag(Register reg) { SmiUntag(reg, reg); }
+
+  // Left-shifted from int32 equivalent of Smi.
+  void SmiScale(Register dst, Register src, int scale) {
+    if (SmiValuesAre32Bits()) {
+      // The int portion is upper 32-bits of 64-bit word.
+      dsra(dst, src, kSmiShift - scale);
+    } else {
+      DCHECK(SmiValuesAre31Bits());
+      DCHECK_GE(scale, kSmiTagSize);
+      sll(dst, src, scale - kSmiTagSize);
+    }
+  }
+
+  // On MIPS64, we should sign-extend 32-bit values.
+  void SmiToInt32(Register smi) {
+    if (FLAG_enable_slow_asserts) {
+      AssertSmi(smi);
+    }
+    DCHECK(SmiValuesAre32Bits() || SmiValuesAre31Bits());
+    SmiUntag(smi);
+  }
+
+  // Abort execution if argument is a smi, enabled via --debug-code.
+  void AssertNotSmi(Register object);
+  void AssertSmi(Register object);
 
   int CalculateStackPassedWords(int num_reg_arguments,
                                 int num_double_arguments);
@@ -805,7 +851,7 @@ class V8_EXPORT_PRIVATE TurboAssembler : public TurboAssemblerBase {
   void MSARoundD(MSARegister dst, MSARegister src, FPURoundingMode mode);
 
   // Jump the register contains a smi.
-  void JumpIfSmi(Register value, Label* smi_label, Register scratch = at,
+  void JumpIfSmi(Register value, Label* smi_label,
                  BranchDelaySlot bd = PROTECT);
 
   void JumpIfEqual(Register a, int32_t b, Label* dest) {
@@ -1115,7 +1161,7 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
                                bool builtin_exit_frame = false);
 
   // Generates a trampoline to jump to the off-heap instruction stream.
-  void JumpToInstructionStream(Address entry);
+  void JumpToOffHeapInstructionStream(Address entry);
 
   // ---------------------------------------------------------------------------
   // In-place weak references.
@@ -1150,48 +1196,24 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
   // ---------------------------------------------------------------------------
   // Smi utilities.
 
-  void SmiTag(Register dst, Register src) {
-    STATIC_ASSERT(kSmiTag == 0);
-    if (SmiValuesAre32Bits()) {
-      dsll32(dst, src, 0);
-    } else {
-      DCHECK(SmiValuesAre31Bits());
-      Addu(dst, src, src);
-    }
-  }
-
-  void SmiTag(Register reg) { SmiTag(reg, reg); }
-
-  // Left-shifted from int32 equivalent of Smi.
-  void SmiScale(Register dst, Register src, int scale) {
-    if (SmiValuesAre32Bits()) {
-      // The int portion is upper 32-bits of 64-bit word.
-      dsra(dst, src, kSmiShift - scale);
-    } else {
-      DCHECK(SmiValuesAre31Bits());
-      DCHECK_GE(scale, kSmiTagSize);
-      sll(dst, src, scale - kSmiTagSize);
-    }
-  }
-
   // Test if the register contains a smi.
   inline void SmiTst(Register value, Register scratch) {
     And(scratch, value, Operand(kSmiTagMask));
   }
 
   // Jump if the register contains a non-smi.
-  void JumpIfNotSmi(Register value, Label* not_smi_label, Register scratch = at,
+  void JumpIfNotSmi(Register value, Label* not_smi_label,
                     BranchDelaySlot bd = PROTECT);
-
-  // Abort execution if argument is a smi, enabled via --debug-code.
-  void AssertNotSmi(Register object);
-  void AssertSmi(Register object);
 
   // Abort execution if argument is not a Constructor, enabled via --debug-code.
   void AssertConstructor(Register object);
 
   // Abort execution if argument is not a JSFunction, enabled via --debug-code.
   void AssertFunction(Register object);
+
+  // Abort execution if argument is not a callable JSFunction, enabled via
+  // --debug-code.
+  void AssertCallableFunction(Register object);
 
   // Abort execution if argument is not a JSBoundFunction,
   // enabled via --debug-code.
@@ -1220,13 +1242,6 @@ class V8_EXPORT_PRIVATE MacroAssembler : public TurboAssembler {
   void InvokePrologue(Register expected_parameter_count,
                       Register actual_parameter_count, Label* done,
                       InvokeType type);
-
-  // Compute memory operands for safepoint stack slots.
-  static int SafepointRegisterStackIndex(int reg_code);
-
-  // Needs access to SafepointRegisterStackIndex for compiled frame
-  // traversal.
-  friend class CommonFrame;
 
   DISALLOW_IMPLICIT_CONSTRUCTORS(MacroAssembler);
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,11 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -59,9 +61,9 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * This implements ECMA 9.3 ToNumber.
- *
+ * This implements the abstract operation ToNumber.
  */
+@GenerateUncached
 public abstract class JSToNumberNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object value);
@@ -70,6 +72,7 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         return (Number) execute(value);
     }
 
+    @NeverDefault
     public static JSToNumberNode create() {
         return JSToNumberNodeGen.create();
     }
@@ -109,14 +112,15 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
     @Specialization
     protected Number doString(TruffleString value,
                     @Cached JSStringToNumberNode stringToNumberNode) {
-        double doubleValue = stringToNumberNode.executeString(value);
+        double doubleValue = stringToNumberNode.execute(value);
         return JSRuntime.doubleToNarrowestNumber(doubleValue);
     }
 
+    @InliningCutoff
     @Specialization
     protected Number doJSObject(JSObject value,
-                    @Shared("toPrimitiveHintNumberNode") @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
-                    @Shared("toNumberNode") @Cached JSToNumberNode toNumberNode) {
+                    @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached JSToNumberNode toNumberNode) {
         return toNumberNode.executeNumber(toPrimitiveNode.execute(value));
     }
 
@@ -125,37 +129,38 @@ public abstract class JSToNumberNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value", this);
     }
 
-    @Specialization
+    @Specialization(guards = "!value.isForeign()")
     protected final Number doBigInt(@SuppressWarnings("unused") BigInt value) {
         throw Errors.createTypeErrorCannotConvertToNumber("a BigInt value", this);
     }
 
-    @Specialization(guards = "isForeignObject(value)")
-    protected Number doForeignObject(Object value,
-                    @Shared("toPrimitiveHintNumberNode") @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
-                    @Shared("toNumberNode") @Cached JSToNumberNode toNumberNode) {
+    @Specialization(guards = "value.isForeign()")
+    protected static Number doForeignBigInt(BigInt value) {
+        return value.doubleValue();
+    }
+
+    @Specialization
+    protected static double doLong(long value) {
+        return value;
+    }
+
+    @InliningCutoff
+    @Specialization(guards = "isJSObject(value) || isForeignObject(value)", replaces = "doJSObject")
+    protected Number doJSOrForeignObject(Object value,
+                    @Shared @Cached(value = "createHintNumber()", uncached = "getUncachedHintNumber()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached JSToNumberNode toNumberNode) {
         return toNumberNode.executeNumber(toPrimitiveNode.execute(value));
     }
 
-    @Specialization(guards = "isJavaNumber(value)")
-    protected static double doJavaObject(Object value) {
-        return JSRuntime.doubleValue((Number) value);
-    }
-
     public abstract static class JSToNumberUnaryNode extends JSUnaryNode {
-
-        @Child private JSToNumberNode toNumberNode;
 
         protected JSToNumberUnaryNode(JavaScriptNode operand) {
             super(operand);
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
-            if (toNumberNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toNumberNode = insert(JSToNumberNode.create());
-            }
+        protected static Object doDefault(Object value,
+                        @Cached JSToNumberNode toNumberNode) {
             return toNumberNode.executeNumber(value);
         }
 

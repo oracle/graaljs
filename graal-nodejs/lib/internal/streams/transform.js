@@ -70,7 +70,7 @@ const {
 
 module.exports = Transform;
 const {
-  ERR_METHOD_NOT_IMPLEMENTED
+  ERR_METHOD_NOT_IMPLEMENTED,
 } = require('internal/errors').codes;
 const Duplex = require('internal/streams/duplex');
 const { getHighWaterMark } = require('internal/streams/state');
@@ -99,7 +99,7 @@ function Transform(options) {
       // a "bug" where we check needDrain before calling _write and not after.
       // Refs: https://github.com/nodejs/node/pull/32887
       // Refs: https://github.com/nodejs/node/pull/35941
-      writableHighWaterMark: options.writableHighWaterMark || 0
+      writableHighWaterMark: options.writableHighWaterMark || 0,
     };
   }
 
@@ -128,10 +128,8 @@ function Transform(options) {
 }
 
 function final(cb) {
-  let called = false;
   if (typeof this._flush === 'function' && !this.destroyed) {
-    const result = this._flush((er, data) => {
-      called = true;
+    this._flush((er, data) => {
       if (er) {
         if (cb) {
           cb(er);
@@ -149,33 +147,6 @@ function final(cb) {
         cb();
       }
     });
-    if (result !== undefined && result !== null) {
-      try {
-        const then = result.then;
-        if (typeof then === 'function') {
-          then.call(
-            result,
-            (data) => {
-              if (called)
-                return;
-              if (data != null)
-                this.push(data);
-              this.push(null);
-              if (cb)
-                process.nextTick(cb);
-            },
-            (err) => {
-              if (cb) {
-                process.nextTick(cb, err);
-              } else {
-                process.nextTick(() => this.destroy(err));
-              }
-            });
-        }
-      } catch (err) {
-        process.nextTick(() => this.destroy(err));
-      }
-    }
   } else {
     this.push(null);
     if (cb) {
@@ -201,9 +172,7 @@ Transform.prototype._write = function(chunk, encoding, callback) {
   const wState = this._writableState;
   const length = rState.length;
 
-  let called = false;
-  const result = this._transform(chunk, encoding, (err, val) => {
-    called = true;
+  this._transform(chunk, encoding, (err, val) => {
     if (err) {
       callback(err);
       return;
@@ -223,38 +192,6 @@ Transform.prototype._write = function(chunk, encoding, callback) {
       this[kCallback] = callback;
     }
   });
-  if (result !== undefined && result != null) {
-    try {
-      const then = result.then;
-      if (typeof then === 'function') {
-        then.call(
-          result,
-          (val) => {
-            if (called)
-              return;
-
-            if (val != null) {
-              this.push(val);
-            }
-
-            if (
-              wState.ended ||
-              length === rState.length ||
-              rState.length < rState.highWaterMark ||
-              rState.length === 0) {
-              process.nextTick(callback);
-            } else {
-              this[kCallback] = callback;
-            }
-          },
-          (err) => {
-            process.nextTick(callback, err);
-          });
-      }
-    } catch (err) {
-      process.nextTick(callback, err);
-    }
-  }
 };
 
 Transform.prototype._read = function() {

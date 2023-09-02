@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,12 @@ package com.oracle.truffle.js.nodes.unary;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -90,6 +92,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return TypeOfNodeGen.create(operand);
     }
 
+    @NeverDefault
     public static TypeOfNode create() {
         return create(null);
     }
@@ -158,7 +161,7 @@ public abstract class TypeOfNode extends JSUnaryNode {
 
     @Specialization
     protected TruffleString doJSProxy(JSProxyObject operand,
-                    @Cached("create()") TypeOfNode typeofNode) {
+                    @Cached TypeOfNode typeofNode) {
         Object target = JSProxy.getTargetNonProxy(operand);
         return typeofNode.executeString(target);
     }
@@ -168,32 +171,42 @@ public abstract class TypeOfNode extends JSUnaryNode {
         return JSSymbol.TYPE_NAME;
     }
 
+    @Specialization
+    protected static TruffleString doLong(long operand) {
+        return JSNumber.TYPE_NAME;
+    }
+
+    @InliningCutoff
     @Specialization(guards = "isForeignObject(operand)", limit = "InteropLibraryLimit")
     protected TruffleString doTruffleObject(Object operand,
                     @CachedLibrary("operand") InteropLibrary interop) {
-        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
-            TruffleLanguage.Env env = getRealm().getEnv();
-            if (env.isHostSymbol(operand)) {
-                return JSFunction.TYPE_NAME;
-            }
-        }
         if (interop.isBoolean(operand)) {
             return JSBoolean.TYPE_NAME;
         } else if (interop.isString(operand)) {
             return JSString.TYPE_NAME;
         } else if (interop.isNumber(operand)) {
             return JSNumber.TYPE_NAME;
-        } else if (interop.isExecutable(operand) || interop.isInstantiable(operand)) {
+        }
+        if (interop.isExecutable(operand) || interop.isInstantiable(operand) || isHostSymbolInNashornCompatMode(operand)) {
             return JSFunction.TYPE_NAME;
         } else {
             return JSOrdinary.TYPE_NAME;
         }
     }
 
+    private boolean isHostSymbolInNashornCompatMode(Object value) {
+        if (getLanguage().getJSContext().isOptionNashornCompatibilityMode()) {
+            TruffleLanguage.Env env = getRealm().getEnv();
+            if (env.isHostSymbol(value)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     @Fallback
     protected TruffleString doJavaObject(Object operand) {
-        assert operand != null;
-        return operand instanceof Number ? JSNumber.TYPE_NAME : JSOrdinary.TYPE_NAME;
+        return JSOrdinary.TYPE_NAME;
     }
 
     @Override

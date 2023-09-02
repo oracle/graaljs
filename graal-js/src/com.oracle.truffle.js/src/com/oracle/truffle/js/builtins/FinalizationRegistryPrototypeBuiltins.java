@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,18 +40,22 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryCleanupSomeNodeGen;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryRegisterNodeGen;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltinsFactory.JSFinalizationRegistryUnregisterNodeGen;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.builtins.helper.CanBeHeldWeaklyNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSFinalizationRegistry;
@@ -85,6 +89,14 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         public int getLength() {
             return length;
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (this == cleanupSome) {
+                return JSConfig.StagingECMAScriptVersion;
+            }
+            return JSConfig.ECMAScript2021;
+        }
     }
 
     @Override
@@ -100,45 +112,38 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
         return null;
     }
 
-    public abstract static class FinalizationRegistryOperation extends JSBuiltinNode {
-        protected final BranchProfile errorBranch = BranchProfile.create();
-
-        public FinalizationRegistryOperation(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        protected void invalidUnregisterToken(Object token) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorFormat("unregisterToken ('%s') must be an object", JSRuntime.safeToString(token));
-        }
+    @TruffleBoundary
+    static JSException invalidUnregisterToken(Object token) {
+        throw Errors.createTypeErrorFormat("unregisterToken ('%s') must be an object", JSRuntime.safeToString(token));
     }
 
     /**
      * Implementation of the FinalizationRegistry.prototype.register().
      */
-    public abstract static class JSFinalizationRegistryRegisterNode extends FinalizationRegistryOperation {
-
-        @Child protected JSIdenticalNode sameValueNode = JSIdenticalNode.createSameValue();
-        @Child protected IsObjectNode isObjectNode = IsObjectNode.create();
+    public abstract static class JSFinalizationRegistryRegisterNode extends JSBuiltinNode {
 
         public JSFinalizationRegistryRegisterNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject register(JSFinalizationRegistryObject thisObj, Object target, Object holdings, Object unregisterTokenArg) {
-            if (!isObjectNode.executeBoolean(target)) {
-                errorBranch.enter();
+        protected JSDynamicObject register(JSFinalizationRegistryObject thisObj, Object target, Object holdings, Object unregisterTokenArg,
+                        @Cached CanBeHeldWeaklyNode canBeHeldWeakly,
+                        @Cached("createSameValue()") JSIdenticalNode sameValueNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (!canBeHeldWeakly.execute(this, target)) {
+                errorBranch.enter(this);
                 throw Errors.createTypeError("FinalizationRegistry.prototype.register: invalid target");
             }
             if (sameValueNode.executeBoolean(target, holdings)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("FinalizationRegistry.prototype.register: target and holdings must not be same");
             }
             Object unregisterToken = unregisterTokenArg;
-            if (!isObjectNode.executeBoolean(unregisterToken)) {
+            if (!canBeHeldWeakly.execute(this, unregisterToken)) {
                 if (unregisterToken != Undefined.instance) {
-                    invalidUnregisterToken(unregisterToken);
+                    errorBranch.enter(this);
+                    throw invalidUnregisterToken(unregisterToken);
                 }
                 unregisterToken = Undefined.instance;
             }
@@ -156,18 +161,19 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
     /**
      * Implementation of the FinalizationRegistry.prototype.unregister().
      */
-    public abstract static class JSFinalizationRegistryUnregisterNode extends FinalizationRegistryOperation {
-
-        @Child protected IsObjectNode isObjectNode = IsObjectNode.create();
+    public abstract static class JSFinalizationRegistryUnregisterNode extends JSBuiltinNode {
 
         public JSFinalizationRegistryUnregisterNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected boolean unregister(JSFinalizationRegistryObject thisObj, Object unregisterToken) {
-            if (!isObjectNode.executeBoolean(unregisterToken)) {
-                invalidUnregisterToken(unregisterToken);
+        protected boolean unregister(JSFinalizationRegistryObject thisObj, Object unregisterToken,
+                        @Cached CanBeHeldWeaklyNode canBeHeldWeakly,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (!canBeHeldWeakly.execute(this, unregisterToken)) {
+                errorBranch.enter(this);
+                throw invalidUnregisterToken(unregisterToken);
             }
             return JSFinalizationRegistry.removeFromCells(thisObj, unregisterToken);
         }
@@ -182,18 +188,18 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
     /**
      * Implementation of the FinalizationRegistry.prototype.cleanupSome().
      */
-    public abstract static class JSFinalizationRegistryCleanupSomeNode extends FinalizationRegistryOperation {
-
-        @Child protected IsCallableNode isCallableNode = IsCallableNode.create();
+    public abstract static class JSFinalizationRegistryCleanupSomeNode extends JSBuiltinNode {
 
         public JSFinalizationRegistryCleanupSomeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject cleanupSome(JSFinalizationRegistryObject thisObj, Object callback) {
+        protected JSDynamicObject cleanupSome(JSFinalizationRegistryObject thisObj, Object callback,
+                        @Cached IsCallableNode isCallableNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             if (callback != Undefined.instance && !isCallableNode.executeBoolean(callback)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("FinalizationRegistry: cleanup must be callable");
             }
             JSFinalizationRegistry.cleanupFinalizationRegistry(thisObj, callback);

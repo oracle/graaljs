@@ -58,12 +58,12 @@ const {
 const {
   kUniqueHeaders,
   parseUniqueHeadersOption,
-  OutgoingMessage
+  OutgoingMessage,
 } = require('_http_outgoing');
 const Agent = require('_http_agent');
 const { Buffer } = require('buffer');
 const { defaultTriggerAsyncIdScope } = require('internal/async_hooks');
-const { URL, urlToHttpOptions, searchParamsSymbol } = require('internal/url');
+const { URL, urlToHttpOptions, isURL } = require('internal/url');
 const {
   kOutHeaders,
   kNeedDrain,
@@ -78,15 +78,16 @@ const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_HTTP_TOKEN,
   ERR_INVALID_PROTOCOL,
-  ERR_UNESCAPED_CHARACTERS
+  ERR_UNESCAPED_CHARACTERS,
 } = codes;
 const {
   validateInteger,
+  validateBoolean,
 } = require('internal/validators');
 const { getTimerDuration } = require('internal/timers');
 const {
   DTRACE_HTTP_CLIENT_REQUEST,
-  DTRACE_HTTP_CLIENT_RESPONSE
+  DTRACE_HTTP_CLIENT_RESPONSE,
 } = require('internal/dtrace');
 
 const {
@@ -137,8 +138,7 @@ function ClientRequest(input, options, cb) {
   if (typeof input === 'string') {
     const urlStr = input;
     input = urlToHttpOptions(new URL(urlStr));
-  } else if (input && input[searchParamsSymbol] &&
-             input[searchParamsSymbol][searchParamsSymbol]) {
+  } else if (isURL(input)) {
     // url.URL instance
     input = urlToHttpOptions(input);
   } else {
@@ -178,8 +178,10 @@ function ClientRequest(input, options, cb) {
 
   if (options.path) {
     const path = String(options.path);
-    if (RegExpPrototypeExec(INVALID_PATH_REGEX, path) !== null)
+    if (RegExpPrototypeExec(INVALID_PATH_REGEX, path) !== null) {
+      debug('Path contains unescaped characters: "%s"', path);
       throw new ERR_UNESCAPED_CHARACTERS('Request path');
+    }
   }
 
   if (protocol !== expectedProtocol) {
@@ -225,12 +227,17 @@ function ClientRequest(input, options, cb) {
   this.maxHeaderSize = maxHeaderSize;
 
   const insecureHTTPParser = options.insecureHTTPParser;
-  if (insecureHTTPParser !== undefined &&
-      typeof insecureHTTPParser !== 'boolean') {
-    throw new ERR_INVALID_ARG_TYPE(
-      'options.insecureHTTPParser', 'boolean', insecureHTTPParser);
+  if (insecureHTTPParser !== undefined) {
+    validateBoolean(insecureHTTPParser, 'options.insecureHTTPParser');
   }
+
   this.insecureHTTPParser = insecureHTTPParser;
+
+  if (options.joinDuplicateHeaders !== undefined) {
+    validateBoolean(options.joinDuplicateHeaders, 'options.joinDuplicateHeaders');
+  }
+
+  this.joinDuplicateHeaders = options.joinDuplicateHeaders;
 
   this.path = options.path || '/';
   if (cb) {
@@ -642,7 +649,7 @@ function parserOnIncomingClient(res, shouldKeepAlive) {
       httpVersionMajor: res.httpVersionMajor,
       httpVersionMinor: res.httpVersionMinor,
       headers: res.headers,
-      rawHeaders: res.rawHeaders
+      rawHeaders: res.rawHeaders,
     });
 
     return 1;  // Skip body but don't treat as Upgrade.
@@ -778,8 +785,8 @@ function responseOnTimeout() {
   res.emit('timeout');
 }
 
-// This function is necessary in the case where we receive the entire reponse
-// from server before we finish sending out the request
+// This function is necessary in the case where we receive the entire response
+// from the server before we finish sending out the request.
 function requestOnFinish() {
   const req = this;
 
@@ -803,8 +810,7 @@ function tickOnSocket(req, socket) {
   parser.initialize(HTTPParser.RESPONSE,
                     new HTTPClientAsyncResource('HTTPINCOMINGMESSAGE', req),
                     req.maxHeaderSize || 0,
-                    lenient ? kLenientAll : kLenientNone,
-                    0);
+                    lenient ? kLenientAll : kLenientNone);
   parser.socket = socket;
   parser.outgoing = req;
   req.parser = parser;
@@ -816,6 +822,8 @@ function tickOnSocket(req, socket) {
   if (typeof req.maxHeadersCount === 'number') {
     parser.maxHeaderPairs = req.maxHeadersCount << 1;
   }
+
+  parser.joinDuplicateHeaders = req.joinDuplicateHeaders;
 
   parser.onIncoming = parserOnIncomingClient;
   socket.on('error', socketErrorListener);
@@ -882,6 +890,9 @@ function onSocketNT(req, socket, err) {
         socket.emit('free');
       } else {
         finished(socket.destroy(err || req[kError]), (er) => {
+          if (er?.code === 'ERR_STREAM_PREMATURE_CLOSE') {
+            er = null;
+          }
           _destroy(req, er || err);
         });
         return;
@@ -965,5 +976,5 @@ ClientRequest.prototype.clearTimeout = function clearTimeout(cb) {
 };
 
 module.exports = {
-  ClientRequest
+  ClientRequest,
 };

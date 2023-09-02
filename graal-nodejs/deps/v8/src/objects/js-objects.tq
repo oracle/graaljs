@@ -5,7 +5,6 @@
 // JSReceiver corresponds to objects in the JS sense.
 @abstract
 @highestInstanceTypeWithinParentClassRange
-@doNotGenerateCppClass
 extern class JSReceiver extends HeapObject {
   properties_or_hash: SwissNameDictionary|FixedArrayBase|PropertyArray|Smi;
 }
@@ -41,11 +40,20 @@ macro NewJSObject(implicit context: Context)(): JSObject {
   return AllocateJSObjectFromMap(map);
 }
 
+extern class JSExternalObject extends JSObject { value: ExternalPointer; }
+
+// A JSObject that may contain EmbedderDataSlots.
+@abstract
+extern class JSObjectWithEmbedderSlots extends JSObject {
+}
+
 @abstract
 @lowestInstanceTypeWithinParentClassRange
 extern class JSCustomElementsObject extends JSObject {
 }
 
+// These may also contain EmbedderDataSlots but can't be a child class of
+// JSObjectWithEmbedderSlots due to type id constraints.
 @abstract
 @lowestInstanceTypeWithinParentClassRange
 extern class JSSpecialObject extends JSCustomElementsObject {
@@ -56,7 +64,7 @@ macro GetDerivedMap(implicit context: Context)(
   try {
     const constructor =
         Cast<JSFunctionWithPrototypeSlot>(newTarget) otherwise SlowPath;
-    assert(IsConstructor(constructor));
+    dcheck(IsConstructor(constructor));
     const map =
         Cast<Map>(constructor.prototype_or_initial_map) otherwise SlowPath;
     if (LoadConstructorOrBackPointer(map) != target) {
@@ -79,10 +87,11 @@ macro AllocateFastOrSlowJSObjectFromMap(implicit context: Context)(map: Map):
   let properties: EmptyFixedArray|NameDictionary|SwissNameDictionary =
       kEmptyFixedArray;
   if (IsDictionaryMap(map)) {
-    if (kDictModePrototypes) {
+    @if(V8_ENABLE_SWISS_NAME_DICTIONARY) {
       properties =
           AllocateSwissNameDictionary(kSwissNameDictionaryInitialCapacity);
-    } else {
+    }
+    @ifnot(V8_ENABLE_SWISS_NAME_DICTIONARY) {
       properties = AllocateNameDictionary(kNameDictionaryInitialCapacity);
     }
   }
@@ -97,20 +106,24 @@ extern class JSGlobalProxy extends JSSpecialObject {
   native_context: Object;
 }
 
-@doNotGenerateCppClass
 extern class JSGlobalObject extends JSSpecialObject {
+  // [native context]: the natives corresponding to this global object.
   native_context: NativeContext;
+
+  // [global proxy]: the global proxy object of the context
   global_proxy: JSGlobalProxy;
 }
 
 extern class JSPrimitiveWrapper extends JSCustomElementsObject { value: JSAny; }
 
-@doNotGenerateCppClass
 extern class JSMessageObject extends JSObject {
   // Tagged fields.
   message_type: Smi;
-  arguments: Object;
+  // [argument]: the arguments for formatting the error message.
+  argument: Object;
+  // [script]: the script from which the error message originated.
   script: Script;
+  // [stack_frames]: an array of stack frames for this error object.
   stack_frames: Object;
   shared_info: SharedFunctionInfo|Undefined;
 

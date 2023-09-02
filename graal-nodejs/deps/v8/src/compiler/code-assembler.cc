@@ -245,9 +245,9 @@ void CodeAssembler::GenerateCheckMaybeObjectIsObject(TNode<MaybeObject> node,
   base::EmbeddedVector<char, 1024> message;
   SNPrintF(message, "no Object: %s", location);
   TNode<String> message_node = StringConstant(message.begin());
-  // This somewhat misuses the AbortCSAAssert runtime function. This will print
-  // "abort: CSA_ASSERT failed: <message>", which is good enough.
-  AbortCSAAssert(message_node);
+  // This somewhat misuses the AbortCSADcheck runtime function. This will print
+  // "abort: CSA_DCHECK failed: <message>", which is good enough.
+  AbortCSADcheck(message_node);
   Unreachable();
   Bind(&ok);
 }
@@ -490,6 +490,15 @@ void CodeAssembler::Return(TNode<WordT> value1, TNode<WordT> value2) {
   return raw_assembler()->Return(value1, value2);
 }
 
+void CodeAssembler::Return(TNode<WordT> value1, TNode<Object> value2) {
+  DCHECK_EQ(2, raw_assembler()->call_descriptor()->ReturnCount());
+  DCHECK_EQ(
+      MachineType::PointerRepresentation(),
+      raw_assembler()->call_descriptor()->GetReturnType(0).representation());
+  DCHECK(raw_assembler()->call_descriptor()->GetReturnType(1).IsTagged());
+  return raw_assembler()->Return(value1, value2);
+}
+
 void CodeAssembler::PopAndReturn(Node* pop, Node* value) {
   DCHECK_EQ(1, raw_assembler()->call_descriptor()->ReturnCount());
   return raw_assembler()->PopAndReturn(pop, value);
@@ -503,8 +512,8 @@ void CodeAssembler::ReturnIf(TNode<BoolT> condition, TNode<Object> value) {
   Bind(&if_continue);
 }
 
-void CodeAssembler::AbortCSAAssert(Node* message) {
-  raw_assembler()->AbortCSAAssert(message);
+void CodeAssembler::AbortCSADcheck(Node* message) {
+  raw_assembler()->AbortCSADcheck(message);
 }
 
 void CodeAssembler::DebugBreak() { raw_assembler()->DebugBreak(); }
@@ -679,22 +688,25 @@ TNode<Object> CodeAssembler::LoadFullTagged(Node* base, TNode<IntPtrT> offset) {
   return BitcastWordToTagged(Load<RawPtrT>(base, offset));
 }
 
-Node* CodeAssembler::AtomicLoad(MachineType type, TNode<RawPtrT> base,
-                                TNode<WordT> offset) {
+Node* CodeAssembler::AtomicLoad(MachineType type, AtomicMemoryOrder order,
+                                TNode<RawPtrT> base, TNode<WordT> offset) {
   DCHECK(!raw_assembler()->IsMapOffsetConstantMinusTag(offset));
-  return raw_assembler()->AtomicLoad(type, base, offset);
+  return raw_assembler()->AtomicLoad(AtomicLoadParameters(type, order), base,
+                                     offset);
 }
 
 template <class Type>
-TNode<Type> CodeAssembler::AtomicLoad64(TNode<RawPtrT> base,
+TNode<Type> CodeAssembler::AtomicLoad64(AtomicMemoryOrder order,
+                                        TNode<RawPtrT> base,
                                         TNode<WordT> offset) {
-  return UncheckedCast<Type>(raw_assembler()->AtomicLoad64(base, offset));
+  return UncheckedCast<Type>(raw_assembler()->AtomicLoad64(
+      AtomicLoadParameters(MachineType::Uint64(), order), base, offset));
 }
 
 template TNode<AtomicInt64> CodeAssembler::AtomicLoad64<AtomicInt64>(
-    TNode<RawPtrT> base, TNode<WordT> offset);
+    AtomicMemoryOrder order, TNode<RawPtrT> base, TNode<WordT> offset);
 template TNode<AtomicUint64> CodeAssembler::AtomicLoad64<AtomicUint64>(
-    TNode<RawPtrT> base, TNode<WordT> offset);
+    AtomicMemoryOrder order, TNode<RawPtrT> base, TNode<WordT> offset);
 
 Node* CodeAssembler::LoadFromObject(MachineType type, TNode<Object> object,
                                     TNode<IntPtrT> offset) {
@@ -859,16 +871,22 @@ void CodeAssembler::StoreFullTaggedNoWriteBarrier(TNode<RawPtrT> base,
                       BitcastTaggedToWord(tagged_value));
 }
 
-void CodeAssembler::AtomicStore(MachineRepresentation rep, TNode<RawPtrT> base,
+void CodeAssembler::AtomicStore(MachineRepresentation rep,
+                                AtomicMemoryOrder order, TNode<RawPtrT> base,
                                 TNode<WordT> offset, TNode<Word32T> value) {
   DCHECK(!raw_assembler()->IsMapOffsetConstantMinusTag(offset));
-  raw_assembler()->AtomicStore(rep, base, offset, value);
+  raw_assembler()->AtomicStore(
+      AtomicStoreParameters(rep, WriteBarrierKind::kNoWriteBarrier, order),
+      base, offset, value);
 }
 
-void CodeAssembler::AtomicStore64(TNode<RawPtrT> base, TNode<WordT> offset,
-                                  TNode<UintPtrT> value,
+void CodeAssembler::AtomicStore64(AtomicMemoryOrder order, TNode<RawPtrT> base,
+                                  TNode<WordT> offset, TNode<UintPtrT> value,
                                   TNode<UintPtrT> value_high) {
-  raw_assembler()->AtomicStore64(base, offset, value, value_high);
+  raw_assembler()->AtomicStore64(
+      AtomicStoreParameters(MachineRepresentation::kWord64,
+                            WriteBarrierKind::kNoWriteBarrier, order),
+      base, offset, value, value_high);
 }
 
 #define ATOMIC_FUNCTION(name)                                                 \
@@ -997,7 +1015,7 @@ Node* CodeAssembler::CallRuntimeImpl(
     Runtime::FunctionId function, TNode<Object> context,
     std::initializer_list<TNode<Object>> args) {
   int result_size = Runtime::FunctionForId(function)->result_size;
-  TNode<Code> centry =
+  TNode<CodeT> centry =
       HeapConstant(CodeFactory::RuntimeCEntry(isolate(), result_size));
   constexpr size_t kMaxNumArgs = 6;
   DCHECK_GE(kMaxNumArgs, args.size());
@@ -1030,7 +1048,7 @@ void CodeAssembler::TailCallRuntimeImpl(
     Runtime::FunctionId function, TNode<Int32T> arity, TNode<Object> context,
     std::initializer_list<TNode<Object>> args) {
   int result_size = Runtime::FunctionForId(function)->result_size;
-  TNode<Code> centry =
+  TNode<CodeT> centry =
       HeapConstant(CodeFactory::RuntimeCEntry(isolate(), result_size));
   constexpr size_t kMaxNumArgs = 6;
   DCHECK_GE(kMaxNumArgs, args.size());
@@ -1086,7 +1104,7 @@ Node* CodeAssembler::CallStubN(StubCallMode call_mode,
 }
 
 void CodeAssembler::TailCallStubImpl(const CallInterfaceDescriptor& descriptor,
-                                     TNode<Code> target, TNode<Object> context,
+                                     TNode<CodeT> target, TNode<Object> context,
                                      std::initializer_list<Node*> args) {
   constexpr size_t kMaxNumArgs = 11;
   DCHECK_GE(kMaxNumArgs, args.size());
@@ -1191,7 +1209,7 @@ template V8_EXPORT_PRIVATE void CodeAssembler::TailCallBytecodeDispatch(
     TNode<Object>, TNode<IntPtrT>, TNode<BytecodeArray>,
     TNode<ExternalReference>);
 
-void CodeAssembler::TailCallJSCode(TNode<Code> code, TNode<Context> context,
+void CodeAssembler::TailCallJSCode(TNode<CodeT> code, TNode<Context> context,
                                    TNode<JSFunction> function,
                                    TNode<Object> new_target,
                                    TNode<Int32T> arg_count) {

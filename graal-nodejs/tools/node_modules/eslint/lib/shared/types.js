@@ -96,10 +96,12 @@ module.exports = {};
  * @property {number|undefined} column The 1-based column number.
  * @property {number} [endColumn] The 1-based column number of the end location.
  * @property {number} [endLine] The 1-based line number of the end location.
- * @property {boolean} fatal If `true` then this is a fatal error.
+ * @property {boolean} [fatal] If `true` then this is a fatal error.
  * @property {{range:[number,number], text:string}} [fix] Information for autofix.
  * @property {number|undefined} line The 1-based line number.
  * @property {string} message The error message.
+ * @property {string} [messageId] The ID of the message in the rule's meta.
+ * @property {(string|null)} nodeType Type of node
  * @property {string|null} ruleId The ID of the rule which makes this message.
  * @property {0|1|2} severity The severity of this message.
  * @property {Array<{desc?: string, messageId?: string, fix: {range: [number, number], text: string}}>} [suggestions] Information for suggestions.
@@ -110,10 +112,12 @@ module.exports = {};
  * @property {number|undefined} column The 1-based column number.
  * @property {number} [endColumn] The 1-based column number of the end location.
  * @property {number} [endLine] The 1-based line number of the end location.
- * @property {boolean} fatal If `true` then this is a fatal error.
+ * @property {boolean} [fatal] If `true` then this is a fatal error.
  * @property {{range:[number,number], text:string}} [fix] Information for autofix.
  * @property {number|undefined} line The 1-based line number.
  * @property {string} message The error message.
+ * @property {string} [messageId] The ID of the message in the rule's meta.
+ * @property {(string|null)} nodeType Type of node
  * @property {string|null} ruleId The ID of the rule which makes this message.
  * @property {0|1|2} severity The severity of this message.
  * @property {Array<{kind: string, justification: string}>} suppressions The suppression info.
@@ -191,9 +195,22 @@ module.exports = {};
  */
 
 /**
+ * Information provided when the maximum warning threshold is exceeded.
+ * @typedef {Object} MaxWarningsExceeded
+ * @property {number} maxWarnings Number of warnings to trigger nonzero exit code.
+ * @property {number} foundWarnings Number of warnings found while linting.
+ */
+
+/**
+ * Metadata about results for formatters.
+ * @typedef {Object} ResultsMeta
+ * @property {MaxWarningsExceeded} [maxWarningsExceeded] Present if the maxWarnings threshold was exceeded.
+ */
+
+/**
  * A formatter function.
  * @callback FormatterFunction
  * @param {LintResult[]} results The list of linting results.
- * @param {{cwd: string, rulesMeta: Record<string, RuleMeta>}} [context] A context object.
+ * @param {{cwd: string, maxWarningsExceeded?: MaxWarningsExceeded, rulesMeta: Record<string, RuleMeta>}} [context] A context object.
  * @returns {string | Promise<string>} Formatted text.
  */

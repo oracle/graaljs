@@ -3,15 +3,16 @@
 // Stdin is not a TTY, we will read it and execute it.
 
 const {
-  prepareMainThreadExecution
-} = require('internal/bootstrap/pre_execution');
+  prepareMainThreadExecution,
+  markBootstrapComplete,
+} = require('internal/process/pre_execution');
 
 const { getOptionValue } = require('internal/options');
 
 const {
   evalModule,
   evalScript,
-  readStdin
+  readStdin,
 } = require('internal/process/execution');
 
 prepareMainThreadExecution();

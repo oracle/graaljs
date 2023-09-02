@@ -232,14 +232,27 @@ The `constructorOpt` argument is useful for hiding implementation
 details of error generation from the user. For instance:
 
 ```js
-function MyError() {
-  Error.captureStackTrace(this, MyError);
+function a() {
+  b();
 }
 
-// Without passing MyError to captureStackTrace, the MyError
-// frame would show up in the .stack property. By passing
-// the constructor, we omit that frame, and retain all frames below it.
-new MyError().stack;
+function b() {
+  c();
+}
+
+function c() {
+  // Create an error without stack trace to avoid calculating the stack trace twice.
+  const { stackTraceLimit } = Error;
+  Error.stackTraceLimit = 0;
+  const error = new Error();
+  Error.stackTraceLimit = stackTraceLimit;
+
+  // Capture the stack trace above function b
+  Error.captureStackTrace(error, b); // Neither function c, nor b is included in the stack trace
+  throw error;
+}
+
+a();
 ```
 
 ### `Error.stackTraceLimit`
@@ -679,6 +692,14 @@ APIs _not_ using `AbortSignal`s typically do not raise an error with this code.
 This code does not use the regular `ERR_*` convention Node.js errors use in
 order to be compatible with the web platform's `AbortError`.
 
+<a id="ERR_ACCESS_DENIED"></a>
+
+### `ERR_ACCESS_DENIED`
+
+A special type of error that is triggered whenever Node.js tries to get access
+to a resource restricted by the [policy][] manifest.
+For example, `process.binding`.
+
 <a id="ERR_AMBIGUOUS_ARGUMENT"></a>
 
 ### `ERR_AMBIGUOUS_ARGUMENT`
@@ -788,12 +809,16 @@ STDERR/STDOUT, and the data's length is longer than the `maxBuffer` option.
 ### `ERR_CLOSED_MESSAGE_PORT`
 
 <!--
-added: v16.2.0
+added:
+  - v16.2.0
+  - v14.17.1
 changes:
   - version: 11.12.0
     pr-url: https://github.com/nodejs/node/pull/26487
     description: The error message was removed.
-  - version: v16.2.0
+  - version:
+      - v16.2.0
+      - v14.17.1
     pr-url: https://github.com/nodejs/node/pull/38510
     description: The error message was reintroduced.
 -->
@@ -837,8 +862,9 @@ size is reached when the context is created.
 
 ### `ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED`
 
-A client certificate engine was requested that is not supported by the version
-of OpenSSL being used.
+An OpenSSL engine was requested (for example, through the `clientCertEngine` or
+`privateKeyEngine` TLS options) that is not supported by the version of OpenSSL
+being used, likely due to the compile-time flag `OPENSSL_NO_ENGINE`.
 
 <a id="ERR_CRYPTO_ECDH_INVALID_FORMAT"></a>
 
@@ -1126,7 +1152,9 @@ An unknown Diffie-Hellman group name was given. See
 ### `ERR_CRYPTO_UNSUPPORTED_OPERATION`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 An attempt to invoke an unsupported crypto operation was made.
@@ -1136,7 +1164,9 @@ An attempt to invoke an unsupported crypto operation was made.
 ### `ERR_DEBUGGER_ERROR`
 
 <!-- YAML
-added: v16.4.0
+added:
+  - v16.4.0
+  - v14.17.4
 -->
 
 An error occurred with the [debugger][].
@@ -1146,7 +1176,9 @@ An error occurred with the [debugger][].
 ### `ERR_DEBUGGER_STARTUP_ERROR`
 
 <!-- YAML
-added: v16.4.0
+added:
+  - v16.4.0
+  - v14.17.4
 -->
 
 The [debugger][] timed out waiting for the required host/port to be free.
@@ -1156,7 +1188,9 @@ The [debugger][] timed out waiting for the required host/port to be free.
 ### `ERR_DLOPEN_DISABLED`
 
 <!-- YAML
-added: v16.10.0
+added:
+  - v16.10.0
+  - v14.19.0
 -->
 
 Loading native addons has been disabled using [`--no-addons`][].
@@ -1306,6 +1340,11 @@ When using [`fs.cp()`][], `src` or `dest` pointed to an invalid path.
 
 <a id="ERR_FS_CP_FIFO_PIPE"></a>
 
+### `ERR_HTTP_BODY_NOT_ALLOWED`
+
+An error is thrown when writing to an HTTP response which does not allow
+contents. <a id="ERR_HTTP_BODY_NOT_ALLOWED"></a>
+
 ### `ERR_HTTP_CONTENT_LENGTH_MISMATCH`
 
 Response body size doesn't match with the specified content-length header value.
@@ -1405,6 +1444,12 @@ Status code was outside the regular status code range (100-999).
 ### `ERR_HTTP_REQUEST_TIMEOUT`
 
 The client has not sent the entire request within the allowed time.
+
+<a id="ERR_HTTP_SOCKET_ASSIGNED"></a>
+
+### `ERR_HTTP_SOCKET_ASSIGNED`
+
+The given [`ServerResponse`][] was already assigned a socket.
 
 <a id="ERR_HTTP_SOCKET_ENCODING"></a>
 
@@ -1746,7 +1791,9 @@ An attempt was made to construct an object using a non-public constructor.
 ### `ERR_IMPORT_ASSERTION_TYPE_FAILED`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.1.0
+  - v16.14.0
 -->
 
 An import assertion has failed, preventing the specified module to be imported.
@@ -1756,7 +1803,9 @@ An import assertion has failed, preventing the specified module to be imported.
 ### `ERR_IMPORT_ASSERTION_TYPE_MISSING`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.1.0
+  - v16.14.0
 -->
 
 An import assertion is missing, preventing the specified module to be imported.
@@ -1766,7 +1815,9 @@ An import assertion is missing, preventing the specified module to be imported.
 ### `ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED`
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.1.0
+  - v16.14.0
 -->
 
 An import assertion is not supported by this version of Node.js.
@@ -1880,12 +1931,6 @@ less than -1 should never happen.
 A swap was performed on a `Buffer` but its size was not compatible with the
 operation.
 
-<a id="ERR_INVALID_CALLBACK"></a>
-
-### `ERR_INVALID_CALLBACK`
-
-A callback function was required but was not been provided to a Node.js API.
-
 <a id="ERR_INVALID_CHAR"></a>
 
 ### `ERR_INVALID_CHAR`
@@ -1948,12 +1993,20 @@ An invalid HTTP token was supplied.
 
 An IP address is not valid.
 
+<a id="ERR_INVALID_MIME_SYNTAX"></a>
+
+### `ERR_INVALID_MIME_SYNTAX`
+
+The syntax of a MIME is not valid.
+
 <a id="ERR_INVALID_MODULE"></a>
 
 ### `ERR_INVALID_MODULE`
 
 <!-- YAML
-added: v15.0.0
+added:
+  - v15.0.0
+  - v14.18.0
 -->
 
 An attempt was made to load a module that does not exist or was otherwise not
@@ -1965,6 +2018,13 @@ valid.
 
 The imported module string is an invalid URL, package name, or package subpath
 specifier.
+
+<a id="ERR_INVALID_OBJECT_DEFINE_PROPERTY"></a>
+
+### `ERR_INVALID_OBJECT_DEFINE_PROPERTY`
+
+An error occurred while setting an invalid attribute on the property of
+an object.
 
 <a id="ERR_INVALID_PACKAGE_CONFIG"></a>
 
@@ -2086,10 +2146,10 @@ An invalid URI was passed.
 
 ### `ERR_INVALID_URL`
 
-An invalid URL was passed to the [WHATWG][WHATWG URL API]
-[`URL` constructor][`new URL(input)`] to be parsed. The thrown error object
-typically has an additional property `'input'` that contains the URL that failed
-to parse.
+An invalid URL was passed to the [WHATWG][WHATWG URL API] [`URL`
+constructor][`new URL(input)`] or the legacy [`url.parse()`][] to be parsed.
+The thrown error object typically has an additional property `'input'` that
+contains the URL that failed to parse.
 
 <a id="ERR_INVALID_URL_SCHEME"></a>
 
@@ -2135,7 +2195,7 @@ for more information.
 ### `ERR_LOADER_CHAIN_INCOMPLETE`
 
 <!-- YAML
-added: v16.17.0
+added: v18.6.0
 -->
 
 An ESM loader hook returned without calling `next()` and without explicitly
@@ -2405,7 +2465,7 @@ cannot be imported through the package resolution, unless using an absolute URL.
 ### `ERR_PARSE_ARGS_INVALID_OPTION_VALUE`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 When `strict` set to `true`, thrown by [`util.parseArgs()`][] if a {boolean}
@@ -2417,7 +2477,7 @@ value is provided for an option of type {boolean}.
 ### `ERR_PARSE_ARGS_UNEXPECTED_POSITIONAL`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 Thrown by [`util.parseArgs()`][], when a positional argument is provided and
@@ -2428,7 +2488,7 @@ Thrown by [`util.parseArgs()`][], when a positional argument is provided and
 ### `ERR_PARSE_ARGS_UNKNOWN_OPTION`
 
 <!-- YAML
-added: v16.17.0
+added: v18.3.0
 -->
 
 When `strict` set to `true`, thrown by [`util.parseArgs()`][] if an argument
@@ -2530,6 +2590,13 @@ could not be determined.
 ### `ERR_SOCKET_CLOSED`
 
 An attempt was made to operate on an already closed socket.
+
+<a id="ERR_SOCKET_CLOSED_BEFORE_CONNECTION"></a>
+
+### `ERR_SOCKET_CLOSED_BEFORE_CONNECTION`
+
+When calling [`net.Socket.write()`][] on a connecting socket and the socket was
+closed before the connection was established.
 
 <a id="ERR_SOCKET_DGRAM_IS_CONNECTED"></a>
 
@@ -2648,6 +2715,25 @@ An unspecified or non-specific system error has occurred within the Node.js
 process. The error object will have an `err.info` object property with
 additional details.
 
+<a id="ERR_TAP_LEXER_ERROR"></a>
+
+### `ERR_TAP_LEXER_ERROR`
+
+An error representing a failing lexer state.
+
+<a id="ERR_TAP_PARSER_ERROR"></a>
+
+### `ERR_TAP_PARSER_ERROR`
+
+An error representing a failing parser state. Additional information about
+the token causing the error is available via the `cause` property.
+
+<a id="ERR_TAP_VALIDATION_ERROR"></a>
+
+### `ERR_TAP_VALIDATION_ERROR`
+
+This error represents a failed TAP validation.
+
 <a id="ERR_TEST_FAILURE"></a>
 
 ### `ERR_TEST_FAILURE`
@@ -2741,7 +2827,8 @@ Failed to set PSK identity hint. Hint may be too long.
 
 ### `ERR_TLS_RENEGOTIATION_DISABLED`
 
-An attempt was made to renegotiate TLS on a socket instance with TLS disabled.
+An attempt was made to renegotiate TLS on a socket instance with renegotiation
+disabled.
 
 <a id="ERR_TLS_REQUIRED_SERVER_NAME"></a>
 
@@ -2892,6 +2979,14 @@ import 'package-name'; // supported
 
 `import` with URL schemes other than `file` and `data` is unsupported.
 
+<a id="ERR_USE_AFTER_CLOSE"></a>
+
+### `ERR_USE_AFTER_CLOSE`
+
+> Stability: 1 - Experimental
+
+An attempt was made to use something that was already closed.
+
 <a id="ERR_VALID_PERFORMANCE_ENTRY_TYPE"></a>
 
 ### `ERR_VALID_PERFORMANCE_ENTRY_TYPE`
@@ -2965,6 +3060,17 @@ The WASI instance has already started.
 ### `ERR_WASI_NOT_STARTED`
 
 The WASI instance has not been started.
+
+<a id="ERR_WEBASSEMBLY_RESPONSE"></a>
+
+### `ERR_WEBASSEMBLY_RESPONSE`
+
+<!-- YAML
+added: v18.1.0
+-->
+
+The `Response` that has been passed to `WebAssembly.compileStreaming` or to
+`WebAssembly.instantiateStreaming` is not a valid WebAssembly response.
 
 <a id="ERR_WORKER_INIT_FAILED"></a>
 
@@ -3415,7 +3521,7 @@ The module must be successfully linked before instantiation.
 
 <!-- YAML
 added: v10.0.0
-removed: v16.17.0
+removed: v18.1.0
 -->
 
 The linker function returned a module for which linking has failed.
@@ -3479,6 +3585,7 @@ The native call from `process.cpuUsage` could not be processed.
 [`Object.getPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getPrototypeOf
 [`Object.setPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/setPrototypeOf
 [`REPL`]: repl.md
+[`ServerResponse`]: http.md#class-httpserverresponse
 [`Writable`]: stream.md#class-streamwritable
 [`child_process`]: child_process.md
 [`cipher.getAuthTag()`]: crypto.md#ciphergetauthtag
@@ -3504,6 +3611,7 @@ The native call from `process.cpuUsage` could not be processed.
 [`http`]: http.md
 [`https`]: https.md
 [`libuv Error handling`]: https://docs.libuv.org/en/v1.x/errors.html
+[`net.Socket.write()`]: net.md#socketwritedata-encoding-callback
 [`net`]: net.md
 [`new URL(input)`]: url.md#new-urlinput-base
 [`new URLSearchParams(iterable)`]: url.md#new-urlsearchparamsiterable
@@ -3524,6 +3632,7 @@ The native call from `process.cpuUsage` could not be processed.
 [`stream.write()`]: stream.md#writablewritechunk-encoding-callback
 [`subprocess.kill()`]: child_process.md#subprocesskillsignal
 [`subprocess.send()`]: child_process.md#subprocesssendmessage-sendhandle-options-callback
+[`url.parse()`]: url.md#urlparseurlstring-parsequerystring-slashesdenotehost
 [`util.getSystemErrorName(error.errno)`]: util.md#utilgetsystemerrornameerr
 [`util.inspect()`]: util.md#utilinspectobject-options
 [`util.parseArgs()`]: util.md#utilparseargsconfig

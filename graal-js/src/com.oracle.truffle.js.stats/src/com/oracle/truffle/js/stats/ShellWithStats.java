@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,10 +50,10 @@ import org.graalvm.polyglot.Context;
 
 import com.oracle.truffle.js.builtins.helper.HeapDump;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.shell.RepeatingLauncher;
+import com.oracle.truffle.js.shell.JSLauncher;
 import com.oracle.truffle.js.stats.heap.HeapDumpAnalyzer;
 
-public class ShellWithStats extends RepeatingLauncher {
+public class ShellWithStats extends JSLauncher {
     private boolean heapDump = false;
     private String heapDumpFileName = null;
 

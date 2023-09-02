@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,17 +44,15 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.Record;
+import com.oracle.truffle.js.decorators.CreateDecoratorContextObjectNode.DecorationState;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-
-import java.util.List;
+import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 public class ApplyDecoratorsToClassDefinitionNode extends Node {
 
@@ -69,18 +67,18 @@ public class ApplyDecoratorsToClassDefinitionNode extends Node {
     }
 
     ApplyDecoratorsToClassDefinitionNode(JSContext context) {
-        this.createDecoratorContextObject = CreateDecoratorContextObjectNode.create(context, false);
+        this.createDecoratorContextObject = CreateDecoratorContextObjectNode.createForClass(context);
         this.callNode = JSFunctionCallNode.createCall();
         this.isCallableNode = IsCallableNode.create();
     }
 
     @ExplodeLoop
-    public Object executeDecorators(VirtualFrame frame, Object className, JSObject constructor, Object[] decorators, List<Object> extraInitializers) {
+    public Object executeDecorators(VirtualFrame frame, Object className, JSObject constructor, Object[] decorators, SimpleArrayList<Object> extraInitializers) {
         Object classDef = constructor;
         for (Object decorator : decorators) {
-            Record state = new Record();
-            JSDynamicObject context = createDecoratorContextObject.evaluateClass(frame, className, extraInitializers, state);
-            Object newDef = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, classDef, context));
+            DecorationState state = new DecorationState();
+            JSObject contextObj = createDecoratorContextObject.evaluateClass(frame, className, extraInitializers, state);
+            Object newDef = callNode.executeCall(JSArguments.create(Undefined.instance, decorator, classDef, contextObj));
             state.finished = true;
             if (isCallableNode.executeBoolean(newDef)) {
                 classDef = newDef;

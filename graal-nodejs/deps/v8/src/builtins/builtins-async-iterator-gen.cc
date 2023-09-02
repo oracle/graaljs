@@ -137,9 +137,9 @@ void AsyncFromSyncBuiltinsAssembler::Generate_AsyncFromSyncIteratorMethod(
   {
     Label has_sent_value(this), no_sent_value(this), merge(this);
     ScopedExceptionHandler handler(this, &reject_promise, &var_exception);
-    Branch(
-        IntPtrGreaterThan(args->GetLength(), IntPtrConstant(kValueOrReasonArg)),
-        &has_sent_value, &no_sent_value);
+    Branch(IntPtrGreaterThan(args->GetLengthWithoutReceiver(),
+                             IntPtrConstant(kValueOrReasonArg)),
+           &has_sent_value, &no_sent_value);
     BIND(&has_sent_value);
     {
       iter_result = Call(context, method, sync_iterator, sent_value);
@@ -161,7 +161,7 @@ void AsyncFromSyncBuiltinsAssembler::Generate_AsyncFromSyncIteratorMethod(
 
   const TNode<JSFunction> promise_fun =
       CAST(LoadContextElement(native_context, Context::PROMISE_FUNCTION_INDEX));
-  CSA_ASSERT(this, IsConstructor(promise_fun));
+  CSA_DCHECK(this, IsConstructor(promise_fun));
 
   // Let valueWrapper be PromiseResolve(%Promise%, « value »).
   // IfAbruptRejectPromise(valueWrapper, promiseCapability).
@@ -228,16 +228,16 @@ AsyncFromSyncBuiltinsAssembler::LoadIteratorResult(
 
     // Let nextDone be IteratorComplete(nextResult).
     // IfAbruptRejectPromise(nextDone, promiseCapability).
-    const TNode<Object> done =
+    const TNode<Object> iter_result_done =
         GetProperty(context, iter_result, factory()->done_string());
 
     // Let nextValue be IteratorValue(nextResult).
     // IfAbruptRejectPromise(nextValue, promiseCapability).
-    const TNode<Object> value =
+    const TNode<Object> iter_result_value =
         GetProperty(context, iter_result, factory()->value_string());
 
-    var_value = value;
-    var_done = done;
+    var_value = iter_result_value;
+    var_done = iter_result_done;
     Goto(&merge);
   }
 

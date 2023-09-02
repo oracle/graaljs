@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,11 +76,11 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModuleObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -149,9 +149,8 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
 
         protected abstract Object process(Object argument);
 
-        protected JSDynamicObject promisify(Object argument) {
-            JSRealm realm = getRealm();
-            PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(realm.getPromiseConstructor());
+        protected JSPromiseObject promisify(Object argument) {
+            PromiseCapabilityRecord promiseCapability = newPromiseCapability.executeDefault();
             try {
                 Object resolution = process(argument);
                 promiseResolutionCallNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), resolution));
@@ -174,7 +173,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
                     throw Errors.shouldNotReachHere(umex);
                 }
             }
-            return promiseCapability.getPromise();
+            return (JSPromiseObject) promiseCapability.getPromise();
         }
 
     }
@@ -233,7 +232,7 @@ public class WebAssemblyBuiltins extends JSBuiltinsContainer.SwitchEnum<WebAssem
 
         @Specialization
         protected Object instantiate(Object byteSourceOrModule, Object importObject) {
-            JSDynamicObject promise = promisify(new Object[]{byteSourceOrModule, importObject});
+            JSPromiseObject promise = promisify(new Object[]{byteSourceOrModule, importObject});
 
             if (byteSourceOrModule instanceof JSWebAssemblyModuleObject) {
                 return promise;

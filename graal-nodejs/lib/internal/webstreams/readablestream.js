@@ -1,9 +1,8 @@
 'use strict';
 
-/* eslint-disable no-use-before-define */
-
 const {
   ArrayBuffer,
+  ArrayBufferPrototypeGetByteLength,
   ArrayBufferPrototypeSlice,
   ArrayPrototypePush,
   ArrayPrototypeShift,
@@ -28,6 +27,7 @@ const {
 } = primordials;
 
 const {
+  AbortError,
   codes: {
     ERR_ILLEGAL_CONSTRUCTOR,
     ERR_INVALID_ARG_VALUE,
@@ -49,22 +49,17 @@ const {
 const {
   createDeferredPromise,
   customInspectSymbol: kInspect,
+  isArrayBufferDetached,
   kEmptyObject,
   kEnumerableProperty,
+  SideEffectFreeRegExpPrototypeSymbolReplace,
 } = require('internal/util');
 
 const {
-  serialize,
-  deserialize,
-} = require('v8');
-
-const {
+  validateAbortSignal,
+  validateBuffer,
   validateObject,
 } = require('internal/validators');
-
-const {
-  kAborted,
-} = require('internal/abort_controller');
 
 const {
   MessageChannel,
@@ -85,13 +80,18 @@ const {
   kIsDisturbed,
   kIsErrored,
   kIsReadable,
+  kIsClosedPromise,
+  kControllerErrorFunction,
 } = require('internal/streams/utils');
+
+const {
+  structuredClone,
+} = require('internal/structured_clone');
 
 const {
   ArrayBufferViewGetBuffer,
   ArrayBufferViewGetByteLength,
   ArrayBufferViewGetByteOffset,
-  ArrayBufferGetByteLength,
   AsyncIterator,
   cloneAsUint8Array,
   copyArrayBuffer,
@@ -102,6 +102,7 @@ const {
   extractHighWaterMark,
   extractSizeAlgorithm,
   lazyTransfer,
+  isViewedArrayBufferDetached,
   isBrandCheck,
   resetQueue,
   setPromiseHandled,
@@ -135,6 +136,41 @@ const kClose = Symbol('kClose');
 const kChunk = Symbol('kChunk');
 const kError = Symbol('kError');
 const kPull = Symbol('kPull');
+const kRelease = Symbol('kRelease');
+
+let releasedError;
+let releasingError;
+
+const userModuleRegExp = /^ {4}at (?:[^/\\(]+ \()(?!node:(.+):\d+:\d+\)$).*/gm;
+
+function lazyReadableReleasedError() {
+  if (releasedError) {
+    return releasedError;
+  }
+
+  releasedError = new ERR_INVALID_STATE.TypeError('Reader released');
+  // Avoid V8 leak and remove userland stackstrace
+  releasedError.stack = SideEffectFreeRegExpPrototypeSymbolReplace(userModuleRegExp, releasedError.stack, '');
+  return releasedError;
+}
+
+function lazyReadableReleasingError() {
+  if (releasingError) {
+    return releasingError;
+  }
+  releasingError = new ERR_INVALID_STATE.TypeError('Releasing reader');
+  // Avoid V8 leak and remove userland stackstrace
+  releasingError.stack = SideEffectFreeRegExpPrototypeSymbolReplace(userModuleRegExp, releasingError.stack, '');
+  return releasingError;
+}
+
+const getNonWritablePropertyDescriptor = (value) => {
+  return {
+    __proto__: null,
+    configurable: true,
+    value,
+  };
+};
 
 /**
  * @typedef {import('../abort_controller').AbortSignal} AbortSignal
@@ -201,8 +237,6 @@ const kPull = Symbol('kPull');
 class ReadableStream {
   [kType] = 'ReadableStream';
 
-  get [SymbolToStringTag]() { return this[kType]; }
-
   /**
    * @param {UnderlyingSource} [source]
    * @param {QueuingStrategy} [strategy]
@@ -221,8 +255,11 @@ class ReadableStream {
         port1: undefined,
         port2: undefined,
         promise: undefined,
-      }
+      },
     };
+
+    this[kIsClosedPromise] = createDeferredPromise();
+    this[kControllerErrorFunction] = () => {};
 
     // The spec requires handling of the strategy first
     // here. Specifically, if getting the size and
@@ -241,16 +278,15 @@ class ReadableStream {
         this,
         source,
         extractHighWaterMark(highWaterMark, 0));
-      return;
+    } else {
+      if (type !== undefined)
+        throw new ERR_INVALID_ARG_VALUE('source.type', type);
+      setupReadableStreamDefaultControllerFromSource(
+        this,
+        source,
+        extractHighWaterMark(highWaterMark, 1),
+        extractSizeAlgorithm(size));
     }
-
-    if (type !== undefined)
-      throw new ERR_INVALID_ARG_VALUE('source.type', type);
-    setupReadableStreamDefaultControllerFromSource(
-      this,
-      source,
-      extractHighWaterMark(highWaterMark, 1),
-      extractSizeAlgorithm(size));
 
     // eslint-disable-next-line no-constructor-return
     return makeTransferable(this);
@@ -305,10 +341,12 @@ class ReadableStream {
     const mode = options?.mode;
 
     if (mode === undefined)
+      // eslint-disable-next-line no-use-before-define
       return new ReadableStreamDefaultReader(this);
 
     if (`${mode}` !== 'byob')
       throw new ERR_INVALID_ARG_VALUE('options.mode', mode);
+    // eslint-disable-next-line no-use-before-define
     return new ReadableStreamBYOBReader(this);
   }
 
@@ -342,8 +380,9 @@ class ReadableStream {
     const preventClose = options?.preventClose;
     const signal = options?.signal;
 
-    if (signal !== undefined && signal?.[kAborted] === undefined)
-      throw new ERR_INVALID_ARG_TYPE('options.signal', 'AbortSignal', signal);
+    if (signal !== undefined) {
+      validateAbortSignal(signal, 'options.signal');
+    }
 
     if (isReadableStreamLocked(this))
       throw new ERR_INVALID_STATE.TypeError('The ReadableStream is locked');
@@ -383,8 +422,9 @@ class ReadableStream {
       const preventClose = options?.preventClose;
       const signal = options?.signal;
 
-      if (signal !== undefined && signal?.[kAborted] === undefined)
-        throw new ERR_INVALID_ARG_TYPE('options.signal', 'AbortSignal', signal);
+      if (signal !== undefined) {
+        validateAbortSignal(signal, 'options.signal');
+      }
 
       if (isReadableStreamLocked(this))
         throw new ERR_INVALID_STATE.TypeError('The ReadableStream is locked');
@@ -426,6 +466,7 @@ class ReadableStream {
       preventCancel = false,
     } = options;
 
+    // eslint-disable-next-line no-use-before-define
     const reader = new ReadableStreamDefaultReader(this);
     let done = false;
     let started = false;
@@ -464,7 +505,7 @@ class ReadableStream {
           done = true;
           readableStreamReaderGenericRelease(reader);
           promise.reject(error);
-        }
+        },
       });
       return promise.promise;
     }
@@ -527,7 +568,7 @@ class ReadableStream {
           returnSteps(error);
       },
 
-      [SymbolAsyncIterator]() { return this; }
+      [SymbolAsyncIterator]() { return this; },
     }, AsyncIterator);
   }
 
@@ -536,6 +577,7 @@ class ReadableStream {
       locked: this.locked,
       state: this[kState].state,
       supportsBYOB:
+        // eslint-disable-next-line no-use-before-define
         this[kState].controller instanceof ReadableByteStreamController,
     });
   }
@@ -565,7 +607,7 @@ class ReadableStream {
     return {
       data: { port: this[kState].transfer.port2 },
       deserializeInfo:
-        'internal/webstreams/readablestream:TransferredReadableStream'
+        'internal/webstreams/readablestream:TransferredReadableStream',
     };
   }
 
@@ -599,6 +641,7 @@ ObjectDefineProperties(ReadableStream.prototype, {
   pipeThrough: kEnumerableProperty,
   pipeTo: kEnumerableProperty,
   tee: kEnumerableProperty,
+  [SymbolToStringTag]: getNonWritablePropertyDescriptor(ReadableStream.name),
 });
 
 function TransferredReadableStream() {
@@ -614,8 +657,9 @@ function TransferredReadableStream() {
           writable: undefined,
           port: undefined,
           promise: undefined,
-        }
+        },
       };
+      this[kIsClosedPromise] = createDeferredPromise();
     },
     [], ReadableStream));
 }
@@ -623,8 +667,6 @@ TransferredReadableStream.prototype[kDeserialize] = () => {};
 
 class ReadableStreamBYOBRequest {
   [kType] = 'ReadableStreamBYOBRequest';
-
-  get [SymbolToStringTag]() { return this[kType]; }
 
   constructor() {
     throw new ERR_ILLEGAL_CONSTRUCTOR();
@@ -657,12 +699,14 @@ class ReadableStreamBYOBRequest {
 
     const viewByteLength = ArrayBufferViewGetByteLength(view);
     const viewBuffer = ArrayBufferViewGetBuffer(view);
-    const viewBufferByteLength = ArrayBufferGetByteLength(viewBuffer);
+    const viewBufferByteLength = ArrayBufferPrototypeGetByteLength(viewBuffer);
 
-    if (viewByteLength === 0 || viewBufferByteLength === 0) {
-      throw new ERR_INVALID_STATE.TypeError(
-        'View ArrayBuffer is zero-length or detached');
+    if (isArrayBufferDetached(viewBuffer)) {
+      throw new ERR_INVALID_STATE.TypeError('Viewed ArrayBuffer is detached');
     }
+
+    assert(viewByteLength > 0);
+    assert(viewBufferByteLength > 0);
 
     readableByteStreamControllerRespond(controller, bytesWritten);
   }
@@ -682,6 +726,12 @@ class ReadableStreamBYOBRequest {
         'This BYOB request has been invalidated');
     }
 
+    validateBuffer(view, 'view');
+
+    if (isViewedArrayBufferDetached(view)) {
+      throw new ERR_INVALID_STATE.TypeError('Viewed ArrayBuffer is detached');
+    }
+
     readableByteStreamControllerRespondWithNewView(controller, view);
   }
 
@@ -697,6 +747,7 @@ ObjectDefineProperties(ReadableStreamBYOBRequest.prototype, {
   view: kEnumerableProperty,
   respond: kEnumerableProperty,
   respondWithNewView: kEnumerableProperty,
+  [SymbolToStringTag]: getNonWritablePropertyDescriptor(ReadableStreamBYOBRequest.name),
 });
 
 function createReadableStreamBYOBRequest(controller, view) {
@@ -709,7 +760,7 @@ function createReadableStreamBYOBRequest(controller, view) {
       };
     },
     [],
-    ReadableStreamBYOBRequest
+    ReadableStreamBYOBRequest,
   );
 }
 
@@ -756,8 +807,6 @@ class ReadIntoRequest {
 class ReadableStreamDefaultReader {
   [kType] = 'ReadableStreamDefaultReader';
 
-  get [SymbolToStringTag]() { return this[kType]; }
-
   /**
    * @param {ReadableStream} stream
    */
@@ -800,11 +849,7 @@ class ReadableStreamDefaultReader {
       throw new ERR_INVALID_THIS('ReadableStreamDefaultReader');
     if (this[kState].stream === undefined)
       return;
-    if (this[kState].readRequests.length) {
-      throw new ERR_INVALID_STATE.TypeError(
-        'Cannot release with pending read requests');
-    }
-    readableStreamReaderGenericRelease(this);
+    readableStreamDefaultReaderRelease(this);
   }
 
   /**
@@ -818,7 +863,7 @@ class ReadableStreamDefaultReader {
   }
 
   /**
-   * @param {any} reason
+   * @param {any} [reason]
    * @returns {Promise<void>}
    */
   cancel(reason = undefined) {
@@ -845,12 +890,11 @@ ObjectDefineProperties(ReadableStreamDefaultReader.prototype, {
   read: kEnumerableProperty,
   releaseLock: kEnumerableProperty,
   cancel: kEnumerableProperty,
+  [SymbolToStringTag]: getNonWritablePropertyDescriptor(ReadableStreamDefaultReader.name),
 });
 
 class ReadableStreamBYOBReader {
   [kType] = 'ReadableStreamBYOBReader';
-
-  get [SymbolToStringTag]() { return this[kType]; }
 
   /**
    * @param {ReadableStream} stream
@@ -891,15 +935,19 @@ class ReadableStreamBYOBReader {
           ],
           view));
     }
+
     const viewByteLength = ArrayBufferViewGetByteLength(view);
     const viewBuffer = ArrayBufferViewGetBuffer(view);
-    const viewBufferByteLength = ArrayBufferGetByteLength(viewBuffer);
+    const viewBufferByteLength = ArrayBufferPrototypeGetByteLength(viewBuffer);
 
     if (viewByteLength === 0 || viewBufferByteLength === 0) {
       return PromiseReject(
         new ERR_INVALID_STATE.TypeError(
-          'View ArrayBuffer is zero-length or detached'));
+          'View or Viewed ArrayBuffer is zero-length or detached',
+        ),
+      );
     }
+
     // Supposed to assert here that the view's buffer is not
     // detached, but there's no API available to use to check that.
     if (this[kState].stream === undefined) {
@@ -917,11 +965,7 @@ class ReadableStreamBYOBReader {
       throw new ERR_INVALID_THIS('ReadableStreamBYOBReader');
     if (this[kState].stream === undefined)
       return;
-    if (this[kState].readIntoRequests.length) {
-      throw new ERR_INVALID_STATE.TypeError(
-        'Cannot release with pending read requests');
-    }
-    readableStreamReaderGenericRelease(this);
+    readableStreamBYOBReaderRelease(this);
   }
 
   /**
@@ -935,7 +979,7 @@ class ReadableStreamBYOBReader {
   }
 
   /**
-   * @param {any} reason
+   * @param {any} [reason]
    * @returns {Promise<void>}
    */
   cancel(reason = undefined) {
@@ -962,12 +1006,11 @@ ObjectDefineProperties(ReadableStreamBYOBReader.prototype, {
   read: kEnumerableProperty,
   releaseLock: kEnumerableProperty,
   cancel: kEnumerableProperty,
+  [SymbolToStringTag]: getNonWritablePropertyDescriptor(ReadableStreamBYOBReader.name),
 });
 
 class ReadableStreamDefaultController {
   [kType] = 'ReadableStreamDefaultController';
-
-  get [SymbolToStringTag]() { return this[kType]; }
 
   constructor() {
     throw new ERR_ILLEGAL_CONSTRUCTOR();
@@ -988,7 +1031,7 @@ class ReadableStreamDefaultController {
   }
 
   /**
-   * @param {any} chunk
+   * @param {any} [chunk]
    */
   enqueue(chunk = undefined) {
     if (!readableStreamDefaultControllerCanCloseOrEnqueue(this))
@@ -997,7 +1040,7 @@ class ReadableStreamDefaultController {
   }
 
   /**
-   * @param {any} error
+   * @param {any} [error]
    */
   error(error = undefined) {
     readableStreamDefaultControllerError(this, error);
@@ -1011,6 +1054,8 @@ class ReadableStreamDefaultController {
     readableStreamDefaultControllerPullSteps(this, readRequest);
   }
 
+  [kRelease]() {}
+
   [kInspect](depth, options) {
     return customInspect(depth, options, this[kType], { });
   }
@@ -1021,6 +1066,7 @@ ObjectDefineProperties(ReadableStreamDefaultController.prototype, {
   close: kEnumerableProperty,
   enqueue: kEnumerableProperty,
   error: kEnumerableProperty,
+  [SymbolToStringTag]: getNonWritablePropertyDescriptor(ReadableStreamDefaultController.name),
 });
 
 function createReadableStreamDefaultController() {
@@ -1036,8 +1082,6 @@ function createReadableStreamDefaultController() {
 
 class ReadableByteStreamController {
   [kType] = 'ReadableByteStreamController';
-
-  get [SymbolToStringTag]() { return this[kType]; }
 
   constructor() {
     throw new ERR_ILLEGAL_CONSTRUCTOR();
@@ -1094,19 +1138,10 @@ class ReadableByteStreamController {
   enqueue(chunk) {
     if (!isReadableByteStreamController(this))
       throw new ERR_INVALID_THIS('ReadableByteStreamController');
-    if (!isArrayBufferView(chunk)) {
-      throw new ERR_INVALID_ARG_TYPE(
-        'chunk',
-        [
-          'Buffer',
-          'TypedArray',
-          'DataView',
-        ],
-        chunk);
-    }
+    validateBuffer(chunk);
     const chunkByteLength = ArrayBufferViewGetByteLength(chunk);
     const chunkBuffer = ArrayBufferViewGetBuffer(chunk);
-    const chunkBufferByteLength = ArrayBufferGetByteLength(chunkBuffer);
+    const chunkBufferByteLength = ArrayBufferPrototypeGetByteLength(chunkBuffer);
     if (chunkByteLength === 0 || chunkBufferByteLength === 0) {
       throw new ERR_INVALID_STATE.TypeError(
         'chunk ArrayBuffer is zero-length or detached');
@@ -1119,7 +1154,7 @@ class ReadableByteStreamController {
   }
 
   /**
-   * @param {any} error
+   * @param {any} [error]
    */
   error(error = undefined) {
     if (!isReadableByteStreamController(this))
@@ -1135,6 +1170,17 @@ class ReadableByteStreamController {
     readableByteStreamControllerPullSteps(this, readRequest);
   }
 
+  [kRelease]() {
+    const {
+      pendingPullIntos,
+    } = this[kState];
+    if (pendingPullIntos.length > 0) {
+      const firstPendingPullInto = pendingPullIntos[0];
+      firstPendingPullInto.type = 'none';
+      this[kState].pendingPullIntos = [firstPendingPullInto];
+    }
+  }
+
   [kInspect](depth, options) {
     return customInspect(depth, options, this[kType], { });
   }
@@ -1146,6 +1192,7 @@ ObjectDefineProperties(ReadableByteStreamController.prototype, {
   close: kEnumerableProperty,
   enqueue: kEnumerableProperty,
   error: kEnumerableProperty,
+  [SymbolToStringTag]: getNonWritablePropertyDescriptor(ReadableByteStreamController.name),
 });
 
 function createReadableByteStreamController() {
@@ -1172,14 +1219,15 @@ function createTeeReadableStream(start, pull, cancel) {
           writable: undefined,
           port: undefined,
           promise: undefined,
-        }
+        },
       };
+      this[kIsClosedPromise] = createDeferredPromise();
       setupReadableStreamDefaultControllerFromSource(
         this,
         ObjectCreate(null, {
           start: { __proto__: null, value: start },
           pull: { __proto__: null, value: pull },
-          cancel: { __proto__: null, value: cancel }
+          cancel: { __proto__: null, value: cancel },
         }),
         1,
         () => 1);
@@ -1224,12 +1272,12 @@ function readableStreamPipeTo(
 
   let shuttingDown = false;
 
-  if (signal !== undefined && signal?.[kAborted] === undefined) {
-    return PromiseReject(
-      new ERR_INVALID_ARG_TYPE(
-        'options.signal',
-        'AbortSignal',
-        signal));
+  if (signal !== undefined) {
+    try {
+      validateAbortSignal(signal, 'options.signal');
+    } catch (error) {
+      return PromiseReject(error);
+    }
   }
 
   const promise = createDeferredPromise();
@@ -1293,8 +1341,14 @@ function readableStreamPipeTo(
   }
 
   function abortAlgorithm() {
-    // Cannot use the AbortError class here. It must be a DOMException
-    const error = new DOMException('The operation was aborted', 'AbortError');
+    let error;
+    if (signal.reason instanceof AbortError) {
+      // Cannot use the AbortError class here. It must be a DOMException.
+      error = new DOMException(signal.reason.message, 'AbortError');
+    } else {
+      error = signal.reason;
+    }
+
     const actions = [];
     if (!preventAbort) {
       ArrayPrototypePush(
@@ -1440,8 +1494,7 @@ function readableStreamDefaultTee(stream, cloneForBranch2) {
           const value1 = value;
           let value2 = value;
           if (!canceled2 && cloneForBranch2) {
-            // Structured Clone
-            value2 = deserialize(serialize(value2));
+            value2 = structuredClone(value2);
           }
           if (!canceled1) {
             readableStreamDefaultControllerEnqueue(
@@ -1543,12 +1596,13 @@ function readableByteStreamTee(stream) {
         if (!canceled1 || !canceled2) {
           cancelDeferred.resolve();
         }
-      }
+      },
     );
   }
 
   function pullWithDefaultReader() {
     if (isReadableStreamBYOBReader(reader)) {
+      readableStreamBYOBReaderRelease(reader);
       reader = new ReadableStreamDefaultReader(stream);
       forwardReaderError(reader);
     }
@@ -1567,11 +1621,11 @@ function readableByteStreamTee(stream) {
             } catch (error) {
               readableByteStreamControllerError(
                 branch1[kState].controller,
-                error
+                error,
               );
               readableByteStreamControllerError(
                 branch2[kState].controller,
-                error
+                error,
               );
               cancelDeferred.resolve(readableStreamCancel(stream, error));
               return;
@@ -1580,13 +1634,13 @@ function readableByteStreamTee(stream) {
           if (!canceled1) {
             readableByteStreamControllerEnqueue(
               branch1[kState].controller,
-              chunk1
+              chunk1,
             );
           }
           if (!canceled2) {
             readableByteStreamControllerEnqueue(
               branch2[kState].controller,
-              chunk2
+              chunk2,
             );
           }
           reading = false;
@@ -1627,6 +1681,7 @@ function readableByteStreamTee(stream) {
 
   function pullWithBYOBReader(view, forBranch2) {
     if (isReadableStreamDefaultReader(reader)) {
+      readableStreamDefaultReaderRelease(reader);
       reader = new ReadableStreamBYOBReader(stream);
       forwardReaderError(reader);
     }
@@ -1649,11 +1704,11 @@ function readableByteStreamTee(stream) {
             } catch (error) {
               readableByteStreamControllerError(
                 byobBranch[kState].controller,
-                error
+                error,
               );
               readableByteStreamControllerError(
                 otherBranch[kState].controller,
-                error
+                error,
               );
               cancelDeferred.resolve(readableStreamCancel(stream, error));
               return;
@@ -1661,18 +1716,18 @@ function readableByteStreamTee(stream) {
             if (!byobCanceled) {
               readableByteStreamControllerRespondWithNewView(
                 byobBranch[kState].controller,
-                chunk
+                chunk,
               );
             }
 
             readableByteStreamControllerEnqueue(
               otherBranch[kState].controller,
-              clonedChunk
+              clonedChunk,
             );
           } else if (!byobCanceled) {
             readableByteStreamControllerRespondWithNewView(
               byobBranch[kState].controller,
-              chunk
+              chunk,
             );
           }
           reading = false;
@@ -1700,7 +1755,7 @@ function readableByteStreamTee(stream) {
           if (!byobCanceled) {
             readableByteStreamControllerRespondWithNewView(
               byobBranch[kState].controller,
-              chunk
+              chunk,
             );
           }
           if (
@@ -1709,7 +1764,7 @@ function readableByteStreamTee(stream) {
           ) {
             readableByteStreamControllerRespond(
               otherBranch[kState].controller,
-              0
+              0,
             );
           }
         }
@@ -1839,7 +1894,7 @@ function readableStreamCancel(stream, reason) {
 function readableStreamClose(stream) {
   assert(stream[kState].state === 'readable');
   stream[kState].state = 'closed';
-
+  stream[kIsClosedPromise].resolve();
   const {
     reader,
   } = stream[kState];
@@ -1860,9 +1915,11 @@ function readableStreamError(stream, error) {
   assert(stream[kState].state === 'readable');
   stream[kState].state = 'errored';
   stream[kState].storedError = error;
+  stream[kIsClosedPromise].reject(error);
+  setPromiseHandled(stream[kIsClosedPromise].promise);
 
   const {
-    reader
+    reader,
   } = stream[kState];
 
   if (reader === undefined)
@@ -1995,6 +2052,36 @@ function readableStreamReaderGenericInitialize(reader, stream) {
   }
 }
 
+function readableStreamDefaultReaderRelease(reader) {
+  readableStreamReaderGenericRelease(reader);
+  readableStreamDefaultReaderErrorReadRequests(
+    reader,
+    lazyReadableReleasingError(),
+  );
+}
+
+function readableStreamDefaultReaderErrorReadRequests(reader, e) {
+  for (let n = 0; n < reader[kState].readRequests.length; ++n) {
+    reader[kState].readRequests[n][kError](e);
+  }
+  reader[kState].readRequests = [];
+}
+
+function readableStreamBYOBReaderRelease(reader) {
+  readableStreamReaderGenericRelease(reader);
+  readableStreamBYOBReaderErrorReadIntoRequests(
+    reader,
+    lazyReadableReleasingError(),
+  );
+}
+
+function readableStreamBYOBReaderErrorReadIntoRequests(reader, e) {
+  for (let n = 0; n < reader[kState].readIntoRequests.length; ++n) {
+    reader[kState].readIntoRequests[n][kError](e);
+  }
+  reader[kState].readIntoRequests = [];
+}
+
 function readableStreamReaderGenericRelease(reader) {
   const {
     stream,
@@ -2002,18 +2089,20 @@ function readableStreamReaderGenericRelease(reader) {
   assert(stream !== undefined);
   assert(stream[kState].reader === reader);
 
+  const releasedStateError = lazyReadableReleasedError();
   if (stream[kState].state === 'readable') {
-    reader[kState].close.reject?.(
-      new ERR_INVALID_STATE.TypeError('Reader released'));
+    reader[kState].close.reject?.(releasedStateError);
   } else {
     reader[kState].close = {
-      promise: PromiseReject(
-        new ERR_INVALID_STATE.TypeError('Reader released')),
+      promise: PromiseReject(releasedStateError),
       resolve: undefined,
       reject: undefined,
     };
   }
   setPromiseHandled(reader[kState].close.promise);
+
+  stream[kState].controller[kRelease]();
+
   stream[kState].reader = undefined;
   reader[kState].stream = undefined;
 }
@@ -2244,6 +2333,7 @@ function setupReadableStreamDefaultController(
     stream,
   };
   stream[kState].controller = controller;
+  stream[kControllerErrorFunction] = FunctionPrototypeBind(controller.error, controller);
 
   const startResult = startAlgorithm();
 
@@ -2319,6 +2409,8 @@ function readableByteStreamControllerClose(controller) {
 
 function readableByteStreamControllerCommitPullIntoDescriptor(stream, desc) {
   assert(stream[kState].state !== 'errored');
+  assert(desc.type !== 'none');
+
   let done = false;
   if (stream[kState].state === 'closed') {
     desc.bytesFilled = 0;
@@ -2425,7 +2517,7 @@ function readableByteStreamControllerPullInto(
   const buffer = ArrayBufferViewGetBuffer(view);
   const byteOffset = ArrayBufferViewGetByteOffset(view);
   const byteLength = ArrayBufferViewGetByteLength(view);
-  const bufferByteLength = ArrayBufferGetByteLength(buffer);
+  const bufferByteLength = ArrayBufferPrototypeGetByteLength(buffer);
 
   let transferredBuffer;
   try {
@@ -2528,6 +2620,9 @@ function readableByteStreamControllerRespond(controller, bytesWritten) {
 
 function readableByteStreamControllerRespondInClosedState(controller, desc) {
   assert(!desc.bytesFilled);
+  if (desc.type === 'none') {
+    readableByteStreamControllerShiftPendingPullInto(controller);
+  }
   const {
     stream,
   } = controller[kState];
@@ -2573,20 +2668,28 @@ function readableByteStreamControllerEnqueue(controller, chunk) {
   if (pendingPullIntos.length) {
     const firstPendingPullInto = pendingPullIntos[0];
 
-    const pendingBufferByteLength =
-      ArrayBufferGetByteLength(firstPendingPullInto.buffer);
-    if (pendingBufferByteLength === 0) {
+    if (isArrayBufferDetached(firstPendingPullInto.buffer)) {
       throw new ERR_INVALID_STATE.TypeError(
-        'Destination ArrayBuffer is zero-length or detached');
+        'Destination ArrayBuffer is detached',
+      );
     }
 
-    firstPendingPullInto.buffer =
-      transferArrayBuffer(firstPendingPullInto.buffer);
+    readableByteStreamControllerInvalidateBYOBRequest(controller);
+
+    firstPendingPullInto.buffer = transferArrayBuffer(
+      firstPendingPullInto.buffer,
+    );
+
+    if (firstPendingPullInto.type === 'none') {
+      readableByteStreamControllerEnqueueDetachedPullIntoToQueue(
+        controller,
+        firstPendingPullInto,
+      );
+    }
   }
 
-  readableByteStreamControllerInvalidateBYOBRequest(controller);
-
   if (readableStreamHasDefaultReader(stream)) {
+    readableByteStreamControllerProcessReadRequestsUsingQueue(controller);
     if (!readableStreamGetNumReadRequests(stream)) {
       readableByteStreamControllerEnqueueChunkToQueue(
         controller,
@@ -2595,6 +2698,10 @@ function readableByteStreamControllerEnqueue(controller, chunk) {
         byteLength);
     } else {
       assert(!queue.length);
+      if (pendingPullIntos.length) {
+        assert(pendingPullIntos[0].type === 'default');
+        readableByteStreamControllerShiftPendingPullInto(controller);
+      }
       const transferredView =
         new Uint8Array(transferredBuffer, byteOffset, byteLength);
       readableStreamFulfillReadRequest(stream, transferredView, false);
@@ -2618,6 +2725,31 @@ function readableByteStreamControllerEnqueue(controller, chunk) {
   readableByteStreamControllerCallPullIfNeeded(controller);
 }
 
+function readableByteStreamControllerEnqueueClonedChunkToQueue(
+  controller,
+  buffer,
+  byteOffset,
+  byteLength,
+) {
+  let cloneResult;
+  try {
+    cloneResult = ArrayBufferPrototypeSlice(
+      buffer,
+      byteOffset,
+      byteOffset + byteLength,
+    );
+  } catch (error) {
+    readableByteStreamControllerError(controller, error);
+    throw error;
+  }
+  readableByteStreamControllerEnqueueChunkToQueue(
+    controller,
+    cloneResult,
+    0,
+    byteLength,
+  );
+}
+
 function readableByteStreamControllerEnqueueChunkToQueue(
   controller,
   buffer,
@@ -2631,6 +2763,29 @@ function readableByteStreamControllerEnqueueChunkToQueue(
       byteLength,
     });
   controller[kState].queueTotalSize += byteLength;
+}
+
+function readableByteStreamControllerEnqueueDetachedPullIntoToQueue(
+  controller,
+  desc,
+) {
+  const {
+    buffer,
+    byteOffset,
+    bytesFilled,
+    type,
+  } = desc;
+  assert(type === 'none');
+
+  if (bytesFilled > 0) {
+    readableByteStreamControllerEnqueueClonedChunkToQueue(
+      controller,
+      buffer,
+      byteOffset,
+      bytesFilled,
+    );
+  }
+  readableByteStreamControllerShiftPendingPullInto(controller);
 }
 
 function readableByteStreamControllerFillPullIntoDescriptorFromQueue(
@@ -2665,7 +2820,7 @@ function readableByteStreamControllerFillPullIntoDescriptorFromQueue(
       totalBytesToCopyRemaining,
       headOfQueue.byteLength);
     const destStart = byteOffset + desc.bytesFilled;
-    const arrayBufferByteLength = ArrayBufferGetByteLength(buffer);
+    const arrayBufferByteLength = ArrayBufferPrototypeGetByteLength(buffer);
     if (arrayBufferByteLength - destStart < bytesToCopy) {
       throw new ERR_INVALID_STATE.RangeError(
         'view ArrayBuffer size is invalid');
@@ -2728,6 +2883,7 @@ function readableByteStreamControllerRespondInReadableState(
     buffer,
     bytesFilled,
     byteLength,
+    type,
   } = desc;
 
   if (bytesFilled + bytesWritten > byteLength)
@@ -2737,6 +2893,17 @@ function readableByteStreamControllerRespondInReadableState(
     controller,
     bytesWritten,
     desc);
+
+  if (type === 'none') {
+    readableByteStreamControllerEnqueueDetachedPullIntoToQueue(
+      controller,
+      desc,
+    );
+    readableByteStreamControllerProcessPullIntoDescriptorsUsingQueue(
+      controller,
+    );
+    return;
+  }
 
   if (desc.bytesFilled < desc.elementSize)
     return;
@@ -2757,7 +2924,7 @@ function readableByteStreamControllerRespondInReadableState(
       controller,
       remainder,
       0,
-      ArrayBufferGetByteLength(remainder));
+      ArrayBufferPrototypeGetByteLength(remainder));
   }
   desc.bytesFilled -= remainderSize;
   readableByteStreamControllerCommitPullIntoDescriptor(
@@ -2776,20 +2943,19 @@ function readableByteStreamControllerRespondWithNewView(controller, view) {
   const desc = pendingPullIntos[0];
   assert(stream[kState].state !== 'errored');
 
-  if (!isArrayBufferView(view)) {
-    throw new ERR_INVALID_ARG_TYPE(
-      'view',
-      [
-        'Buffer',
-        'TypedArray',
-        'DataView',
-      ],
-      view);
-  }
   const viewByteLength = ArrayBufferViewGetByteLength(view);
   const viewByteOffset = ArrayBufferViewGetByteOffset(view);
   const viewBuffer = ArrayBufferViewGetBuffer(view);
-  const viewBufferByteLength = ArrayBufferGetByteLength(viewBuffer);
+  const viewBufferByteLength = ArrayBufferPrototypeGetByteLength(viewBuffer);
+
+  if (stream[kState].state === 'closed') {
+    if (viewByteLength !== 0)
+      throw new ERR_INVALID_STATE.TypeError('View is not zero-length');
+  } else {
+    assert(stream[kState].state === 'readable');
+    if (viewByteLength === 0)
+      throw new ERR_INVALID_STATE.TypeError('View is zero-length');
+  }
 
   const {
     byteOffset,
@@ -2801,7 +2967,7 @@ function readableByteStreamControllerRespondWithNewView(controller, view) {
   if (byteOffset + bytesFilled !== viewByteOffset)
     throw new ERR_INVALID_ARG_VALUE.RangeError('view', view);
 
-  if (bytesFilled + viewByteOffset > byteLength)
+  if (bytesFilled + viewByteLength > byteLength)
     throw new ERR_INVALID_ARG_VALUE.RangeError('view', view);
 
   if (bufferByteLength !== viewBufferByteLength)
@@ -2858,25 +3024,56 @@ function readableByteStreamControllerCancelSteps(controller, reason) {
   return result;
 }
 
+function readableByteStreamControllerFillReadRequestFromQueue(controller, readRequest) {
+  const {
+    queue,
+    queueTotalSize,
+  } = controller[kState];
+  assert(queueTotalSize > 0);
+  const {
+    buffer,
+    byteOffset,
+    byteLength,
+  } = ArrayPrototypeShift(queue);
+
+  controller[kState].queueTotalSize -= byteLength;
+  readableByteStreamControllerHandleQueueDrain(controller);
+  const view = new Uint8Array(buffer, byteOffset, byteLength);
+  readRequest[kChunk](view);
+}
+
+function readableByteStreamControllerProcessReadRequestsUsingQueue(controller) {
+  const {
+    stream,
+    queueTotalSize,
+  } = controller[kState];
+  const { reader } = stream[kState];
+  assert(isReadableStreamDefaultReader(reader));
+
+  while (reader[kState].readRequests.length > 0) {
+    if (queueTotalSize === 0) {
+      return;
+    }
+    readableByteStreamControllerFillReadRequestFromQueue(
+      controller,
+      ArrayPrototypeShift(reader[kState].readRequests),
+    );
+  }
+}
+
 function readableByteStreamControllerPullSteps(controller, readRequest) {
   const {
     pendingPullIntos,
-    queue,
     queueTotalSize,
     stream,
   } = controller[kState];
   assert(readableStreamHasDefaultReader(stream));
   if (queueTotalSize) {
     assert(!readableStreamGetNumReadRequests(stream));
-    const {
-      buffer,
-      byteOffset,
-      byteLength,
-    } = ArrayPrototypeShift(queue);
-    controller[kState].queueTotalSize -= byteLength;
-    readableByteStreamControllerHandleQueueDrain(controller);
-    const view = new Uint8Array(buffer, byteOffset, byteLength);
-    readRequest[kChunk](view);
+    readableByteStreamControllerFillReadRequestFromQueue(
+      controller,
+      readRequest,
+    );
     return;
   }
   const {
@@ -3064,5 +3261,3 @@ module.exports = {
   setupReadableByteStreamController,
   setupReadableByteStreamControllerFromSource,
 };
-
-/* eslint-enable no-use-before-define */

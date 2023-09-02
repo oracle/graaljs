@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,7 +90,7 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 
 public abstract class TestSuite {
 
-    public static final int OVERALL_TIMEOUT_SECONDS = 20 * 60;
+    public static final int OVERALL_TIMEOUT_SECONDS = 30 * 60;
     public static final int INDIVIDUAL_TIMEOUT_SECONDS = 30;
 
     private static final char LINE_SEPARATOR = '\n';

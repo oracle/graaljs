@@ -106,7 +106,6 @@ class S390OperandGenerator final : public OperandGenerator {
       return OpParameter<int64_t>(node->op());
     else
       UNIMPLEMENTED();
-    return 0L;
   }
 
   bool CanBeImmediate(Node* node, OperandModes mode) {
@@ -272,8 +271,7 @@ bool S390OpcodeOnlySupport12BitDisp(InstructionCode op) {
   (S390OpcodeOnlySupport12BitDisp(op) ? OperandMode::kUint12Imm \
                                       : OperandMode::kInt20Imm)
 
-ArchOpcode SelectLoadOpcode(Node* node) {
-  LoadRepresentation load_rep = LoadRepresentationOf(node->op());
+ArchOpcode SelectLoadOpcode(LoadRepresentation load_rep) {
   ArchOpcode opcode;
   switch (load_rep.representation()) {
     case MachineRepresentation::kFloat32:
@@ -294,6 +292,7 @@ ArchOpcode SelectLoadOpcode(Node* node) {
       break;
     case MachineRepresentation::kCompressedPointer:  // Fall through.
     case MachineRepresentation::kCompressed:
+    case MachineRepresentation::kSandboxedPointer:  // Fall through.
 #ifdef V8_COMPRESS_POINTERS
       opcode = kS390_LoadWordS32;
       break;
@@ -466,7 +465,8 @@ void GenerateRightOperands(InstructionSelector* selector, Node* node,
   } else if (*operand_mode & OperandMode::kAllowMemoryOperand) {
     NodeMatcher mright(right);
     if (mright.IsLoad() && selector->CanCover(node, right) &&
-        canCombineWithLoad(SelectLoadOpcode(right))) {
+        canCombineWithLoad(
+            SelectLoadOpcode(LoadRepresentationOf(right->op())))) {
       AddressingMode mode = g.GetEffectiveAddressMemoryOperand(
           right, inputs, input_count, OpcodeImmMode(*opcode));
       *opcode |= AddressingModeField::encode(mode);
@@ -690,21 +690,27 @@ void InstructionSelector::VisitStackSlot(Node* node) {
        sequence()->AddImmediate(Constant(slot)), 0, nullptr);
 }
 
-void InstructionSelector::VisitAbortCSAAssert(Node* node) {
+void InstructionSelector::VisitAbortCSADcheck(Node* node) {
   S390OperandGenerator g(this);
-  Emit(kArchAbortCSAAssert, g.NoOutput(), g.UseFixed(node->InputAt(0), r3));
+  Emit(kArchAbortCSADcheck, g.NoOutput(), g.UseFixed(node->InputAt(0), r3));
 }
 
-void InstructionSelector::VisitLoad(Node* node) {
+void InstructionSelector::VisitLoad(Node* node, Node* value,
+                                    InstructionCode opcode) {
   S390OperandGenerator g(this);
-  InstructionCode opcode = SelectLoadOpcode(node);
   InstructionOperand outputs[] = {g.DefineAsRegister(node)};
   InstructionOperand inputs[3];
   size_t input_count = 0;
   AddressingMode mode =
-      g.GetEffectiveAddressMemoryOperand(node, inputs, &input_count);
+      g.GetEffectiveAddressMemoryOperand(value, inputs, &input_count);
   opcode |= AddressingModeField::encode(mode);
   Emit(opcode, 1, outputs, input_count, inputs);
+}
+
+void InstructionSelector::VisitLoad(Node* node) {
+  LoadRepresentation load_rep = LoadRepresentationOf(node->op());
+  InstructionCode opcode = SelectLoadOpcode(load_rep);
+  VisitLoad(node, node, opcode);
 }
 
 void InstructionSelector::VisitProtectedLoad(Node* node) {
@@ -769,6 +775,7 @@ static void VisitGeneralStore(
         break;
       case MachineRepresentation::kCompressedPointer:  // Fall through.
       case MachineRepresentation::kCompressed:
+      case MachineRepresentation::kSandboxedPointer:  // Fall through.
 #ifdef V8_COMPRESS_POINTERS
         opcode = kS390_StoreCompressTagged;
         break;
@@ -2147,21 +2154,18 @@ void InstructionSelector::VisitMemoryBarrier(Node* node) {
 bool InstructionSelector::IsTailCallAddressImmediate() { return false; }
 
 void InstructionSelector::VisitWord32AtomicLoad(Node* node) {
-  LoadRepresentation load_rep = LoadRepresentationOf(node->op());
-  DCHECK(load_rep.representation() == MachineRepresentation::kWord8 ||
-         load_rep.representation() == MachineRepresentation::kWord16 ||
-         load_rep.representation() == MachineRepresentation::kWord32);
-  USE(load_rep);
-  VisitLoad(node);
+  AtomicLoadParameters atomic_load_params = AtomicLoadParametersOf(node->op());
+  LoadRepresentation load_rep = atomic_load_params.representation();
+  VisitLoad(node, node, SelectLoadOpcode(load_rep));
 }
 
 void InstructionSelector::VisitWord32AtomicStore(Node* node) {
-  MachineRepresentation rep = AtomicStoreRepresentationOf(node->op());
-  VisitGeneralStore(this, node, rep);
+  AtomicStoreParameters store_params = AtomicStoreParametersOf(node->op());
+  VisitGeneralStore(this, node, store_params.representation());
 }
 
 void VisitAtomicExchange(InstructionSelector* selector, Node* node,
-                         ArchOpcode opcode) {
+                         ArchOpcode opcode, AtomicWidth width) {
   S390OperandGenerator g(selector);
   Node* base = node->InputAt(0);
   Node* index = node->InputAt(1);
@@ -2175,7 +2179,8 @@ void VisitAtomicExchange(InstructionSelector* selector, Node* node,
   inputs[input_count++] = g.UseUniqueRegister(value);
   InstructionOperand outputs[1];
   outputs[0] = g.DefineAsRegister(node);
-  InstructionCode code = opcode | AddressingModeField::encode(addressing_mode);
+  InstructionCode code = opcode | AddressingModeField::encode(addressing_mode) |
+                         AtomicWidthField::encode(width);
   selector->Emit(code, 1, outputs, input_count, inputs);
 }
 
@@ -2183,40 +2188,40 @@ void InstructionSelector::VisitWord32AtomicExchange(Node* node) {
   ArchOpcode opcode;
   MachineType type = AtomicOpType(node->op());
   if (type == MachineType::Int8()) {
-    opcode = kWord32AtomicExchangeInt8;
+    opcode = kAtomicExchangeInt8;
   } else if (type == MachineType::Uint8()) {
-    opcode = kWord32AtomicExchangeUint8;
+    opcode = kAtomicExchangeUint8;
   } else if (type == MachineType::Int16()) {
-    opcode = kWord32AtomicExchangeInt16;
+    opcode = kAtomicExchangeInt16;
   } else if (type == MachineType::Uint16()) {
-    opcode = kWord32AtomicExchangeUint16;
+    opcode = kAtomicExchangeUint16;
   } else if (type == MachineType::Int32() || type == MachineType::Uint32()) {
-    opcode = kWord32AtomicExchangeWord32;
+    opcode = kAtomicExchangeWord32;
   } else {
     UNREACHABLE();
   }
-  VisitAtomicExchange(this, node, opcode);
+  VisitAtomicExchange(this, node, opcode, AtomicWidth::kWord32);
 }
 
 void InstructionSelector::VisitWord64AtomicExchange(Node* node) {
   ArchOpcode opcode;
   MachineType type = AtomicOpType(node->op());
   if (type == MachineType::Uint8()) {
-    opcode = kS390_Word64AtomicExchangeUint8;
+    opcode = kAtomicExchangeUint8;
   } else if (type == MachineType::Uint16()) {
-    opcode = kS390_Word64AtomicExchangeUint16;
+    opcode = kAtomicExchangeUint16;
   } else if (type == MachineType::Uint32()) {
-    opcode = kS390_Word64AtomicExchangeUint32;
+    opcode = kAtomicExchangeWord32;
   } else if (type == MachineType::Uint64()) {
     opcode = kS390_Word64AtomicExchangeUint64;
   } else {
     UNREACHABLE();
   }
-  VisitAtomicExchange(this, node, opcode);
+  VisitAtomicExchange(this, node, opcode, AtomicWidth::kWord64);
 }
 
 void VisitAtomicCompareExchange(InstructionSelector* selector, Node* node,
-                                ArchOpcode opcode) {
+                                ArchOpcode opcode, AtomicWidth width) {
   S390OperandGenerator g(selector);
   Node* base = node->InputAt(0);
   Node* index = node->InputAt(1);
@@ -2242,7 +2247,8 @@ void VisitAtomicCompareExchange(InstructionSelector* selector, Node* node,
   size_t output_count = 0;
   outputs[output_count++] = g.DefineSameAsFirst(node);
 
-  InstructionCode code = opcode | AddressingModeField::encode(addressing_mode);
+  InstructionCode code = opcode | AddressingModeField::encode(addressing_mode) |
+                         AtomicWidthField::encode(width);
   selector->Emit(code, output_count, outputs, input_count, inputs);
 }
 
@@ -2250,40 +2256,40 @@ void InstructionSelector::VisitWord32AtomicCompareExchange(Node* node) {
   MachineType type = AtomicOpType(node->op());
   ArchOpcode opcode;
   if (type == MachineType::Int8()) {
-    opcode = kWord32AtomicCompareExchangeInt8;
+    opcode = kAtomicCompareExchangeInt8;
   } else if (type == MachineType::Uint8()) {
-    opcode = kWord32AtomicCompareExchangeUint8;
+    opcode = kAtomicCompareExchangeUint8;
   } else if (type == MachineType::Int16()) {
-    opcode = kWord32AtomicCompareExchangeInt16;
+    opcode = kAtomicCompareExchangeInt16;
   } else if (type == MachineType::Uint16()) {
-    opcode = kWord32AtomicCompareExchangeUint16;
+    opcode = kAtomicCompareExchangeUint16;
   } else if (type == MachineType::Int32() || type == MachineType::Uint32()) {
-    opcode = kWord32AtomicCompareExchangeWord32;
+    opcode = kAtomicCompareExchangeWord32;
   } else {
     UNREACHABLE();
   }
-  VisitAtomicCompareExchange(this, node, opcode);
+  VisitAtomicCompareExchange(this, node, opcode, AtomicWidth::kWord32);
 }
 
 void InstructionSelector::VisitWord64AtomicCompareExchange(Node* node) {
   MachineType type = AtomicOpType(node->op());
   ArchOpcode opcode;
   if (type == MachineType::Uint8()) {
-    opcode = kS390_Word64AtomicCompareExchangeUint8;
+    opcode = kAtomicCompareExchangeUint8;
   } else if (type == MachineType::Uint16()) {
-    opcode = kS390_Word64AtomicCompareExchangeUint16;
+    opcode = kAtomicCompareExchangeUint16;
   } else if (type == MachineType::Uint32()) {
-    opcode = kS390_Word64AtomicCompareExchangeUint32;
+    opcode = kAtomicCompareExchangeWord32;
   } else if (type == MachineType::Uint64()) {
     opcode = kS390_Word64AtomicCompareExchangeUint64;
   } else {
     UNREACHABLE();
   }
-  VisitAtomicCompareExchange(this, node, opcode);
+  VisitAtomicCompareExchange(this, node, opcode, AtomicWidth::kWord64);
 }
 
 void VisitAtomicBinop(InstructionSelector* selector, Node* node,
-                      ArchOpcode opcode) {
+                      ArchOpcode opcode, AtomicWidth width) {
   S390OperandGenerator g(selector);
   Node* base = node->InputAt(0);
   Node* index = node->InputAt(1);
@@ -2312,7 +2318,8 @@ void VisitAtomicBinop(InstructionSelector* selector, Node* node,
   size_t temp_count = 0;
   temps[temp_count++] = g.TempRegister();
 
-  InstructionCode code = opcode | AddressingModeField::encode(addressing_mode);
+  InstructionCode code = opcode | AddressingModeField::encode(addressing_mode) |
+                         AtomicWidthField::encode(width);
   selector->Emit(code, output_count, outputs, input_count, inputs, temp_count,
                  temps);
 }
@@ -2336,15 +2343,14 @@ void InstructionSelector::VisitWord32AtomicBinaryOperation(
   } else {
     UNREACHABLE();
   }
-  VisitAtomicBinop(this, node, opcode);
+  VisitAtomicBinop(this, node, opcode, AtomicWidth::kWord32);
 }
 
-#define VISIT_ATOMIC_BINOP(op)                                   \
-  void InstructionSelector::VisitWord32Atomic##op(Node* node) {  \
-    VisitWord32AtomicBinaryOperation(                            \
-        node, kWord32Atomic##op##Int8, kWord32Atomic##op##Uint8, \
-        kWord32Atomic##op##Int16, kWord32Atomic##op##Uint16,     \
-        kWord32Atomic##op##Word32);                              \
+#define VISIT_ATOMIC_BINOP(op)                                           \
+  void InstructionSelector::VisitWord32Atomic##op(Node* node) {          \
+    VisitWord32AtomicBinaryOperation(                                    \
+        node, kAtomic##op##Int8, kAtomic##op##Uint8, kAtomic##op##Int16, \
+        kAtomic##op##Uint16, kAtomic##op##Word32);                       \
   }
 VISIT_ATOMIC_BINOP(Add)
 VISIT_ATOMIC_BINOP(Sub)
@@ -2370,14 +2376,14 @@ void InstructionSelector::VisitWord64AtomicBinaryOperation(
   } else {
     UNREACHABLE();
   }
-  VisitAtomicBinop(this, node, opcode);
+  VisitAtomicBinop(this, node, opcode, AtomicWidth::kWord64);
 }
 
-#define VISIT_ATOMIC64_BINOP(op)                                             \
-  void InstructionSelector::VisitWord64Atomic##op(Node* node) {              \
-    VisitWord64AtomicBinaryOperation(                                        \
-        node, kS390_Word64Atomic##op##Uint8, kS390_Word64Atomic##op##Uint16, \
-        kS390_Word64Atomic##op##Uint32, kS390_Word64Atomic##op##Uint64);     \
+#define VISIT_ATOMIC64_BINOP(op)                                               \
+  void InstructionSelector::VisitWord64Atomic##op(Node* node) {                \
+    VisitWord64AtomicBinaryOperation(node, kAtomic##op##Uint8,                 \
+                                     kAtomic##op##Uint16, kAtomic##op##Word32, \
+                                     kS390_Word64Atomic##op##Uint64);          \
   }
 VISIT_ATOMIC64_BINOP(Add)
 VISIT_ATOMIC64_BINOP(Sub)
@@ -2387,14 +2393,14 @@ VISIT_ATOMIC64_BINOP(Xor)
 #undef VISIT_ATOMIC64_BINOP
 
 void InstructionSelector::VisitWord64AtomicLoad(Node* node) {
-  LoadRepresentation load_rep = LoadRepresentationOf(node->op());
-  USE(load_rep);
-  VisitLoad(node);
+  AtomicLoadParameters atomic_load_params = AtomicLoadParametersOf(node->op());
+  LoadRepresentation load_rep = atomic_load_params.representation();
+  VisitLoad(node, node, SelectLoadOpcode(load_rep));
 }
 
 void InstructionSelector::VisitWord64AtomicStore(Node* node) {
-  MachineRepresentation rep = AtomicStoreRepresentationOf(node->op());
-  VisitGeneralStore(this, node, rep);
+  AtomicStoreParameters store_params = AtomicStoreParametersOf(node->op());
+  VisitGeneralStore(this, node, store_params.representation());
 }
 
 #define SIMD_TYPES(V) \
@@ -2464,6 +2470,7 @@ void InstructionSelector::VisitWord64AtomicStore(Node* node) {
   V(I32x4Shl)              \
   V(I32x4ShrS)             \
   V(I32x4ShrU)             \
+  V(I32x4DotI16x8S)        \
   V(I16x8Add)              \
   V(I16x8Sub)              \
   V(I16x8Mul)              \
@@ -2478,6 +2485,7 @@ void InstructionSelector::VisitWord64AtomicStore(Node* node) {
   V(I16x8GtU)              \
   V(I16x8GeU)              \
   V(I16x8SConvertI32x4)    \
+  V(I16x8UConvertI32x4)    \
   V(I16x8RoundingAverageU) \
   V(I16x8ExtMulLowI8x16S)  \
   V(I16x8ExtMulHighI8x16S) \
@@ -2499,6 +2507,7 @@ void InstructionSelector::VisitWord64AtomicStore(Node* node) {
   V(I8x16GtU)              \
   V(I8x16GeU)              \
   V(I8x16SConvertI16x8)    \
+  V(I8x16UConvertI16x8)    \
   V(I8x16RoundingAverageU) \
   V(I8x16Shl)              \
   V(I8x16ShrS)             \
@@ -2509,19 +2518,16 @@ void InstructionSelector::VisitWord64AtomicStore(Node* node) {
   V(S128AndNot)
 
 #define SIMD_BINOP_UNIQUE_REGISTER_LIST(V) \
-  V(I32x4DotI16x8S)                        \
   V(I16x8AddSatS)                          \
   V(I16x8SubSatS)                          \
   V(I16x8AddSatU)                          \
   V(I16x8SubSatU)                          \
   V(I16x8Q15MulRSatS)                      \
-  V(I16x8UConvertI32x4)                    \
   V(I8x16AddSatS)                          \
   V(I8x16SubSatS)                          \
   V(I8x16AddSatU)                          \
   V(I8x16SubSatU)                          \
-  V(I8x16Swizzle)                          \
-  V(I8x16UConvertI16x8)
+  V(I8x16Swizzle)
 
 #define SIMD_UNOP_LIST(V)    \
   V(F64x2Abs)                \
@@ -2559,6 +2565,8 @@ void InstructionSelector::VisitWord64AtomicStore(Node* node) {
   V(I64x2AllTrue)            \
   V(I32x4Neg)                \
   V(I32x4Abs)                \
+  V(I32x4SConvertF32x4)      \
+  V(I32x4UConvertF32x4)      \
   V(I32x4SConvertI16x8Low)   \
   V(I32x4SConvertI16x8High)  \
   V(I32x4UConvertI16x8Low)   \
@@ -2587,8 +2595,6 @@ void InstructionSelector::VisitWord64AtomicStore(Node* node) {
   V(V128AnyTrue)
 
 #define SIMD_UNOP_UNIQUE_REGISTER_LIST(V) \
-  V(I32x4SConvertF32x4)                   \
-  V(I32x4UConvertF32x4)                   \
   V(I32x4ExtAddPairwiseI16x8S)            \
   V(I32x4ExtAddPairwiseI16x8U)            \
   V(I16x8ExtAddPairwiseI8x16S)            \
@@ -2783,18 +2789,107 @@ void InstructionSelector::EmitPrepareResults(
 }
 
 void InstructionSelector::VisitLoadLane(Node* node) {
-  // We should never reach here, see http://crrev.com/c/2577820
-  UNREACHABLE();
+  LoadLaneParameters params = LoadLaneParametersOf(node->op());
+  InstructionCode opcode;
+  if (params.rep == MachineType::Int8()) {
+    opcode = kS390_S128Load8Lane;
+  } else if (params.rep == MachineType::Int16()) {
+    opcode = kS390_S128Load16Lane;
+  } else if (params.rep == MachineType::Int32()) {
+    opcode = kS390_S128Load32Lane;
+  } else if (params.rep == MachineType::Int64()) {
+    opcode = kS390_S128Load64Lane;
+  } else {
+    UNREACHABLE();
+  }
+
+  S390OperandGenerator g(this);
+  InstructionOperand outputs[] = {g.DefineSameAsFirst(node)};
+  InstructionOperand inputs[5];
+  size_t input_count = 0;
+
+  inputs[input_count++] = g.UseRegister(node->InputAt(2));
+  inputs[input_count++] = g.UseImmediate(params.laneidx);
+
+  AddressingMode mode =
+      g.GetEffectiveAddressMemoryOperand(node, inputs, &input_count);
+  opcode |= AddressingModeField::encode(mode);
+  Emit(opcode, 1, outputs, input_count, inputs);
 }
 
 void InstructionSelector::VisitLoadTransform(Node* node) {
-  // We should never reach here, see http://crrev.com/c/2050811
-  UNREACHABLE();
+  LoadTransformParameters params = LoadTransformParametersOf(node->op());
+  ArchOpcode opcode;
+  switch (params.transformation) {
+    case LoadTransformation::kS128Load8Splat:
+      opcode = kS390_S128Load8Splat;
+      break;
+    case LoadTransformation::kS128Load16Splat:
+      opcode = kS390_S128Load16Splat;
+      break;
+    case LoadTransformation::kS128Load32Splat:
+      opcode = kS390_S128Load32Splat;
+      break;
+    case LoadTransformation::kS128Load64Splat:
+      opcode = kS390_S128Load64Splat;
+      break;
+    case LoadTransformation::kS128Load8x8S:
+      opcode = kS390_S128Load8x8S;
+      break;
+    case LoadTransformation::kS128Load8x8U:
+      opcode = kS390_S128Load8x8U;
+      break;
+    case LoadTransformation::kS128Load16x4S:
+      opcode = kS390_S128Load16x4S;
+      break;
+    case LoadTransformation::kS128Load16x4U:
+      opcode = kS390_S128Load16x4U;
+      break;
+    case LoadTransformation::kS128Load32x2S:
+      opcode = kS390_S128Load32x2S;
+      break;
+    case LoadTransformation::kS128Load32x2U:
+      opcode = kS390_S128Load32x2U;
+      break;
+    case LoadTransformation::kS128Load32Zero:
+      opcode = kS390_S128Load32Zero;
+      break;
+    case LoadTransformation::kS128Load64Zero:
+      opcode = kS390_S128Load64Zero;
+      break;
+    default:
+      UNREACHABLE();
+  }
+  VisitLoad(node, node, opcode);
 }
 
 void InstructionSelector::VisitStoreLane(Node* node) {
-  // We should never reach here, see http://crrev.com/c/2577820
-  UNREACHABLE();
+  StoreLaneParameters params = StoreLaneParametersOf(node->op());
+  InstructionCode opcode;
+  if (params.rep == MachineRepresentation::kWord8) {
+    opcode = kS390_S128Store8Lane;
+  } else if (params.rep == MachineRepresentation::kWord16) {
+    opcode = kS390_S128Store16Lane;
+  } else if (params.rep == MachineRepresentation::kWord32) {
+    opcode = kS390_S128Store32Lane;
+  } else if (params.rep == MachineRepresentation::kWord64) {
+    opcode = kS390_S128Store64Lane;
+  } else {
+    UNREACHABLE();
+  }
+
+  S390OperandGenerator g(this);
+  InstructionOperand outputs[] = {g.DefineSameAsFirst(node)};
+  InstructionOperand inputs[5];
+  size_t input_count = 0;
+
+  inputs[input_count++] = g.UseRegister(node->InputAt(2));
+  inputs[input_count++] = g.UseImmediate(params.laneidx);
+
+  AddressingMode mode =
+      g.GetEffectiveAddressMemoryOperand(node, inputs, &input_count);
+  opcode |= AddressingModeField::encode(mode);
+  Emit(opcode, 1, outputs, input_count, inputs);
 }
 
 void InstructionSelector::VisitTruncateFloat32ToInt32(Node* node) {

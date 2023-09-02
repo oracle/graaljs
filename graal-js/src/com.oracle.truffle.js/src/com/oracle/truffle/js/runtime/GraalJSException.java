@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,8 +105,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
     }
 
-    protected GraalJSException(String message, SourceSection location, int stackTraceLimit) {
-        super(message, null, stackTraceLimit, null);
+    protected GraalJSException(String message, Throwable cause, SourceSection location, int stackTraceLimit) {
+        super(message, cause, stackTraceLimit, null);
         this.location = location;
         this.stackTraceLimit = stackTraceLimit;
         this.jsStackTrace = stackTraceLimit == 0 ? EMPTY_STACK_TRACE : null;
@@ -255,7 +255,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
     @TruffleBoundary
     public static JSStackTraceElement[] getJSStackTrace(Node originatingNode) {
-        int stackTraceLimit = JavaScriptLanguage.get(originatingNode).getJSContext().getContextOptions().getStackTraceLimit();
+        int stackTraceLimit = JavaScriptLanguage.get(originatingNode).getJSContext().getLanguageOptions().stackTraceLimit();
         return UserScriptException.createCapture("", originatingNode, stackTraceLimit).getJSStackTrace();
     }
 
@@ -428,12 +428,13 @@ public abstract class GraalJSException extends AbstractTruffleException {
             }
         }
         boolean global = (JSRuntime.isNullOrUndefined(thisObj) && !JSFunction.isStrict(functionObj)) || isGlobalObject(thisObj, JSFunction.getRealm(functionObj));
-
-        return new JSStackTraceElement(fileName, functionName, callNodeSourceSection, thisObj, functionObj, targetSourceSection, inStrictMode, eval, global, inNashornMode, async, promiseIndex);
+        boolean hasPath = source.getPath() != null;
+        return new JSStackTraceElement(fileName, functionName, callNodeSourceSection, thisObj, functionObj, targetSourceSection,
+                        inStrictMode, eval, global, inNashornMode, async, hasPath, promiseIndex);
     }
 
     private static boolean isEvalSource(Source source) {
-        return source != null && source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX);
+        return source.getName().startsWith(Evaluator.EVAL_AT_SOURCE_NAME_PREFIX);
     }
 
     private static boolean isInternalFunctionName(TruffleString functionName) {
@@ -451,12 +452,14 @@ public abstract class GraalJSException extends AbstractTruffleException {
             // can happen around FastR root nodes, see GR-6604
             return null;
         }
-        TruffleString fileName = getFileName(sourceSection.getSource());
+        Source source = sourceSection.getSource();
+        TruffleString fileName = getFileName(source);
         TruffleString functionName = Strings.fromJavaString(rootNode.getName());
         Object thisObj = null;
         Object functionObj = null;
+        boolean hasPath = source.getPath() != null;
 
-        return new JSStackTraceElement(fileName, functionName, sourceSection, thisObj, functionObj, null, strict, false, false, inNashornMode, async, -1);
+        return new JSStackTraceElement(fileName, functionName, sourceSection, thisObj, functionObj, null, strict, false, false, inNashornMode, async, hasPath, -1);
     }
 
     private static TruffleString getPrimitiveConstructorName(Object thisObj) {
@@ -510,7 +513,11 @@ public abstract class GraalJSException extends AbstractTruffleException {
     }
 
     private static TruffleString getFileName(Source source) {
-        return source != null ? Strings.fromJavaString(source.getName()) : Strings.UNKNOWN_FILENAME;
+        String fileName = source.getPath();
+        if (fileName == null) {
+            fileName = source.getName();
+        }
+        return Strings.fromJavaString(fileName);
     }
 
     public void printJSStackTrace() {
@@ -609,7 +616,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
     @ExportMessage
     @TruffleBoundary
     public final int identityHashCode(
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary delegateLib) throws UnsupportedMessageException {
+                    @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary delegateLib) throws UnsupportedMessageException {
         return delegateLib.identityHashCode(getErrorObject());
     }
 
@@ -625,11 +632,11 @@ public abstract class GraalJSException extends AbstractTruffleException {
         private final boolean global;
         private final boolean inNashornMode;
         private final boolean async;
+        private final boolean hasPath;
         private final int promiseIndex;
 
         private JSStackTraceElement(TruffleString fileName, TruffleString functionName, SourceSection sourceSection, Object thisObj, Object functionObj, SourceSection targetSourceSection,
-                        boolean strict,
-                        boolean eval, boolean global, boolean inNashornMode, boolean async, int promiseIndex) {
+                        boolean strict, boolean eval, boolean global, boolean inNashornMode, boolean async, boolean hasPath, int promiseIndex) {
             CompilerAsserts.neverPartOfCompilation();
             this.fileName = fileName;
             this.functionName = functionName;
@@ -642,19 +649,18 @@ public abstract class GraalJSException extends AbstractTruffleException {
             this.global = global;
             this.inNashornMode = inNashornMode;
             this.async = async;
+            this.hasPath = hasPath;
             this.promiseIndex = promiseIndex;
         }
 
-        // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public TruffleString getFileName() {
-            if (Strings.startsWith(fileName, Evaluator.TS_EVAL_AT_SOURCE_NAME_PREFIX)) {
+            if (eval) {
                 return Evaluator.TS_EVAL_SOURCE_NAME;
             }
             return fileName;
         }
 
-        // This method is called from nashorn tests via java interop
         public TruffleString getClassName() {
             return getTypeName(false);
         }
@@ -713,7 +719,6 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return null;
         }
 
-        // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public String getMethodName() {
             return Strings.toJavaString(getMethodName(JavaScriptLanguage.getCurrentLanguage().getJSContext()));
@@ -781,7 +786,6 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return name;
         }
 
-        // This method is called from nashorn tests via java interop
         @TruffleBoundary
         public int getLineNumber() {
             if (sourceSection == null) {
@@ -835,6 +839,10 @@ public abstract class GraalJSException extends AbstractTruffleException {
             return sourceSection != null ? sourceSection.getCharIndex() : -1;
         }
 
+        public int getCharLength() {
+            return sourceSection != null ? sourceSection.getCharLength() : 0;
+        }
+
         public Object getThis() {
             return thisObj;
         }
@@ -877,10 +885,10 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
         @TruffleBoundary
         public TruffleString getEvalOrigin() {
-            if (Strings.startsWith(fileName, Strings.ANGLE_BRACKET_OPEN)) {
-                return null;
+            if (eval && !Strings.startsWith(fileName, Strings.ANGLE_BRACKET_OPEN)) {
+                return fileName;
             }
-            return fileName;
+            return null;
         }
 
         public int getPromiseIndex() {
@@ -893,6 +901,10 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
         public boolean isAsync() {
             return async;
+        }
+
+        public boolean hasPath() {
+            return hasPath;
         }
 
         @TruffleBoundary
@@ -944,7 +956,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
                 Strings.builderAppend(sb, Strings.NATIVE);
             } else {
                 TruffleString evalOrigin = getEvalOrigin();
-                TruffleString sourceName = evalOrigin != null ? evalOrigin : getFileName();
+                TruffleString sourceName = evalOrigin != null ? evalOrigin : getFileNameForStackTrace(context);
                 Strings.builderAppend(sb, sourceName);
                 if (eval) {
                     Strings.builderAppend(sb, Strings.COMMA_ANONYMOUS_BRACKETS);
@@ -958,6 +970,14 @@ public abstract class GraalJSException extends AbstractTruffleException {
                 Strings.builderAppend(sb, Strings.PAREN_CLOSE);
             }
             return Strings.builderToString(sb);
+        }
+
+        public TruffleString getFileNameForStackTrace(JSContext context) {
+            if (hasPath && context.isOptionNashornCompatibilityMode() && sourceSection != null) {
+                return Strings.fromJavaString(sourceSection.getSource().getName());
+            } else {
+                return getFileName();
+            }
         }
     }
 }

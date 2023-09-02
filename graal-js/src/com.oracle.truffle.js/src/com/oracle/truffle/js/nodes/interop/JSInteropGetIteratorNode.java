@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,7 @@ import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -64,10 +64,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 @GenerateUncached
 public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
     JSInteropGetIteratorNode() {
-    }
-
-    public static JSInteropGetIteratorNode create() {
-        return JSInteropGetIteratorNodeGen.create();
     }
 
     public final boolean hasIterator(JSObject receiver, JavaScriptLanguage language) {
@@ -90,7 +86,7 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
                     @Cached IsCallableNode isCallableNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
                     @Cached(value = "create(NEXT, language.getJSContext())", uncached = "getUncachedProperty()") PropertyGetNode nextPropertyGetNode,
-                    @Cached BranchProfile exceptionBranch) throws UnsupportedMessageException {
+                    @Cached InlinedBranchProfile exceptionBranch) throws UnsupportedMessageException {
         Object method = getProperty(receiver, iteratorPropertyGetNode, Symbol.SYMBOL_ITERATOR, null);
         boolean hasIterator = method != null && isCallableNode.executeBoolean(method);
         if (hasIteratorCheck) {
@@ -105,10 +101,10 @@ public abstract class JSInteropGetIteratorNode extends JSInteropCallNode {
                     return JSIteratorWrapper.create(IteratorRecord.create(jsIterator, nextMethod));
                 }
             }
-            exceptionBranch.enter();
+            exceptionBranch.enter(this);
             throw Errors.createTypeErrorNotIterable(receiver, null);
         } else {
-            exceptionBranch.enter();
+            exceptionBranch.enter(this);
             throw UnsupportedMessageException.create();
         }
     }

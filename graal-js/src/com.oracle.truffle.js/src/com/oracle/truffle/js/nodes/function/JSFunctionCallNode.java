@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,8 +52,10 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -126,14 +128,17 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         this.flags = flags;
     }
 
+    @NeverDefault
     public static JSFunctionCallNode createCall() {
         return create(false);
     }
 
+    @NeverDefault
     public static JSFunctionCallNode createNew() {
         return create(true);
     }
 
+    @NeverDefault
     public static JSFunctionCallNode createNewTarget() {
         return create(true, true);
     }
@@ -178,10 +183,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         return new InvokeNNode(targetFunction, arguments, flags);
     }
 
+    @NeverDefault
     public static JSFunctionCallNode getUncachedCall() {
         return Uncached.CALL;
     }
 
+    @NeverDefault
     public static JSFunctionCallNode getUncachedNew() {
         return Uncached.NEW;
     }
@@ -485,7 +492,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     @ExplodeLoop
-    protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int fixedArgumentsLength, BranchProfile growProfile) {
+    protected static Object[] executeFillObjectArraySpread(JavaScriptNode[] arguments, VirtualFrame frame, Object[] args, int fixedArgumentsLength) {
         // assume size that avoids growing
         SimpleArrayList<Object> argList = SimpleArrayList.create((long) fixedArgumentsLength + arguments.length + JSConfig.SpreadArgumentPlaceholderCount);
         for (int i = 0; i < fixedArgumentsLength; i++) {
@@ -493,9 +500,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
         for (int i = 0; i < arguments.length; i++) {
             if (arguments[i] instanceof SpreadArgumentNode) {
-                ((SpreadArgumentNode) arguments[i]).executeToList(frame, argList, growProfile);
+                ((SpreadArgumentNode) arguments[i]).executeToList(frame, argList);
             } else {
-                argList.add(arguments[i].execute(frame), growProfile);
+                argList.addUncached(arguments[i].execute(frame));
             }
         }
         return argList.toArray();
@@ -530,7 +537,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         protected abstract void materializeInstrumentableArguments();
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public final Object execute(VirtualFrame frame) {
             Object target = executeTarget(frame);
             Object receiver = evaluateReceiver(frame, target);
             Object function = functionNode.execute(frame);
@@ -681,15 +688,13 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
     static class CallSpreadNode extends CallNNode {
 
-        private final BranchProfile growProfile = BranchProfile.create();
-
         protected CallSpreadNode(JavaScriptNode targetNode, JavaScriptNode functionNode, JavaScriptNode[] arguments, byte flags) {
             super(targetNode, functionNode, arguments, flags);
         }
 
         @Override
         protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
-            return executeFillObjectArraySpread(arguments, frame, args, delta, growProfile);
+            return executeFillObjectArraySpread(arguments, frame, args, delta);
         }
 
         @Override
@@ -733,7 +738,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         protected abstract void materializeInstrumentableArguments();
 
         @Override
-        public Object execute(VirtualFrame frame) {
+        public final Object execute(VirtualFrame frame) {
             Object target = executeTarget(frame);
             Object receiver = evaluateReceiver(frame, target);
             Object function = executeFunctionWithTarget(frame, target);
@@ -917,7 +922,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     }
 
     static class InvokeSpreadNode extends InvokeNNode {
-        private final BranchProfile growProfile = BranchProfile.create();
 
         protected InvokeSpreadNode(JSTargetableNode functionNode, JavaScriptNode[] arguments, byte flags) {
             this(null, functionNode, arguments, flags);
@@ -929,7 +933,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         @Override
         protected Object[] executeFillObjectArray(VirtualFrame frame, Object[] args, int delta) {
-            return executeFillObjectArraySpread(arguments, frame, args, delta, growProfile);
+            return executeFillObjectArraySpread(arguments, frame, args, delta);
         }
 
         @Override
@@ -986,8 +990,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     private static boolean isBoundFunctionNestingDepthWithinLimits(JSFunctionObject function) {
         JSFunctionObject boundFunction = function;
         for (int i = 0; i < JSConfig.BoundFunctionUnpackLimit; i++) {
-            boundFunction = JSFunction.getBoundTargetFunction(boundFunction);
-            if (!JSFunction.isBoundFunction(boundFunction)) {
+            Object targetFunction = JSFunction.getBoundTargetFunction(boundFunction);
+            if (JSFunction.isBoundFunction(targetFunction)) {
+                boundFunction = (JSFunctionObject) targetFunction;
+            } else {
                 return true;
             }
         }
@@ -1168,7 +1174,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         private final JSFunctionObject boundFunctionObj;
         private final Object boundThis;
-        private final JSFunctionObject targetFunctionObj;
+        private final Object targetFunctionObj;
         private final Object[] addArguments;
         private final boolean useDynamicThis;
         private final boolean isNewTarget;
@@ -1177,14 +1183,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             assert JSFunction.isBoundFunction(function);
             this.boundFunctionObj = function;
             Object lastReceiver;
-            JSFunctionObject lastFunction = function;
+            Object lastFunction = function;
             List<Object> prefixArguments = new ArrayList<>();
             do {
-                Object[] extraArguments = JSFunction.getBoundArguments(lastFunction);
+                JSFunctionObject boundFunction = (JSFunctionObject) lastFunction;
+                Object[] extraArguments = JSFunction.getBoundArguments(boundFunction);
                 prefixArguments.addAll(0, Arrays.asList(extraArguments));
 
-                lastReceiver = JSFunction.getBoundThis(lastFunction);
-                lastFunction = JSFunction.getBoundTargetFunction(lastFunction);
+                lastReceiver = JSFunction.getBoundThis(boundFunction);
+                lastFunction = JSFunction.getBoundTargetFunction(boundFunction);
             } while (JSFunction.isBoundFunction(lastFunction) && !isNewTarget);
             // Note: We cannot unpack nested bound functions if this is a construct-with-newTarget.
             // This is because we need to apply the SameValue(F, newTarget) check below recursively
@@ -1201,7 +1208,22 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 this.boundThis = lastReceiver;
             }
             this.isNewTarget = isNewTarget;
-            this.boundNode = createCallableNode(lastFunction, JSFunction.getFunctionData(lastFunction), isNew, isNewTarget, true);
+            if (JSFunction.isJSFunction(lastFunction)) {
+                JSFunctionObject lastJSFunction = (JSFunctionObject) lastFunction;
+                this.boundNode = createCallableNode(lastJSFunction, JSFunction.getFunctionData(lastJSFunction), isNew, isNewTarget, true);
+            } else if (JSProxy.isJSProxy(lastFunction)) {
+                assert JSRuntime.isCallableProxy((JSDynamicObject) lastFunction);
+                this.boundNode = new JSProxyCallCacheNode(isNew, isNewTarget, function.getJSContext());
+            } else {
+                assert JSRuntime.isCallableForeign(lastFunction);
+                int expectedArgumentCount = -1; // unknown
+                if (isNew || isNewTarget) {
+                    int skippedArgs = isNewTarget ? 1 : 0;
+                    this.boundNode = new ForeignInstantiateNode(skippedArgs, expectedArgumentCount);
+                } else {
+                    this.boundNode = new ForeignExecuteNode(expectedArgumentCount);
+                }
+            }
         }
 
         @Override
@@ -1229,9 +1251,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private boolean checkTargetFunction(Object[] arguments) {
-            JSFunctionObject targetFunction = (JSFunctionObject) JSArguments.getFunctionObject(arguments);
+            Object targetFunction = JSArguments.getFunctionObject(arguments);
             while (JSFunction.isBoundFunction(targetFunction)) {
-                targetFunction = JSFunction.getBoundTargetFunction(targetFunction);
+                targetFunction = JSFunction.getBoundTargetFunction((JSFunctionObject) targetFunction);
                 if (isNewTarget) {
                     // see note above
                     return targetFunctionObj == targetFunction;
@@ -1281,7 +1303,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             if (!JSFunction.isBoundFunction(function)) {
                 throw Errors.shouldNotReachHere();
             }
-            JSFunctionObject boundTargetFunction = JSFunction.getBoundTargetFunction(function);
+            Object boundTargetFunction = JSFunction.getBoundTargetFunction(function);
             Object boundThis = useDynamicThis ? JSArguments.getThisObject(origArgs) : JSFunction.getBoundThis(function);
             Object[] boundArguments = JSFunction.getBoundArguments(function);
             int skip = isNewTarget ? 1 : 0;
@@ -1587,15 +1609,16 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             return convertForeignReturn(callReturn);
         }
 
+        @InliningCutoff
         private Object fallback(Object receiver, Object[] arguments, Object[] callArguments, InteropException caughtException) {
             InteropException ex = caughtException;
-            if (getContext().getContextOptions().hasForeignObjectPrototype() || JSInteropUtil.isBoxedPrimitive(receiver, interop)) {
+            if (getContext().getLanguageOptions().hasForeignObjectPrototype() || JSInteropUtil.isBoxedPrimitive(receiver, interop)) {
                 Object function = maybeGetFromPrototype(receiver);
                 if (function != Undefined.instance) {
                     return callJSFunction(receiver, function, arguments);
                 }
             }
-            if (getContext().getContextOptions().hasForeignHashProperties() && interop.hasHashEntries(receiver) && interop.isHashEntryReadable(receiver, functionName)) {
+            if (getContext().getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(receiver) && interop.isHashEntryReadable(receiver, functionName)) {
                 try {
                     Object function = interop.readHashValue(receiver, functionName);
                     return InteropLibrary.getUncached().execute(function, callArguments);
@@ -1614,15 +1637,15 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
             }
             JSDynamicObject prototype = foreignObjectPrototypeNode.execute(receiver);
-            return getFunction(prototype);
+            return getFunction(prototype, receiver);
         }
 
-        private Object getFunction(Object object) {
+        private Object getFunction(Object object, Object receiver) {
             if (getFunctionNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getFunctionNode = insert(PropertyGetNode.create(functionName, getContext()));
             }
-            return getFunctionNode.getValue(object);
+            return getFunctionNode.getValueOrUndefined(object, receiver);
         }
 
         private Object callJSFunction(Object receiver, Object function, Object[] arguments) {

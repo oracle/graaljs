@@ -12,6 +12,7 @@
 #include "src/base/numbers/dtoa.h"
 #include "src/base/numbers/strtod.h"
 #include "src/base/platform/wrappers.h"
+#include "src/base/small-vector.h"
 #include "src/bigint/bigint.h"
 #include "src/common/assert-scope.h"
 #include "src/handles/handles.h"
@@ -670,19 +671,19 @@ double InternalStringToDouble(Iterator current, EndMark end, int flags,
   int insignificant_digits = 0;
   bool nonzero_digit_dropped = false;
 
-  enum Sign { NONE, NEGATIVE, POSITIVE };
+  enum class Sign { kNone, kNegative, kPositive };
 
-  Sign sign = NONE;
+  Sign sign = Sign::kNone;
 
   if (*current == '+') {
     // Ignore leading sign.
     ++current;
     if (current == end) return JunkStringValue();
-    sign = POSITIVE;
+    sign = Sign::kPositive;
   } else if (*current == '-') {
     ++current;
     if (current == end) return JunkStringValue();
-    sign = NEGATIVE;
+    sign = Sign::kNegative;
   }
 
   static const char kInfinityString[] = "Infinity";
@@ -696,20 +697,20 @@ double InternalStringToDouble(Iterator current, EndMark end, int flags,
     }
 
     DCHECK_EQ(buffer_pos, 0);
-    return (sign == NEGATIVE) ? -V8_INFINITY : V8_INFINITY;
+    return (sign == Sign::kNegative) ? -V8_INFINITY : V8_INFINITY;
   }
 
   bool leading_zero = false;
   if (*current == '0') {
     ++current;
-    if (current == end) return SignedZero(sign == NEGATIVE);
+    if (current == end) return SignedZero(sign == Sign::kNegative);
 
     leading_zero = true;
 
     // It could be hexadecimal value.
     if ((flags & ALLOW_HEX) && (*current == 'x' || *current == 'X')) {
       ++current;
-      if (current == end || !isDigit(*current, 16) || sign != NONE) {
+      if (current == end || !isDigit(*current, 16) || sign != Sign::kNone) {
         return JunkStringValue();  // "0x".
       }
 
@@ -719,7 +720,7 @@ double InternalStringToDouble(Iterator current, EndMark end, int flags,
       // It could be an explicit octal value.
     } else if ((flags & ALLOW_OCTAL) && (*current == 'o' || *current == 'O')) {
       ++current;
-      if (current == end || !isDigit(*current, 8) || sign != NONE) {
+      if (current == end || !isDigit(*current, 8) || sign != Sign::kNone) {
         return JunkStringValue();  // "0o".
       }
 
@@ -729,7 +730,7 @@ double InternalStringToDouble(Iterator current, EndMark end, int flags,
       // It could be a binary value.
     } else if ((flags & ALLOW_BINARY) && (*current == 'b' || *current == 'B')) {
       ++current;
-      if (current == end || !isBinaryDigit(*current) || sign != NONE) {
+      if (current == end || !isBinaryDigit(*current) || sign != Sign::kNone) {
         return JunkStringValue();  // "0b".
       }
 
@@ -740,7 +741,7 @@ double InternalStringToDouble(Iterator current, EndMark end, int flags,
     // Ignore leading zeros in the integer part.
     while (*current == '0') {
       ++current;
-      if (current == end) return SignedZero(sign == NEGATIVE);
+      if (current == end) return SignedZero(sign == Sign::kNegative);
     }
   }
 
@@ -785,7 +786,7 @@ double InternalStringToDouble(Iterator current, EndMark end, int flags,
       // leading zeros (if any).
       while (*current == '0') {
         ++current;
-        if (current == end) return SignedZero(sign == NEGATIVE);
+        if (current == end) return SignedZero(sign == Sign::kNegative);
         exponent--;  // Move this 0 into the exponent.
       }
     }
@@ -826,9 +827,9 @@ double InternalStringToDouble(Iterator current, EndMark end, int flags,
         return JunkStringValue();
       }
     }
-    char sign = '+';
+    char exponent_sign = '+';
     if (*current == '+' || *current == '-') {
-      sign = static_cast<char>(*current);
+      exponent_sign = static_cast<char>(*current);
       ++current;
       if (current == end) {
         if (allow_trailing_junk) {
@@ -862,7 +863,7 @@ double InternalStringToDouble(Iterator current, EndMark end, int flags,
       ++current;
     } while (current != end && *current >= '0' && *current <= '9');
 
-    exponent += (sign == '-' ? -num : num);
+    exponent += (exponent_sign == '-' ? -num : num);
   }
 
   if (!allow_trailing_junk && AdvanceToNonspace(&current, end)) {
@@ -874,7 +875,8 @@ parsing_done:
 
   if (octal) {
     return InternalStringToIntDouble<3>(buffer, buffer + buffer_pos,
-                                        sign == NEGATIVE, allow_trailing_junk);
+                                        sign == Sign::kNegative,
+                                        allow_trailing_junk);
   }
 
   if (nonzero_digit_dropped) {
@@ -887,7 +889,7 @@ parsing_done:
 
   double converted =
       Strtod(base::Vector<const char>(buffer, buffer_pos), exponent);
-  return (sign == NEGATIVE) ? -converted : converted;
+  return (sign == Sign::kNegative) ? -converted : converted;
 }
 
 double StringToDouble(const char* str, int flags, double empty_string_val) {
@@ -969,6 +971,23 @@ class StringToBigIntHelper : public StringToIntHelper<IsolateT> {
     UNREACHABLE();
   }
 
+  // Used for converting BigInt literals. The scanner has already checked
+  // that the literal is valid and not too big, so this always succeeds.
+  std::unique_ptr<char[]> DecimalString(bigint::Processor* processor) {
+    DCHECK_EQ(behavior_, Behavior::kLiteral);
+    this->ParseInt();
+    DCHECK_EQ(this->state(), State::kDone);
+    int num_digits = accumulator_.ResultLength();
+    base::SmallVector<bigint::digit_t, 8> digit_storage(num_digits);
+    bigint::RWDigits digits(digit_storage.data(), num_digits);
+    processor->FromString(digits, &accumulator_);
+    int num_chars = bigint::ToStringResultLength(digits, 10, false);
+    std::unique_ptr<char[]> out(new char[num_chars + 1]);
+    processor->ToString(out.get(), &num_chars, digits, 10, false);
+    out[num_chars] = '\0';
+    return out;
+  }
+
  private:
   template <class Char>
   void ParseInternal(Char start) {
@@ -1016,6 +1035,13 @@ template EXPORT_TEMPLATE_DEFINE(V8_EXPORT_PRIVATE)
 template EXPORT_TEMPLATE_DEFINE(V8_EXPORT_PRIVATE)
     MaybeHandle<BigInt> BigIntLiteral(LocalIsolate* isolate,
                                       const char* string);
+
+std::unique_ptr<char[]> BigIntLiteralToDecimal(
+    LocalIsolate* isolate, base::Vector<const uint8_t> literal) {
+  StringToBigIntHelper<LocalIsolate> helper(nullptr, literal.begin(),
+                                            literal.length());
+  return helper.DecimalString(isolate->bigint_processor());
+}
 
 const char* DoubleToCString(double v, base::Vector<char> buffer) {
   switch (FPCLASSIFY_NAMESPACE::fpclassify(v)) {
@@ -1363,7 +1389,7 @@ char* DoubleToRadixCString(double value, int radix) {
             }
             char c = buffer[fraction_cursor];
             // Reconstruct digit.
-            int digit = c > '9' ? (c - 'a' + 10) : (c - '0');
+            digit = c > '9' ? (c - 'a' + 10) : (c - '0');
             if (digit + 1 < radix) {
               buffer[fraction_cursor++] = chars[digit + 1];
               break;
@@ -1425,7 +1451,7 @@ base::Optional<double> TryStringToDouble(LocalIsolate* isolate,
   const int flags = ALLOW_HEX | ALLOW_OCTAL | ALLOW_BINARY;
   auto buffer = std::make_unique<base::uc16[]>(max_length_for_conversion);
   SharedStringAccessGuardIfNeeded access_guard(isolate);
-  String::WriteToFlat(*object, buffer.get(), 0, length, access_guard);
+  String::WriteToFlat(*object, buffer.get(), 0, length, isolate, access_guard);
   base::Vector<const base::uc16> v(buffer.get(), length);
   return StringToDouble(v, flags);
 }
@@ -1476,7 +1502,7 @@ bool IsSpecialIndex(String string) {
   }
   // Slow path: test DoubleToString(StringToDouble(string)) == string.
   base::Vector<const uint16_t> vector(buffer, length);
-  double d = StringToDouble(vector, NO_FLAGS);
+  double d = StringToDouble(vector, NO_CONVERSION_FLAGS);
   if (std::isnan(d)) return false;
   // Compute reverse string.
   char reverse_buffer[kBufferSize + 1];  // Result will be /0 terminated.

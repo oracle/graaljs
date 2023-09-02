@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -696,7 +696,7 @@ public class DateParser {
         // fill in default values for unset fields except timezone
         for (int field = YEAR; field <= TIMEZONE; field++) {
             if (get(field) == null) {
-                if (field == TIMEZONE && !isUTCDefaultTimezone(context, dateOnly, strict)) {
+                if (field == TIMEZONE && !isUTCDefaultTimezone(dateOnly, strict)) {
                     // When the UTC offset representation is absent,
                     // date-only forms are interpreted as a UTC time and
                     // date-time forms are interpreted as a local time (= empty TIMEZONE).
@@ -745,8 +745,8 @@ public class DateParser {
         return true;
     }
 
-    private static boolean isUTCDefaultTimezone(JSContext context, boolean dateOnly, boolean strict) {
-        return (strict || context.getContextOptions().shouldUseUTCForLegacyDates()) && dateOnly;
+    private boolean isUTCDefaultTimezone(boolean dateOnly, boolean strict) {
+        return (strict || realm.getContext().getLanguageOptions().useUTCForLegacyDates()) && dateOnly;
     }
 
     private static void addName(final String str, final int type, final int value) {

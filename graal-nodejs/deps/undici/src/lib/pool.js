@@ -12,7 +12,7 @@ const {
   InvalidArgumentError
 } = require('./core/errors')
 const util = require('./core/util')
-const { kUrl } = require('./core/symbols')
+const { kUrl, kInterceptors } = require('./core/symbols')
 const buildConnector = require('./core/connect')
 
 const kOptions = Symbol('options')
@@ -32,6 +32,8 @@ class Pool extends PoolBase {
     tls,
     maxCachedSessions,
     socketPath,
+    autoSelectFamily,
+    autoSelectFamilyAttemptTimeout,
     ...options
   } = {}) {
     super()
@@ -54,13 +56,20 @@ class Pool extends PoolBase {
         maxCachedSessions,
         socketPath,
         timeout: connectTimeout == null ? 10e3 : connectTimeout,
+        ...(util.nodeHasAutoSelectFamily && autoSelectFamily ? { autoSelectFamily, autoSelectFamilyAttemptTimeout } : undefined),
         ...connect
       })
     }
 
+    this[kInterceptors] = options.interceptors && options.interceptors.Pool && Array.isArray(options.interceptors.Pool)
+      ? options.interceptors.Pool
+      : []
     this[kConnections] = connections || null
     this[kUrl] = util.parseOrigin(origin)
     this[kOptions] = { ...util.deepClone(options), connect }
+    this[kOptions].interceptors = options.interceptors
+      ? { ...options.interceptors }
+      : undefined
     this[kFactory] = factory
   }
 

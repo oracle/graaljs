@@ -2,17 +2,22 @@
 
 const {
   Array,
+  ArrayBufferPrototypeGetByteLength,
   ArrayPrototypeForEach,
   ArrayPrototypePush,
   ArrayPrototypeShift,
   ArrayPrototypeSplice,
   BigInt,
+  BigIntPrototypeToString,
+  DataView,
+  DataViewPrototypeGetUint8,
   FunctionPrototypeBind,
   FunctionPrototypeCall,
   MathMin,
   NumberIsNaN,
   NumberIsSafeInteger,
   NumberPrototypeToString,
+  StringFromCharCodeApply,
   StringPrototypePadStart,
 } = primordials;
 
@@ -35,18 +40,18 @@ const { Buffer, kMaxLength } = require('buffer');
 const {
   codes: {
     ERR_INVALID_ARG_TYPE,
+    ERR_MISSING_ARGS,
     ERR_OUT_OF_RANGE,
     ERR_OPERATION_FAILED,
-  }
+  },
 } = require('internal/errors');
 
 const {
   validateNumber,
   validateBoolean,
-  validateCallback,
+  validateFunction,
   validateInt32,
   validateObject,
-  validateUint32,
 } = require('internal/validators');
 
 const {
@@ -93,7 +98,7 @@ function assertSize(size, elementSize, offset, length) {
 function randomBytes(size, callback) {
   size = assertSize(size, 1, 0, Infinity);
   if (callback !== undefined) {
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
   }
 
   const buf = new FastBuffer(size);
@@ -163,7 +168,7 @@ function randomFill(buf, offset, size, callback) {
     callback = size;
     size = buf.length - offset;
   } else {
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
   }
 
   offset = assertOffset(offset, elementSize, buf.byteLength);
@@ -216,7 +221,7 @@ function randomInt(min, max, callback) {
 
   const isSync = typeof callback === 'undefined';
   if (!isSync) {
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
   }
   if (!NumberIsSafeInteger(min)) {
     throw new ERR_INVALID_ARG_TYPE('min', 'a safe integer', min);
@@ -226,7 +231,7 @@ function randomInt(min, max, callback) {
   }
   if (max <= min) {
     throw new ERR_OUT_OF_RANGE(
-      'max', `greater than the value of "min" (${min})`, max
+      'max', `greater than the value of "min" (${min})`, max,
     );
   }
 
@@ -310,6 +315,8 @@ function onJobDone(buf, callback, error) {
 // not allowed to exceed 65536 bytes, and can only
 // be an integer-type TypedArray.
 function getRandomValues(data) {
+  if (arguments.length < 1)
+    throw new ERR_MISSING_ARGS('typedArray');
   if (!isTypedArray(data) ||
       isFloat32Array(data) ||
       isFloat64Array(data)) {
@@ -467,7 +474,7 @@ function generatePrime(size, options, callback) {
     callback = options;
     options = kEmptyObject;
   }
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   const job = createRandomPrimeJob(kCryptoJobAsync, size, options);
   job.ondone = (err, prime) => {
@@ -493,8 +500,30 @@ function generatePrimeSync(size, options = kEmptyObject) {
   return job.result(prime);
 }
 
-function arrayBufferToUnsignedBigInt(arrayBuffer) {
-  return BigInt(`0x${Buffer.from(arrayBuffer).toString('hex')}`);
+/**
+ * 48 is the ASCII code for '0', 97 is the ASCII code for 'a'.
+ * @param {number} number An integer between 0 and 15.
+ * @returns {number} corresponding to the ASCII code of the hex representation
+ *                   of the parameter.
+ */
+const numberToHexCharCode = (number) => (number < 10 ? 48 : 87) + number;
+
+/**
+ * @param {ArrayBuffer} buf An ArrayBuffer.
+ * @return {bigint}
+ */
+function arrayBufferToUnsignedBigInt(buf) {
+  const length = ArrayBufferPrototypeGetByteLength(buf);
+  const chars = Array(length * 2);
+  const view = new DataView(buf);
+
+  for (let i = 0; i < length; i++) {
+    const val = DataViewPrototypeGetUint8(view, i);
+    chars[2 * i] = numberToHexCharCode(val >> 4);
+    chars[2 * i + 1] = numberToHexCharCode(val & 0xf);
+  }
+
+  return BigInt(`0x${StringFromCharCodeApply(chars)}`);
 }
 
 function unsignedBigIntToBuffer(bigint, name) {
@@ -502,8 +531,8 @@ function unsignedBigIntToBuffer(bigint, name) {
     throw new ERR_OUT_OF_RANGE(name, '>= 0', bigint);
   }
 
-  const hex = bigint.toString(16);
-  const padded = hex.padStart(hex.length + (hex.length % 2), 0);
+  const hex = BigIntPrototypeToString(bigint, 16);
+  const padded = StringPrototypePadStart(hex, hex.length + (hex.length % 2), 0);
   return Buffer.from(padded, 'hex');
 }
 
@@ -520,20 +549,21 @@ function checkPrime(candidate, options = kEmptyObject, callback) {
         'DataView',
         'bigint',
       ],
-      candidate
+      candidate,
     );
   }
   if (typeof options === 'function') {
     callback = options;
     options = kEmptyObject;
   }
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
   validateObject(options, 'options');
   const {
     checks = 0,
   } = options;
 
-  validateUint32(checks, 'options.checks');
+  // The checks option is unsigned but must fit into a signed C int for OpenSSL.
+  validateInt32(checks, 'options.checks', 0);
 
   const job = new CheckPrimeJob(kCryptoJobAsync, candidate, checks);
   job.ondone = callback;
@@ -553,7 +583,7 @@ function checkPrimeSync(candidate, options = kEmptyObject) {
         'DataView',
         'bigint',
       ],
-      candidate
+      candidate,
     );
   }
   validateObject(options, 'options');
@@ -561,7 +591,8 @@ function checkPrimeSync(candidate, options = kEmptyObject) {
     checks = 0,
   } = options;
 
-  validateUint32(checks, 'options.checks');
+  // The checks option is unsigned but must fit into a signed C int for OpenSSL.
+  validateInt32(checks, 'options.checks', 0);
 
   const job = new CheckPrimeJob(kCryptoJobSync, candidate, checks);
   const { 0: err, 1: result } = job.run();

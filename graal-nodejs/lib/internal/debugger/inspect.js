@@ -1,11 +1,11 @@
 'use strict';
 
 const {
-  ArrayPrototypeConcat,
   ArrayPrototypeForEach,
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
   ArrayPrototypePop,
+  ArrayPrototypePushApply,
   ArrayPrototypeShift,
   ArrayPrototypeSlice,
   FunctionPrototypeBind,
@@ -31,9 +31,6 @@ const {
 const {
   AbortController,
 } = require('internal/abort_controller');
-
-// TODO(aduh95): remove console calls
-const console = require('internal/console/global');
 
 const { 0: InspectClient, 1: createRepl } =
     [
@@ -79,9 +76,8 @@ const debugRegex = /Debugger listening on ws:\/\/\[?(.+?)\]?:(\d+)\//;
 async function runScript(script, scriptArgs, inspectHost, inspectPort,
                          childPrint) {
   await portIsFree(inspectHost, inspectPort);
-  const args = ArrayPrototypeConcat(
-    [`--inspect-brk=${inspectPort}`, script],
-    scriptArgs);
+  const args = [`--inspect-brk=${inspectPort}`, script];
+  ArrayPrototypePushApply(args, scriptArgs);
   const child = spawn(process.execPath, args);
   child.stdout.setEncoding('utf8');
   child.stderr.setEncoding('utf8');
@@ -276,7 +272,7 @@ class NodeInspector {
 
     if (StringPrototypeEndsWith(
       textToPrint,
-      'Waiting for the debugger to disconnect...\n'
+      'Waiting for the debugger to disconnect...\n',
     )) {
       this.killChild();
     }
@@ -313,7 +309,7 @@ function parseArgv(args) {
       process._debugProcess(pid);
     } catch (e) {
       if (e.code === 'ESRCH') {
-        console.error(`Target process: ${pid} doesn't exist.`);
+        process.stderr.write(`Target process: ${pid} doesn't exist.\n`);
         process.exit(1);
       }
       throw e;
@@ -333,10 +329,10 @@ function startInspect(argv = ArrayPrototypeSlice(process.argv, 2),
   if (argv.length < 1) {
     const invokedAs = `${process.argv0} ${process.argv[1]}`;
 
-    console.error(`Usage: ${invokedAs} script.js`);
-    console.error(`       ${invokedAs} <host>:<port>`);
-    console.error(`       ${invokedAs} --port=<port>`);
-    console.error(`       ${invokedAs} -p <pid>`);
+    process.stderr.write(`Usage: ${invokedAs} script.js\n` +
+                         `       ${invokedAs} <host>:<port>\n` +
+                         `       ${invokedAs} --port=<port>\n` +
+                         `       ${invokedAs} -p <pid>\n`);
     process.exit(1);
   }
 
@@ -347,12 +343,12 @@ function startInspect(argv = ArrayPrototypeSlice(process.argv, 2),
 
   function handleUnexpectedError(e) {
     if (e.code !== 'ERR_DEBUGGER_STARTUP_ERROR') {
-      console.error('There was an internal error in Node.js. ' +
-                    'Please report this bug.');
-      console.error(e.message);
-      console.error(e.stack);
+      process.stderr.write('There was an internal error in Node.js. ' +
+                           'Please report this bug.\n' +
+                           `${e.message}\n${e.stack}\n`);
     } else {
-      console.error(e.message);
+      process.stderr.write(e.message);
+      process.stderr.write('\n');
     }
     if (inspector.child) inspector.child.kill();
     process.exit(1);

@@ -20,12 +20,16 @@ const inspector = require('node:inspector');
 <!-- YAML
 added: v9.0.0
 changes:
-  - version: v16.18.0
+  - version: v18.10.0
     pr-url: https://github.com/nodejs/node/pull/44489
     description: The API is exposed in the worker threads.
 -->
 
 Deactivate the inspector. Blocks until there are no active connections.
+
+When using `Session`, the object outputted by the console API will not be
+released, unless we performed manually `Runtime.DiscardConsoleEntries`
+command.
 
 ## `inspector.console`
 
@@ -106,6 +110,10 @@ Create a new instance of the `inspector.Session` class. The inspector session
 needs to be connected through [`session.connect()`][] before the messages
 can be dispatched to the inspector backend.
 
+When using `Session`, the object outputted by the console API will not be
+released, unless we performed manually `Runtime.DiscardConsoleEntries`
+command.
+
 ### Event: `'inspectorNotification'`
 
 <!-- YAML
@@ -178,6 +186,12 @@ enabled agents or configured breakpoints.
 
 <!-- YAML
 added: v8.0.0
+changes:
+  - version: v18.0.0
+    pr-url: https://github.com/nodejs/node/pull/41678
+    description: Passing an invalid callback to the `callback` argument
+                 now throws `ERR_INVALID_ARG_TYPE` instead of
+                 `ERR_INVALID_CALLBACK`.
 -->
 
 * `method` {string}
@@ -202,7 +216,11 @@ by V8. Chrome DevTools Protocol domain provides an interface for interacting
 with one of the runtime agents used to inspect the application state and listen
 to the run-time events.
 
-## Example usage
+You can not set `reportProgress` to `true` when sending a
+`HeapProfiler.takeHeapSnapshot` or `HeapProfiler.stopTrackingHeapObjects`
+command to V8.
+
+#### Example usage
 
 Apart from the debugger, various V8 Profilers are available through the DevTools
 protocol.

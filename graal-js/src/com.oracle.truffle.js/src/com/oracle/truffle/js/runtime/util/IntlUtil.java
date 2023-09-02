@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,16 +54,16 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
-import com.ibm.icu.text.CaseMap;
-import com.ibm.icu.text.CaseMap.Lower;
-import com.ibm.icu.text.CaseMap.Upper;
-import com.ibm.icu.text.Collator;
-import com.ibm.icu.text.CurrencyMetaInfo;
-import com.ibm.icu.text.DateFormat;
-import com.ibm.icu.text.NumberingSystem;
-import com.ibm.icu.util.Calendar;
-import com.ibm.icu.util.TimeZone;
-import com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.text.CaseMap;
+import org.graalvm.shadowed.com.ibm.icu.text.CaseMap.Lower;
+import org.graalvm.shadowed.com.ibm.icu.text.CaseMap.Upper;
+import org.graalvm.shadowed.com.ibm.icu.text.Collator;
+import org.graalvm.shadowed.com.ibm.icu.text.CurrencyMetaInfo;
+import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
+import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
+import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
+import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -543,14 +543,14 @@ public final class IntlUtil {
                 result.add(ul.toLocale());
                 if (!ul.getScript().isEmpty()) {
                     // Add also a version without the script subtag
-                    result.add(new Locale(ul.getLanguage(), ul.getCountry()));
+                    result.add(new Locale.Builder().setLanguage(ul.getLanguage()).setRegion(ul.getCountry()).build());
                 }
             }
         } catch (MissingResourceException e) {
             throw Errors.createICU4JDataError(e);
         }
 
-        return result;
+        return Set.of(result.toArray(new Locale[result.size()]));
     }
 
     public static boolean isValidNumberingSystem(String numberingSystem) {
@@ -577,19 +577,6 @@ public final class IntlUtil {
     @TruffleBoundary
     public static String normalizeUnicodeLocaleIdentifierType(String type) {
         return type.toLowerCase();
-    }
-
-    @TruffleBoundary
-    public static Locale withoutUnicodeExtension(Locale originalLocale, String key) {
-        if (!originalLocale.getUnicodeLocaleKeys().contains(key)) {
-            return originalLocale;
-        } else {
-            String value = originalLocale.getUnicodeLocaleType(key);
-            String originalTag = originalLocale.toLanguageTag();
-            String toRemove = "-u-" + key + "-" + value;
-            String strippedTag = originalTag.replace(toRemove, "");
-            return new Locale(strippedTag);
-        }
     }
 
     public static boolean isWellFormedCurrencyCode(String currency) {
@@ -883,7 +870,7 @@ public final class IntlUtil {
     @TruffleBoundary
     public static TimeZone getICUTimeZone(String tzId, JSContext context) {
         assert tzId != null;
-        if (context.getContextOptions().hasZoneRulesBasedTimeZones()) {
+        if (context.getLanguageOptions().zoneRulesBasedTimeZones()) {
             return new ZoneRulesBasedTimeZone(tzId, ZoneRulesProvider.getRules(tzId, false));
         } else {
             return TimeZone.getTimeZone(tzId);
@@ -892,7 +879,7 @@ public final class IntlUtil {
 
     @TruffleBoundary
     public static TimeZone getICUTimeZone(ZoneId zoneId, JSContext context) {
-        if (context.getContextOptions().hasZoneRulesBasedTimeZones()) {
+        if (context.getLanguageOptions().zoneRulesBasedTimeZones()) {
             return new ZoneRulesBasedTimeZone(zoneId.getId(), zoneId.getRules());
         } else {
             return TimeZone.getTimeZone(toICUTimeZoneId(zoneId));

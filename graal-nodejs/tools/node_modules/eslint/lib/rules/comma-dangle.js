@@ -50,7 +50,7 @@ function normalizeOptions(optionValue, ecmaVersion) {
             objects: optionValue,
             imports: optionValue,
             exports: optionValue,
-            functions: (!ecmaVersion || ecmaVersion < 8) ? "ignore" : optionValue
+            functions: ecmaVersion < 2017 ? "ignore" : optionValue
         };
     }
     if (typeof optionValue === "object" && optionValue !== null) {
@@ -78,7 +78,7 @@ module.exports = {
         docs: {
             description: "Require or disallow trailing commas",
             recommended: false,
-            url: "https://eslint.org/docs/rules/comma-dangle"
+            url: "https://eslint.org/docs/latest/rules/comma-dangle"
         },
 
         fixable: "code",
@@ -134,9 +134,9 @@ module.exports = {
     },
 
     create(context) {
-        const options = normalizeOptions(context.options[0], context.parserOptions.ecmaVersion);
+        const options = normalizeOptions(context.options[0], context.languageOptions.ecmaVersion);
 
-        const sourceCode = context.getSourceCode();
+        const sourceCode = context.sourceCode;
 
         /**
          * Gets the last item of the given node.
@@ -346,7 +346,7 @@ module.exports = {
             "always-multiline": forceTrailingCommaIfMultiline,
             "only-multiline": allowTrailingCommaIfMultiline,
             never: forbidTrailingComma,
-            ignore: () => {}
+            ignore() {}
         };
 
         return {

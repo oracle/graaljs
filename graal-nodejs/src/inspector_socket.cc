@@ -147,8 +147,9 @@ static void generate_accept_string(const std::string& client_key,
   static const char ws_magic[] = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";
   std::string input(client_key + ws_magic);
   char hash[SHA_DIGEST_LENGTH];
-  SHA1(reinterpret_cast<const unsigned char*>(&input[0]), input.size(),
-       reinterpret_cast<unsigned char*>(hash));
+  USE(SHA1(reinterpret_cast<const unsigned char*>(input.data()),
+           input.size(),
+           reinterpret_cast<unsigned char*>(hash)));
   node::base64_encode(hash, sizeof(hash), *buffer, sizeof(*buffer));
 }
 
@@ -163,11 +164,10 @@ static std::string TrimPort(const std::string& host) {
 }
 
 static bool IsIPAddress(const std::string& host) {
-  // TODO(tniessen): add CVEs to the following bullet points
   // To avoid DNS rebinding attacks, we are aware of the following requirements:
-  // * the host name must be an IP address,
-  // * the IP address must be routable, and
-  // * the IP address must be formatted unambiguously.
+  // * the host name must be an IP address (CVE-2018-7160, CVE-2022-32212),
+  // * the IP address must be routable (hackerone.com/reports/1632921), and
+  // * the IP address must be formatted unambiguously (CVE-2022-43548).
 
   // The logic below assumes that the string is null-terminated, so ensure that
   // we did not somehow end up with null characters within the string.

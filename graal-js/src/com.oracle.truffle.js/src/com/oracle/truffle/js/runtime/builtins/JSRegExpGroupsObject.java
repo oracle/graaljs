@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,8 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
@@ -52,8 +52,8 @@ public final class JSRegExpGroupsObject extends JSNonProxyObject implements JSCo
     private TruffleString input;
     private boolean isIndices;
 
-    protected JSRegExpGroupsObject(Shape shape, Object regexResult, TruffleString input, boolean isIndices) {
-        super(shape);
+    protected JSRegExpGroupsObject(Shape shape, JSDynamicObject proto, Object regexResult, TruffleString input, boolean isIndices) {
+        super(shape, proto);
         this.regexResult = regexResult;
         this.input = input;
         this.isIndices = isIndices;
@@ -76,12 +76,8 @@ public final class JSRegExpGroupsObject extends JSNonProxyObject implements JSCo
         return JSOrdinary.CLASS_NAME;
     }
 
-    public static JSObject create(JSRealm realm, JSObjectFactory factory, Object regexResult, TruffleString input, boolean isIndices) {
-        return factory.initProto(new JSRegExpGroupsObject(factory.getShape(realm), regexResult, input, isIndices), realm);
-    }
-
     @Override
     protected JSObject copyWithoutProperties(Shape shape) {
-        return new JSRegExpGroupsObject(shape, regexResult, input, isIndices);
+        return new JSRegExpGroupsObject(shape, getPrototypeOf(), regexResult, input, isIndices);
     }
 }

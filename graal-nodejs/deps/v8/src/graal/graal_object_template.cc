@@ -51,11 +51,9 @@
 #include "graal_object_template-inl.h"
 
 v8::Local<v8::ObjectTemplate> GraalObjectTemplate::New(v8::Isolate* isolate, v8::Local<v8::FunctionTemplate> constructor) {
-    if (!constructor.IsEmpty()) {
-        fprintf(stderr, "GraalObjectTemplate::New - constructor argument is not supported yet!\n");
-    }
-    JNI_CALL(jobject, java_object_template, isolate, GraalAccessMethod::object_template_new, Object);
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
+    jobject java_constructor = constructor.IsEmpty() ? nullptr : reinterpret_cast<GraalFunctionTemplate*> (*constructor)->GetJavaObject();
+    JNI_CALL(jobject, java_object_template, isolate, GraalAccessMethod::object_template_new, Object, java_constructor);
     GraalObjectTemplate* graal_object_template = new GraalObjectTemplate(graal_isolate, java_object_template);
     return reinterpret_cast<v8::ObjectTemplate*> (graal_object_template);
 }

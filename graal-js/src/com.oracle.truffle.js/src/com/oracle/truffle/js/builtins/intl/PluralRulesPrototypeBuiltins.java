@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,7 @@ package com.oracle.truffle.js.builtins.intl;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesResolvedOptionsNodeGen;
 import com.oracle.truffle.js.builtins.intl.PluralRulesPrototypeBuiltinsFactory.JSPluralRulesSelectNodeGen;
@@ -152,15 +152,15 @@ public final class PluralRulesPrototypeBuiltins extends JSBuiltinsContainer.Swit
         public Object doSelectRange(JSPluralRulesObject pluralRules, Object start, Object end,
                         @Cached JSToNumberNode startToNumber,
                         @Cached JSToNumberNode endToNumber,
-                        @Cached BranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch) {
             if (start == Undefined.instance || end == Undefined.instance) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createTypeError("invalid range");
             }
             double x = JSRuntime.doubleValue(startToNumber.executeNumber(start));
             double y = JSRuntime.doubleValue(endToNumber.executeNumber(end));
             if (Double.isNaN(x) || Double.isNaN(y)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("invalid range");
             }
             return JSPluralRules.selectRange(pluralRules, x, y);

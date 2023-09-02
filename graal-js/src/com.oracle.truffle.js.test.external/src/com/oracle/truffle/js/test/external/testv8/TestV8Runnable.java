@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -76,19 +75,21 @@ public class TestV8Runnable extends TestRunnable {
     private static final String ALLOW_NATIVES_FOR_DIFFERENTIAL_FUZZING = "--allow-natives-for-differential-fuzzing";
     private static final String HARMONY_ERROR_CAUSE = "--harmony-error-cause";
     private static final String HARMONY_IMPORT_ASSERTIONS = "--harmony-import-assertions";
+    private static final String HARMONY_ITERATOR_HELPERS = "--harmony-iterator-helpers";
     private static final String HARMONY_SHAREDARRAYBUFFER = "--harmony-sharedarraybuffer";
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
     private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
+    private static final String HARMONY_SET_METHODS = "--harmony-set-methods";
     private static final String HARMONY_TEMPORAL = "--harmony-temporal";
     private static final String HARMONY_SHADOW_REALM = "--harmony-shadow-realm";
+    private static final String HARMONY_REGEXP_UNICODE_SETS = "--harmony-regexp-unicode-sets";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
 
-    private static final Set<String> UNSUPPORTED_FLAGS = new HashSet<>(Arrays.asList(new String[]{
+    private static final Set<String> UNSUPPORTED_FLAGS = featureSet(new String[]{
                     "--experimental-d8-web-snapshot-api",
-                    "--experimental-web-snapshots",
                     "--experimental-wasm-bulk-memory",
                     "--experimental-wasm-compilation-hints",
                     "--experimental-wasm-eh",
@@ -98,27 +99,25 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-return-call",
                     "--experimental-wasm-simd",
                     "--experimental-wasm-threads",
-                    "--experimental-wasm-typed-funcref",
                     "--experimental-wasm-type-reflection",
+                    "--experimental-wasm-typed-funcref",
+                    "--experimental-web-snapshots",
                     "--expose-fast-api",
-                    "--harmony-change-array-by-copy",
                     "--harmony-json-parse-with-source",
                     "--harmony-rab-gsab",
-                    "--harmony-regexp-unicode-sets",
                     "--harmony-struct",
-                    "--harmony-symbol-as-weakmap-key",
                     "--wasm-staging"
-    }));
-    private static final Set<String> ES2023_FLAGS = new HashSet<>(Arrays.asList(new String[]{
-                    "--harmony-array-find-last",
+    });
+    private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
                     "--harmony-array-grouping",
                     "--harmony-atomics-waitasync",
-                    "--harmony_intl_enumeration",
-                    "--harmony_intl_locale_info",
-                    "--harmony_intl_more_timezone",
+                    "--harmony-intl-enumeration",
+                    "--harmony-intl-locale_info",
+                    "--harmony-intl-more_timezone",
                     "--harmony-intl-number-format-v3",
                     "--harmony-shadow-realm",
-    }));
+                    "--harmony-weak-refs-with-cleanup-some",
+    });
 
     private static final String FLAGS_PREFIX = "// Flags: ";
     private static final String FILES_PREFIX = "// Files: ";
@@ -164,9 +163,9 @@ public class TestV8Runnable extends TestRunnable {
         int minESVersion = suite.getConfig().getMinESVersion();
         int flagVersion = minESVersion;
         for (String flag : flags) {
-            if (ES2023_FLAGS.contains(flag)) {
+            if (STAGING_FLAGS.contains(flag)) {
                 assert !UNSUPPORTED_FLAGS.contains(flag) : flag;
-                flagVersion = JSConfig.ECMAScript2023;
+                flagVersion = JSConfig.StagingECMAScriptVersion;
             } else if (UNSUPPORTED_FLAGS.contains(flag)) {
                 supported = false;
             }
@@ -198,11 +197,20 @@ public class TestV8Runnable extends TestRunnable {
             extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
             extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
         }
+        if (flags.contains(HARMONY_ITERATOR_HELPERS)) {
+            extraOptions.put(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        }
+        if (flags.contains(HARMONY_SET_METHODS)) {
+            extraOptions.put(JSContextOptions.NEW_SET_METHODS_NAME, "true");
+        }
         if (flags.contains(HARMONY_TEMPORAL)) {
             extraOptions.put(JSContextOptions.TEMPORAL_NAME, "true");
         }
         if (flags.contains(HARMONY_SHADOW_REALM)) {
             extraOptions.put(JSContextOptions.SHADOW_REALM_NAME, "true");
+        }
+        if (flags.contains(HARMONY_REGEXP_UNICODE_SETS)) {
+            extraOptions.put(JSContextOptions.REGEXP_UNICODE_SETS_NAME, "true");
         }
 
         if (supported) {
@@ -263,7 +271,7 @@ public class TestV8Runnable extends TestRunnable {
 
         TestCallable tc = new TestCallable(suite, sources, toSource(file, module), file, ecmaVersion, extraOptions);
         if (!suite.getConfig().isPrintFullOutput()) {
-            tc.setOutput(DUMMY_OUTPUT_STREAM);
+            tc.setOutput(OutputStream.nullOutputStream());
         }
         try {
             tc.call();
@@ -387,18 +395,11 @@ public class TestV8Runnable extends TestRunnable {
     }
 
     private static Set<String> getFlags(List<String> scriptCode) {
-        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_FIND_PATTERN, SPLIT_PATTERN).collect(Collectors.toSet());
+        return getStrings(scriptCode, FLAGS_PREFIX, FLAGS_FIND_PATTERN, SPLIT_PATTERN).map(f -> f.replace('_', '-')).collect(Collectors.toSet());
     }
 
     private static List<String> getFiles(List<String> scriptCode, String suiteLocation) {
         return getStrings(scriptCode, FILES_PREFIX, FILES_FIND_PATTERN, SPLIT_PATTERN).map(file -> Paths.get(suiteLocation, file).toString()).collect(Collectors.toList());
     }
-
-    private static final OutputStream DUMMY_OUTPUT_STREAM = new OutputStream() {
-
-        @Override
-        public void write(int b) throws IOException {
-        }
-    };
 
 }

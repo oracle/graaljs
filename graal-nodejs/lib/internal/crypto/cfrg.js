@@ -18,7 +18,6 @@ const {
 } = internalBinding('crypto');
 
 const {
-  getArrayBufferOrView,
   getUsagesUnion,
   hasAnyNotIn,
   jobPromise,
@@ -47,25 +46,22 @@ const {
 
 const generateKeyPair = promisify(_generateKeyPair);
 
-function verifyAcceptableCfrgKeyUse(name, type, usages) {
+function verifyAcceptableCfrgKeyUse(name, isPublic, usages) {
   let checkSet;
   switch (name) {
     case 'X25519':
       // Fall through
     case 'X448':
-      checkSet = ['deriveKey', 'deriveBits'];
+      checkSet = isPublic ? [] : ['deriveKey', 'deriveBits'];
       break;
     case 'Ed25519':
       // Fall through
     case 'Ed448':
-      switch (type) {
-        case 'private':
-          checkSet = ['sign'];
-          break;
-        case 'public':
-          checkSet = ['verify'];
-          break;
-      }
+      checkSet = isPublic ? ['verify'] : ['sign'];
+      break;
+    default:
+      throw lazyDOMException(
+        'The algorithm is not supported', 'NotSupportedError');
   }
   if (hasAnyNotIn(usages, checkSet)) {
     throw lazyDOMException(
@@ -76,33 +72,32 @@ function verifyAcceptableCfrgKeyUse(name, type, usages) {
 
 function createCFRGRawKey(name, keyData, isPublic) {
   const handle = new KeyObjectHandle();
-  keyData = getArrayBufferOrView(keyData, 'keyData');
 
   switch (name) {
     case 'Ed25519':
     case 'X25519':
       if (keyData.byteLength !== 32) {
         throw lazyDOMException(
-          `${name} raw keys must be exactly 32-bytes`);
+          `${name} raw keys must be exactly 32-bytes`, 'DataError');
       }
       break;
     case 'Ed448':
       if (keyData.byteLength !== 57) {
         throw lazyDOMException(
-          `${name} raw keys must be exactly 57-bytes`);
+          `${name} raw keys must be exactly 57-bytes`, 'DataError');
       }
       break;
     case 'X448':
       if (keyData.byteLength !== 56) {
         throw lazyDOMException(
-          `${name} raw keys must be exactly 56-bytes`);
+          `${name} raw keys must be exactly 56-bytes`, 'DataError');
       }
       break;
   }
 
   const keyType = isPublic ? kKeyTypePublic : kKeyTypePrivate;
   if (!handle.initEDRaw(name, keyData, keyType)) {
-    throw lazyDOMException('Failure to generate key object');
+    throw lazyDOMException('Invalid keyData', 'DataError');
   }
 
   return isPublic ? new PublicKeyObject(handle) : new PrivateKeyObject(handle);
@@ -150,10 +145,9 @@ async function cfrgGenerateKey(algorithm, extractable, keyUsages) {
   }
 
   const keyPair = await generateKeyPair(genKeyType).catch((err) => {
-    // TODO(@panva): add err as cause to DOMException
     throw lazyDOMException(
       'The operation failed for an operation-specific reason',
-      'OperationError');
+      { name: 'OperationError', cause: err });
   });
 
   let publicUsages;
@@ -194,7 +188,7 @@ async function cfrgGenerateKey(algorithm, extractable, keyUsages) {
 
 function cfrgExportKey(key, format) {
   emitExperimentalWarning(`The ${key.algorithm.name} Web Crypto API algorithm`);
-  return jobPromise(new ECKeyExportJob(
+  return jobPromise(() => new ECKeyExportJob(
     kCryptoJobAsync,
     format,
     key[kKeyObject][kHandle]));
@@ -213,30 +207,41 @@ async function cfrgImportKey(
   const usagesSet = new SafeSet(keyUsages);
   switch (format) {
     case 'spki': {
-      verifyAcceptableCfrgKeyUse(name, 'public', usagesSet);
-      keyObject = createPublicKey({
-        key: keyData,
-        format: 'der',
-        type: 'spki'
-      });
+      verifyAcceptableCfrgKeyUse(name, true, usagesSet);
+      try {
+        keyObject = createPublicKey({
+          key: keyData,
+          format: 'der',
+          type: 'spki',
+        });
+      } catch (err) {
+        throw lazyDOMException(
+          'Invalid keyData', { name: 'DataError', cause: err });
+      }
       break;
     }
     case 'pkcs8': {
-      verifyAcceptableCfrgKeyUse(name, 'private', usagesSet);
-      keyObject = createPrivateKey({
-        key: keyData,
-        format: 'der',
-        type: 'pkcs8'
-      });
+      verifyAcceptableCfrgKeyUse(name, false, usagesSet);
+      try {
+        keyObject = createPrivateKey({
+          key: keyData,
+          format: 'der',
+          type: 'pkcs8',
+        });
+      } catch (err) {
+        throw lazyDOMException(
+          'Invalid keyData', { name: 'DataError', cause: err });
+      }
       break;
     }
     case 'jwk': {
-      if (keyData == null || typeof keyData !== 'object')
-        throw lazyDOMException('Invalid JWK keyData', 'DataError');
+      if (!keyData.kty)
+        throw lazyDOMException('Invalid keyData', 'DataError');
       if (keyData.kty !== 'OKP')
-        throw lazyDOMException('Invalid key type', 'DataError');
+        throw lazyDOMException('Invalid JWK "kty" Parameter', 'DataError');
       if (keyData.crv !== name)
-        throw lazyDOMException('Subtype mismatch', 'DataError');
+        throw lazyDOMException(
+          'JWK "crv" Parameter and algorithm name mismatch', 'DataError');
       const isPublic = keyData.d === undefined;
 
       if (usagesSet.size > 0 && keyData.use !== undefined) {
@@ -254,7 +259,7 @@ async function cfrgImportKey(
             break;
         }
         if (keyData.use !== checkUse)
-          throw lazyDOMException('Invalid use type', 'DataError');
+          throw lazyDOMException('Invalid JWK "use" Parameter', 'DataError');
       }
 
       validateKeyOps(keyData.key_ops, usagesSet);
@@ -262,34 +267,52 @@ async function cfrgImportKey(
       if (keyData.ext !== undefined &&
           keyData.ext === false &&
           extractable === true) {
-        throw lazyDOMException('JWK is not extractable', 'DataError');
+        throw lazyDOMException(
+          'JWK "ext" Parameter and extractable mismatch',
+          'DataError');
       }
 
       if (keyData.alg !== undefined) {
-        if (typeof keyData.alg !== 'string')
-          throw lazyDOMException('Invalid alg', 'DataError');
         if (
           (name === 'Ed25519' || name === 'Ed448') &&
           keyData.alg !== 'EdDSA'
         ) {
-          throw lazyDOMException('Invalid alg', 'DataError');
+          throw lazyDOMException(
+            'JWK "alg" does not match the requested algorithm',
+            'DataError');
         }
+      }
+
+      if (!isPublic && typeof keyData.x !== 'string') {
+        throw lazyDOMException('Invalid JWK', 'DataError');
       }
 
       verifyAcceptableCfrgKeyUse(
         name,
-        isPublic ? 'public' : 'private',
+        isPublic,
         usagesSet);
-      keyObject = createCFRGRawKey(
+
+      const publicKeyObject = createCFRGRawKey(
         name,
-        Buffer.from(
-          isPublic ? keyData.x : keyData.d,
-          'base64'),
-        isPublic);
+        Buffer.from(keyData.x, 'base64'),
+        true);
+
+      if (isPublic) {
+        keyObject = publicKeyObject;
+      } else {
+        keyObject = createCFRGRawKey(
+          name,
+          Buffer.from(keyData.d, 'base64'),
+          false);
+
+        if (!createPublicKey(keyObject).equals(publicKeyObject)) {
+          throw lazyDOMException('Invalid JWK', 'DataError');
+        }
+      }
       break;
     }
     case 'raw': {
-      verifyAcceptableCfrgKeyUse(name, 'public', usagesSet);
+      verifyAcceptableCfrgKeyUse(name, true, usagesSet);
       keyObject = createCFRGRawKey(name, keyData, true);
       break;
     }
@@ -314,16 +337,12 @@ function eddsaSignVerify(key, data, { name, context }, signature) {
   if (key.type !== type)
     throw lazyDOMException(`Key must be a ${type} key`, 'InvalidAccessError');
 
-  if (name === 'Ed448' && context !== undefined) {
-    context =
-      getArrayBufferOrView(context, 'algorithm.context');
-    if (context.byteLength !== 0) {
-      throw lazyDOMException(
-        'Non zero-length context is not yet supported.', 'NotSupportedError');
-    }
+  if (name === 'Ed448' && context?.byteLength) {
+    throw lazyDOMException(
+      'Non zero-length context is not yet supported.', 'NotSupportedError');
   }
 
-  return jobPromise(new SignJob(
+  return jobPromise(() => new SignJob(
     kCryptoJobAsync,
     mode,
     key[kKeyObject][kHandle],

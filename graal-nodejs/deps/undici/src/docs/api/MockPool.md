@@ -54,7 +54,7 @@ Returns: `MockInterceptor` corresponding to the input options.
 ### Parameter: `MockPoolInterceptOptions`
 
 * **path** `string | RegExp | (path: string) => boolean` - a matcher for the HTTP request path.
-* **method** `string | RegExp | (method: string) => boolean` - a matcher for the HTTP request method.
+* **method** `string | RegExp | (method: string) => boolean` - (optional) - a matcher for the HTTP request method. Defaults to `GET`.
 * **body** `string | RegExp | (body: string) => boolean` - (optional) - a matcher for the HTTP request body.
 * **headers** `Record<string, string | RegExp | (body: string) => boolean`> - (optional) - a matcher for the HTTP request headers. To be intercepted, a request must match all defined headers. Extra headers not defined here may (or may not) be included in the request and do not affect the interception in any way.
 * **query** `Record<string, any> | null` - (optional) - a matcher for the HTTP request query string params.
@@ -63,7 +63,8 @@ Returns: `MockInterceptor` corresponding to the input options.
 
 We can define the behaviour of an intercepted request with the following options.
 
-* **reply** `(statusCode: number, replyData: string | Buffer | object | MockInterceptor.MockResponseDataHandler, responseOptions?: MockResponseOptions) => MockScope` - define a reply for a matching request. You can define this as a callback to read incoming request data. Default for `responseOptions` is `{}`.
+* **reply** `(statusCode: number, replyData: string | Buffer | object | MockInterceptor.MockResponseDataHandler, responseOptions?: MockResponseOptions) => MockScope` - define a reply for a matching request. You can define the replyData as a callback to read incoming request data. Default for `responseOptions` is `{}`.
+* **reply** `(callback: MockInterceptor.MockReplyOptionsCallback) => MockScope` - define a reply for a matching request, allowing dynamic mocking of all reply options rather than just the data.
 * **replyWithError** `(error: Error) => MockScope` - define an error for a matching request to throw.
 * **defaultReplyHeaders** `(headers: Record<string, string>) => MockInterceptor` - define default headers to be included in subsequent replies. These are in addition to headers on a specific reply.
 * **defaultReplyTrailers** `(trailers: Record<string, string>) => MockInterceptor` - define default trailers to be included in subsequent replies. These are in addition to trailers on a specific reply.

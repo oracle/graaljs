@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.IteratorFunctionBuiltinsFactory.JSIteratorFromNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -52,7 +55,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSIterator;
 import com.oracle.truffle.js.runtime.builtins.JSWrapForValidIterator;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Contains builtins for {@linkplain JSIterator} function (constructor).
@@ -101,8 +103,8 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
         }
 
-        @Specialization
-        protected JSDynamicObject iteratorFrom(Object arg) {
+        @Specialization(guards = "!isString(arg)")
+        protected Object iteratorFrom(Object arg) {
             IteratorRecord iteratorRecord = getIteratorFlattenableNode.execute(arg);
 
             JSRealm realm = getRealm();
@@ -112,6 +114,12 @@ public final class IteratorFunctionBuiltins extends JSBuiltinsContainer.SwitchEn
             }
 
             return JSWrapForValidIterator.create(getContext(), realm, iteratorRecord);
+        }
+
+        @Specialization
+        protected Object iteratorFromString(TruffleString arg,
+                        @Cached JSToObjectNode toObjectNode) {
+            return iteratorFrom(toObjectNode.execute(arg));
         }
 
     }

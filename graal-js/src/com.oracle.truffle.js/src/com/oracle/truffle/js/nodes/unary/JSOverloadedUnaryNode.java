@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -62,23 +63,21 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ImportStatic(OperatorSet.class)
 public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
 
+    static final int LIMIT = 3;
+
     private final TruffleString overloadedOperatorName;
 
     protected JSOverloadedUnaryNode(TruffleString overloadedOperatorName) {
         this.overloadedOperatorName = overloadedOperatorName;
     }
 
-    public static JSOverloadedUnaryNode create(TruffleString overloadedOperatorName) {
-        return JSOverloadedUnaryNodeGen.create(overloadedOperatorName);
-    }
-
     public abstract Object execute(Object operand);
 
-    @Specialization(guards = {"operand.matchesOperatorCounter(operatorCounter)"})
+    @Specialization(guards = {"operand.matchesOperatorCounter(operatorCounter)"}, limit = "LIMIT")
     protected Object doCached(JSOverloadedOperatorsObject operand,
                     @Cached("operand.getOperatorCounter()") @SuppressWarnings("unused") int operatorCounter,
                     @Cached("getOperatorImplementation(operand, getOverloadedOperatorName())") Object operatorImplementation,
-                    @Cached("createCall()") JSFunctionCallNode callNode) {
+                    @Cached("createCall()") @Exclusive JSFunctionCallNode callNode) {
         checkOverloadedOperatorsAllowed(operand, this);
         return performOverloaded(callNode, operatorImplementation, operand);
     }
@@ -86,7 +85,7 @@ public abstract class JSOverloadedUnaryNode extends JavaScriptBaseNode {
     @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"doCached"})
     protected Object doGeneric(JSOverloadedOperatorsObject operand,
-                    @Cached("createCall()") JSFunctionCallNode callNode) {
+                    @Cached("createCall()") @Exclusive JSFunctionCallNode callNode) {
         checkOverloadedOperatorsAllowed(operand, this);
         Object operatorImplementation = OperatorSet.getOperatorImplementation(operand, getOverloadedOperatorName());
         return performOverloaded(callNode, operatorImplementation, operand);

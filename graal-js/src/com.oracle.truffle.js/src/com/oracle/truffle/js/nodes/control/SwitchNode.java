@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,7 @@ import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.profiles.CountingConditionProfile;
 import com.oracle.truffle.js.nodes.JSNodeUtil;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
@@ -80,7 +80,7 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
      * statement index of the default case.
      */
     @CompilationFinal(dimensions = 1) private final int[] jumptable;
-    @CompilationFinal(dimensions = 1) private final ConditionProfile[] conditionProfiles;
+    @CompilationFinal(dimensions = 1) private final CountingConditionProfile[] conditionProfiles;
     private final boolean ordered;
 
     private SwitchNode(JavaScriptNode[] declarations, JavaScriptNode[] caseExpressions, int[] jumptable, JavaScriptNode[] statements) {
@@ -104,10 +104,10 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
         return true;
     }
 
-    private static ConditionProfile[] createConditionProfiles(int length) {
-        ConditionProfile[] a = new ConditionProfile[length];
+    private static CountingConditionProfile[] createConditionProfiles(int length) {
+        CountingConditionProfile[] a = new CountingConditionProfile[length];
         for (int i = 0; i < length; i++) {
-            a[i] = ConditionProfile.createCountingProfile();
+            a[i] = CountingConditionProfile.create();
         }
         return a;
     }
@@ -280,7 +280,7 @@ public final class SwitchNode extends StatementNode implements ResumableNode.Wit
         final JavaScriptNode[] caseExpressionsLocal = caseExpressions;
         final JavaScriptNode[] statementsLocal = statements;
         final int[] jumptableLocal = jumptable;
-        final ConditionProfile[] conditionProfilesLocal = conditionProfiles;
+        final CountingConditionProfile[] conditionProfilesLocal = conditionProfiles;
 
         boolean caseFound = false;
         Object result = EMPTY;

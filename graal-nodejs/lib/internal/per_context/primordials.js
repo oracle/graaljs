@@ -45,6 +45,8 @@ const varargsMethods = [
   'MathHypot',
   'MathMax',
   'MathMin',
+  'StringFromCharCode',
+  'StringFromCodePoint',
   'StringPrototypeConcat',
   'TypedArrayOf',
 ];
@@ -59,13 +61,13 @@ function copyAccessor(dest, prefix, key, { enumerable, get, set }) {
   ReflectDefineProperty(dest, `${prefix}Get${key}`, {
     __proto__: null,
     value: uncurryThis(get),
-    enumerable
+    enumerable,
   });
   if (set !== undefined) {
     ReflectDefineProperty(dest, `${prefix}Set${key}`, {
       __proto__: null,
       value: uncurryThis(set),
-      enumerable
+      enumerable,
     });
   }
 }
@@ -258,28 +260,67 @@ function copyPrototype(src, dest, prefix) {
   copyPrototype(original.prototype, primordials, `${name}Prototype`);
 });
 
+primordials.IteratorPrototype = Reflect.getPrototypeOf(primordials.ArrayIteratorPrototype);
+
 /* eslint-enable node-core/prefer-primordials */
 
 const {
+  Array: ArrayConstructor,
   ArrayPrototypeForEach,
   ArrayPrototypeMap,
   FinalizationRegistry,
   FunctionPrototypeCall,
   Map,
+  ObjectDefineProperties,
+  ObjectDefineProperty,
   ObjectFreeze,
   ObjectSetPrototypeOf,
   Promise,
   PromisePrototypeThen,
+  PromiseResolve,
+  ReflectApply,
+  ReflectConstruct,
+  ReflectSet,
+  ReflectGet,
+  RegExp,
+  RegExpPrototype,
+  RegExpPrototypeExec,
+  RegExpPrototypeGetDotAll,
+  RegExpPrototypeGetFlags,
+  RegExpPrototypeGetGlobal,
+  RegExpPrototypeGetHasIndices,
+  RegExpPrototypeGetIgnoreCase,
+  RegExpPrototypeGetMultiline,
+  RegExpPrototypeGetSource,
+  RegExpPrototypeGetSticky,
+  RegExpPrototypeGetUnicode,
   Set,
   SymbolIterator,
+  SymbolMatch,
+  SymbolMatchAll,
+  SymbolReplace,
+  SymbolSearch,
+  SymbolSpecies,
+  SymbolSplit,
   WeakMap,
   WeakRef,
   WeakSet,
 } = primordials;
 
-// Because these functions are used by `makeSafe`, which is exposed
-// on the `primordials` object, it's important to use const references
-// to the primordials that they use:
+
+/**
+ * Creates a class that can be safely iterated over.
+ *
+ * Because these functions are used by `makeSafe`, which is exposed on the
+ * `primordials` object, it's important to use const references to the
+ * primordials that they use.
+ * @template {Iterable} T
+ * @template {*} TReturn
+ * @template {*} TNext
+ * @param {(self: T) => IterableIterator<T>} factory
+ * @param {(...args: [] | [TNext]) => IteratorResult<T, TReturn>} next
+ * @returns {Iterator<T, TReturn, TNext>}
+ */
 const createSafeIterator = (factory, next) => {
   class SafeIterator {
     constructor(iterable) {
@@ -300,11 +341,11 @@ const createSafeIterator = (factory, next) => {
 
 primordials.SafeArrayIterator = createSafeIterator(
   primordials.ArrayPrototypeSymbolIterator,
-  primordials.ArrayIteratorPrototypeNext
+  primordials.ArrayIteratorPrototypeNext,
 );
 primordials.SafeStringIterator = createSafeIterator(
   primordials.StringPrototypeSymbolIterator,
-  primordials.StringIteratorPrototypeNext
+  primordials.StringIteratorPrototypeNext,
 );
 
 const copyProps = (src, dest) => {
@@ -364,26 +405,26 @@ primordials.SafeMap = makeSafe(
   Map,
   class SafeMap extends Map {
     constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
-  }
+  },
 );
 primordials.SafeWeakMap = makeSafe(
   WeakMap,
   class SafeWeakMap extends WeakMap {
     constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
-  }
+  },
 );
 
 primordials.SafeSet = makeSafe(
   Set,
   class SafeSet extends Set {
     constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
-  }
+  },
 );
 primordials.SafeWeakSet = makeSafe(
   WeakSet,
   class SafeWeakSet extends WeakSet {
     constructor(i) { super(i); } // eslint-disable-line no-useless-constructor
-  }
+  },
 );
 
 primordials.SafeFinalizationRegistry = makeSafe(
@@ -391,14 +432,14 @@ primordials.SafeFinalizationRegistry = makeSafe(
   class SafeFinalizationRegistry extends FinalizationRegistry {
     // eslint-disable-next-line no-useless-constructor
     constructor(cleanupCallback) { super(cleanupCallback); }
-  }
+  },
 );
 primordials.SafeWeakRef = makeSafe(
   WeakRef,
   class SafeWeakRef extends WeakRef {
     // eslint-disable-next-line no-useless-constructor
     constructor(target) { super(target); }
-  }
+  },
 );
 
 const SafePromise = makeSafe(
@@ -406,7 +447,7 @@ const SafePromise = makeSafe(
   class SafePromise extends Promise {
     // eslint-disable-next-line no-useless-constructor
     constructor(executor) { super(executor); }
-  }
+  },
 );
 
 /**
@@ -424,7 +465,7 @@ primordials.SafePromisePrototypeFinally = (thisPromise, onFinally) =>
   new Promise((a, b) =>
     new SafePromise((a, b) => PromisePrototypeThen(thisPromise, a, b))
       .finally(onFinally)
-      .then(a, b)
+      .then(a, b),
   );
 
 primordials.AsyncIteratorPrototype =
@@ -437,58 +478,253 @@ const arrayToSafePromiseIterable = (promises, mapFn) =>
     ArrayPrototypeMap(
       promises,
       (promise, i) =>
-        new SafePromise((a, b) => PromisePrototypeThen(mapFn == null ? promise : mapFn(promise, i), a, b))
-    )
+        new SafePromise((a, b) => PromisePrototypeThen(mapFn == null ? promise : mapFn(promise, i), a, b)),
+    ),
   );
 
 /**
- * @param {Promise<any>[]} promises
- * @param {(v: Promise<any>, k: number) => Promise<any>} [mapFn]
- * @returns {Promise<any[]>}
+ * @template T,U
+ * @param {Array<T | PromiseLike<T>>} promises
+ * @param {(v: T|PromiseLike<T>, k: number) => U|PromiseLike<U>} [mapFn]
+ * @returns {Promise<Awaited<U>[]>}
  */
 primordials.SafePromiseAll = (promises, mapFn) =>
   // Wrapping on a new Promise is necessary to not expose the SafePromise
   // prototype to user-land.
   new Promise((a, b) =>
-    SafePromise.all(arrayToSafePromiseIterable(promises, mapFn)).then(a, b)
+    SafePromise.all(arrayToSafePromiseIterable(promises, mapFn)).then(a, b),
   );
 
 /**
- * @param {Promise<any>[]} promises
- * @param {(v: Promise<any>, k: number) => Promise<any>} [mapFn]
+ * Should only be used for internal functions, this would produce similar
+ * results as `Promise.all` but without prototype pollution, and the return
+ * value is not a genuine Array but an array-like object.
+ * @template T,U
+ * @param {ArrayLike<T | PromiseLike<T>>} promises
+ * @param {(v: T|PromiseLike<T>, k: number) => U|PromiseLike<U>} [mapFn]
+ * @returns {Promise<ArrayLike<Awaited<U>>>}
+ */
+primordials.SafePromiseAllReturnArrayLike = (promises, mapFn) =>
+  new Promise((resolve, reject) => {
+    const { length } = promises;
+
+    const returnVal = ArrayConstructor(length);
+    ObjectSetPrototypeOf(returnVal, null);
+    if (length === 0) resolve(returnVal);
+
+    let pendingPromises = length;
+    for (let i = 0; i < length; i++) {
+      const promise = mapFn != null ? mapFn(promises[i], i) : promises[i];
+      PromisePrototypeThen(PromiseResolve(promise), (result) => {
+        returnVal[i] = result;
+        if (--pendingPromises === 0) resolve(returnVal);
+      }, reject);
+    }
+  });
+
+/**
+ * Should only be used when we only care about waiting for all the promises to
+ * resolve, not what value they resolve to.
+ * @template T,U
+ * @param {ArrayLike<T | PromiseLike<T>>} promises
+ * @param {(v: T|PromiseLike<T>, k: number) => U|PromiseLike<U>} [mapFn]
+ * @returns {Promise<void>}
+ */
+primordials.SafePromiseAllReturnVoid = (promises, mapFn) =>
+  new Promise((resolve, reject) => {
+    let pendingPromises = promises.length;
+    if (pendingPromises === 0) resolve();
+    for (let i = 0; i < promises.length; i++) {
+      const promise = mapFn != null ? mapFn(promises[i], i) : promises[i];
+      PromisePrototypeThen(PromiseResolve(promise), () => {
+        if (--pendingPromises === 0) resolve();
+      }, reject);
+    }
+  });
+
+/**
+ * @template T,U
+ * @param {Array<T|PromiseLike<T>>} promises
+ * @param {(v: T|PromiseLike<T>, k: number) => U|PromiseLike<U>} [mapFn]
  * @returns {Promise<PromiseSettledResult<any>[]>}
  */
 primordials.SafePromiseAllSettled = (promises, mapFn) =>
   // Wrapping on a new Promise is necessary to not expose the SafePromise
   // prototype to user-land.
   new Promise((a, b) =>
-    SafePromise.allSettled(arrayToSafePromiseIterable(promises, mapFn)).then(a, b)
+    SafePromise.allSettled(arrayToSafePromiseIterable(promises, mapFn)).then(a, b),
   );
 
 /**
- * @param {Promise<any>[]} promises
- * @param {(v: Promise<any>, k: number) => Promise<any>} [mapFn]
- * @returns {Promise<any>}
+ * Should only be used when we only care about waiting for all the promises to
+ * settle, not what value they resolve or reject to.
+ * @template T,U
+ * @param {ArrayLike<T|PromiseLike<T>>} promises
+ * @param {(v: T|PromiseLike<T>, k: number) => U|PromiseLike<U>} [mapFn]
+ * @returns {Promise<void>}
+ */
+primordials.SafePromiseAllSettledReturnVoid = async (promises, mapFn) => {
+  await primordials.SafePromiseAllSettled(promises, mapFn);
+};
+
+/**
+ * @template T,U
+ * @param {Array<T|PromiseLike<T>>} promises
+ * @param {(v: T|PromiseLike<T>, k: number) => U|PromiseLike<U>} [mapFn]
+ * @returns {Promise<Awaited<U>>}
  */
 primordials.SafePromiseAny = (promises, mapFn) =>
   // Wrapping on a new Promise is necessary to not expose the SafePromise
   // prototype to user-land.
   new Promise((a, b) =>
-    SafePromise.any(arrayToSafePromiseIterable(promises, mapFn)).then(a, b)
+    SafePromise.any(arrayToSafePromiseIterable(promises, mapFn)).then(a, b),
   );
 
 /**
- * @param {Promise<any>[]} promises
- * @param {(v: Promise<any>, k: number) => Promise<any>} [mapFn]
- * @returns {Promise<any>}
+ * @template T,U
+ * @param {Array<T|PromiseLike<T>>} promises
+ * @param {(v: T|PromiseLike<T>, k: number) => U|PromiseLike<U>} [mapFn]
+ * @returns {Promise<Awaited<U>>}
  */
 primordials.SafePromiseRace = (promises, mapFn) =>
   // Wrapping on a new Promise is necessary to not expose the SafePromise
   // prototype to user-land.
   new Promise((a, b) =>
-    SafePromise.race(arrayToSafePromiseIterable(promises, mapFn)).then(a, b)
+    SafePromise.race(arrayToSafePromiseIterable(promises, mapFn)).then(a, b),
   );
 
+
+const {
+  exec: OriginalRegExpPrototypeExec,
+  [SymbolMatch]: OriginalRegExpPrototypeSymbolMatch,
+  [SymbolMatchAll]: OriginalRegExpPrototypeSymbolMatchAll,
+  [SymbolReplace]: OriginalRegExpPrototypeSymbolReplace,
+  [SymbolSearch]: OriginalRegExpPrototypeSymbolSearch,
+  [SymbolSplit]: OriginalRegExpPrototypeSymbolSplit,
+} = RegExpPrototype;
+
+class RegExpLikeForStringSplitting {
+  #regex;
+  constructor() {
+    this.#regex = ReflectConstruct(RegExp, arguments);
+  }
+
+  get lastIndex() {
+    return ReflectGet(this.#regex, 'lastIndex');
+  }
+  set lastIndex(value) {
+    ReflectSet(this.#regex, 'lastIndex', value);
+  }
+
+  exec() {
+    return ReflectApply(OriginalRegExpPrototypeExec, this.#regex, arguments);
+  }
+}
+ObjectSetPrototypeOf(RegExpLikeForStringSplitting.prototype, null);
+
+/**
+ * @param {RegExp} pattern
+ * @returns {RegExp}
+ */
+primordials.hardenRegExp = function hardenRegExp(pattern) {
+  ObjectDefineProperties(pattern, {
+    [SymbolMatch]: {
+      __proto__: null,
+      configurable: true,
+      value: OriginalRegExpPrototypeSymbolMatch,
+    },
+    [SymbolMatchAll]: {
+      __proto__: null,
+      configurable: true,
+      value: OriginalRegExpPrototypeSymbolMatchAll,
+    },
+    [SymbolReplace]: {
+      __proto__: null,
+      configurable: true,
+      value: OriginalRegExpPrototypeSymbolReplace,
+    },
+    [SymbolSearch]: {
+      __proto__: null,
+      configurable: true,
+      value: OriginalRegExpPrototypeSymbolSearch,
+    },
+    [SymbolSplit]: {
+      __proto__: null,
+      configurable: true,
+      value: OriginalRegExpPrototypeSymbolSplit,
+    },
+    constructor: {
+      __proto__: null,
+      configurable: true,
+      value: {
+        [SymbolSpecies]: RegExpLikeForStringSplitting,
+      },
+    },
+    dotAll: {
+      __proto__: null,
+      configurable: true,
+      value: RegExpPrototypeGetDotAll(pattern),
+    },
+    exec: {
+      __proto__: null,
+      configurable: true,
+      value: OriginalRegExpPrototypeExec,
+    },
+    global: {
+      __proto__: null,
+      configurable: true,
+      value: RegExpPrototypeGetGlobal(pattern),
+    },
+    hasIndices: {
+      __proto__: null,
+      configurable: true,
+      value: RegExpPrototypeGetHasIndices(pattern),
+    },
+    ignoreCase: {
+      __proto__: null,
+      configurable: true,
+      value: RegExpPrototypeGetIgnoreCase(pattern),
+    },
+    multiline: {
+      __proto__: null,
+      configurable: true,
+      value: RegExpPrototypeGetMultiline(pattern),
+    },
+    source: {
+      __proto__: null,
+      configurable: true,
+      value: RegExpPrototypeGetSource(pattern),
+    },
+    sticky: {
+      __proto__: null,
+      configurable: true,
+      value: RegExpPrototypeGetSticky(pattern),
+    },
+    unicode: {
+      __proto__: null,
+      configurable: true,
+      value: RegExpPrototypeGetUnicode(pattern),
+    },
+  });
+  ObjectDefineProperty(pattern, 'flags', {
+    __proto__: null,
+    configurable: true,
+    value: RegExpPrototypeGetFlags(pattern),
+  });
+  return pattern;
+};
+
+
+/**
+ * @param {string} str
+ * @param {RegExp} regexp
+ * @returns {number}
+ */
+primordials.SafeStringPrototypeSearch = (str, regexp) => {
+  regexp.lastIndex = 0;
+  const match = RegExpPrototypeExec(regexp, str);
+  return match ? match.index : -1;
+};
 
 ObjectSetPrototypeOf(primordials, null);
 ObjectFreeze(primordials);

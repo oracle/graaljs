@@ -267,27 +267,22 @@ v8::Local<v8::Context> GraalObject::CreationContext() {
 v8::MaybeLocal<v8::Value> GraalObject::GetPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key) {
     jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
     JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_get_private, Object, GetJavaObject(), java_key);
-    if (java_object == NULL) {
-        return v8::Undefined(reinterpret_cast<v8::Isolate*> (Isolate()));
-    } else {
-        GraalValue* graal_value = GraalObject::FromJavaObject(Isolate(), java_object);
-        v8::Local<v8::Value> v8_value = reinterpret_cast<v8::Value*> (graal_value);
-        return v8_value;
-    }
+    GraalValue* graal_value = GraalObject::FromJavaObject(Isolate(), java_object);
+    v8::Local<v8::Value> v8_value = reinterpret_cast<v8::Value*> (graal_value);
+    return v8_value;
 }
 
 v8::Maybe<bool> GraalObject::SetPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key, v8::Local<v8::Value> value) {
     jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
     jobject java_value = reinterpret_cast<GraalValue*> (*value)->GetJavaObject();
-    jobject java_context = Isolate()->CurrentJavaContext();
-    JNI_CALL(bool, success, Isolate(), GraalAccessMethod::object_set_private, Boolean, java_context, GetJavaObject(), java_key, java_value);
+    JNI_CALL(bool, success, Isolate(), GraalAccessMethod::object_set_private, Boolean, GetJavaObject(), java_key, java_value);
     return v8::Just(success);
 }
 
 v8::Maybe<bool> GraalObject::HasPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key) {
     jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
-    JNI_CALL(jobject, java_object, Isolate(), GraalAccessMethod::object_get_private, Object, GetJavaObject(), java_key);
-    return v8::Just(java_object != NULL);
+    JNI_CALL(bool, result, Isolate(), GraalAccessMethod::object_has_private, Boolean, GetJavaObject(), java_key);
+    return v8::Just(result);
 }
 
 v8::Maybe<bool> GraalObject::DeletePrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key) {
@@ -302,6 +297,20 @@ v8::MaybeLocal<v8::Value> GraalObject::GetOwnPropertyDescriptor(v8::Local<v8::Co
     GraalValue* graal_result = GraalValue::FromJavaObject(Isolate(), result);
     v8::Local<v8::Value> v8_result = reinterpret_cast<v8::Value*> (graal_result);
     return v8_result;
+}
+
+v8::Maybe<bool> GraalObject::CreateDataProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key, v8::Local<v8::Value> value) {
+    jobject java_key = reinterpret_cast<GraalHandleContent*> (*key)->GetJavaObject();
+    jobject java_value = reinterpret_cast<GraalHandleContent*> (*value)->GetJavaObject();
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::object_create_data_property, Boolean, GetJavaObject(), java_key, java_value);
+    return v8::Just((bool) result);
+}
+
+v8::Maybe<bool> GraalObject::CreateDataProperty(v8::Local<v8::Context> context, uint32_t index, v8::Local<v8::Value> value) {
+    jlong java_index = (jlong) index;
+    jobject java_value = reinterpret_cast<GraalHandleContent*> (*value)->GetJavaObject();
+    JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::object_create_data_property_index, Boolean, GetJavaObject(), java_index, java_value);
+    return v8::Just((bool) result);
 }
 
 v8::Maybe<bool> GraalObject::DefineProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key, v8::PropertyDescriptor& descriptor) {
@@ -341,7 +350,7 @@ v8::Maybe<bool> GraalObject::SetIntegrityLevel(v8::Local<v8::Context> context, v
     return graal_isolate->GetJNIEnv()->ExceptionCheck() ? v8::Nothing<bool>() : v8::Just<bool>(true);
 }
 
-bool GraalObject::IsConstructor() {
+bool GraalObject::IsConstructor() const {
     JNI_CALL(jboolean, result, Isolate(), GraalAccessMethod::object_is_constructor, Boolean, GetJavaObject());
     return result;
 }

@@ -104,10 +104,7 @@
     "comment" : "multi-threaded test"
   }, {
     "filePath" : "basic/javaexceptions.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "JDK15" : "FAIL"
-    },
+    "status" : "FAIL",
     "comment" : "IllegalMonitorStateException message changed in JDK 15."
   }, {
     "filePath" : "basic/javaimporter.js",
@@ -187,8 +184,12 @@
     "status" : "FAIL",
     "comment" : "Java interop migration"
   }, {
-    "filePath" : "basic/JDK-8015352.js",
-    "runInIsolation" : true
+    "filePath" : "basic/JDK-8015357.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SHARED_ENGINE" : "SKIP"
+    },
+    "comment" : "Sorting a sparse array with a length of Integer.MAX_VALUE; very slow if no-prototype-elements assumption is invalidated"
   }, {
     "filePath" : "basic/JDK-8015741.js",
     "status" : "SKIP",
@@ -481,6 +482,13 @@
     "filePath" : "basic/JDK-8133119.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "basic/JDK-8134569.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "SHARED_ENGINE" : "FAIL"
+    },
+    "comment" : "Currently failing in shared-engine mode (GR-44414)"
+  }, {
     "filePath" : "basic/JDK-8134609.js",
     "status" : "FAIL"
   }, {
@@ -630,21 +638,15 @@
     "comment" : "Using 'jdk.nashorn.test.tools.StaticTypeInspector'"
   }, {
     "filePath" : "basic/optimistic_assignment_check_type.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "JDK15" : "FAIL"
-    },
-    "comment" : "Fails on JDK 15 due to Nashorn removal."
+    "status" : "FAIL",
+    "comment" : "Fails on JDK 15+ due to Nashorn removal."
   }, {
     "filePath" : "basic/optimistic_check_type.js",
     "status" : "FAIL"
   }, {
     "filePath" : "basic/optimistic_logical_check_type.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "JDK15" : "FAIL"
-    },
-    "comment" : "Fails on JDK 15 due to Nashorn removal."
+    "status" : "FAIL",
+    "comment" : "Fails on JDK 15+ due to Nashorn removal."
   }, {
     "filePath" : "basic/parser/continueStat.js",
     "status" : "FAIL",

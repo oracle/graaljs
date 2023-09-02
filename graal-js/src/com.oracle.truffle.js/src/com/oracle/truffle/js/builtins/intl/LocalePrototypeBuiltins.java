@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,13 +42,15 @@ package com.oracle.truffle.js.builtins.intl;
 
 import java.util.Set;
 
-import com.ibm.icu.text.DateTimePatternGenerator;
-import com.ibm.icu.text.NumberingSystem;
-import com.ibm.icu.util.Calendar;
-import com.ibm.icu.util.TimeZone;
-import com.ibm.icu.util.ULocale;
+import org.graalvm.shadowed.com.ibm.icu.text.DateTimePatternGenerator;
+import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
+import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
+import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
+import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleBaseNameAccessorNodeGen;
@@ -75,6 +77,7 @@ import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -140,6 +143,13 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return baseName.ordinal() <= ordinal();
         }
 
+        @Override
+        public int getECMAScriptVersion() {
+            if (calendars.ordinal() <= ordinal()) {
+                return JSConfig.StagingECMAScriptVersion;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override
@@ -197,7 +207,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            String maximizedLocale = JSLocale.getInternalState(localeObject).maximize();
+            String maximizedLocale = localeObject.getInternalState().maximize();
             return JSFunction.construct(getRealm().getLocaleConstructor(), new Object[]{Strings.fromJavaString(maximizedLocale)});
         }
 
@@ -215,7 +225,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            String minimizedLocale = JSLocale.getInternalState(localeObject).minimize();
+            String minimizedLocale = localeObject.getInternalState().minimize();
             return JSFunction.construct(getRealm().getLocaleConstructor(), new Object[]{Strings.fromJavaString(minimizedLocale)});
         }
 
@@ -233,7 +243,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public TruffleString doLocale(JSLocaleObject localeObject) {
-            return Strings.fromJavaString(JSLocale.getInternalState(localeObject).getLocale());
+            return Strings.fromJavaString(localeObject.getInternalState().getLocale());
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -250,7 +260,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public TruffleString doLocale(JSLocaleObject localeObject) {
-            return Strings.fromJavaString(JSLocale.getInternalState(localeObject).getBaseName());
+            return Strings.fromJavaString(localeObject.getInternalState().getBaseName());
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -268,7 +278,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            return JSRuntime.nullToUndefined(Strings.fromJavaString(JSLocale.getInternalState(localeObject).getCalendar()));
+            return JSRuntime.nullToUndefined(Strings.fromJavaString(localeObject.getInternalState().getCalendar()));
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -286,7 +296,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            return JSRuntime.nullToUndefined(Strings.fromJavaString(JSLocale.getInternalState(localeObject).getCaseFirst()));
+            return JSRuntime.nullToUndefined(Strings.fromJavaString(localeObject.getInternalState().getCaseFirst()));
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -304,7 +314,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            return JSRuntime.nullToUndefined(Strings.fromJavaString(JSLocale.getInternalState(localeObject).getCollation()));
+            return JSRuntime.nullToUndefined(Strings.fromJavaString(localeObject.getInternalState().getCollation()));
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -322,7 +332,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            return JSRuntime.nullToUndefined(Strings.fromJavaString(JSLocale.getInternalState(localeObject).getHourCycle()));
+            return JSRuntime.nullToUndefined(Strings.fromJavaString(localeObject.getInternalState().getHourCycle()));
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -340,7 +350,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public boolean doLocale(JSLocaleObject localeObject) {
-            return JSLocale.getInternalState(localeObject).getNumeric();
+            return localeObject.getInternalState().getNumeric();
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -358,7 +368,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            return JSRuntime.nullToUndefined(Strings.fromJavaString(JSLocale.getInternalState(localeObject).getNumberingSystem()));
+            return JSRuntime.nullToUndefined(Strings.fromJavaString(localeObject.getInternalState().getNumberingSystem()));
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -376,7 +386,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            String language = JSLocale.getInternalState(localeObject).getLanguage();
+            String language = localeObject.getInternalState().getLanguage();
             return language.isEmpty() ? Undefined.instance : Strings.fromJavaString(language);
         }
 
@@ -395,7 +405,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            String script = JSLocale.getInternalState(localeObject).getScript();
+            String script = localeObject.getInternalState().getScript();
             return script.isEmpty() ? Undefined.instance : Strings.fromJavaString(script);
         }
 
@@ -414,7 +424,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            String region = JSLocale.getInternalState(localeObject).getRegion();
+            String region = localeObject.getInternalState().getRegion();
             return region.isEmpty() ? Undefined.instance : Strings.fromJavaString(region);
         }
 
@@ -434,7 +444,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            ULocale locale = localeObject.getInternalState().getULocale();
             String calendar = locale.getUnicodeLocaleType("ca");
             String[] calendars;
             if (calendar == null) {
@@ -461,7 +471,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            ULocale locale = localeObject.getInternalState().getULocale();
             String collation = locale.getUnicodeLocaleType("co");
             String[] collations;
             if (collation == null) {
@@ -488,7 +498,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            ULocale locale = localeObject.getInternalState().getULocale();
             String hourCycle = locale.getUnicodeLocaleType("hc");
             if (hourCycle == null) {
                 DateTimePatternGenerator patternGenerator = DateTimePatternGenerator.getInstance(locale);
@@ -513,7 +523,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            ULocale locale = localeObject.getInternalState().getULocale();
             String numberingSystem = locale.getUnicodeLocaleType("nu");
             if (numberingSystem == null) {
                 numberingSystem = NumberingSystem.getInstance(locale).getName();
@@ -537,7 +547,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
-            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            ULocale locale = localeObject.getInternalState().getULocale();
             String region = locale.getCountry();
             if (region.isEmpty()) {
                 return Undefined.instance;
@@ -580,7 +590,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @TruffleBoundary
         private static TruffleString direction(JSLocaleObject localeObject) {
-            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            ULocale locale = localeObject.getInternalState().getULocale();
             String orientation = locale.getCharacterOrientation();
             return "right-to-left".equals(orientation) ? IntlUtil.KEY_RTL : IntlUtil.KEY_LTR;
         }
@@ -597,7 +607,8 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        public Object doLocale(JSLocaleObject localeObject) {
+        public Object doLocale(JSLocaleObject localeObject,
+                        @Cached InlinedBranchProfile growProfile) {
             Calendar.WeekData weekData = weekData(localeObject);
 
             int firstDay = calendarToECMAScriptDay(weekData.firstDayOfWeek);
@@ -607,7 +618,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             int weekendCease = weekData.weekendCease;
             int day = weekData.weekendOnset;
             while (true) {
-                weekendList.add(calendarToECMAScriptDay(day), null);
+                weekendList.add(calendarToECMAScriptDay(day), this, growProfile);
                 if (day == weekendCease) {
                     break;
                 }
@@ -635,7 +646,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @TruffleBoundary
         private static Calendar.WeekData weekData(JSLocaleObject localeObject) {
-            ULocale locale = JSLocale.getInternalState(localeObject).getULocale();
+            ULocale locale = localeObject.getInternalState().getULocale();
             return Calendar.getInstance(locale).getWeekData();
         }
 

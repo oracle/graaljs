@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,8 +45,9 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Executed;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.BinaryOperationTag;
@@ -87,10 +88,10 @@ public abstract class JSBinaryNode extends JavaScriptNode {
         return Math.abs(d) >= JSRuntime.TWO32;
     }
 
-    protected final void ensureBothSameNumericType(Object a, Object b, BranchProfile mixedNumericTypes) {
+    protected static void ensureBothSameNumericType(Object a, Object b, Node node, InlinedBranchProfile mixedNumericTypes) {
         if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, (a instanceof BigInt) != (b instanceof BigInt))) {
-            mixedNumericTypes.enter();
-            throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
+            mixedNumericTypes.enter(node);
+            throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(node);
         }
     }
 

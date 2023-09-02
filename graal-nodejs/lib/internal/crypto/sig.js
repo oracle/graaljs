@@ -11,11 +11,11 @@ const {
     ERR_CRYPTO_SIGN_KEY_REQUIRED,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
-  }
+  },
 } = require('internal/errors');
 
 const {
-  validateCallback,
+  validateFunction,
   validateEncoding,
   validateString,
 } = require('internal/validators');
@@ -143,7 +143,7 @@ function signOneShot(algorithm, data, key, callback) {
     validateString(algorithm, 'algorithm');
 
   if (callback !== undefined)
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
 
   data = getArrayBufferOrView(data, 'data');
 
@@ -161,7 +161,7 @@ function signOneShot(algorithm, data, key, callback) {
     data: keyData,
     format: keyFormat,
     type: keyType,
-    passphrase: keyPassphrase
+    passphrase: keyPassphrase,
   } = preparePrivateKey(key);
 
   const job = new SignJob(
@@ -213,7 +213,7 @@ Verify.prototype.verify = function verify(options, signature, sigEncoding) {
     data,
     format,
     type,
-    passphrase
+    passphrase,
   } = preparePublicOrPrivateKey(options, true);
 
   sigEncoding = sigEncoding || getDefaultEncoding();
@@ -236,7 +236,7 @@ function verifyOneShot(algorithm, data, key, signature, callback) {
     validateString(algorithm, 'algorithm');
 
   if (callback !== undefined)
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
 
   data = getArrayBufferOrView(data, 'data');
 
@@ -244,7 +244,7 @@ function verifyOneShot(algorithm, data, key, signature, callback) {
     throw new ERR_INVALID_ARG_TYPE(
       'data',
       ['Buffer', 'TypedArray', 'DataView'],
-      data
+      data,
     );
   }
 
@@ -259,7 +259,7 @@ function verifyOneShot(algorithm, data, key, signature, callback) {
     throw new ERR_INVALID_ARG_TYPE(
       'signature',
       ['Buffer', 'TypedArray', 'DataView'],
-      signature
+      signature,
     );
   }
 
@@ -267,7 +267,7 @@ function verifyOneShot(algorithm, data, key, signature, callback) {
     data: keyData,
     format: keyFormat,
     type: keyType,
-    passphrase: keyPassphrase
+    passphrase: keyPassphrase,
   } = preparePublicOrPrivateKey(key);
 
   const job = new SignJob(

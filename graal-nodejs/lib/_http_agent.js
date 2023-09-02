@@ -30,7 +30,6 @@ const {
   ArrayPrototypeSome,
   ArrayPrototypeSplice,
   FunctionPrototypeCall,
-  NumberIsNaN,
   ObjectCreate,
   ObjectKeys,
   ObjectSetPrototypeOf,
@@ -49,11 +48,6 @@ let debug = require('internal/util/debuglog').debuglog('http', (fn) => {
 });
 const { AsyncResource } = require('async_hooks');
 const { async_id_symbol } = require('internal/async_hooks').symbols;
-const {
-  codes: {
-    ERR_OUT_OF_RANGE,
-  },
-} = require('internal/errors');
 const {
   kEmptyObject,
   once,
@@ -104,6 +98,9 @@ function Agent(options) {
 
   this.options = { __proto__: null, ...options };
 
+  if (this.options.noDelay === undefined)
+    this.options.noDelay = true;
+
   // Don't confuse net and make it think that we're connecting to a pipe
   this.options.path = null;
   this.requests = ObjectCreate(null);
@@ -120,10 +117,7 @@ function Agent(options) {
   validateOneOf(this.scheduling, 'scheduling', ['fifo', 'lifo']);
 
   if (this.maxTotalSockets !== undefined) {
-    validateNumber(this.maxTotalSockets, 'maxTotalSockets');
-    if (this.maxTotalSockets <= 0 || NumberIsNaN(this.maxTotalSockets))
-      throw new ERR_OUT_OF_RANGE('maxTotalSockets', '> 0',
-                                 this.maxTotalSockets);
+    validateNumber(this.maxTotalSockets, 'maxTotalSockets', 1);
   } else {
     this.maxTotalSockets = Infinity;
   }
@@ -250,7 +244,7 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
       __proto__: null,
       host: options,
       port,
-      localAddress
+      localAddress,
     };
   }
 
@@ -401,7 +395,7 @@ function installListeners(agent, s, options) {
     // TODO(ronag): Always destroy, even if not in free list.
     const sockets = agent.freeSockets;
     if (ArrayPrototypeSome(ObjectKeys(sockets), (name) =>
-      ArrayPrototypeIncludes(sockets[name], s)
+      ArrayPrototypeIncludes(sockets[name], s),
     )) {
       return s.destroy();
     }
@@ -539,5 +533,5 @@ function asyncResetHandle(socket) {
 
 module.exports = {
   Agent,
-  globalAgent: new Agent()
+  globalAgent: new Agent(),
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -483,6 +483,15 @@ EXPORT_TO_JS(ToObject) {
     MaybeLocal<Object> object = args[0]->ToObject(context);
     if (!object.IsEmpty()) {
         args.GetReturnValue().Set(object.ToLocalChecked());
+    }
+}
+
+EXPORT_TO_JS(ToDetailString) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    MaybeLocal<String> result = args[0]->ToDetailString(context);
+    if (!result.IsEmpty()) {
+        args.GetReturnValue().Set(result.ToLocalChecked());
     }
 }
 

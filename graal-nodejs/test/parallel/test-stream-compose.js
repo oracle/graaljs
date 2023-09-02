@@ -358,27 +358,24 @@ const assert = require('assert');
 }
 
 {
-  try {
-    compose();
-  } catch (err) {
-    assert.strictEqual(err.code, 'ERR_MISSING_ARGS');
-  }
+  assert.throws(
+    () => compose(),
+    { code: 'ERR_MISSING_ARGS' }
+  );
 }
 
 {
-  try {
-    compose(new Writable(), new PassThrough());
-  } catch (err) {
-    assert.strictEqual(err.code, 'ERR_INVALID_ARG_VALUE');
-  }
+  assert.throws(
+    () => compose(new Writable(), new PassThrough()),
+    { code: 'ERR_INVALID_ARG_VALUE' }
+  );
 }
 
 {
-  try {
-    compose(new PassThrough(), new Readable({ read() {} }), new PassThrough());
-  } catch (err) {
-    assert.strictEqual(err.code, 'ERR_INVALID_ARG_VALUE');
-  }
+  assert.throws(
+    () => compose(new PassThrough(), new Readable({ read() {} }), new PassThrough()),
+    { code: 'ERR_INVALID_ARG_VALUE' }
+  );
 }
 
 {
@@ -422,4 +419,78 @@ const assert = require('assert');
     assert(!err);
     assert.strictEqual(buf, 'HELLOWORLD');
   }));
+}
+
+{
+  // In the new stream than should use the writeable of the first stream and readable of the last stream
+  // #46829
+  (async () => {
+    const newStream = compose(
+      new PassThrough({
+        // reading FROM you in object mode or not
+        readableObjectMode: false,
+
+        // writing TO you in object mode or not
+        writableObjectMode: false,
+      }),
+      new Transform({
+        // reading FROM you in object mode or not
+        readableObjectMode: true,
+
+        // writing TO you in object mode or not
+        writableObjectMode: false,
+        transform: (chunk, encoding, callback) => {
+          callback(null, {
+            value: chunk.toString()
+          });
+        }
+      })
+    );
+
+    assert.strictEqual(newStream.writableObjectMode, false);
+    assert.strictEqual(newStream.readableObjectMode, true);
+
+    newStream.write('Steve Rogers');
+    newStream.write('On your left');
+
+    newStream.end();
+
+    assert.deepStrictEqual(await newStream.toArray(), [{ value: 'Steve Rogers' }, { value: 'On your left' }]);
+  })().then(common.mustCall());
+}
+
+{
+  // In the new stream than should use the writeable of the first stream and readable of the last stream
+  // #46829
+  (async () => {
+    const newStream = compose(
+      new PassThrough({
+        // reading FROM you in object mode or not
+        readableObjectMode: true,
+
+        // writing TO you in object mode or not
+        writableObjectMode: true,
+      }),
+      new Transform({
+        // reading FROM you in object mode or not
+        readableObjectMode: false,
+
+        // writing TO you in object mode or not
+        writableObjectMode: true,
+        transform: (chunk, encoding, callback) => {
+          callback(null, chunk.value);
+        }
+      })
+    );
+
+    assert.strictEqual(newStream.writableObjectMode, true);
+    assert.strictEqual(newStream.readableObjectMode, false);
+
+    newStream.write({ value: 'Steve Rogers' });
+    newStream.write({ value: 'On your left' });
+
+    newStream.end();
+
+    assert.deepStrictEqual(await newStream.toArray(), [Buffer.from('Steve RogersOn your left')]);
+  })().then(common.mustCall());
 }

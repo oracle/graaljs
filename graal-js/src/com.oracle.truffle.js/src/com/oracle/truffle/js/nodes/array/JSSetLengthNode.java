@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,11 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.WritePropertyNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.array.ArrayLengthNode.ArrayLengthWriteNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
@@ -64,8 +66,9 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
 
     public abstract Object execute(Object target, Object value);
 
-    protected final WritePropertyNode createWritePropertyNode() {
-        return WritePropertyNode.create(null, JSArray.LENGTH, null, context, isStrict);
+    @NeverDefault
+    protected final PropertySetNode createSetLengthProperty() {
+        return PropertySetNode.create(JSArray.LENGTH, false, context, isStrict);
     }
 
     protected static boolean isArray(Object object) {
@@ -82,15 +85,15 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static int setIntLength(JSDynamicObject object, int length,
-                    @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
-        setLengthProperty.executeIntWithValue(object, length);
+                    @Cached("createSetLengthProperty()") @Shared("setLength") PropertySetNode setLengthProperty) {
+        setLengthProperty.setValueInt(object, length);
         return length;
     }
 
     @Specialization(replaces = "setIntLength")
     protected static Object setLength(JSDynamicObject object, Object length,
-                    @Cached("createWritePropertyNode()") WritePropertyNode setLengthProperty) {
-        setLengthProperty.executeWithValue(object, length);
+                    @Cached("createSetLengthProperty()") @Shared("setLength") PropertySetNode setLengthProperty) {
+        setLengthProperty.setValue(object, length);
         return length;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -168,6 +168,32 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
         @Override
         public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "nashorn-compat";
+        }
+
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            boolean val = toBoolean(this, value);
+            if (val) {
+                updateForNashornCompatibilityMode(builder);
+            }
+            return builder.option("js.nashorn-compat", String.valueOf(val));
+        }
+    }, new MagicBindingsOptionSetter() {
+
+        @Override
+        public String getOptionKey() {
+            return MAGIC_OPTION_PREFIX + "allowAllAccess";
+        }
+
+        @Override
+        public Builder setOption(Builder builder, Object value) {
+            return builder.allowAllAccess(toBoolean(this, value));
+        }
+    }, new MagicBindingsOptionSetter() {
+
+        @Override
+        public String getOptionKey() {
             return MAGIC_OPTION_PREFIX + "allowHostAccess";
         }
 
@@ -245,32 +271,6 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
         @Override
         public String getOptionKey() {
-            return MAGIC_OPTION_PREFIX + "allowAllAccess";
-        }
-
-        @Override
-        public Builder setOption(Builder builder, Object value) {
-            return builder.allowAllAccess(toBoolean(this, value));
-        }
-    }, new MagicBindingsOptionSetter() {
-
-        @Override
-        public String getOptionKey() {
-            return MAGIC_OPTION_PREFIX + "nashorn-compat";
-        }
-
-        @Override
-        public Builder setOption(Builder builder, Object value) {
-            boolean val = toBoolean(this, value);
-            if (val) {
-                updateForNashornCompatibilityMode(builder);
-            }
-            return builder.option("js.nashorn-compat", String.valueOf(val));
-        }
-    }, new MagicBindingsOptionSetter() {
-
-        @Override
-        public String getOptionKey() {
             return MAGIC_OPTION_PREFIX + "ecmascript-version";
         }
 
@@ -339,7 +339,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         }
         this.factory = (factory == null) ? new GraalJSEngineFactory(engineToUse) : factory;
         this.contextConfig = contextConfigToUse.option(JS_SCRIPT_ENGINE_GLOBAL_SCOPE_IMPORT_OPTION, "true").engine(engineToUse);
-        this.context.setBindings(new GraalJSBindings(this.contextConfig, this.context), ScriptContext.ENGINE_SCOPE);
+        this.context.setBindings(new GraalJSBindings(this.contextConfig, this.context, this), ScriptContext.ENGINE_SCOPE);
     }
 
     private static void updateForNashornCompatibilityMode(Context.Builder builder) {
@@ -352,10 +352,15 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         builder.allowHostAccess(HostAccess.ALL);
     }
 
-    static Context createDefaultContext(Context.Builder builder) {
+    static Context createDefaultContext(Context.Builder builder, ScriptContext ctxt) {
         DelegatingInputStream in = new DelegatingInputStream();
         DelegatingOutputStream out = new DelegatingOutputStream();
         DelegatingOutputStream err = new DelegatingOutputStream();
+        if (ctxt != null) {
+            in.setReader(ctxt.getReader());
+            out.setWriter(ctxt.getWriter());
+            err.setWriter(ctxt.getErrorWriter());
+        }
         builder.in(in).out(out).err(err);
         Context ctx = builder.build();
         ctx.getPolyglotBindings().putMember(OUT_SYMBOL, out);
@@ -405,7 +410,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
 
     @Override
     public Bindings createBindings() {
-        return new GraalJSBindings(contextConfig, null);
+        return new GraalJSBindings(contextConfig, null, this);
     }
 
     @Override
@@ -530,7 +535,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         if (engineB instanceof GraalJSBindings) {
             return ((GraalJSBindings) engineB);
         } else {
-            GraalJSBindings bindings = new GraalJSBindings(createContext(engineB), scriptContext);
+            GraalJSBindings bindings = new GraalJSBindings(createContext(engineB), scriptContext, this);
             bindings.putAll(engineB);
             return bindings;
         }
@@ -547,7 +552,7 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
                     engineB.remove(optionSetter.getOptionKey());
                 }
             }
-            ctx = createDefaultContext(builder);
+            ctx = createDefaultContext(builder, context);
             engineB.put(POLYGLOT_CONTEXT, ctx);
         }
         return (Context) ctx;

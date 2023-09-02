@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,12 +58,14 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8AtomicsNumUnre
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8AtomicsNumWaitersForTestingNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ConstructDoubleNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreatePrivateSymbolNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8EnqueueJobNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ReferenceEqualNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetAllowAtomicsWaitNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetTimeoutNodeGen;
+import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SymbolIsPrivateNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToLengthNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNumberNodeGen;
@@ -73,7 +75,6 @@ import com.oracle.truffle.js.builtins.helper.GCNodeGen;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
@@ -89,13 +90,14 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncFromSyncIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSTestV8;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -140,7 +142,10 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
 
         atomicsNumWaitersForTesting(2),
         atomicsNumUnresolvedAsyncPromisesForTesting(2),
-        setAllowAtomicsWait(1);
+        setAllowAtomicsWait(1),
+
+        createPrivateSymbol(1),
+        symbolIsPrivate(1);
 
         private final int length;
 
@@ -206,6 +211,10 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
                 return TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNodeGen.create(context, builtin, args().fixedArgs(2).createArgumentNodes(context));
             case setAllowAtomicsWait:
                 return TestV8SetAllowAtomicsWaitNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case createPrivateSymbol:
+                return TestV8CreatePrivateSymbolNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case symbolIsPrivate:
+                return TestV8SymbolIsPrivateNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -344,7 +353,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         @Specialization
         protected Object enqueueJob(Object function) {
             if (JSFunction.isJSFunction(function)) {
-                getContext().promiseEnqueueJob(getRealm(), (JSFunctionObject) function);
+                getContext().enqueuePromiseJob(getRealm(), (JSFunctionObject) function);
             }
             return 0;
         }
@@ -354,22 +363,18 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
      * Calls CreateAsyncFromSyncIterator, used by v8mockup.js.
      */
     public abstract static class TestV8CreateAsyncFromSyncIterator extends JSBuiltinNode {
-        @Child private PropertySetNode setState;
         @Child private PropertyGetNode getNextMethodNode;
 
         public TestV8CreateAsyncFromSyncIterator(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.setState = PropertySetNode.createSetHidden(JSFunction.ASYNC_FROM_SYNC_ITERATOR_KEY, context);
             this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
         }
 
-        @Specialization(guards = "isJSObject(syncIterator)")
-        protected Object createAsyncFromSyncIterator(JSDynamicObject syncIterator) {
-            JSContext context = getContext();
-            JSObject obj = JSOrdinary.create(context, context.getAsyncFromSyncIteratorFactory(), getRealm());
-            IteratorRecord syncIteratorRecord = IteratorRecord.create(syncIterator, getNextMethodNode.getValue(syncIterator), false);
-            setState.setValue(obj, syncIteratorRecord);
-            return obj;
+        @Specialization
+        protected Object createAsyncFromSyncIterator(JSObject syncIterator) {
+            Object nextMethod = getNextMethodNode.getValue(syncIterator);
+            IteratorRecord syncIteratorRecord = IteratorRecord.create(syncIterator, nextMethod, false);
+            return JSAsyncFromSyncIteratorObject.create(getContext(), getRealm(), syncIteratorRecord);
         }
 
         @Specialization(guards = "!isJSObject(syncIterator)")
@@ -430,12 +435,12 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         protected Object setTimeout(Object callback) {
             assert JSRuntime.isCallable(callback);
             JSRealm realm = getRealm();
-            List<Object> embedderData = (List<Object>) realm.getEmbedderData();
+            List<JobCallback> embedderData = (List<JobCallback>) realm.getEmbedderData();
             if (embedderData == null) {
                 embedderData = new ArrayList<>();
                 realm.setEmbedderData(embedderData);
             }
-            embedderData.add(callback);
+            embedderData.add(realm.getAgent().hostMakeJobCallback(callback));
             return Undefined.instance;
         }
     }
@@ -484,7 +489,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
 
         @Specialization
         protected Object numWaiters(Object maybeTarget, Object index,
-                        @Cached("create()") JSToIndexNode toIndexNode) {
+                        @Cached JSToIndexNode toIndexNode) {
             JSDynamicObject target = ensureSharedArray(maybeTarget);
             int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             JSAgentWaiterListEntry wl = SharedMemorySync.getWaiterList(getContext(), target, i);
@@ -501,7 +506,7 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
 
         @Specialization
         protected Object numUnresolvedAsyncPromises(Object maybeTarget, Object index,
-                        @Cached("create()") JSToIndexNode toIndexNode) {
+                        @Cached JSToIndexNode toIndexNode) {
             JSDynamicObject target = ensureSharedArray(maybeTarget);
             int i = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             JSAgent agent = getRealm().getAgent();
@@ -522,6 +527,33 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
         protected Object setAllowAtomicsWait(Object allow) {
             getRealm().getAgent().setCanBlock(toBooleanNode.executeBoolean(allow));
             return Undefined.instance;
+        }
+
+    }
+
+    public abstract static class TestV8CreatePrivateSymbol extends JSBuiltinNode {
+
+        public TestV8CreatePrivateSymbol(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object doCreate(Object description,
+                        @Cached JSToStringNode toStringNode) {
+            return Symbol.createPrivate(toStringNode.executeString(description));
+        }
+
+    }
+
+    public abstract static class TestV8SymbolIsPrivate extends JSBuiltinNode {
+
+        public TestV8SymbolIsPrivate(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected boolean isPrivate(Object symbol) {
+            return JSRuntime.isPrivateSymbol(symbol);
         }
 
     }

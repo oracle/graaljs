@@ -302,7 +302,7 @@ void OptionsParser<Options>::Parse(
     const std::string arg = args.pop_first();
 
     if (arg == "--") {
-      if (required_env_settings == kAllowedInEnvironment)
+      if (required_env_settings == kAllowedInEnvvar)
         errors->push_back(NotAllowedInEnvErr("--"));
       break;
     }
@@ -374,8 +374,8 @@ void OptionsParser<Options>::Parse(
     auto it = options_.find(name);
 
     if ((it == options_.end() ||
-         it->second.env_setting == kDisallowedInEnvironment) &&
-        required_env_settings == kAllowedInEnvironment) {
+         it->second.env_setting == kDisallowedInEnvvar) &&
+        required_env_settings == kAllowedInEnvvar) {
       errors->push_back(NotAllowedInEnvErr(original_name));
       break;
     }
@@ -387,12 +387,12 @@ void OptionsParser<Options>::Parse(
         implied_name.insert(2, "no-");
       }
       auto implications = implications_.equal_range(implied_name);
-      for (auto it = implications.first; it != implications.second; ++it) {
-        if (it->second.type == kV8Option) {
-          v8_args->push_back(it->second.name);
+      for (auto imp = implications.first; imp != implications.second; ++imp) {
+        if (imp->second.type == kV8Option) {
+          v8_args->push_back(imp->second.name);
         } else {
-          *it->second.target_field->template Lookup<bool>(options) =
-              it->second.target_value;
+          *imp->second.target_field->template Lookup<bool>(options) =
+              imp->second.target_value;
         }
       }
     }
@@ -444,7 +444,8 @@ void OptionsParser<Options>::Parse(
         *Lookup<int64_t>(info.field, options) = std::atoll(value.c_str());
         break;
       case kUInteger:
-        *Lookup<uint64_t>(info.field, options) = std::stoull(value);
+        *Lookup<uint64_t>(info.field, options) =
+            std::strtoull(value.c_str(), nullptr, 10);
         break;
       case kString:
         *Lookup<std::string>(info.field, options) = value;
@@ -466,7 +467,7 @@ void OptionsParser<Options>::Parse(
         UNREACHABLE();
     }
   }
-  options->CheckOptions(errors);
+  options->CheckOptions(errors, orig_args);
 }
 
 }  // namespace options_parser

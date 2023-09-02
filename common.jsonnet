@@ -1,176 +1,120 @@
-local common_json = (import "common.json");
+local common = (import "ci/common.jsonnet");
 
+local jdks = {
+  jdk17:: common.jdks["labsjdk-ee-17"] + {
+    jdk:: 'jdk' + super.jdk_version,
+  },
+
+  jdk20:: common.jdks["labsjdk-ee-20"] + {
+    jdk:: 'jdk' + super.jdk_version,
+  },
+
+  jdk21:: common.jdks["labsjdk-ee-21"] + {
+    jdk:: 'jdk' + super.jdk_version,
+  },
+};
+
+local targets = {
+  deploy::      {targets+: ['deploy'], targetName:: 'deploy'},
+  gate::        {targets+: ['gate'], targetName:: 'gate'},
+  postMerge::   {targets+: ['post-merge'], targetName:: 'postmerge'},
+  daily::       {targets+: ['daily'], targetName:: 'daily'},
+  weekly::      {targets+: ['weekly'], targetName:: 'weekly'},
+  ondemand::    {targets+: ['ondemand'], targetName:: 'ondemand'},
+
+  bench::         self.postMerge + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  dailyBench::    self.daily     + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  weeklyBench::   self.weekly    + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+  ondemandBench:: self.ondemand  + {targets+: ['bench'], targetName:: super.targetName + "-bench"},
+};
+
+jdks +
+targets +
 {
-  jdk8: {
-    jdk:: 'jdk8',
-    downloads+: {
-      JAVA_HOME: common_json.jdks.oraclejdk8,
-    },
-  },
+  jdks:: jdks,
+  targets:: targets,
 
-  jdk11: {
-    jdk:: 'jdk11',
-    downloads+: {
-      JAVA_HOME: common_json.jdks["labsjdk-ce-11"],
-    },
-  },
+  deps:: common.deps,
 
-  jdk17: {
-    jdk:: 'jdk17',
-    downloads+: {
-      JAVA_HOME: common_json.jdks["labsjdk-ce-17"],
-    },
-  },
-
-  jdk19: {
-    jdk:: 'jdk19',
-    downloads+: {
-      JAVA_HOME: common_json.jdks["labsjdk-ce-19"],
-    },
-  },
-
-  deploy:      {targets+: ['deploy']},
-  gate:        {targets+: ['gate']},
-  postMerge:   {targets+: ['post-merge']},
-  bench:       {targets+: ['bench', 'post-merge']},
-  dailyBench:  {targets+: ['bench', 'daily']},
-  weeklyBench: {targets+: ['bench', 'weekly']},
-  manualBench: {targets+: ['bench']},
-  daily:       {targets+: ['daily']},
-  weekly:      {targets+: ['weekly']},
-
-  local common = {
-    packages+: {
-      'mx': common_json.mx_version,
-      'python3': '==3.8.10',
-      'pip:pylint': '==2.4.4',
-      'pip:ninja_syntax': '==1.7.2',
-    },
+  common_deps:: common.deps.sulong + {
     catch_files+: [
-      'Graal diagnostic output saved in (?P<filename>.+.zip)',
       'npm-debug.log', // created on npm errors
     ],
     environment+: {
-      MX_PYTHON: "python3.8",
       GRAALVM_CHECK_EXPERIMENTAL_OPTIONS: "true",
     },
-    python_version: "3",
   },
 
-  linux: common + {
-    os:: 'linux',
-    arch:: 'amd64',
-    packages+: common_json.sulong.deps.linux.packages + {
+  linux_common:: {
+  },
+
+  linux_amd64:: common.linux_amd64 + self.linux_common + self.common_deps + {
+    packages+: {
       'apache/ab': '==2.3',
-      devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-      git: '>=1.8.3',
       maven: '==3.3.9',
     },
-    capabilities+: ['linux', 'amd64'],
   },
 
-  ol65: self.linux + {
-    capabilities+: ['ol65'],
-  },
-
-  x52: self.linux + {
+  x52:: self.linux_amd64 + {
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  linux_aarch64: common + {
-    os:: 'linux',
-    arch:: 'aarch64',
-    capabilities+: ['linux', 'aarch64'],
-    packages+: {
-      devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-    }
-  },
+  linux_aarch64:: common.linux_aarch64 + self.linux_common + self.common_deps,
 
-  darwin: common + {
-    os:: 'darwin',
-    arch:: 'amd64',
-    packages+: common_json.sulong.deps.darwin_amd64.packages,
+  darwin_amd64:: common.darwin_amd64 + self.common_deps + {
     environment+: {
-      // for compatibility with macOS El Capitan
-      MACOSX_DEPLOYMENT_TARGET: '10.11',
+      // for compatibility with macOS High Sierra
+      MACOSX_DEPLOYMENT_TARGET: '10.13',
     },
-    capabilities: ['darwin_mojave', 'amd64'],
+    capabilities+: ['darwin_mojave'],
   },
 
-  darwin_aarch64: common + {
-    os:: 'darwin',
-    arch:: 'aarch64',
-    packages+: common_json.sulong.deps.darwin_aarch64.packages,
+  darwin_aarch64:: common.darwin_aarch64 + self.common_deps + {
     environment+: {
       // for compatibility with macOS BigSur
       MACOSX_DEPLOYMENT_TARGET: '11.0',
     },
-    capabilities: ['darwin', 'aarch64'],
   },
 
-  windows: common + {
-    os:: 'windows',
-    arch:: 'amd64',
-    capabilities: ['windows', 'amd64'],
-  },
-
-  windows_jdk17: self.windows + {
-    packages+: common_json.devkits["windows-jdk17"].packages,
-    setup+: [
-      ['set-export', 'DEVKIT_VERSION', '2019'],
-    ],
-  },
-
- windows_jdk11: self.windows + {
-    packages+: common_json.devkits["windows-jdk11"].packages,
-    setup+: [
-      ['set-export', 'DEVKIT_VERSION', '2017'],
-    ],
-  },
-
-  windows_jdk8: self.windows + {
-    packages+: common_json.devkits["windows-oraclejdk8"].packages,
-    setup+: [
-      ['set-export', 'DEVKIT_VERSION', '2017'],
-    ],
-  },
-
-  local gateCmd = ['mx', '--strict-compliance', 'gate', '-B=--force-deprecation-as-warning', '--strict-mode', '--tags', '${TAGS}'],
-
-  eclipse : {
-    downloads+: {
-      ECLIPSE: {name: 'eclipse', version: '4.14.0', platformspecific: true},
-      JDT: {name: 'ecj', version: '4.14.0', platformspecific: false},
-    },
+  windows_amd64:: common.windows_amd64 + self.common_deps + {
+    packages+: common.devkits["windows-" + self.jdk].packages,
+    local devkit_version = std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(self.packages))[0],
     environment+: {
-      ECLIPSE_EXE: '$ECLIPSE/eclipse',
+      DEVKIT_VERSION: devkit_version,
     },
   },
 
-  build : {
+  gateCmd:: ['mx', 'gate', '-B=--force-deprecation-as-warning', '-B=-A-J-Dtruffle.dsl.SuppressWarnings=truffle'],
+  gateCmdWithTags:: self.gateCmd + ['--tags', '${TAGS}'],
+
+  build:: {
     run+: [
       ['mx', 'build', '--force-javac'],
     ],
   },
 
-  buildCompiler : {
+  buildCompiler:: {
     run+: [
       ['mx', '--dynamicimports', '/compiler', 'build', '--force-javac'],
     ],
   },
 
-  gateTags : self.build + {
+  gateTags:: {
     run+: [
-      gateCmd,
+      $.gateCmdWithTags,
     ],
-    timelimit: '30:00',
+    timelimit: if 'timelimit' in super then super.timelimit else '45:00',
   },
 
-  gateStyleFullBuild : self.eclipse + {
+  gateStyleFullBuild:: common.deps.pylint + common.deps.eclipse + common.deps.jdt + {
+    # GR-45482 SpotBugs does not run on JDK 21.
+    local strict = !('jdk' in self && self.jdk == 'jdk21'),
+    environment+: {
+      TAGS: 'style,fullbuild',
+    },
     run+: [
-      ['set-export', 'TAGS', 'style,fullbuild'],
-      gateCmd,
+      $.gateCmdWithTags + (if strict then ['--strict-mode'] else []),
     ],
-    timelimit: '30:00',
+    timelimit: if 'timelimit' in super then super.timelimit else '45:00',
   },
 }

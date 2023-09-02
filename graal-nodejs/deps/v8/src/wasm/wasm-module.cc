@@ -113,6 +113,20 @@ int GetContainingWasmFunction(const WasmModule* module, uint32_t byte_offset) {
   return func_index;
 }
 
+// TODO(7748): Measure whether this iterative implementation is fast enough.
+// We could cache the result on the module, in yet another vector indexed by
+// type index.
+int GetSubtypingDepth(const WasmModule* module, uint32_t type_index) {
+  uint32_t starting_point = type_index;
+  int depth = 0;
+  while ((type_index = module->supertype(type_index)) != kNoSuperType) {
+    if (type_index == starting_point) return -1;  // Cycle detected.
+    depth++;
+    if (depth > static_cast<int>(kV8MaxRttSubtypingDepth)) break;
+  }
+  return depth;
+}
+
 void LazilyGeneratedNames::AddForTesting(int function_index,
                                          WireBytesRef name) {
   base::MutexGuard lock(&mutex_);
@@ -207,8 +221,6 @@ std::ostream& operator<<(std::ostream& os, const WasmFunctionName& name) {
 WasmModule::WasmModule(std::unique_ptr<Zone> signature_zone)
     : signature_zone(std::move(signature_zone)) {}
 
-WasmModule::~WasmModule() { DeleteCachedTypeJudgementsForModule(this); }
-
 bool IsWasmCodegenAllowed(Isolate* isolate, Handle<Context> context) {
   // TODO(wasm): Once wasm has its own CSP policy, we should introduce a
   // separate callback that includes information about the module about to be
@@ -231,9 +243,7 @@ namespace {
 // Converts the given {type} into a string representation that can be used in
 // reflective functions. Should be kept in sync with the {GetValueType} helper.
 Handle<String> ToValueTypeString(Isolate* isolate, ValueType type) {
-  return isolate->factory()->InternalizeUtf8String(
-      type == kWasmFuncRef ? base::CStrVector("anyfunc")
-                           : base::VectorOf(type.name()));
+  return isolate->factory()->InternalizeUtf8String(base::VectorOf(type.name()));
 }
 }  // namespace
 
@@ -293,19 +303,23 @@ Handle<JSObject> GetTypeForGlobal(Isolate* isolate, bool is_mutable,
 }
 
 Handle<JSObject> GetTypeForMemory(Isolate* isolate, uint32_t min_size,
-                                  base::Optional<uint32_t> max_size) {
+                                  base::Optional<uint32_t> max_size,
+                                  bool shared) {
   Factory* factory = isolate->factory();
 
   Handle<JSFunction> object_function = isolate->object_function();
   Handle<JSObject> object = factory->NewJSObject(object_function);
   Handle<String> minimum_string = factory->InternalizeUtf8String("minimum");
   Handle<String> maximum_string = factory->InternalizeUtf8String("maximum");
+  Handle<String> shared_string = factory->InternalizeUtf8String("shared");
   JSObject::AddProperty(isolate, object, minimum_string,
                         factory->NewNumberFromUint(min_size), NONE);
   if (max_size.has_value()) {
     JSObject::AddProperty(isolate, object, maximum_string,
                           factory->NewNumberFromUint(max_size.value()), NONE);
   }
+  JSObject::AddProperty(isolate, object, shared_string,
+                        factory->ToBoolean(shared), NONE);
 
   return object;
 }
@@ -315,14 +329,8 @@ Handle<JSObject> GetTypeForTable(Isolate* isolate, ValueType type,
                                  base::Optional<uint32_t> max_size) {
   Factory* factory = isolate->factory();
 
-  Handle<String> element;
-  if (type.is_reference_to(HeapType::kFunc)) {
-    // TODO(wasm): We should define the "anyfunc" string in one central
-    // place and then use that constant everywhere.
-    element = factory->InternalizeUtf8String("anyfunc");
-  } else {
-    element = factory->InternalizeUtf8String(base::VectorOf(type.name()));
-  }
+  Handle<String> element =
+      factory->InternalizeUtf8String(base::VectorOf(type.name()));
 
   Handle<JSFunction> object_function = isolate->object_function();
   Handle<JSObject> object = factory->NewJSObject(object_function);
@@ -401,7 +409,8 @@ Handle<JSArray> GetImports(Isolate* isolate,
             maximum_size.emplace(module->maximum_pages);
           }
           type_value =
-              GetTypeForMemory(isolate, module->initial_pages, maximum_size);
+              GetTypeForMemory(isolate, module->initial_pages, maximum_size,
+                               module->has_shared_memory);
         }
         import_kind = memory_string;
         break;
@@ -498,7 +507,8 @@ Handle<JSArray> GetExports(Isolate* isolate,
             maximum_size.emplace(module->maximum_pages);
           }
           type_value =
-              GetTypeForMemory(isolate, module->initial_pages, maximum_size);
+              GetTypeForMemory(isolate, module->initial_pages, maximum_size,
+                               module->has_shared_memory);
         }
         export_kind = memory_string;
         break;
@@ -614,7 +624,7 @@ size_t EstimateStoredSize(const WasmModule* module) {
   return sizeof(WasmModule) + VectorSize(module->globals) +
          (module->signature_zone ? module->signature_zone->allocation_size()
                                  : 0) +
-         VectorSize(module->types) + VectorSize(module->type_kinds) +
+         VectorSize(module->types) +
          VectorSize(module->canonicalized_type_ids) +
          VectorSize(module->functions) + VectorSize(module->data_segments) +
          VectorSize(module->tables) + VectorSize(module->import_table) +

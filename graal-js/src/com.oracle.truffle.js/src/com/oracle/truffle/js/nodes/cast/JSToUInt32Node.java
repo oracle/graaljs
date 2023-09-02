@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,10 @@ package com.oracle.truffle.js.nodes.cast;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -89,18 +90,24 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         this.shiftValue = shiftValue;
     }
 
+    @NeverDefault
     public static JSToUInt32Node create() {
         return JSToUInt32NodeGen.create(false, 0);
     }
 
+    @NeverDefault
     public static JSToUInt32Node create(boolean unsignedRightShift, int shiftValue) {
         return JSToUInt32NodeGen.create(unsignedRightShift, shiftValue);
     }
 
     public abstract Object execute(Object value);
 
+    public final Number executeNumber(Object value) {
+        return (Number) execute(value);
+    }
+
     public final long executeLong(Object value) {
-        return JSRuntime.longValue((Number) execute(value));
+        return JSRuntime.longValue(executeNumber(value));
     }
 
     @Specialization(guards = "value >= 0")
@@ -163,8 +170,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
     @Specialization
     protected double doString(TruffleString value,
-                    @Cached("create()") JSStringToNumberNode stringToNumberNode) {
-        return JSRuntime.toUInt32(stringToNumberNode.executeString(value));
+                    @Cached JSStringToNumberNode stringToNumberNode) {
+        return JSRuntime.toUInt32(stringToNumberNode.execute(value));
     }
 
     private static double doStringStatic(TruffleString value) {
@@ -181,10 +188,12 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         throw Errors.createTypeErrorCannotConvertBigIntToNumber(this);
     }
 
-    protected boolean isUnsignedRightShift() {
+    @Idempotent
+    protected final boolean isUnsignedRightShift() {
         return unsignedRightShift;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"isUnsignedRightShift()"})
     protected Object doOverloadedOperator(JSOverloadedOperatorsObject value,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
@@ -197,22 +206,21 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isUnsignedRightShift() || !hasOverloadedOperators(value)"})
     protected double doJSObject(JSObject value,
-                    @Cached("create()") JSToNumberNode toNumberNode) {
+                    @Cached JSToNumberNode toNumberNode) {
         return JSRuntime.toUInt32(toNumberNode.executeNumber(value));
     }
 
-    @TruffleBoundary
     @Specialization(guards = "isForeignObject(object)")
     protected static double doForeignObject(Object object,
                     @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
-                    @Cached("create()") JSToUInt32Node toUInt32Node) {
-        return ((Number) toUInt32Node.execute(toPrimitiveNode.execute(object))).doubleValue();
+                    @Cached JSToUInt32Node toUInt32Node) {
+        return JSRuntime.toDouble(toUInt32Node.executeNumber(toPrimitiveNode.execute(object)));
     }
 
     public abstract static class JSToUInt32WrapperNode extends JSUnaryNode {
-        @Child private JSToUInt32Node toUInt32Node;
-        private final boolean unsignedRightShift;
-        private final int shiftValue;
+
+        protected final boolean unsignedRightShift;
+        protected final int shiftValue;
 
         protected JSToUInt32WrapperNode(JavaScriptNode operand, boolean unsignedRightShift, int shiftValue) {
             super(operand);
@@ -243,8 +251,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
             } else if (child instanceof JSConstantStringNode) {
                 Object value = child.execute(null);
                 return JSConstantNode.createDouble(doStringStatic((TruffleString) value));
-            } else if (child instanceof JSToInt32Node) {
-                JSToInt32Node toInt32Child = (JSToInt32Node) child;
+            } else if (child instanceof JSToInt32Node.JSToInt32UnaryNode) {
+                JSToInt32Node.JSToInt32UnaryNode toInt32Child = (JSToInt32Node.JSToInt32UnaryNode) child;
                 if (toInt32Child.isBitwiseOr() && unsignedRightShift) {
                     return JSToUInt32WrapperNodeGen.create(toInt32Child, unsignedRightShift, shiftValue);
                 } else {
@@ -255,11 +263,8 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         }
 
         @Specialization
-        protected Object doDefault(Object value) {
-            if (toUInt32Node == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toUInt32Node = insert(JSToUInt32Node.create(unsignedRightShift, shiftValue));
-            }
+        protected static Object doDefault(Object value,
+                        @Cached("create(unsignedRightShift, shiftValue)") JSToUInt32Node toUInt32Node) {
             return toUInt32Node.execute(value);
         }
 

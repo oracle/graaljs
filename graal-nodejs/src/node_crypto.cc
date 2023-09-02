@@ -75,8 +75,6 @@ void Initialize(Local<Object> target,
                 void* priv) {
   Environment* env = Environment::GetCurrent(context);
 
-  // TODO(joyeecheung): this needs to be called again if the instance is
-  // deserialized from a snapshot with the crypto bindings.
   if (!InitCryptoOnce(env->isolate())) {
     return;
   }
@@ -94,5 +92,6 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 }  // namespace crypto
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(crypto, node::crypto::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(crypto, node::crypto::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(crypto, node::crypto::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(crypto,
+                                node::crypto::RegisterExternalReferences)

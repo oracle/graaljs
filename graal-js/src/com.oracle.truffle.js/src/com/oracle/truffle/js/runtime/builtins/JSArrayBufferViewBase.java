@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.util.Objects;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public abstract class JSArrayBufferViewBase extends JSNonProxyObject {
@@ -51,8 +52,8 @@ public abstract class JSArrayBufferViewBase extends JSNonProxyObject {
     int length;
     int offset;
 
-    protected JSArrayBufferViewBase(Shape shape, JSArrayBufferObject arrayBuffer, int length, int offset) {
-        super(shape);
+    protected JSArrayBufferViewBase(Shape shape, JSDynamicObject proto, JSArrayBufferObject arrayBuffer, int length, int offset) {
+        super(shape, proto);
         this.arrayBuffer = Objects.requireNonNull(arrayBuffer);
         this.length = length;
         this.offset = offset;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_MICROSECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_MILLISECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_NANOSECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.EPOCH_SECONDS;
-
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantFunctionBuiltins;
@@ -62,10 +57,8 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
-public final class JSTemporalInstant extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
-                PrototypeSupplier {
+public final class JSTemporalInstant extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSTemporalInstant INSTANCE = new JSTemporalInstant();
 
@@ -76,15 +69,20 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
     private JSTemporalInstant() {
     }
 
-    public static JSTemporalInstantObject create(JSContext context, BigInt nanoseconds) {
-        return create(context, JSRealm.get(null), nanoseconds);
+    public static JSTemporalInstantObject create(JSContext context, JSRealm realm, BigInt nanoseconds) {
+        JSObjectFactory factory = context.getTemporalInstantFactory();
+        return create(factory, realm, factory.getPrototype(realm), nanoseconds);
     }
 
-    public static JSTemporalInstantObject create(JSContext context, JSRealm realm, BigInt nanoseconds) {
-        assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
+    public static JSTemporalInstantObject create(JSContext context, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds) {
         JSObjectFactory factory = context.getTemporalInstantFactory();
-        JSTemporalInstantObject obj = factory.initProto(new JSTemporalInstantObject(factory.getShape(realm), nanoseconds), realm);
-        return context.trackAllocation(obj);
+        return create(factory, realm, proto, nanoseconds);
+    }
+
+    private static JSTemporalInstantObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds) {
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalInstantObject(shape, proto, nanoseconds), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
@@ -99,18 +97,11 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalInstantPrototypeBuiltins.BUILTINS);
-
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, EPOCH_SECONDS, realm.lookupAccessor(TemporalInstantPrototypeBuiltins.BUILTINS, EPOCH_SECONDS));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, EPOCH_MILLISECONDS, realm.lookupAccessor(TemporalInstantPrototypeBuiltins.BUILTINS, EPOCH_MILLISECONDS));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, EPOCH_MICROSECONDS, realm.lookupAccessor(TemporalInstantPrototypeBuiltins.BUILTINS, EPOCH_MICROSECONDS));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, EPOCH_NANOSECONDS, realm.lookupAccessor(TemporalInstantPrototypeBuiltins.BUILTINS, EPOCH_NANOSECONDS));
-
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, TemporalInstantPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
-
         return prototype;
     }
 
@@ -122,11 +113,6 @@ public final class JSTemporalInstant extends JSNonProxy implements JSConstructor
     @Override
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getTemporalInstantPrototype();
-    }
-
-    @Override
-    public void fillConstructor(JSRealm realm, JSDynamicObject constructor) {
-        WithFunctionsAndSpecies.super.fillConstructor(realm, constructor);
     }
 
     public static JSConstructor createConstructor(JSRealm realm) {

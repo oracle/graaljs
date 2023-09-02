@@ -104,18 +104,15 @@ const FileHandleOperations = (handle) => {
       PromisePrototypeThen(handle.writev(buffers, pos),
                            (r) => cb(null, r.bytesWritten, r.buffers),
                            (err) => cb(err, 0, buffers));
-    }
+    },
   };
 };
 
 function close(stream, err, cb) {
   if (!stream.fd) {
-    // TODO(ronag)
-    // stream.closed = true;
     cb(err);
   } else {
     stream[kFs].close(stream.fd, (er) => {
-      stream.closed = true;
       cb(er || err);
     });
     stream.fd = null;
@@ -189,7 +186,6 @@ function ReadStream(path, options) {
   this.end = options.end;
   this.pos = undefined;
   this.bytesRead = 0;
-  this.closed = false;
   this[kIsPerformingIO] = false;
 
   if (this.start !== undefined) {
@@ -208,7 +204,7 @@ function ReadStream(path, options) {
       throw new ERR_OUT_OF_RANGE(
         'start',
         `<= "end" (here: ${this.end})`,
-        this.start
+        this.start,
       );
     }
   }
@@ -225,7 +221,7 @@ ObjectDefineProperty(ReadStream.prototype, 'autoClose', {
   },
   set(val) {
     this._readableState.autoDestroy = val;
-  }
+  },
 });
 
 const openReadFs = deprecate(function() {
@@ -305,7 +301,7 @@ ReadStream.prototype.close = function(cb) {
 ObjectDefineProperty(ReadStream.prototype, 'pending', {
   __proto__: null,
   get() { return this.fd === null; },
-  configurable: true
+  configurable: true,
 });
 
 function WriteStream(path, options) {
@@ -363,9 +359,7 @@ function WriteStream(path, options) {
   this.start = options.start;
   this.pos = undefined;
   this.bytesWritten = 0;
-  this.closed = false;
   this[kIsPerformingIO] = false;
-
 
   if (this.start !== undefined) {
     validateInteger(this.start, 'start', 0);
@@ -388,7 +382,7 @@ ObjectDefineProperty(WriteStream.prototype, 'autoClose', {
   },
   set(val) {
     this._writableState.autoDestroy = val;
-  }
+  },
 });
 
 const openWriteFs = deprecate(function() {
@@ -493,10 +487,10 @@ WriteStream.prototype.destroySoon = WriteStream.prototype.end;
 ObjectDefineProperty(WriteStream.prototype, 'pending', {
   __proto__: null,
   get() { return this.fd === null; },
-  configurable: true
+  configurable: true,
 });
 
 module.exports = {
   ReadStream,
-  WriteStream
+  WriteStream,
 };

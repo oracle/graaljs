@@ -28,14 +28,15 @@ const {
   ReflectGetOwnPropertyDescriptor,
   ReflectOwnKeys,
   RegExpPrototypeExec,
-  RegExpPrototypeSymbolReplace,
   SafeMap,
-  SafePromiseAll,
+  SafePromiseAllReturnArrayLike,
+  SafePromiseAllReturnVoid,
   String,
   StringFromCharCode,
   StringPrototypeEndsWith,
   StringPrototypeIncludes,
   StringPrototypeRepeat,
+  StringPrototypeReplaceAll,
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
@@ -45,7 +46,7 @@ const {
 
 const { ERR_DEBUGGER_ERROR } = require('internal/errors').codes;
 
-const { validateString } = require('internal/validators');
+const { validateString, validateNumber } = require('internal/validators');
 
 const FS = require('fs');
 const Path = require('path');
@@ -53,7 +54,7 @@ const Repl = require('repl');
 const vm = require('vm');
 const { fileURLToPath } = require('internal/url');
 
-const { customInspectSymbol } = require('internal/util');
+const { customInspectSymbol, SideEffectFreeRegExpPrototypeSymbolReplace } = require('internal/util');
 const { inspect: utilInspect } = require('internal/util/inspect');
 const debuglog = require('internal/util/debuglog').debuglog('inspect');
 
@@ -66,7 +67,7 @@ const SHORTCUTS = {
   setBreakpoint: 'sb',
   clearBreakpoint: 'cb',
   run: 'r',
-  exec: 'p'
+  exec: 'p',
 };
 
 const HELP = StringPrototypeTrim(`
@@ -80,7 +81,7 @@ out, o                Step out, leaving the current function
 backtrace, bt         Print the current backtrace
 list                  Print the source around the current line where execution
                       is currently paused
-
+setContextLineNumber  Set which lines to check for context
 setBreakpoint, sb     Set a breakpoint
 clearBreakpoint, cb   Clear a breakpoint
 breakpoints           List all known breakpoints
@@ -90,6 +91,7 @@ breakOnNone           Don't pause on exceptions (this is the default)
 
 watch(expr)           Start watching the given expression
 unwatch(expr)         Stop watching an expression
+unwatch(index)        Stop watching an expression at specific index from watch list
 watchers              Print all watched expressions and their current values
 
 exec(expr), p(expr), exec expr, p expr
@@ -117,11 +119,11 @@ function extractFunctionName(description) {
 }
 
 const {
-  moduleIds: PUBLIC_BUILTINS,
-} = internalBinding('native_module');
+  builtinIds: PUBLIC_BUILTINS,
+} = internalBinding('builtins');
 const NATIVES = internalBinding('natives');
 function isNativeUrl(url) {
-  url = RegExpPrototypeSymbolReplace(/\.js$/, url, '');
+  url = SideEffectFreeRegExpPrototypeSymbolReplace(/\.js$/, url, '');
 
   return StringPrototypeStartsWith(url, 'node:internal/') ||
          ArrayPrototypeIncludes(PUBLIC_BUILTINS, url) ||
@@ -159,8 +161,8 @@ function markSourceColumn(sourceText, position, useColors) {
 
   // Colourize char if stdout supports colours
   if (useColors) {
-    tail = RegExpPrototypeSymbolReplace(/(.+?)([^\w]|$)/, tail,
-                                        '\u001b[32m$1\u001b[39m$2');
+    tail = SideEffectFreeRegExpPrototypeSymbolReplace(/(.+?)([^\w]|$)/, tail,
+                                                      '\u001b[32m$1\u001b[39m$2');
   }
 
   // Return source line with coloured char at `position`
@@ -340,9 +342,9 @@ class ScopeSnapshot {
                  StringPrototypeSlice(this.type, 1);
     const name = this.name ? `<${this.name}>` : '';
     const prefix = `${type}${name} `;
-    return RegExpPrototypeSymbolReplace(/^Map /,
-                                        utilInspect(this.properties, opts),
-                                        prefix);
+    return SideEffectFreeRegExpPrototypeSymbolReplace(/^Map /,
+                                                      utilInspect(this.properties, opts),
+                                                      prefix);
   }
 }
 
@@ -380,6 +382,7 @@ function createRepl(inspector) {
   let currentBacktrace;
   let selectedFrame;
   let exitDebugRepl;
+  let contextLineNumber = 2;
 
   function resetOnStart() {
     knownScripts = {};
@@ -517,10 +520,10 @@ function createRepl(inspector) {
     }
 
     loadScopes() {
-      return SafePromiseAll(
+      return SafePromiseAllReturnArrayLike(
         ArrayPrototypeFilter(
           this.scopeChain,
-          (scope) => scope.type !== 'global'
+          (scope) => scope.type !== 'global',
         ),
         async (scope) => {
           const { objectId } = scope.object;
@@ -543,7 +546,7 @@ function createRepl(inspector) {
         ArrayPrototypeMap(this, (callFrame, idx) => {
           const {
             location: { scriptId, lineNumber, columnNumber },
-            functionName
+            functionName,
           } = callFrame;
           const name = functionName || '(anonymous)';
 
@@ -565,7 +568,7 @@ function createRepl(inspector) {
         (callFrame) =>
           (callFrame instanceof CallFrame ?
             callFrame :
-            new CallFrame(callFrame))
+            new CallFrame(callFrame)),
       );
     }
   }
@@ -623,7 +626,7 @@ function createRepl(inspector) {
         FunctionPrototypeCall(
           then, result,
           (result) => returnToCallback(null, result),
-          returnToCallback
+          returnToCallback,
         );
       } else {
         returnToCallback(null, result);
@@ -642,7 +645,7 @@ function createRepl(inspector) {
 
     PromisePrototypeThen(evalInCurrentContext(input),
                          (result) => returnToCallback(null, result),
-                         returnToCallback
+                         returnToCallback,
     );
   }
 
@@ -656,14 +659,14 @@ function createRepl(inspector) {
                            (error) => `<${error.message}>`);
     const lastIndex = watchedExpressions.length - 1;
 
-    const values = await SafePromiseAll(watchedExpressions, inspectValue);
+    const values = await SafePromiseAllReturnArrayLike(watchedExpressions, inspectValue);
     const lines = ArrayPrototypeMap(watchedExpressions, (expr, idx) => {
       const prefix = `${leftPad(idx, ' ', lastIndex)}: ${expr} =`;
       const value = inspect(values[idx]);
       if (!StringPrototypeIncludes(value, '\n')) {
         return `${prefix} ${value}`;
       }
-      return `${prefix}\n    ${RegExpPrototypeSymbolReplace(/\n/g, value, '\n    ')}`;
+      return `${prefix}\n    ${StringPrototypeReplaceAll(value, '\n', '\n    ')}`;
     });
     const valueList = ArrayPrototypeJoin(lines, '\n');
     return verbose ? `Watchers:\n${valueList}\n` : valueList;
@@ -682,6 +685,15 @@ function createRepl(inspector) {
       print("You can't list source code right now");
       throw error;
     });
+  }
+
+  function setContextLineNumber(delta = 2) {
+    if (!selectedFrame) {
+      throw new ERR_DEBUGGER_ERROR('Requires execution to be paused');
+    }
+    validateNumber(delta, 'delta', 1);
+    contextLineNumber = delta;
+    print(`The contextLine has been changed to ${delta}.`);
   }
 
   function handleBreakpointResolved({ breakpointId, location }) {
@@ -805,8 +817,8 @@ function createRepl(inspector) {
         registerBreakpoint);
     }
 
-    const escapedPath = RegExpPrototypeSymbolReplace(/([/\\.?*()^${}|[\]])/g,
-                                                     script, '\\$1');
+    const escapedPath = SideEffectFreeRegExpPrototypeSymbolReplace(/([/\\.?*()^${}|[\]])/g,
+                                                                   script, '\\$1');
     const urlRegex = `^(.*[\\/\\\\])?${escapedPath}$`;
 
     return PromisePrototypeThen(
@@ -860,9 +872,9 @@ function createRepl(inspector) {
                                       location.lineNumber + 1));
     if (!newBreakpoints.length) return PromiseResolve();
     return PromisePrototypeThen(
-      SafePromiseAll(newBreakpoints),
-      (results) => {
-        print(`${results.length} breakpoints restored.`);
+      SafePromiseAllReturnVoid(newBreakpoints),
+      () => {
+        print(`${newBreakpoints.length} breakpoints restored.`);
       });
   }
 
@@ -896,7 +908,7 @@ function createRepl(inspector) {
 
     inspector.suspendReplWhile(() =>
       PromisePrototypeThen(
-        SafePromiseAll([formatWatchers(true), selectedFrame.list(2)]),
+        SafePromiseAllReturnArrayLike([formatWatchers(true), selectedFrame.list(contextLineNumber)]),
         ({ 0: watcherList, 1: context }) => {
           const breakContext = watcherList ?
             `${watcherList}\n${inspect(context)}` :
@@ -925,7 +937,7 @@ function createRepl(inspector) {
     Profile.createAndRegister({ profile });
     print(
       'Captured new CPU profile.\n' +
-      `Access it with profiles[${profiles.length - 1}]`
+      `Access it with profiles[${profiles.length - 1}]`,
     );
   });
 
@@ -1009,7 +1021,7 @@ function createRepl(inspector) {
       takeHeapSnapshot(filename = 'node.heapsnapshot') {
         if (heapSnapshotPromise) {
           print(
-            'Cannot take heap snapshot because another snapshot is in progress.'
+            'Cannot take heap snapshot because another snapshot is in progress.',
           );
           return heapSnapshotPromise;
         }
@@ -1067,6 +1079,7 @@ function createRepl(inspector) {
       },
 
       watch(expr) {
+        validateString(expr, 'expression');
         ArrayPrototypePush(watchedExpressions, expr);
       },
 
@@ -1158,6 +1171,7 @@ function createRepl(inspector) {
       },
 
       list,
+      setContextLineNumber,
     });
     aliasProperties(context, SHORTCUTS);
   }

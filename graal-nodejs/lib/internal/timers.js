@@ -87,7 +87,8 @@ const {
   toggleTimerRef,
   getLibuvNow,
   immediateInfo,
-  toggleImmediateRef
+  timeoutInfo,
+  toggleImmediateRef,
 } = internalBinding('timers');
 
 const {
@@ -109,10 +110,10 @@ const trigger_async_id_symbol = Symbol('triggerId');
 const kHasPrimitive = Symbol('kHasPrimitive');
 
 const {
-  ERR_OUT_OF_RANGE
+  ERR_OUT_OF_RANGE,
 } = require('internal/errors').codes;
 const {
-  validateCallback,
+  validateFunction,
   validateNumber,
 } = require('internal/validators');
 
@@ -136,11 +137,12 @@ let timerListId = NumberMIN_SAFE_INTEGER;
 
 const kRefed = Symbol('refed');
 
-// Create a single linked list instance only once at startup
-const immediateQueue = new ImmediateList();
-
 let nextExpiry = Infinity;
-let refCount = 0;
+// timeoutInfo is an Int32Array that contains the reference count of Timeout
+// objects at index 0. This is a TypedArray so that GetActiveResourcesInfo() in
+// `src/node_process_methods.cc` is able to access this value without crossing
+// the JS-C++ boundary, which is slow at the time of writing.
+timeoutInfo[0] = 0;
 
 // This is a priority queue with a custom sorting function that first compares
 // the expiry times of two lists and if they're the same then compares their
@@ -161,148 +163,156 @@ function initAsyncResource(resource, type) {
   if (initHooksExist())
     emitInit(asyncId, type, triggerAsyncId, resource);
 }
-
-// Timer constructor function.
-// The entire prototype is defined in lib/timers.js
-function Timeout(callback, after, args, isRepeat, isRefed) {
-  after *= 1; // Coalesce to number or NaN
-  if (!(after >= 1 && after <= TIMEOUT_MAX)) {
-    if (after > TIMEOUT_MAX) {
-      process.emitWarning(`${after} does not fit into` +
-                          ' a 32-bit signed integer.' +
-                          '\nTimeout duration was set to 1.',
-                          'TimeoutOverflowWarning');
+class Timeout {
+  // Timer constructor function.
+  // The entire prototype is defined in lib/timers.js
+  constructor(callback, after, args, isRepeat, isRefed) {
+    after *= 1; // Coalesce to number or NaN
+    if (!(after >= 1 && after <= TIMEOUT_MAX)) {
+      if (after > TIMEOUT_MAX) {
+        process.emitWarning(`${after} does not fit into` +
+                            ' a 32-bit signed integer.' +
+                            '\nTimeout duration was set to 1.',
+                            'TimeoutOverflowWarning');
+      }
+      after = 1; // Schedule on next tick, follows browser behavior
     }
-    after = 1; // Schedule on next tick, follows browser behavior
-  }
 
-  this._idleTimeout = after;
-  this._idlePrev = this;
-  this._idleNext = this;
-  this._idleStart = null;
-  // This must be set to null first to avoid function tracking
-  // on the hidden class, revisit in V8 versions after 6.2
-  this._onTimeout = null;
-  this._onTimeout = callback;
-  this._timerArgs = args;
-  this._repeat = isRepeat ? after : null;
-  this._destroyed = false;
+    this._idleTimeout = after;
+    this._idlePrev = this;
+    this._idleNext = this;
+    this._idleStart = null;
+    // This must be set to null first to avoid function tracking
+    // on the hidden class, revisit in V8 versions after 6.2
+    this._onTimeout = null;
+    this._onTimeout = callback;
+    this._timerArgs = args;
+    this._repeat = isRepeat ? after : null;
+    this._destroyed = false;
 
-  if (isRefed)
-    incRefCount();
-  this[kRefed] = isRefed;
-  this[kHasPrimitive] = false;
-
-  initAsyncResource(this, 'Timeout');
-}
-
-// Make sure the linked list only shows the minimal necessary information.
-Timeout.prototype[inspect.custom] = function(_, options) {
-  return inspect(this, {
-    ...options,
-    // Only inspect one level.
-    depth: 0,
-    // It should not recurse.
-    customInspect: false
-  });
-};
-
-Timeout.prototype.refresh = function() {
-  if (this[kRefed])
-    active(this);
-  else
-    unrefActive(this);
-
-  return this;
-};
-
-Timeout.prototype.unref = function() {
-  if (this[kRefed]) {
-    this[kRefed] = false;
-    if (!this._destroyed)
-      decRefCount();
-  }
-  return this;
-};
-
-Timeout.prototype.ref = function() {
-  if (!this[kRefed]) {
-    this[kRefed] = true;
-    if (!this._destroyed)
+    if (isRefed)
       incRefCount();
+    this[kRefed] = isRefed;
+    this[kHasPrimitive] = false;
+
+    initAsyncResource(this, 'Timeout');
   }
-  return this;
-};
 
-Timeout.prototype.hasRef = function() {
-  return this[kRefed];
-};
+  // Make sure the linked list only shows the minimal necessary information.
+  [inspect.custom](_, options) {
+    return inspect(this, {
+      ...options,
+      // Only inspect one level.
+      depth: 0,
+      // It should not recurse.
+      customInspect: false,
+    });
+  }
 
-function TimersList(expiry, msecs) {
-  this._idleNext = this; // Create the list with the linkedlist properties to
-  this._idlePrev = this; // Prevent any unnecessary hidden class changes.
-  this.expiry = expiry;
-  this.id = timerListId++;
-  this.msecs = msecs;
-  this.priorityQueuePosition = null;
+  refresh() {
+    if (this[kRefed])
+      active(this);
+    else
+      unrefActive(this);
+
+    return this;
+  }
+
+  unref() {
+    if (this[kRefed]) {
+      this[kRefed] = false;
+      if (!this._destroyed)
+        decRefCount();
+    }
+    return this;
+  }
+
+  ref() {
+    if (!this[kRefed]) {
+      this[kRefed] = true;
+      if (!this._destroyed)
+        incRefCount();
+    }
+    return this;
+  }
+
+  hasRef() {
+    return this[kRefed];
+  }
 }
 
-// Make sure the linked list only shows the minimal necessary information.
-TimersList.prototype[inspect.custom] = function(_, options) {
-  return inspect(this, {
-    ...options,
-    // Only inspect one level.
-    depth: 0,
-    // It should not recurse.
-    customInspect: false
-  });
-};
+class TimersList {
+  constructor(expiry, msecs) {
+    this._idleNext = this; // Create the list with the linkedlist properties to
+    this._idlePrev = this; // Prevent any unnecessary hidden class changes.
+    this.expiry = expiry;
+    this.id = timerListId++;
+    this.msecs = msecs;
+    this.priorityQueuePosition = null;
+  }
+
+  // Make sure the linked list only shows the minimal necessary information.
+  [inspect.custom](_, options) {
+    return inspect(this, {
+      ...options,
+      // Only inspect one level.
+      depth: 0,
+      // It should not recurse.
+      customInspect: false,
+    });
+  }
+}
 
 // A linked list for storing `setImmediate()` requests
-function ImmediateList() {
-  this.head = null;
-  this.tail = null;
+class ImmediateList {
+  constructor() {
+    this.head = null;
+    this.tail = null;
+  }
+
+  // Appends an item to the end of the linked list, adjusting the current tail's
+  // next pointer and the item's previous pointer where applicable
+  append(item) {
+    if (this.tail !== null) {
+      this.tail._idleNext = item;
+      item._idlePrev = this.tail;
+    } else {
+      this.head = item;
+    }
+    this.tail = item;
+  }
+
+  // Removes an item from the linked list, adjusting the pointers of adjacent
+  // items and the linked list's head or tail pointers as necessary
+  remove(item) {
+    if (item._idleNext) {
+      item._idleNext._idlePrev = item._idlePrev;
+    }
+
+    if (item._idlePrev) {
+      item._idlePrev._idleNext = item._idleNext;
+    }
+
+    if (item === this.head)
+      this.head = item._idleNext;
+    if (item === this.tail)
+      this.tail = item._idlePrev;
+
+    item._idleNext = null;
+    item._idlePrev = null;
+  }
 }
 
-// Appends an item to the end of the linked list, adjusting the current tail's
-// next pointer and the item's previous pointer where applicable
-ImmediateList.prototype.append = function(item) {
-  if (this.tail !== null) {
-    this.tail._idleNext = item;
-    item._idlePrev = this.tail;
-  } else {
-    this.head = item;
-  }
-  this.tail = item;
-};
-
-// Removes an item from the linked list, adjusting the pointers of adjacent
-// items and the linked list's head or tail pointers as necessary
-ImmediateList.prototype.remove = function(item) {
-  if (item._idleNext) {
-    item._idleNext._idlePrev = item._idlePrev;
-  }
-
-  if (item._idlePrev) {
-    item._idlePrev._idleNext = item._idleNext;
-  }
-
-  if (item === this.head)
-    this.head = item._idleNext;
-  if (item === this.tail)
-    this.tail = item._idlePrev;
-
-  item._idleNext = null;
-  item._idlePrev = null;
-};
+// Create a single linked list instance only once at startup
+const immediateQueue = new ImmediateList();
 
 function incRefCount() {
-  if (refCount++ === 0)
+  if (timeoutInfo[0]++ === 0)
     toggleTimerRef(true);
 }
 
 function decRefCount() {
-  if (--refCount === 0)
+  if (--timeoutInfo[0] === 0)
     toggleTimerRef(false);
 }
 
@@ -371,7 +381,7 @@ function insert(item, msecs, start = getLibuvNow()) {
 
 function setUnrefTimeout(callback, after) {
   // Type checking identical to setTimeout()
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   const timer = new Timeout(callback, after, undefined, false, false);
   insert(timer, timer._idleTimeout);
@@ -493,7 +503,7 @@ function getTimerCallbacks(runNextTicks) {
     while ((list = timerListQueue.peek()) != null) {
       if (list.expiry > now) {
         nextExpiry = list.expiry;
-        return refCount > 0 ? nextExpiry : -nextExpiry;
+        return timeoutInfo[0] > 0 ? nextExpiry : -nextExpiry;
       }
       if (ranAtLeastOneList)
         runNextTicks();
@@ -539,7 +549,7 @@ function getTimerCallbacks(runNextTicks) {
           timer._destroyed = true;
 
           if (timer[kRefed])
-            refCount--;
+            timeoutInfo[0]--;
 
           if (destroyHooksExist())
             emitDestroy(asyncId);
@@ -567,7 +577,7 @@ function getTimerCallbacks(runNextTicks) {
           timer._destroyed = true;
 
           if (timer[kRefed])
-            refCount--;
+            timeoutInfo[0]--;
 
           if (destroyHooksExist())
             emitDestroy(asyncId);
@@ -594,7 +604,7 @@ function getTimerCallbacks(runNextTicks) {
 
   return {
     processImmediate,
-    processTimers
+    processTimers,
   };
 }
 
@@ -638,13 +648,6 @@ class Immediate {
   }
 }
 
-function getTimerCounts() {
-  return {
-    timeoutCount: refCount,
-    immediateCount: immediateInfo[kRefCount],
-  };
-}
-
 module.exports = {
   TIMEOUT_MAX,
   kTimeout: Symbol('timeout'), // For hiding Timeouts on other internals.
@@ -662,7 +665,7 @@ module.exports = {
   immediateInfoFields: {
     kCount,
     kRefCount,
-    kHasOutstanding
+    kHasOutstanding,
   },
   active,
   unrefActive,
@@ -671,5 +674,4 @@ module.exports = {
   timerListQueue,
   decRefCount,
   incRefCount,
-  getTimerCounts,
 };

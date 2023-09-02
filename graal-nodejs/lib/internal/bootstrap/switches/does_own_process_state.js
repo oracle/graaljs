@@ -25,18 +25,18 @@ if (credentials.implementsPosixCredentials) {
 const {
   parseFileMode,
   validateArray,
-  validateString
+  validateString,
 } = require('internal/validators');
 
 function wrapPosixCredentialSetters(credentials) {
   const {
     codes: {
       ERR_INVALID_ARG_TYPE,
-      ERR_UNKNOWN_CREDENTIAL
-    }
+      ERR_UNKNOWN_CREDENTIAL,
+    },
   } = require('internal/errors');
   const {
-    validateUint32
+    validateUint32,
   } = require('internal/validators');
 
   const {
@@ -45,7 +45,7 @@ function wrapPosixCredentialSetters(credentials) {
     setegid: _setegid,
     seteuid: _seteuid,
     setgid: _setgid,
-    setuid: _setuid
+    setuid: _setuid,
   } = credentials;
 
   function initgroups(user, extraGroup) {
@@ -76,7 +76,7 @@ function wrapPosixCredentialSetters(credentials) {
   function wrapIdSetter(type, method) {
     return function(id) {
       validateId(id, 'id');
-      if (typeof id === 'number') id |= 0;
+      if (typeof id === 'number') id >>>= 0;
       // Result is 0 on success, 1 if credential is unknown.
       const result = method(id);
       if (result === 1) {
@@ -99,7 +99,7 @@ function wrapPosixCredentialSetters(credentials) {
     setegid: wrapIdSetter('Group', _setegid),
     seteuid: wrapIdSetter('User', _seteuid),
     setgid: wrapIdSetter('Group', _setgid),
-    setuid: wrapIdSetter('User', _setuid)
+    setuid: wrapIdSetter('User', _setuid),
   };
 }
 

@@ -142,4 +142,10 @@ EXPORT_TO_JS(IndexOfEnvironment) {
     args.GetReturnValue().Set(env_index);
 }
 
+EXPORT_TO_JS(IsCodeGenerationFromStringsAllowed) {
+    Isolate* isolate = args.GetIsolate();
+    Local<Context> context = isolate->GetCurrentContext();
+    args.GetReturnValue().Set(context->IsCodeGenerationFromStringsAllowed());
+}
+
 #undef SUITE

@@ -2,22 +2,27 @@
 
 const {
   Error,
+  ObjectDefineProperty,
+  ObjectGetOwnPropertyDescriptor,
+  ObjectSetPrototypeOf,
+  SafeArrayIterator,
   SafeSet,
-  SafeArrayIterator
+  StringPrototypeStartsWith,
+  StringPrototypeSlice,
 } = primordials;
 
 const binding = internalBinding('mksnapshot');
-const { NativeModule } = require('internal/bootstrap/loaders');
+const { BuiltinModule } = require('internal/bootstrap/loaders');
 const {
   compileSerializeMain,
 } = binding;
 
 const {
-  getOptionValue
+  getOptionValue,
 } = require('internal/options');
 
 const {
-  readFileSync
+  readFileSync,
 } = require('fs');
 
 const supportedModules = new SafeSet(new SafeArrayIterator([
@@ -46,7 +51,7 @@ const supportedModules = new SafeSet(new SafeArrayIterator([
   'crypto',
   // 'dgram',
   // 'diagnostics_channel',
-  // 'dns',
+  'dns',
   // 'dns/promises',
   // 'domain',
   'events',
@@ -92,29 +97,35 @@ function supportedInUserSnapshot(id) {
 }
 
 function requireForUserSnapshot(id) {
-  if (!NativeModule.canBeRequiredByUsers(id)) {
+  let normalizedId = id;
+  if (StringPrototypeStartsWith(id, 'node:')) {
+    normalizedId = StringPrototypeSlice(id, 5);
+  }
+  if (!BuiltinModule.canBeRequiredByUsers(normalizedId) ||
+      (id !== normalizedId &&
+        !BuiltinModule.canBeRequiredWithoutScheme(normalizedId))) {
     // eslint-disable-next-line no-restricted-syntax
     const err = new Error(
-      `Cannot find module '${id}'. `
+      `Cannot find module '${id}'. `,
     );
     err.code = 'MODULE_NOT_FOUND';
     throw err;
   }
-  if (!supportedInUserSnapshot(id)) {
-    if (!warnedModules.has(id)) {
+  if (!supportedInUserSnapshot(normalizedId)) {
+    if (!warnedModules.has(normalizedId)) {
       process.emitWarning(
         `built-in module ${id} is not yet supported in user snapshots`);
-      warnedModules.add(id);
+      warnedModules.add(normalizedId);
     }
   }
 
-  return require(id);
+  return require(normalizedId);
 }
 
 function main() {
   const {
-    prepareMainThreadExecution
-  } = require('internal/bootstrap/pre_execution');
+    prepareMainThreadExecution,
+  } = require('internal/process/pre_execution');
 
   prepareMainThreadExecution(true, false);
 
@@ -125,7 +136,21 @@ function main() {
   const source = readFileSync(file, 'utf-8');
   const serializeMainFunction = compileSerializeMain(filename, source);
 
-  require('internal/v8/startup_snapshot').initializeCallbacks();
+  const {
+    initializeCallbacks,
+    namespace: {
+      addSerializeCallback,
+      addDeserializeCallback,
+    },
+  } = require('internal/v8/startup_snapshot');
+  initializeCallbacks();
+
+  let stackTraceLimitDesc;
+  addDeserializeCallback(() => {
+    if (stackTraceLimitDesc !== undefined) {
+      ObjectDefineProperty(Error, 'stackTraceLimit', stackTraceLimitDesc);
+    }
+  });
 
   if (getOptionValue('--inspect-brk')) {
     internalBinding('inspector').callAndPauseOnStart(
@@ -134,6 +159,19 @@ function main() {
   } else {
     serializeMainFunction(requireForUserSnapshot, filename, dirname);
   }
+
+  addSerializeCallback(() => {
+    stackTraceLimitDesc = ObjectGetOwnPropertyDescriptor(Error, 'stackTraceLimit');
+
+    if (stackTraceLimitDesc !== undefined) {
+      // We want to use null-prototype objects to not rely on globally mutable
+      // %Object.prototype%.
+      ObjectSetPrototypeOf(stackTraceLimitDesc, null);
+      process._rawDebug('Deleting Error.stackTraceLimit from the snapshot. ' +
+                        'It will be re-installed after deserialization');
+      delete Error.stackTraceLimit;
+    }
+  });
 }
 
 main();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,9 +80,8 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
         JSObjectUtil.putToStringTag(prototype, WEB_ASSEMBLY_MODULE);
         return prototype;
     }
@@ -102,10 +101,13 @@ public final class JSWebAssemblyModule extends JSNonProxy implements JSConstruct
     }
 
     public static JSWebAssemblyModuleObject create(JSContext context, JSRealm realm, Object wasmModule) {
-        JSObjectFactory factory = context.getWebAssemblyModuleFactory();
-        JSWebAssemblyModuleObject object = new JSWebAssemblyModuleObject(factory.getShape(realm), wasmModule);
-        factory.initProto(object, realm);
-        return context.trackAllocation(object);
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmModule);
     }
 
+    public static JSWebAssemblyModuleObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmModule) {
+        JSObjectFactory factory = context.getWebAssemblyModuleFactory();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSWebAssemblyModuleObject(shape, proto, wasmModule), realm, proto);
+        return factory.trackAllocation(newObj);
+    }
 }

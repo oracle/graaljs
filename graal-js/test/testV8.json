@@ -27,111 +27,127 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/date-format/date_style_time_style_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
+  }, {
+    "filePath" : "intl/date-format/format_range_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
+  }, {
+    "filePath" : "intl/date-format/hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
+  }, {
+    "filePath" : "intl/date-format/time_style_hour_cycle.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
+  }, {
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "intl/enumeration/calendar-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/callendar-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/collation-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/collation-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/currency-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/currency-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/numberingSystem-no-algorithm.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/numberingSystem-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/numberingSystem-syntax-valid.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-invalid-key.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-name.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-property.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/supported-values-of-valid-key.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/timeZone-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
   }, {
     "filePath" : "intl/enumeration/unit-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.supportedValuesOf"
@@ -151,56 +167,56 @@
   }, {
     "filePath" : "intl/locale/locale-calendars.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars"
   }, {
     "filePath" : "intl/locale/locale-collations.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.collations"
   }, {
     "filePath" : "intl/locale/locale-info-check-property.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-check-return-types.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-ext.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-no-undefined.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.calendars/collations etc."
   }, {
     "filePath" : "intl/locale/locale-info-timezones-sorted.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.timeZones"
   }, {
     "filePath" : "intl/locale/locale-numberingSystems.js",
     "ecmaVersion" : {
-      "minVersion" : 14
+      "minVersion" : 15
     },
     "status" : "PASS",
     "comment" : "Unflagged usage of Intl.Locale.prototype.numberingSystems"
@@ -220,6 +236,10 @@
     "filePath" : "intl/number-format/options-digits.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "intl/number-format/rounding-mode-v3.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test: roundingMode is not read after signDisplay anymore."
   }, {
     "filePath" : "intl/overrides/caching.js",
     "status" : "SKIP",
@@ -241,6 +261,10 @@
     "status" : "FAIL",
     "comment" : "Different error message expected, passes otherwise"
   }, {
+    "filePath" : "intl/regress-1074578.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
+  }, {
     "filePath" : "intl/regress-1130489.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -248,6 +272,10 @@
     },
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
+  }, {
+    "filePath" : "intl/regress-527926.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test (narrow space in date/time format)."
   }, {
     "filePath" : "intl/regress-7770.js",
     "status" : "FAIL",
@@ -514,10 +542,6 @@
     "status" : "SKIP",
     "comment" : "stack size exceeded e.g. in shareengine config"
   }, {
-    "filePath" : "mjsunit/compiler/store-data-property-in-literal-private.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "mjsunit/compiler/string-add-try-catch.js",
     "status" : "PASS",
     "runInIsolation" : true,
@@ -660,16 +684,10 @@
     "filePath" : "mjsunit/es6/proxies-accesschecks.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/proxies-bind.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/es6/proxies-cross-realm-exception.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/proxies-for.js",
-    "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/proxies-function.js",
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/proxies-prototype-handler-stackoverflow.js",
@@ -682,10 +700,6 @@
   }, {
     "filePath" : "mjsunit/es6/regress/regress-576662.js",
     "status" : "FAIL"
-  }, {
-    "filePath" : "mjsunit/es6/regress/regress-9234.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
   }, {
     "filePath" : "mjsunit/es6/regress/regress-crbug-465671-null.js",
     "status" : "SKIP",
@@ -727,9 +741,6 @@
     "filePath" : "mjsunit/es8/async-destructuring.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es8/object-get-own-property-descriptors.js",
-    "status" : "FAIL"
-  }, {
     "filePath" : "mjsunit/eval-stack-trace.js",
     "status" : "FAIL"
   }, {
@@ -759,6 +770,18 @@
     "filePath" : "mjsunit/global-prototypes.js",
     "status" : "FAIL",
     "comment" : "Expects globalThis.__proto__.__proto__ to be Object.prototype (not null)"
+  }, {
+    "filePath" : "mjsunit/harmony/array-prototype-groupby-fast-path-assumptions.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, there is no Array.prototype.groupBy(ToMap) anymore."
+  }, {
+    "filePath" : "mjsunit/harmony/array-prototype-groupby.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, there is no Array.prototype.groupBy(ToMap) anymore."
+  }, {
+    "filePath" : "mjsunit/harmony/array-prototype-groupbytomap.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, there is no Array.prototype.groupBy(ToMap) anymore."
   }, {
     "filePath" : "mjsunit/harmony/async-for-of-non-iterable.js",
     "status" : "FAIL",
@@ -832,10 +855,6 @@
     "status" : "FAIL",
     "comment" : "test expects exact error message"
   }, {
-    "filePath" : "mjsunit/harmony/modules-import-16.mjs",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate"
-  }, {
     "filePath" : "mjsunit/harmony/private-accessors.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
@@ -844,13 +863,9 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
-    "filePath" : "mjsunit/harmony/private-symbols.js",
-    "status" : "FAIL",
-    "comment" : "Uses unsupported %CreatePrivateSymbol."
-  }, {
     "filePath" : "mjsunit/harmony/private.js",
     "status" : "FAIL",
-    "comment" : "Uses unsupported %CreatePrivateSymbol."
+    "comment" : "Private symbols can be modified on frozen/sealed objects in v8."
   }, {
     "filePath" : "mjsunit/harmony/promise-any-overflow-1.js",
     "status" : "SKIP",
@@ -859,6 +874,10 @@
     "filePath" : "mjsunit/harmony/regexp-property-special.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
+  }, {
+    "filePath" : "mjsunit/harmony/regexp-unicode-sets.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete test, will be fixed by the next test update."
   }, {
     "filePath" : "mjsunit/harmony/shadowrealm-evaluate.js",
     "status" : "FAIL",
@@ -872,9 +891,13 @@
     "status" : "FAIL",
     "comment" : "Fails because of %HasFastProperties in code evaluated in ShadowRealm."
   }, {
+    "filePath" : "mjsunit/harmony/sharedarraybuffer-stress.js",
+    "runInIsolation" : true,
+    "comment" : "GC stress test"
+  }, {
     "filePath" : "mjsunit/harmony/sharedarraybuffer-worker-gc-stress.js",
     "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanup-on-detached-realm.js",
     "status" : "FAIL",
@@ -885,7 +908,10 @@
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanupsome-optional.js",
-    "status" : "FAIL",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
     "comment" : "Check of V8-specific behaviour: cleanupSome is not available unless --harmony-weak-refs-with-cleanup-some is used"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/finalizationregistry-independent-lifetime-multiple.js",
@@ -1120,7 +1146,8 @@
     "statusOverrides" : {
       "SVM" : "SKIP"
     },
-    "comment" : "GR-34371: Occasional segfault on SVM"
+    "runInIsolation" : true,
+    "comment" : "GR-34371: Occasional segfault on SVM; test with (expected) stack overflows"
   }, {
     "filePath" : "mjsunit/regress/regress-1115354.js",
     "status" : "FAIL",
@@ -1145,6 +1172,10 @@
     "filePath" : "mjsunit/regress/regress-1176504.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/regress/regress-1189077.js",
+    "runInIsolation" : true,
+    "comment" : "memory intensive test"
   }, {
     "filePath" : "mjsunit/regress/regress-119429.js",
     "runInIsolation" : true,
@@ -1752,6 +1783,10 @@
     "status" : "SKIP",
     "comment" : "stack overflow, recursion"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-662907.js",
+    "runInIsolation" : true,
+    "comment" : "slow test with gc()"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-669850.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1826,8 +1861,8 @@
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-902672.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
+    "status" : "SKIP",
+    "comment" : "Incorrect memory intensive test: expects a TypeError from Array.prototype.join.call({length: 2**32})."
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-906043.js",
     "status" : "FAIL",
@@ -1870,6 +1905,10 @@
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-10-15)"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-986187.js",
+    "runInIsolation" : true,
+    "comment" : "Triggers a hundred GCs."
+  }, {
     "filePath" : "mjsunit/regress/regress-double-canonicalization.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -1880,9 +1919,6 @@
     "filePath" : "mjsunit/regress/regress-inline-getter-near-stack-limit.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-private-enumerable.js",
-    "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/regress/regress-put-prototype-transition.js",
     "status" : "SKIP",

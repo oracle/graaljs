@@ -26,6 +26,7 @@ const {
 const {
   createDeferredPromise,
   customInspectSymbol: kInspect,
+  kEmptyObject,
   kEnumerableProperty,
 } = require('internal/util');
 
@@ -63,6 +64,14 @@ const {
 } = require('internal/webstreams/writablestream');
 
 const assert = require('internal/assert');
+
+const getNonWritablePropertyDescriptor = (value) => {
+  return {
+    __proto__: null,
+    configurable: true,
+    value,
+  };
+};
 
 /**
  * @typedef {import('./queuingstrategies').QueuingStrategy
@@ -102,8 +111,6 @@ const assert = require('internal/assert');
 class TransformStream {
   [kType] = 'TransformStream';
 
-  get [SymbolToStringTag]() { return this[kType]; }
-
   /**
    * @param {Transformer} [transformer]
    * @param {QueuingStrategy} [writableStrategy]
@@ -111,8 +118,8 @@ class TransformStream {
    */
   constructor(
     transformer = null,
-    writableStrategy = {},
-    readableStrategy = {}) {
+    writableStrategy = kEmptyObject,
+    readableStrategy = kEmptyObject) {
     const readableType = transformer?.readableType;
     const writableType = transformer?.writableType;
     const start = transformer?.start;
@@ -219,7 +226,7 @@ class TransformStream {
         writable,
       },
       deserializeInfo:
-        'internal/webstreams/transformstream:TransferredTransformStream'
+        'internal/webstreams/transformstream:TransferredTransformStream',
     };
   }
 
@@ -236,6 +243,7 @@ class TransformStream {
 ObjectDefineProperties(TransformStream.prototype, {
   readable: kEnumerableProperty,
   writable: kEnumerableProperty,
+  [SymbolToStringTag]: getNonWritablePropertyDescriptor(TransformStream.name),
 });
 
 function TransferredTransformStream() {
@@ -261,8 +269,6 @@ TransferredTransformStream.prototype[kDeserialize] = () => {};
 class TransformStreamDefaultController {
   [kType] = 'TransformStreamDefaultController';
 
-  get [SymbolToStringTag]() { return this[kType]; }
-
   constructor() {
     throw new ERR_ILLEGAL_CONSTRUCTOR();
   }
@@ -287,7 +293,7 @@ class TransformStreamDefaultController {
   }
 
   /**
-   * @param {any} chunk
+   * @param {any} [chunk]
    */
   enqueue(chunk = undefined) {
     if (!isTransformStreamDefaultController(this))
@@ -296,7 +302,7 @@ class TransformStreamDefaultController {
   }
 
   /**
-   * @param {any} reason
+   * @param {any} [reason]
    */
   error(reason = undefined) {
     if (!isTransformStreamDefaultController(this))
@@ -322,6 +328,7 @@ ObjectDefineProperties(TransformStreamDefaultController.prototype, {
   enqueue: kEnumerableProperty,
   error: kEnumerableProperty,
   terminate: kEnumerableProperty,
+  [SymbolToStringTag]: getNonWritablePropertyDescriptor(TransformStreamDefaultController.name),
 });
 
 function createTransformStreamDefaultController() {
@@ -351,6 +358,7 @@ function initializeTransformStream(
   readableSizeAlgorithm) {
 
   const writable = new WritableStream({
+    __proto__: null,
     start() { return startPromise.promise; },
     write(chunk) {
       return transformStreamDefaultSinkWriteAlgorithm(stream, chunk);
@@ -367,6 +375,7 @@ function initializeTransformStream(
   });
 
   const readable = new ReadableStream({
+    __proto__: null,
     start() { return startPromise.promise; },
     pull() {
       return transformStreamDefaultSourcePullAlgorithm(stream);
@@ -389,7 +398,7 @@ function initializeTransformStream(
       promise: undefined,
       resolve: undefined,
       reject: undefined,
-    }
+    },
   };
 
   transformStreamSetBackpressure(stream, true);

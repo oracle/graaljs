@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -323,15 +323,17 @@ public class AsyncInteropTest {
     @Test
     public void testPromiseJavaCatch() {
         TestOutput out = new TestOutput();
-        try (Context context = newContextBuilder().out(out).build()) {
+        try (Context context = newContextBuilder().out(out).option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "none").build()) {
             Value asyncFn = context.eval(ID, "" +
                             "(async function () {" +
                             "  throw 42;" +
                             "})");
             Value promise = asyncFn.execute();
+            // Unhandled promise rejection: 42
             Consumer<Object> then = (value) -> out.write("Resolved from Java: " + value);
             Consumer<Object> catchy = (value) -> out.write("Promise failed: " + value);
             promise.invokeMember("then", then).invokeMember("catch", catchy);
+            // Promise rejection was handled asynchronously: 42
         }
         assertEquals("Promise failed: 42", out.toString());
     }

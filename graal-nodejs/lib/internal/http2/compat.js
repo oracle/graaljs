@@ -32,10 +32,11 @@ const {
     HTTP2_HEADER_STATUS,
 
     HTTP_STATUS_CONTINUE,
+    HTTP_STATUS_EARLY_HINTS,
     HTTP_STATUS_EXPECTATION_FAILED,
     HTTP_STATUS_METHOD_NOT_ALLOWED,
-    HTTP_STATUS_OK
-  }
+    HTTP_STATUS_OK,
+  },
 } = internalBinding('http2');
 const {
   codes: {
@@ -48,20 +49,22 @@ const {
     ERR_HTTP2_STATUS_INVALID,
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_HTTP_TOKEN,
-    ERR_STREAM_WRITE_AFTER_END
+    ERR_STREAM_WRITE_AFTER_END,
   },
-  hideStackFrames
+  hideStackFrames,
 } = require('internal/errors');
 const {
-  validateCallback,
+  validateFunction,
   validateString,
+  validateLinkHeaderValue,
+  validateObject,
 } = require('internal/validators');
 const {
   kSocket,
   kRequest,
   kProxySocket,
   assertValidPseudoHeader,
-  getAuthority
+  getAuthority,
 } = require('internal/http2/util');
 const { _checkIsHttpToken: checkIsHttpToken } = require('_http_common');
 
@@ -117,7 +120,7 @@ function statusMessageWarn() {
   if (statusMessageWarned === false) {
     process.emitWarning(
       'Status message is not supported by HTTP/2 (RFC7540 8.1.2.4)',
-      'UnsupportedWarning'
+      'UnsupportedWarning',
     );
     statusMessageWarned = true;
   }
@@ -134,7 +137,7 @@ function connectionHeaderMessageWarn() {
       'The provided connection header is not valid, ' +
       'the value will be dropped from the header and ' +
       'will never be in use.',
-      'UnsupportedWarning'
+      'UnsupportedWarning',
     );
     statusConnectionHeaderWarned = true;
   }
@@ -281,7 +284,7 @@ const proxySocketHandler = {
         return true;
       }
     }
-  }
+  },
 };
 
 function onStreamCloseRequest() {
@@ -808,7 +811,7 @@ class Http2ServerResponse extends Stream {
   }
 
   createPushResponse(headers, callback) {
-    validateCallback(callback);
+    validateFunction(callback, 'callback');
     if (this[kState].closed) {
       process.nextTick(callback, new ERR_HTTP2_INVALID_STREAM());
       return;
@@ -829,7 +832,7 @@ class Http2ServerResponse extends Stream {
     const options = {
       endStream: state.ending,
       waitForTrailers: true,
-      sendDate: state.sendDate
+      sendDate: state.sendDate,
     };
     this[kStream].respond(headers, options);
   }
@@ -840,8 +843,39 @@ class Http2ServerResponse extends Stream {
     if (stream.headersSent || this[kState].closed)
       return false;
     stream.additionalHeaders({
-      [HTTP2_HEADER_STATUS]: HTTP_STATUS_CONTINUE
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_CONTINUE,
     });
+    return true;
+  }
+
+  writeEarlyHints(hints) {
+    validateObject(hints, 'hints');
+
+    const headers = ObjectCreate(null);
+
+    const linkHeaderValue = validateLinkHeaderValue(hints.link);
+
+    for (const key of ObjectKeys(hints)) {
+      if (key !== 'link') {
+        headers[key] = hints[key];
+      }
+    }
+
+    if (linkHeaderValue.length === 0) {
+      return false;
+    }
+
+    const stream = this[kStream];
+
+    if (stream.headersSent || this[kState].closed)
+      return false;
+
+    stream.additionalHeaders({
+      ...headers,
+      [HTTP2_HEADER_STATUS]: HTTP_STATUS_EARLY_HINTS,
+      'Link': linkHeaderValue,
+    });
+
     return true;
   }
 }

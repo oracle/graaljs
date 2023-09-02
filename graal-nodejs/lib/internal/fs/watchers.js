@@ -14,11 +14,14 @@ const {
     ERR_INVALID_ARG_VALUE,
   },
 } = require('internal/errors');
-const { createDeferredPromise } = require('internal/util');
+const {
+  createDeferredPromise,
+  kEmptyObject,
+} = require('internal/util');
 
 const {
   kFsStatsFieldsNumber,
-  StatWatcher: _StatWatcher
+  StatWatcher: _StatWatcher,
 } = internalBinding('fs');
 
 const { FSEvent } = internalBinding('fs_event_wrap');
@@ -27,12 +30,12 @@ const { EventEmitter } = require('events');
 
 const {
   getStatsFromBinding,
-  getValidatedPath
+  getValidatedPath,
 } = require('internal/fs/utils');
 
 const {
   defaultTriggerAsyncIdScope,
-  symbols: { owner_symbol }
+  symbols: { owner_symbol },
 } = require('internal/async_hooks');
 
 const { toNamespacedPath } = require('path');
@@ -119,7 +122,7 @@ StatWatcher.prototype[kFSStatWatcherStart] = function(filename,
     const error = uvException({
       errno: err,
       syscall: 'watch',
-      path: filename
+      path: filename,
     });
     error.filename = filename;
     throw error;
@@ -204,7 +207,7 @@ function FSWatcher() {
       const error = uvException({
         errno: status,
         syscall: 'watch',
-        path: filename
+        path: filename,
       });
       error.filename = filename;
       this.emit('error', error);
@@ -246,7 +249,7 @@ FSWatcher.prototype[kFSWatchStart] = function(filename,
       syscall: 'watch',
       path: filename,
       message: err === UV_ENOSPC ?
-        'System limit for number of file watchers reached' : ''
+        'System limit for number of file watchers reached' : '',
     });
     error.filename = filename;
     throw error;
@@ -293,10 +296,10 @@ function emitCloseNT(self) {
 ObjectDefineProperty(FSEvent.prototype, 'owner', {
   __proto__: null,
   get() { return this[owner_symbol]; },
-  set(v) { return this[owner_symbol] = v; }
+  set(v) { return this[owner_symbol] = v; },
 });
 
-async function* watch(filename, options = {}) {
+async function* watch(filename, options = kEmptyObject) {
   const path = toNamespacedPath(getValidatedPath(filename));
   validateObject(options, 'options');
 
@@ -333,7 +336,7 @@ async function* watch(filename, options = {}) {
         const error = uvException({
           errno: status,
           syscall: 'watch',
-          path: filename
+          path: filename,
         });
         error.filename = filename;
         handle.close();
@@ -351,7 +354,7 @@ async function* watch(filename, options = {}) {
         syscall: 'watch',
         path: filename,
         message: err === UV_ENOSPC ?
-          'System limit for number of file watchers reached' : ''
+          'System limit for number of file watchers reached' : '',
       });
       error.filename = filename;
       handle.close();

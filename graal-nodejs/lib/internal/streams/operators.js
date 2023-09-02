@@ -4,6 +4,7 @@ const { AbortController } = require('internal/abort_controller');
 
 const {
   codes: {
+    ERR_INVALID_ARG_VALUE,
     ERR_INVALID_ARG_TYPE,
     ERR_MISSING_ARGS,
     ERR_OUT_OF_RANGE,
@@ -17,6 +18,12 @@ const {
 } = require('internal/validators');
 const { kWeakHandler } = require('internal/event_target');
 const { finished } = require('internal/streams/end-of-stream');
+const staticCompose = require('internal/streams/compose');
+const {
+  addAbortSignalNoValidate,
+} = require('internal/streams/add-abort-signal');
+const { isWritable, isNodeStream } = require('internal/streams/utils');
+const { deprecate } = require('internal/util');
 
 const {
   ArrayPrototypePush,
@@ -31,6 +38,31 @@ const {
 
 const kEmpty = Symbol('kEmpty');
 const kEof = Symbol('kEof');
+
+function compose(stream, options) {
+  if (options != null) {
+    validateObject(options, 'options');
+  }
+  if (options?.signal != null) {
+    validateAbortSignal(options.signal, 'options.signal');
+  }
+
+  if (isNodeStream(stream) && !isWritable(stream)) {
+    throw new ERR_INVALID_ARG_VALUE('stream', stream, 'must be writable');
+  }
+
+  const composedStream = staticCompose(this, stream);
+
+  if (options?.signal) {
+    // Not validating as we already validated before
+    addAbortSignalNoValidate(
+      options.signal,
+      composedStream,
+    );
+  }
+
+  return composedStream;
+}
 
 function map(fn, options) {
   if (typeof fn !== 'function') {
@@ -378,7 +410,10 @@ function take(number, options = undefined) {
       }
       if (number-- > 0) {
         yield val;
-      } else {
+      }
+
+      // Don't get another item from iterator in case we reached the end
+      if (number <= 0) {
         return;
       }
     }
@@ -386,12 +421,13 @@ function take(number, options = undefined) {
 }
 
 module.exports.streamReturningOperators = {
-  asIndexedPairs,
+  asIndexedPairs: deprecate(asIndexedPairs, 'readable.asIndexedPairs will be removed in a future version.'),
   drop,
   filter,
   flatMap,
   map,
   take,
+  compose,
 };
 
 module.exports.promiseReturningOperators = {

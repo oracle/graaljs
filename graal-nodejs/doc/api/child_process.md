@@ -150,7 +150,9 @@ exec('"my script.cmd" a b', (err, stdout, stderr) => {
 <!-- YAML
 added: v0.1.90
 changes:
-  - version: v16.4.0
+  - version:
+      - v16.4.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38862
     description: The `cwd` option can be a WHATWG `URL` object using
                  `file:` protocol.
@@ -270,7 +272,7 @@ const { exec } = require('node:child_process');
 const controller = new AbortController();
 const { signal } = controller;
 const child = exec('grep ssh', { signal }, (error) => {
-  console.log(error); // an AbortError
+  console.error(error); // an AbortError
 });
 controller.abort();
 ```
@@ -280,11 +282,15 @@ controller.abort();
 <!-- YAML
 added: v0.1.91
 changes:
-  - version: v16.4.0
+  - version:
+      - v16.4.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38862
     description: The `cwd` option can be a WHATWG `URL` object using
                  `file:` protocol.
-  - version: v15.4.0
+  - version:
+      - v15.4.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/36308
     description: AbortSignal support was added.
   - version: v8.8.0
@@ -378,7 +384,7 @@ const { execFile } = require('node:child_process');
 const controller = new AbortController();
 const { signal } = controller;
 const child = execFile('node', ['--version'], { signal }, (error) => {
-  console.log(error); // an AbortError
+  console.error(error); // an AbortError
 });
 controller.abort();
 ```
@@ -389,6 +395,7 @@ controller.abort();
 added: v0.5.0
 changes:
   - version:
+      - v17.4.0
       - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/41225
     description: The `modulePath` parameter can be a WHATWG `URL` object using
@@ -399,13 +406,19 @@ changes:
     pr-url: https://github.com/nodejs/node/pull/38862
     description: The `cwd` option can be a WHATWG `URL` object using
                  `file:` protocol.
-  - version: v15.13.0
+  - version:
+      - v15.13.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37256
     description: timeout was added.
-  - version: v15.11.0
+  - version:
+      - v15.11.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37325
     description: killSignal for AbortSignal was added.
-  - version: v15.6.0
+  - version:
+      - v15.6.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/36603
     description: AbortSignal support was added.
   - version:
@@ -509,17 +522,25 @@ if (process.argv[2] === 'child') {
 <!-- YAML
 added: v0.1.90
 changes:
-  - version: v16.4.0
+  - version:
+      - v16.4.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38862
     description: The `cwd` option can be a WHATWG `URL` object using
                  `file:` protocol.
-  - version: v15.13.0
+  - version:
+      - v15.13.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37256
     description: timeout was added.
-  - version: v15.11.0
+  - version:
+      - v15.11.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37325
     description: killSignal for AbortSignal was added.
-  - version: v15.5.0
+  - version:
+      - v15.5.0
+      - v14.17.0
     pr-url: https://github.com/nodejs/node/pull/36432
     description: AbortSignal support was added.
   - version:
@@ -585,7 +606,7 @@ A third argument may be used to specify additional options, with these defaults:
 ```js
 const defaults = {
   cwd: undefined,
-  env: process.env
+  env: process.env,
 };
 ```
 
@@ -728,7 +749,7 @@ const { spawn } = require('node:child_process');
 
 const subprocess = spawn(process.argv[0], ['child_program.js'], {
   detached: true,
-  stdio: 'ignore'
+  stdio: 'ignore',
 });
 
 subprocess.unref();
@@ -744,7 +765,7 @@ const err = fs.openSync('./out.log', 'a');
 
 const subprocess = spawn('prg', [], {
   detached: true,
-  stdio: [ 'ignore', out, err ]
+  stdio: [ 'ignore', out, err ],
 });
 
 subprocess.unref();
@@ -755,7 +776,9 @@ subprocess.unref();
 <!-- YAML
 added: v0.7.10
 changes:
-  - version: v15.6.0
+  - version:
+      - v15.6.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/29412
     description: Added the `overlapped` stdio flag.
   - version: v3.3.1
@@ -874,7 +897,9 @@ configuration at startup.
 <!-- YAML
 added: v0.11.12
 changes:
-  - version: v16.4.0
+  - version:
+      - v16.4.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38862
     description: The `cwd` option can be a WHATWG `URL` object using
                  `file:` protocol.
@@ -948,7 +973,9 @@ arbitrary command execution.**
 <!-- YAML
 added: v0.11.12
 changes:
-  - version: v16.4.0
+  - version:
+      - v16.4.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38862
     description: The `cwd` option can be a WHATWG `URL` object using
                  `file:` protocol.
@@ -1013,7 +1040,9 @@ metacharacters may be used to trigger arbitrary command execution.**
 <!-- YAML
 added: v0.11.12
 changes:
-  - version: v16.4.0
+  - version:
+      - v16.4.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38862
     description: The `cwd` option can be a WHATWG `URL` object using
                  `file:` protocol.
@@ -1157,9 +1186,10 @@ property is `false`.
 
 The `'error'` event is emitted whenever:
 
-1. The process could not be spawned, or
-2. The process could not be killed, or
-3. Sending a message to the child process failed.
+* The process could not be spawned.
+* The process could not be killed.
+* Sending a message to the child process failed.
+* The child process was aborted via the `signal` option.
 
 The `'exit'` event may or may not fire after an error has occurred. When
 listening to both the `'exit'` and `'error'` events, guard
@@ -1215,7 +1245,9 @@ See [Advanced serialization][] for more details.
 ### Event: `'spawn'`
 
 <!-- YAML
-added: v15.1.0
+added:
+  - v15.1.0
+  - v14.17.0
 -->
 
 The `'spawn'` event is emitted once the child process has spawned successfully.
@@ -1361,8 +1393,8 @@ const subprocess = spawn(
       console.log(process.pid, 'is alive')
     }, 500);"`,
   ], {
-    stdio: ['inherit', 'inherit', 'inherit']
-  }
+    stdio: ['inherit', 'inherit', 'inherit'],
+  },
 );
 
 setTimeout(() => {
@@ -1418,7 +1450,7 @@ const { spawn } = require('node:child_process');
 
 const subprocess = spawn(process.argv[0], ['child_program.js'], {
   detached: true,
-  stdio: 'ignore'
+  stdio: 'ignore',
 });
 
 subprocess.unref();
@@ -1702,7 +1734,7 @@ const subprocess = child_process.spawn('ls', {
     0, // Use parent's stdin for child.
     'pipe', // Pipe child's stdout to parent.
     fs.openSync('err.out', 'w'), // Direct child's stderr to a file.
-  ]
+  ],
 });
 
 assert.strictEqual(subprocess.stdio[0], null);
@@ -1765,7 +1797,7 @@ const { spawn } = require('node:child_process');
 
 const subprocess = spawn(process.argv[0], ['child_program.js'], {
   detached: true,
-  stdio: 'ignore'
+  stdio: 'ignore',
 });
 
 subprocess.unref();

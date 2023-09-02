@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import java.time.LocalTime;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -48,10 +50,8 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-import java.time.LocalTime;
-
 @ExportLibrary(InteropLibrary.class)
-public class JSTemporalPlainTimeObject extends JSNonProxyObject implements TemporalTime {
+public class JSTemporalPlainTimeObject extends JSNonProxyObject implements TemporalCalendar {
 
     // all values guaranteed to fit into int
     // https://tc39.es/proposal-temporal/#sec-temporal-isvalidtime
@@ -63,9 +63,9 @@ public class JSTemporalPlainTimeObject extends JSNonProxyObject implements Tempo
     private final int nanosecond;
     private final JSDynamicObject calendar;
 
-    protected JSTemporalPlainTimeObject(Shape shape, int hour, int minute, int second, int millisecond,
+    protected JSTemporalPlainTimeObject(Shape shape, JSDynamicObject proto, int hour, int minute, int second, int millisecond,
                     int microsecond, int nanosecond, JSDynamicObject calendar) {
-        super(shape);
+        super(shape, proto);
         this.hour = hour;
         this.minute = minute;
         this.second = second;
@@ -75,32 +75,26 @@ public class JSTemporalPlainTimeObject extends JSNonProxyObject implements Tempo
         this.calendar = calendar;
     }
 
-    @Override
     public int getHour() {
         return hour;
     }
 
-    @Override
     public int getMinute() {
         return minute;
     }
 
-    @Override
     public int getSecond() {
         return second;
     }
 
-    @Override
     public int getMillisecond() {
         return millisecond;
     }
 
-    @Override
     public int getMicrosecond() {
         return microsecond;
     }
 
-    @Override
     public int getNanosecond() {
         return nanosecond;
     }

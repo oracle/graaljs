@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.binary;
 import java.util.Objects;
 import java.util.Set;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -130,7 +131,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
 
     @Specialization
     protected int doDouble(double a,
-                    @Cached("create()") JSToUInt32Node toUInt32Node) {
+                    @Cached JSToUInt32Node toUInt32Node) {
         assert shiftValue > 0;
         return (int) (toUInt32Node.executeLong(a) >>> shiftValue);
     }
@@ -140,6 +141,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
         throw Errors.createTypeErrorCannotMixBigIntWithOtherTypes(this);
     }
 
+    @InliningCutoff
     @Specialization
     protected Object doOverloaded(JSOverloadedOperatorsObject a,
                     @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
@@ -152,7 +154,7 @@ public abstract class JSUnsignedRightShiftConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(lval)", "!isHandled(lval)"})
     protected int doGeneric(Object lval,
-                    @Cached("create()") JSToNumericNode leftToNumeric,
+                    @Cached JSToNumericNode leftToNumeric,
                     @Cached("createInner()") JSUnsignedRightShiftConstantNode innerShiftNode) {
         Object leftOperand = leftToNumeric.execute(lval);
         return innerShiftNode.executeInt(leftOperand);

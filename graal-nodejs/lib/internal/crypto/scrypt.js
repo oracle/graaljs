@@ -13,7 +13,7 @@ const {
 } = internalBinding('crypto');
 
 const {
-  validateCallback,
+  validateFunction,
   validateInteger,
   validateInt32,
   validateUint32,
@@ -23,7 +23,7 @@ const {
   codes: {
     ERR_CRYPTO_SCRYPT_INVALID_PARAMETER,
     ERR_CRYPTO_SCRYPT_NOT_SUPPORTED,
-  }
+  },
 } = require('internal/errors');
 
 const {
@@ -48,7 +48,7 @@ function scrypt(password, salt, keylen, options, callback = defaults) {
   const { N, r, p, maxmem } = options;
   ({ password, salt, keylen } = options);
 
-  validateCallback(callback);
+  validateFunction(callback, 'callback');
 
   const job = new ScryptJob(
     kCryptoJobAsync, password, salt, N, r, p, maxmem, keylen);

@@ -44,9 +44,9 @@
 
 #include "graal_fixed_array.h"
 
-#include "graal_handle_content-inl.h"
+#include "graal_data-inl.h"
 
-inline GraalFixedArray::GraalFixedArray(GraalIsolate* isolate, jobject java_fixed_array) : GraalHandleContent(isolate, java_fixed_array) {
+inline GraalFixedArray::GraalFixedArray(GraalIsolate* isolate, jobject java_fixed_array) : GraalData(isolate, java_fixed_array) {
 }
 
 inline GraalFixedArray* GraalFixedArray::Allocate(GraalIsolate* isolate, jobject java_fixed_array) {

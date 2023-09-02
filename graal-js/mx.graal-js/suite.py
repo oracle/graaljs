@@ -1,9 +1,9 @@
 suite = {
-  "mxversion" : "6.9.4",
+  "mxversion" : "6.41.0",
 
   "name" : "graal-js",
 
-  "version" : "23.0.0",
+  "version" : "24.0.0",
   "release" : False,
   "groupId" : "org.graalvm.js",
   "url" : "http://www.graalvm.org/",
@@ -24,7 +24,7 @@ suite = {
         {
            "name" : "regex",
            "subdir" : True,
-           "version" : "41f67ac69d60ee925eaf83c1036b8f9254cacbf5",
+           "version" : "4805f20e725dd514e04c09a4b4017d29615ad29c",
            "urls" : [
                 {"url" : "https://github.com/oracle/graal.git", "kind" : "git"},
             ]
@@ -73,30 +73,33 @@ suite = {
     },
 
     "JACKSON_CORE" : {
-      "sha1" : "2ef7b1cc34de149600f5e75bc2d5bf40de894e60",
+      "sha1" : "a6fe1836469a69b3ff66037c324d75fc66ef137c",
       "maven" : {
         "groupId" : "com.fasterxml.jackson.core",
         "artifactId" : "jackson-core",
-        "version" : "2.8.6",
+        "version" : "2.15.2",
       },
+      "moduleName" : "com.fasterxml.jackson.core",
     },
 
     "JACKSON_ANNOTATIONS" : {
-      "sha1" : "9577018f9ce3636a2e1cb0a0c7fe915e5098ded5",
+      "sha1" : "4724a65ac8e8d156a24898d50fd5dbd3642870b8",
       "maven" : {
         "groupId" : "com.fasterxml.jackson.core",
         "artifactId" : "jackson-annotations",
-        "version" : "2.8.6",
+        "version" : "2.15.2",
       },
+      "moduleName" : "com.fasterxml.jackson.annotation",
     },
 
     "JACKSON_DATABIND" : {
-      "sha1" : "c43de61f74ecc61322ef8f402837ba65b0aa2bf4",
+      "sha1" : "9353b021f10c307c00328f52090de2bdb4b6ff9c",
       "maven" : {
         "groupId" : "com.fasterxml.jackson.core",
         "artifactId" : "jackson-databind",
-        "version" : "2.8.6",
+        "version" : "2.15.2",
       },
+      "moduleName" : "com.fasterxml.jackson.databind",
     },
   },
 
@@ -109,7 +112,7 @@ suite = {
         "com.oracle.truffle.js.annotations",
         "com.oracle.truffle.js.codec",
         "com.oracle.truffle.js.runtime.doubleconv",
-        "truffle:ICU4J",
+        "truffle:TRUFFLE_ICU4J",
       ],
       "requires" : [
         "java.management",
@@ -119,8 +122,8 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR", "TRUFFLE_JS_FACTORY_PROCESSOR"],
       "jacoco" : "include",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
-      "checkstyleVersion" : "8.36.1",
+      "javaCompliance" : "17+",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -133,7 +136,7 @@ suite = {
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "workingSets" : "Truffle,JavaScript",
     },
@@ -146,8 +149,8 @@ suite = {
       ],
       "jacoco" : "include",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
-      "checkstyleVersion" : "8.36.1",
+      "javaCompliance" : "17+",
+      "checkstyleVersion" : "10.7.0",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -161,7 +164,7 @@ suite = {
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -172,7 +175,7 @@ suite = {
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -185,7 +188,7 @@ suite = {
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -198,7 +201,7 @@ suite = {
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -216,7 +219,7 @@ suite = {
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -228,7 +231,7 @@ suite = {
       "spotbugs" : "false",
 #     checkstyle and spotbugs turned off to keep the source aligned
 #     with the original nashorn version as much as possible
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -243,7 +246,7 @@ suite = {
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -254,7 +257,6 @@ suite = {
         "sdk:GRAAL_SDK",
         "mx:JUNIT",
         "GRAALJS",
-        "truffle:TRUFFLE_TCK",
         "com.oracle.truffle.js.snapshot",
       ],
       "requires" : [
@@ -264,7 +266,25 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
+      "workingSets" : "Truffle,JavaScript",
+      "testProject" : True,
+    },
+
+    "com.oracle.truffle.js.test.debug" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "sdk:GRAAL_SDK",
+        "mx:JUNIT",
+        "GRAALJS",
+        "TRUFFLE_JS_TESTS",
+        "truffle:TRUFFLE_TCK",
+      ],
+      "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
+      "checkstyle" : "com.oracle.truffle.js",
+      "spotbugs" : "true",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
       "testProject" : True,
     },
@@ -280,7 +300,7 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
       "testProject" : True,
     },
@@ -295,7 +315,26 @@ suite = {
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
+      "workingSets" : "Truffle,JavaScript",
+      "testProject" : True,
+    },
+
+    "com.oracle.truffle.js.test.fetch" : {
+      "subDir" : "src",
+      "sourceDirs" : ["src"],
+      "dependencies" : [
+        "mx:JUNIT",
+        "sdk:GRAAL_SDK",
+        "com.oracle.truffle.js.test",
+      ],
+      "requires" : [
+        "java.net.http",
+        "jdk.httpserver",
+      ],
+      "checkstyle" : "com.oracle.truffle.js",
+      "spotbugs" : "true",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
       "testProject" : True,
     },
@@ -312,7 +351,7 @@ suite = {
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
     },
 
@@ -331,7 +370,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript",
       "testProject" : True,
     },
@@ -346,7 +385,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
     },
@@ -360,13 +399,12 @@ suite = {
         "JACKSON_CORE",
         "JACKSON_ANNOTATIONS",
         "JACKSON_DATABIND",
-        "NASHORN_INTERNAL_TESTS",
         "TRUFFLE_JS_SNAPSHOT_TOOL",
       ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript,Test",
       "testProject" : True,
     },
@@ -380,7 +418,7 @@ suite = {
       ],
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript,Test",
       "testProject" : True,
     },
@@ -391,13 +429,26 @@ suite = {
     "GRAALJS" : {
       "moduleInfo" : {
         "name" : "org.graalvm.js",
-        "requiresConcealed" : {
-          "org.graalvm.truffle" : [
-            "com.oracle.truffle.api"
-          ],
-        },
         "exports" : [
           "com.oracle.truffle.js.lang to org.graalvm.truffle",
+          "com.oracle.js.parser to org.graalvm.nodejs",
+          "com.oracle.js.parser.ir to org.graalvm.nodejs",
+          "com.oracle.truffle.js.builtins to org.graalvm.nodejs",
+          "com.oracle.truffle.js.builtins.helper to org.graalvm.nodejs",
+          "com.oracle.truffle.js.lang to org.graalvm.nodejs",
+          "com.oracle.truffle.js.nodes to org.graalvm.nodejs",
+          "com.oracle.truffle.js.nodes.access to org.graalvm.nodejs",
+          "com.oracle.truffle.js.nodes.arguments to org.graalvm.nodejs",
+          "com.oracle.truffle.js.nodes.cast to org.graalvm.nodejs",
+          "com.oracle.truffle.js.nodes.function to org.graalvm.nodejs",
+          "com.oracle.truffle.js.parser to org.graalvm.nodejs",
+          "com.oracle.truffle.js.runtime to org.graalvm.nodejs",
+          "com.oracle.truffle.js.runtime.array to org.graalvm.nodejs",
+          "com.oracle.truffle.js.runtime.builtins to org.graalvm.nodejs",
+          "com.oracle.truffle.js.runtime.builtins.wasm to org.graalvm.nodejs",
+          "com.oracle.truffle.js.runtime.interop to org.graalvm.nodejs",
+          "com.oracle.truffle.js.runtime.objects to org.graalvm.nodejs",
+          "com.oracle.truffle.js.runtime.util to org.graalvm.nodejs",
         ],
       },
       "subDir" : "src",
@@ -409,33 +460,59 @@ suite = {
         "regex:TREGEX",
         "truffle:TRUFFLE_API",
         "sdk:GRAAL_SDK",
+        "truffle:TRUFFLE_ICU4J",
       ],
       "exclude" : [
-        "truffle:ICU4J",
       ],
-      "description" : "Graal JavaScript engine",
+      "description" : "Graal JavaScript implementation",
       "maven" : {
-        "artifactId" : "js",
+        "artifactId" : "js-language",
+        "tag": ["default", "public"],
       },
       "license": [
         "UPL",  # Main code
         "MIT",  # JONI regexp engine
       ],
       "allowsJavadocWarnings": True,
+      "useModulePath": True,
+    },
+
+    "JS_COMMUNITY" : {
+      "type":"pom",
+      "runtimeDependencies" : [
+        "GRAALJS",
+        "truffle:TRUFFLE_RUNTIME",
+      ],
+      "description" : "Graal JavaScript engine.",
+      "maven" : {
+        "groupId": "org.graalvm.polyglot",
+        "artifactId" : "js-community",
+        "tag": ["default", "public"],
+      },
+      "license": [
+        "UPL",  # Main code
+        "MIT",  # JONI regexp engine
+      ],
     },
 
     "GRAALJS_LAUNCHER" : {
       "moduleInfo" : {
         "name" : "org.graalvm.js.launcher",
-        "exports" : [],
+        "exports" : [
+            "com.oracle.truffle.js.shell to org.graalvm.launcher",
+        ],
       },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.shell"],
       "mainClass" : "com.oracle.truffle.js.shell.JSLauncher",
-      "distDependencies" : ["sdk:LAUNCHER_COMMON"],
+      "distDependencies" : [
+        "sdk:LAUNCHER_COMMON",
+        "sdk:JLINE3",
+      ],
       "description" : "Graal JavaScript Launcher",
       "maven" : {
         "artifactId" : "js-launcher",
+        "tag": ["default", "public"],
       },
       "allowsJavadocWarnings": True,
     },
@@ -456,6 +533,7 @@ suite = {
       "description" : "Graal JavaScript ScriptEngine",
       "maven" : {
         "artifactId" : "js-scriptengine",
+        "tag": ["default", "public"],
       },
       "allowsJavadocWarnings": True,
     },
@@ -472,6 +550,12 @@ suite = {
     },
 
     "TRUFFLE_JS_SNAPSHOT_TOOL" : {
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.js.snapshot",
+        "exports" : [
+          "com.oracle.truffle.js.snapshot",
+        ],
+      },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.snapshot"],
       "mainClass" : "com.oracle.truffle.js.snapshot.SnapshotTool",
@@ -506,18 +590,32 @@ suite = {
     },
 
     "TRUFFLE_JS_TESTS" : {
-      "dependencies" : ["com.oracle.truffle.js.test", "com.oracle.truffle.js.test.external", "com.oracle.truffle.js.test.instrumentation", "com.oracle.truffle.js.test.threading"],
+      "moduleInfo" : {
+        "name" : "com.oracle.truffle.js.test",
+        "exports" : [
+          # Export everything to junit and dependent test distributions.
+          "com.oracle.truffle.js.test*",
+        ],
+        "opens" : [
+          "com.oracle.truffle.js.test.external.suite to com.fasterxml.jackson.databind",
+        ],
+      },
+      "dependencies" : [
+        "com.oracle.truffle.js.test",
+        "com.oracle.truffle.js.test.external",
+        "com.oracle.truffle.js.test.fetch",
+        "com.oracle.truffle.js.test.instrumentation",
+        "com.oracle.truffle.js.test.threading",
+      ],
       "exclude" : [
         "mx:HAMCREST",
         "mx:JUNIT",
         "JACKSON_CORE",
         "JACKSON_ANNOTATIONS",
         "JACKSON_DATABIND",
-        "NASHORN_INTERNAL_TESTS",
       ],
       "distDependencies" : [
         "GRAALJS",
-        "truffle:TRUFFLE_TCK",
         "TRUFFLE_JS_SNAPSHOT_TOOL",
       ],
       "license": [
@@ -526,11 +624,31 @@ suite = {
       "maven" : False,
       "description" : "Graal JavaScript Tests",
       "allowsJavadocWarnings": True,
+      "useModulePath": True,
+    },
+
+    "JS_DEBUG_TESTS" : {
+      "subDir" : "src",
+      "javaCompliance" : "17+",
+      "dependencies" : [
+        "com.oracle.truffle.js.test.debug",
+      ],
+      "exclude" : [
+        "mx:HAMCREST",
+        "mx:JUNIT",
+      ],
+      "distDependencies" : [
+        "GRAALJS",
+        "TRUFFLE_JS_TESTS",
+        "sdk:POLYGLOT_TCK",
+        "truffle:TRUFFLE_TCK",
+      ],
+      "maven" : False
     },
 
     "SDK_JS_TESTS" : {
       "subDir" : "src",
-      "javaCompliance" : "11+",
+      "javaCompliance" : "17+",
       "dependencies" : ["com.oracle.truffle.js.test.sdk"],
       "exclude" : [
         "mx:JUNIT",
@@ -549,6 +667,14 @@ suite = {
         "./": [
           "file:README.md",
         ],
+      },
+    },
+
+    "GRAALJS_GRAALVM_LICENSES" : {
+      "fileListPurpose": 'native-image-resources',
+      "native" : True,
+      "description" : "Graal.js license files for the GraalVM",
+      "layout" : {
         "LICENSE_GRAALJS.txt" : "file:LICENSE_GRAALJS",
         "THIRD_PARTY_LICENSE_GRAALJS.txt": "file:THIRD_PARTY_LICENSE_GRAALJS.txt",
       },
@@ -564,7 +690,8 @@ suite = {
       "distDependencies" : [
         "sdk:GRAAL_SDK",
         "GRAALJS"
-      ]
+      ],
+      "maven" : False,
     }
   }
 }

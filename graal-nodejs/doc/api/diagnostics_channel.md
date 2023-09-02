@@ -1,8 +1,18 @@
 # Diagnostics Channel
 
+<!-- YAML
+added:
+  - v15.1.0
+  - v14.17.0
+changes:
+  - version: v18.13.0
+    pr-url: https://github.com/nodejs/node/pull/45290
+    description: diagnostics_channel is now Stable.
+-->
+
 <!--introduced_in=v15.1.0-->
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 <!-- source_link=lib/diagnostics_channel.js -->
 
@@ -54,7 +64,7 @@ diagnostics_channel.subscribe('my-channel', onMessage);
 if (channel.hasSubscribers) {
   // Publish data to the channel
   channel.publish({
-    some: 'data'
+    some: 'data',
   });
 }
 
@@ -79,7 +89,7 @@ diagnostics_channel.subscribe('my-channel', onMessage);
 if (channel.hasSubscribers) {
   // Publish data to the channel
   channel.publish({
-    some: 'data'
+    some: 'data',
   });
 }
 
@@ -151,7 +161,7 @@ const channel = diagnostics_channel.channel('my-channel');
 
 <!-- YAML
 added:
- - v16.17.0
+ - v18.7.0
 -->
 
 * `name` {string|symbol} The channel name
@@ -164,7 +174,7 @@ will be run synchronously whenever a message is published to the channel. Any
 errors thrown in the message handler will trigger an [`'uncaughtException'`][].
 
 ```mjs
-import diagnostics_channel from 'diagnostics_channel';
+import diagnostics_channel from 'node:diagnostics_channel';
 
 diagnostics_channel.subscribe('my-channel', (message, name) => {
   // Received data
@@ -172,7 +182,7 @@ diagnostics_channel.subscribe('my-channel', (message, name) => {
 ```
 
 ```cjs
-const diagnostics_channel = require('diagnostics_channel');
+const diagnostics_channel = require('node:diagnostics_channel');
 
 diagnostics_channel.subscribe('my-channel', (message, name) => {
   // Received data
@@ -183,7 +193,7 @@ diagnostics_channel.subscribe('my-channel', (message, name) => {
 
 <!-- YAML
 added:
- - v16.17.0
+ - v18.7.0
 -->
 
 * `name` {string|symbol} The channel name
@@ -194,7 +204,7 @@ Remove a message handler previously registered to this channel with
 [`diagnostics_channel.subscribe(name, onMessage)`][].
 
 ```mjs
-import diagnostics_channel from 'diagnostics_channel';
+import diagnostics_channel from 'node:diagnostics_channel';
 
 function onMessage(message, name) {
   // Received data
@@ -206,7 +216,7 @@ diagnostics_channel.unsubscribe('my-channel', onMessage);
 ```
 
 ```cjs
-const diagnostics_channel = require('diagnostics_channel');
+const diagnostics_channel = require('node:diagnostics_channel');
 
 function onMessage(message, name) {
   // Received data
@@ -288,7 +298,7 @@ import diagnostics_channel from 'node:diagnostics_channel';
 const channel = diagnostics_channel.channel('my-channel');
 
 channel.publish({
-  some: 'message'
+  some: 'message',
 });
 ```
 
@@ -298,7 +308,7 @@ const diagnostics_channel = require('node:diagnostics_channel');
 const channel = diagnostics_channel.channel('my-channel');
 
 channel.publish({
-  some: 'message'
+  some: 'message',
 });
 ```
 
@@ -308,7 +318,7 @@ channel.publish({
 added:
  - v15.1.0
  - v14.17.0
-deprecated: v16.17.0
+deprecated: v18.7.0
 -->
 
 > Stability: 0 - Deprecated: Use [`diagnostics_channel.subscribe(name, onMessage)`][]
@@ -347,9 +357,12 @@ channel.subscribe((message, name) => {
 added:
  - v15.1.0
  - v14.17.0
-deprecated: v16.17.0
+deprecated: v18.7.0
 changes:
-  - version: v16.14.0
+  - version:
+    - v17.1.0
+    - v16.14.0
+    - v14.19.0
     pr-url: https://github.com/nodejs/node/pull/40433
     description: Added return value. Added to channels without subscribers.
 -->
@@ -392,6 +405,12 @@ channel.unsubscribe(onMessage);
 
 ### Built-in Channels
 
+> Stability: 1 - Experimental
+
+While the diagnostics\_channel API is now considered stable, the built-in
+channels currently available are not. Each channel must be declared stable
+independently.
+
 #### HTTP
 
 `http.client.request.start`
@@ -425,8 +444,6 @@ Emitted when server receives a request.
 
 Emitted when server sends a response.
 
-#### NET
-
 `net.client.socket`
 
 * `socket` {net.Socket}
@@ -439,40 +456,13 @@ Emitted when a new TCP or pipe client socket is created.
 
 Emitted when a new TCP or pipe connection is received.
 
-#### UDP
-
 `udp.socket`
 
 * `socket` {dgram.Socket}
 
 Emitted when a new UDP socket is created.
 
-#### Process
-
-<!-- YAML
-added: v16.18.0
--->
-
-`child_process`
-
-* `process` {ChildProcess}
-
-Emitted when a new process is created.
-
-#### Worker Thread
-
-<!-- YAML
-added: v16.18.0
--->
-
-`worker_threads`
-
-* `worker` [`Worker`][]
-
-Emitted when a new thread is created.
-
 [`'uncaughtException'`]: process.md#event-uncaughtexception
-[`Worker`]: worker_threads.md#class-worker
 [`channel.subscribe(onMessage)`]: #channelsubscribeonmessage
 [`diagnostics_channel.channel(name)`]: #diagnostics_channelchannelname
 [`diagnostics_channel.subscribe(name, onMessage)`]: #diagnostics_channelsubscribename-onmessage

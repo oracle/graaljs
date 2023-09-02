@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.IN_LEAP_YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS_IN_YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainYearMonthPrototypeBuiltins;
@@ -73,8 +66,7 @@ import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 
-public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
-                PrototypeSupplier {
+public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSTemporalPlainYearMonth INSTANCE = new JSTemporalPlainYearMonth();
 
@@ -85,24 +77,30 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     private JSTemporalPlainYearMonth() {
     }
 
-    public static JSTemporalPlainYearMonthObject create(JSContext context, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay, BranchProfile errorBranch) {
+    public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), isoYear, isoMonth, calendar, referenceISODay,
+                        node, errorBranch);
+    }
+
+    public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
+                    Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
         if (!TemporalUtil.isoYearMonthWithinLimits(isoYear, isoMonth)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorYearMonthOutsideRange();
         }
-        return createIntl(context, isoYear, isoMonth, calendar, referenceISODay);
+        return createIntl(context, realm, proto, isoYear, isoMonth, calendar, referenceISODay);
     }
 
-    private static JSTemporalPlainYearMonthObject createIntl(JSContext context, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay) {
-        JSRealm realm = JSRealm.get(null);
+    private static JSTemporalPlainYearMonthObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay) {
         JSObjectFactory factory = context.getTemporalPlainYearMonthFactory();
-        JSTemporalPlainYearMonthObject obj = factory.initProto(new JSTemporalPlainYearMonthObject(factory.getShape(realm), isoYear,
-                        isoMonth, referenceISODay, calendar), realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalPlainYearMonthObject(shape, proto, isoYear, isoMonth, referenceISODay, calendar), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override
@@ -117,22 +115,11 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
-
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR, realm.lookupAccessor(TemporalPlainYearMonthPrototypeBuiltins.BUILTINS, CALENDAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, YEAR, realm.lookupAccessor(TemporalPlainYearMonthPrototypeBuiltins.BUILTINS, YEAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH, realm.lookupAccessor(TemporalPlainYearMonthPrototypeBuiltins.BUILTINS, MONTH));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH_CODE, realm.lookupAccessor(TemporalPlainYearMonthPrototypeBuiltins.BUILTINS, MONTH_CODE));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_YEAR, realm.lookupAccessor(TemporalPlainYearMonthPrototypeBuiltins.BUILTINS, DAYS_IN_YEAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_MONTH, realm.lookupAccessor(TemporalPlainYearMonthPrototypeBuiltins.BUILTINS, DAYS_IN_MONTH));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTHS_IN_YEAR, realm.lookupAccessor(TemporalPlainYearMonthPrototypeBuiltins.BUILTINS, MONTHS_IN_YEAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, IN_LEAP_YEAR, realm.lookupAccessor(TemporalPlainYearMonthPrototypeBuiltins.BUILTINS, IN_LEAP_YEAR));
-
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, TemporalPlainYearMonthPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainYearMonthPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
-
         return prototype;
     }
 
@@ -157,11 +144,11 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     @TruffleBoundary
     public static TruffleString temporalYearMonthToString(JSTemporalPlainYearMonthObject ym, ShowCalendar showCalendar) {
         TruffleString year = TemporalUtil.padISOYear(ym.getYear());
-        TruffleString month = Strings.format("%1$02d", ym.getMonth());
+        TruffleString month = TemporalUtil.toZeroPaddedDecimalString(ym.getMonth(), 2);
         TruffleString result = Strings.concatAll(year, Strings.DASH, month);
         TruffleString calendarID = JSRuntime.toString(ym.getCalendar());
         if (showCalendar == ShowCalendar.ALWAYS || !ISO8601.equals(calendarID)) {
-            TruffleString day = Strings.format("%1$02d", ym.getDay());
+            TruffleString day = TemporalUtil.toZeroPaddedDecimalString(ym.getDay(), 2);
             result = Strings.concatAll(result, Strings.DASH, day);
         }
         TruffleString calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

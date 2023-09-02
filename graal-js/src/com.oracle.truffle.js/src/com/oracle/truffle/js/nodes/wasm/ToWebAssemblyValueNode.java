@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,15 +40,21 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssembly;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyValueTypes;
@@ -59,95 +65,73 @@ import com.oracle.truffle.js.runtime.objects.Null;
  * Implementation of ToWebAssemblyValue() operation. See
  * <a href="https://www.w3.org/TR/wasm-js-api/#towebassemblyvalue">Wasm JS-API Spec</a>
  */
+@ImportStatic(JSWebAssemblyValueTypes.class)
+@GenerateUncached
 public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
 
-    private final BranchProfile errorBranch = BranchProfile.create();
-    @Child JSToInt32Node toInt32Node;
-    @Child JSToNumberNode toNumberNode;
-    @Child JSToBigIntNode toBigIntNode;
-
     protected ToWebAssemblyValueNode() {
-        this.toNumberNode = JSToNumberNode.create();
-        this.toInt32Node = JSToInt32Node.create();
-        this.toBigIntNode = JSToBigIntNode.create();
-    }
-
-    public static ToWebAssemblyValueNode create() {
-        return ToWebAssemblyValueNodeGen.create();
-    }
-
-    public static ToWebAssemblyValueNode getUncached() {
-        return ToWebAssemblyValueNode.Uncached.INSTANCE;
     }
 
     public abstract Object execute(Object value, TruffleString type);
 
-    @Specialization
-    protected Object convert(Object value, TruffleString type) {
-        assert getLanguage().getJSContext().getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
-        if (JSWebAssemblyValueTypes.isI32(type)) {
-            return toInt32Node.executeInt(value);
-        } else if (JSWebAssemblyValueTypes.isI64(type)) {
-            return toBigIntNode.executeBigInteger(value).longValue();
-        } else if (JSWebAssemblyValueTypes.isF32(type)) {
-            Number numberValue = toNumberNode.executeNumber(value);
-            double doubleValue = JSRuntime.toDouble(numberValue);
-            return (float) doubleValue;
-        } else if (JSWebAssemblyValueTypes.isF64(type)) {
-            Number numberValue = toNumberNode.executeNumber(value);
-            return JSRuntime.toDouble(numberValue);
-        } else if (JSWebAssemblyValueTypes.isReferenceType(type)) {
-            if (value == Null.instance) {
-                return getRealm().getWasmRefNull();
-            } else if (JSWebAssemblyValueTypes.isAnyfunc(type)) {
-                if (JSWebAssembly.isExportedFunction(value)) {
-                    return JSWebAssembly.getExportedFunction((JSDynamicObject) value);
-                }
-                errorBranch.enter();
-                notAnExportedFunctionError();
-            } else if (JSWebAssemblyValueTypes.isExtenref(type)) {
-                return value;
-            }
-        }
-        throw Errors.shouldNotReachHere();
+    @Specialization(guards = "isI32(type)")
+    static int i32(Object value, @SuppressWarnings("unused") TruffleString type,
+                    @Cached JSToInt32Node toInt32Node) {
+        return toInt32Node.executeInt(value);
     }
 
-    @CompilerDirectives.TruffleBoundary
-    private static void notAnExportedFunctionError() {
+    @Specialization(guards = "isI64(type)")
+    static long i64(Object value, @SuppressWarnings("unused") TruffleString type,
+                    @Cached JSToBigIntNode toBigIntNode) {
+        return toBigIntNode.executeBigInteger(value).longValue();
+    }
+
+    @Specialization(guards = "isF32(type)")
+    static float f32(Object value, @SuppressWarnings("unused") TruffleString type,
+                    @Cached @Shared("toNumber") JSToNumberNode toNumberNode) {
+        Number numberValue = toNumberNode.executeNumber(value);
+        double doubleValue = JSRuntime.toDouble(numberValue);
+        return (float) doubleValue;
+    }
+
+    @Specialization(guards = "isF64(type)")
+    static double f64(Object value, @SuppressWarnings("unused") TruffleString type,
+                    @Cached @Shared("toNumber") JSToNumberNode toNumberNode) {
+        Number numberValue = toNumberNode.executeNumber(value);
+        return JSRuntime.toDouble(numberValue);
+    }
+
+    @Specialization(guards = "isAnyfunc(type)")
+    final Object anyfunc(Object value, @SuppressWarnings("unused") TruffleString type,
+                    @Cached InlinedBranchProfile errorBranch) {
+        if (value == Null.instance) {
+            return getRealm().getWasmRefNull();
+        } else {
+            if (JSWebAssembly.isExportedFunction(value)) {
+                return JSWebAssembly.getExportedFunction((JSDynamicObject) value);
+            }
+            errorBranch.enter(this);
+            throw notAnExportedFunctionError();
+        }
+    }
+
+    @TruffleBoundary
+    private static JSException notAnExportedFunctionError() {
         throw Errors.createTypeError("value is not an exported function");
     }
 
-    static class Uncached extends ToWebAssemblyValueNode {
-        static final Uncached INSTANCE = new Uncached();
-
-        Uncached() {
+    @Specialization(guards = "isExternref(type)")
+    final Object externref(Object value, @SuppressWarnings("unused") TruffleString type) {
+        if (value == Null.instance) {
+            return getRealm().getWasmRefNull();
+        } else {
+            return value;
         }
+    }
 
-        @Override
-        public Object execute(Object value, TruffleString type) {
-            assert getLanguage().getJSContext().getContextOptions().isWasmBigInt() || !JSWebAssemblyValueTypes.isI64(type);
-            if (JSWebAssemblyValueTypes.isI32(type)) {
-                return JSRuntime.toInt32(value);
-            } else if (JSWebAssemblyValueTypes.isI64(type)) {
-                return JSRuntime.toBigInt(value).longValue();
-            } else if (JSWebAssemblyValueTypes.isF32(type)) {
-                double doubleValue = JSRuntime.toDouble(value);
-                return (float) doubleValue;
-            } else if (JSWebAssemblyValueTypes.isF64(type)) {
-                return JSRuntime.toDouble(value);
-            } else if (JSWebAssemblyValueTypes.isReferenceType(type)) {
-                if (value == Null.instance) {
-                    return getRealm().getWasmRefNull();
-                } else if (JSWebAssemblyValueTypes.isAnyfunc(type)) {
-                    if (JSWebAssembly.isExportedFunction(value)) {
-                        return JSWebAssembly.getExportedFunction((JSDynamicObject) value);
-                    }
-                    ToWebAssemblyValueNode.notAnExportedFunctionError();
-                } else if (JSWebAssemblyValueTypes.isExtenref(type)) {
-                    return value;
-                }
-            }
-            throw Errors.shouldNotReachHere();
-        }
+    @Fallback
+    @TruffleBoundary
+    final Object fallback(@SuppressWarnings("unused") Object value, TruffleString type) {
+        throw Errors.createTypeError("Unknown type: " + type, this);
     }
 }

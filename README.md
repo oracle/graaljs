@@ -21,14 +21,14 @@ See the documentation on the [GraalVM website](https://www.graalvm.org/docs/gett
 Installing GraalVM JavaScript using the _GraalVM Updater_:
 
 ```shell
-$ $GRAALVM/bin/gu install js
-$ $GRAALVM/bin/js --version
+$JAVA_HOME/bin/gu install js
+$JAVA_HOME/bin/js --version
 ```
 
 After installation, the `js` shell can be executed and used to run JavaScript code or execute JavaScript files.
 
 ```
-$ $GRAALVM/bin/js
+$JAVA_HOME/bin/js
 > print("Hello JavaScript");
 Hello JavaScript
 >
@@ -64,8 +64,8 @@ Similar to JavaScript itself, Node.js is a separately installable component of G
 It can be installed using the _GraalVM Updater_:
 
 ```shell
-$ $GRAALVM/bin/gu install nodejs
-$ $GRAALVM/bin/node --version
+$JAVA_HOME/bin/gu install nodejs
+$JAVA_HOME/bin/node --version
 ```
 
 ### Compatibility on Operating Systems

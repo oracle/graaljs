@@ -15,7 +15,6 @@
 #include "src/objects/foreign-inl.h"
 #include "src/objects/js-weak-refs.h"
 #include "src/objects/objects-inl.h"
-#include "src/objects/stack-frame-info.h"
 
 namespace v8 {
 
@@ -111,7 +110,7 @@ MAKE_TO_LOCAL(CallableToLocal, JSReceiver, Function)
 MAKE_TO_LOCAL(ToLocalPrimitive, Object, Primitive)
 MAKE_TO_LOCAL(FixedArrayToLocal, FixedArray, FixedArray)
 MAKE_TO_LOCAL(PrimitiveArrayToLocal, FixedArray, PrimitiveArray)
-MAKE_TO_LOCAL(ScriptOrModuleToLocal, Script, ScriptOrModule)
+MAKE_TO_LOCAL(ToLocal, ScriptOrModule, ScriptOrModule)
 
 #undef MAKE_TO_LOCAL_TYPED_ARRAY
 #undef MAKE_TO_LOCAL
@@ -264,12 +263,12 @@ void CopyDoubleElementsToTypedBuffer(T* dst, uint32_t length,
   }
 }
 
-template <const CTypeInfo* type_info, typename T>
+template <CTypeInfo::Identifier type_info_id, typename T>
 bool CopyAndConvertArrayToCppBuffer(Local<Array> src, T* dst,
                                     uint32_t max_length) {
   static_assert(
-      std::is_same<
-          T, typename i::CTypeInfoTraits<type_info->GetType()>::ctype>::value,
+      std::is_same<T, typename i::CTypeInfoTraits<
+                          CTypeInfo(type_info_id).GetType()>::ctype>::value,
       "Type mismatch between the expected CTypeInfo::Type and the destination "
       "array");
 
@@ -299,16 +298,42 @@ bool CopyAndConvertArrayToCppBuffer(Local<Array> src, T* dst,
   }
 }
 
+// Deprecated; to be removed.
 template <const CTypeInfo* type_info, typename T>
 inline bool V8_EXPORT TryCopyAndConvertArrayToCppBuffer(Local<Array> src,
                                                         T* dst,
                                                         uint32_t max_length) {
-  return CopyAndConvertArrayToCppBuffer<type_info, T>(src, dst, max_length);
+  return CopyAndConvertArrayToCppBuffer<type_info->GetId(), T>(src, dst,
+                                                               max_length);
+}
+
+template <CTypeInfo::Identifier type_info_id, typename T>
+inline bool V8_EXPORT TryToCopyAndConvertArrayToCppBuffer(Local<Array> src,
+                                                          T* dst,
+                                                          uint32_t max_length) {
+  return CopyAndConvertArrayToCppBuffer<type_info_id, T>(src, dst, max_length);
 }
 
 namespace internal {
 
+void HandleScopeImplementer::EnterContext(Context context) {
+  DCHECK_EQ(entered_contexts_.capacity(), is_microtask_context_.capacity());
+  DCHECK_EQ(entered_contexts_.size(), is_microtask_context_.size());
+  DCHECK(context.IsNativeContext());
+  entered_contexts_.push_back(context);
+  is_microtask_context_.push_back(0);
+}
+
+void HandleScopeImplementer::EnterMicrotaskContext(Context context) {
+  DCHECK_EQ(entered_contexts_.capacity(), is_microtask_context_.capacity());
+  DCHECK_EQ(entered_contexts_.size(), is_microtask_context_.size());
+  DCHECK(context.IsNativeContext());
+  entered_contexts_.push_back(context);
+  is_microtask_context_.push_back(1);
+}
+
 Handle<Context> HandleScopeImplementer::LastEnteredContext() {
+  DCHECK_EQ(entered_contexts_.capacity(), is_microtask_context_.capacity());
   DCHECK_EQ(entered_contexts_.size(), is_microtask_context_.size());
 
   for (size_t i = 0; i < entered_contexts_.size(); ++i) {

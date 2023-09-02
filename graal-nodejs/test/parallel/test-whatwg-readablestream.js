@@ -328,17 +328,8 @@ assert.throws(() => {
   const read1 = reader.read();
   const read2 = reader.read();
 
-  // The stream is empty so the read will never settle.
-  read1.then(
-    common.mustNotCall(),
-    common.mustNotCall()
-  );
-
-  // The stream is empty so the read will never settle.
-  read2.then(
-    common.mustNotCall(),
-    common.mustNotCall()
-  );
+  read1.then(common.mustNotCall(), common.mustCall());
+  read2.then(common.mustNotCall(), common.mustCall());
 
   assert.notStrictEqual(read1, read2);
 
@@ -346,10 +337,9 @@ assert.throws(() => {
 
   delay().then(common.mustCall());
 
-  assert.throws(() => reader.releaseLock(), {
-    code: 'ERR_INVALID_STATE',
-  });
   assert(stream.locked);
+  reader.releaseLock();
+  assert(!stream.locked);
 }
 
 {
@@ -1666,4 +1656,34 @@ class Source {
 
   reader.read(new DataView(buffer))
     .then(common.mustCall());
+}
+
+{
+  const stream = new ReadableStream({
+    type: 'bytes',
+    autoAllocateChunkSize: 128,
+    pull: common.mustCall((controller) => {
+      const view = controller.byobRequest.view;
+      const dest = new Uint8Array(
+        view.buffer,
+        view.byteOffset,
+        view.byteLength
+      );
+      dest.fill(1);
+      controller.byobRequest.respondWithNewView(dest);
+    }),
+  });
+
+  const reader = stream.getReader({ mode: 'byob' });
+
+  const buffer = new ArrayBuffer(10);
+  const view = new Uint8Array(
+    buffer,
+    1,
+    3
+  );
+
+  reader.read(view).then(common.mustCall(({ value }) => {
+    assert.deepStrictEqual(value, new Uint8Array([1, 1, 1]));
+  }));
 }

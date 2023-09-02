@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,11 +45,12 @@ import java.util.function.Function;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.AsyncIteratorArgs;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorMethodNode;
 import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorMethodWithCallableNode;
@@ -70,6 +71,7 @@ import com.oracle.truffle.js.nodes.arguments.AccessIndexedArgumentNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
 import com.oracle.truffle.js.nodes.control.AsyncGeneratorDrainQueueNode;
 import com.oracle.truffle.js.nodes.control.TryCatchNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -86,6 +88,7 @@ import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncGeneratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -179,9 +182,9 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Child private PropertyGetNode getArgsNode;
             @Child private PropertyGetNode getThisNode;
             @Child protected JSFunctionCallNode callNode;
+            @Child private LongToIntOrDoubleNode indexToNumber = LongToIntOrDoubleNode.create();
 
             protected final JSContext context;
-            private final BranchProfile doubleIndexBranch = BranchProfile.create();
 
             protected AsyncIteratorRootNode(JSContext context) {
                 super(context.getLanguage(), null, null);
@@ -198,12 +201,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 return (T) getArgsNode.getValue(functionObject);
             }
 
-            protected final Object getThis(VirtualFrame frame) {
+            protected final JSAsyncGeneratorObject getThis(VirtualFrame frame) {
                 if (getThisNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     getThisNode = insert(PropertyGetNode.createGetHidden(THIS_ID, context));
                 }
-                return getThisNode.getValue(JSFrameUtil.getFunctionObject(frame));
+                return (JSAsyncGeneratorObject) getThisNode.getValue(JSFrameUtil.getFunctionObject(frame));
             }
 
             @Override
@@ -214,7 +217,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
 
             protected final Object indexToJS(long index) {
-                return JSRuntime.longToIntOrDouble(index, doubleIndexBranch);
+                return indexToNumber.fromIndex(null, index);
             }
         }
 
@@ -307,7 +310,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
                 this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
                 this.isObjectNode = IsObjectNode.create();
-                this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+                this.iteratorCompleteNode = IteratorCompleteNode.create();
             }
 
             public abstract Object executeBody(VirtualFrame frame);
@@ -371,15 +374,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         public abstract static class AbstractAsyncIteratorGeneratorResumptionRootNode<T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> extends AsyncIteratorRootNode<T> {
 
-            @Child protected PropertySetNode setGeneratorState;
-            @Child private PropertyGetNode getGeneratorQueue;
             @Child private AsyncGeneratorDrainQueueNode asyncGeneratorOpNode;
 
             protected AbstractAsyncIteratorGeneratorResumptionRootNode(JSContext context) {
                 super(context);
 
-                this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
-                this.getGeneratorQueue = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_QUEUE_ID, context);
                 this.asyncGeneratorOpNode = AsyncGeneratorDrainQueueNode.create(context);
             }
 
@@ -388,18 +387,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
 
             protected final Object asyncGeneratorComplete(VirtualFrame frame, Completion.Type resultType, Object resultValue) {
-                Object generator = getThis(frame);
+                var generator = getThis(frame);
                 asyncGeneratorOpNode.asyncGeneratorCompleteStepAndDrainQueue(frame, generator, resultType, resultValue);
                 return Undefined.instance;
             }
 
             protected final void asyncGeneratorCompleteStep(VirtualFrame frame, Completion.Type completionType, Object completionValue, boolean done, ArrayDeque<AsyncGeneratorRequest> queue) {
                 asyncGeneratorOpNode.asyncGeneratorCompleteStep(frame, completionType, completionValue, done, queue);
-            }
-
-            @SuppressWarnings("unchecked")
-            protected final ArrayDeque<AsyncGeneratorRequest> getAsyncGeneratorQueue(Object generator) {
-                return (ArrayDeque<AsyncGeneratorRequest>) getGeneratorQueue.getValue(generator);
             }
         }
 
@@ -436,9 +430,8 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             }
 
             protected final void assertResumingAwait(VirtualFrame frame) {
-                Object generator = getThis(frame);
-                Object state;
-                assert (state = JSObjectUtil.getHiddenProperty((JSDynamicObject) generator, JSFunction.ASYNC_GENERATOR_STATE_ID)) == JSFunction.AsyncGeneratorState.Executing : state;
+                var generator = getThis(frame);
+                assert generator.getAsyncGeneratorState() == JSFunction.AsyncGeneratorState.Executing : generator.getAsyncGeneratorState();
             }
         }
 
@@ -451,7 +444,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             AsyncIteratorGeneratorAwaitResumptionWithNextRootNode(JSContext context) {
                 super(context);
                 this.isObjectNode = IsObjectNode.create();
-                this.iteratorCompleteNode = IteratorCompleteNode.create(context);
+                this.iteratorCompleteNode = IteratorCompleteNode.create();
                 this.iteratorValueNode = IteratorValueNode.create();
             }
 
@@ -490,12 +483,10 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
          */
         public abstract static class AsyncIteratorGeneratorYieldResumptionRootNode<T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> extends AbstractAsyncIteratorGeneratorResumptionRootNode<T> {
 
-            @Child private PropertyGetNode getGeneratorState;
             @Child private AsyncIteratorAwaitNode<AsyncIteratorArgs> awaitYieldResumptionNode;
 
             AsyncIteratorGeneratorYieldResumptionRootNode(JSContext context) {
                 super(context);
-                this.getGeneratorState = PropertyGetNode.createGetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
                 if (this instanceof AsyncIteratorFlatMapNode.AsyncIteratorFlatMapRootNode) {
                     this.awaitYieldResumptionNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorUnwrapYieldResumptionCloseInnerIterator,
                                     AsyncIteratorFlatMapUnwrapYieldResumptionRootNode::createCreateUnwrapYieldResumptionCloseImpl, true);
@@ -509,17 +500,17 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
             @Override
             public final Object execute(VirtualFrame frame) {
-                Object generator = getThis(frame);
-                JSFunction.AsyncGeneratorState suspendedState = (JSFunction.AsyncGeneratorState) getGeneratorState.getValue(generator);
+                var generator = getThis(frame);
+                JSFunction.AsyncGeneratorState suspendedState = generator.getAsyncGeneratorState();
                 // State can be Executing for cases where we loop back to the start from an Await.
                 assert suspendedState == JSFunction.AsyncGeneratorState.SuspendedStart || suspendedState == JSFunction.AsyncGeneratorState.SuspendedYield ||
                                 suspendedState == JSFunction.AsyncGeneratorState.Executing : suspendedState;
-                setGeneratorState.setValue(generator, JSFunction.AsyncGeneratorState.Executing);
+                generator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.Executing);
 
                 Completion.Type resultType = Completion.Type.Normal;
                 Object resultValue = Undefined.instance;
                 if (suspendedState == JSFunction.AsyncGeneratorState.SuspendedYield) {
-                    ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
+                    ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
                     assert !queue.isEmpty();
                     AsyncGeneratorRequest toYield = queue.peekFirst();
                     // AsyncGeneratorUnwrapYieldResumption
@@ -598,18 +589,18 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             return executeThis(promiseOrValue, args, getThisNode.getValue(JSFrameUtil.getFunctionObject(frame)));
         }
 
-        private JSDynamicObject promiseResolve(Object promiseOrValue) {
+        private JSPromiseObject promiseResolve(Object promiseOrValue) {
             if (JSPromise.isJSPromise(promiseOrValue) && getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) == getRealm().getPromiseConstructor()) {
-                return (JSDynamicObject) promiseOrValue;
+                return (JSPromiseObject) promiseOrValue;
             } else {
                 PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
                 callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), promiseOrValue));
-                return promiseCapability.getPromise();
+                return (JSPromiseObject) promiseCapability.getPromise();
             }
         }
 
         public final JSDynamicObject executeThis(Object promiseOrValue, T args, Object thisObj) {
-            JSDynamicObject promise = promiseResolve(promiseOrValue);
+            JSPromiseObject promise = promiseResolve(promiseOrValue);
 
             JSFunctionObject then = createFunction(args);
             JSFunctionObject catchObj = createFunctionWithArgs(args, context.getOrCreateBuiltinFunctionData(catchKey, catchCreate));
@@ -692,13 +683,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     }
 
     protected static class AsyncIteratorYieldResultRootNode extends AsyncIteratorAwaitNode.AbstractAsyncIteratorGeneratorResumptionRootNode<AsyncIteratorArgs> {
-        @Child private PropertySetNode setGeneratorState;
         @Child private JSFunctionCallNode callNode;
         @Child private PropertyGetNode getContinuation;
 
         protected AsyncIteratorYieldResultRootNode(JSContext context) {
             super(context);
-            this.setGeneratorState = PropertySetNode.createSetHidden(JSFunction.ASYNC_GENERATOR_STATE_ID, context);
             this.callNode = JSFunctionCallNode.createCall();
             this.getContinuation = PropertyGetNode.createGetHidden(AsyncIteratorHelperPrototypeBuiltins.IMPL_ID, context);
         }
@@ -706,9 +695,9 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Override
         public Object execute(VirtualFrame frame) {
             Object value = valueNode.execute(frame); // awaited value
-            Object generator = getThis(frame);
+            var generator = getThis(frame);
 
-            ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
+            ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
             assert !queue.isEmpty();
             // Perform AsyncGeneratorCompleteStep
             asyncGeneratorCompleteStep(frame, Completion.Type.Normal, value, false, queue);
@@ -717,13 +706,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 // NOTE: Execution continues without suspending the generator.
                 return asyncGeneratorUnwrapYieldResumption(generator);
             } else {
-                setGeneratorState.setValue(generator, JSFunction.AsyncGeneratorState.SuspendedYield);
+                generator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.SuspendedYield);
                 return Undefined.instance;
             }
         }
 
-        private Object asyncGeneratorUnwrapYieldResumption(Object generator) {
-            setGeneratorState.setValue(generator, JSFunction.AsyncGeneratorState.SuspendedYield);
+        private Object asyncGeneratorUnwrapYieldResumption(JSAsyncGeneratorObject generator) {
+            generator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.SuspendedYield);
             Object continuation = getContinuation.getValue(generator);
             return callNode.executeCall(JSArguments.createZeroArg(generator, continuation));
         }
@@ -751,16 +740,16 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Override
         public Object executeBody(VirtualFrame frame) {
             Object awaitedValue = valueNode.execute(frame);
-            Object generator = getThis(frame);
+            var generator = getThis(frame);
 
-            ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
+            ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
             assert !queue.isEmpty();
             AsyncGeneratorRequest result = queue.peekFirst();
             if (result.isReturn()) {
                 // AsyncIteratorClose
                 AsyncIteratorArgs args = getArgs(frame);
                 if (isObjectNode == null) {
-                    JSDynamicObject iterator = args.iterated.getIterator();
+                    Object iterator = args.iterated.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
                         Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -806,9 +795,9 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Override
         public Object executeBody(VirtualFrame frame) {
             Object awaitedValue = valueNode.execute(frame);
-            Object generator = getThis(frame);
+            var generator = getThis(frame);
 
-            ArrayDeque<AsyncGeneratorRequest> queue = getAsyncGeneratorQueue(generator);
+            ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
             assert !queue.isEmpty();
             AsyncGeneratorRequest result = queue.peekFirst();
             if (result.isReturn()) {
@@ -818,7 +807,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 AsyncIteratorFlatMapNode.AsyncIteratorFlatMapArgs args = getArgs(frame);
                 if (isObjectNode == null) {
                     assert args.innerIterator != null;
-                    JSDynamicObject iterator = args.innerIterator.getIterator();
+                    Object iterator = args.innerIterator.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
                         Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -838,7 +827,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     }
                     assert args.innerIterator != null;
                     args.innerIterator = null;
-                    JSDynamicObject iterator = args.iterated.getIterator();
+                    Object iterator = args.iterated.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
                         Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -884,8 +873,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
-            getIteratorDirect(thisObj);
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -979,8 +967,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(filterer)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object filterer) {
-            getIteratorDirect(thisObj);
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object filterer) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1097,8 +1084,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
 
-        private final BranchProfile errorBranch = BranchProfile.create();
-
         public AsyncIteratorTakeNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
@@ -1109,21 +1094,28 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization
-        public JSDynamicObject take(Object thisObj, Object limit) {
-            IteratorRecord record = getIteratorDirect(thisObj);
+        public JSDynamicObject take(Object thisObj, Object limit,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
-                errorBranch.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
+            IteratorRecord record = getIteratorDirect(thisObj);
             AsyncIteratorTakeArgs args = new AsyncIteratorTakeArgs(record, integerLimit);
             return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(args));
         }
@@ -1216,8 +1208,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child private JSToNumberNode toNumberNode;
         @Child private JSToIntegerOrInfinityNode toIntegerOrInfinityNode;
 
-        private final BranchProfile errorProfile = BranchProfile.create();
-
         public AsyncIteratorDropNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
 
@@ -1228,21 +1218,28 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization
-        public JSDynamicObject drop(Object thisObj, Object limit) {
-            IteratorRecord record = getIteratorDirect(thisObj);
+        public JSDynamicObject drop(Object thisObj, Object limit,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+
+            if (!isObjectNode.executeBoolean(thisObj)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(thisObj, this);
+            }
 
             Number numLimit = toNumberNode.executeNumber(limit);
             if (JSRuntime.isNaN(numLimit)) {
-                errorProfile.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeError("NaN is not allowed", this);
             }
 
             double integerLimit = JSRuntime.doubleValue(toIntegerOrInfinityNode.executeNumber(numLimit));
             if (integerLimit < 0) {
-                errorProfile.enter();
+                errorBranch.enter(this);
                 throw Errors.createRangeErrorIndexNegative(this);
             }
 
+            IteratorRecord record = getIteratorDirect(thisObj);
             AsyncIteratorDropArgs args = new AsyncIteratorDropArgs(record, integerLimit);
             return createAsyncIteratorHelperNode.execute(record, awaitNode.createFunction(args));
         }
@@ -1378,8 +1375,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(mapper)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object mapper) {
-            getIteratorDirect(thisObj);
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object mapper) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1562,8 +1558,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(reducer)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object reducer, @SuppressWarnings("unused") Object[] args) {
-            getIteratorDirect(thisObj);
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object reducer, @SuppressWarnings("unused") Object[] args) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1713,9 +1708,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Child private IteratorNextNode iteratorNextNode;
             @Child private IteratorValueNode iteratorValueNode;
             @Child private AsyncIteratorAwaitNode<AsyncIteratorToArrayArgs> awaitNode;
-
             private final JSContext context;
-            private final BranchProfile growProfile = BranchProfile.create();
 
             public AsyncIteratorToArrayRootNode(JSContext context) {
                 super(context);
@@ -1738,7 +1731,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 }
 
                 Object value = iteratorValueNode.execute(next);
-                args.result.add(value, growProfile);
+                args.result.add(value, null, InlinedBranchProfile.getUncached());
 
                 return awaitNode.execute(frame, iteratorNextNode.execute(args.iterated), args);
             }
@@ -1769,8 +1762,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
-            getIteratorDirect(thisObj);
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1866,8 +1858,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
-            getIteratorDirect(thisObj);
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -1973,8 +1964,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
-            getIteratorDirect(thisObj);
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -2079,8 +2069,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         }
 
         @Specialization(guards = "!isCallable(fn)")
-        public Object unsupported(Object thisObj, @SuppressWarnings("unused") Object fn) {
-            getIteratorDirect(thisObj);
+        public Object unsupported(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object fn) {
             throw Errors.createTypeErrorCallableExpected();
         }
 

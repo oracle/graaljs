@@ -26,6 +26,7 @@ const {
 
 const {
   customInspectSymbol: kInspect,
+  kEmptyObject,
 } = require('internal/util');
 
 const { inspect } = require('internal/util/inspect');
@@ -44,7 +45,7 @@ class SocketAddress extends JSTransferable {
     return value?.[kHandle] !== undefined;
   }
 
-  constructor(options = {}) {
+  constructor(options = kEmptyObject) {
     super();
     validateObject(options, 'options');
     let { family = 'ipv4' } = options;
@@ -104,7 +105,7 @@ class SocketAddress extends JSTransferable {
 
     const opts = {
       ...options,
-      depth: options.depth == null ? null : options.depth - 1
+      depth: options.depth == null ? null : options.depth - 1,
     };
 
     return `SocketAddress ${inspect(this.toJSON(), opts)}`;

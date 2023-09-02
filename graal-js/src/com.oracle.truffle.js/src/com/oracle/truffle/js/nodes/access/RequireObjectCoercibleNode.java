@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -59,7 +60,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * Implementation of the abstract operation RequireObjectCoercible(argument) (ES6 7.2.1).
@@ -70,6 +71,7 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     protected RequireObjectCoercibleNode() {
     }
 
+    @NeverDefault
     public static RequireObjectCoercibleNode create() {
         return RequireObjectCoercibleNodeGen.create();
     }
@@ -115,11 +117,11 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")
     protected static void doCachedJSClass(@SuppressWarnings("unused") Object object,
-                    @Cached("getClassIfJSObject(object)") @SuppressWarnings("unused") Class<?> cachedClass) {
+                    @Cached(value = "getClassIfJSObject(object)") @SuppressWarnings("unused") Class<?> cachedClass) {
     }
 
-    @Specialization(guards = {"isJSObject(object)"}, replaces = "doCachedJSClass")
-    protected static void doJSObject(@SuppressWarnings("unused") Object object) {
+    @Specialization(replaces = "doCachedJSClass")
+    protected static void doJSObject(@SuppressWarnings("unused") JSObject object) {
     }
 
     @Specialization(guards = {"isForeignObject(object)"}, limit = "InteropLibraryLimit")
@@ -130,7 +132,7 @@ public abstract class RequireObjectCoercibleNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isNullOrUndefined(object)")
-    protected void doNullOrUndefined(JSDynamicObject object) {
+    protected final void doNullOrUndefined(Object object) {
         throw Errors.createTypeErrorNotObjectCoercible(object, this);
     }
 

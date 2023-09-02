@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,13 +41,16 @@
 package com.oracle.truffle.js.nodes.array;
 
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * Represents abstract operation ArrayCreate (length).
@@ -60,25 +63,31 @@ public abstract class ArrayCreateNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
+    @NeverDefault
     public static ArrayCreateNode create(JSContext context) {
         return ArrayCreateNodeGen.create(context);
     }
 
     @Specialization(guards = {"isValidArrayLength(length)", "length <= MAX_VALUE"})
-    protected JSArrayObject doDefault(long length) {
-        return JSArray.createEmptyChecked(context, getRealm(), length);
+    protected final JSArrayObject doDefault(long length, JSRealm realm, JSDynamicObject proto) {
+        return JSArray.createEmptyChecked(context, realm, proto, length);
     }
 
     @Specialization(guards = {"isValidArrayLength(length)", "length > MAX_VALUE"})
-    protected JSArrayObject doLargeLength(long length) {
-        return JSArray.createSparseArray(context, getRealm(), length);
+    protected final JSArrayObject doLargeLength(long length, JSRealm realm, JSDynamicObject proto) {
+        return JSArray.createSparseArray(context, realm, proto, length);
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = "!isValidArrayLength(length)")
-    protected JSArrayObject doInvalidLength(long length) {
-        throw Errors.createRangeErrorInvalidArrayLength();
+    protected final JSArrayObject doInvalidLength(long length, JSRealm realm, JSDynamicObject proto) {
+        throw Errors.createRangeErrorInvalidArrayLength(this);
     }
 
-    public abstract JSArrayObject execute(long length);
+    public final JSArrayObject execute(long length) {
+        JSRealm realm = getRealm();
+        return execute(length, realm, realm.getArrayPrototype());
+    }
+
+    public abstract JSArrayObject execute(long length, JSRealm realm, JSDynamicObject proto);
 }

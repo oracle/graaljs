@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 
 var assert = require('assert');
+var module = require('./_unit');
 
 function expectedErrorValidator(ExpectedError, expectedCode, expectedMessage) {
     return (err) => {
@@ -127,7 +128,7 @@ describe('Buffer.utf8Write', function() {
     it('length is zero', function() {
         assert.strictEqual(Buffer.alloc(0).utf8Write.length, 0);
     });
-    if (typeof java !== "undefined") {
+    if (module.hasJavaInterop()) {
         it('should accept interop buffer', function() {
             var byteLength = 8;
             var offset = 4;
@@ -318,7 +319,7 @@ describe('Buffer.utf8Slice', function() {
             assert.strictEqual(buffer.utf8Slice(), utf16, utf8Hex);
         }
     });
-    if (typeof java !== "undefined") {
+    if (module.hasJavaInterop()) {
         it('should accept interop buffer', function() {
             var javaBuffer = java.nio.ByteBuffer.allocate(8);
             javaBuffer.put(3, 'f'.codePointAt(0));

@@ -6,8 +6,8 @@
 #define V8_COMPILER_RAW_MACHINE_ASSEMBLER_H_
 
 #include <initializer_list>
+#include <type_traits>
 
-#include "src/base/type-traits.h"
 #include "src/codegen/assembler.h"
 #include "src/common/globals.h"
 #include "src/compiler/access-builder.h"
@@ -239,20 +239,20 @@ class V8_EXPORT_PRIVATE RawMachineAssembler {
   }
 
   // Atomic memory operations.
-  Node* AtomicLoad(MachineType type, Node* base, Node* index) {
-    DCHECK_NE(type.representation(), MachineRepresentation::kWord64);
-    return AddNode(machine()->Word32AtomicLoad(type), base, index);
+  Node* AtomicLoad(AtomicLoadParameters rep, Node* base, Node* index) {
+    DCHECK_NE(rep.representation().representation(),
+              MachineRepresentation::kWord64);
+    return AddNode(machine()->Word32AtomicLoad(rep), base, index);
   }
 
-  Node* AtomicLoad64(Node* base, Node* index) {
+  Node* AtomicLoad64(AtomicLoadParameters rep, Node* base, Node* index) {
     if (machine()->Is64()) {
       // This uses Uint64() intentionally: AtomicLoad is not implemented for
       // Int64(), which is fine because the machine instruction only cares
       // about words.
-      return AddNode(machine()->Word64AtomicLoad(MachineType::Uint64()), base,
-                     index);
+      return AddNode(machine()->Word64AtomicLoad(rep), base, index);
     } else {
-      return AddNode(machine()->Word32AtomicPairLoad(), base, index);
+      return AddNode(machine()->Word32AtomicPairLoad(rep.order()), base, index);
     }
   }
 
@@ -262,22 +262,24 @@ class V8_EXPORT_PRIVATE RawMachineAssembler {
 #define VALUE_HALVES value, value_high
 #endif
 
-  Node* AtomicStore(MachineRepresentation rep, Node* base, Node* index,
+  Node* AtomicStore(AtomicStoreParameters params, Node* base, Node* index,
                     Node* value) {
     DCHECK(!IsMapOffsetConstantMinusTag(index));
-    DCHECK_NE(rep, MachineRepresentation::kWord64);
-    return AddNode(machine()->Word32AtomicStore(rep), base, index, value);
+    DCHECK_NE(params.representation(), MachineRepresentation::kWord64);
+    return AddNode(machine()->Word32AtomicStore(params), base, index, value);
   }
 
-  Node* AtomicStore64(Node* base, Node* index, Node* value, Node* value_high) {
+  Node* AtomicStore64(AtomicStoreParameters params, Node* base, Node* index,
+                      Node* value, Node* value_high) {
     if (machine()->Is64()) {
       DCHECK_NULL(value_high);
-      return AddNode(
-          machine()->Word64AtomicStore(MachineRepresentation::kWord64), base,
-          index, value);
+      return AddNode(machine()->Word64AtomicStore(params), base, index, value);
     } else {
-      return AddNode(machine()->Word32AtomicPairStore(), base, index,
-                     VALUE_HALVES);
+      DCHECK(params.representation() != MachineRepresentation::kTaggedPointer &&
+             params.representation() != MachineRepresentation::kTaggedSigned &&
+             params.representation() != MachineRepresentation::kTagged);
+      return AddNode(machine()->Word32AtomicPairStore(params.order()), base,
+                     index, VALUE_HALVES);
     }
   }
 
@@ -967,9 +969,9 @@ class V8_EXPORT_PRIVATE RawMachineAssembler {
   template <class... CArgs>
   Node* CallCFunction(Node* function, base::Optional<MachineType> return_type,
                       CArgs... cargs) {
-    static_assert(v8::internal::conjunction<
-                      std::is_convertible<CArgs, CFunctionArg>...>::value,
-                  "invalid argument types");
+    static_assert(
+        std::conjunction_v<std::is_convertible<CArgs, CFunctionArg>...>,
+        "invalid argument types");
     return CallCFunction(function, return_type, {cargs...});
   }
 
@@ -981,9 +983,9 @@ class V8_EXPORT_PRIVATE RawMachineAssembler {
   Node* CallCFunctionWithoutFunctionDescriptor(Node* function,
                                                MachineType return_type,
                                                CArgs... cargs) {
-    static_assert(v8::internal::conjunction<
-                      std::is_convertible<CArgs, CFunctionArg>...>::value,
-                  "invalid argument types");
+    static_assert(
+        std::conjunction_v<std::is_convertible<CArgs, CFunctionArg>...>,
+        "invalid argument types");
     return CallCFunctionWithoutFunctionDescriptor(function, return_type,
                                                   {cargs...});
   }
@@ -998,9 +1000,9 @@ class V8_EXPORT_PRIVATE RawMachineAssembler {
                                               MachineType return_type,
                                               SaveFPRegsMode mode,
                                               CArgs... cargs) {
-    static_assert(v8::internal::conjunction<
-                      std::is_convertible<CArgs, CFunctionArg>...>::value,
-                  "invalid argument types");
+    static_assert(
+        std::conjunction_v<std::is_convertible<CArgs, CFunctionArg>...>,
+        "invalid argument types");
     return CallCFunctionWithCallerSavedRegisters(function, return_type, mode,
                                                  {cargs...});
   }
@@ -1031,7 +1033,7 @@ class V8_EXPORT_PRIVATE RawMachineAssembler {
   void PopAndReturn(Node* pop, Node* v1, Node* v2, Node* v3, Node* v4);
   void Bind(RawMachineLabel* label);
   void Deoptimize(Node* state);
-  void AbortCSAAssert(Node* message);
+  void AbortCSADcheck(Node* message);
   void DebugBreak();
   void Unreachable();
   void Comment(const std::string& msg);

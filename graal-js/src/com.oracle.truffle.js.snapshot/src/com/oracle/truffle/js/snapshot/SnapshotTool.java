@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,15 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.nio.file.Paths;
-import java.util.AbstractMap;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ForkJoinPool;
+import java.util.concurrent.ForkJoinWorkerThread;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.io.IOAccess;
@@ -59,17 +64,15 @@ import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 
 public class SnapshotTool {
-    private final TimeStats timeStats = new TimeStats();
 
-    public SnapshotTool() {
-    }
+    private boolean binary = true;
+    private boolean wrapped = false;
+    private String outDir = null;
+    private String inDir = null;
+    private List<String> srcFiles = new ArrayList<>();
+    private int parallelism = Math.min(8, Runtime.getRuntime().availableProcessors());
 
-    public static void main(String[] args) throws IOException {
-        boolean binary = true;
-        boolean wrapped = false;
-        String outDir = null;
-        String inDir = null;
-        List<String> srcFiles = new ArrayList<>();
+    public SnapshotTool(String[] args) {
         for (String arg : args) {
             if (arg.startsWith("--")) {
                 if (arg.equals("--java")) {
@@ -84,32 +87,80 @@ public class SnapshotTool {
                     outDir = requireDirectory(arg.substring(arg.indexOf('=') + 1));
                 } else if (arg.startsWith("--indir=")) {
                     inDir = requireDirectory(arg.substring(arg.indexOf('=') + 1));
+                } else if (arg.startsWith("--threads=")) {
+                    parallelism = Integer.parseInt(arg.substring(arg.indexOf('=') + 1));
                 }
             }
         }
+    }
 
-        SnapshotTool snapshotTool = new SnapshotTool();
+    public static void main(String[] args) throws InterruptedException, ExecutionException {
+        new SnapshotTool(args).run();
+    }
+
+    private void run() throws InterruptedException, ExecutionException {
+        List<Callable<Void>> tasks = new ArrayList<>();
         if (!srcFiles.isEmpty() && outDir != null) {
-            try (Context polyglotContext = Context.newBuilder(JavaScriptLanguage.ID).allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).allowExperimentalOptions(true).//
-                            option(JSContextOptions.CLASS_FIELDS_NAME, "true").//
-                            option(JSContextOptions.LAZY_TRANSLATION_NAME, "false").//
-                            build()) {
-                polyglotContext.initialize(JavaScriptLanguage.ID);
-                polyglotContext.enter();
-                for (String srcFile : srcFiles) {
-                    File sourceFile = inDir == null ? new File(srcFile) : Paths.get(inDir, srcFile).toFile();
-                    File outputFile = Paths.get(outDir, srcFile + (binary ? ".bin" : ".java")).toFile();
+            try (var timeStats = new TimeStats()) {
+                for (String srcFileName : srcFiles) {
+                    File sourceFile = inDir == null ? new File(srcFileName) : Paths.get(inDir, srcFileName).toFile();
+                    File outputFile = Paths.get(outDir, srcFileName + (binary ? ".bin" : ".java")).toFile();
                     if (!sourceFile.isFile()) {
                         throw new IllegalArgumentException("Not a file: " + sourceFile);
                     }
-                    snapshotTool.snapshotScriptFileTo(srcFile, sourceFile, outputFile, binary, wrapped);
+
+                    tasks.add(() -> {
+                        try (var timer = timeStats.file(srcFileName)) {
+                            snapshotScriptFileTo(srcFileName, sourceFile, outputFile, binary, wrapped);
+                            return null;
+                        } catch (Exception e) {
+                            throw new RuntimeException(String.join(": ", srcFileName, e.getMessage()), e);
+                        }
+                    });
                 }
-                snapshotTool.timeStats.print();
-                polyglotContext.leave();
+
+                var executor = new ForkJoinPool(parallelism, pool -> new JSContextWorkerThread(pool), null, true);
+                var futures = executor.invokeAll(tasks);
+                // Check that all tasks succeeded.
+                for (var future : futures) {
+                    future.get();
+                }
             }
         } else {
-            System.out.println("Usage: [--java|--binary] --outdir=DIR [--indir=DIR] --file=FILE [--file=FILE ...]");
+            usage();
         }
+    }
+
+    private static Context newContext() {
+        return Context.newBuilder(JavaScriptLanguage.ID).allowExperimentalOptions(true).//
+                        allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).//
+                        option(JSContextOptions.LAZY_TRANSLATION_NAME, "false").//
+                        build();
+    }
+
+    private static final class JSContextWorkerThread extends ForkJoinWorkerThread {
+        private Context polyglotContext;
+
+        private JSContextWorkerThread(ForkJoinPool pool) {
+            super(pool);
+        }
+
+        @Override
+        protected void onStart() {
+            polyglotContext = newContext();
+            polyglotContext.initialize(JavaScriptLanguage.ID);
+            polyglotContext.enter();
+        }
+
+        @Override
+        protected void onTermination(Throwable exception) {
+            polyglotContext.leave();
+            polyglotContext.close();
+        }
+    }
+
+    private void usage() {
+        System.out.println("Usage: [--java|--binary|--wrapped] --outdir=DIR [--indir=DIR] --file=FILE [--file=FILE ...] [--threads=%d]".formatted(parallelism));
     }
 
     private static String requireDirectory(String dir) {
@@ -119,7 +170,7 @@ public class SnapshotTool {
         return dir;
     }
 
-    private void snapshotScriptFileTo(String fileName, File sourceFile, File outputFile, boolean binary, boolean wrapped) throws IOException {
+    private static void snapshotScriptFileTo(String fileName, File sourceFile, File outputFile, boolean binary, boolean wrapped) throws IOException {
         JSRealm realm = JavaScriptLanguage.getCurrentJSRealm();
         JSContext context = realm.getContext();
         Recording.logv("recording snapshot of %s", fileName);
@@ -142,43 +193,43 @@ public class SnapshotTool {
             prefix = "";
             suffix = "";
         }
-        try (TimerCloseable timer = timeStats.file(fileName)) {
-            final Recording rec = Recording.recordSource(source, context, false, prefix, suffix);
-            outputFile.getParentFile().mkdirs();
-            try (FileOutputStream outs = new FileOutputStream(outputFile)) {
-                rec.saveToStream(fileName, outs, binary);
-            }
-        } catch (RuntimeException e) {
-            throw new RuntimeException(fileName, e);
+        final Recording rec = Recording.recordSource(source, context, false, prefix, suffix);
+        outputFile.getParentFile().mkdirs();
+        try (FileOutputStream outs = new FileOutputStream(outputFile)) {
+            rec.saveToStream(fileName, outs, binary);
         }
     }
 
-    private interface TimerCloseable extends AutoCloseable {
-        @Override
-        void close();
-    }
+    private static class TimeStats implements AutoCloseable {
+        private final Map<String, Long> entries = Collections.synchronizedMap(new LinkedHashMap<>());
+        private final long realStartTime = System.nanoTime();
 
-    private static class TimeStats {
-        private final List<Map.Entry<String, Long>> entries = new ArrayList<>();
-
-        public TimerCloseable file(String fileName) {
+        public AutoCloseable file(String fileName) {
             long startTime = System.nanoTime();
             return () -> {
                 long endTime = System.nanoTime();
-                entries.add(new AbstractMap.SimpleImmutableEntry<>(fileName, endTime - startTime));
+                entries.put(fileName, endTime - startTime);
             };
         }
 
-        public void print() {
+        @Override
+        public void close() {
             if (entries.isEmpty()) {
                 return;
             }
             long total = 0;
-            for (Map.Entry<String, Long> entry : entries) {
-                System.out.printf("%s: %.02f ms\n", entry.getKey(), entry.getValue() / 1e6);
+            long realEndTime = System.nanoTime();
+            for (Map.Entry<String, Long> entry : entries.entrySet()) {
+                System.out.printf("%s: %.02f ms\n", entry.getKey(), ms(entry.getValue()));
                 total += entry.getValue();
             }
-            System.out.printf("Total: %.02f ms\n", total / 1e6);
+            if (entries.size() > 1) {
+                System.out.printf("Total: %.02f ms, real: %.02f ms\n", ms(total), ms(realEndTime - realStartTime));
+            }
+        }
+
+        private static double ms(long ns) {
+            return ns / 1e6;
         }
     }
 }

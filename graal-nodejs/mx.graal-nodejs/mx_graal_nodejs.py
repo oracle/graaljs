@@ -48,11 +48,13 @@ class GraalNodeJsTags:
     unitTests = 'unit'
     windows = 'windows'  # we cannot run `node-gyp` in our CI unless we install the "Visual Studio Build Tools" (using the "Visual C++ build tools" workload)
     coverage = 'coverage'
+    testnode = 'testnode'
 
 def _graal_nodejs_post_gate_runner(args, tasks):
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
-    with Task('UnitTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.unitTests, GraalNodeJsTags.coverage]) as t:
+    with Task('UnitTests', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.unitTests, GraalNodeJsTags.coverage], report=True) as t:
         if t:
+            mx.command_function('build')(['--dependencies', 'TRUFFLE_JS_TESTS'])
             _setEnvVar('NODE_JVM_CLASSPATH', mx.distribution('graal-js:TRUFFLE_JS_TESTS').path)
             commonArgs = ['-ea', '-esa']
             unitTestDir = join(_suite.dir, 'test', 'graal')
@@ -60,16 +62,37 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                 p = join(unitTestDir, dir_name)
                 if exists(p):
                     mx.rmtree(p)
-            npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
-            npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs, cwd=unitTestDir)
-            if mx.suite('wasm', fatalIfMissing=False):
-                npm(['--scripts-prepend-node-path=auto', 'run', 'testwasm'] + commonArgs, cwd=unitTestDir)
-                # test that WebAssembly can be enabled using env. variables
-                _setEnvVar('NODE_OPTIONS', '--polyglot')
-                _setEnvVar('NODE_POLYGLOT_OPTIONS', '--js.webassembly --experimental-options')
-                node(commonArgs + ['-e', 'console.log(WebAssembly)'])
-                _setEnvVar('NODE_OPTIONS', '')
-                _setEnvVar('NODE_POLYGLOT_OPTIONS', '')
+
+            jsonResultsFile = tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz').name
+            testArgs = ['--', '--json-results=' + jsonResultsFile]
+            try:
+                npm(['--scripts-prepend-node-path=auto', 'install', '--nodedir=' + _suite.dir] + commonArgs, cwd=unitTestDir)
+                npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs + testArgs, cwd=unitTestDir)
+                if mx.suite('wasm', fatalIfMissing=False):
+                    npm(['--scripts-prepend-node-path=auto', 'run', 'testwasm'] + commonArgs + testArgs, cwd=unitTestDir)
+                    # test that WebAssembly can be enabled using env. variables
+                    _setEnvVar('NODE_OPTIONS', '--polyglot')
+                    _setEnvVar('NODE_POLYGLOT_OPTIONS', '--js.webassembly --experimental-options')
+                    node(commonArgs + ['-e', 'console.log(WebAssembly)'])
+                    # check that fetch API is available when WebAssembly is available
+                    node(commonArgs + ['-e', 'FormData'])
+                    # run selected Node.js tests related to WebAssembly
+                    wasm_tests = [
+                        'test-fetch.mjs',
+                        'test-fetch-disabled.mjs',
+                        'test-wasm-simple.js',
+                        'test-wasm-web-api.js',
+                        'test-whatwg-webstreams-transfer.js',
+                        'test-worker-message-port-wasm-module.js'
+                    ]
+                    for test in wasm_tests:
+                        node(commonArgs + [join(_suite.dir, 'test', 'parallel', test)])
+                    _setEnvVar('NODE_OPTIONS', '')
+                    _setEnvVar('NODE_POLYGLOT_OPTIONS', '')
+
+                mx_gate.make_test_report(jsonResultsFile, task=t.title)
+            finally:
+                os.unlink(jsonResultsFile)
 
     with Task('TestNpm', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows]) as t:
         if t:
@@ -87,7 +110,18 @@ def _graal_nodejs_post_gate_runner(args, tasks):
 
     with Task('TestNodeInstrument', tasks, tags=[GraalNodeJsTags.allTests, GraalNodeJsTags.windows, GraalNodeJsTags.coverage]) as t:
         if t:
+            mx.command_function('build')(['--dependencies', 'TRUFFLENODE_TEST'])
             testnodeInstrument([])
+
+    suite = os.getenv('NODE_SUITE')
+    if suite is not None:
+        with Task('TestNode:' + suite, tasks, tags=[GraalNodeJsTags.testnode], report=True) as t:
+            if t:
+                max_heap = os.getenv('NODE_MAX_HEAP')
+                part = os.getenv('NODE_PART')
+                testnode((['-Xmx' + max_heap] if max_heap else []) +
+                        [suite] +
+                        ([part] if part else []))
 
 mx_gate.add_gate_runner(_suite, _graal_nodejs_post_gate_runner)
 
@@ -112,12 +146,14 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
     def __init__(self, project, args):
         mx.NativeBuildTask.__init__(self, args, project)
         self._debug_mode = hasattr(self.args, 'debug') and self.args.debug
+        self._out_dir = join(_suite.dir, 'out')
         self._build_dir = join(_suite.dir, 'out', 'Debug' if self._debug_mode else 'Release')
 
     def build(self):
         pre_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=False)
 
         build_env = os.environ.copy()
+        _prepare_build_env(build_env)
 
         debug = ['--debug'] if self._debug_mode else []
         shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
@@ -132,6 +168,9 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
             processDevkitRoot(env=build_env)
             _setEnvVar('PATH', pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
             extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw']
+        elif _current_arch == 'aarch64':
+            # we do not use compiler recent enough to support neon
+            extra_flags = ['--with-arm-fpu=vfp']
         else:
             extra_flags = []
 
@@ -158,12 +197,15 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         _setEnvVar('HEADERS_ONLY', '1', build_env)
         _mxrun(['python3', join('tools', 'install.py'), 'install', join('out', 'headers'), sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
 
+        if not _is_windows:
+            # copy libjsig.so from the jdk for inclusion in the standalone and `mx node`
+            libjsig_name = mx.add_lib_suffix(mx.add_lib_prefix('jsig'))
+            mx.ensure_dir_exists(join(self._out_dir, 'lib'))
+            mx.copyfile(join(_java_home(forBuild=True), 'lib', libjsig_name), join(self._out_dir, 'lib', libjsig_name))
+
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
         mx.logv('Newest time-stamp before building: {}\nNewest time-stamp after building: {}\nHas built? {}'.format(pre_ts, post_ts, post_ts.isNewerThan(pre_ts)))
         built = post_ts.isNewerThan(pre_ts)
-        if built and _current_os == 'darwin':
-            nodePath = join(self._build_dir, 'node')
-            _mxrun(['install_name_tool', '-add_rpath', join(_java_home(), 'jre', 'lib'), '-add_rpath', join(_java_home(), 'lib'), nodePath], print_cmd=True, env=build_env)
         return built
 
     def needsBuild(self, newestInput):
@@ -291,7 +333,10 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         mx.run(['python3', join('tools', 'expand-js-modules.py'), outputDir] + [join('lib', m) for m in moduleSet] + macroFiles,
                cwd=_suite.dir)
         if not (hasattr(self.args, "jdt") and self.args.jdt and not self.args.force_javac):
-            mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]), '-Dpolyglot.engine.WarnInterpreterOnly=false',
+            mx.run_java(['-cp', mx.classpath([snapshotToolDistribution]),
+                         '-Dpolyglot.engine.WarnInterpreterOnly=false',
+                         # The snapshot tool breaks the polyglot encapsulation
+                         '-Dpolyglotimpl.DisableClassPathIsolation=true',
                     mx.distribution(snapshotToolDistribution).mainClass,
                     '--binary', '--wrapped', '--outdir=' + outputDirBin, '--indir=' + outputDirBin] + ['--file=' + m for m in moduleSet],
                     cwd=outputDirBin)
@@ -319,19 +364,20 @@ def node(args, add_graal_vm_args=True, nonZeroIsFatal=True, out=None, err=None, 
     return mx.run(prepareNodeCmdLine(args, add_graal_vm_args), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 def testnodeInstrument(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
-    instrument_cp = mx.classpath(['TRUFFLENODE_TEST'])
-    _setEnvVar('NODE_JVM_CLASSPATH', instrument_cp)
+    instrument_mp = mx.classpath(['TRUFFLENODE_TEST'])
+    _setEnvVar('NODE_JVM_MODULE_PATH', instrument_mp)
+    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '--add-exports=org.graalvm.js/com.oracle.truffle.js.nodes.instrumentation=com.oracle.truffle.trufflenode.test']))
     test = join(_suite.dir, 'test', 'graal', 'instrument', 'async-test.js')
-    node(['--experimental-options', '--testing-agent', '-ea', test], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
+    node(['--experimental-options', '--testing-agent', test], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
     node(['--experimental-options', '--broken-instrument', '-e', '6*7'], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
     node(['--experimental-options', '--coverage-like-instrument', '-e', '6*7'], nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd)
 
 def testnode(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
-    mode, vmArgs, progArgs = setupNodeEnvironment(args)
+    mode, vmArgs, progArgs, _ = setupNodeEnvironment(args)
     if mode == 'Debug':
         progArgs += ['-m', 'debug']
     extraArgs = ['-Xmx8g'] if not any(vmArg.startswith('-Xmx') for vmArg in vmArgs) else []
-    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-esa', '-Xrs'] + extraArgs + vmArgs))
+    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(['-ea', '-Xrs'] + extraArgs + vmArgs))
     _setEnvVar('NODE_STACK_SIZE', '4000000')
     _setEnvVar('NODE_INTERNAL_ERROR_CHECK', 'true')
     return mx.run(['python3', join('tools', 'test.py')] + progArgs, nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=(_suite.dir if cwd is None else cwd))
@@ -362,17 +408,37 @@ def processDevkitRoot(env=None):
         if devkit_version is not None:
             _setEnvVar('GYP_MSVS_VERSION', devkit_version, _env)
 
+def _prepare_build_env(build_env=None):
+    if _current_os == 'darwin' and _current_arch == 'amd64':
+        env = build_env or os.environ
+        min_version = env.get('MACOSX_DEPLOYMENT_TARGET')
+        if min_version:
+            # override MACOSX_DEPLOYMENT_TARGET in common.gypi
+            for flags_var in ('CXXFLAGS', 'CFLAGS', 'LDFLAGS'):
+                other_flags = env.get(flags_var)
+                _setEnvVar(flags_var, f"-mmacosx-version-min={min_version}{' ' + other_flags if other_flags else ''}", env)
+
 def setupNodeEnvironment(args, add_graal_vm_args=True):
     args = args if args else []
-    mode, vmArgs, progArgs = _parseArgs(args)
+    mode, vmArgs, progArgs, standalone = _parseArgs(args)
     setLibraryPath()
 
+    _prepare_build_env()
     if _is_windows:
         processDevkitRoot()
 
-    if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None:
-        _prepare_svm_env()
-        return mode, vmArgs, progArgs
+    nodeExe = join(_suite.dir, 'out', mode, 'node')
+    if standalone:
+        if mx.suite('vm', fatalIfMissing=False) is not None:
+            import mx_sdk_vm_impl
+            standalone_home = mx_sdk_vm_impl.standalone_home('nodejs', is_jvm=standalone == 'jvm')
+            nodeExe = join(standalone_home, 'bin', 'node')
+            return mode, vmArgs, progArgs, nodeExe
+        else:
+            mx.warn("No standalones available. Falling back to default mx node command.\nYou need to dynamically import '/vm,/substratevm' (or at least '/vm'). Example: 'mx --env svm node'")
+
+    if mx.suite('vm', fatalIfMissing=False) is not None and mx.suite('substratevm', fatalIfMissing=False) is not None and _prepare_svm_env():
+        return mode, vmArgs, progArgs, nodeExe
 
     if mx.suite('vm', fatalIfMissing=False) is not None or mx.suite('substratevm', fatalIfMissing=False) is not None:
         mx.warn("Running on the JVM.\nIf you want to run on SubstrateVM, you need to dynamically import both '/substratevm' and '/vm'.\nExample: 'mx --env svm node'")
@@ -380,49 +446,36 @@ def setupNodeEnvironment(args, add_graal_vm_args=True):
     if mx.suite('compiler', fatalIfMissing=False) is None and not any(x.startswith('-Dpolyglot.engine.WarnInterpreterOnly') for x in vmArgs + get_jdk().java_args):
         vmArgs += ['-Dpolyglot.engine.WarnInterpreterOnly=false']
 
-    # if mx.suite('compiler', fatalIfMissing=False) is None:
-    #     _setEnvVar('GRAAL_SDK_JAR_PATH', mx.distribution('sdk:GRAAL_SDK').path)
-    _setEnvVar('LAUNCHER_COMMON_JAR_PATH', mx.distribution('sdk:LAUNCHER_COMMON').path)
-    _setEnvVar('TRUFFLENODE_JAR_PATH', mx.distribution('TRUFFLENODE').path)
-    node_jvm_cp = (os.environ['NODE_JVM_CLASSPATH'] + pathsep) if 'NODE_JVM_CLASSPATH' in os.environ else ''
-    node_cp = node_jvm_cp + mx.classpath(['TRUFFLENODE']
+    node_jvm_mp = (os.environ['NODE_JVM_MODULE_PATH'] + pathsep) if 'NODE_JVM_MODULE_PATH' in os.environ else ''
+    node_mp = node_jvm_mp + mx.classpath(['TRUFFLENODE']
         + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
         + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
-    _setEnvVar('NODE_JVM_CLASSPATH', node_cp)
+    _setEnvVar('NODE_JVM_MODULE_PATH', node_mp)
     _setEnvVar('JAVA_HOME', _java_home())  # when running with the Graal compiler, setting `$JAVA_HOME` to the GraalJDK should be done after calling `mx.classpath()`, which resets `$JAVA_HOME` to the value of the `--java-home` mx cmd line argument
 
     prevPATH = os.environ['PATH']
     _setEnvVar('PATH', "%s%s%s" % (join(_suite.mxDir, 'fake_launchers'), pathsep, prevPATH))
 
-    return mode, vmArgs, progArgs
+    return mode, vmArgs, progArgs, nodeExe
 
 def makeInNodeEnvironment(args):
-    argGroups = setupNodeEnvironment(args)
-    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(argGroups[1]))
+    _, vmArgs, progArgs, _ = setupNodeEnvironment(args)
+    _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
+    quiet_build = mx.is_continuous_integration() and not mx.get_opts().verbose
     if _is_windows:
         _mxrun([join('.', 'vcbuild.bat'),
                 'noprojgen',
                 'nobuild',
                 'java-home', _java_home()
-            ] + argGroups[2], cwd=_suite.dir)
+            ] + progArgs, cwd=_suite.dir)
     else:
-        makeCmd = mx.gmake_cmd()
-        if _current_os == 'solaris':
-            # we have to use GNU make and cp because the Solaris versions
-            # do not support options used by Node.js Makefile and gyp files
-            _setEnvVar('MAKE', makeCmd)
-            _mxrun(['sh', '-c', 'ln -s `which gcp` ' + join(_suite.dir, 'cp')])
-            prevPATH = os.environ['PATH']
-            _setEnvVar('PATH', "%s:%s" % (_suite.dir, prevPATH))
-        _mxrun([makeCmd] + argGroups[2], cwd=_suite.dir)
-        if _current_os == 'solaris':
-            _mxrun(['rm', 'cp'])
+        _mxrun([mx.gmake_cmd()] + progArgs, cwd=_suite.dir, quiet_if_successful=quiet_build)
 
 def prepareNodeCmdLine(args, add_graal_vm_args=True):
     '''run a Node.js program or shell
         --debug to run in debug mode (provided that you build it)
     '''
-    mode, vmArgs, progArgs = setupNodeEnvironment(args, add_graal_vm_args)
+    _, vmArgs, progArgs, nodeExe = setupNodeEnvironment(args, add_graal_vm_args)
 
     if mx_gate.get_jacoco_agent_args():
         # The node launcher (i.e., JNI) does not support @argfile vm args, so we have to expand them to ordinary args
@@ -444,7 +497,7 @@ def prepareNodeCmdLine(args, add_graal_vm_args=True):
     vmArgs += [parentVmArg for parentVmArg in os.environ.get('NODE_JVM_OPTIONS', '').split() if not parentVmArg in vmArgs]
 
     _setEnvVar('NODE_JVM_OPTIONS', ' '.join(vmArgs))
-    return [join(_suite.dir, 'out', mode, 'node')] + progArgs
+    return [nodeExe] + progArgs
 
 def parse_js_args(args):
     vmArgs, progArgs = mx_graal_js.parse_js_args(args)
@@ -473,11 +526,16 @@ def _has_jvmci(forBuild=False):
     return get_jdk(forBuild=forBuild).tag == 'jvmci'
 
 def _parseArgs(args):
-    arguments = list(args)
-    debugArg = '--debug'
-    if debugArg in arguments:
+    parser = ArgumentParser(prog='mx node', allow_abbrev=False, add_help=False)
+    parser.add_argument('--debug', action='store_true', help='Run in debug mode')
+    parser.add_argument('--standalone', action='store_const', const='native', help='Run standalone')
+    parser.add_argument('--standalone=native', dest='standalone', action='store_const', const='native', help='Run native standalone')
+    parser.add_argument('--standalone=jvm', dest='standalone', action='store_const', const='jvm', help='Run jvm standalone')
+    opts, arguments = parser.parse_known_args(args)
+
+    standalone = opts.standalone
+    if opts.debug:
         mx.log('Running in debug mode. The --debug argument is handled by mx and not passed as program argument')
-        arguments.remove(debugArg)
         mode = 'Debug'
     else:
         mode = 'Release'
@@ -497,8 +555,9 @@ def _parseArgs(args):
     mx.logv('[_parseArgs] mode: %s' % mode)
     mx.logv('[_parseArgs] vmArgs: %s' % vmArgs)
     mx.logv('[_parseArgs] progArgs: %s' % progArgs)
+    mx.logv('[_parseArgs] standalone: %s' % standalone)
 
-    return mode, vmArgs, progArgs
+    return mode, vmArgs, progArgs, standalone
 
 def overrideBuild():
     def build(args):
@@ -516,36 +575,49 @@ if _suite.primary:
     overrideBuild()
 
 def _prepare_svm_env():
+    nodejs_component = mx_sdk_vm.graalvm_component_by_name('njs')
     import mx_vm
     if hasattr(mx_vm, 'graalvm_home'):
         graalvm_home = mx_vm.graalvm_home()
     else:
         import mx_sdk_vm_impl
         graalvm_home = mx_sdk_vm_impl.graalvm_home()
+    try:
+        import mx_sdk_vm_impl
+        if mx_sdk_vm_impl._has_skipped_libraries(nodejs_component):
+            mx.logv(f"Not running on SubstrateVM since {nodejs_component} component has skipped libraries")
+            return False
+    except (ModuleNotFoundError, AttributeError) as e:
+        mx.warn(f"{e}")
+
     libgraal_nodejs_filename = mx.add_lib_suffix(mx.add_lib_prefix('graal-nodejs'))
-    candidates = [join(graalvm_home, directory, libgraal_nodejs_filename) for directory in [join('jre', 'languages', 'nodejs', 'lib'), join('languages', 'nodejs', 'lib')]]
-    libgraal_nodejs = None
-    for candidate in candidates:
-        if exists(candidate):
-            libgraal_nodejs = candidate
-    if libgraal_nodejs is None:
-        mx.abort("Cannot find graal-nodejs library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(candidates))
+    libgraal_nodejs = join(graalvm_home, 'languages', 'nodejs', 'lib', libgraal_nodejs_filename)
+    if not exists(libgraal_nodejs):
+        mx.abort("Cannot find graal-nodejs library in '{}'.\nDid you forget to build it (e.g., using 'mx --env svm build')?".format(libgraal_nodejs))
     _setEnvVar('NODE_JVM_LIB', libgraal_nodejs)
-    _setEnvVar('ICU4J_DATA_PATH', join(mx.suite('graal-js').dir, 'lib', 'icu4j', 'icudt'))
+    return True
 
 def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
+
+def _is_wasm_available():
+    return ('wasm', True) in mx.get_dynamic_imports()
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.nodejs',
     short_name='njs',
     dir_name='nodejs',
-    license_files=['LICENSE_GRAALNODEJS.txt'],
-    third_party_license_files=['THIRD_PARTY_LICENSE_GRAALNODEJS.txt'],
-    dependencies=['Graal.js'],
+    license_files=[],
+    third_party_license_files=[],
+    dependencies=[
+        'Graal.js',
+        'Graal.nodejs license files',
+    ],
     truffle_jars=['graal-nodejs:TRUFFLENODE'],
-    support_distributions=['graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT'],
+    support_distributions=[
+        'graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT',
+    ],
     provided_executables=[
         'bin/<exe:node>',
         'bin/<cmd:npm>',
@@ -561,6 +633,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 '--tool:all',
                 '--language:nodejs',
                 '-Dgraalvm.libpolyglot=true',  # `lib:graal-nodejs` should be initialized like `lib:polyglot` (GR-10038)
+                *(['--language:wasm'] if _is_wasm_available() else []),
             ],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
@@ -570,6 +643,33 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         ),
     ],
     has_polyglot_lib_entrypoints=True,
+    standalone_dir_name='graalnodejs-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='graalnodejs-<version>-<graalvm_os>-<arch>',
+    standalone_dependencies={
+        'GraalVM license files': ('', ['GRAALVM-README.md']),
+        'Graal.nodejs license files': ('', []),
+        **({'GraalWasm' : ('', ['LICENSE_WASM.txt'])} if _is_wasm_available() else {}),
+    },
+    standalone_dependencies_enterprise={
+        'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
+    },
+    installable=True,
+    stability="supported",
+))
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
+    name='Graal.nodejs license files',
+    short_name='njsl',
+    dir_name='nodejs',
+    license_files=['LICENSE_GRAALNODEJS.txt'],
+    third_party_license_files=['THIRD_PARTY_LICENSE_GRAALNODEJS.txt'],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=[
+        'graal-nodejs:TRUFFLENODE_GRAALVM_LICENSES',
+    ],
+    priority=5,
     installable=True,
     stability="supported",
 ))

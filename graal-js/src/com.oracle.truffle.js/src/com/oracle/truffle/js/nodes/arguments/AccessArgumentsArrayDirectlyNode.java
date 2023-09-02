@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,7 +66,7 @@ public final class AccessArgumentsArrayDirectlyNode extends JavaScriptNode {
     @Child private JavaScriptNode readArgumentsNode;
 
     @CompilationFinal private volatile boolean directArrayAccess = true;
-    private final ConditionProfile initializedProfile = ConditionProfile.createBinaryProfile();
+    private final ConditionProfile initializedProfile = ConditionProfile.create();
 
     public AccessArgumentsArrayDirectlyNode(JavaScriptNode writeArgumentsNode, JavaScriptNode readArgumentsNode, int leadingArgCount) {
         this.leadingArgCount = leadingArgCount;

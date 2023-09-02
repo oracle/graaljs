@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,13 +43,13 @@ package com.oracle.truffle.js.runtime.builtins.intl;
 import java.util.LinkedList;
 import java.util.List;
 
-import com.ibm.icu.number.FormattedNumber;
-import com.ibm.icu.number.FormattedNumberRange;
-import com.ibm.icu.number.LocalizedNumberFormatter;
-import com.ibm.icu.number.LocalizedNumberRangeFormatter;
-import com.ibm.icu.number.NumberRangeFormatter;
-import com.ibm.icu.text.PluralRules;
-import com.ibm.icu.text.PluralRules.PluralType;
+import org.graalvm.shadowed.com.ibm.icu.number.FormattedNumber;
+import org.graalvm.shadowed.com.ibm.icu.number.FormattedNumberRange;
+import org.graalvm.shadowed.com.ibm.icu.number.LocalizedNumberFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.LocalizedNumberRangeFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.NumberRangeFormatter;
+import org.graalvm.shadowed.com.ibm.icu.text.PluralRules;
+import org.graalvm.shadowed.com.ibm.icu.text.PluralRules.PluralType;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -98,9 +98,8 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject pluralRulesPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, pluralRulesPrototype, ctor);
+        JSObjectUtil.putConstructorProperty(pluralRulesPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, pluralRulesPrototype, PluralRulesPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(pluralRulesPrototype, TO_STRING_TAG);
         return pluralRulesPrototype;
@@ -116,24 +115,24 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm, PluralRulesFunctionBuiltins.BUILTINS);
     }
 
-    public static JSPluralRulesObject create(JSContext context, JSRealm realm) {
+    public static JSPluralRulesObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
         InternalState state = new InternalState();
         JSObjectFactory factory = context.getPluralRulesFactory();
-        JSPluralRulesObject obj = new JSPluralRulesObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSPluralRulesObject(shape, proto, state), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
-    public static PluralRules getPluralRulesProperty(JSDynamicObject obj) {
-        return getInternalState(obj).getPluralRules();
+    public static PluralRules getPluralRulesProperty(JSPluralRulesObject obj) {
+        return obj.getInternalState().getPluralRules();
     }
 
-    public static LocalizedNumberFormatter getNumberFormatter(JSDynamicObject obj) {
-        return getInternalState(obj).getNumberFormatter();
+    public static LocalizedNumberFormatter getNumberFormatter(JSPluralRulesObject obj) {
+        return obj.getInternalState().getNumberFormatter();
     }
 
     @TruffleBoundary
-    public static TruffleString select(JSDynamicObject pluralRulesObj, Object n) {
+    public static TruffleString select(JSPluralRulesObject pluralRulesObj, Object n) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
         LocalizedNumberFormatter numberFormatter = getNumberFormatter(pluralRulesObj);
         Number number = JSRuntime.toNumber(n);
@@ -142,9 +141,9 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @TruffleBoundary
-    public static TruffleString selectRange(JSDynamicObject pluralRulesObj, double x, double y) {
+    public static TruffleString selectRange(JSPluralRulesObject pluralRulesObj, double x, double y) {
         PluralRules pluralRules = getPluralRulesProperty(pluralRulesObj);
-        LocalizedNumberRangeFormatter rangeFormatter = getInternalState(pluralRulesObj).getNumberRangeFormatter();
+        LocalizedNumberRangeFormatter rangeFormatter = pluralRulesObj.getInternalState().getNumberRangeFormatter();
         FormattedNumberRange formattedRange = rangeFormatter.formatRange(x, y);
         return Strings.fromJavaString(pluralRules.select(formattedRange));
     }
@@ -159,13 +158,13 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
 
         @Override
         void fillResolvedOptions(JSContext context, JSRealm realm, JSDynamicObject result) {
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
             super.fillResolvedOptions(context, realm, result);
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_PLURAL_CATEGORIES, JSRuntime.createArrayFromList(realm.getContext(), realm, pluralCategories), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_PLURAL_CATEGORIES, JSRuntime.createArrayFromList(realm.getContext(), realm, pluralCategories), JSAttributes.getDefault());
             String roundingType = getRoundingType();
             String resolvedRoundingType = (IntlUtil.MORE_PRECISION.equals(roundingType) || IntlUtil.LESS_PRECISION.equals(roundingType)) ? roundingType : IntlUtil.AUTO;
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
         }
 
         @TruffleBoundary
@@ -202,14 +201,9 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject pluralRulesObj) {
-        InternalState state = getInternalState(pluralRulesObj);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSPluralRulesObject pluralRulesObj) {
+        InternalState state = pluralRulesObj.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject obj) {
-        assert isJSPluralRules(obj);
-        return ((JSPluralRulesObject) obj).getInternalState();
     }
 
     @Override

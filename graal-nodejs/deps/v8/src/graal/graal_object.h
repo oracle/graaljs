@@ -87,10 +87,12 @@ public:
     v8::Maybe<bool> HasPrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key);
     v8::Maybe<bool> DeletePrivate(v8::Local<v8::Context> context, v8::Local<v8::Private> key);
     v8::MaybeLocal<v8::Value> GetOwnPropertyDescriptor(v8::Local<v8::Context> context, v8::Local<v8::Name> key);
+    v8::Maybe<bool> CreateDataProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key, v8::Local<v8::Value> value);
+    v8::Maybe<bool> CreateDataProperty(v8::Local<v8::Context> context, uint32_t index, v8::Local<v8::Value> value);
     v8::Maybe<bool> DefineProperty(v8::Local<v8::Context> context, v8::Local<v8::Name> key, v8::PropertyDescriptor& descriptor);
     v8::MaybeLocal<v8::Array> PreviewEntries(bool* is_key_value);
     v8::Maybe<bool> SetIntegrityLevel(v8::Local<v8::Context> context, v8::IntegrityLevel level);
-    bool IsConstructor();
+    bool IsConstructor() const;
 protected:
     GraalHandleContent* CopyImpl(jobject java_object_copy) override;
     inline v8::Local<v8::Value> HandleCallResult(jobject java_object);

@@ -36,10 +36,10 @@ const { Buffer } = require('buffer');
 const { validateString, validateUint32 } = require('internal/validators');
 const {
   Serializer,
-  Deserializer
+  Deserializer,
 } = internalBinding('serdes');
 const {
-  namespace: startupSnapshot
+  namespace: startupSnapshot,
 } = require('internal/v8/startup_snapshot');
 
 let profiler = {};
@@ -55,12 +55,12 @@ const { getValidatedPath } = require('internal/fs/utils');
 const { toNamespacedPath } = require('path');
 const {
   createHeapSnapshotStream,
-  triggerHeapSnapshot
+  triggerHeapSnapshot,
 } = internalBinding('heap_utils');
 const { HeapSnapshotStream } = require('internal/heap_utils');
 const promiseHooks = require('internal/promise_hooks');
 const { getOptionValue } = require('internal/options');
-
+const { JSONParse } = primordials;
 /**
  * Generates a snapshot of the current V8 heap
  * and writes it to a JSON file.
@@ -124,7 +124,8 @@ const {
   // Properties for heap code statistics buffer extraction.
   kCodeAndMetadataSizeIndex,
   kBytecodeAndMetadataSizeIndex,
-  kExternalScriptSourceSizeIndex
+  kExternalScriptSourceSizeIndex,
+  kCPUProfilerMetaDataSizeIndex,
 } = binding;
 
 const kNumberOfHeapSpaces = kHeapSpaces.length;
@@ -174,7 +175,7 @@ function getHeapStatistics() {
     number_of_detached_contexts: buffer[kNumberOfDetachedContextsIndex],
     total_global_handles_size: buffer[kTotalGlobalHandlesSizeIndex],
     used_global_handles_size: buffer[kUsedGlobalHandlesSizeIndex],
-    external_memory: buffer[kExternalMemoryIndex]
+    external_memory: buffer[kExternalMemoryIndex],
   };
 }
 
@@ -199,7 +200,7 @@ function getHeapSpaceStatistics() {
       space_size: buffer[kSpaceSizeIndex],
       space_used_size: buffer[kSpaceUsedSizeIndex],
       space_available_size: buffer[kSpaceAvailableSizeIndex],
-      physical_space_size: buffer[kPhysicalSpaceSizeIndex]
+      physical_space_size: buffer[kPhysicalSpaceSizeIndex],
     };
   }
 
@@ -212,6 +213,7 @@ function getHeapSpaceStatistics() {
  *   code_and_metadata_size: number;
  *   bytecode_and_metadata_size: number;
  *   external_script_source_size: number;
+ *   cpu_profiler_metadata_size: number;
  *   }}
  */
 function getHeapCodeStatistics() {
@@ -221,7 +223,8 @@ function getHeapCodeStatistics() {
   return {
     code_and_metadata_size: buffer[kCodeAndMetadataSizeIndex],
     bytecode_and_metadata_size: buffer[kBytecodeAndMetadataSizeIndex],
-    external_script_source_size: buffer[kExternalScriptSourceSizeIndex]
+    external_script_source_size: buffer[kExternalScriptSourceSizeIndex],
+    cpu_profiler_metadata_size: buffer[kCPUProfilerMetaDataSizeIndex],
   };
 }
 
@@ -381,6 +384,25 @@ function deserialize(buffer) {
   return der.readValue();
 }
 
+class GCProfiler {
+  #profiler = null;
+
+  start() {
+    if (!this.#profiler) {
+      this.#profiler = new binding.GCProfiler();
+      this.#profiler.start();
+    }
+  }
+
+  stop() {
+    if (this.#profiler) {
+      const data = this.#profiler.stop();
+      this.#profiler = null;
+      return JSONParse(data);
+    }
+  }
+}
+
 module.exports = {
   cachedDataVersionTag,
   getHeapSnapshot,
@@ -400,4 +422,5 @@ module.exports = {
   promiseHooks,
   startupSnapshot,
   setHeapSnapshotNearHeapLimit,
+  GCProfiler,
 };

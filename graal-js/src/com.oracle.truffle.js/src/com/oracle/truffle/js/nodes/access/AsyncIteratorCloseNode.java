@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
+import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -99,22 +100,22 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         return new AsyncIteratorCloseNode(context);
     }
 
-    public final Object execute(JSDynamicObject iterator, Object outerResult) {
+    public final Object execute(Object iterator, Object outerResult) {
         Object returnMethod = getReturnNode.executeWithTarget(iterator);
         if (returnMethod != Undefined.instance) {
             Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-            JSDynamicObject promise = promiseResolve(innerResult);
+            JSPromiseObject promise = promiseResolve(innerResult);
             return performPromiseThenNode.execute(promise, createCloseFunction(promise, outerResult), Undefined.instance, newPromiseCapabilityNode.executeDefault());
         }
         return outerResult;
     }
 
-    public final Object executeAbrupt(JSDynamicObject iterator, Object error) {
+    public final Object executeAbrupt(Object iterator, Object error) {
         try {
             Object returnMethod = getReturnNode.executeWithTarget(iterator);
             if (returnMethod != Undefined.instance) {
                 Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-                JSDynamicObject promise = promiseResolve(innerResult);
+                JSPromiseObject promise = promiseResolve(innerResult);
                 JSFunctionObject finallyFunction = createCloseAbruptFunction(promise, error);
                 return performPromiseThenNode.execute(promise, finallyFunction, finallyFunction, newPromiseCapabilityNode.executeDefault());
             }
@@ -124,14 +125,14 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         return error;
     }
 
-    private JSDynamicObject promiseResolve(Object promiseOrValue) {
-        if (!JSPromise.isJSPromise(promiseOrValue) || getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) != getRealm().getPromiseConstructor()) {
+    private JSPromiseObject promiseResolve(Object promiseOrValue) {
+        if (JSPromise.isJSPromise(promiseOrValue) && getConstructorNode.getValueOrDefault(promiseOrValue, Undefined.instance) == getRealm().getPromiseConstructor()) {
+            return (JSPromiseObject) promiseOrValue;
+        } else {
             PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.executeDefault();
             callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), promiseOrValue));
-            return promiseCapability.getPromise();
+            return (JSPromiseObject) promiseCapability.getPromise();
         }
-
-        return (JSDynamicObject) promiseOrValue;
     }
 
     public JSFunctionObject createCloseFunction(JSDynamicObject promise, Object completion) {
@@ -162,7 +163,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
         @Child protected JavaScriptNode valueNode;
 
         @Child private PropertyGetNode getCompletionNode;
-        @Child private IsJSObjectNode isObjectNode;
+        @Child private IsObjectNode isObjectNode;
 
         private final boolean isAbrupt;
 
@@ -172,7 +173,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
             getCompletionNode = PropertyGetNode.createGetHidden(COMPLETION_ID, context);
             if (!isAbrupt) {
                 valueNode = AccessIndexedArgumentNode.create(0);
-                isObjectNode = IsJSObjectNode.create();
+                isObjectNode = IsObjectNode.create();
             }
         }
 

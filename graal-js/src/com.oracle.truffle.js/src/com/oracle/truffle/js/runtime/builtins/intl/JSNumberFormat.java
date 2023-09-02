@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,64 +45,53 @@ import java.math.RoundingMode;
 import java.text.AttributedCharacterIterator;
 import java.text.Format;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Currency;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
-import com.ibm.icu.number.FormattedNumberRange;
-import com.ibm.icu.number.FractionPrecision;
-import com.ibm.icu.number.IntegerWidth;
-import com.ibm.icu.number.LocalizedNumberFormatter;
-import com.ibm.icu.number.LocalizedNumberRangeFormatter;
-import com.ibm.icu.number.Notation;
-import com.ibm.icu.number.NumberFormatter;
-import com.ibm.icu.number.NumberFormatter.SignDisplay;
-import com.ibm.icu.number.NumberFormatter.UnitWidth;
-import com.ibm.icu.number.NumberRangeFormatter;
-import com.ibm.icu.number.Precision;
-import com.ibm.icu.number.Scale;
-import com.ibm.icu.number.UnlocalizedNumberFormatter;
-import com.ibm.icu.text.ConstrainedFieldPosition;
-import com.ibm.icu.text.FormattedValue;
-import com.ibm.icu.text.NumberFormat;
-import com.ibm.icu.text.NumberingSystem;
-import com.ibm.icu.util.MeasureUnit;
-import com.oracle.truffle.api.CallTarget;
+import org.graalvm.shadowed.com.ibm.icu.number.FormattedNumberRange;
+import org.graalvm.shadowed.com.ibm.icu.number.FractionPrecision;
+import org.graalvm.shadowed.com.ibm.icu.number.IntegerWidth;
+import org.graalvm.shadowed.com.ibm.icu.number.LocalizedNumberFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.LocalizedNumberRangeFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.Notation;
+import org.graalvm.shadowed.com.ibm.icu.number.NumberFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.NumberFormatter.SignDisplay;
+import org.graalvm.shadowed.com.ibm.icu.number.NumberFormatter.UnitWidth;
+import org.graalvm.shadowed.com.ibm.icu.number.NumberRangeFormatter;
+import org.graalvm.shadowed.com.ibm.icu.number.Precision;
+import org.graalvm.shadowed.com.ibm.icu.number.Scale;
+import org.graalvm.shadowed.com.ibm.icu.number.UnlocalizedNumberFormatter;
+import org.graalvm.shadowed.com.ibm.icu.text.ConstrainedFieldPosition;
+import org.graalvm.shadowed.com.ibm.icu.text.FormattedValue;
+import org.graalvm.shadowed.com.ibm.icu.text.NumberFormat;
+import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
+import org.graalvm.shadowed.com.ibm.icu.util.MeasureUnit;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.NumberFormatFunctionBuiltins;
 import com.oracle.truffle.js.builtins.intl.NumberFormatPrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
-import com.oracle.truffle.js.nodes.intl.ToIntlMathematicalValue;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
@@ -112,7 +101,6 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 import com.oracle.truffle.js.runtime.util.LazyValue;
 
@@ -146,11 +134,10 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject numberFormatPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, numberFormatPrototype, ctor);
+        JSObjectUtil.putConstructorProperty(numberFormatPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, numberFormatPrototype, NumberFormatPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putBuiltinAccessorProperty(numberFormatPrototype, Strings.FORMAT, createFormatFunctionGetter(realm, ctx), Undefined.instance);
+        JSObjectUtil.putAccessorsFromContainer(realm, numberFormatPrototype, NumberFormatPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(numberFormatPrototype, TO_STRING_TAG);
         return numberFormatPrototype;
     }
@@ -160,7 +147,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     // minor unit value defined by ISO 4217. Unfortunately, JDK does not return -1 ("undefined") for
     // fraction digits for historical currencies => we have to keep track of these currencies
     // to return the digits expected by ECMAScript specification.
-    private static final Set<String> historicalCurrenciesInJDK = new HashSet<>(Arrays.asList(new String[]{
+    private static final Set<String> historicalCurrenciesInJDK = Set.of(
                     "ADP",
                     "BEF",
                     "BYB",
@@ -173,15 +160,14 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                     "PTE",
                     "ROL",
                     "TPE",
-                    "TRL",
-    }));
+                    "TRL");
 
     // https://tc39.github.io/ecma402/#sec-currencydigits
     @TruffleBoundary
     public static int currencyDigits(JSContext context, String currencyCode) {
         if (context.isOptionV8CompatibilityMode()) {
             // ICU is using CLDR data that differ from ISO 4217 data for several currencies.
-            return com.ibm.icu.util.Currency.getInstance(currencyCode).getDefaultFractionDigits();
+            return org.graalvm.shadowed.com.ibm.icu.util.Currency.getInstance(currencyCode).getDefaultFractionDigits();
         } else {
             if (historicalCurrenciesInJDK.contains(currencyCode)) {
                 return 2;
@@ -206,11 +192,20 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     public static JSNumberFormatObject create(JSContext context, JSRealm realm) {
-        InternalState state = new InternalState();
         JSObjectFactory factory = context.getNumberFormatFactory();
-        JSNumberFormatObject obj = new JSNumberFormatObject(factory.getShape(realm), state);
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        return create(factory, realm, factory.getPrototype(realm));
+    }
+
+    public static JSNumberFormatObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        JSObjectFactory factory = context.getNumberFormatFactory();
+        return create(factory, realm, proto);
+    }
+
+    private static JSNumberFormatObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
+        InternalState state = new InternalState();
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSNumberFormatObject(shape, proto, state), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     private static Notation notationToICUNotation(String notation, String compactDisplay) {
@@ -497,23 +492,23 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static TruffleString format(JSDynamicObject numberFormatObj, Object n) {
-        InternalState state = getInternalState(numberFormatObj);
+    public static TruffleString format(JSNumberFormatObject numberFormatObj, Object n) {
+        InternalState state = numberFormatObj.getInternalState();
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
         return Strings.fromJavaString(formattedValue(state, x).toString());
     }
 
     @TruffleBoundary
-    public static TruffleString formatMV(JSDynamicObject numberFormatObj, Number mv) {
-        InternalState state = getInternalState(numberFormatObj);
+    public static TruffleString formatMV(JSNumberFormatObject numberFormatObj, Number mv) {
+        InternalState state = numberFormatObj.getInternalState();
         return Strings.fromJavaString(formattedValue(state, mv).toString());
     }
 
-    private static FormattedNumberRange formatRangeImpl(JSDynamicObject numberFormatObj, Number x, Number y) {
+    private static FormattedNumberRange formatRangeImpl(JSNumberFormatObject numberFormatObj, Number x, Number y) {
         if (JSRuntime.isNaN(x) || JSRuntime.isNaN(y)) {
             throw Errors.createRangeError("invalid range");
         }
-        InternalState state = getInternalState(numberFormatObj);
+        InternalState state = numberFormatObj.getInternalState();
         boolean xNegative = (x instanceof BigDecimal) ? (((BigDecimal) x).signum() == -1) : ((Double) x < 0);
         boolean yNegative = (y instanceof BigDecimal) ? (((BigDecimal) y).signum() == -1) : ((Double) y < 0);
         LocalizedNumberRangeFormatter formatter = state.getNumberRangeFormatter(xNegative, yNegative);
@@ -521,12 +516,12 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static TruffleString formatRange(JSDynamicObject numberFormatObj, Number x, Number y) {
+    public static TruffleString formatRange(JSNumberFormatObject numberFormatObj, Number x, Number y) {
         return Strings.fromJavaString(formatRangeImpl(numberFormatObj, x, y).toString());
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatRangeToParts(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj, Number x, Number y) {
+    public static JSArrayObject formatRangeToParts(JSContext context, JSRealm realm, JSNumberFormatObject numberFormatObj, Number x, Number y) {
         FormattedNumberRange formattedRange = formatRangeImpl(numberFormatObj, x, y);
         String formattedString = formattedRange.toString();
 
@@ -638,18 +633,18 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
     }
 
     @TruffleBoundary
-    public static JSDynamicObject formatToParts(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj, Object n) {
-        InternalState state = getInternalState(numberFormatObj);
+    public static JSObject formatToParts(JSContext context, JSRealm realm, JSNumberFormatObject numberFormatObj, Object n) {
+        InternalState state = numberFormatObj.getInternalState();
         Number x = toInternalNumberRepresentation(JSRuntime.toNumeric(n));
         FormattedValue formattedValue = formattedValue(state, x);
         AttributedCharacterIterator fit = formattedValue.toCharacterIterator();
         String formatted = formattedValue.toString();
-        List<JSDynamicObject> resultParts = innerFormatToParts(context, realm, fit, x.doubleValue(), formatted, null, IntlUtil.PERCENT.equals(state.getStyle()));
+        List<JSObject> resultParts = innerFormatToParts(context, realm, fit, x.doubleValue(), formatted, null, IntlUtil.PERCENT.equals(state.getStyle()));
         return JSArray.createConstant(context, realm, resultParts.toArray());
     }
 
-    static List<JSDynamicObject> innerFormatToParts(JSContext context, JSRealm realm, AttributedCharacterIterator iterator, double value, String formattedValue, String unit, boolean stylePercent) {
-        List<JSDynamicObject> resultParts = new ArrayList<>();
+    static List<JSObject> innerFormatToParts(JSContext context, JSRealm realm, AttributedCharacterIterator iterator, double value, String formattedValue, String unit, boolean stylePercent) {
+        List<JSObject> resultParts = new ArrayList<>();
         int i = iterator.getBeginIndex();
         while (i < iterator.getEndIndex()) {
             iterator.setIndex(i);
@@ -714,7 +709,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
     public static class BasicInternalState {
         private UnlocalizedNumberFormatter unlocalizedFormatter;
-        private Precision precision;
 
         private Locale javaLocale;
         private String locale;
@@ -726,27 +720,33 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         private Integer minimumSignificantDigits;
         private Integer maximumSignificantDigits;
         private String roundingType;
+        private String roundingMode;
+        private int roundingIncrement;
+        private String trailingZeroDisplay;
 
-        JSDynamicObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            JSDynamicObject resolvedOptions = JSOrdinary.create(context, realm);
+        JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
+            JSObject resolvedOptions = JSOrdinary.create(context, realm);
             fillResolvedOptions(context, realm, resolvedOptions);
             return resolvedOptions;
         }
 
-        void fillResolvedOptions(JSContext context, @SuppressWarnings("unused") JSRealm realm, JSDynamicObject result) {
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MINIMUM_INTEGER_DIGITS, minimumIntegerDigits, JSAttributes.getDefault());
+        void fillResolvedOptions(@SuppressWarnings("unused") JSContext context, @SuppressWarnings("unused") JSRealm realm, JSDynamicObject result) {
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MINIMUM_INTEGER_DIGITS, minimumIntegerDigits, JSAttributes.getDefault());
             if (minimumFractionDigits != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
             }
             if (maximumFractionDigits != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MAXIMUM_FRACTION_DIGITS, maximumFractionDigits, JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MAXIMUM_FRACTION_DIGITS, maximumFractionDigits, JSAttributes.getDefault());
             }
             if (minimumSignificantDigits != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MINIMUM_SIGNIFICANT_DIGITS, minimumSignificantDigits, JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MINIMUM_SIGNIFICANT_DIGITS, minimumSignificantDigits, JSAttributes.getDefault());
             }
             if (maximumSignificantDigits != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_MAXIMUM_SIGNIFICANT_DIGITS, maximumSignificantDigits, JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MAXIMUM_SIGNIFICANT_DIGITS, maximumSignificantDigits, JSAttributes.getDefault());
             }
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_MODE, Strings.fromJavaString(roundingMode), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_INCREMENT, roundingIncrement, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, Strings.fromJavaString(trailingZeroDisplay), JSAttributes.getDefault());
         }
 
         @TruffleBoundary
@@ -784,10 +784,11 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         public void initializeNumberFormatter() {
             UnlocalizedNumberFormatter formatter = NumberFormatter.with();
 
-            formatter = formatter.roundingMode(RoundingMode.HALF_UP);
+            formatter = formatter.roundingMode(roundingModeToICURoundingMode(roundingMode));
             formatter = formatter.symbols(NumberingSystem.getInstanceByName(numberingSystem));
             formatter = formatter.integerWidth(IntegerWidth.zeroFillTo(minimumIntegerDigits));
 
+            Precision precision;
             if (IntlUtil.SIGNIFICANT_DIGITS.equals(roundingType)) {
                 precision = Precision.minMaxSignificantDigits(minimumSignificantDigits, maximumSignificantDigits);
             } else {
@@ -801,6 +802,19 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                                     morePrecision ? NumberFormatter.RoundingPriority.RELAXED : NumberFormatter.RoundingPriority.STRICT);
                 }
             }
+
+            if (roundingIncrement != 1) {
+                assert Objects.equals(getMinimumFractionDigits(), getMaximumFractionDigits());
+                // Note that minimumFractionDigits digits are ignored here (ICU4J does not support
+                // the combination of increment and minimumFractionDigits, see ICU-21887)
+                // but this should be fine because minimumFractionDigits == maximumFractionDigits
+                // here (according to the latest version of the specification).
+                BigDecimal increment = BigDecimal.ONE.movePointLeft(getMaximumFractionDigits()).multiply(BigDecimal.valueOf(roundingIncrement));
+                precision = Precision.increment(increment);
+            }
+            if (IntlUtil.STRIP_IF_INTEGER.equals(trailingZeroDisplay)) {
+                precision = precision.trailingZeroDisplay(NumberFormatter.TrailingZeroDisplay.HIDE_IF_WHOLE);
+            }
             formatter = formatter.precision(precision);
 
             this.unlocalizedFormatter = formatter;
@@ -808,10 +822,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
         public UnlocalizedNumberFormatter getUnlocalizedFormatter() {
             return unlocalizedFormatter;
-        }
-
-        public Precision getPrecision() {
-            return precision;
         }
 
         public Locale getJavaLocale() {
@@ -873,6 +883,23 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         public String getRoundingType() {
             return roundingType;
         }
+
+        public void setRoundingMode(String roundingMode) {
+            this.roundingMode = roundingMode;
+        }
+
+        public String getRoundingMode() {
+            return roundingMode;
+        }
+
+        public void setRoundingIncrement(int roundingIncrement) {
+            this.roundingIncrement = roundingIncrement;
+        }
+
+        public void setTrailingZeroDisplay(String trailingZeroDisplay) {
+            this.trailingZeroDisplay = trailingZeroDisplay;
+        }
+
     }
 
     public static class InternalState extends BasicInternalState {
@@ -890,51 +917,45 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         private String notation;
         private String compactDisplay;
         private String signDisplay;
-        private String roundingMode;
-        private int roundingIncrement;
-        private String trailingZeroDisplay;
 
         JSDynamicObject boundFormatFunction;
 
         @Override
         void fillResolvedOptions(JSContext context, JSRealm realm, JSDynamicObject result) {
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NUMBERING_SYSTEM, Strings.fromJavaString(getNumberingSystem()), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NUMBERING_SYSTEM, Strings.fromJavaString(getNumberingSystem()), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
             if (currency != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_CURRENCY, Strings.fromJavaString(currency), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_CURRENCY, Strings.fromJavaString(currency), JSAttributes.getDefault());
             }
             if (currencyDisplay != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_CURRENCY_DISPLAY, Strings.fromJavaString(currencyDisplay), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_CURRENCY_DISPLAY, Strings.fromJavaString(currencyDisplay), JSAttributes.getDefault());
             }
             if (currencySign != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_CURRENCY_SIGN, Strings.fromJavaString(currencySign), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_CURRENCY_SIGN, Strings.fromJavaString(currencySign), JSAttributes.getDefault());
             }
             if (unit != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_UNIT, Strings.fromJavaString(unit), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_UNIT, Strings.fromJavaString(unit), JSAttributes.getDefault());
             }
             if (unitDisplay != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_UNIT_DISPLAY, Strings.fromJavaString(unitDisplay), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_UNIT_DISPLAY, Strings.fromJavaString(unitDisplay), JSAttributes.getDefault());
             }
             super.fillResolvedOptions(context, realm, result);
             Object resolvedUseGrouping = useGrouping;
             if (useGrouping instanceof String && context.getEcmaScriptVersion() < JSConfig.StagingECMAScriptVersion) {
                 resolvedUseGrouping = true;
             }
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_USE_GROUPING,
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_USE_GROUPING,
                             resolvedUseGrouping instanceof String ? Strings.fromJavaString((String) resolvedUseGrouping) : resolvedUseGrouping, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_NOTATION, Strings.fromJavaString(notation), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NOTATION, Strings.fromJavaString(notation), JSAttributes.getDefault());
             if (compactDisplay != null) {
-                JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_COMPACT_DISPLAY, Strings.fromJavaString(compactDisplay), JSAttributes.getDefault());
+                JSObjectUtil.putDataProperty(result, IntlUtil.KEY_COMPACT_DISPLAY, Strings.fromJavaString(compactDisplay), JSAttributes.getDefault());
             }
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_SIGN_DISPLAY, Strings.fromJavaString(signDisplay), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_ROUNDING_MODE, Strings.fromJavaString(roundingMode), JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_ROUNDING_INCREMENT, roundingIncrement, JSAttributes.getDefault());
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, Strings.fromJavaString(trailingZeroDisplay), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_SIGN_DISPLAY, Strings.fromJavaString(signDisplay), JSAttributes.getDefault());
 
             String roundingType = getRoundingType();
             String resolvedRoundingType = (IntlUtil.MORE_PRECISION.equals(roundingType) || IntlUtil.LESS_PRECISION.equals(roundingType)) ? roundingType : IntlUtil.AUTO;
-            JSObjectUtil.defineDataProperty(context, result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
         }
 
         @TruffleBoundary
@@ -948,7 +969,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             formatter = formatter.grouping(useGroupingToGroupingStrategy(useGrouping));
 
             if (IntlUtil.CURRENCY.equals(style)) {
-                formatter = formatter.unit(com.ibm.icu.util.Currency.getInstance(currency));
+                formatter = formatter.unit(org.graalvm.shadowed.com.ibm.icu.util.Currency.getInstance(currency));
                 formatter = formatter.unitWidth(currencyDisplayToUnitWidth(currencyDisplay));
             } else if (IntlUtil.PERCENT.equals(style)) {
                 formatter = formatter.unit(MeasureUnit.PERCENT);
@@ -969,20 +990,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
 
             formatter = formatter.sign(signDisplay(signDisplay, IntlUtil.ACCOUNTING.equals(currencySign)));
 
-            formatter = formatter.roundingMode(roundingModeToICURoundingMode(roundingMode));
-
-            Precision precision = getPrecision();
-            if (roundingIncrement != 1) {
-                // ICU-21887: Note that minimumFractionDigits digits are ignored here.
-                // ICU4J does not support the combination of increment and minimumFractionDigits
-                BigDecimal increment = BigDecimal.ONE.movePointLeft(getMaximumFractionDigits()).multiply(BigDecimal.valueOf(roundingIncrement));
-                precision = Precision.increment(increment);
-            }
-            if (IntlUtil.STRIP_IF_INTEGER.equals(trailingZeroDisplay)) {
-                precision = precision.trailingZeroDisplay(NumberFormatter.TrailingZeroDisplay.HIDE_IF_WHOLE);
-            }
-            formatter = formatter.precision(precision);
-
             LocalizedNumberRangeFormatter rangeFormatter = NumberRangeFormatter.withLocale(getJavaLocale());
             this.numberRangeFormatter = new LocalizedNumberRangeFormatter[3];
 
@@ -991,6 +998,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             // for positive and negative numbers and range types (negative-to-negative,
             // negative-to-positive, positive-to-positive)
             this.positiveNumberFormatter = formatter.locale(getJavaLocale());
+            String roundingMode = getRoundingMode();
             if (IntlUtil.HALF_CEIL.equals(roundingMode)) {
                 UnlocalizedNumberFormatter negativeFormatter = formatter.roundingMode(RoundingMode.HALF_DOWN);
                 numberRangeFormatter[0] = rangeFormatter.numberFormatterBoth(negativeFormatter);
@@ -1057,18 +1065,6 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             this.signDisplay = signDisplay;
         }
 
-        public void setRoundingMode(String roundingMode) {
-            this.roundingMode = roundingMode;
-        }
-
-        public void setRoundingIncrement(int roundingIncrement) {
-            this.roundingIncrement = roundingIncrement;
-        }
-
-        public void setTrailingZeroDisplay(String trailingZeroDisplay) {
-            this.trailingZeroDisplay = trailingZeroDisplay;
-        }
-
         public LocalizedNumberFormatter getNumberFormatter(boolean forNegativeNumbers) {
             return forNegativeNumbers ? negativeNumberFormatter : positiveNumberFormatter;
         }
@@ -1076,76 +1072,20 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         public LocalizedNumberRangeFormatter getNumberRangeFormatter(boolean firstNegative, boolean secondNegative) {
             return numberRangeFormatter[secondNegative ? 0 : (firstNegative ? 1 : 2)];
         }
+
+        public JSDynamicObject getBoundFormatFunction() {
+            return boundFormatFunction;
+        }
+
+        public void setBoundFormatFunction(JSDynamicObject boundFormatFunction) {
+            this.boundFormatFunction = boundFormatFunction;
+        }
     }
 
     @TruffleBoundary
-    public static JSDynamicObject resolvedOptions(JSContext context, JSRealm realm, JSDynamicObject numberFormatObj) {
-        InternalState state = getInternalState(numberFormatObj);
+    public static JSObject resolvedOptions(JSContext context, JSRealm realm, JSNumberFormatObject numberFormatObj) {
+        InternalState state = numberFormatObj.getInternalState();
         return state.toResolvedOptionsObject(context, realm);
-    }
-
-    public static InternalState getInternalState(JSDynamicObject obj) {
-        assert isJSNumberFormat(obj);
-        return ((JSNumberFormatObject) obj).getInternalState();
-    }
-
-    private static CallTarget createGetFormatCallTarget(JSContext context) {
-        return new JavaScriptRootNode(context.getLanguage(), null, null) {
-            private final BranchProfile errorBranch = BranchProfile.create();
-            @Child private PropertySetNode setBoundObjectNode = PropertySetNode.createSetHidden(BOUND_OBJECT_KEY, context);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-
-                Object[] frameArgs = frame.getArguments();
-                Object numberFormatObj = JSArguments.getThisObject(frameArgs);
-
-                if (isJSNumberFormat(numberFormatObj)) {
-
-                    InternalState state = getInternalState((JSDynamicObject) numberFormatObj);
-
-                    if (state == null) {
-                        errorBranch.enter();
-                        throw Errors.createTypeErrorMethodCalledOnNonObjectOrWrongType("format");
-                    }
-
-                    if (state.boundFormatFunction == null) {
-                        JSFunctionData formatFunctionData = context.getOrCreateBuiltinFunctionData(JSContext.BuiltinFunctionKey.NumberFormatFormat, c -> createFormatFunctionData(c));
-                        JSDynamicObject formatFn = JSFunction.create(getRealm(), formatFunctionData);
-                        setBoundObjectNode.setValue(formatFn, numberFormatObj);
-                        state.boundFormatFunction = formatFn;
-                    }
-
-                    return state.boundFormatFunction;
-                }
-                errorBranch.enter();
-                throw Errors.createTypeErrorTypeXExpected(CLASS_NAME);
-            }
-        }.getCallTarget();
-    }
-
-    private static JSFunctionData createFormatFunctionData(JSContext context) {
-        return JSFunctionData.createCallOnly(context, new JavaScriptRootNode(context.getLanguage(), null, null) {
-            @Child private PropertyGetNode getBoundObjectNode = PropertyGetNode.createGetHidden(BOUND_OBJECT_KEY, context);
-            @Child private ToIntlMathematicalValue toIntlMVValueNode = ToIntlMathematicalValue.create(false);
-
-            @Override
-            public Object execute(VirtualFrame frame) {
-                Object[] arguments = frame.getArguments();
-                JSDynamicObject thisObj = (JSDynamicObject) getBoundObjectNode.getValue(JSArguments.getFunctionObject(arguments));
-                assert isJSNumberFormat(thisObj);
-                Object n = JSArguments.getUserArgumentCount(arguments) > 0 ? JSArguments.getUserArgument(arguments, 0) : Undefined.instance;
-                return formatMV(thisObj, toIntlMVValueNode.executeNumber(n));
-            }
-        }.getCallTarget(), 1, Strings.EMPTY_STRING);
-    }
-
-    private static JSDynamicObject createFormatFunctionGetter(JSRealm realm, JSContext context) {
-        JSFunctionData fd = realm.getContext().getOrCreateBuiltinFunctionData(BuiltinFunctionKey.NumberFormatGetFormat, (c) -> {
-            CallTarget ct = createGetFormatCallTarget(context);
-            return JSFunctionData.create(context, ct, ct, 0, GET_FORMAT_NAME, false, false, false, true);
-        });
-        return JSFunction.create(realm, fd);
     }
 
     @Override

@@ -46,11 +46,11 @@ const {
   isFloat64Array,
 } = types;
 const {
-  getOwnNonIndexProperties,
-  propertyFilter: {
+  constants: {
     ONLY_ENUMERABLE,
-    SKIP_SYMBOLS
-  }
+    SKIP_SYMBOLS,
+  },
+  getOwnNonIndexProperties,
 } = internalBinding('util');
 
 const kStrict = true;
@@ -63,7 +63,9 @@ const kIsMap = 3;
 
 // Check if they have the same source and flags
 function areSimilarRegExps(a, b) {
-  return a.source === b.source && a.flags === b.flags;
+  return a.source === b.source &&
+         a.flags === b.flags &&
+         a.lastIndex === b.lastIndex;
 }
 
 function areSimilarFloatArrays(a, b) {
@@ -257,7 +259,7 @@ function innerDeepEqual(val1, val2, strict, memos) {
 function getEnumerables(val, keys) {
   return ArrayPrototypeFilter(
     keys,
-    (k) => ObjectPrototypePropertyIsEnumerable(val, k)
+    (k) => ObjectPrototypePropertyIsEnumerable(val, k),
   );
 }
 
@@ -329,7 +331,7 @@ function keyCheck(val1, val2, strict, memos, iterationType, aKeys) {
     memos = {
       val1: new SafeMap(),
       val2: new SafeMap(),
-      position: 0
+      position: 0,
     };
   } else {
     // We prevent up to two map.has(x) calls by directly retrieving the value
@@ -590,5 +592,5 @@ function isDeepStrictEqual(val1, val2) {
 
 module.exports = {
   isDeepEqual,
-  isDeepStrictEqual
+  isDeepStrictEqual,
 };

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,21 +42,17 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 public final class JSIteratorObject extends JSNonProxyObject {
 
-    protected JSIteratorObject(Shape shape) {
-        super(shape);
+    protected JSIteratorObject(Shape shape, JSDynamicObject proto) {
+        super(shape, proto);
     }
 
     @Override
     public TruffleString getClassName() {
         return JSIterator.CLASS_NAME;
-    }
-
-    public static JSIteratorObject create(JSRealm realm, JSObjectFactory factory) {
-        return factory.initProto(new JSIteratorObject(factory.getShape(realm)), realm);
     }
 }

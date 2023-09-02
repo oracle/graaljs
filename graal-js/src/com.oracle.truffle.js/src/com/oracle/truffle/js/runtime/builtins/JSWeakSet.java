@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,10 +66,12 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
     private JSWeakSet() {
     }
 
-    public static JSWeakSetObject create(JSContext context, JSRealm realm) {
+    public static JSWeakSetObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
+        var weakHashMap = newWeakHashMap();
         JSObjectFactory factory = context.getWeakSetFactory();
-        JSWeakSetObject obj = factory.initProto(new JSWeakSetObject(factory.getShape(realm), newWeakHashMap()), realm);
-        return context.trackAllocation(obj);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSWeakSetObject(shape, proto, weakHashMap), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @TruffleBoundary
@@ -77,17 +79,10 @@ public final class JSWeakSet extends JSNonProxy implements JSConstructorFactory.
         return new WeakHashMap<>();
     }
 
-    @SuppressWarnings("unchecked")
-    public static Map<Object, Object> getInternalWeakMap(JSDynamicObject obj) {
-        assert isJSWeakSet(obj);
-        return ((JSWeakSetObject) obj).getWeakHashMap();
-    }
-
     @Override
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, ctor);
+        JSObjectUtil.putConstructorProperty(prototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, WeakSetPrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, CLASS_NAME);
         return prototype;

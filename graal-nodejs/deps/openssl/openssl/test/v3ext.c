@@ -1,13 +1,14 @@
 /*
  * Copyright 2016-2022 The OpenSSL Project Authors. All Rights Reserved.
  *
- * Licensed under the OpenSSL license (the "License").  You may not use
+ * Licensed under the Apache License 2.0 (the "License").  You may not use
  * this file except in compliance with the License.  You can obtain a copy
  * in the file LICENSE in the source distribution or at
  * https://www.openssl.org/source/license.html
  */
 
 #include <stdio.h>
+#include <string.h>
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 #include <openssl/pem.h>
@@ -224,10 +225,244 @@ static int test_addr_ranges(void)
     ASN1_OCTET_STRING_free(ip2);
     return testresult;
 }
+
+static int test_addr_fam_len(void)
+{
+    int testresult = 0;
+    IPAddrBlocks *addr = NULL;
+    IPAddressFamily *f1 = NULL;
+    ASN1_OCTET_STRING *ip1 = NULL, *ip2 = NULL;
+    unsigned char key[6];
+    unsigned int keylen;
+    unsigned afi = IANA_AFI_IPV4;
+
+    /* Create the IPAddrBlocks with a good IPAddressFamily */
+    addr = sk_IPAddressFamily_new_null();
+    if (!TEST_ptr(addr))
+        goto end;
+    ip1 = a2i_IPADDRESS(ranges[0].ip1);
+    if (!TEST_ptr(ip1))
+        goto end;
+    ip2 = a2i_IPADDRESS(ranges[0].ip2);
+    if (!TEST_ptr(ip2))
+        goto end;
+    if (!TEST_true(X509v3_addr_add_range(addr, ranges[0].afi, NULL, ip1->data, ip2->data)))
+        goto end;
+    if (!TEST_true(X509v3_addr_is_canonical(addr)))
+        goto end;
+
+    /* Create our malformed IPAddressFamily */
+    key[0] = (afi >> 8) & 0xFF;
+    key[1] = afi & 0xFF;
+    key[2] = 0xD;
+    key[3] = 0xE;
+    key[4] = 0xA;
+    key[5] = 0xD;
+    keylen = 6;
+    if ((f1 = IPAddressFamily_new()) == NULL)
+        goto end;
+    if (f1->ipAddressChoice == NULL &&
+        (f1->ipAddressChoice = IPAddressChoice_new()) == NULL)
+        goto end;
+    if (f1->addressFamily == NULL &&
+        (f1->addressFamily = ASN1_OCTET_STRING_new()) == NULL)
+        goto end;
+    if (!ASN1_OCTET_STRING_set(f1->addressFamily, key, keylen))
+        goto end;
+    if (!sk_IPAddressFamily_push(addr, f1))
+        goto end;
+
+    /* Shouldn't be able to canonize this as the len is > 3*/
+    if (!TEST_false(X509v3_addr_canonize(addr)))
+        goto end;
+
+    /* Create a well formed IPAddressFamily */
+    f1 = sk_IPAddressFamily_pop(addr);
+    IPAddressFamily_free(f1);
+
+    key[0] = (afi >> 8) & 0xFF;
+    key[1] = afi & 0xFF;
+    key[2] = 0x1;
+    keylen = 3;
+    if ((f1 = IPAddressFamily_new()) == NULL)
+        goto end;
+    if (f1->ipAddressChoice == NULL &&
+        (f1->ipAddressChoice = IPAddressChoice_new()) == NULL)
+        goto end;
+    if (f1->addressFamily == NULL &&
+        (f1->addressFamily = ASN1_OCTET_STRING_new()) == NULL)
+        goto end;
+    if (!ASN1_OCTET_STRING_set(f1->addressFamily, key, keylen))
+        goto end;
+
+    /* Mark this as inheritance so we skip some of the is_canonize checks */
+    f1->ipAddressChoice->type = IPAddressChoice_inherit;
+    if (!sk_IPAddressFamily_push(addr, f1))
+        goto end;
+
+    /* Should be able to canonize now */
+    if (!TEST_true(X509v3_addr_canonize(addr)))
+        goto end;
+
+    testresult = 1;
+  end:
+    sk_IPAddressFamily_pop_free(addr, IPAddressFamily_free);
+    ASN1_OCTET_STRING_free(ip1);
+    ASN1_OCTET_STRING_free(ip2);
+    return testresult;
+}
+
+static struct extvalues_st {
+    const char *value;
+    int pass;
+} extvalues[] = {
+    /* No prefix is ok */
+    { "sbgp-ipAddrBlock = IPv4:192.0.0.1\n", 1 },
+    { "sbgp-ipAddrBlock = IPv4:192.0.0.0/0\n", 1 },
+    { "sbgp-ipAddrBlock = IPv4:192.0.0.0/1\n", 1 },
+    { "sbgp-ipAddrBlock = IPv4:192.0.0.0/32\n", 1 },
+    /* Prefix is too long */
+    { "sbgp-ipAddrBlock = IPv4:192.0.0.0/33\n", 0 },
+    /* Unreasonably large prefix */
+    { "sbgp-ipAddrBlock = IPv4:192.0.0.0/12341234\n", 0 },
+    /* Invalid IP addresses */
+    { "sbgp-ipAddrBlock = IPv4:192.0.0\n", 0 },
+    { "sbgp-ipAddrBlock = IPv4:256.0.0.0\n", 0 },
+    { "sbgp-ipAddrBlock = IPv4:-1.0.0.0\n", 0 },
+    { "sbgp-ipAddrBlock = IPv4:192.0.0.0.0\n", 0 },
+    { "sbgp-ipAddrBlock = IPv3:192.0.0.0\n", 0 },
+
+    /* IPv6 */
+    /* No prefix is ok */
+    { "sbgp-ipAddrBlock = IPv6:2001:db8::\n", 1 },
+    { "sbgp-ipAddrBlock = IPv6:2001::db8\n", 1 },
+    { "sbgp-ipAddrBlock = IPv6:2001:0db8:0000:0000:0000:0000:0000:0000\n", 1 },
+    { "sbgp-ipAddrBlock = IPv6:2001:db8::/0\n", 1 },
+    { "sbgp-ipAddrBlock = IPv6:2001:db8::/1\n", 1 },
+    { "sbgp-ipAddrBlock = IPv6:2001:db8::/32\n", 1 },
+    { "sbgp-ipAddrBlock = IPv6:2001:0db8:0000:0000:0000:0000:0000:0000/32\n", 1 },
+    { "sbgp-ipAddrBlock = IPv6:2001:db8::/128\n", 1 },
+    /* Prefix is too long */
+    { "sbgp-ipAddrBlock = IPv6:2001:db8::/129\n", 0 },
+    /* Unreasonably large prefix */
+    { "sbgp-ipAddrBlock = IPv6:2001:db8::/12341234\n", 0 },
+    /* Invalid IP addresses */
+    /* Not enough blocks of numbers */
+    { "sbgp-ipAddrBlock = IPv6:2001:0db8:0000:0000:0000:0000:0000\n", 0 },
+    /* Too many blocks of numbers */
+    { "sbgp-ipAddrBlock = IPv6:2001:0db8:0000:0000:0000:0000:0000:0000:0000\n", 0 },
+    /* First value too large */
+    { "sbgp-ipAddrBlock = IPv6:1ffff:0db8:0000:0000:0000:0000:0000:0000\n", 0 },
+    /* First value with invalid characters */
+    { "sbgp-ipAddrBlock = IPv6:fffg:0db8:0000:0000:0000:0000:0000:0000\n", 0 },
+    /* First value is negative */
+    { "sbgp-ipAddrBlock = IPv6:-1:0db8:0000:0000:0000:0000:0000:0000\n", 0 }
+};
+
+static int test_ext_syntax(void)
+{
+    size_t i;
+    int testresult = 1;
+
+    for (i = 0; i < OSSL_NELEM(extvalues); i++) {
+        X509V3_CTX ctx;
+        BIO *extbio = BIO_new_mem_buf(extvalues[i].value,
+                                      strlen(extvalues[i].value));
+        CONF *conf;
+        long eline;
+
+        if (!TEST_ptr(extbio))
+            return 0 ;
+
+        conf = NCONF_new_ex(NULL, NULL);
+        if (!TEST_ptr(conf)) {
+            BIO_free(extbio);
+            return 0;
+        }
+        if (!TEST_long_gt(NCONF_load_bio(conf, extbio, &eline), 0)) {
+            testresult = 0;
+        } else {
+            X509V3_set_ctx_test(&ctx);
+            X509V3_set_nconf(&ctx, conf);
+
+            if (extvalues[i].pass) {
+                if (!TEST_true(X509V3_EXT_add_nconf(conf, &ctx, "default",
+                                                    NULL))) {
+                    TEST_info("Value: %s", extvalues[i].value);
+                    testresult = 0;
+                }
+            } else {
+                ERR_set_mark();
+                if (!TEST_false(X509V3_EXT_add_nconf(conf, &ctx, "default",
+                                                     NULL))) {
+                    testresult = 0;
+                    TEST_info("Value: %s", extvalues[i].value);
+                    ERR_clear_last_mark();
+                } else {
+                    ERR_pop_to_mark();
+                }
+            }
+        }
+        BIO_free(extbio);
+        NCONF_free(conf);
+    }
+
+    return testresult;
+}
+
+static int test_addr_subset(void)
+{
+    int i;
+    int ret = 0;
+    IPAddrBlocks *addrEmpty = NULL;
+    IPAddrBlocks *addr[3] = { NULL, NULL };
+    ASN1_OCTET_STRING *ip1[3] = { NULL, NULL };
+    ASN1_OCTET_STRING *ip2[3] = { NULL, NULL };
+    int sz = OSSL_NELEM(addr);
+
+    for (i = 0; i < sz; ++i) {
+        /* Create the IPAddrBlocks with a good IPAddressFamily */
+        if (!TEST_ptr(addr[i] = sk_IPAddressFamily_new_null())
+            || !TEST_ptr(ip1[i] = a2i_IPADDRESS(ranges[i].ip1))
+            || !TEST_ptr(ip2[i] = a2i_IPADDRESS(ranges[i].ip2))
+            || !TEST_true(X509v3_addr_add_range(addr[i], ranges[i].afi, NULL,
+                                                ip1[i]->data, ip2[i]->data)))
+            goto end;
+    }
+
+    ret = TEST_ptr(addrEmpty = sk_IPAddressFamily_new_null())
+          && TEST_true(X509v3_addr_subset(NULL, NULL))
+          && TEST_true(X509v3_addr_subset(NULL, addr[0]))
+          && TEST_true(X509v3_addr_subset(addrEmpty, addr[0]))
+          && TEST_true(X509v3_addr_subset(addr[0], addr[0]))
+          && TEST_true(X509v3_addr_subset(addr[0], addr[1]))
+          && TEST_true(X509v3_addr_subset(addr[0], addr[2]))
+          && TEST_true(X509v3_addr_subset(addr[1], addr[2]))
+          && TEST_false(X509v3_addr_subset(addr[0], NULL))
+          && TEST_false(X509v3_addr_subset(addr[1], addr[0]))
+          && TEST_false(X509v3_addr_subset(addr[2], addr[1]))
+          && TEST_false(X509v3_addr_subset(addr[0], addrEmpty));
+end:
+    sk_IPAddressFamily_pop_free(addrEmpty, IPAddressFamily_free);
+    for (i = 0; i < sz; ++i) {
+        sk_IPAddressFamily_pop_free(addr[i], IPAddressFamily_free);
+        ASN1_OCTET_STRING_free(ip1[i]);
+        ASN1_OCTET_STRING_free(ip2[i]);
+    }
+    return ret;
+}
+
 #endif /* OPENSSL_NO_RFC3779 */
+
+OPT_TEST_DECLARE_USAGE("cert.pem\n")
 
 int setup_tests(void)
 {
+    if (!test_skip_common_options()) {
+        TEST_error("Error parsing test options\n");
+        return 0;
+    }
+
     if (!TEST_ptr(infile = test_get_argument(0)))
         return 0;
 
@@ -235,6 +470,9 @@ int setup_tests(void)
 #ifndef OPENSSL_NO_RFC3779
     ADD_TEST(test_asid);
     ADD_TEST(test_addr_ranges);
+    ADD_TEST(test_ext_syntax);
+    ADD_TEST(test_addr_fam_len);
+    ADD_TEST(test_addr_subset);
 #endif /* OPENSSL_NO_RFC3779 */
     return 1;
 }

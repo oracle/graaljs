@@ -5,6 +5,7 @@
 #ifndef V8_CODEGEN_SCRIPT_DETAILS_H_
 #define V8_CODEGEN_SCRIPT_DETAILS_H_
 
+#include "include/v8-script.h"
 #include "src/common/globals.h"
 #include "src/objects/fixed-array.h"
 #include "src/objects/objects.h"
@@ -28,7 +29,7 @@ struct ScriptDetails {
   int column_offset;
   MaybeHandle<Object> name_obj;
   MaybeHandle<Object> source_map_url;
-  MaybeHandle<FixedArray> host_defined_options;
+  MaybeHandle<Object> host_defined_options;
   REPLMode repl_mode;
   const ScriptOriginOptions origin_options;
 };

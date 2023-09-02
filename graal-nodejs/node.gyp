@@ -24,8 +24,7 @@
     'node_use_openssl%': 'true',
     'node_shared_openssl%': 'false',
     'node_v8_options%': '',
-    'node_target_type%': 'executable',
-    'node_production%': 'false',
+    'node_enable_v8_vtunejit%': 'false',
     'node_core_target_name%': 'node',
     'node_lib_target_name%': 'libnode',
     'node_intermediate_lib_type%': 'static_library',
@@ -52,12 +51,10 @@
       'deps/v8/tools/tickprocessor-driver.mjs',
       'deps/acorn/acorn/dist/acorn.js',
       'deps/acorn/acorn-walk/dist/walk.js',
-      'deps/cjs-module-lexer/lexer.js',
-      'deps/cjs-module-lexer/dist/lexer.js',
-      'deps/undici/undici.js',
+      'deps/minimatch/index.js',
+      '<@(node_builtin_shareable_builtins)',
     ],
     'node_mksnapshot_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)node_mksnapshot<(EXECUTABLE_SUFFIX)',
-    'mkcodecache_exec': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)mkcodecache<(EXECUTABLE_SUFFIX)',
     'conditions': [
       ['GENERATOR == "ninja"', {
         'node_text_start_object_path': 'src/large_pages/node_text_start.node_text_start.o'
@@ -67,7 +64,7 @@
       [ 'node_shared=="true"', {
         'node_target_type%': 'shared_library',
         'conditions': [
-          ['OS=="aix"', {
+          ['OS in "aix os400"', {
             # For AIX, always generate static library first,
             # It needs an extra step to generate exp and
             # then use both static lib and exp to create
@@ -102,6 +99,7 @@
         '-W',
         '-Wno-unused-parameter',
         '-Werror=undefined-inline',
+        '-Werror=extra-semi',
       ],
     },
 
@@ -115,7 +113,7 @@
     },
 
     'conditions': [
-      ['OS=="aix"', {
+      ['OS in "aix os400"', {
         'ldflags': [
           '-Wl,-bnoerrmsg',
         ],
@@ -156,7 +154,8 @@
 
       'include_dirs': [
         'src',
-        'deps/v8/include'
+        'deps/v8/include',
+        'deps/postject'
       ],
 
       'sources': [
@@ -196,7 +195,7 @@
           },
         }],
         [ 'node_intermediate_lib_type=="static_library" and '
-            'node_shared=="true" and OS=="aix"', {
+            'node_shared=="true" and OS in "aix os400"', {
           # For AIX, shared lib is linked by static lib and .exp. In the
           # case here, the executable needs to link to shared lib.
           # Therefore, use 'node_aix_shared' target to generate the
@@ -231,7 +230,7 @@
             },
           },
           'conditions': [
-            ['OS != "aix" and OS != "mac" and OS != "ios"', {
+            ['OS != "aix" and OS != "os400" and OS != "mac" and OS != "ios"', {
               'ldflags': [
                 '-Wl,--whole-archive',
                 '<(obj_dir)/<(STATIC_LIB_PREFIX)<(node_core_target_name)<(STATIC_LIB_SUFFIX)',
@@ -328,32 +327,7 @@
             },
           },
          }],
-        ['node_use_node_code_cache=="true"', {
-          'dependencies': [
-            'mkcodecache',
-          ],
-          'actions': [
-            {
-              'action_name': 'run_mkcodecache',
-              'process_outputs_as_sources': 1,
-              'inputs': [
-                '<(mkcodecache_exec)',
-              ],
-              'outputs': [
-                '<(SHARED_INTERMEDIATE_DIR)/node_code_cache.cc',
-              ],
-              'action': [
-                '<@(_inputs)',
-                '<@(_outputs)',
-              ],
-            },
-          ],
-        }, {
-          'sources': [
-            'src/node_code_cache_stub.cc'
-          ],
-        }],
-        ['node_use_node_snapshot=="true"', {
+         ['node_use_node_snapshot=="true"', {
           'dependencies': [
             'node_mksnapshot',
           ],
@@ -409,6 +383,88 @@
             '<(obj_dir)/<(node_text_start_object_path)'
           ]
         }],
+
+        ['node_fipsinstall=="true"', {
+          'variables': {
+            'openssl-cli': '<(PRODUCT_DIR)/<(EXECUTABLE_PREFIX)openssl-cli<(EXECUTABLE_SUFFIX)',
+            'provider_name': 'libopenssl-fipsmodule',
+            'opensslconfig': './deps/openssl/nodejs-openssl.cnf',
+            'conditions': [
+              ['GENERATOR == "ninja"', {
+	        'fipsmodule_internal': '<(PRODUCT_DIR)/lib/<(provider_name).so',
+                'fipsmodule': '<(PRODUCT_DIR)/obj/lib/openssl-modules/fips.so',
+                'fipsconfig': '<(PRODUCT_DIR)/obj/lib/fipsmodule.cnf',
+                'opensslconfig_internal': '<(PRODUCT_DIR)/obj/lib/openssl.cnf',
+             }, {
+	        'fipsmodule_internal': '<(PRODUCT_DIR)/obj.target/deps/openssl/<(provider_name).so',
+                'fipsmodule': '<(PRODUCT_DIR)/obj.target/deps/openssl/lib/openssl-modules/fips.so',
+                'fipsconfig': '<(PRODUCT_DIR)/obj.target/deps/openssl/fipsmodule.cnf',
+                'opensslconfig_internal': '<(PRODUCT_DIR)/obj.target/deps/openssl/openssl.cnf',
+             }],
+            ],
+          },
+          'actions': [
+            {
+              'action_name': 'fipsinstall',
+              'process_outputs_as_sources': 1,
+              'inputs': [
+                '<(fipsmodule_internal)',
+              ],
+              'outputs': [
+                '<(fipsconfig)',
+              ],
+              'action': [
+                '<(openssl-cli)', 'fipsinstall',
+                '-provider_name', '<(provider_name)',
+                '-module', '<(fipsmodule_internal)',
+                '-out', '<(fipsconfig)',
+                #'-quiet',
+              ],
+            },
+            {
+              'action_name': 'copy_fips_module',
+              'inputs': [
+                '<(fipsmodule_internal)',
+              ],
+              'outputs': [
+                '<(fipsmodule)',
+              ],
+              'action': [
+                'python', 'tools/copyfile.py',
+                '<(fipsmodule_internal)',
+                '<(fipsmodule)',
+              ],
+            },
+            {
+              'action_name': 'copy_openssl_cnf_and_include_fips_cnf',
+              'inputs': [ '<(opensslconfig)', ],
+              'outputs': [ '<(opensslconfig_internal)', ],
+              'action': [
+                'python', 'tools/enable_fips_include.py',
+                '<(opensslconfig)',
+                '<(opensslconfig_internal)',
+                '<(fipsconfig)',
+              ],
+            },
+          ],
+         }, {
+           'variables': {
+              'opensslconfig_internal': '<(obj_dir)/deps/openssl/openssl.cnf',
+              'opensslconfig': './deps/openssl/nodejs-openssl.cnf',
+           },
+           'actions': [
+             {
+               'action_name': 'reset_openssl_cnf',
+               'inputs': [ '<(opensslconfig)', ],
+               'outputs': [ '<(opensslconfig_internal)', ],
+               'action': [
+                 '<(python)', 'tools/copyfile.py',
+                 '<(opensslconfig)',
+                 '<(opensslconfig_internal)',
+               ],
+             },
+           ],
+         }],
       ],
     }, # node_core_target_name
     {
@@ -424,12 +480,15 @@
         'deps/v8/include/',
         'deps/v8/', # include/v8_platform.h
         'deps/v8/src/graal/',
+        'deps/postject',
       ],
       'dependencies': [
         'deps/base64/base64.gyp:base64',
         'deps/googletest/googletest.gyp:gtest_prod',
         'deps/histogram/histogram.gyp:histogram',
         'deps/uvwasi/uvwasi.gyp:uvwasi',
+        'deps/simdutf/simdutf.gyp:simdutf',
+        'deps/ada/ada.gyp:ada',
       ],
 
       'sources': [
@@ -442,7 +501,9 @@
         'src/api/hooks.cc',
         'src/api/utils.cc',
         'src/async_wrap.cc',
+        'src/base_object.cc',
         'src/cares_wrap.cc',
+        'src/cleanup_queue.cc',
         'src/connect_wrap.cc',
         'src/connection_wrap.cc',
         'src/debug_utils.cc',
@@ -465,6 +526,7 @@
         'src/node_binding.cc',
         'src/node_blob.cc',
         'src/node_buffer.cc',
+        'src/node_builtins.cc',
         'src/node_config.cc',
         'src/node_constants.cc',
         'src/node_contextify.cc',
@@ -480,8 +542,6 @@
         'src/node_main_instance.cc',
         'src/node_messaging.cc',
         'src/node_metadata.cc',
-        'src/node_native_module.cc',
-        'src/node_native_module_env.cc',
         'src/node_options.cc',
         'src/node_os.cc',
         'src/node_perf.cc',
@@ -490,10 +550,13 @@
         'src/node_process_events.cc',
         'src/node_process_methods.cc',
         'src/node_process_object.cc',
+        'src/node_realm.cc',
         'src/node_report.cc',
         'src/node_report_module.cc',
         'src/node_report_utils.cc',
+        'src/node_sea.cc',
         'src/node_serdes.cc',
+        'src/node_shadow_realm.cc',
         'src/node_snapshotable.cc',
         'src/node_sockaddr.cc',
         'src/node_stat_watcher.cc',
@@ -502,10 +565,10 @@
         'src/node_trace_events.cc',
         'src/node_types.cc',
         'src/node_url.cc',
-        'src/node_url_tables.cc',
         'src/node_util.cc',
         'src/node_v8.cc',
         'src/node_wasi.cc',
+        'src/node_wasm_web_api.cc',
         'src/node_watchdog.cc',
         'src/node_worker.cc',
         'src/node_zlib.cc',
@@ -542,10 +605,13 @@
         'src/base64-inl.h',
         'src/callback_queue.h',
         'src/callback_queue-inl.h',
+        'src/cleanup_queue.h',
+        'src/cleanup_queue-inl.h',
         'src/connect_wrap.h',
         'src/connection_wrap.h',
         'src/debug_utils.h',
         'src/debug_utils-inl.h',
+        'src/env_properties.h',
         'src/env.h',
         'src/env-inl.h',
         'src/handle_wrap.h',
@@ -564,6 +630,7 @@
         'src/node_binding.h',
         'src/node_blob.h',
         'src/node_buffer.h',
+        'src/node_builtins.h',
         'src/node_constants.h',
         'src/node_context_data.h',
         'src/node_contextify.h',
@@ -584,8 +651,6 @@
         'src/node_messaging.h',
         'src/node_metadata.h',
         'src/node_mutex.h',
-        'src/node_native_module.h',
-        'src/node_native_module_env.h',
         'src/node_object_wrap.h',
         'src/node_options.h',
         'src/node_options-inl.h',
@@ -594,9 +659,13 @@
         'src/node_platform.h',
         'src/node_process.h',
         'src/node_process-inl.h',
+        'src/node_realm.h',
+        'src/node_realm-inl.h',
         'src/node_report.h',
         'src/node_revert.h',
         'src/node_root_certs.h',
+        'src/node_sea.h',
+        'src/node_shadow_realm.h',
         'src/node_snapshotable.h',
         'src/node_snapshot_builder.h',
         'src/node_sockaddr.h',
@@ -604,6 +673,7 @@
         'src/node_stat_watcher.h',
         'src/node_union_bytes.h',
         'src/node_url.h',
+        'src/node_util.h',
         'src/node_version.h',
         'src/node_v8.h',
         'src/node_v8_platform-inl.h',
@@ -637,18 +707,13 @@
         'src/util-inl.h',
         # Dependency headers
         'deps/v8/include/v8.h',
+        'deps/postject/postject-api.h'
         # javascript files to make for an even more pleasant IDE experience
         '<@(library_files)',
         '<@(deps_files)',
         # node.gyp is added by default, common.gypi is added for change detection
         'common.gypi',
       ],
-      'conditions': [
-        # Production build
-        [ 'node_production=="true"', {
-          'defines': [ 'NDEBUG' ],
-        }],
-     ],
 
       'variables': {
         'openssl_system_ca_path%': '',
@@ -688,7 +753,6 @@
         [ 'node_shared=="true"', {
           'sources': [
             'src/node_snapshot_stub.cc',
-            'src/node_code_cache_stub.cc',
           ]
         }],
         [ 'node_shared=="true" and node_module_version!="" and OS!="win"', {
@@ -698,7 +762,12 @@
               '@rpath/lib<(node_core_target_name).<(shlib_suffix)'
           },
         }],
-        ['node_shared=="true" and OS=="aix"', {
+        [ 'node_use_node_code_cache=="true"', {
+          'defines': [
+            'NODE_USE_NODE_CODE_CACHE=1',
+          ],
+        }],
+        ['node_shared=="true" and OS in "aix os400"', {
           'product_name': 'node_base',
         }],
         [ 'v8_enable_inspector==1', {
@@ -856,7 +925,8 @@
               '-CAES,BF,BIO,DES,DH,DSA,EC,ECDH,ECDSA,ENGINE,EVP,HMAC,MD4,MD5,'
               'PSK,RC2,RC4,RSA,SHA,SHA0,SHA1,SHA256,SHA512,SOCK,STDIO,TLSEXT,'
               'UI,FP_API,TLS1_METHOD,TLS1_1_METHOD,TLS1_2_METHOD,SCRYPT,OCSP,'
-              'NEXTPROTONEG,RMD160,CAST,DEPRECATEDIN_1_1_0,DEPRECATEDIN_1_2_0',
+              'NEXTPROTONEG,RMD160,CAST,DEPRECATEDIN_1_1_0,DEPRECATEDIN_1_2_0,'
+              'DEPRECATEDIN_3_0',
               # Defines.
               '-DWIN32',
               # Symbols to filter from the export list.
@@ -868,7 +938,7 @@
             ],
           },
           'conditions': [
-            ['openssl_fips!=""', {
+            ['openssl_is_fips!=""', {
               'variables': { 'mkssldef_flags': ['-DOPENSSL_FIPS'] },
             }],
           ],
@@ -891,6 +961,9 @@
               ],
             },
           ],
+        }],
+        [ 'debug_nghttp2==1', {
+          'defines': [ 'NODE_DEBUG_NGHTTP2=1' ]
         }],
       ],
       'actions': [
@@ -1086,7 +1159,6 @@
       ],
       'sources': [
         'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
         'test/fuzzers/fuzz_url.cc',
       ],
       'conditions': [
@@ -1129,7 +1201,6 @@
       ],
       'sources': [
         'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
         'test/fuzzers/fuzz_env.cc',
       ],
       'conditions': [
@@ -1139,6 +1210,10 @@
         # Ensure that ossfuzz flag has been set and that we are on Linux
         [ 'OS!="linux" or ossfuzz!="true"', {
           'type': 'none',
+        }],
+        # Avoid excessive LTO
+        ['enable_lto=="true"', {
+          'ldflags': [ '-fno-lto' ],
         }],
       ],
     }, # fuzz_env
@@ -1156,6 +1231,8 @@
         'node_dtrace_header',
         'node_dtrace_ustack',
         'node_dtrace_provider',
+        'deps/simdutf/simdutf.gyp:simdutf',
+        'deps/ada/ada.gyp:ada',
       ],
 
       'includes': [
@@ -1180,7 +1257,6 @@
 
       'sources': [
         'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
         'test/cctest/node_test_fixture.cc',
         'test/cctest/node_test_fixture.h',
         'test/cctest/test_aliased_buffer.cc',
@@ -1188,7 +1264,6 @@
         'test/cctest/test_base_object_ptr.cc',
         'test/cctest/test_node_postmortem_metadata.cc',
         'test/cctest/test_environment.cc',
-        'test/cctest/test_js_native_api_v8.cc',
         'test/cctest/test_linked_binding.cc',
         'test/cctest/test_node_api.cc',
         'test/cctest/test_per_process.cc',
@@ -1198,7 +1273,6 @@
         'test/cctest/test_sockaddr.cc',
         'test/cctest/test_traced_value.cc',
         'test/cctest/test_util.cc',
-        'test/cctest/test_url.cc',
       ],
 
       'conditions': [
@@ -1209,6 +1283,7 @@
           'sources': [
             'test/cctest/test_crypto_clienthello.cc',
             'test/cctest/test_node_crypto.cc',
+            'test/cctest/test_node_crypto_env.cc',
           ]
         }],
         ['v8_enable_inspector==1', {
@@ -1243,6 +1318,10 @@
             'Ws2_32.lib',
           ],
         }],
+        # Avoid excessive LTO
+        ['enable_lto=="true"', {
+          'ldflags': [ '-fno-lto' ],
+        }],
       ],
     }, # cctest
 
@@ -1257,6 +1336,7 @@
         'node_dtrace_header',
         'node_dtrace_ustack',
         'node_dtrace_provider',
+        'deps/ada/ada.gyp:ada',
       ],
 
       'includes': [
@@ -1275,7 +1355,6 @@
 
       'sources': [
         'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
         'test/embedding/embedtest.cc',
       ],
 
@@ -1299,6 +1378,10 @@
             'Ws2_32.lib',
           ],
         }],
+        # Avoid excessive LTO
+        ['enable_lto=="true"', {
+          'ldflags': [ '-fno-lto' ],
+        }],
       ],
     }, # embedtest
 
@@ -1317,70 +1400,12 @@
             'test/overlapped-checker/main_unix.c'
           ],
         }],
+        # Avoid excessive LTO
+        ['enable_lto=="true"', {
+          'ldflags': [ '-fno-lto' ],
+        }],
       ]
     }, # overlapped-checker
-
-    # TODO(joyeecheung): do not depend on node_lib,
-    # instead create a smaller static library node_lib_base that does
-    # just enough for node_native_module.cc and the cache builder to
-    # compile without compiling the generated code cache C++ file.
-    # So generate_code_cache -> mkcodecache -> node_lib_base,
-    #    node_lib -> node_lib_base & generate_code_cache
-    {
-      'target_name': 'mkcodecache',
-      'type': 'none',
-
-      'dependencies': [
-        '<(node_lib_target_name)',
-        'deps/histogram/histogram.gyp:histogram',
-        'deps/uvwasi/uvwasi.gyp:uvwasi',
-      ],
-
-      'includes': [
-        'node.gypi'
-      ],
-
-      'include_dirs': [
-        'src',
-        'tools/msvs/genfiles',
-        'deps/v8/include',
-        'deps/cares/include',
-        'deps/uv/include',
-        'deps/uvwasi/include',
-      ],
-
-      'defines': [
-        'NODE_WANT_INTERNALS=1'
-      ],
-      'sources': [
-        'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
-        'tools/code_cache/mkcodecache.cc',
-        'tools/code_cache/cache_builder.cc',
-        'tools/code_cache/cache_builder.h',
-      ],
-
-      'conditions': [
-        [ 'node_use_openssl=="true"', {
-          'defines': [
-            'HAVE_OPENSSL=1',
-          ],
-        }],
-        ['v8_enable_inspector==1', {
-          'defines': [
-            'HAVE_INSPECTOR=1',
-          ],
-        }],
-        ['OS=="win"', {
-          'libraries': [
-            'dbghelp.lib',
-            'PsApi.lib',
-            'winmm.lib',
-            'Ws2_32.lib',
-          ],
-        }],
-      ],
-    }, # mkcodecache
     {
       'target_name': 'node_mksnapshot',
       'type': 'executable',
@@ -1389,6 +1414,7 @@
         '<(node_lib_target_name)',
         'deps/histogram/histogram.gyp:histogram',
         'deps/uvwasi/uvwasi.gyp:uvwasi',
+        'deps/ada/ada.gyp:ada',
       ],
 
       'includes': [
@@ -1408,7 +1434,6 @@
 
       'sources': [
         'src/node_snapshot_stub.cc',
-        'src/node_code_cache_stub.cc',
         'tools/snapshot/node_mksnapshot.cc',
       ],
 
@@ -1416,6 +1441,11 @@
         [ 'node_use_openssl=="true"', {
           'defines': [
             'HAVE_OPENSSL=1',
+          ],
+        }],
+        [ 'node_use_node_code_cache=="true"', {
+          'defines': [
+            'NODE_USE_NODE_CODE_CACHE=1',
           ],
         }],
         ['v8_enable_inspector==1', {
@@ -1430,12 +1460,16 @@
             'Ws2_32.lib',
           ],
         }],
+        # Avoid excessive LTO
+        ['enable_lto=="true"', {
+          'ldflags': [ '-fno-lto' ],
+        }],
       ],
     }, # node_mksnapshot
   ], # end targets
 
   'conditions': [
-    ['OS=="aix" and node_shared=="true"', {
+    ['OS in "aix os400" and node_shared=="true"', {
       'targets': [
         {
           'target_name': 'node_aix_shared',

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -87,6 +87,10 @@ EXPORT_TO_JS(GetUnscopables) {
 
 EXPORT_TO_JS(For) {
     args.GetReturnValue().Set(Symbol::For(args.GetIsolate(), args[0].As<String>()));
+}
+
+EXPORT_TO_JS(ForApi) {
+    args.GetReturnValue().Set(Symbol::ForApi(args.GetIsolate(), args[0].As<String>()));
 }
 
 #undef SUITE

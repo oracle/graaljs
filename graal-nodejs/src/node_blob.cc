@@ -22,6 +22,7 @@ using v8::Function;
 using v8::FunctionCallbackInfo;
 using v8::FunctionTemplate;
 using v8::HandleScope;
+using v8::Isolate;
 using v8::Local;
 using v8::MaybeLocal;
 using v8::Number;
@@ -36,30 +37,31 @@ void Blob::Initialize(
     Local<Value> unused,
     Local<Context> context,
     void* priv) {
-  Environment* env = Environment::GetCurrent(context);
+  Realm* realm = Realm::GetCurrent(context);
 
   BlobBindingData* const binding_data =
-      env->AddBindingData<BlobBindingData>(context, target);
+      realm->AddBindingData<BlobBindingData>(context, target);
   if (binding_data == nullptr) return;
 
-  env->SetMethod(target, "createBlob", New);
-  env->SetMethod(target, "storeDataObject", StoreDataObject);
-  env->SetMethod(target, "getDataObject", GetDataObject);
-  env->SetMethod(target, "revokeDataObject", RevokeDataObject);
-  FixedSizeBlobCopyJob::Initialize(env, target);
+  SetMethod(context, target, "createBlob", New);
+  SetMethod(context, target, "storeDataObject", StoreDataObject);
+  SetMethod(context, target, "getDataObject", GetDataObject);
+  SetMethod(context, target, "revokeDataObject", RevokeDataObject);
+  FixedSizeBlobCopyJob::Initialize(realm->env(), target);
 }
 
 Local<FunctionTemplate> Blob::GetConstructorTemplate(Environment* env) {
   Local<FunctionTemplate> tmpl = env->blob_constructor_template();
   if (tmpl.IsEmpty()) {
-    tmpl = FunctionTemplate::New(env->isolate());
+    Isolate* isolate = env->isolate();
+    tmpl = NewFunctionTemplate(isolate, nullptr);
     tmpl->InstanceTemplate()->SetInternalFieldCount(
         BaseObject::kInternalFieldCount);
     tmpl->Inherit(BaseObject::GetConstructorTemplate(env));
     tmpl->SetClassName(
         FIXED_ONE_BYTE_STRING(env->isolate(), "Blob"));
-    env->SetProtoMethod(tmpl, "toArrayBuffer", ToArrayBuffer);
-    env->SetProtoMethod(tmpl, "slice", ToSlice);
+    SetProtoMethod(isolate, tmpl, "toArrayBuffer", ToArrayBuffer);
+    SetProtoMethod(isolate, tmpl, "slice", ToSlice);
     env->set_blob_constructor_template(tmpl);
   }
   return tmpl;
@@ -234,8 +236,7 @@ std::unique_ptr<worker::TransferData> Blob::CloneForMessaging() const {
 
 void Blob::StoreDataObject(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Environment* env = Environment::GetCurrent(args);
-  BlobBindingData* binding_data =
-      Environment::GetBindingData<BlobBindingData>(args);
+  BlobBindingData* binding_data = Realm::GetBindingData<BlobBindingData>(args);
 
   CHECK(args[0]->IsString());  // ID key
   CHECK(Blob::HasInstance(env, args[1]));  // Blob
@@ -258,8 +259,7 @@ void Blob::StoreDataObject(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 void Blob::RevokeDataObject(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  BlobBindingData* binding_data =
-      Environment::GetBindingData<BlobBindingData>(args);
+  BlobBindingData* binding_data = Realm::GetBindingData<BlobBindingData>(args);
 
   Environment* env = Environment::GetCurrent(args);
   CHECK(args[0]->IsString());  // ID key
@@ -270,8 +270,7 @@ void Blob::RevokeDataObject(const v8::FunctionCallbackInfo<v8::Value>& args) {
 }
 
 void Blob::GetDataObject(const v8::FunctionCallbackInfo<v8::Value>& args) {
-  BlobBindingData* binding_data =
-      Environment::GetBindingData<BlobBindingData>(args);
+  BlobBindingData* binding_data = Realm::GetBindingData<BlobBindingData>(args);
 
   Environment* env = Environment::GetCurrent(args);
   CHECK(args[0]->IsString());
@@ -304,13 +303,12 @@ void Blob::GetDataObject(const v8::FunctionCallbackInfo<v8::Value>& args) {
   }
 }
 
-FixedSizeBlobCopyJob::FixedSizeBlobCopyJob(
-    Environment* env,
-    Local<Object> object,
-    Blob* blob,
-    FixedSizeBlobCopyJob::Mode mode)
+FixedSizeBlobCopyJob::FixedSizeBlobCopyJob(Environment* env,
+                                           Local<Object> object,
+                                           Blob* blob,
+                                           FixedSizeBlobCopyJob::Mode mode)
     : AsyncWrap(env, object, AsyncWrap::PROVIDER_FIXEDSIZEBLOBCOPY),
-      ThreadPoolWork(env),
+      ThreadPoolWork(env, "blob"),
       mode_(mode) {
   if (mode == FixedSizeBlobCopyJob::Mode::SYNC) MakeWeak();
   source_ = blob->entries();
@@ -360,12 +358,13 @@ void FixedSizeBlobCopyJob::MemoryInfo(MemoryTracker* tracker) const {
 }
 
 void FixedSizeBlobCopyJob::Initialize(Environment* env, Local<Object> target) {
-  v8::Local<v8::FunctionTemplate> job = env->NewFunctionTemplate(New);
+  Isolate* isolate = env->isolate();
+  v8::Local<v8::FunctionTemplate> job = NewFunctionTemplate(isolate, New);
   job->Inherit(AsyncWrap::GetConstructorTemplate(env));
   job->InstanceTemplate()->SetInternalFieldCount(
       AsyncWrap::kInternalFieldCount);
-  env->SetProtoMethod(job, "run", Run);
-  env->SetConstructorFunction(target, "FixedSizeBlobCopyJob", job);
+  SetProtoMethod(isolate, job, "run", Run);
+  SetConstructorFunction(env->context(), target, "FixedSizeBlobCopyJob", job);
 }
 
 void FixedSizeBlobCopyJob::New(const FunctionCallbackInfo<Value>& args) {
@@ -426,8 +425,8 @@ BlobBindingData::StoredDataObject::StoredDataObject(
       length(length_),
       type(type_) {}
 
-BlobBindingData::BlobBindingData(Environment* env, Local<Object> wrap)
-    : SnapshotableObject(env, wrap, type_int) {
+BlobBindingData::BlobBindingData(Realm* realm, Local<Object> wrap)
+    : SnapshotableObject(realm, wrap, type_int) {
   MakeWeak();
 }
 
@@ -457,32 +456,32 @@ BlobBindingData::StoredDataObject BlobBindingData::get_data_object(
   return entry->second;
 }
 
-void BlobBindingData::Deserialize(
-    Local<Context> context,
-    Local<Object> holder,
-    int index,
-    InternalFieldInfo* info) {
+void BlobBindingData::Deserialize(Local<Context> context,
+                                  Local<Object> holder,
+                                  int index,
+                                  InternalFieldInfoBase* info) {
   DCHECK_EQ(index, BaseObject::kEmbedderType);
   HandleScope scope(context->GetIsolate());
-  Environment* env = Environment::GetCurrent(context);
+  Realm* realm = Realm::GetCurrent(context);
   BlobBindingData* binding =
-      env->AddBindingData<BlobBindingData>(context, holder);
+      realm->AddBindingData<BlobBindingData>(context, holder);
   CHECK_NOT_NULL(binding);
 }
 
-void BlobBindingData::PrepareForSerialization(
-    Local<Context> context,
-    v8::SnapshotCreator* creator) {
+bool BlobBindingData::PrepareForSerialization(Local<Context> context,
+                                              v8::SnapshotCreator* creator) {
   // Stored blob objects are not actually persisted.
+  // Return true because we need to maintain the reference to the binding from
+  // JS land.
+  return true;
 }
 
-InternalFieldInfo* BlobBindingData::Serialize(int index) {
+InternalFieldInfoBase* BlobBindingData::Serialize(int index) {
   DCHECK_EQ(index, BaseObject::kEmbedderType);
-  InternalFieldInfo* info = InternalFieldInfo::New(type());
+  InternalFieldInfo* info =
+      InternalFieldInfoBase::New<InternalFieldInfo>(type());
   return info;
 }
-
-constexpr FastStringKey BlobBindingData::type_name;
 
 void Blob::RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(Blob::New);
@@ -497,5 +496,5 @@ void Blob::RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 
 }  // namespace node
 
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(blob, node::Blob::Initialize)
-NODE_MODULE_EXTERNAL_REFERENCE(blob, node::Blob::RegisterExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(blob, node::Blob::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(blob, node::Blob::RegisterExternalReferences)

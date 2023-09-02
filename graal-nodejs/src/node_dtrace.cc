@@ -301,10 +301,8 @@ void InitializeDTrace(Local<Object> target,
                       Local<Value> unused,
                       Local<Context> context,
                       void* priv) {
-  Environment* env = Environment::GetCurrent(context);
-
 #if defined HAVE_DTRACE || defined HAVE_ETW
-#define V(name) env->SetMethod(target, #name, name);
+#define V(name) SetMethod(context, target, #name, name);
   NODE_PROBES(V)
 #undef V
 #endif  // defined HAVE_DTRACE || defined HAVE_ETW
@@ -319,5 +317,5 @@ void RegisterDtraceExternalReferences(ExternalReferenceRegistry* registry) {
 }
 
 }  // namespace node
-NODE_MODULE_CONTEXT_AWARE_INTERNAL(dtrace, node::InitializeDTrace)
-NODE_MODULE_EXTERNAL_REFERENCE(dtrace, node::RegisterDtraceExternalReferences)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(dtrace, node::InitializeDTrace)
+NODE_BINDING_EXTERNAL_REFERENCE(dtrace, node::RegisterDtraceExternalReferences)

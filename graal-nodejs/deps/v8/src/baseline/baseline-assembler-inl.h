@@ -28,12 +28,18 @@
 #include "src/baseline/ia32/baseline-assembler-ia32-inl.h"
 #elif V8_TARGET_ARCH_ARM
 #include "src/baseline/arm/baseline-assembler-arm-inl.h"
+#elif V8_TARGET_ARCH_PPC64
+#include "src/baseline/ppc/baseline-assembler-ppc-inl.h"
+#elif V8_TARGET_ARCH_S390X
+#include "src/baseline/s390/baseline-assembler-s390-inl.h"
 #elif V8_TARGET_ARCH_RISCV64
 #include "src/baseline/riscv64/baseline-assembler-riscv64-inl.h"
 #elif V8_TARGET_ARCH_MIPS64
 #include "src/baseline/mips64/baseline-assembler-mips64-inl.h"
 #elif V8_TARGET_ARCH_MIPS
 #include "src/baseline/mips/baseline-assembler-mips-inl.h"
+#elif V8_TARGET_ARCH_LOONG64
+#include "src/baseline/loong64/baseline-assembler-loong64-inl.h"
 #else
 #error Unsupported target architecture.
 #endif
@@ -133,6 +139,24 @@ SaveAccumulatorScope::SaveAccumulatorScope(BaselineAssembler* assembler)
 
 SaveAccumulatorScope::~SaveAccumulatorScope() {
   assembler_->Pop(kInterpreterAccumulatorRegister);
+}
+
+EnsureAccumulatorPreservedScope::EnsureAccumulatorPreservedScope(
+    BaselineAssembler* assembler)
+    : assembler_(assembler)
+#ifdef V8_CODE_COMMENTS
+      ,
+      comment_(assembler->masm(), "EnsureAccumulatorPreservedScope")
+#endif
+{
+  assembler_->Push(kInterpreterAccumulatorRegister);
+}
+
+EnsureAccumulatorPreservedScope::~EnsureAccumulatorPreservedScope() {
+  BaselineAssembler::ScratchRegisterScope scratch(assembler_);
+  Register reg = scratch.AcquireScratch();
+  assembler_->Pop(reg);
+  AssertEqualToAccumulator(reg);
 }
 
 #undef __

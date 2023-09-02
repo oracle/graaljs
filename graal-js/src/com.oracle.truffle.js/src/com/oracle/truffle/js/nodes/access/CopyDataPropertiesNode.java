@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,9 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -97,14 +99,14 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
         return target;
     }
 
-    @Specialization(guards = {"isJSObject(source)"})
-    protected static JSDynamicObject copyDataProperties(JSDynamicObject target, JSDynamicObject source, Object[] excludedItems, boolean withExcluded,
+    @Specialization
+    protected static JSDynamicObject copyDataProperties(JSDynamicObject target, JSObject source, Object[] excludedItems, boolean withExcluded,
                     @Cached("create(context)") ReadElementNode getNode,
                     @Cached("create(false)") JSGetOwnPropertyNode getOwnProperty,
                     @Cached ListSizeNode listSize,
                     @Cached ListGetNode listGet,
                     @Cached JSClassProfile classProfile,
-                    @Cached TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared TruffleString.EqualNode equalsNode) {
         List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(source, classProfile);
         int size = listSize.execute(ownPropertyKeys);
         for (int i = 0; i < size; i++) {
@@ -134,6 +136,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
         return false;
     }
 
+    @InliningCutoff
     @Specialization(guards = {"!isJSDynamicObject(from)"}, limit = "InteropLibraryLimit")
     protected final JSDynamicObject copyDataPropertiesForeign(JSDynamicObject target, Object from, Object[] excludedItems, boolean withExcluded,
                     @CachedLibrary("from") InteropLibrary objInterop,
@@ -142,12 +145,14 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary stringInterop,
                     @Cached ImportValueNode importValue,
                     @Cached JSToStringNode toString,
-                    @Cached TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared TruffleString.EqualNode equalsNode,
+                    @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         if (objInterop.isNull(from)) {
             return target;
         }
         try {
-            if (context.getContextOptions().hasForeignHashProperties() && objInterop.hasHashEntries(from)) {
+            if (context.getLanguageOptions().hasForeignHashProperties() && objInterop.hasHashEntries(from)) {
                 Object entriesIterator = objInterop.getHashEntriesIterator(from);
                 while (true) {
                     Object entry;
@@ -169,9 +174,9 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                 for (long i = 0; i < length; i++) {
                     Object key = arrayInterop.readArrayElement(members, i);
                     assert InteropLibrary.getUncached().isString(key);
-                    TruffleString stringKey = Strings.interopAsTruffleString(stringInterop, key);
+                    TruffleString stringKey = Strings.interopAsTruffleString(key, stringInterop, switchEncodingNode);
                     if (!isExcluded(withExcluded, excludedItems, stringKey, equalsNode)) {
-                        Object value = objInterop.readMember(from, Strings.toJavaString(stringKey));
+                        Object value = objInterop.readMember(from, Strings.toJavaString(toJavaStringNode, stringKey));
                         JSRuntime.createDataPropertyOrThrow(target, stringKey, importValue.executeWithTarget(value));
                     }
                 }

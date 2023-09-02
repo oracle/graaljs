@@ -8,8 +8,7 @@ if (process.argv[2] === 'wasi-child') {
   const path = require('path');
 
   common.expectWarning('ExperimentalWarning',
-                       'WASI is an experimental feature. This feature could ' +
-                       'change at any time');
+                       'WASI is an experimental feature and might change at any time');
 
   const { WASI } = require('wasi');
   tmpdir.refresh();
@@ -19,8 +18,8 @@ if (process.argv[2] === 'wasi-child') {
     env: process.env,
     preopens: {
       '/sandbox': fixtures.path('wasi'),
-      '/tmp': tmpdir.path
-    }
+      '/tmp': tmpdir.path,
+    },
   });
   const importObject = { wasi_snapshot_preview1: wasi.wasiImport };
   const modulePath = path.join(wasmDir, `${process.argv[3]}.wasm`);
@@ -42,15 +41,14 @@ if (process.argv[2] === 'wasi-child') {
       env: {
         ...process.env,
         NODE_DEBUG_NATIVE: 'wasi',
-        NODE_PLATFORM: process.platform
-      }
+        NODE_PLATFORM: process.platform,
+      },
     };
 
     if (options.stdin !== undefined)
       opts.input = options.stdin;
 
     const child = cp.spawnSync(process.execPath, [
-      '--experimental-wasi-unstable-preview1',
       __filename,
       'wasi-child',
       options.test,
@@ -90,9 +88,10 @@ if (process.argv[2] === 'wasi-child') {
   runWASI({ test: 'read_file', stdout: `hello from input.txt${checkoutEOL}` });
   runWASI({
     test: 'read_file_twice',
-    stdout: `hello from input.txt${checkoutEOL}hello from input.txt${checkoutEOL}`
+    stdout: `hello from input.txt${checkoutEOL}hello from input.txt${checkoutEOL}`,
   });
   runWASI({ test: 'stat' });
+  runWASI({ test: 'sock' });
   runWASI({ test: 'write_file' });
 
   // Tests that are currently unsupported on Windows.

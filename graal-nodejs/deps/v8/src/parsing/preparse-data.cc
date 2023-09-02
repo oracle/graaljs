@@ -8,6 +8,7 @@
 
 #include "src/ast/scopes.h"
 #include "src/ast/variables.h"
+#include "src/base/logging.h"
 #include "src/base/platform/wrappers.h"
 #include "src/handles/handles.h"
 #include "src/objects/objects-inl.h"
@@ -528,8 +529,10 @@ class OnHeapProducedPreparseData final : public ProducedPreparseData {
   }
 
   Handle<PreparseData> Serialize(LocalIsolate* isolate) final {
-    // Not required.
-    UNREACHABLE();
+    DCHECK(!data_->is_null());
+    DCHECK_IMPLIES(!isolate->is_main_thread(),
+                   isolate->heap()->ContainsLocalHandle(data_.location()));
+    return data_;
   }
 
   ZonePreparseData* Serialize(Zone* zone) final {
@@ -553,7 +556,11 @@ class ZoneProducedPreparseData final : public ProducedPreparseData {
     return data_->Serialize(isolate);
   }
 
-  ZonePreparseData* Serialize(Zone* zone) final { return data_; }
+  ZonePreparseData* Serialize(Zone* zone) final {
+    base::Vector<uint8_t> data(data_->byte_data()->data(),
+                               data_->byte_data()->size());
+    return zone->New<ZonePreparseData>(zone, &data, data_->children_length());
+  }
 
  private:
   ZonePreparseData* data_;
@@ -666,12 +673,13 @@ void BaseConsumedPreparseData<Data>::RestoreDataForScope(
     scope->AsDeclarationScope()->RecordNeedsPrivateNameContextChainRecalc();
   }
   if (ShouldSaveClassVariableIndexField::decode(scope_data_flags)) {
-    Variable* var;
-    // An anonymous class whose class variable needs to be saved do not
+    Variable* var = scope->AsClassScope()->class_variable();
+    // An anonymous class whose class variable needs to be saved might not
     // have the class variable created during reparse since we skip parsing
     // the inner scopes that contain potential access to static private
     // methods. So create it now.
-    if (scope->AsClassScope()->is_anonymous_class()) {
+    if (var == nullptr) {
+      DCHECK(scope->AsClassScope()->is_anonymous_class());
       var = scope->AsClassScope()->DeclareClassVariable(
           ast_value_factory, nullptr, kNoSourcePosition);
       AstNodeFactory factory(ast_value_factory, zone);
@@ -679,9 +687,6 @@ void BaseConsumedPreparseData<Data>::RestoreDataForScope(
           factory.NewVariableDeclaration(kNoSourcePosition);
       scope->declarations()->Add(declaration);
       declaration->set_var(var);
-    } else {
-      var = scope->AsClassScope()->class_variable();
-      DCHECK_NOT_NULL(var);
     }
     var->set_is_used();
     var->ForceContextAllocation();
@@ -767,7 +772,7 @@ ProducedPreparseData* OnHeapConsumedPreparseData::GetChildData(Zone* zone,
 }
 
 OnHeapConsumedPreparseData::OnHeapConsumedPreparseData(
-    Isolate* isolate, Handle<PreparseData> data)
+    LocalIsolate* isolate, Handle<PreparseData> data)
     : BaseConsumedPreparseData<PreparseData>(), isolate_(isolate), data_(data) {
   DCHECK_NOT_NULL(isolate);
   DCHECK(data->IsPreparseData());
@@ -831,6 +836,11 @@ ProducedPreparseData* ZoneConsumedPreparseData::GetChildData(Zone* zone,
 
 std::unique_ptr<ConsumedPreparseData> ConsumedPreparseData::For(
     Isolate* isolate, Handle<PreparseData> data) {
+  return ConsumedPreparseData::For(isolate->main_thread_local_isolate(), data);
+}
+
+std::unique_ptr<ConsumedPreparseData> ConsumedPreparseData::For(
+    LocalIsolate* isolate, Handle<PreparseData> data) {
   DCHECK(!data.is_null());
   return std::make_unique<OnHeapConsumedPreparseData>(isolate, data);
 }

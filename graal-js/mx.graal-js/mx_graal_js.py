@@ -1,7 +1,7 @@
 #
 # ----------------------------------------------------------------------------------------------------
 #
-# Copyright (c) 2007, 2022, Oracle and/or its affiliates. All rights reserved.
+# Copyright (c) 2007, 2023, Oracle and/or its affiliates. All rights reserved.
 # DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
 #
 # This code is free software; you can redistribute it and/or modify it
@@ -26,12 +26,14 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import os, shutil, tarfile
+import os, shutil, tarfile, tempfile
 from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
 import mx, mx_sdk, mx_urlrewrites
 from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
+
+import mx_unittest
 from mx_unittest import unittest
 
 _suite = mx.suite('graal-js')
@@ -40,7 +42,7 @@ _suite = mx.suite('graal-js')
 TEST262_REPO = "https://" + "github.com/tc39/test262.git"
 
 # Git revision of Test262 to checkout
-TEST262_REV = "e6c6460a5b94e32e01ce9a9d236f3148d4648ce5"
+TEST262_REV = "d52a5bbbe88b82bee0122689c161f1bf15fe8a0d"
 
 # Git repository of V8
 TESTV8_REPO = "https://" + "github.com/v8/v8.git"
@@ -50,11 +52,15 @@ TESTV8_REV = "59187809cbc7a6887e45c85ab410e4596aaf5e9c"
 
 def get_jdk(forBuild=False):
     # Graal.nodejs requires a JDK at build time, to be passed as argument to `./configure`.
+    # GraalVMJDKConfig (`tag='graalvm'`) is not available until all the components are built.
     # GraalJVMCIJDKConfig (`tag='jvmci'`) is not available until all required jars are built.
-    if not forBuild and mx.suite('compiler', fatalIfMissing=False):
-        return mx.get_jdk(tag='jvmci')
-    else:
-        return mx.get_jdk()
+    if not forBuild:
+        jdk = mx.get_jdk(tag='graalvm')
+        if exists(jdk.home):
+            return jdk
+        elif mx.suite('compiler', fatalIfMissing=False):
+            return mx.get_jdk(tag='jvmci')
+    return mx.get_jdk()
 
 class GraalJsDefaultTags:
     default = 'default'
@@ -84,16 +90,16 @@ def _graal_js_gate_runner(args, tasks):
                 js(['--help'], out=devnull)
 
     webassemblyTestSuite = 'com.oracle.truffle.js.test.suite.WebAssemblySimpleTestSuite'
-    with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage]) as t:
+    with Task('UnitTests', tasks, tags=[GraalJsDefaultTags.default, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage], report=True) as t:
         if t:
             noWebAssemblyTestSuite = '^(?!' + webassemblyTestSuite  + ')'
             commonOptions = ['--enable-timing', '--very-verbose', '--suite', _suite.name]
-            unittest(['--regex', noWebAssemblyTestSuite] + commonOptions)
-            unittest(['--regex', 'ZoneRulesProviderTest', '-Djava.time.zone.DefaultZoneRulesProvider=com.oracle.truffle.js.test.runtime.SimpleZoneRulesProvider'] + commonOptions)
+            unittest(['--regex', noWebAssemblyTestSuite] + commonOptions, test_report_tags={'task': t.title})
+            unittest(['--regex', 'ZoneRulesProviderTest', '-Djava.time.zone.DefaultZoneRulesProvider=com.oracle.truffle.js.test.runtime.SimpleZoneRulesProvider'] + commonOptions, test_report_tags={'task': t.title})
 
-    with Task('WebAssemblyTests', tasks, tags=[GraalJsDefaultTags.webassembly, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage]) as t:
+    with Task('WebAssemblyTests', tasks, tags=[GraalJsDefaultTags.webassembly, GraalJsDefaultTags.all, GraalJsDefaultTags.coverage], report=True) as t:
         if t:
-            unittest(['--regex', webassemblyTestSuite, '--enable-timing', '--very-verbose', '--suite', _suite.name])
+            unittest(['--regex', webassemblyTestSuite, '--enable-timing', '--very-verbose', '--suite', _suite.name], test_report_tags={'task': t.title})
 
     gateTestConfigs = {
         GraalJsDefaultTags.default: ['gate'],
@@ -120,15 +126,30 @@ def _graal_js_gate_runner(args, tasks):
             if testCommandName == 'TestNashorn' and testConfigName == 'latestversion':
                 continue
             testName = '%s-%s' % (testCommandName, testConfigName)
-            with Task(testName, tasks, tags=[testName, testConfigName, GraalJsDefaultTags.all]) as t:
+            report = True if testConfigName == GraalJsDefaultTags.default else None
+            with Task(testName, tasks, tags=[testName, testConfigName, GraalJsDefaultTags.all], report=report) as t:
                 if t:
                     gateTestCommands[testCommandName](gateTestConfigs[testConfigName])
 
-    with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck, GraalJsDefaultTags.coverage]) as t:
+    with Task('TCK tests', tasks, tags=[GraalJsDefaultTags.all, GraalJsDefaultTags.tck, GraalJsDefaultTags.coverage], report=True) as t:
         if t:
-            import mx_truffle
-            mx_truffle._tck([])
+            import mx_gate, mx_truffle
+            jsonResultsFile = tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz').name
+            try:
+                mx_truffle._tck(['--json-results=' + jsonResultsFile])
+                mx_gate.make_test_report(jsonResultsFile, task=t.title)
+            finally:
+                os.unlink(jsonResultsFile)
 
+def _unittest_config_participant(config):
+    (vmArgs, mainClass, mainClassArgs) = config
+    vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
+    mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
+    mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
+    mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=ALL-UNNAMED']
+    return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.add_config_participant(_unittest_config_participant)
 prepend_gate_runner(_suite, _graal_js_pre_gate_runner)
 add_gate_runner(_suite, _graal_js_gate_runner)
 
@@ -238,10 +259,12 @@ def _fetch_test_suite(dest, library_names):
 def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
     _vm_args, _prog_args = parse_js_args(custom_args)
     _vm_args = _append_default_js_vm_args(vm_args=_vm_args, max_heap=max_heap, stack_size=stack_size)
-    _cp = mx.classpath(['TRUFFLE_JS_TESTS']
+    _mp = mx.classpath(['TRUFFLE_JS_TESTS']
         + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
         + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
-    _vm_args = ['-ea', '-esa', '-cp', _cp] + default_vm_args + _vm_args
+    _cp = mx.classpath(['NASHORN_INTERNAL_TESTS'])
+    _exports = ['--add-exports', 'org.graalvm.js/com.oracle.truffle.js.runtime=com.oracle.truffle.js.test']
+    _vm_args = ['-ea', '-esa', '--module-path', _mp, '-cp', _cp] + _exports + default_vm_args + _vm_args
     return mx.run_java(_vm_args + [main_class] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd, jdk=get_jdk())
 
 def test262(args, nonZeroIsFatal=True):
@@ -377,13 +400,19 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
     name='Graal.js',
     short_name='js',
-    standalone_dir_name='graaljs-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name='graaljs-community-<version>-<graalvm_os>-<arch>',
+    standalone_dir_name_enterprise='graaljs-<version>-<graalvm_os>-<arch>',
     standalone_dependencies={
         'GraalVM license files': ('', ['GRAALVM-README.md']),
+        'Graal.js license files': ('', []),
     },
-    license_files=['LICENSE_GRAALJS.txt'],
-    third_party_license_files=['THIRD_PARTY_LICENSE_GRAALJS.txt'],
+    standalone_dependencies_enterprise={
+        'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
+    },
+    license_files=[],
+    third_party_license_files=[],
     dependencies=[
+        'Graal.js license files',
         'Graal.js Scripting API',
         'Truffle',
         'TRegex',
@@ -400,7 +429,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
             launchers=['bin/<exe:js>'],
             jar_distributions=['graal-js:GRAALJS_LAUNCHER'],
             main_class='com.oracle.truffle.js.shell.JSLauncher',
-            build_args=['-H:+TruffleCheckBlockListMethods'],
+            build_args=[],
             build_args_enterprise=[
                 '-H:+AuxiliaryEngineCache',
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
@@ -415,22 +444,40 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
+    name='Graal.js license files',
+    short_name='jsl',
+    dir_name='js',
+    license_files=['LICENSE_GRAALJS.txt'],
+    third_party_license_files=['THIRD_PARTY_LICENSE_GRAALJS.txt'],
+    dependencies=[],
+    truffle_jars=[],
+    support_distributions=[
+        'graal-js:GRAALJS_GRAALVM_LICENSES',
+    ],
+    priority=5,
+    installable=True,
+    stability="supported",
+))
+
+mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
+    suite=_suite,
     name='Graal.js Scripting API',
     short_name='jss',
+    dir_name='js',
     license_files=[],
     third_party_license_files=[],
     dependencies=['Graal SDK'],
-    truffle_jars=[],
+    truffle_jars=['graal-js:GRAALJS_SCRIPTENGINE'],
     support_distributions=[],
     library_configs=[],
-    boot_jars=['graal-js:GRAALJS_SCRIPTENGINE'],
-    installable=False,
+    boot_jars=[],
+    installable=True,
     stability="supported",
 ))
 
 def verify_ci(args):
     """Verify CI configuration"""
-    mx.verify_ci(args, mx.suite('regex'), _suite, 'common.json')
+    mx.verify_ci(args, mx.suite('regex'), _suite, ['common.json', 'ci/common.jsonnet'])
 
 mx.update_commands(_suite, {
     'deploy-binary-if-master' : [deploy_binary_if_master, ''],

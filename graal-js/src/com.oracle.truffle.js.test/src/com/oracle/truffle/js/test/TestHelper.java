@@ -61,6 +61,7 @@ import org.junit.Assume;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.RootCallTarget;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.interop.ExceptionType;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -180,18 +181,20 @@ public class TestHelper implements AutoCloseable {
     }
 
     public Object runNoPolyglot(String source) {
+        return runNoPolyglot(com.oracle.truffle.api.source.Source.newBuilder(JavaScriptLanguage.ID, source, "<unknown>").build());
+    }
+
+    public Object runNoPolyglot(com.oracle.truffle.api.source.Source source) {
         enterContext();
-        Object result = null;
         try {
             ScriptNode program = getParser().parseScript(getJSContext(), source);
-            result = runNoPolyglot(program);
+            return runNoPolyglot(program);
         } finally {
             leaveContext();
         }
-        return result;
     }
 
-    public Object runNoPolyglot(ScriptNode scriptNode) {
+    private Object runNoPolyglot(ScriptNode scriptNode) {
         return scriptNode.run(getRealm());
     }
 
@@ -335,5 +338,20 @@ public class TestHelper implements AutoCloseable {
         enterContext();
         Assume.assumeTrue(getJSContext().getEcmaScriptVersion() >= 6);
         leaveContext();
+    }
+
+    public static <T extends Node> T adopt(T node) {
+        RootNode root = new RootNode(null) {
+            {
+                insert(node);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                return null;
+            }
+        };
+        root.getCallTarget();
+        return node;
     }
 }

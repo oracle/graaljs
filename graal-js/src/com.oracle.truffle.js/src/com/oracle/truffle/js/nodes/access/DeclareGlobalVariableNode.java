@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -110,7 +111,7 @@ public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
     @Specialization(replaces = {"doCached"})
     protected void doUncached(JSDynamicObject globalObject, JSContext context) {
         if (JSGlobal.isJSGlobalObject(globalObject)) {
-            JSObjectUtil.putDeclaredDataProperty(context, globalObject, varName, Undefined.instance, getAttributeFlags());
+            JSObjectUtil.defineConstantDataProperty(context, globalObject, varName, Undefined.instance, getAttributeFlags());
         } else {
             PropertyDescriptor desc = configurable ? PropertyDescriptor.undefinedDataDesc : PropertyDescriptor.undefinedDataDescNotConfigurable;
             JSObject.defineOwnProperty(globalObject, varName, desc, true);
@@ -121,6 +122,7 @@ public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
         return configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable();
     }
 
+    @NeverDefault
     protected final PropertySetNode makeDefineOwnPropertyCache(JSContext context) {
         return PropertySetNode.createImpl(varName, false, context, true, true, getAttributeFlags(), true);
     }

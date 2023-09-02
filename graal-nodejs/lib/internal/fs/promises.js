@@ -2,6 +2,7 @@
 
 const {
   ArrayPrototypePush,
+  ArrayPrototypePop,
   Error,
   MathMax,
   MathMin,
@@ -9,10 +10,12 @@ const {
   Promise,
   PromisePrototypeThen,
   PromiseResolve,
+  PromiseReject,
   SafeArrayIterator,
   SafePromisePrototypeFinally,
   Symbol,
   Uint8Array,
+  FunctionPrototypeBind,
 } = primordials;
 
 const { fs: constants } = internalBinding('constants');
@@ -21,7 +24,7 @@ const {
   O_SYMLINK,
   O_WRONLY,
   S_IFMT,
-  S_IFREG
+  S_IFREG,
 } = constants;
 
 const binding = internalBinding('fs');
@@ -31,9 +34,11 @@ const {
   codes: {
     ERR_FS_FILE_TOO_LARGE,
     ERR_INVALID_ARG_VALUE,
+    ERR_INVALID_STATE,
     ERR_METHOD_NOT_IMPLEMENTED,
   },
   AbortError,
+  aggregateTwoErrors,
 } = require('internal/errors');
 const { isArrayBufferView } = require('internal/util/types');
 const { rimrafPromises } = require('internal/fs/rimraf');
@@ -49,6 +54,7 @@ const {
   emitRecursiveRmdirWarning,
   getDirents,
   getOptions,
+  getStatFsFromBinding,
   getStatsFromBinding,
   getValidatedPath,
   getValidMode,
@@ -83,6 +89,7 @@ const {
   promisify,
 } = require('internal/util');
 const { EventEmitterMixin } = require('internal/event_target');
+const { StringDecoder } = require('string_decoder');
 const { watch } = require('internal/fs/watchers');
 const { isIterable } = require('internal/streams/utils');
 const assert = require('internal/assert');
@@ -95,10 +102,12 @@ const kCloseResolve = Symbol('kCloseResolve');
 const kCloseReject = Symbol('kCloseReject');
 const kRef = Symbol('kRef');
 const kUnref = Symbol('kUnref');
+const kLocked = Symbol('kLocked');
 
 const { kUsePromises } = binding;
+const { Interface } = require('internal/readline/interface');
 const {
-  JSTransferable, kDeserialize, kTransfer, kTransferList
+  JSTransferable, kDeserialize, kTransfer, kTransferList,
 } = require('internal/worker/js_transferable');
 
 const getDirectoryEntriesPromise = promisify(getDirents);
@@ -168,6 +177,13 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
     return fsCall(readFile, this, options);
   }
 
+  readLines(options = undefined) {
+    return new Interface({
+      input: this.createReadStream(options),
+      crlfDelay: Infinity,
+    });
+  }
+
   stat(options) {
     return fsCall(fstat, this, options);
   }
@@ -206,7 +222,7 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
       this[kFd] = -1;
       this[kClosePromise] = SafePromisePrototypeFinally(
         this[kHandle].close(),
-        () => { this[kClosePromise] = undefined; }
+        () => { this[kClosePromise] = undefined; },
       );
     } else {
       this[kClosePromise] = SafePromisePrototypeFinally(
@@ -217,13 +233,89 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
           this[kClosePromise] = undefined;
           this[kCloseReject] = undefined;
           this[kCloseResolve] = undefined;
-        }
+        },
       );
     }
 
     this.emit('close');
     return this[kClosePromise];
   };
+
+  /**
+   * @typedef {import('../webstreams/readablestream').ReadableStream
+   * } ReadableStream
+   * @returns {ReadableStream}
+   */
+  readableWebStream(options = kEmptyObject) {
+    if (this[kFd] === -1)
+      throw new ERR_INVALID_STATE('The FileHandle is closed');
+    if (this[kClosePromise])
+      throw new ERR_INVALID_STATE('The FileHandle is closing');
+    if (this[kLocked])
+      throw new ERR_INVALID_STATE('The FileHandle is locked');
+    this[kLocked] = true;
+
+    if (options.type !== undefined) {
+      validateString(options.type, 'options.type');
+    }
+
+    let readable;
+
+    if (options.type !== 'bytes') {
+      const {
+        newReadableStreamFromStreamBase,
+      } = require('internal/webstreams/adapters');
+      readable = newReadableStreamFromStreamBase(
+        this[kHandle],
+        undefined,
+        { ondone: () => this[kUnref]() });
+
+      const {
+        readableStreamCancel,
+      } = require('internal/webstreams/readablestream');
+      this[kRef]();
+      this.once('close', () => {
+        readableStreamCancel(readable);
+      });
+    } else {
+      const {
+        readableStreamCancel,
+        ReadableStream,
+      } = require('internal/webstreams/readablestream');
+
+      const readFn = FunctionPrototypeBind(this.read, this);
+      const ondone = FunctionPrototypeBind(this[kUnref], this);
+
+      readable = new ReadableStream({
+        type: 'bytes',
+        autoAllocateChunkSize: 16384,
+
+        async pull(controller) {
+          const view = controller.byobRequest.view;
+          const { bytesRead } = await readFn(view, view.byteOffset, view.byteLength);
+
+          if (bytesRead === 0) {
+            ondone();
+            controller.close();
+          }
+
+          controller.byobRequest.respond(bytesRead);
+        },
+
+        cancel() {
+          ondone();
+        },
+      });
+
+      this[kRef]();
+
+      this.once('close', () => {
+        readableStreamCancel(readable);
+      });
+    }
+
+    return readable;
+  }
 
   /**
    * @typedef {import('./streams').ReadStream
@@ -272,7 +364,7 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
 
     return {
       data: { handle },
-      deserializeInfo: 'internal/fs/promises:FileHandle'
+      deserializeInfo: 'internal/fs/promises:FileHandle',
     };
   }
 
@@ -296,10 +388,23 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
       PromisePrototypeThen(
         this[kHandle].close(),
         this[kCloseResolve],
-        this[kCloseReject]
+        this[kCloseReject],
       );
     }
   }
+}
+
+async function handleFdClose(fileOpPromise, closeFunc) {
+  return PromisePrototypeThen(
+    fileOpPromise,
+    (result) => PromisePrototypeThen(closeFunc(), () => result),
+    (opError) =>
+      PromisePrototypeThen(
+        closeFunc(),
+        () => PromiseReject(opError),
+        (closeError) => PromiseReject(aggregateTwoErrors(closeError, opError)),
+      ),
+  );
 }
 
 async function fsCall(fn, handle, ...args) {
@@ -357,13 +462,15 @@ async function writeFileHandle(filehandle, data, signal, encoding) {
     data = new Uint8Array(
       data.buffer,
       data.byteOffset + bytesWritten,
-      data.byteLength - bytesWritten
+      data.byteLength - bytesWritten,
     );
   } while (remaining > 0);
 }
 
 async function readFileHandle(filehandle, options) {
   const signal = options?.signal;
+  const encoding = options?.encoding;
+  const decoder = encoding && new StringDecoder(encoding);
 
   checkAborted(signal);
 
@@ -371,56 +478,74 @@ async function readFileHandle(filehandle, options) {
 
   checkAborted(signal);
 
-  let size;
+  let size = 0;
+  let length = 0;
   if ((statFields[1/* mode */] & S_IFMT) === S_IFREG) {
     size = statFields[8/* size */];
-  } else {
-    size = 0;
+    length = encoding ? MathMin(size, kReadFileBufferLength) : size;
+  }
+  if (length === 0) {
+    length = kReadFileUnknownBufferLength;
   }
 
   if (size > kIoMaxLength)
     throw new ERR_FS_FILE_TOO_LARGE(size);
 
-  let endOfFile = false;
   let totalRead = 0;
-  const noSize = size === 0;
-  const buffers = [];
-  const fullBuffer = noSize ? undefined : Buffer.allocUnsafeSlow(size);
-  do {
+  let buffer = Buffer.allocUnsafeSlow(length);
+  let result = '';
+  let offset = 0;
+  let buffers;
+  const chunkedRead = length > kReadFileBufferLength;
+
+  while (true) {
     checkAborted(signal);
-    let buffer;
-    let offset;
-    let length;
-    if (noSize) {
-      buffer = Buffer.allocUnsafeSlow(kReadFileUnknownBufferLength);
-      offset = 0;
-      length = kReadFileUnknownBufferLength;
-    } else {
-      buffer = fullBuffer;
-      offset = totalRead;
+
+    if (chunkedRead) {
       length = MathMin(size - totalRead, kReadFileBufferLength);
     }
 
     const bytesRead = (await binding.read(filehandle.fd, buffer, offset,
-                                          length, -1, kUsePromises)) || 0;
+                                          length, -1, kUsePromises)) ?? 0;
     totalRead += bytesRead;
-    endOfFile = bytesRead === 0 || totalRead === size;
-    if (noSize && bytesRead > 0) {
-      const isBufferFull = bytesRead === kReadFileUnknownBufferLength;
-      const chunkBuffer = isBufferFull ? buffer : buffer.slice(0, bytesRead);
-      ArrayPrototypePush(buffers, chunkBuffer);
+
+    if (bytesRead === 0 ||
+        totalRead === size ||
+        (bytesRead !== buffer.length && !chunkedRead)) {
+      const singleRead = bytesRead === totalRead;
+
+      const bytesToCheck = chunkedRead ? totalRead : bytesRead;
+
+      if (bytesToCheck !== buffer.length) {
+        buffer = buffer.subarray(0, bytesToCheck);
+      }
+
+      if (!encoding) {
+        if (size === 0 && !singleRead) {
+          ArrayPrototypePush(buffers, buffer);
+          return Buffer.concat(buffers, totalRead);
+        }
+        return buffer;
+      }
+
+      if (singleRead) {
+        return buffer.toString(encoding);
+      }
+      result += decoder.end(buffer);
+      return result;
     }
-  } while (!endOfFile);
 
-  let result;
-  if (size > 0) {
-    result = totalRead === size ? fullBuffer : fullBuffer.slice(0, totalRead);
-  } else {
-    result = buffers.length === 1 ? buffers[0] : Buffer.concat(buffers,
-                                                               totalRead);
+    if (encoding) {
+      result += decoder.write(buffer);
+    } else if (size !== 0) {
+      offset = totalRead;
+    } else {
+      buffers ??= [];
+      // Unknown file size requires chunks.
+      ArrayPrototypePush(buffers, buffer);
+      buffer = Buffer.allocUnsafeSlow(kReadFileUnknownBufferLength);
+    }
   }
-
-  return options.encoding ? result.toString(options.encoding) : result;
 }
 
 // All of the functions are defined as async in order to ensure that errors
@@ -584,7 +709,7 @@ async function rename(oldPath, newPath) {
 
 async function truncate(path, len = 0) {
   const fd = await open(path, 'r+');
-  return SafePromisePrototypeFinally(ftruncate(fd, len), fd.close);
+  return handleFdClose(ftruncate(fd, len), fd.close);
 }
 
 async function ftruncate(handle, len = 0) {
@@ -628,7 +753,7 @@ async function mkdir(path, options) {
   }
   const {
     recursive = false,
-    mode = 0o777
+    mode = 0o777,
   } = options || kEmptyObject;
   path = getValidatedPath(path);
   validateBoolean(recursive, 'options.recursive');
@@ -638,13 +763,81 @@ async function mkdir(path, options) {
                        kUsePromises);
 }
 
+async function readdirRecursive(originalPath, options) {
+  const result = [];
+  const queue = [
+    [
+      originalPath,
+      await binding.readdir(
+        pathModule.toNamespacedPath(originalPath),
+        options.encoding,
+        !!options.withFileTypes,
+        kUsePromises,
+      ),
+    ],
+  ];
+
+
+  if (options.withFileTypes) {
+    while (queue.length > 0) {
+      // If we want to implement BFS make this a `shift` call instead of `pop`
+      const { 0: path, 1: readdir } = ArrayPrototypePop(queue);
+      for (const dirent of getDirents(path, readdir)) {
+        ArrayPrototypePush(result, dirent);
+        if (dirent.isDirectory()) {
+          const direntPath = pathModule.join(path, dirent.name);
+          ArrayPrototypePush(queue, [
+            direntPath,
+            await binding.readdir(
+              direntPath,
+              options.encoding,
+              true,
+              kUsePromises,
+            ),
+          ]);
+        }
+      }
+    }
+  } else {
+    while (queue.length > 0) {
+      const { 0: path, 1: readdir } = ArrayPrototypePop(queue);
+      for (const ent of readdir) {
+        const direntPath = pathModule.join(path, ent);
+        const stat = binding.internalModuleStat(direntPath);
+        ArrayPrototypePush(
+          result,
+          pathModule.relative(originalPath, direntPath),
+        );
+        if (stat === 1) {
+          ArrayPrototypePush(queue, [
+            direntPath,
+            await binding.readdir(
+              pathModule.toNamespacedPath(direntPath),
+              options.encoding,
+              false,
+              kUsePromises,
+            ),
+          ]);
+        }
+      }
+    }
+  }
+
+  return result;
+}
+
 async function readdir(path, options) {
   options = getOptions(options);
   path = getValidatedPath(path);
-  const result = await binding.readdir(pathModule.toNamespacedPath(path),
-                                       options.encoding,
-                                       !!options.withFileTypes,
-                                       kUsePromises);
+  if (options.recursive) {
+    return readdirRecursive(path, options);
+  }
+  const result = await binding.readdir(
+    pathModule.toNamespacedPath(path),
+    options.encoding,
+    !!options.withFileTypes,
+    kUsePromises,
+  );
   return options.withFileTypes ?
     getDirectoryEntriesPromise(path, result) :
     result;
@@ -686,6 +879,13 @@ async function stat(path, options = { bigint: false }) {
   return getStatsFromBinding(result);
 }
 
+async function statfs(path, options = { bigint: false }) {
+  path = getValidatedPath(path);
+  const result = await binding.statfs(pathModule.toNamespacedPath(path),
+                                      options.bigint, kUsePromises);
+  return getStatFsFromBinding(result);
+}
+
 async function link(existingPath, newPath) {
   existingPath = getValidatedPath(existingPath, 'existingPath');
   newPath = getValidatedPath(newPath, 'newPath');
@@ -715,7 +915,7 @@ async function lchmod(path, mode) {
     throw new ERR_METHOD_NOT_IMPLEMENTED('lchmod()');
 
   const fd = await open(path, O_WRONLY | O_SYMLINK);
-  return SafePromisePrototypeFinally(fchmod(fd, mode), fd.close);
+  return handleFdClose(fchmod(fd, mode), fd.close);
 }
 
 async function lchown(path, uid, gid) {
@@ -793,7 +993,7 @@ async function writeFile(path, data, options) {
   checkAborted(options.signal);
 
   const fd = await open(path, flag, options.mode);
-  return SafePromisePrototypeFinally(
+  return handleFdClose(
     writeFileHandle(fd, data, options.signal, options.encoding), fd.close);
 }
 
@@ -818,7 +1018,7 @@ async function readFile(path, options) {
   checkAborted(options.signal);
 
   const fd = await open(path, flag, 0o666);
-  return SafePromisePrototypeFinally(readFileHandle(fd, options), fd.close);
+  return handleFdClose(readFileHandle(fd, options), fd.close);
 }
 
 module.exports = {
@@ -838,6 +1038,7 @@ module.exports = {
     symlink,
     lstat,
     stat,
+    statfs,
     link,
     unlink,
     chmod,

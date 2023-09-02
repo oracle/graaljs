@@ -144,7 +144,15 @@ const badargs = [
     expected: { code: 'ERR_OUT_OF_RANGE', message: /"keylen"/ },
   },
   {
+    args: ['', '', 2 ** 31],
+    expected: { code: 'ERR_OUT_OF_RANGE', message: /"keylen"/ },
+  },
+  {
     args: ['', '', 2147485780],
+    expected: { code: 'ERR_OUT_OF_RANGE', message: /"keylen"/ },
+  },
+  {
+    args: ['', '', 2 ** 32],
     expected: { code: 'ERR_OUT_OF_RANGE', message: /"keylen"/ },
   },
 ];
@@ -211,7 +219,7 @@ for (const { args, expected } of badargs) {
 }
 
 {
-  const expected = { code: 'ERR_INVALID_CALLBACK' };
+  const expected = { code: 'ERR_INVALID_ARG_TYPE' };
   assert.throws(() => crypto.scrypt('', '', 42, null), expected);
   assert.throws(() => crypto.scrypt('', '', 42, {}, null), expected);
   assert.throws(() => crypto.scrypt('', '', 42, {}), expected);

@@ -7,6 +7,8 @@
 
 /**
  * Tests potential memory leaks caused by final object property get node.
+ * 
+ * @option ecmascript-version=staging
  */
 
 load('assert.js');

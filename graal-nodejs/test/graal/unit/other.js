@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,6 +41,7 @@
 
 var assert = require('assert');
 var fs = require('fs');
+var module = require('./_unit');
 var util = require('util');
 var vm = require('vm');
 
@@ -48,16 +49,23 @@ describe('Other', function () {
     it('should be possible to redefine process.env.FOO', function () {
         // inspired by a test of 'sinon' Node.js package
         process.env.FOO = 'bar';
-        Object.defineProperty(process.env, 'FOO', {value: 'baz', enumerable: true, configurable: true});
+        Object.defineProperty(process.env, 'FOO', {value: 'baz', enumerable: true, configurable: true, writable: true});
         assert.strictEqual(process.env.FOO, 'baz');
     });
-    if (typeof Java !== 'undefined') {
+    if (module.hasJavaInterop()) {
         it('util.inspect should work for JavaObjects', function() {
             var Point = Java.type('java.awt.Point');
             var point = new Point();
             // just make sure that it does not throw an error
             util.inspect(Point);
             assert.match(util.inspect(point), /getX/);
+        });
+        it('util.inspect should work for java.math.BigInteger', function() {
+            const BigInteger = Java.type('java.math.BigInteger');
+            const Long = Java.type('java.lang.Long');
+            assert.strictEqual(String(2n ** 64n - 2n), util.inspect(BigInteger.valueOf(Long.MAX_VALUE).shiftLeft(1)));
+            assert.strictEqual(String(2n ** 63n - 1n), util.inspect(BigInteger.valueOf(Long.MAX_VALUE)));
+            assert.strictEqual(String(2n ** 63n - 1n), util.inspect(Long.MAX_VALUE));
         });
     }
     it('should not regress in ExecuteNativeFunctionNode', function () {
@@ -67,6 +75,14 @@ describe('Other', function () {
         assert.throws(function() {
             Object.create(script).runInThisContext();
         }, TypeError, "Illegal invocation");
+    });
+    it('should refuse null and undefined (in a template with a signature check) properly', function () {
+        var nativeMethodWithASignatureCheck = Object.getPrototypeOf(vm.Script.prototype).runInContext;
+        [null, undefined].forEach(function (thiz) {
+            assert.throws(function() {
+                nativeMethodWithASignatureCheck.call(thiz);
+            }, TypeError, "Illegal invocation");
+        });
     });
     it('should throw the right error from vm.runInNewContext() (GR-9592)', function () {
         Error.prepareStackTrace = function () {

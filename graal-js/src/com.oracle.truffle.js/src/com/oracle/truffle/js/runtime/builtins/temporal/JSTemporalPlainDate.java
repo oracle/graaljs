@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,11 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_WEEK;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS_IN_YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY_OF_WEEK;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY_OF_YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.IN_LEAP_YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS_IN_YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEK_OF_YEAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltins;
@@ -82,8 +69,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.ShowCalendar;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
-public final class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctionsAndSpecies,
-                PrototypeSupplier {
+public final class JSTemporalPlainDate extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
     public static final JSTemporalPlainDate INSTANCE = new JSTemporalPlainDate();
 
@@ -106,24 +92,9 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
 
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
-        JSContext ctx = realm.getContext();
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
-        JSObjectUtil.putConstructorProperty(ctx, prototype, constructor);
-
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, CALENDAR, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, CALENDAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, YEAR, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, YEAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, MONTH));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTH_CODE, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, MONTH_CODE));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, DAY));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY_OF_WEEK, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, DAY_OF_WEEK));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAY_OF_YEAR, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, DAY_OF_YEAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, WEEK_OF_YEAR, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, WEEK_OF_YEAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_WEEK, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, DAYS_IN_WEEK));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_MONTH, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, DAYS_IN_MONTH));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, DAYS_IN_YEAR, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, DAYS_IN_YEAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, MONTHS_IN_YEAR, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, MONTHS_IN_YEAR));
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, IN_LEAP_YEAR, realm.lookupAccessor(TemporalPlainDatePrototypeBuiltins.BUILTINS, IN_LEAP_YEAR));
-
+        JSObjectUtil.putConstructorProperty(prototype, constructor);
+        JSObjectUtil.putAccessorsFromContainer(realm, prototype, TemporalPlainDatePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, TemporalPlainDatePrototypeBuiltins.BUILTINS);
         JSObjectUtil.putToStringTag(prototype, TO_STRING_TAG);
         return prototype;
@@ -147,34 +118,32 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return obj instanceof JSTemporalPlainDateObject;
     }
 
-    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, JSDynamicObject calendar, BranchProfile errorBranch) {
+    public static JSTemporalPlainDateObject create(JSContext context, JSRealm realm,
+                    int year, int month, int day, JSDynamicObject calendar,
+                    Node node, InlinedBranchProfile errorBranch) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), year, month, day, calendar, node, errorBranch);
+    }
+
+    public static JSTemporalPlainDateObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    int year, int month, int day, JSDynamicObject calendar,
+                    Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.validateISODate(year, month, day)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
         if (!TemporalUtil.isoDateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
-            errorBranch.enter();
+            errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
-        return createIntl(context, year, month, day, calendar);
+        return createIntl(context, realm, proto, year, month, day, calendar);
     }
 
-    public static JSTemporalPlainDateObject create(JSContext context, int year, int month, int day, JSDynamicObject calendar) {
-        if (!TemporalUtil.validateISODate(year, month, day)) {
-            throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
-        }
-        if (!TemporalUtil.isoDateTimeWithinLimits(year, month, day, 12, 0, 0, 0, 0, 0)) {
-            throw TemporalErrors.createRangeErrorDateOutsideRange();
-        }
-        return createIntl(context, year, month, day, calendar);
-    }
-
-    private static JSTemporalPlainDateObject createIntl(JSContext context, int year, int month, int day, JSDynamicObject calendar) {
-        JSRealm realm = JSRealm.get(null);
+    private static JSTemporalPlainDateObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,
+                    int year, int month, int day, JSDynamicObject calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
-        JSTemporalPlainDateObject object = factory.initProto(new JSTemporalPlainDateObject(factory.getShape(realm),
-                        year, month, day, calendar), realm);
-        return context.trackAllocation(object);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSTemporalPlainDateObject(shape, proto, year, month, day, calendar), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     public static JSTemporalDurationRecord differenceISODate(int y1, int m1, int d1, int y2, int m2, int d2, Unit largestUnit) {
@@ -263,8 +232,8 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     @TruffleBoundary
     public static TruffleString temporalDateToString(JSTemporalPlainDateObject date, ShowCalendar showCalendar) {
         TruffleString yearString = TemporalUtil.padISOYear(date.getYear());
-        TruffleString monthString = Strings.format("%1$02d", date.getMonth());
-        TruffleString dayString = Strings.format("%1$02d", date.getDay());
+        TruffleString monthString = TemporalUtil.toZeroPaddedDecimalString(date.getMonth(), 2);
+        TruffleString dayString = TemporalUtil.toZeroPaddedDecimalString(date.getDay(), 2);
 
         TruffleString calendarID = JSRuntime.toString(date.getCalendar());
         Object calendar = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);

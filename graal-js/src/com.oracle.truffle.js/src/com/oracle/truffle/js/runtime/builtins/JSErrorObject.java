@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -53,7 +54,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -63,21 +63,17 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 @ExportLibrary(InteropLibrary.class)
 public final class JSErrorObject extends JSNonProxyObject implements JSCopyableObject {
 
-    protected JSErrorObject(Shape shape) {
-        super(shape);
+    protected JSErrorObject(Shape shape, JSDynamicObject proto) {
+        super(shape, proto);
     }
 
-    public static JSErrorObject create(Shape shape) {
-        return new JSErrorObject(shape);
-    }
-
-    public static JSErrorObject create(JSRealm realm, JSObjectFactory factory) {
-        return factory.initProto(new JSErrorObject(factory.getShape(realm)), realm);
+    public static JSErrorObject create(Shape shape, JSDynamicObject proto) {
+        return new JSErrorObject(shape, proto);
     }
 
     @Override
     protected JSObject copyWithoutProperties(Shape shape) {
-        return new JSErrorObject(shape);
+        return new JSErrorObject(shape, getPrototypeOf());
     }
 
     public GraalJSException getException() {
@@ -98,49 +94,49 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
 
     @ExportMessage
     public ExceptionType getExceptionType(
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionType(getException());
     }
 
     @ExportMessage
     public boolean isExceptionIncompleteSource(
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.isExceptionIncompleteSource(getException());
     }
 
     @ExportMessage
     public boolean hasExceptionMessage(
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
+                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
         return exceptions.hasExceptionMessage(getException());
     }
 
     @ExportMessage
     public Object getExceptionMessage(
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionMessage(getException());
     }
 
     @ExportMessage
     public boolean hasExceptionStackTrace(
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
+                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
         return exceptions.hasExceptionStackTrace(getException());
     }
 
     @ExportMessage
     public Object getExceptionStackTrace(
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionStackTrace(getException());
     }
 
     @ExportMessage
     public boolean hasExceptionCause(
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
+                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
         return exceptions.hasExceptionCause(getException());
     }
 
     @ExportMessage
     public Object getExceptionCause(
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionCause(getException());
     }
 

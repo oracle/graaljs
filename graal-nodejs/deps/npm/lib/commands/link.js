@@ -3,7 +3,6 @@ const util = require('util')
 const readdir = util.promisify(fs.readdir)
 const { resolve } = require('path')
 
-const Arborist = require('@npmcli/arborist')
 const npa = require('npm-package-arg')
 const rpj = require('read-package-json-fast')
 const semver = require('semver')
@@ -22,8 +21,9 @@ class Link extends ArboristWorkspaceCmd {
     'save',
     'save-exact',
     'global',
-    'global-style',
+    'install-strategy',
     'legacy-bundling',
+    'global-style',
     'strict-peer-deps',
     'package-lock',
     'omit',
@@ -51,6 +51,8 @@ class Link extends ArboristWorkspaceCmd {
         { code: 'ELINKGLOBAL' }
       )
     }
+    // install-links is implicitly false when running `npm link`
+    this.npm.config.set('install-links', false)
 
     // link with no args: symlink the folder to the global location
     // link with package arg: symlink the global to the local
@@ -64,8 +66,10 @@ class Link extends ArboristWorkspaceCmd {
     // load current packages from the global space,
     // and then add symlinks installs locally
     const globalTop = resolve(this.npm.globalDir, '..')
+    const Arborist = require('@npmcli/arborist')
     const globalOpts = {
       ...this.npm.flatOptions,
+      Arborist,
       path: globalTop,
       global: true,
       prune: false,
@@ -135,8 +139,10 @@ class Link extends ArboristWorkspaceCmd {
     const paths = wsp && wsp.length ? wsp : [this.npm.prefix]
     const add = paths.map(path => `file:${path.replace(/#/g, '%23')}`)
     const globalTop = resolve(this.npm.globalDir, '..')
+    const Arborist = require('@npmcli/arborist')
     const arb = new Arborist({
       ...this.npm.flatOptions,
+      Arborist,
       path: globalTop,
       global: true,
     })

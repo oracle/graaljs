@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,10 +41,12 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -78,10 +80,10 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
 
         if (n instanceof Integer) {
             isIntProfile.enter();
-            return n.intValue();
+            return ((Integer) n).intValue();
         } else if (n instanceof Long) {
             isLongProfile.enter();
-            long l = n.longValue();
+            long l = ((Long) n).longValue();
             if (l < Integer.MIN_VALUE || Integer.MAX_VALUE < l) {
                 errorBranch.enter();
                 throw Errors.createRangeError("value out of range");
@@ -89,7 +91,7 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
             return (int) l;
         } else {
             isDoubleProfile.enter();
-            double d = n.doubleValue();
+            double d = JSRuntime.doubleValue(n);
             if (d < Integer.MIN_VALUE || Integer.MAX_VALUE < d) {
                 errorBranch.enter();
                 throw Errors.createRangeError("value out of range");
@@ -99,9 +101,10 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
     }
 
     public final double executeDouble(Object value) {
-        return ((Number) execute(value)).doubleValue();
+        return JSRuntime.doubleValue((Number) execute(value));
     }
 
+    @NeverDefault
     public static JSToIntegerThrowOnInfinityNode create() {
         return JSToIntegerThrowOnInfinityNodeGen.create();
     }
@@ -160,15 +163,15 @@ public abstract class JSToIntegerThrowOnInfinityNode extends JavaScriptBaseNode 
 
     @Specialization
     protected Number doString(TruffleString value,
-                    @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerThrowOnInfinityNode toIntOrInf,
-                    @Cached("create()") JSStringToNumberNode stringToNumberNode) {
-        return (Number) toIntOrInf.execute(stringToNumberNode.executeString(value));
+                    @Shared("recToIntOrInf") @Cached JSToIntegerThrowOnInfinityNode toIntOrInf,
+                    @Cached JSStringToNumberNode stringToNumberNode) {
+        return (Number) toIntOrInf.execute(stringToNumberNode.execute(value));
     }
 
-    @Specialization(guards = "isForeignObject(value)||isJSObject(value)")
+    @Specialization(guards = "isJSObject(value) || isForeignObject(value)")
     protected Number doJSOrForeignObject(Object value,
-                    @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerThrowOnInfinityNode toIntOrInf,
-                    @Cached("create()") JSToNumberNode toNumberNode) {
+                    @Shared("recToIntOrInf") @Cached JSToIntegerThrowOnInfinityNode toIntOrInf,
+                    @Cached JSToNumberNode toNumberNode) {
         return (Number) toIntOrInf.execute(toNumberNode.executeNumber(value));
     }
 }

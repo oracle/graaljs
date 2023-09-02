@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.TimeZone;
 
 import org.graalvm.polyglot.Source;
 
@@ -89,10 +88,10 @@ public class TestV8 extends TestSuite {
         this.mockupSource = loadV8Mockup();
         Map<String, String> options = new HashMap<>();
         options.put(JSContextOptions.TESTV8_MODE_NAME, "true");
-        options.put(JSContextOptions.VALIDATE_REGEXP_LITERALS_NAME, "false");
         options.put(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
         options.put(JSContextOptions.V8_REALM_BUILTIN_NAME, "true");
         options.put(JSContextOptions.INTL_402_NAME, "true");
+        options.put(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "none");
         options.put(JSContextOptions.SHELL_NAME, "true"); // readbuffer, quit
         // Reduce string length limit in order to avoid transient out of memory errors.
         options.put(JSContextOptions.STRING_LENGTH_LIMIT_NAME, String.valueOf(STRING_LENGTH_LIMIT));
@@ -173,9 +172,6 @@ public class TestV8 extends TestSuite {
         // increase default timeouts
         configBuilder.setTimeoutTest(120);
         configBuilder.setTimeoutOverall(20 * 60);
-
-        TimeZone pstZone = TimeZone.getTimeZone("PST"); // =Californian Time (PST)
-        TimeZone.setDefault(pstZone);
 
         System.out.println("Checking your Javascript conformance. Using Google V8 testsuite.\n");
 

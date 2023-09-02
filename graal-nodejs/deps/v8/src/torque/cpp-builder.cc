@@ -14,6 +14,7 @@ void Function::PrintDeclarationHeader(std::ostream& stream,
   if (!description_.empty()) {
     stream << std::string(indentation, ' ') << "// " << description_ << "\n";
   }
+  stream << std::string(indentation, ' ') << "// " << pos_ << "\n";
   stream << std::string(indentation, ' ');
   if (IsExport()) stream << "V8_EXPORT_PRIVATE ";
   if (IsV8Inline())
@@ -36,6 +37,9 @@ void Function::PrintDeclarationHeader(std::ostream& stream,
 }
 
 void Function::PrintDeclaration(std::ostream& stream, int indentation) const {
+  if (indentation == kAutomaticIndentation) {
+    indentation = owning_class_ ? 2 : 0;
+  }
   PrintDeclarationHeader(stream, indentation);
   stream << ";\n";
 }
@@ -63,6 +67,7 @@ void Function::PrintInlineDefinition(
 
 void Function::PrintBeginDefinition(std::ostream& stream,
                                     int indentation) const {
+  stream << std::string(indentation, ' ') << "// " << pos_ << "\n";
   std::string scope;
   if (owning_class_) {
     scope = owning_class_->GetName();
@@ -116,7 +121,7 @@ void File::BeginIncludeGuard(const std::string& name) {
   s() << "#ifndef " << name
       << "\n"
          "#define "
-      << name << "\n";
+      << name << "\n\n";
 }
 
 void File::EndIncludeGuard(const std::string& name) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -59,7 +60,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Completion;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -71,6 +71,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
     @Child private GetMethodNode getReturnNode;
     @Child private JSFunctionCallNode returnMethodCallNode;
     @Child private JavaScriptNode iteratorNode;
+    @Child private IsObjectNode isObjectNode;
     private final BranchProfile errorBranch = BranchProfile.create();
     private final BranchProfile throwBranch = BranchProfile.create();
     private final BranchProfile exitBranch = BranchProfile.create();
@@ -81,7 +82,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
         super(context, stateSlot, null, asyncContextNode, asyncResultNode);
         this.loopNode = loopNode;
         this.iteratorNode = iteratorNode;
-
+        this.isObjectNode = IsObjectNode.create();
         this.getReturnNode = GetMethodNode.create(context, Strings.RETURN);
     }
 
@@ -102,7 +103,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
             } catch (ControlFlowException e) {
                 exitBranch.enter();
                 IteratorRecord iteratorRecord = getIteratorRecord(frame);
-                JSDynamicObject iterator = iteratorRecord.getIterator();
+                Object iterator = iteratorRecord.getIterator();
                 Object returnMethod = getReturnNode.executeWithTarget(iterator);
                 if (returnMethod != Undefined.instance) {
                     innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -114,7 +115,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
             } catch (AbstractTruffleException e) {
                 throwBranch.enter();
                 IteratorRecord iteratorRecord = getIteratorRecord(frame);
-                JSDynamicObject iterator = iteratorRecord.getIterator();
+                Object iterator = iteratorRecord.getIterator();
                 try {
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
@@ -132,7 +133,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
                 return result;
             } else {
                 notDoneBranch.enter();
-                JSDynamicObject iterator = iteratorRecord.getIterator();
+                Object iterator = iteratorRecord.getIterator();
                 Object returnMethod = getReturnNode.executeWithTarget(iterator);
                 if (returnMethod != Undefined.instance) {
                     innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
@@ -159,7 +160,7 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
                 throw JSRuntime.rethrow((Throwable) completion.getValue());
             }
             Object innerResult = resumeAwait(frame);
-            if (!JSDynamicObject.isJSDynamicObject(innerResult)) {
+            if (!isObjectNode.executeBoolean(innerResult)) {
                 errorBranch.enter();
                 throw Errors.createTypeErrorIterResultNotAnObject(innerResult, this);
             }

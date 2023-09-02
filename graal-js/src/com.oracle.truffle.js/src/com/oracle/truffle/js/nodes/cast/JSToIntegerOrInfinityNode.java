@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,9 @@
 package com.oracle.truffle.js.nodes.cast;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -51,6 +53,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * This implements ECMA2022 7.1.5 ToIntegerOrInfinity.
@@ -64,6 +67,7 @@ public abstract class JSToIntegerOrInfinityNode extends JavaScriptBaseNode {
         return (Number) execute(value);
     }
 
+    @NeverDefault
     public static JSToIntegerOrInfinityNode create() {
         return JSToIntegerOrInfinityNodeGen.create();
     }
@@ -120,15 +124,22 @@ public abstract class JSToIntegerOrInfinityNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Number doString(TruffleString value,
-                    @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerOrInfinityNode toIntOrInf,
-                    @Cached("create()") JSStringToNumberNode stringToNumberNode) {
-        return toIntOrInf.executeNumber(stringToNumberNode.executeString(value));
+                    @Shared @Cached JSToIntegerOrInfinityNode toIntOrInf,
+                    @Cached JSStringToNumberNode stringToNumberNode) {
+        return toIntOrInf.executeNumber(stringToNumberNode.execute(value));
     }
 
-    @Specialization(guards = "isForeignObject(value)||isJSObject(value)")
+    @Specialization
+    protected Number doJSObject(JSObject value,
+                    @Shared @Cached JSToIntegerOrInfinityNode toIntOrInf,
+                    @Shared @Cached JSToNumberNode toNumberNode) {
+        return toIntOrInf.executeNumber(toNumberNode.executeNumber(value));
+    }
+
+    @Specialization(guards = "isJSObject(value) || isForeignObject(value)", replaces = "doJSObject")
     protected Number doJSOrForeignObject(Object value,
-                    @Cached.Shared("recToIntOrInf") @Cached("create()") JSToIntegerOrInfinityNode toIntOrInf,
-                    @Cached("create()") JSToNumberNode toNumberNode) {
+                    @Shared @Cached JSToIntegerOrInfinityNode toIntOrInf,
+                    @Shared @Cached JSToNumberNode toNumberNode) {
         return toIntOrInf.executeNumber(toNumberNode.executeNumber(value));
     }
 

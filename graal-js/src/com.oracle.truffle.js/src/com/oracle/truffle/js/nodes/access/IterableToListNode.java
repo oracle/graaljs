@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 /**
  * Implements the part of {@code IterableToList(items, [method])} after {@code GetIterator}.
  *
- * Combine with {@link GetIteratorBaseNode} to get the full operation.
+ * Combine with {@link GetIteratorNode} to get the full operation.
  */
 @GenerateUncached
 @ImportStatic(JSInteropUtil.class)
@@ -64,19 +64,11 @@ public abstract class IterableToListNode extends JavaScriptBaseNode {
 
     public abstract SimpleArrayList<Object> execute(IteratorRecord iterator);
 
-    public static IterableToListNode create() {
-        return IterableToListNodeGen.create();
-    }
-
-    public static IterableToListNode getUncached() {
-        return IterableToListNodeGen.getUncached();
-    }
-
     @Specialization
-    protected static SimpleArrayList<Object> iterableToList(IteratorRecord iterator,
+    protected final SimpleArrayList<Object> iterableToList(IteratorRecord iterator,
                     @Cached IteratorStepNode iteratorStepNode,
                     @Cached IteratorValueNode getIteratorValueNode,
-                    @Cached BranchProfile growProfile) {
+                    @Cached InlinedBranchProfile growProfile) {
         SimpleArrayList<Object> values = new SimpleArrayList<>();
         while (true) {
             Object next = iteratorStepNode.execute(iterator);
@@ -84,7 +76,7 @@ public abstract class IterableToListNode extends JavaScriptBaseNode {
                 break;
             }
             Object nextValue = getIteratorValueNode.execute(next);
-            values.add(nextValue, growProfile);
+            values.add(nextValue, this, growProfile);
         }
         return values;
     }

@@ -182,7 +182,8 @@ ExceptionStatus KeyAccumulator::AddKeys(Handle<JSObject> array_like,
 MaybeHandle<FixedArray> FilterProxyKeys(KeyAccumulator* accumulator,
                                         Handle<JSProxy> owner,
                                         Handle<FixedArray> keys,
-                                        PropertyFilter filter) {
+                                        PropertyFilter filter,
+                                        bool skip_indices) {
   if (filter == ALL_PROPERTIES) {
     // Nothing to do.
     return keys;
@@ -192,6 +193,10 @@ MaybeHandle<FixedArray> FilterProxyKeys(KeyAccumulator* accumulator,
   for (int i = 0; i < keys->length(); ++i) {
     Handle<Name> key(Name::cast(keys->get(i)), isolate);
     if (key->FilterKey(filter)) continue;  // Skip this key.
+    if (skip_indices) {
+      uint32_t index;
+      if (key->AsArrayIndex(&index)) continue;  // Skip this key.
+    }
     if (filter & ONLY_ENUMERABLE) {
       PropertyDescriptor desc;
       Maybe<bool> found =
@@ -218,7 +223,8 @@ Maybe<bool> KeyAccumulator::AddKeysFromJSProxy(Handle<JSProxy> proxy,
   // Postpone the enumerable check for for-in to the ForInFilter step.
   if (!is_for_in_) {
     ASSIGN_RETURN_ON_EXCEPTION_VALUE(
-        isolate_, keys, FilterProxyKeys(this, proxy, keys, filter_),
+        isolate_, keys,
+        FilterProxyKeys(this, proxy, keys, filter_, skip_indices_),
         Nothing<bool>());
   }
   // https://tc39.es/ecma262/#sec-proxy-object-internal-methods-and-internal-slots-ownpropertykeys
@@ -405,7 +411,7 @@ Handle<FixedArray> GetFastEnumPropertyKeys(Isolate* isolate,
     Object key = descriptors->GetKey(i);
     if (key.IsSymbol()) continue;
     keys->set(index, key);
-    if (details.location() != kField) fields_only = false;
+    if (details.location() != PropertyLocation::kField) fields_only = false;
     index++;
   }
   DCHECK_EQ(index, keys->length());
@@ -421,8 +427,8 @@ Handle<FixedArray> GetFastEnumPropertyKeys(Isolate* isolate,
       if (details.IsDontEnum()) continue;
       Object key = descriptors->GetKey(i);
       if (key.IsSymbol()) continue;
-      DCHECK_EQ(kData, details.kind());
-      DCHECK_EQ(kField, details.location());
+      DCHECK_EQ(PropertyKind::kData, details.kind());
+      DCHECK_EQ(PropertyLocation::kField, details.location());
       FieldIndex field_index = FieldIndex::ForDescriptor(*map, i);
       indices->set(index, Smi::FromInt(field_index.GetLoadByFieldIndex()));
       index++;
@@ -767,7 +773,7 @@ base::Optional<int> CollectOwnPropertyNamesInternal(
     }
 
     if (filter & ONLY_ALL_CAN_READ) {
-      if (details.kind() != kAccessor) continue;
+      if (details.kind() != PropertyKind::kAccessor) continue;
       Object accessors = descs->GetStrongValue(i);
       if (!accessors.IsAccessorInfo()) continue;
       if (!AccessorInfo::cast(accessors).all_can_read()) continue;
@@ -925,7 +931,7 @@ ExceptionStatus CollectKeysFromDictionary(Handle<Dictionary> dictionary,
         continue;
       }
       if (filter & ONLY_ALL_CAN_READ) {
-        if (details.kind() != kAccessor) continue;
+        if (details.kind() != PropertyKind::kAccessor) continue;
         Object accessors = raw_dictionary.ValueAt(i);
         if (!accessors.IsAccessorInfo()) continue;
         if (!AccessorInfo::cast(accessors).all_can_read()) continue;

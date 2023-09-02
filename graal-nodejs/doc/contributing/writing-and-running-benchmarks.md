@@ -292,7 +292,7 @@ module, you can use the `--filter` option:_
   --no-progress                 don't show benchmark progress indicator
 ```
 
-For analysing the benchmark results, use [node-benchmark-compare][] or the R
+For analyzing the benchmark results, use [node-benchmark-compare][] or the R
 script `benchmark/compare.R`.
 
 ```console
@@ -450,8 +450,12 @@ The arguments of `createBenchmark` are:
   possible combinations of these parameters, unless specified otherwise.
   Each configuration is a property with an array of possible values.
   The configuration values can only be strings or numbers.
-* `options` {Object} The benchmark options. At the moment only the `flags`
-  option for specifying command line flags is supported.
+* `options` {Object} The benchmark options. Supported options:
+  * `flags` {Array} Contains node-specific command line flags to pass to
+    the child process.
+  * `combinationFilter` {Function} Has a single parameter which is an object
+    containing a combination of benchmark parameters. It should return `true`
+    or `false` to indicate whether the combination should be included or not.
 
 `createBenchmark` returns a `bench` object, which is used for timing
 the runtime of the benchmark. Run `bench.start()` after the initialization
@@ -486,12 +490,12 @@ const configs = {
   // Most benchmarks just use one value for all runs.
   n: [1024],
   type: ['fast', 'slow'],  // Custom configurations
-  size: [16, 128, 1024]  // Custom configurations
+  size: [16, 128, 1024],  // Custom configurations
 };
 
 const options = {
   // Add --expose-internals in order to require internal modules in main
-  flags: ['--zero-fill-buffers']
+  flags: ['--zero-fill-buffers'],
 };
 
 // `main` and `configs` are required, `options` is optional.
@@ -535,7 +539,7 @@ const common = require('../common.js');
 const bench = common.createBenchmark(main, {
   kb: [64, 128, 256, 1024],
   connections: [100, 500],
-  duration: 5
+  duration: 5,
 });
 
 function main(conf) {

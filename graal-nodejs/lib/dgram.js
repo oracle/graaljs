@@ -49,7 +49,7 @@ const {
   ERR_SOCKET_DGRAM_IS_CONNECTED,
   ERR_SOCKET_DGRAM_NOT_CONNECTED,
   ERR_SOCKET_DGRAM_NOT_RUNNING,
-  ERR_INVALID_FD_TYPE
+  ERR_INVALID_FD_TYPE,
 } = errors.codes;
 const {
   isInt32,
@@ -64,14 +64,14 @@ const { isArrayBufferView } = require('internal/util/types');
 const EventEmitter = require('events');
 const {
   defaultTriggerAsyncIdScope,
-  symbols: { async_id_symbol, owner_symbol }
+  symbols: { async_id_symbol, owner_symbol },
 } = require('internal/async_hooks');
 const { UV_UDP_REUSEADDR } = internalBinding('constants').os;
 
 const {
   constants: { UV_UDP_IPV6ONLY },
   UDP,
-  SendWrap
+  SendWrap,
 } = internalBinding('udp_wrap');
 
 const dc = require('diagnostics_channel');
@@ -132,14 +132,14 @@ function Socket(type, listener) {
     reuseAddr: options && options.reuseAddr, // Use UV_UDP_REUSEADDR if true.
     ipv6Only: options && options.ipv6Only,
     recvBufferSize,
-    sendBufferSize
+    sendBufferSize,
   };
 
   if (options?.signal !== undefined) {
     const { signal } = options;
     validateAbortSignal(signal, 'options.signal');
     const onAborted = () => {
-      this.close();
+      if (this[kStateSymbol].handle) this.close();
     };
     if (signal.aborted) {
       onAborted();
@@ -184,7 +184,10 @@ function startListening(socket) {
 function replaceHandle(self, newHandle) {
   const state = self[kStateSymbol];
   const oldHandle = state.handle;
-
+  // Sync the old handle state to new handle
+  if (!oldHandle.hasRef() && typeof newHandle.unref === 'function') {
+    newHandle.unref();
+  }
   // Set up the handle that we got from primary.
   newHandle.lookup = oldHandle.lookup;
   newHandle.bind = oldHandle.bind;
@@ -279,7 +282,7 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
         port: null,
         addressType: this.type,
         fd,
-        flags: null
+        flags: null,
       }, (err) => {
         // Callback to handle error.
         const ex = errnoException(err, 'open');
@@ -343,7 +346,7 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
         port: port,
         addressType: this.type,
         fd: -1,
-        flags: flags
+        flags: flags,
       }, (err) => {
         // Callback to handle error.
         const ex = exceptionWithHostPort(err, 'bind', ip, port);
@@ -409,7 +412,7 @@ function _connect(port, address, callback) {
     defaultTriggerAsyncIdScope(
       this[async_id_symbol],
       doConnect,
-      ex, this, ip, address, port, callback
+      ex, this, ip, address, port, callback,
     );
   };
 
@@ -635,8 +638,8 @@ Socket.prototype.send = function(buffer,
   if (typeof address === 'function') {
     callback = address;
     address = undefined;
-  } else if (address && typeof address !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE('address', ['string', 'falsy'], address);
+  } else if (address != null) {
+    validateString(address, 'address');
   }
 
   healthCheck(this);
@@ -659,7 +662,7 @@ Socket.prototype.send = function(buffer,
     defaultTriggerAsyncIdScope(
       this[async_id_symbol],
       doSend,
-      ex, this, ip, list, address, port, callback
+      ex, this, ip, list, address, port, callback,
     );
   };
 
@@ -976,6 +979,13 @@ Socket.prototype.getSendBufferSize = function() {
   return bufferSize(this, 0, SEND_BUFFER);
 };
 
+Socket.prototype.getSendQueueSize = function() {
+  return this[kStateSymbol].handle.getSendQueueSize();
+};
+
+Socket.prototype.getSendQueueCount = function() {
+  return this[kStateSymbol].handle.getSendQueueCount();
+};
 
 // Deprecated private APIs.
 ObjectDefineProperty(Socket.prototype, '_handle', {
@@ -985,7 +995,7 @@ ObjectDefineProperty(Socket.prototype, '_handle', {
   }, 'Socket.prototype._handle is deprecated', 'DEP0112'),
   set: deprecate(function(val) {
     this[kStateSymbol].handle = val;
-  }, 'Socket.prototype._handle is deprecated', 'DEP0112')
+  }, 'Socket.prototype._handle is deprecated', 'DEP0112'),
 });
 
 
@@ -996,7 +1006,7 @@ ObjectDefineProperty(Socket.prototype, '_receiving', {
   }, 'Socket.prototype._receiving is deprecated', 'DEP0112'),
   set: deprecate(function(val) {
     this[kStateSymbol].receiving = val;
-  }, 'Socket.prototype._receiving is deprecated', 'DEP0112')
+  }, 'Socket.prototype._receiving is deprecated', 'DEP0112'),
 });
 
 
@@ -1007,7 +1017,7 @@ ObjectDefineProperty(Socket.prototype, '_bindState', {
   }, 'Socket.prototype._bindState is deprecated', 'DEP0112'),
   set: deprecate(function(val) {
     this[kStateSymbol].bindState = val;
-  }, 'Socket.prototype._bindState is deprecated', 'DEP0112')
+  }, 'Socket.prototype._bindState is deprecated', 'DEP0112'),
 });
 
 
@@ -1018,7 +1028,7 @@ ObjectDefineProperty(Socket.prototype, '_queue', {
   }, 'Socket.prototype._queue is deprecated', 'DEP0112'),
   set: deprecate(function(val) {
     this[kStateSymbol].queue = val;
-  }, 'Socket.prototype._queue is deprecated', 'DEP0112')
+  }, 'Socket.prototype._queue is deprecated', 'DEP0112'),
 });
 
 
@@ -1029,7 +1039,7 @@ ObjectDefineProperty(Socket.prototype, '_reuseAddr', {
   }, 'Socket.prototype._reuseAddr is deprecated', 'DEP0112'),
   set: deprecate(function(val) {
     this[kStateSymbol].reuseAddr = val;
-  }, 'Socket.prototype._reuseAddr is deprecated', 'DEP0112')
+  }, 'Socket.prototype._reuseAddr is deprecated', 'DEP0112'),
 });
 
 
@@ -1048,7 +1058,7 @@ Socket.prototype._stopReceiving = deprecate(function() {
 ObjectDefineProperty(UDP.prototype, 'owner', {
   __proto__: null,
   get() { return this[owner_symbol]; },
-  set(v) { return this[owner_symbol] = v; }
+  set(v) { return this[owner_symbol] = v; },
 });
 
 
@@ -1056,8 +1066,8 @@ module.exports = {
   _createSocketHandle: deprecate(
     _createSocketHandle,
     'dgram._createSocketHandle() is deprecated',
-    'DEP0112'
+    'DEP0112',
   ),
   createSocket,
-  Socket
+  Socket,
 };

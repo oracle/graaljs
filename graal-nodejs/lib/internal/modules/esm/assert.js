@@ -4,6 +4,7 @@ const {
   ArrayPrototypeFilter,
   ArrayPrototypeIncludes,
   ObjectCreate,
+  ObjectKeys,
   ObjectValues,
   ObjectPrototypeHasOwnProperty,
 } = primordials;
@@ -17,6 +18,8 @@ const {
 
 // The HTML spec has an implied default type of `'javascript'`.
 const kImplicitAssertType = 'javascript';
+
+let alreadyWarned = false;
 
 /**
  * Define a map of module formats to import assertion types (the value of
@@ -56,6 +59,16 @@ function validateAssertions(url, format,
                             importAssertions = ObjectCreate(null)) {
   const validType = formatTypeMap[format];
 
+  if (!alreadyWarned && ObjectKeys(importAssertions).length !== 0) {
+    alreadyWarned = true;
+    process.emitWarning(
+      'Import assertions are not a stable feature of the JavaScript language. ' +
+      'Avoid relying on their current behavior and syntax as those might change ' +
+      'in a future version of Node.js.',
+      'ExperimentalWarning',
+    );
+  }
+
   switch (validType) {
     case undefined:
       // Ignore assertions for module formats we don't recognize, to allow new
@@ -81,7 +94,7 @@ function validateAssertions(url, format,
         // `type` wasn't specified at all.
         throw new ERR_IMPORT_ASSERTION_TYPE_MISSING(url, validType);
       }
-      handleInvalidType(url, importAssertions.type);
+      return handleInvalidType(url, importAssertions.type);
   }
 }
 

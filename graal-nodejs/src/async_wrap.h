@@ -60,6 +60,8 @@ namespace node {
   V(PROCESSWRAP)                                                              \
   V(PROMISE)                                                                  \
   V(QUERYWRAP)                                                                \
+  V(QUIC_LOGSTREAM)                                                           \
+  V(QUIC_PACKET)                                                              \
   V(SHUTDOWNWRAP)                                                             \
   V(SIGNALWRAP)                                                               \
   V(STATWATCHER)                                                              \
@@ -207,7 +209,7 @@ class AsyncWrap : public BaseObject {
       v8::Local<v8::Value>* argv);
 
   virtual std::string diagnostic_name() const;
-  std::string MemoryInfoName() const override;
+  const char* MemoryInfoName() const override;
 
   static void WeakCallback(const v8::WeakCallbackInfo<DestroyParam> &info);
 

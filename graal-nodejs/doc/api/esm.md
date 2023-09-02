@@ -8,14 +8,16 @@
 added: v8.5.0
 changes:
   - version:
-    - v16.17.0
+    - v18.6.0
     pr-url: https://github.com/nodejs/node/pull/42623
     description: Add support for chaining loaders.
   - version:
+    - v17.1.0
     - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/40250
     description: Add support for import assertions.
   - version:
+    - v17.0.0
     - v16.12.0
     pr-url: https://github.com/nodejs/node/pull/37468
     description:
@@ -25,6 +27,7 @@ changes:
       allowed returning `format` from either `resolve` or `load` hooks.
   - version:
     - v15.3.0
+    - v14.17.0
     - v12.22.0
     pr-url: https://github.com/nodejs/node/pull/35781
     description: Stabilize modules implementation.
@@ -136,8 +139,9 @@ There are three types of specifiers:
 * _Absolute specifiers_ like `'file:///opt/nodejs/config.js'`. They refer
   directly and explicitly to a full path.
 
-Bare specifier resolutions are handled by the [Node.js module resolution
-algorithm][]. All other specifier resolutions are always only resolved with
+Bare specifier resolutions are handled by the [Node.js module
+resolution and loading algorithm][].
+All other specifier resolutions are always only resolved with
 the standard relative [URL][] resolution semantics.
 
 Like in CommonJS, module files within packages can be accessed by appending a
@@ -211,7 +215,9 @@ added:
   - v14.13.1
   - v12.20.0
 changes:
-  - version: v16.0.0
+  - version:
+      - v16.0.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/37246
     description: Added `node:` import support to `require(...)`.
 -->
@@ -227,7 +233,9 @@ import fs from 'node:fs/promises';
 ## Import assertions
 
 <!-- YAML
-added: v16.14.0
+added:
+  - v17.1.0
+  - v16.14.0
 -->
 
 > Stability: 1 - Experimental
@@ -317,7 +325,9 @@ added:
   - v13.9.0
   - v12.16.2
 changes:
-  - version: v16.2.0
+  - version:
+      - v16.2.0
+      - v14.18.0
     pr-url: https://github.com/nodejs/node/pull/38587
     description: Add support for WHATWG `URL` object to `parentURL` parameter.
 -->
@@ -476,9 +486,9 @@ These CommonJS variables are not available in ES modules.
 `__filename` and `__dirname` use cases can be replicated via
 [`import.meta.url`][].
 
-#### No Native Module Loading
+#### No Addon Loading
 
-Native modules are not currently supported with ES module imports.
+[Addons][] are not currently supported with ES module imports.
 
 They can instead be loaded with [`module.createRequire()`][] or
 [`process.dlopen`][].
@@ -672,7 +682,7 @@ of Node.js applications.
 added: v8.8.0
 changes:
   - version:
-    - v16.17.0
+    - v18.6.0
     pr-url: https://github.com/nodejs/node/pull/42623
     description: Add support for chaining loaders.
   - version: v16.12.0
@@ -722,13 +732,13 @@ prevent unintentional breaks in the chain.
 
 <!-- YAML
 changes:
-  - version:
-    - v16.17.0
+  - version: v18.6.0
     pr-url: https://github.com/nodejs/node/pull/42623
     description: Add support for chaining resolve hooks. Each hook must either
       call `nextResolve()` or include a `shortCircuit` property set to `true`
       in its return.
   - version:
+    - v17.1.0
     - v16.14.0
     pr-url: https://github.com/nodejs/node/pull/40250
     description: Add support for import assertions.
@@ -814,7 +824,7 @@ export async function resolve(specifier, context, nextResolve) {
 
 <!-- YAML
 changes:
-  - version: v16.17.0
+  - version: v18.6.0
     pr-url: https://github.com/nodejs/node/pull/42623
     description: Add support for chaining load hooks. Each hook must either
       call `nextLoad()` or include a `shortCircuit` property set to `true` in
@@ -912,7 +922,7 @@ source to a supported one (see [Examples](#examples) below).
 
 <!-- YAML
 changes:
-  - version: v16.17.0
+  - version: v18.6.0
     pr-url: https://github.com/nodejs/node/pull/42623
     description: Add support for chaining globalPreload hooks.
 -->
@@ -998,28 +1008,6 @@ and there is no security.
 // https-loader.mjs
 import { get } from 'node:https';
 
-export function resolve(specifier, context, nextResolve) {
-  const { parentURL = null } = context;
-
-  // Normally Node.js would error on specifiers starting with 'https://', so
-  // this hook intercepts them and converts them into absolute URLs to be
-  // passed along to the later hooks below.
-  if (specifier.startsWith('https://')) {
-    return {
-      shortCircuit: true,
-      url: specifier
-    };
-  } else if (parentURL && parentURL.startsWith('https://')) {
-    return {
-      shortCircuit: true,
-      url: new URL(specifier, parentURL).href,
-    };
-  }
-
-  // Let Node.js handle all other specifiers.
-  return nextResolve(specifier);
-}
-
 export function load(url, context, nextLoad) {
   // For JavaScript to be loaded over the network, we need to fetch and
   // return it.
@@ -1027,6 +1015,7 @@ export function load(url, context, nextLoad) {
     return new Promise((resolve, reject) => {
       get(url, (res) => {
         let data = '';
+        res.setEncoding('utf8');
         res.on('data', (chunk) => data += chunk);
         res.on('end', () => resolve({
           // This example assumes all network-provided JavaScript is ES module
@@ -1059,9 +1048,7 @@ prints the current version of CoffeeScript per the module at the URL in
 #### Transpiler loader
 
 Sources that are in formats Node.js doesn't understand can be converted into
-JavaScript using the [`load` hook][load hook]. Before that hook gets called,
-however, a [`resolve` hook][resolve hook] needs to tell Node.js not to
-throw an error on unknown file types.
+JavaScript using the [`load` hook][load hook].
 
 This is less performant than transpiling source files before running
 Node.js; a transpiler loader should only be used for development and testing
@@ -1077,25 +1064,6 @@ import CoffeeScript from 'coffeescript';
 
 const baseURL = pathToFileURL(`${cwd()}/`).href;
 
-// CoffeeScript files end in .coffee, .litcoffee, or .coffee.md.
-const extensionsRegex = /\.coffee$|\.litcoffee$|\.coffee\.md$/;
-
-export async function resolve(specifier, context, nextResolve) {
-  if (extensionsRegex.test(specifier)) {
-    const { parentURL = baseURL } = context;
-
-    // Node.js normally errors on unknown file extensions, so return a URL for
-    // specifiers ending in the CoffeeScript file extensions.
-    return {
-      shortCircuit: true,
-      url: new URL(specifier, parentURL).href
-    };
-  }
-
-  // Let Node.js handle all other specifiers.
-  return nextResolve(specifier);
-}
-
 export async function load(url, context, nextLoad) {
   if (extensionsRegex.test(url)) {
     // Now that we patched resolve to let CoffeeScript URLs through, we need to
@@ -1109,7 +1077,7 @@ export async function load(url, context, nextLoad) {
     // file, search up the file system for the nearest parent package.json file
     // and read its "type" field.
     const format = await getPackageType(url);
-    // When a hook returns a format of 'commonjs', `source` is be ignored.
+    // When a hook returns a format of 'commonjs', `source` is ignored.
     // To handle CommonJS files, a handler needs to be registered with
     // `require.extensions` in order to process the files with the CommonJS
     // loader. Avoiding the need for a separate CommonJS handler is a future
@@ -1188,27 +1156,99 @@ loaded from disk but before Node.js executes it; and so on for any `.coffee`,
 `.litcoffee` or `.coffee.md` files referenced via `import` statements of any
 loaded file.
 
-## Resolution algorithm
+#### "import map" loader
+
+The previous two loaders defined `load` hooks. This is an example of a loader
+that does its work via the `resolve` hook. This loader reads an
+`import-map.json` file that specifies which specifiers to override to another
+URL (this is a very simplistic implemenation of a small subset of the
+"import maps" specification).
+
+```js
+// import-map-loader.js
+import fs from 'node:fs/promises';
+
+const { imports } = JSON.parse(await fs.readFile('import-map.json'));
+
+export async function resolve(specifier, context, nextResolve) {
+  if (Object.hasOwn(imports, specifier)) {
+    return nextResolve(imports[specifier], context);
+  }
+
+  return nextResolve(specifier, context);
+}
+```
+
+Let's assume we have these files:
+
+```js
+// main.js
+import 'a-module';
+```
+
+```json
+// import-map.json
+{
+  "imports": {
+    "a-module": "./some-module.js"
+  }
+}
+```
+
+```js
+// some-module.js
+console.log('some module!');
+```
+
+If you run `node --experimental-loader ./import-map-loader.js main.js`
+the output will be `some module!`.
+
+## Resolution and loading algorithm
 
 ### Features
 
-The resolver has the following properties:
+The default resolver has the following properties:
 
 * FileURL-based resolution as is used by ES modules
-* Support for builtin module loading
 * Relative and absolute URL resolution
 * No default extensions
 * No folder mains
 * Bare specifier package resolution lookup through node\_modules
+* Does not fail on unknown extensions or protocols
+* Can optionally provide a hint of the format to the loading phase
 
-### Resolver algorithm
+The default loader has the following properties
+
+* Support for builtin module loading via `node:` URLs
+* Support for "inline" module loading via `data:` URLs
+* Support for `file:` module loading
+* Fails on any other URL protocol
+* Fails on unknown extensions for `file:` loading
+  (supports only `.cjs`, `.js`, and `.mjs`)
+
+### Resolution algorithm
 
 The algorithm to load an ES module specifier is given through the
 **ESM\_RESOLVE** method below. It returns the resolved URL for a
 module specifier relative to a parentURL.
 
+The resolution algorithm determines the full resolved URL for a module
+load, along with its suggested module format. The resolution algorithm
+does not determine whether the resolved URL protocol can be loaded,
+or whether the file extensions are permitted, instead these validations
+are applied by Node.js during the load phase
+(for example, if it was asked to load a URL that has a protocol that is
+not `file:`, `data:`, `node:`, or if `--experimental-network-imports`
+is enabled, `https:`).
+
+The algorithm also tries to determine the format of the file based
+on the extension (see `ESM_FILE_FORMAT` algorithm below). If it does
+not recognize the file extension (eg if it is not `.mjs`, `.cjs`, or
+`.json`), then a format of `undefined` is returned,
+which will throw during the load phase.
+
 The algorithm to determine the module format of a resolved URL is
-provided by **ESM\_FORMAT**, which returns the unique module
+provided by **ESM\_FILE\_FORMAT**, which returns the unique module
 format for any file. The _"module"_ format is returned for an ECMAScript
 Module, while the _"commonjs"_ format is used to indicate loading through the
 legacy CommonJS loader. Additional formats such as _"addon"_ can be extended in
@@ -1235,7 +1275,7 @@ The resolver can throw the following errors:
 * _Unsupported Directory Import_: The resolved path corresponds to a directory,
   which is not a supported target for module imports.
 
-### Resolver Algorithm Specification
+### Resolution Algorithm Specification
 
 **ESM\_RESOLVE**(_specifier_, _parentURL_)
 
@@ -1247,9 +1287,9 @@ The resolver can throw the following errors:
 >    1. Set _resolved_ to the URL resolution of _specifier_ relative to
 >       _parentURL_.
 > 4. Otherwise, if _specifier_ starts with _"#"_, then
->    1. Set _resolved_ to the destructured value of the result of
->       **PACKAGE\_IMPORTS\_RESOLVE**(_specifier_, _parentURL_,
->       _defaultConditions_).
+>    1. Set _resolved_ to the result of
+>       **PACKAGE\_IMPORTS\_RESOLVE**(_specifier_,
+>       _parentURL_, _defaultConditions_).
 > 5. Otherwise,
 >    1. Note: _specifier_ is now a bare specifier.
 >    2. Set _resolved_ the result of
@@ -1269,7 +1309,7 @@ The resolver can throw the following errors:
 > 8. Otherwise,
 >    1. Set _format_ the module format of the content type associated with the
 >       URL _resolved_.
-> 9. Load _resolved_ as module format, _format_.
+> 9. Return _format_ and _resolved_ to the loading phase
 
 **PACKAGE\_RESOLVE**(_packageSpecifier_, _parentURL_)
 
@@ -1323,9 +1363,8 @@ The resolver can throw the following errors:
 >    **undefined**, then
 >    1. Return **undefined**.
 > 5. If _pjson.name_ is equal to _packageName_, then
->    1. Return the _resolved_ destructured value of the result of
->       **PACKAGE\_EXPORTS\_RESOLVE**(_packageURL_, _packageSubpath_,
->       _pjson.exports_, _defaultConditions_).
+>    1. Return the result of **PACKAGE\_EXPORTS\_RESOLVE**(_packageURL_,
+>       _packageSubpath_, _pjson.exports_, _defaultConditions_).
 > 6. Otherwise, return **undefined**.
 
 **PACKAGE\_EXPORTS\_RESOLVE**(_packageURL_, _subpath_, _exports_, _conditions_)
@@ -1341,17 +1380,14 @@ The resolver can throw the following errors:
 >       1. Set _mainExport_ to _exports_\[_"."_].
 >    4. If _mainExport_ is not **undefined**, then
 >       1. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->          _packageURL_, _mainExport_, _""_, **false**, **false**,
->          _conditions_).
->       2. If _resolved_ is not **null** or **undefined**, then
->          1. Return _resolved_.
+>          _packageURL_, _mainExport_, **null**, **false**, _conditions_).
+>       2. If _resolved_ is not **null** or **undefined**, return _resolved_.
 > 3. Otherwise, if _exports_ is an Object and all keys of _exports_ start with
 >    _"."_, then
 >    1. Let _matchKey_ be the string _"./"_ concatenated with _subpath_.
->    2. Let _resolvedMatch_ be result of **PACKAGE\_IMPORTS\_EXPORTS\_RESOLVE**(
+>    2. Let _resolved_ be the result of **PACKAGE\_IMPORTS\_EXPORTS\_RESOLVE**(
 >       _matchKey_, _exports_, _packageURL_, **false**, _conditions_).
->    3. If _resolvedMatch_._resolve_ is not **null** or **undefined**, then
->       1. Return _resolvedMatch_.
+>    3. If _resolved_ is not **null** or **undefined**, return _resolved_.
 > 4. Throw a _Package Path Not Exported_ error.
 
 **PACKAGE\_IMPORTS\_RESOLVE**(_specifier_, _parentURL_, _conditions_)
@@ -1363,56 +1399,38 @@ The resolver can throw the following errors:
 > 4. If _packageURL_ is not **null**, then
 >    1. Let _pjson_ be the result of **READ\_PACKAGE\_JSON**(_packageURL_).
 >    2. If _pjson.imports_ is a non-null Object, then
->       1. Let _resolvedMatch_ be the result of
->          **PACKAGE\_IMPORTS\_EXPORTS\_RESOLVE**(_specifier_, _pjson.imports_,
->          _packageURL_, **true**, _conditions_).
->       2. If _resolvedMatch_._resolve_ is not **null** or **undefined**, then
->          1. Return _resolvedMatch_.
+>       1. Let _resolved_ be the result of
+>          **PACKAGE\_IMPORTS\_EXPORTS\_RESOLVE**(
+>          _specifier_, _pjson.imports_, _packageURL_, **true**, _conditions_).
+>       2. If _resolved_ is not **null** or **undefined**, return _resolved_.
 > 5. Throw a _Package Import Not Defined_ error.
 
 **PACKAGE\_IMPORTS\_EXPORTS\_RESOLVE**(_matchKey_, _matchObj_, _packageURL_,
 _isImports_, _conditions_)
 
-> 1. If _matchKey_ is a key of _matchObj_ and does not end in _"/"_ or contain
->    _"\*"_, then
+> 1. If _matchKey_ is a key of _matchObj_ and does not contain _"\*"_, then
 >    1. Let _target_ be the value of _matchObj_\[_matchKey_].
->    2. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->       _packageURL_, _target_, _""_, **false**, _isImports_, _conditions_).
->    3. Return the object _{ resolved, exact: **true** }_.
-> 2. Let _expansionKeys_ be the list of keys of _matchObj_ either ending in
->    _"/"_ or containing only a single _"\*"_, sorted by the sorting function
->    **PATTERN\_KEY\_COMPARE** which orders in descending order of specificity.
+>    2. Return the result of **PACKAGE\_TARGET\_RESOLVE**(_packageURL_,
+>       _target_, **null**, _isImports_, _conditions_).
+> 2. Let _expansionKeys_ be the list of keys of _matchObj_ containing only a
+>    single _"\*"_, sorted by the sorting function **PATTERN\_KEY\_COMPARE**
+>    which orders in descending order of specificity.
 > 3. For each key _expansionKey_ in _expansionKeys_, do
->    1. Let _patternBase_ be **null**.
->    2. If _expansionKey_ contains _"\*"_, set _patternBase_ to the substring of
->       _expansionKey_ up to but excluding the first _"\*"_ character.
->    3. If _patternBase_ is not **null** and _matchKey_ starts with but is not
->       equal to _patternBase_, then
->       1. If _matchKey_ ends with _"/"_, throw an _Invalid Module Specifier_
->          error.
->       2. Let _patternTrailer_ be the substring of _expansionKey_ from the
+>    1. Let _patternBase_ be the substring of _expansionKey_ up to but excluding
+>       the first _"\*"_ character.
+>    2. If _matchKey_ starts with but is not equal to _patternBase_, then
+>       1. Let _patternTrailer_ be the substring of _expansionKey_ from the
 >          index after the first _"\*"_ character.
->       3. If _patternTrailer_ has zero length, or if _matchKey_ ends with
+>       2. If _patternTrailer_ has zero length, or if _matchKey_ ends with
 >          _patternTrailer_ and the length of _matchKey_ is greater than or
 >          equal to the length of _expansionKey_, then
 >          1. Let _target_ be the value of _matchObj_\[_expansionKey_].
->          2. Let _subpath_ be the substring of _matchKey_ starting at the
+>          2. Let _patternMatch_ be the substring of _matchKey_ starting at the
 >             index of the length of _patternBase_ up to the length of
 >             _matchKey_ minus the length of _patternTrailer_.
->          3. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->             _packageURL_, _target_, _subpath_, **true**, _isImports_,
->             _conditions_).
->          4. Return the object _{ resolved, exact: **true** }_.
->    4. Otherwise if _patternBase_ is **null** and _matchKey_ starts with
->       _expansionKey_, then
->       1. Let _target_ be the value of _matchObj_\[_expansionKey_].
->       2. Let _subpath_ be the substring of _matchKey_ starting at the
->          index of the length of _expansionKey_.
->       3. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->          _packageURL_, _target_, _subpath_, **false**, _isImports_,
->          _conditions_).
->       4. Return the object _{ resolved, exact: **false** }_.
-> 4. Return the object _{ resolved: **null**, exact: **true** }_.
+>          3. Return the result of **PACKAGE\_TARGET\_RESOLVE**(_packageURL_,
+>             _target_, _patternMatch_, _isImports_, _conditions_).
+> 4. Return **null**.
 
 **PATTERN\_KEY\_COMPARE**(_keyA_, _keyB_)
 
@@ -1430,37 +1448,32 @@ _isImports_, _conditions_)
 > 10. If the length of _keyB_ is greater than the length of _keyA_, return 1.
 > 11. Return 0.
 
-**PACKAGE\_TARGET\_RESOLVE**(_packageURL_, _target_, _subpath_, _pattern_,
-_internal_, _conditions_)
+**PACKAGE\_TARGET\_RESOLVE**(_packageURL_, _target_, _patternMatch_,
+_isImports_, _conditions_)
 
 > 1. If _target_ is a String, then
->    1. If _pattern_ is **false**, _subpath_ has non-zero length and _target_
->       does not end with _"/"_, throw an _Invalid Module Specifier_ error.
->    2. If _target_ does not start with _"./"_, then
->       1. If _internal_ is **true** and _target_ does not start with _"../"_ or
->          _"/"_ and is not a valid URL, then
->          1. If _pattern_ is **true**, then
->             1. Return **PACKAGE\_RESOLVE**(_target_ with every instance of
->                _"\*"_ replaced by _subpath_, _packageURL_ + _"/"_).
->          2. Return **PACKAGE\_RESOLVE**(_target_ + _subpath_,
->             _packageURL_ + _"/"_).
->       2. Otherwise, throw an _Invalid Package Target_ error.
->    3. If _target_ split on _"/"_ or _"\\"_ contains any _"."_, _".."_, or
->       _"node\_modules"_ segments after the first segment, case insensitive and
->       including percent encoded variants, throw an _Invalid Package Target_
->       error.
->    4. Let _resolvedTarget_ be the URL resolution of the concatenation of
+>    1. If _target_ does not start with _"./"_, then
+>       1. If _isImports_ is **false**, or if _target_ starts with _"../"_ or
+>          _"/"_, or if _target_ is a valid URL, then
+>          1. Throw an _Invalid Package Target_ error.
+>       2. If _patternMatch_ is a String, then
+>          1. Return **PACKAGE\_RESOLVE**(_target_ with every instance of _"\*"_
+>             replaced by _patternMatch_, _packageURL_ + _"/"_).
+>       3. Return **PACKAGE\_RESOLVE**(_target_, _packageURL_ + _"/"_).
+>    2. If _target_ split on _"/"_ or _"\\"_ contains any _""_, _"."_, _".."_,
+>       or _"node\_modules"_ segments after the first _"."_ segment, case
+>       insensitive and including percent encoded variants, throw an _Invalid
+>       Package Target_ error.
+>    3. Let _resolvedTarget_ be the URL resolution of the concatenation of
 >       _packageURL_ and _target_.
->    5. Assert: _resolvedTarget_ is contained in _packageURL_.
->    6. If _subpath_ split on _"/"_ or _"\\"_ contains any _"."_, _".."_, or
->       _"node\_modules"_ segments, case insensitive and including percent
->       encoded variants, throw an _Invalid Module Specifier_ error.
->    7. If _pattern_ is **true**, then
->       1. Return the URL resolution of _resolvedTarget_ with every instance of
->          _"\*"_ replaced with _subpath_.
->    8. Otherwise,
->       1. Return the URL resolution of the concatenation of _subpath_ and
->          _resolvedTarget_.
+>    4. Assert: _resolvedTarget_ is contained in _packageURL_.
+>    5. If _patternMatch_ is **null**, then
+>       1. Return _resolvedTarget_.
+>    6. If _patternMatch_ split on _"/"_ or _"\\"_ contains any _""_, _"."_,
+>       _".."_, or _"node\_modules"_ segments, case insensitive and including
+>       percent encoded variants, throw an _Invalid Module Specifier_ error.
+>    7. Return the URL resolution of _resolvedTarget_ with every instance of
+>       _"\*"_ replaced with _patternMatch_.
 > 2. Otherwise, if _target_ is a non-null Object, then
 >    1. If _exports_ contains any index property keys, as defined in ECMA-262
 >       [6.1.7 Array Index][], throw an _Invalid Package Configuration_ error.
@@ -1469,7 +1482,7 @@ _internal_, _conditions_)
 >          then
 >          1. Let _targetValue_ be the value of the _p_ property in _target_.
 >          2. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->             _packageURL_, _targetValue_, _subpath_, _pattern_, _internal_,
+>             _packageURL_, _targetValue_, _patternMatch_, _isImports_,
 >             _conditions_).
 >          3. If _resolved_ is equal to **undefined**, continue the loop.
 >          4. Return _resolved_.
@@ -1478,7 +1491,7 @@ _internal_, _conditions_)
 >    1. If \_target.length is zero, return **null**.
 >    2. For each item _targetValue_ in _target_, do
 >       1. Let _resolved_ be the result of **PACKAGE\_TARGET\_RESOLVE**(
->          _packageURL_, _targetValue_, _subpath_, _pattern_, _internal_,
+>          _packageURL_, _targetValue_, _patternMatch_, _isImports_,
 >          _conditions_), continuing the loop on any _Invalid Package Target_
 >          error.
 >       2. If _resolved_ is **undefined**, continue the loop.
@@ -1501,9 +1514,9 @@ _internal_, _conditions_)
 > 7. If _pjson?.type_ exists and is _"module"_, then
 >    1. If _url_ ends in _".js"_, then
 >       1. Return _"module"_.
->    2. Throw an _Unsupported File Extension_ error.
+>    2. Return **undefined**.
 > 8. Otherwise,
->    1. Throw an _Unsupported File Extension_ error.
+>    1. Return **undefined**.
 
 **LOOKUP\_PACKAGE\_SCOPE**(_url_)
 
@@ -1557,6 +1570,7 @@ success!
 <!-- Note: The cjs-module-lexer link should be kept in-sync with the deps version -->
 
 [6.1.7 Array Index]: https://tc39.es/ecma262/#integer-index
+[Addons]: addons.md
 [CommonJS]: modules.md
 [Conditional exports]: packages.md#conditional-exports
 [Core modules]: modules.md#core-modules
@@ -1568,7 +1582,7 @@ success!
 [Import Assertions proposal]: https://github.com/tc39/proposal-import-assertions
 [JSON modules]: #json-modules
 [Loaders API]: #loaders
-[Node.js Module Resolution Algorithm]: #resolver-algorithm-specification
+[Node.js Module Resolution And Loading Algorithm]: #resolution-algorithm-specification
 [Terminology]: #terminology
 [URL]: https://url.spec.whatwg.org/
 [`"exports"`]: packages.md#exports
@@ -1596,7 +1610,6 @@ success!
 [custom https loader]: #https-loader
 [load hook]: #loadurl-context-nextload
 [percent-encoded]: url.md#percent-encoding-in-urls
-[resolve hook]: #resolvespecifier-context-nextresolve
 [special scheme]: https://url.spec.whatwg.org/#special-scheme
 [status code]: process.md#exit-codes
 [the official standard format]: https://tc39.github.io/ecma262/#sec-modules

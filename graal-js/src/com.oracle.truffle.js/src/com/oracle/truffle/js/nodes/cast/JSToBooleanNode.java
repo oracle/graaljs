@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,12 +40,16 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -53,10 +57,12 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
  * @see JSToBooleanUnaryNode
  */
+@GenerateInline
 @GenerateUncached
 @ImportStatic({JSConfig.class})
 public abstract class JSToBooleanNode extends JavaScriptBaseNode {
@@ -64,10 +70,20 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
     protected JSToBooleanNode() {
     }
 
-    public abstract boolean executeBoolean(Object value);
+    public final boolean executeBoolean(Object value) {
+        return executeBoolean(null, value);
+    }
 
+    public abstract boolean executeBoolean(Node node, Object value);
+
+    @NeverDefault
     public static JSToBooleanNode create() {
         return JSToBooleanNodeGen.create();
+    }
+
+    @NeverDefault
+    public static JSToBooleanNode getUncached() {
+        return JSToBooleanNodeGen.getUncached();
     }
 
     @Specialization
@@ -110,8 +126,8 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
         return Strings.length(value) != 0;
     }
 
-    @Specialization(guards = "isJSObject(value)")
-    protected static boolean doObject(@SuppressWarnings("unused") Object value) {
+    @Specialization
+    protected static boolean doJSObject(@SuppressWarnings("unused") JSObject value) {
         return true;
     }
 
@@ -120,6 +136,7 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
         return true;
     }
 
+    @InliningCutoff
     @Specialization(guards = "isForeignObject(value)", limit = "InteropLibraryLimit")
     protected final boolean doForeignObject(Object value,
                     @CachedLibrary("value") InteropLibrary interop) {
@@ -133,9 +150,8 @@ public abstract class JSToBooleanNode extends JavaScriptBaseNode {
                 return !Strings.isEmpty(interop.asTruffleString(value));
             } else if (interop.isNumber(value)) {
                 if (interop.fitsInInt(value)) {
+                    // Works for any integer type, since value == 0 implies fitsInInt().
                     return doInt(interop.asInt(value));
-                } else if (interop.fitsInLong(value)) {
-                    return doLong(interop.asLong(value));
                 } else if (interop.fitsInDouble(value)) {
                     return doDouble(interop.asDouble(value));
                 } else {

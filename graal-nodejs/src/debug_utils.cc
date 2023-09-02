@@ -63,10 +63,10 @@ void EnabledDebugList::Parse(std::shared_ptr<KVStore> env_vars,
                              v8::Isolate* isolate) {
   std::string cats;
   credentials::SafeGetenv("NODE_DEBUG_NATIVE", &cats, env_vars, isolate);
-  Parse(cats, true);
+  Parse(cats);
 }
 
-void EnabledDebugList::Parse(const std::string& cats, bool enabled) {
+void EnabledDebugList::Parse(const std::string& cats) {
   std::string debug_categories = cats;
   while (!debug_categories.empty()) {
     std::string::size_type comma_pos = debug_categories.find(',');
@@ -76,7 +76,7 @@ void EnabledDebugList::Parse(const std::string& cats, bool enabled) {
   {                                                                            \
     static const std::string available_category = ToLower(#name);              \
     if (available_category.find(wanted) != std::string::npos)                  \
-      set_enabled(DebugCategory::name, enabled);                               \
+      set_enabled(DebugCategory::name);                                        \
   }
 
     DEBUG_CATEGORY_NAMES(V)
@@ -321,7 +321,7 @@ void CheckedUvLoopClose(uv_loop_t* loop) {
 
   fflush(stderr);
   // Finally, abort.
-  CHECK(0 && "uv_loop_close() while having open handles");
+  UNREACHABLE("uv_loop_close() while having open handles");
 }
 
 void PrintLibuvHandleInformation(uv_loop_t* loop, FILE* stream) {

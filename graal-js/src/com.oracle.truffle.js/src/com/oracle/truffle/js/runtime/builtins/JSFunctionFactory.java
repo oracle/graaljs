@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,8 +89,8 @@ public abstract class JSFunctionFactory {
         assert functionData != null;
         assert enclosingFrame != null; // use JSFrameUtil.NULL_MATERIALIZED_FRAME instead
         assert shape.getDynamicType() == JSFunction.INSTANCE;
-        JSFunctionObject obj = JSFunctionObject.create(shape, functionData, enclosingFrame, realm, classPrototype);
-        objectFactory.initProto(obj, prototype);
+        JSFunctionObject obj = JSFunctionObject.create(shape, prototype, functionData, enclosingFrame, realm, classPrototype);
+        objectFactory.initProto(obj, realm, prototype);
         initProperties(obj, functionData);
         if (context.getEcmaScriptVersion() < 6 && functionData.hasStrictFunctionProperties()) {
             initES5StrictProperties(obj, realm);
@@ -100,23 +100,25 @@ public abstract class JSFunctionFactory {
 
     protected abstract void initProperties(JSFunctionObject obj, JSFunctionData functionData);
 
-    public final JSFunctionObject createBound(JSFunctionData functionData, Object classPrototype, JSRealm realm, JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
+    public final JSFunctionObject createBound(JSFunctionData functionData, Object classPrototype, JSRealm realm, Object boundTargetFunction, Object boundThis, Object[] boundArguments) {
         Shape shape = objectFactory.getShape(realm);
         assert shape.getDynamicType() == JSFunction.INSTANCE;
         assert functionData.hasStrictFunctionProperties();
         if (context.getEcmaScriptVersion() < 6) {
             return createBoundES5(shape, functionData, classPrototype, realm, boundTargetFunction, boundThis, boundArguments);
         }
-        JSFunctionObject obj = JSFunctionObject.createBound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
-        objectFactory.initProto(obj, realm);
+        JSDynamicObject proto = objectFactory.getPrototype(realm);
+        JSFunctionObject obj = JSFunctionObject.createBound(shape, proto, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
+        objectFactory.initProto(obj, realm, proto);
         initProperties(obj, functionData);
         return obj;
     }
 
     private JSFunctionObject createBoundES5(Shape shape, JSFunctionData functionData, Object classPrototype, JSRealm realm,
-                    JSFunctionObject boundTargetFunction, Object boundThis, Object[] boundArguments) {
-        JSFunctionObject obj = JSFunctionObject.createBound(shape, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
-        objectFactory.initProto(obj, realm);
+                    Object boundTargetFunction, Object boundThis, Object[] boundArguments) {
+        JSDynamicObject proto = objectFactory.getPrototype(realm);
+        JSFunctionObject obj = JSFunctionObject.createBound(shape, proto, functionData, realm, classPrototype, boundTargetFunction, boundThis, boundArguments);
+        objectFactory.initProto(obj, realm, proto);
         initProperties(obj, functionData);
         initES5StrictProperties(obj, realm);
         return obj;
@@ -135,8 +137,9 @@ public abstract class JSFunctionFactory {
         Shape shape = objectFactory.getShape(realm);
         assert shape.getDynamicType() == JSFunction.INSTANCE;
         assert functionData.hasStrictFunctionProperties();
-        JSFunctionObject obj = JSFunctionObject.createWrapped(shape, functionData, realm, wrappedTargetFunction);
-        objectFactory.initProto(obj, realm);
+        JSDynamicObject proto = objectFactory.getPrototype(realm);
+        JSFunctionObject obj = JSFunctionObject.createWrapped(shape, proto, functionData, realm, wrappedTargetFunction);
+        objectFactory.initProto(obj, realm, proto);
         initProperties(obj, functionData);
         return obj;
     }
@@ -144,8 +147,6 @@ public abstract class JSFunctionFactory {
     protected abstract JSDynamicObject getPrototype(JSRealm realm);
 
     protected abstract Shape getShape(JSRealm realm, JSDynamicObject prototype);
-
-    protected abstract boolean isInObjectProto();
 
     private static final class Default extends JSFunctionFactory {
 
@@ -161,11 +162,6 @@ public abstract class JSFunctionFactory {
         @Override
         protected Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             return objectFactory.getShape(realm, prototype);
-        }
-
-        @Override
-        protected boolean isInObjectProto() {
-            return objectFactory.isInObjectProto();
         }
 
         @Override
@@ -190,11 +186,6 @@ public abstract class JSFunctionFactory {
         @Override
         protected Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             return objectFactory.getShape(realm, prototype);
-        }
-
-        @Override
-        protected boolean isInObjectProto() {
-            return objectFactory.isInObjectProto();
         }
 
         @Override

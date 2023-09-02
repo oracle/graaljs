@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,6 +53,7 @@ import java.util.Set;
 import java.util.TreeMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -142,7 +143,7 @@ public final class SparseArray extends DynamicArray {
 
     @TruffleBoundary
     @Override
-    public SparseArray setLengthImpl(JSDynamicObject object, long len, ProfileHolder profile) {
+    public SparseArray setLengthImpl(JSDynamicObject object, long len, Node node, SetLengthProfileAccess profile) {
         arraySetLength(object, len);
         arrayMap(object).tailMap(len).clear();
         return this;

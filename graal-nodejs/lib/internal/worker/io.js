@@ -27,7 +27,7 @@ const {
 const {
   handle_onclose: handleOnCloseSymbol,
   oninit: onInitSymbol,
-  no_message_symbol: noMessageSymbol
+  no_message_symbol: noMessageSymbol,
 } = internalBinding('symbols');
 const {
   MessagePort,
@@ -41,7 +41,7 @@ const {
   DOMException,
 } = internalBinding('messaging');
 const {
-  getEnvMessagePort
+  getEnvMessagePort,
 } = internalBinding('worker');
 
 const { Readable, Writable } = require('stream');
@@ -61,7 +61,7 @@ const {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_THIS,
     ERR_MISSING_ARGS,
-  }
+  },
 } = require('internal/errors');
 
 const kData = Symbol('kData');
@@ -89,7 +89,7 @@ const messageTypes = {
   ERROR_MESSAGE: 'errorMessage',
   STDIO_PAYLOAD: 'stdioPayload',
   STDIO_WANTS_MORE_DATA: 'stdioWantsMoreData',
-  LOAD_SCRIPT: 'loadScript'
+  LOAD_SCRIPT: 'loadScript',
 };
 
 // We have to mess with the MessagePort prototype a bit, so that a) we can make
@@ -242,7 +242,7 @@ ObjectDefineProperty(MessagePort.prototype, onInitSymbol, {
   __proto__: null,
   enumerable: true,
   writable: false,
-  value: oninit
+  value: oninit,
 });
 
 class MessagePortCloseEvent extends Event {
@@ -268,7 +268,7 @@ ObjectDefineProperty(MessagePort.prototype, handleOnCloseSymbol, {
   __proto__: null,
   enumerable: false,
   writable: false,
-  value: onclose
+  value: onclose,
 });
 
 MessagePort.prototype.close = function(cb) {
@@ -293,10 +293,10 @@ ObjectDefineProperty(MessagePort.prototype, inspect.custom, {
                           active: false,
                         } : {
                           active: true,
-                          refed: ref
+                          refed: ref,
                         },
                         this);
-  }
+  },
 });
 
 function setupPortReferencing(port, eventEmitter, eventName) {
@@ -362,7 +362,7 @@ class ReadableWorkerStdio extends Readable {
 
     this[kPort].postMessage({
       type: messageTypes.STDIO_WANTS_MORE_DATA,
-      stream: this[kName]
+      stream: this[kName],
     });
   }
 }
@@ -391,7 +391,7 @@ class WritableWorkerStdio extends Writable {
     this[kPort].postMessage({
       type: messageTypes.STDIO_PAYLOAD,
       stream: this[kName],
-      chunks: [ { chunk: null, encoding: '' } ]
+      chunks: [ { chunk: null, encoding: '' } ],
     });
     cb();
   }
@@ -411,7 +411,7 @@ function createWorkerStdio() {
   return {
     stdin: new ReadableWorkerStdio(port, 'stdin'),
     stdout: new WritableWorkerStdio(port, 'stdout'),
-    stderr: new WritableWorkerStdio(port, 'stderr')
+    stderr: new WritableWorkerStdio(port, 'stderr'),
   };
 }
 
@@ -430,6 +430,9 @@ function isBroadcastChannel(value) {
 }
 
 class BroadcastChannel extends EventTarget {
+  /**
+   * @param {string} name
+   */
   constructor(name) {
     if (arguments.length === 0)
       throw new ERR_MISSING_ARGS('name');
@@ -452,7 +455,7 @@ class BroadcastChannel extends EventTarget {
 
     const opts = {
       ...options,
-      depth: options.depth == null ? null : options.depth - 1
+      depth: options.depth == null ? null : options.depth - 1,
     };
 
     return `BroadcastChannel ${inspect({
@@ -461,12 +464,18 @@ class BroadcastChannel extends EventTarget {
     }, opts)}`;
   }
 
+  /**
+   * @type {string}
+   */
   get name() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
     return this[kName];
   }
 
+  /**
+   * @returns {void}
+   */
   close() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
@@ -480,6 +489,11 @@ class BroadcastChannel extends EventTarget {
     this[kHandle] = undefined;
   }
 
+  /**
+   *
+   * @param {any} message
+   * @returns {void}
+   */
   postMessage(message) {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
@@ -495,6 +509,9 @@ class BroadcastChannel extends EventTarget {
   // BroadcastChannel API definition. Typically we shouldn't extend Web
   // Platform APIs with Node.js specific methods but ref and unref
   // are a bit special.
+  /**
+   * @returns {BroadcastChannel}
+   */
   ref() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');
@@ -507,6 +524,9 @@ class BroadcastChannel extends EventTarget {
   // BroadcastChannel API definition. Typically we shouldn't extend Web
   // Platform APIs with Node.js specific methods but ref and unref
   // are a bit special.
+  /**
+   * @returns {BroadcastChannel}
+   */
   unref() {
     if (!isBroadcastChannel(this))
       throw new ERR_INVALID_THIS('BroadcastChannel');

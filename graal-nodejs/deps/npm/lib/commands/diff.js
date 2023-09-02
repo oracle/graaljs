@@ -2,7 +2,6 @@ const { resolve } = require('path')
 const semver = require('semver')
 const libnpmdiff = require('libnpmdiff')
 const npa = require('npm-package-arg')
-const Arborist = require('@npmcli/arborist')
 const pacote = require('pacote')
 const pickManifest = require('npm-pick-manifest')
 const log = require('../utils/log-shim')
@@ -32,6 +31,7 @@ class Diff extends BaseCommand {
     'include-workspace-root',
   ]
 
+  static workspaces = true
   static ignoreImplicitWorkspace = false
 
   async exec (args) {
@@ -67,8 +67,8 @@ class Diff extends BaseCommand {
     return this.npm.output(res)
   }
 
-  async execWorkspaces (args, filters) {
-    await this.setWorkspaces(filters)
+  async execWorkspaces (args) {
+    await this.setWorkspaces()
     for (const workspacePath of this.workspacePaths) {
       this.top = workspacePath
       this.prefix = workspacePath
@@ -145,6 +145,7 @@ class Diff extends BaseCommand {
     if (spec.registry) {
       let actualTree
       let node
+      const Arborist = require('@npmcli/arborist')
       try {
         const opts = {
           ...this.npm.flatOptions,
@@ -185,7 +186,7 @@ class Diff extends BaseCommand {
       // work from the top of the arborist tree to find the original semver
       // range declared in the package that depends on the package.
       let bSpec
-      if (spec.rawSpec) {
+      if (spec.rawSpec !== '*') {
         bSpec = spec.rawSpec
       } else {
         const bTargetVersion =
@@ -256,6 +257,7 @@ class Diff extends BaseCommand {
 
   async findVersionsByPackageName (specs) {
     let actualTree
+    const Arborist = require('@npmcli/arborist')
     try {
       const opts = {
         ...this.npm.flatOptions,
@@ -269,7 +271,7 @@ class Diff extends BaseCommand {
 
     return specs.map(i => {
       const spec = npa(i)
-      if (spec.rawSpec) {
+      if (spec.rawSpec !== '*') {
         return i
       }
 

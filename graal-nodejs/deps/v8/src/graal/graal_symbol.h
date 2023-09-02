@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ public:
     inline static GraalSymbol* Allocate(GraalIsolate* isolate, jobject java_symbol);
     inline static GraalSymbol* Allocate(GraalIsolate* isolate, jobject java_symbol, void* placement);
     static v8::Local<v8::Symbol> New(v8::Isolate* isolate, v8::Local<v8::String> name);
+    static v8::Local<v8::Private> NewPrivate(v8::Isolate* isolate, v8::Local<v8::String> name);
     static v8::Local<v8::Symbol> GetAsyncIterator(v8::Isolate* isolate);
     static v8::Local<v8::Symbol> GetHasInstance(v8::Isolate* isolate);
     static v8::Local<v8::Symbol> GetIsConcatSpreadable(v8::Isolate* isolate);
@@ -61,6 +62,8 @@ public:
     static v8::Local<v8::Symbol> GetToStringTag(v8::Isolate* isolate);
     static v8::Local<v8::Symbol> GetUnscopables(v8::Isolate* isolate);
     static v8::Local<v8::Symbol> For(v8::Isolate* isolate, v8::Local<v8::String> description);
+    static v8::Local<v8::Symbol> ForApi(v8::Isolate* isolate, v8::Local<v8::String> description);
+    static v8::Local<v8::Private> PrivateForApi(v8::Isolate* isolate, v8::Local<v8::String> description);
     v8::Local<v8::Value> Name() const;
     bool IsSymbol() const override;
     bool IsName() const override;

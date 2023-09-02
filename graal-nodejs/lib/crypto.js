@@ -31,7 +31,7 @@ const {
 
 const {
   assertCrypto,
-  deprecate
+  deprecate,
 } = require('internal/util');
 assertCrypto();
 
@@ -40,8 +40,6 @@ const {
 } = require('internal/errors').codes;
 const constants = internalBinding('constants').crypto;
 const { getOptionValue } = require('internal/options');
-const pendingDeprecation = getOptionValue('--pending-deprecation');
-const fipsForced = getOptionValue('--force-fips');
 const {
   getFipsCrypto,
   setFipsCrypto,
@@ -60,15 +58,15 @@ const {
 } = require('internal/crypto/random');
 const {
   pbkdf2,
-  pbkdf2Sync
+  pbkdf2Sync,
 } = require('internal/crypto/pbkdf2');
 const {
   scrypt,
-  scryptSync
+  scryptSync,
 } = require('internal/crypto/scrypt');
 const {
   hkdf,
-  hkdfSync
+  hkdfSync,
 } = require('internal/crypto/hkdf');
 const {
   generateKeyPair,
@@ -86,7 +84,7 @@ const {
   DiffieHellman,
   DiffieHellmanGroup,
   ECDH,
-  diffieHellman
+  diffieHellman,
 } = require('internal/crypto/diffiehellman');
 const {
   Cipher,
@@ -103,14 +101,14 @@ const {
   Sign,
   signOneShot,
   Verify,
-  verifyOneShot
+  verifyOneShot,
 } = require('internal/crypto/sig');
 const {
   Hash,
-  Hmac
+  Hmac,
 } = require('internal/crypto/hash');
 const {
-  X509Certificate
+  X509Certificate,
 } = require('internal/crypto/x509');
 const {
   getCiphers,
@@ -119,10 +117,15 @@ const {
   getHashes,
   setDefaultEncoding,
   setEngine,
-  lazyRequire,
   secureHeapUsed,
 } = require('internal/crypto/util');
 const Certificate = require('internal/crypto/certificate');
+
+let webcrypto;
+function lazyWebCrypto() {
+  webcrypto ??= require('internal/crypto/webcrypto');
+  return webcrypto;
+}
 
 // These helper functions are needed because the constructors can
 // use new, in which case V8 cannot inline the recursive constructor call
@@ -216,8 +219,8 @@ module.exports = {
   sign: signOneShot,
   setEngine,
   timingSafeEqual,
-  getFips: fipsForced ? getFipsForced : getFipsCrypto,
-  setFips: fipsForced ? setFipsForced : setFipsCrypto,
+  getFips,
+  setFips,
   verify: verifyOneShot,
 
   // Classes
@@ -238,38 +241,110 @@ module.exports = {
   secureHeapUsed,
 };
 
-function setFipsForced(val) {
-  if (val) return;
-  throw new ERR_CRYPTO_FIPS_FORCED();
+function getFips() {
+  return getOptionValue('--force-fips') ? 1 : getFipsCrypto();
 }
 
-function getFipsForced() {
-  return 1;
+function setFips(val) {
+  if (getOptionValue('--force-fips')) {
+    if (val) return;
+    throw new ERR_CRYPTO_FIPS_FORCED();
+  } else {
+    setFipsCrypto(val);
+  }
+}
+
+function getRandomValues(array) {
+  return lazyWebCrypto().crypto.getRandomValues(array);
 }
 
 ObjectDefineProperty(constants, 'defaultCipherList', {
   __proto__: null,
-  value: getOptionValue('--tls-cipher-list')
+  get() {
+    const value = getOptionValue('--tls-cipher-list');
+    ObjectDefineProperty(this, 'defaultCipherList', {
+      __proto__: null,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+      value,
+    });
+    return value;
+  },
+  set(val) {
+    ObjectDefineProperty(this, 'defaultCipherList', {
+      __proto__: null,
+      writable: true,
+      configurable: true,
+      enumerable: true,
+      value: val,
+    });
+  },
+  configurable: true,
+  enumerable: true,
 });
+
+function getRandomBytesAlias(key) {
+  return {
+    enumerable: false,
+    configurable: true,
+    get() {
+      let value;
+      if (getOptionValue('--pending-deprecation')) {
+        value = deprecate(
+          randomBytes,
+          `crypto.${key} is deprecated.`,
+          'DEP0115');
+      } else {
+        value = randomBytes;
+      }
+      ObjectDefineProperty(
+        this,
+        key,
+        {
+          __proto__: null,
+          enumerable: false,
+          configurable: true,
+          writable: true,
+          value: value,
+        },
+      );
+      return value;
+    },
+    set(value) {
+      ObjectDefineProperty(
+        this,
+        key,
+        {
+          __proto__: null,
+          enumerable: true,
+          configurable: true,
+          writable: true,
+          value,
+        },
+      );
+    },
+  };
+}
 
 ObjectDefineProperties(module.exports, {
   createCipher: {
     __proto__: null,
     enumerable: false,
     value: deprecate(createCipher,
-                     'crypto.createCipher is deprecated.', 'DEP0106')
+                     'crypto.createCipher is deprecated.', 'DEP0106'),
   },
   createDecipher: {
     __proto__: null,
     enumerable: false,
     value: deprecate(createDecipher,
-                     'crypto.createDecipher is deprecated.', 'DEP0106')
+                     'crypto.createDecipher is deprecated.', 'DEP0106'),
   },
   // crypto.fips is deprecated. DEP0093. Use crypto.getFips()/crypto.setFips()
   fips: {
     __proto__: null,
-    get: fipsForced ? getFipsForced : getFipsCrypto,
-    set: fipsForced ? setFipsForced : setFipsCrypto
+    get: getFips,
+    set: setFips,
   },
   DEFAULT_ENCODING: {
     __proto__: null,
@@ -278,50 +353,42 @@ ObjectDefineProperties(module.exports, {
     get: deprecate(getDefaultEncoding,
                    'crypto.DEFAULT_ENCODING is deprecated.', 'DEP0091'),
     set: deprecate(setDefaultEncoding,
-                   'crypto.DEFAULT_ENCODING is deprecated.', 'DEP0091')
+                   'crypto.DEFAULT_ENCODING is deprecated.', 'DEP0091'),
   },
   constants: {
     __proto__: null,
     configurable: false,
     enumerable: true,
-    value: constants
+    value: constants,
   },
 
   webcrypto: {
     __proto__: null,
     configurable: false,
     enumerable: true,
-    get() { return lazyRequire('internal/crypto/webcrypto').crypto; }
+    get() { return lazyWebCrypto().crypto; },
+    set: undefined,
+  },
+
+  subtle: {
+    __proto__: null,
+    configurable: false,
+    enumerable: true,
+    get() { return lazyWebCrypto().crypto.subtle; },
+    set: undefined,
+  },
+
+  getRandomValues: {
+    __proto__: null,
+    configurable: false,
+    enumerable: true,
+    get: () => getRandomValues,
+    set: undefined,
   },
 
   // Aliases for randomBytes are deprecated.
   // The ecosystem needs those to exist for backwards compatibility.
-  prng: {
-    __proto__: null,
-    enumerable: false,
-    configurable: true,
-    writable: true,
-    value: pendingDeprecation ?
-      deprecate(randomBytes, 'crypto.prng is deprecated.', 'DEP0115') :
-      randomBytes
-  },
-  pseudoRandomBytes: {
-    __proto__: null,
-    enumerable: false,
-    configurable: true,
-    writable: true,
-    value: pendingDeprecation ?
-      deprecate(randomBytes,
-                'crypto.pseudoRandomBytes is deprecated.', 'DEP0115') :
-      randomBytes
-  },
-  rng: {
-    __proto__: null,
-    enumerable: false,
-    configurable: true,
-    writable: true,
-    value: pendingDeprecation ?
-      deprecate(randomBytes, 'crypto.rng is deprecated.', 'DEP0115') :
-      randomBytes
-  }
+  prng: getRandomBytesAlias('prng'),
+  pseudoRandomBytes: getRandomBytesAlias('pseudoRandomBytes'),
+  rng: getRandomBytesAlias('rng'),
 });

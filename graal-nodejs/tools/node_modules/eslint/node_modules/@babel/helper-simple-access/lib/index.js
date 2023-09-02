@@ -4,9 +4,7 @@ Object.defineProperty(exports, "__esModule", {
   value: true
 });
 exports.default = simplifyAccess;
-
 var _t = require("@babel/types");
-
 const {
   LOGICAL_OPERATORS,
   assignmentExpression,
@@ -18,38 +16,49 @@ const {
   sequenceExpression,
   unaryExpression
 } = _t;
-
-function simplifyAccess(path, bindingNames, includeUpdateExpression = true) {
-  path.traverse(simpleAssignmentVisitor, {
-    scope: path.scope,
-    bindingNames,
-    seen: new WeakSet(),
-    includeUpdateExpression
-  });
-}
-
 const simpleAssignmentVisitor = {
-  UpdateExpression: {
+  AssignmentExpression: {
     exit(path) {
       const {
         scope,
-        bindingNames,
-        includeUpdateExpression
+        seen,
+        bindingNames
       } = this;
-
-      if (!includeUpdateExpression) {
+      if (path.node.operator === "=") return;
+      if (seen.has(path.node)) return;
+      seen.add(path.node);
+      const left = path.get("left");
+      if (!left.isIdentifier()) return;
+      const localName = left.node.name;
+      if (!bindingNames.has(localName)) return;
+      if (scope.getBinding(localName) !== path.scope.getBinding(localName)) {
         return;
       }
-
+      const operator = path.node.operator.slice(0, -1);
+      if (LOGICAL_OPERATORS.includes(operator)) {
+        path.replaceWith(logicalExpression(operator, path.node.left, assignmentExpression("=", cloneNode(path.node.left), path.node.right)));
+      } else {
+        path.node.right = binaryExpression(operator, cloneNode(path.node.left), path.node.right);
+        path.node.operator = "=";
+      }
+    }
+  }
+};
+{
+  simpleAssignmentVisitor.UpdateExpression = {
+    exit(path) {
+      if (!this.includeUpdateExpression) return;
+      const {
+        scope,
+        bindingNames
+      } = this;
       const arg = path.get("argument");
       if (!arg.isIdentifier()) return;
       const localName = arg.node.name;
       if (!bindingNames.has(localName)) return;
-
       if (scope.getBinding(localName) !== path.scope.getBinding(localName)) {
         return;
       }
-
       if (path.parentPath.isExpressionStatement() && !path.isCompletionRecord()) {
         const operator = path.node.operator == "++" ? "+=" : "-=";
         path.replaceWith(assignmentExpression(operator, arg.node, numericLiteral(1)));
@@ -65,36 +74,18 @@ const simpleAssignmentVisitor = {
         path.replaceWith(sequenceExpression([assignmentExpression("=", identifier(varName), unaryExpression("+", arg.node)), assignmentExpression("=", cloneNode(arg.node), binary), identifier(varName)]));
       }
     }
-
-  },
-  AssignmentExpression: {
-    exit(path) {
-      const {
-        scope,
-        seen,
-        bindingNames
-      } = this;
-      if (path.node.operator === "=") return;
-      if (seen.has(path.node)) return;
-      seen.add(path.node);
-      const left = path.get("left");
-      if (!left.isIdentifier()) return;
-      const localName = left.node.name;
-      if (!bindingNames.has(localName)) return;
-
-      if (scope.getBinding(localName) !== path.scope.getBinding(localName)) {
-        return;
-      }
-
-      const operator = path.node.operator.slice(0, -1);
-
-      if (LOGICAL_OPERATORS.includes(operator)) {
-        path.replaceWith(logicalExpression(operator, path.node.left, assignmentExpression("=", cloneNode(path.node.left), path.node.right)));
-      } else {
-        path.node.right = binaryExpression(operator, cloneNode(path.node.left), path.node.right);
-        path.node.operator = "=";
-      }
-    }
-
+  };
+}
+function simplifyAccess(path, bindingNames) {
+  {
+    var _arguments$;
+    path.traverse(simpleAssignmentVisitor, {
+      scope: path.scope,
+      bindingNames,
+      seen: new WeakSet(),
+      includeUpdateExpression: (_arguments$ = arguments[2]) != null ? _arguments$ : true
+    });
   }
-};
+}
+
+//# sourceMappingURL=index.js.map

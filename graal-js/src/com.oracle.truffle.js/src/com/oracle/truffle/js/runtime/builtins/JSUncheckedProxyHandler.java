@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,9 +55,10 @@ public class JSUncheckedProxyHandler extends JSNonProxy implements PrototypeSupp
 
     public static JSDynamicObject create(JSContext context, JSRealm realm) {
         JSObjectFactory factory = context.getUncheckedProxyHandlerFactory();
-        JSUncheckedProxyHandlerObject obj = new JSUncheckedProxyHandlerObject(factory.getShape(realm));
-        factory.initProto(obj, realm);
-        return context.trackAllocation(obj);
+        var proto = factory.getPrototype(realm);
+        var shape = factory.getShape(realm, proto);
+        var newObj = factory.initProto(new JSUncheckedProxyHandlerObject(shape, proto), realm, proto);
+        return factory.trackAllocation(newObj);
     }
 
     @Override

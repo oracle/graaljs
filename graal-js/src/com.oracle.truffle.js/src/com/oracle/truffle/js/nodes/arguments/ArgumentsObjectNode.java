@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.arguments;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -93,6 +94,7 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         return ArgumentsObjectNodeGen.create(context, strict, leadingArgCount);
     }
 
+    @Idempotent
     protected final boolean isStrict() {
         return strict;
     }
@@ -104,7 +106,7 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         assert realm == JSFunction.getRealm(getFunctionObject(frame));
 
         JSObjectFactory factory = context.getStrictArgumentsFactory();
-        JSArgumentsObject argumentsObject = JSArgumentsArray.createUnmapped(factory.getShape(realm), arguments);
+        JSArgumentsObject argumentsObject = JSArgumentsArray.createUnmapped(factory.getShape(realm), factory.getPrototype(realm), arguments);
         factory.initProto(argumentsObject, realm);
 
         Properties.putWithFlags(putLengthNode, argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());
@@ -129,7 +131,7 @@ public abstract class ArgumentsObjectNode extends JavaScriptNode {
         assert realm == JSFunction.getRealm(callee);
 
         JSObjectFactory factory = context.getNonStrictArgumentsFactory();
-        JSArgumentsObject argumentsObject = JSArgumentsArray.createMapped(factory.getShape(realm), arguments);
+        JSArgumentsObject argumentsObject = JSArgumentsArray.createMapped(factory.getShape(realm), factory.getPrototype(realm), arguments);
         factory.initProto(argumentsObject, realm);
 
         Properties.putWithFlags(putLengthNode, argumentsObject, JSArgumentsArray.LENGTH, arguments.length, JSAttributes.getDefaultNotEnumerable());

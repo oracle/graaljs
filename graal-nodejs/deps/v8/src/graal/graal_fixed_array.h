@@ -42,10 +42,11 @@
 #ifndef GRAAL_FIXED_ARRAY_H_
 #define GRAAL_FIXED_ARRAY_H_
 
+#include "graal_data.h"
 #include "graal_handle_content.h"
 #include "graal_isolate.h"
 
-class GraalFixedArray : public GraalHandleContent {
+class GraalFixedArray : public GraalData {
 public:
     inline static GraalFixedArray* Allocate(GraalIsolate* isolate, jobject java_fixed_array);
     int Length() const;

@@ -2,10 +2,8 @@
 
 const {
   ArrayBufferPrototypeSlice,
-  FunctionPrototypeCall,
   MathCeil,
   ObjectDefineProperty,
-  Promise,
   SafeSet,
 } = primordials;
 
@@ -29,15 +27,13 @@ const {
     ERR_CRYPTO_INVALID_KEY_OBJECT_TYPE,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
-  }
+  },
 } = require('internal/errors');
 
 const {
-  validateCallback,
   validateInt32,
   validateObject,
   validateString,
-  validateUint32,
 } = require('internal/validators');
 
 const {
@@ -51,12 +47,12 @@ const {
 
 const {
   KeyObject,
-  isCryptoKey,
 } = require('internal/crypto/keys');
 
 const {
   getArrayBufferOrView,
   getDefaultEncoding,
+  jobPromise,
   toBuf,
   kHandle,
   kKeyObject,
@@ -67,7 +63,7 @@ const {
     POINT_CONVERSION_COMPRESSED,
     POINT_CONVERSION_HYBRID,
     POINT_CONVERSION_UNCOMPRESSED,
-  }
+  },
 } = internalBinding('constants');
 
 const DH_GENERATOR = 2;
@@ -83,7 +79,7 @@ function DiffieHellman(sizeOrKey, keyEncoding, generator, genEncoding) {
     throw new ERR_INVALID_ARG_TYPE(
       'sizeOrKey',
       ['number', 'string', 'ArrayBuffer', 'Buffer', 'TypedArray', 'DataView'],
-      sizeOrKey
+      sizeOrKey,
     );
   }
 
@@ -118,7 +114,7 @@ function DiffieHellman(sizeOrKey, keyEncoding, generator, genEncoding) {
     throw new ERR_INVALID_ARG_TYPE(
       'generator',
       ['number', 'string', 'ArrayBuffer', 'Buffer', 'TypedArray', 'DataView'],
-      generator
+      generator,
     );
   }
 
@@ -128,7 +124,7 @@ function DiffieHellman(sizeOrKey, keyEncoding, generator, genEncoding) {
     __proto__: null,
     enumerable: true,
     value: this[kHandle].verifyError,
-    writable: false
+    writable: false,
   });
 }
 
@@ -141,7 +137,7 @@ function DiffieHellmanGroup(name) {
     __proto__: null,
     enumerable: true,
     value: this[kHandle].verifyError,
-    writable: false
+    writable: false,
   });
 }
 
@@ -317,30 +313,10 @@ function diffieHellman(options) {
   return statelessDH(privateKey[kHandle], publicKey[kHandle]);
 }
 
-// The deriveBitsECDH function is part of the Web Crypto API and serves both
+// The ecdhDeriveBits function is part of the Web Crypto API and serves both
 // deriveKeys and deriveBits functions.
-function deriveBitsECDH(name, publicKey, privateKey, callback) {
-  validateString(name, 'name');
-  validateObject(publicKey, 'publicKey');
-  validateObject(privateKey, 'privateKey');
-  validateCallback(callback);
-  const job = new ECDHBitsJob(kCryptoJobAsync, name, publicKey, privateKey);
-  job.ondone = (error, bits) => {
-    if (error) return FunctionPrototypeCall(callback, job, error);
-    FunctionPrototypeCall(callback, job, null, bits);
-  };
-  job.run();
-}
-
-async function asyncDeriveBitsECDH(algorithm, baseKey, length) {
+async function ecdhDeriveBits(algorithm, baseKey, length) {
   const { 'public': key } = algorithm;
-
-  // Null means that we're not asking for a specific number of bits, just
-  // give us everything that is generated.
-  if (length !== null)
-    validateUint32(length, 'length');
-  if (!isCryptoKey(key))
-    throw new ERR_INVALID_ARG_TYPE('algorithm.public', 'CryptoKey', key);
 
   if (key.type !== 'public') {
     throw lazyDOMException(
@@ -372,15 +348,11 @@ async function asyncDeriveBitsECDH(algorithm, baseKey, length) {
     throw lazyDOMException('Named curve mismatch', 'InvalidAccessError');
   }
 
-  const bits = await new Promise((resolve, reject) => {
-    deriveBitsECDH(
-      key.algorithm.name === 'ECDH' ? baseKey.algorithm.namedCurve : baseKey.algorithm.name,
-      key[kKeyObject][kHandle],
-      baseKey[kKeyObject][kHandle], (err, bits) => {
-        if (err) return reject(err);
-        resolve(bits);
-      });
-  });
+  const bits = await jobPromise(() => new ECDHBitsJob(
+    kCryptoJobAsync,
+    key.algorithm.name === 'ECDH' ? baseKey.algorithm.namedCurve : baseKey.algorithm.name,
+    key[kKeyObject][kHandle],
+    baseKey[kKeyObject][kHandle]));
 
   // If a length is not specified, return the full derived secret
   if (length === null)
@@ -407,6 +379,5 @@ module.exports = {
   DiffieHellmanGroup,
   ECDH,
   diffieHellman,
-  deriveBitsECDH,
-  asyncDeriveBitsECDH,
+  ecdhDeriveBits,
 };

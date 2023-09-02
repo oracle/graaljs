@@ -68,7 +68,7 @@ async function prepareKeys() {
             namedCurve
           },
           true,
-          ['deriveKey', 'deriveBits']),
+          []),
       ]);
       keys[namedCurve] = {
         privateKey,
@@ -128,7 +128,7 @@ async function prepareKeys() {
         { name: 'ECDH' },
         keys['P-384'].privateKey,
         ...otherArgs),
-      { code: 'ERR_INVALID_ARG_TYPE' });
+      { code: 'ERR_MISSING_OPTION' });
   }
 
   {
@@ -209,7 +209,7 @@ async function prepareKeys() {
         },
         keys['P-521'].publicKey,
         ...otherArgs),
-      { message: /baseKey must be a private key/ });
+      { name: 'InvalidAccessError' });
   }
 
   {
@@ -222,7 +222,7 @@ async function prepareKeys() {
         },
         keys['P-521'].publicKey,
         ...otherArgs),
-      { message: /algorithm\.public must be a public key/ });
+      { name: 'InvalidAccessError' });
   }
 
   {
@@ -242,6 +242,6 @@ async function prepareKeys() {
         },
         keys['P-521'].publicKey,
         ...otherArgs),
-      { message: /algorithm\.public must be a public key/ });
+      { name: 'InvalidAccessError' });
   }
 })().then(common.mustCall());

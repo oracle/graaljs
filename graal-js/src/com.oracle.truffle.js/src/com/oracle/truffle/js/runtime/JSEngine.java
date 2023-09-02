@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,12 +68,7 @@ public final class JSEngine {
     }
 
     private JSContext createContext(JavaScriptLanguage language, TruffleLanguage.Env env) {
-        JSContextOptions contextOptions = JSContextOptions.fromOptionValues(env.getOptions());
-        return JSContext.createContext(parser, contextOptions, language, env);
-    }
-
-    public JSContext createContext(JavaScriptLanguage language, JSContextOptions contextOptions, TruffleLanguage.Env env) {
-        return JSContext.createContext(parser, contextOptions, language, env);
+        return JSContext.createContext(parser, language, env);
     }
 
     public static JSContext createJSContext(JavaScriptLanguage language, TruffleLanguage.Env env) {

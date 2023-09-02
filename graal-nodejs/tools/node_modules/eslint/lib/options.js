@@ -67,7 +67,7 @@ const optionator = require("optionator");
 /**
  * Creates the CLI options for ESLint.
  * @param {boolean} usingFlatConfig Indicates if flat config is being used.
- * @returns {Object} The opinionator instance.
+ * @returns {Object} The optionator instance.
  */
 module.exports = function(usingFlatConfig) {
 
@@ -129,6 +129,16 @@ module.exports = function(usingFlatConfig) {
         };
     }
 
+    let ignorePathFlag;
+
+    if (!usingFlatConfig) {
+        ignorePathFlag = {
+            option: "ignore-path",
+            type: "path::String",
+            description: "Specify path of ignore file"
+        };
+    }
+
     return optionator({
         prepend: "eslint [options] file.js [file.js] [dir]",
         defaults: {
@@ -167,7 +177,7 @@ module.exports = function(usingFlatConfig) {
             },
             resolvePluginsFlag,
             {
-                heading: "Specifying rules and plugins"
+                heading: "Specify Rules and Plugins"
             },
             {
                 option: "plugin",
@@ -181,7 +191,7 @@ module.exports = function(usingFlatConfig) {
             },
             rulesDirFlag,
             {
-                heading: "Fixing problems"
+                heading: "Fix Problems"
             },
             {
                 option: "fix",
@@ -201,13 +211,9 @@ module.exports = function(usingFlatConfig) {
                 description: "Specify the types of fixes to apply (directive, problem, suggestion, layout)"
             },
             {
-                heading: "Ignoring files"
+                heading: "Ignore Files"
             },
-            {
-                option: "ignore-path",
-                type: "path::String",
-                description: "Specify path of ignore file"
-            },
+            ignorePathFlag,
             {
                 option: "ignore",
                 type: "Boolean",
@@ -223,7 +229,7 @@ module.exports = function(usingFlatConfig) {
                 }]
             },
             {
-                heading: "Using stdin"
+                heading: "Use stdin"
             },
             {
                 option: "stdin",
@@ -237,7 +243,7 @@ module.exports = function(usingFlatConfig) {
                 description: "Specify filename to process STDIN as"
             },
             {
-                heading: "Handling warnings"
+                heading: "Handle Warnings"
             },
             {
                 option: "quiet",

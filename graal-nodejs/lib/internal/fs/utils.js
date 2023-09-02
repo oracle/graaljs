@@ -10,8 +10,8 @@ const {
   FunctionPrototypeCall,
   Number,
   NumberIsFinite,
-  NumberIsInteger,
   MathMin,
+  MathRound,
   ObjectIs,
   ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
@@ -32,16 +32,16 @@ const {
     ERR_INCOMPATIBLE_OPTION_PAIR,
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
-    ERR_OUT_OF_RANGE
+    ERR_OUT_OF_RANGE,
   },
   hideStackFrames,
-  uvException
+  uvException,
 } = require('internal/errors');
 const {
   isArrayBufferView,
-  isUint8Array,
+  isBigInt64Array,
   isDate,
-  isBigUint64Array
+  isUint8Array,
 } = require('internal/util/types');
 const {
   kEmptyObject,
@@ -96,13 +96,13 @@ const {
     UV_DIRENT_FIFO,
     UV_DIRENT_SOCKET,
     UV_DIRENT_CHAR,
-    UV_DIRENT_BLOCK
+    UV_DIRENT_BLOCK,
   },
   os: {
     errno: {
-      EISDIR
-    }
-  }
+      EISDIR,
+    },
+  },
 } = internalBinding('constants');
 
 // The access modes can be any of F_OK, R_OK, W_OK or X_OK. Some might not be
@@ -119,7 +119,7 @@ const kMinimumCopyMode = MathMin(
   kDefaultCopyMode,
   COPYFILE_EXCL,
   COPYFILE_FICLONE,
-  COPYFILE_FICLONE_FORCE
+  COPYFILE_FICLONE_FORCE,
 );
 const kMaximumCopyMode = COPYFILE_EXCL |
                          COPYFILE_FICLONE |
@@ -160,8 +160,9 @@ function assertEncoding(encoding) {
 }
 
 class Dirent {
-  constructor(name, type) {
+  constructor(name, type, path) {
     this.name = name;
+    this.path = path;
     this[kType] = type;
   }
 
@@ -195,8 +196,8 @@ class Dirent {
 }
 
 class DirentFromStats extends Dirent {
-  constructor(name, stats) {
-    super(name, null);
+  constructor(name, stats, path) {
+    super(name, null, path);
     this[kStats] = stats;
   }
 }
@@ -231,7 +232,7 @@ function join(path, name) {
   }
 
   if (typeof path === 'string' && typeof name === 'string') {
-    return pathModule.join(path, name);
+    return pathModule.basename(path) === name ? path : pathModule.join(path, name);
   }
 
   if (isUint8Array(path) && isUint8Array(name)) {
@@ -266,13 +267,13 @@ function getDirents(path, { 0: names, 1: types }, callback) {
             callback(err);
             return;
           }
-          names[idx] = new DirentFromStats(name, stats);
+          names[idx] = new DirentFromStats(name, stats, path);
           if (--toFinish === 0) {
             callback(null, names);
           }
         });
       } else {
-        names[i] = new Dirent(names[i], types[i]);
+        names[i] = new Dirent(names[i], types[i], path);
       }
     }
     if (toFinish === 0) {
@@ -302,16 +303,17 @@ function getDirent(path, name, type, callback) {
           callback(err);
           return;
         }
-        callback(null, new DirentFromStats(name, stats));
+        callback(null, new DirentFromStats(name, stats, filepath));
       });
     } else {
-      callback(null, new Dirent(name, type));
+      callback(null, new Dirent(name, type, path));
     }
   } else if (type === UV_DIRENT_UNKNOWN) {
-    const stats = lazyLoadFs().lstatSync(join(path, name));
-    return new DirentFromStats(name, stats);
+    const filepath = join(path, name);
+    const stats = lazyLoadFs().lstatSync(filepath);
+    return new DirentFromStats(name, stats, path);
   } else {
-    return new Dirent(name, type);
+    return new Dirent(name, type, path);
   }
 }
 
@@ -334,6 +336,7 @@ function getOptions(options, defaultOptions = kEmptyObject) {
   if (options.signal !== undefined) {
     validateAbortSignal(options.signal, 'options.signal');
   }
+
   return options;
 }
 
@@ -371,7 +374,7 @@ const nullCheck = hideStackFrames((path, propName, throwError = true) => {
   const err = new ERR_INVALID_ARG_VALUE(
     propName,
     path,
-    'must be a string or Uint8Array without null bytes'
+    'must be a string or Uint8Array without null bytes',
   );
   if (throwError) {
     throw err;
@@ -454,14 +457,16 @@ function nsFromTimeSpecBigInt(sec, nsec) {
   return sec * kNsPerSecBigInt + nsec;
 }
 
-// The Date constructor performs Math.floor() to the timestamp.
-// https://www.ecma-international.org/ecma-262/#sec-timeclip
+// The Date constructor performs Math.floor() on the absolute value
+// of the timestamp: https://tc39.es/ecma262/#sec-timeclip
 // Since there may be a precision loss when the timestamp is
 // converted to a floating point number, we manually round
 // the timestamp here before passing it to Date().
 // Refs: https://github.com/nodejs/node/pull/12607
+// Refs: https://github.com/nodejs/node/pull/43714
 function dateFromMs(ms) {
-  return new Date(Number(ms) + 0.5);
+  // Coercing to number, ms can be bigint
+  return new Date(MathRound(Number(ms)));
 }
 
 function BigIntStats(dev, mode, nlink, uid, gid, rdev, blksize,
@@ -526,12 +531,12 @@ Stats.prototype._checkModeProperty = function(property) {
 };
 
 /**
- * @param {Float64Array | BigUint64Array} stats
+ * @param {Float64Array | BigInt64Array} stats
  * @param {number} offset
  * @returns {BigIntStats | Stats}
  */
 function getStatsFromBinding(stats, offset = 0) {
-  if (isBigUint64Array(stats)) {
+  if (isBigInt64Array(stats)) {
     return new BigIntStats(
       stats[0 + offset], stats[1 + offset], stats[2 + offset],
       stats[3 + offset], stats[4 + offset], stats[5 + offset],
@@ -540,7 +545,7 @@ function getStatsFromBinding(stats, offset = 0) {
       nsFromTimeSpecBigInt(stats[10 + offset], stats[11 + offset]),
       nsFromTimeSpecBigInt(stats[12 + offset], stats[13 + offset]),
       nsFromTimeSpecBigInt(stats[14 + offset], stats[15 + offset]),
-      nsFromTimeSpecBigInt(stats[16 + offset], stats[17 + offset])
+      nsFromTimeSpecBigInt(stats[16 + offset], stats[17 + offset]),
     );
   }
   return new Stats(
@@ -551,7 +556,25 @@ function getStatsFromBinding(stats, offset = 0) {
     msFromTimeSpec(stats[10 + offset], stats[11 + offset]),
     msFromTimeSpec(stats[12 + offset], stats[13 + offset]),
     msFromTimeSpec(stats[14 + offset], stats[15 + offset]),
-    msFromTimeSpec(stats[16 + offset], stats[17 + offset])
+    msFromTimeSpec(stats[16 + offset], stats[17 + offset]),
+  );
+}
+
+class StatFs {
+  constructor(type, bsize, blocks, bfree, bavail, files, ffree) {
+    this.type = type;
+    this.bsize = bsize;
+    this.blocks = blocks;
+    this.bfree = bfree;
+    this.bavail = bavail;
+    this.files = files;
+    this.ffree = ffree;
+  }
+}
+
+function getStatFsFromBinding(stats) {
+  return new StatFs(
+    stats[0], stats[1], stats[2], stats[3], stats[4], stats[5], stats[6],
   );
 }
 
@@ -647,7 +670,7 @@ const validateOffsetLengthRead = hideStackFrames(
       throw new ERR_OUT_OF_RANGE('length',
                                  `<= ${bufferLength - offset}`, length);
     }
-  }
+  },
 );
 
 const validateOffsetLengthWrite = hideStackFrames(
@@ -665,7 +688,7 @@ const validateOffsetLengthWrite = hideStackFrames(
     }
 
     validateInt32(length, 'length', 0);
-  }
+  },
 );
 
 const validatePath = hideStackFrames((path, propName = 'path') => {
@@ -734,7 +757,7 @@ const defaultRmOptions = {
   recursive: false,
   force: false,
   retryDelay: 100,
-  maxRetries: 0
+  maxRetries: 0,
 };
 
 const defaultRmdirOptions = {
@@ -754,6 +777,7 @@ const validateCpOptions = hideStackFrames((options) => {
   validateBoolean(options.preserveTimestamps, 'options.preserveTimestamps');
   validateBoolean(options.recursive, 'options.recursive');
   validateBoolean(options.verbatimSymlinks, 'options.verbatimSymlinks');
+  options.mode = getValidMode(options.mode, 'copyFile');
   if (options.dereference === true && options.verbatimSymlinks === true) {
     throw new ERR_INCOMPATIBLE_OPTION_PAIR('dereference', 'verbatimSymlinks');
   }
@@ -767,7 +791,7 @@ const validateRmOptions = hideStackFrames((path, options, expectDir, cb) => {
   options = validateRmdirOptions(options, defaultRmOptions);
   validateBoolean(options.force, 'options.force');
 
-  lazyLoadFs().stat(path, (err, stats) => {
+  lazyLoadFs().lstat(path, (err, stats) => {
     if (err) {
       if (options.force && err.code === 'ENOENT') {
         return cb(null, options);
@@ -785,7 +809,7 @@ const validateRmOptions = hideStackFrames((path, options, expectDir, cb) => {
         message: 'is a directory',
         path,
         syscall: 'rm',
-        errno: EISDIR
+        errno: EISDIR,
       }));
     }
     return cb(null, options);
@@ -798,7 +822,7 @@ const validateRmOptionsSync = hideStackFrames((path, options, expectDir) => {
 
   if (!options.force || expectDir || !options.recursive) {
     const isDirectory = lazyLoadFs()
-      .statSync(path, { throwIfNoEntry: !options.force })?.isDirectory();
+      .lstatSync(path, { throwIfNoEntry: !options.force })?.isDirectory();
 
     if (expectDir && !isDirectory) {
       return false;
@@ -810,7 +834,7 @@ const validateRmOptionsSync = hideStackFrames((path, options, expectDir) => {
         message: 'is a directory',
         path,
         syscall: 'rm',
-        errno: EISDIR
+        errno: EISDIR,
       });
     }
   }
@@ -825,7 +849,7 @@ function emitRecursiveRmdirWarning() {
       'In future versions of Node.js, fs.rmdir(path, { recursive: true }) ' +
       'will be removed. Use fs.rm(path, { recursive: true }) instead',
       'DeprecationWarning',
-      'DEP0147'
+      'DEP0147',
     );
     recursiveRmdirWarned = true;
   }
@@ -860,14 +884,8 @@ const getValidMode = hideStackFrames((mode, type) => {
   if (mode == null) {
     return def;
   }
-  if (NumberIsInteger(mode) && mode >= min && mode <= max) {
-    return mode;
-  }
-  if (typeof mode !== 'number') {
-    throw new ERR_INVALID_ARG_TYPE('mode', 'integer', mode);
-  }
-  throw new ERR_OUT_OF_RANGE(
-    'mode', `an integer >= ${min} && <= ${max}`, mode);
+  validateInteger(mode, 'mode', min, max);
+  return mode;
 });
 
 const validateStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
@@ -887,7 +905,7 @@ const validateStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
   throw new ERR_INVALID_ARG_TYPE(
     name,
     ['string', 'Buffer', 'TypedArray', 'DataView'],
-    buffer
+    buffer,
   );
 });
 
@@ -896,7 +914,7 @@ const validatePrimitiveStringAfterArrayBufferView = hideStackFrames((buffer, nam
     throw new ERR_INVALID_ARG_TYPE(
       name,
       ['string', 'Buffer', 'TypedArray', 'DataView'],
-      buffer
+      buffer,
     );
   }
 });
@@ -938,6 +956,7 @@ module.exports = {
   nullCheck,
   preprocessSymlinkDestination,
   realpathCacheKey: Symbol('realpathCacheKey'),
+  getStatFsFromBinding,
   getStatsFromBinding,
   stringToFlags,
   stringToSymlinkType,
@@ -954,5 +973,5 @@ module.exports = {
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
   validatePrimitiveStringAfterArrayBufferView,
-  warnOnNonPortableTemplate
+  warnOnNonPortableTemplate,
 };
