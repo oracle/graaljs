@@ -225,6 +225,7 @@ def _js_cmd_line(args, main_class, default_cp=None, append_default_args=True):
 
 def graaljs_cmd_line(args, append_default_args=True):
     default_cp = mx.classpath(['GRAALJS_LAUNCHER', 'GRAALJS']
+            + mx_truffle.resolve_truffle_dist_names()
             + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
             + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
     return _js_cmd_line(args, main_class=mx.distribution('GRAALJS_LAUNCHER').mainClass, default_cp=[default_cp], append_default_args=append_default_args)
