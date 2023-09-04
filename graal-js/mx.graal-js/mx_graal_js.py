@@ -56,10 +56,9 @@ def get_jdk(forBuild=False):
     # GraalVMJDKConfig (`tag='graalvm'`) is not available until all the components are built.
     # GraalJVMCIJDKConfig (`tag='jvmci'`) is not available until all required jars are built.
     if not forBuild:
-        jdk = mx.get_jdk(tag='graalvm')
-        if exists(jdk.home):
-            return jdk
-        elif mx.suite('compiler', fatalIfMissing=False):
+        if mx.suite('vm', fatalIfMissing=False):
+            return mx.get_jdk(tag='graalvm')
+        if mx.suite('compiler', fatalIfMissing=False):
             return mx.get_jdk(tag='jvmci')
     return mx.get_jdk()
 
