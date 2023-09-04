@@ -251,19 +251,22 @@ def _js_cmd_line(args, main_class, runtime_jvm_args=None, append_default_args=Tr
         _vm_args = _append_default_js_vm_args(_vm_args)
     return _vm_args + [main_class] + _js_args
 
-def graaljs_cmd_line(args, append_default_args=True):
+def graaljs_cmd_line(args, append_default_args=True, jdk=None):
+    if jdk is None:
+        jdk = get_jdk()
     runtime_jvm_args = mx.get_runtime_jvm_args(['GRAALJS_LAUNCHER', 'GRAALJS']
             + mx_truffle.resolve_truffle_dist_names()
             + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
             + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []),
-            jdk=get_jdk())
+            jdk=jdk)
     main_dist = mx.distribution('GRAALJS_LAUNCHER')
     main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_dist.mainClass if main_dist.use_module_path() else main_dist.mainClass
     return _js_cmd_line(args, main_class=main_class_arg, runtime_jvm_args=runtime_jvm_args, append_default_args=append_default_args)
 
 def js(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """Run the REPL or a JavaScript program with Graal.js"""
-    return mx.run_java(graaljs_cmd_line(args), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, jdk=get_jdk())
+    jdk = get_jdk()
+    return mx.run_java(graaljs_cmd_line(args, jdk=jdk), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, jdk=jdk)
 
 def nashorn(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """Run the REPL or a JavaScript program with Nashorn"""
