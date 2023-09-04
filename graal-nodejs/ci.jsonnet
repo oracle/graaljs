@@ -175,7 +175,9 @@ local cicommon = import '../ci/common.jsonnet';
 
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([
+    # Note: weekly coverage is sync'ed with the graal repo (while ondemand is not).
     graalNodeJs + common.weekly    + gateCoverage                                                                                  + {name: 'coverage'},
+    graalNodeJs + common.ondemand  + gateCoverage                                                                                  + {name: 'coverage'},
 
   ], platforms=[ci.mainGatePlatform]),
 

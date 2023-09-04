@@ -168,7 +168,9 @@ local ci = import '../ci.jsonnet';
   // Builds that only need to run on one platform
   local otherBuilds = generateBuilds([
     graalJs + common.gate      + mavenDeployDryRun                                                        + {name: 'maven-dry-run'},
+    # Note: weekly coverage is sync'ed with the graal repo (while ondemand is not).
     graalJs + common.weekly    + gateCoverage                                                             + {name: 'coverage'},
+    graalJs + common.ondemand  + gateCoverage                                                             + {name: 'coverage'},
   ], platforms=[ci.mainGatePlatform]),
 
   // Benchmark builds; need to run on a benchmark machine
