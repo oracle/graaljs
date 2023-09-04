@@ -257,7 +257,9 @@ def graaljs_cmd_line(args, append_default_args=True):
             + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
             + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []),
             jdk=get_jdk())
-    return _js_cmd_line(args, main_class=mx.distribution('GRAALJS_LAUNCHER').mainClass, runtime_jvm_args=runtime_jvm_args, append_default_args=append_default_args)
+    main_dist = mx.distribution('GRAALJS_LAUNCHER')
+    main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_dist.mainClass if main_dist.use_module_path() else main_dist.mainClass
+    return _js_cmd_line(args, main_class=main_class_arg, runtime_jvm_args=runtime_jvm_args, append_default_args=append_default_args)
 
 def js(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """Run the REPL or a JavaScript program with Graal.js"""

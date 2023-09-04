@@ -527,6 +527,7 @@ suite = {
         "tag": ["default", "public"],
       },
       "allowsJavadocWarnings": True,
+      "useModulePath": True,
     },
 
     "GRAALJS_SCRIPTENGINE" : {
