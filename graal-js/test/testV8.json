@@ -2133,7 +2133,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1080902.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -2245,7 +2245,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1153442.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -3348,7 +3348,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-9425.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -4600,7 +4600,7 @@
     "filePath" : "mjsunit/wasm/shared-memory.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {

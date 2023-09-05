@@ -171,6 +171,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.intl.CreateRegExpNode;
+import com.oracle.truffle.js.nodes.intl.GetBooleanOptionNode;
 import com.oracle.truffle.js.nodes.intl.InitializeCollatorNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDateTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeDisplayNamesNode;
@@ -3173,6 +3174,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Child IsObjectNode isObjectNode;
         @Child PropertyGetNode getInitialNode;
         @Child PropertyGetNode getMaximumNode;
+        @Child GetBooleanOptionNode getSharedNode;
         @Child ToWebAssemblyIndexOrSizeNode toInitialSizeNode;
         @Child ToWebAssemblyIndexOrSizeNode toMaximumSizeNode;
         @Child InteropLibrary memAllocLib;
@@ -3182,6 +3184,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             this.isObjectNode = IsObjectNode.create();
             this.getInitialNode = PropertyGetNode.create(Strings.INITIAL, context);
             this.getMaximumNode = PropertyGetNode.create(Strings.MAXIMUM, context);
+            this.getSharedNode = GetBooleanOptionNode.create(context, Strings.SHARED, false);
             this.toInitialSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Memory(): Property 'initial'");
             this.toMaximumSizeNode = ToWebAssemblyIndexOrSizeNode.create("WebAssembly.Memory(): Property 'maximum'");
             this.memAllocLib = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
@@ -3200,9 +3203,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (initialInt > JSWebAssemblyMemory.MAX_MEMORY_SIZE) {
                 throw Errors.createRangeErrorFormat("WebAssembly.Memory(): Property 'initial': value %d is above the upper bound %d", this, initialInt, JSWebAssemblyMemory.MAX_MEMORY_SIZE);
             }
+            Boolean shared = getSharedNode.executeValue(descriptor);
+            boolean sharedBoolean = Boolean.TRUE.equals(shared);
             int maximumInt;
             Object maximum = getMaximumNode.getValue(descriptor);
             if (maximum == Undefined.instance) {
+                if (sharedBoolean) {
+                    throw Errors.createTypeError("WebAssembly.Memory(): Property 'maximum' is required for shared memory", this);
+                }
                 maximumInt = JSWebAssemblyMemory.MAX_MEMORY_SIZE;
             } else {
                 maximumInt = toMaximumSizeNode.executeInt(maximum);
@@ -3217,14 +3225,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             Object wasmMemory;
             try {
                 Object createMemory = realm.getWASMMemAlloc();
-                wasmMemory = memAllocLib.execute(createMemory, initialInt, maximumInt);
+                wasmMemory = memAllocLib.execute(createMemory, initialInt, maximumInt, sharedBoolean);
             } catch (AbstractTruffleException tex) {
                 throw Errors.createRangeError("WebAssembly.Memory(): could not allocate memory");
             } catch (InteropException ex) {
                 throw Errors.shouldNotReachHere(ex);
             }
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSWebAssemblyMemory.create(getContext(), realm, proto, wasmMemory);
+            return JSWebAssemblyMemory.create(getContext(), realm, proto, wasmMemory, sharedBoolean);
         }
 
         @Override

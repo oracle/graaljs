@@ -40,21 +40,29 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
+import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
+
+import java.nio.ByteBuffer;
 
 public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
     private final Object wasmMemory;
     private JSArrayBufferObject bufferObject;
+    private boolean shared;
 
-    protected JSWebAssemblyMemoryObject(Shape shape, JSDynamicObject proto, Object wasmMemory) {
+    protected JSWebAssemblyMemoryObject(Shape shape, JSDynamicObject proto, Object wasmMemory, boolean shared) {
         super(shape, proto);
         this.wasmMemory = wasmMemory;
+        this.shared = shared;
     }
 
     public Object getWASMMemory() {
@@ -63,13 +71,23 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
 
     public JSArrayBufferObject getBufferObject(JSContext context, JSRealm realm) {
         if (bufferObject == null) {
-            bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
+            if (!shared) {
+                bufferObject = JSArrayBuffer.createInteropArrayBuffer(context, realm, wasmMemory);
+            } else {
+                InteropLibrary lib = InteropLibrary.getUncached();
+                ByteBuffer buffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(wasmMemory, lib, realm);
+                bufferObject = JSSharedArrayBuffer.createSharedArrayBuffer(context, realm, buffer);
+                boolean status = setIntegrityLevel(bufferObject, true);
+                if (!status) {
+                    throw Errors.createTypeError("Failed to set integrity level of buffer object");
+                }
+            }
         }
         return bufferObject;
     }
 
     public void resetBufferObject() {
-        if (bufferObject != null) {
+        if (bufferObject != null && !shared) {
             JSArrayBuffer.detachArrayBuffer(bufferObject);
         }
         bufferObject = null;

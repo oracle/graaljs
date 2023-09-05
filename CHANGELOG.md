@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
+## Version 23.2.0
+* Implemented the [WebAssembly threads](https://github.com/WebAssembly/threads) proposal.
+
 ## Version 23.1.0
 * NOTE: GraalVM no longer ships with a "js" ScriptEngine. Please either use the Maven dependency or explicitly put `js-scriptengine.jar` on the module path. See [ScriptEngine documentation](docs/user/ScriptEngine.md) for details.
 * ECMAScript 2023 mode/features enabled by default.

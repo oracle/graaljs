@@ -103,19 +103,23 @@ public class JSWebAssemblyMemory extends JSNonProxy implements JSConstructorFact
         return INSTANCE.createConstructorAndPrototype(realm);
     }
 
-    public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, Object wasmMemory) {
-        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmMemory);
+    public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, Object wasmMemory, boolean shared) {
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), wasmMemory, shared);
     }
 
-    public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory) {
+    public static JSWebAssemblyMemoryObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Object wasmMemory, boolean shared) {
         Object embedderData = JSWebAssembly.getEmbedderData(realm, wasmMemory);
         if (embedderData instanceof JSWebAssemblyMemoryObject) {
             return (JSWebAssemblyMemoryObject) embedderData;
         }
         realm.getWebAssemblyMemoryGrowCallback().attachToMemory(wasmMemory);
+        if (shared) {
+            realm.getWebAssemblyMemoryNotifyCallback().attachToMemory(wasmMemory);
+            realm.getWebAssemblyMemoryWaitCallback().attachToMemory(wasmMemory);
+        }
         JSObjectFactory factory = context.getWebAssemblyMemoryFactory();
         var shape = factory.getShape(realm, proto);
-        var object = factory.initProto(new JSWebAssemblyMemoryObject(shape, proto, wasmMemory), realm, proto);
+        var object = factory.initProto(new JSWebAssemblyMemoryObject(shape, proto, wasmMemory, shared), realm, proto);
         JSWebAssembly.setEmbedderData(realm, wasmMemory, object);
         return factory.trackAllocation(object);
     }

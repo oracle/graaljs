@@ -437,19 +437,23 @@ public final class JSInteropUtil {
         return sb.toString();
     }
 
-    public static ByteBuffer wasmMemoryAsByteBuffer(JSArrayBufferObject interopArrayBuffer, InteropLibrary interop, JSRealm realm) {
+    public static ByteBuffer jsInteropBufferAsByteBuffer(JSArrayBufferObject interopArrayBuffer, InteropLibrary interop, JSRealm realm) {
         assert JSArrayBuffer.isJSInteropArrayBuffer(interopArrayBuffer);
+        Object interopBuffer = JSArrayBuffer.getInteropBuffer(interopArrayBuffer);
+        if (interopBuffer == null) {
+            assert JSArrayBuffer.isDetachedBuffer(interopArrayBuffer);
+            return null;
+        }
+        return foreignInteropBufferAsByteBuffer(interopBuffer, interop, realm);
+    }
+
+    public static ByteBuffer foreignInteropBufferAsByteBuffer(Object foreignInteropBuffer, InteropLibrary interop, JSRealm realm) {
         Object memAsByteBuffer = realm.getWASMMemAsByteBuffer();
         if (memAsByteBuffer == null) {
             return null;
         }
         try {
-            Object interopBuffer = JSArrayBuffer.getInteropBuffer(interopArrayBuffer);
-            if (interopBuffer == null) {
-                assert JSArrayBuffer.isDetachedBuffer(interopArrayBuffer);
-                return null;
-            }
-            Object bufferObject = interop.execute(memAsByteBuffer, interopBuffer);
+            Object bufferObject = interop.execute(memAsByteBuffer, foreignInteropBuffer);
             TruffleLanguage.Env env = realm.getEnv();
             if (env.isHostObject(bufferObject)) {
                 Object buffer = env.asHostObject(bufferObject);
@@ -462,5 +466,4 @@ public final class JSInteropUtil {
         }
         return null;
     }
-
 }

@@ -189,6 +189,8 @@ import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyGlobal;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyInstance;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemory;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryGrowCallback;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryNotifyCallback;
+import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyMemoryWaitCallback;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyModule;
 import com.oracle.truffle.js.runtime.builtins.wasm.JSWebAssemblyTable;
 import com.oracle.truffle.js.runtime.interop.DynamicScopeWrapper;
@@ -479,6 +481,8 @@ public class JSRealm {
     private final JSDynamicObject webAssemblyTablePrototype;
 
     private final JSWebAssemblyMemoryGrowCallback webAssemblyMemoryGrowCallback;
+    private final JSWebAssemblyMemoryNotifyCallback webAssemblyMemoryNotifyCallback;
+    private final JSWebAssemblyMemoryWaitCallback webAssemblyMemoryWaitCallback;
 
     private final JSFunctionObject shadowRealmConstructor;
     private final JSDynamicObject shadowRealmPrototype;
@@ -895,6 +899,8 @@ public class JSRealm {
 
         if (context.getLanguageOptions().webAssembly()) {
             Object wasmMemSetGrowCallback;
+            Object wasmMemSetNotifyCallback;
+            Object wasmMemSetWaitCallback;
             if (!isWasmAvailable()) {
                 String msg = "WebAssembly API enabled but wasm language cannot be accessed! Did you forget to set the --polyglot flag?";
                 if (JSConfig.SubstrateVM) {
@@ -928,6 +934,8 @@ public class JSRealm {
                 wasmCustomSections = wasmInterop.readMember(wasmObject, "custom_sections");
                 wasmInstanceExport = wasmInterop.readMember(wasmObject, "instance_export");
                 wasmMemSetGrowCallback = wasmInterop.readMember(wasmObject, "mem_set_grow_callback");
+                wasmMemSetNotifyCallback = wasmInterop.readMember(wasmObject, "mem_set_notify_callback");
+                wasmMemSetWaitCallback = wasmInterop.readMember(wasmObject, "mem_set_wait_callback");
                 wasmEmbedderDataGet = wasmInterop.readMember(wasmObject, "embedder_data_get");
                 wasmEmbedderDataSet = wasmInterop.readMember(wasmObject, "embedder_data_set");
                 wasmMemAsByteBuffer = wasmInterop.readMember(wasmObject, "mem_as_byte_buffer");
@@ -954,6 +962,8 @@ public class JSRealm {
             this.webAssemblyGlobalPrototype = ctor.getPrototype();
 
             this.webAssemblyMemoryGrowCallback = new JSWebAssemblyMemoryGrowCallback(this, wasmMemSetGrowCallback);
+            this.webAssemblyMemoryNotifyCallback = new JSWebAssemblyMemoryNotifyCallback(this, context, wasmMemSetNotifyCallback);
+            this.webAssemblyMemoryWaitCallback = new JSWebAssemblyMemoryWaitCallback(this, context, wasmMemSetWaitCallback);
         } else {
             this.wasmTableAlloc = null;
             this.wasmTableGrow = null;
@@ -992,6 +1002,8 @@ public class JSRealm {
             this.webAssemblyTablePrototype = null;
 
             this.webAssemblyMemoryGrowCallback = null;
+            this.webAssemblyMemoryNotifyCallback = null;
+            this.webAssemblyMemoryWaitCallback = null;
         }
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
@@ -3120,6 +3132,14 @@ public class JSRealm {
 
     public JSWebAssemblyMemoryGrowCallback getWebAssemblyMemoryGrowCallback() {
         return webAssemblyMemoryGrowCallback;
+    }
+
+    public JSWebAssemblyMemoryNotifyCallback getWebAssemblyMemoryNotifyCallback() {
+        return webAssemblyMemoryNotifyCallback;
+    }
+
+    public JSWebAssemblyMemoryWaitCallback getWebAssemblyMemoryWaitCallback() {
+        return webAssemblyMemoryWaitCallback;
     }
 
     public DateFormat getJSDateISOFormat(double time) {

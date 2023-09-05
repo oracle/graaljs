@@ -675,7 +675,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getByteBufferInterop = insert(InteropLibrary.getFactory().createDispatched(1));
             }
-            return JSInteropUtil.wasmMemoryAsByteBuffer(interopBuffer, getByteBufferInterop, getRealm());
+            return JSInteropUtil.jsInteropBufferAsByteBuffer(interopBuffer, getByteBufferInterop, getRealm());
         }
 
         private JSArrayBufferObject cloneArrayBuffer(JSArrayBufferObject sourceBuffer, TypedArray sourceArray, int srcByteLength, int srcByteOffset) {
