@@ -221,9 +221,9 @@ def parse_js_args(args, runtime_jvm_args=None, useDoubleDash=False):
         else:
             remainder += [arg]
     if cp:
-        vm_args = ['-cp', ':'.join(cp)] + vm_args
+        vm_args = ['--class-path=' + ':'.join(cp)] + vm_args
     if mp:
-        vm_args = ['-p', ':'.join(mp)] + vm_args
+        vm_args = ['--module-path=' + ':'.join(mp)] + vm_args
     return vm_args, remainder
 
 def _default_stacksize():
