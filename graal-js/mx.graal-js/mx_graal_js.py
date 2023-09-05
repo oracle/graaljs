@@ -293,15 +293,20 @@ def _fetch_test_suite(dest, library_names):
                 _tar.extractall(dest)
 
 def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
-    _vm_args, _prog_args = parse_js_args(custom_args)
+    jdk = get_jdk()
+    runtime_jvm_args = mx.get_runtime_jvm_args(['TRUFFLE_JS_TESTS']
+            + mx_truffle.resolve_truffle_dist_names()
+            + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
+            + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else [])
+            + ['NASHORN_INTERNAL_TESTS'],
+            jdk=jdk)
+    _vm_args, _prog_args = parse_js_args(custom_args, runtime_jvm_args)
     _vm_args = _append_default_js_vm_args(vm_args=_vm_args, max_heap=max_heap, stack_size=stack_size)
-    _mp = mx.classpath(['TRUFFLE_JS_TESTS']
-        + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
-        + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
-    _cp = mx.classpath(['NASHORN_INTERNAL_TESTS'])
+    main_dist = mx.distribution('TRUFFLE_JS_TESTS')
+    main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_class if main_dist.use_module_path() else main_class
     _exports = ['--add-exports', 'org.graalvm.js/com.oracle.truffle.js.runtime=com.oracle.truffle.js.test']
-    _vm_args = ['-ea', '-esa', '--module-path', _mp, '-cp', _cp] + _exports + default_vm_args + _vm_args
-    return mx.run_java(_vm_args + [main_class] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd, jdk=get_jdk())
+    _vm_args = ['-ea', '-esa'] + _exports + default_vm_args + _vm_args
+    return mx.run_java(_vm_args + [main_class_arg] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd, jdk=jdk)
 
 def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""
