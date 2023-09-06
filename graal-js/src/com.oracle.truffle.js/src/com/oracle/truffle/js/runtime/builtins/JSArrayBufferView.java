@@ -441,8 +441,11 @@ public final class JSArrayBufferView extends JSNonProxy {
         if (!strings) {
             return super.getOwnPropertyKeys(thisObj, strings, symbols);
         }
-        List<Object> indices = typedArrayGetArrayType(thisObj).ownPropertyKeys(thisObj);
         List<Object> keys = ordinaryOwnPropertyKeys(thisObj, strings, symbols);
+        if (hasDetachedBuffer(thisObj)) {
+            return keys;
+        }
+        List<Object> indices = typedArrayGetArrayType(thisObj).ownPropertyKeys(thisObj);
         return IteratorUtil.concatLists(indices, keys);
     }
 
