@@ -1,0 +1,4 @@
+DYNAMIC_IMPORTS=/vm,/substratevm
+COMPONENTS=cmp,gvm,lg,js,svm,svmt,tflm,tflsm
+NATIVE_IMAGES=lib:jsvm,lib:jvmcicompiler
+DISABLE_INSTALLABLES=rgx,icu4j

@@ -56,10 +56,9 @@ def get_jdk(forBuild=False):
     # GraalVMJDKConfig (`tag='graalvm'`) is not available until all the components are built.
     # GraalJVMCIJDKConfig (`tag='jvmci'`) is not available until all required jars are built.
     if not forBuild:
-        jdk = mx.get_jdk(tag='graalvm')
-        if exists(jdk.home):
-            return jdk
-        elif mx.suite('compiler', fatalIfMissing=False):
+        if mx.suite('vm', fatalIfMissing=False):
+            return mx.get_jdk(tag='graalvm')
+        if mx.suite('compiler', fatalIfMissing=False):
             return mx.get_jdk(tag='jvmci')
     return mx.get_jdk()
 
@@ -169,33 +168,61 @@ class ArchiveProject(mx.ArchivableProject):
     def getResults(self):
         return mx.ArchivableProject.walk(self.output_dir())
 
-def parse_js_args(args, default_cp=None, useDoubleDash=False):
-    vm_args, remainder, cp = [], [], []
-    if default_cp is None:
-        default_cp = []
+def parse_class_and_module_path(args, _p=False):
+    """
+    Parse and separate class-path and module-path args.
+    :param bool _p: whether -p should be interpreted as --module-path.
+    """
+    vm_args, cp, mp = [], [], []
+    it = iter(args)
+    for arg in it:
+        try:
+            if arg in ['-cp', '-classpath', '--class-path']:
+                cp += [next(it)]
+            elif arg in ['--module-path'] + (['-p'] if _p else []): # '-p' conflicts with node -p
+                mp += [next(it)]
+            elif arg.startswith('--class-path='):
+                cp += [arg[len('--class-path='):]]
+            elif arg.startswith('--module-path='):
+                mp += [arg[len('--module-path='):]]
+            else:
+                vm_args += [arg]
+        except StopIteration:
+            mx.abort(f'{arg} must be followed by an argument')
+    return vm_args, cp, mp
+
+def parse_js_args(args, runtime_jvm_args=None, useDoubleDash=False):
+    vm_args, cp, mp = parse_class_and_module_path(runtime_jvm_args or [], _p=True)
+    remainder = []
+    args, cp_args, mp_args = parse_class_and_module_path(args)
+    cp += cp_args
+    mp += mp_args
     skip = False
     for (i, arg) in enumerate(args):
         if skip:
             skip = False
             continue
-        if any(arg.startswith(prefix) for prefix in ['-X', '-D', '-verbose', '-ea', '-javaagent:', '-agentlib:', '-agentpath:']) or arg in ['-esa', '-d64', '-server']:
-            vm_args += [arg]
-        elif arg.startswith('--vm.D') or arg.startswith('--vm.X'):
-            vm_args += ['-' + arg[5:]]
-        elif useDoubleDash and arg == '--':
+        if useDoubleDash and arg == '--':
             remainder += args[i:]
             break
-        elif arg in ['-cp', '-classpath']:
+        if arg in ['-ea', '-dsa', '-esa', '-dsa', '-d64', '-server']:
+            vm_args += [arg]
+        elif any(arg.startswith(prefix) for prefix in ['-X', '-D', '-verbose', '-ea:', '-da:', '-javaagent:', '-agentlib:', '-agentpath:', '--add-modules=', '--upgrade-module-path=']):
+            vm_args += [arg]
+        elif arg.startswith('--vm.'):
+            vm_args += ['-' + arg[5:]]
+        elif arg in ['--add-modules', '--upgrade-module-path']:
             if i + 1 < len(args):
-                cp = [args[i + 1]] # Last one wins
+                vm_args += [arg, args[i + 1]]
                 skip = True
             else:
-                mx.abort('{} must be followed by a classpath'.format(arg))
+                mx.abort(f'{arg} must be followed by an argument')
         else:
             remainder += [arg]
-    cp = default_cp + cp
     if cp:
-        vm_args = ['-cp', ':'.join(cp)] + vm_args
+        vm_args = ['--class-path=' + ':'.join(cp)] + vm_args
+    if mp:
+        vm_args = ['--module-path=' + ':'.join(mp)] + vm_args
     return vm_args, remainder
 
 def _default_stacksize():
@@ -217,21 +244,28 @@ def _append_default_js_vm_args(vm_args, min_heap='2g', max_heap='2g', stack_size
 
     return vm_args
 
-def _js_cmd_line(args, main_class, default_cp=None, append_default_args=True):
-    _vm_args, _js_args = parse_js_args(args, default_cp=default_cp)
+def _js_cmd_line(args, main_class, runtime_jvm_args=None, append_default_args=True):
+    _vm_args, _js_args = parse_js_args(args, runtime_jvm_args=runtime_jvm_args)
     if append_default_args:
         _vm_args = _append_default_js_vm_args(_vm_args)
     return _vm_args + [main_class] + _js_args
 
-def graaljs_cmd_line(args, append_default_args=True):
-    default_cp = mx.classpath(['GRAALJS_LAUNCHER', 'GRAALJS']
+def graaljs_cmd_line(args, append_default_args=True, jdk=None):
+    if jdk is None:
+        jdk = get_jdk()
+    runtime_jvm_args = mx.get_runtime_jvm_args(['GRAALJS_LAUNCHER', 'GRAALJS']
+            + mx_truffle.resolve_truffle_dist_names()
             + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER', 'tools:INSIGHT'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
-            + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
-    return _js_cmd_line(args, main_class=mx.distribution('GRAALJS_LAUNCHER').mainClass, default_cp=[default_cp], append_default_args=append_default_args)
+            + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []),
+            jdk=jdk)
+    main_dist = mx.distribution('GRAALJS_LAUNCHER')
+    main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_dist.mainClass if main_dist.use_module_path() else main_dist.mainClass
+    return _js_cmd_line(args, main_class=main_class_arg, runtime_jvm_args=runtime_jvm_args, append_default_args=append_default_args)
 
 def js(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """Run the REPL or a JavaScript program with Graal.js"""
-    return mx.run_java(graaljs_cmd_line(args), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, jdk=get_jdk())
+    jdk = get_jdk()
+    return mx.run_java(graaljs_cmd_line(args, jdk=jdk), nonZeroIsFatal=nonZeroIsFatal, out=out, err=err, cwd=cwd, jdk=jdk)
 
 def nashorn(args, nonZeroIsFatal=True, out=None, err=None, cwd=None):
     """Run the REPL or a JavaScript program with Nashorn"""
@@ -258,15 +292,20 @@ def _fetch_test_suite(dest, library_names):
                 _tar.extractall(dest)
 
 def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_class, nonZeroIsFatal, cwd):
-    _vm_args, _prog_args = parse_js_args(custom_args)
+    jdk = get_jdk()
+    runtime_jvm_args = mx.get_runtime_jvm_args(['TRUFFLE_JS_TESTS']
+            + mx_truffle.resolve_truffle_dist_names()
+            + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
+            + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else [])
+            + ['NASHORN_INTERNAL_TESTS'],
+            jdk=jdk)
+    _vm_args, _prog_args = parse_js_args(custom_args, runtime_jvm_args)
     _vm_args = _append_default_js_vm_args(vm_args=_vm_args, max_heap=max_heap, stack_size=stack_size)
-    _mp = mx.classpath(['TRUFFLE_JS_TESTS']
-        + (['tools:CHROMEINSPECTOR', 'tools:TRUFFLE_PROFILER'] if mx.suite('tools', fatalIfMissing=False) is not None else [])
-        + (['wasm:WASM'] if mx.suite('wasm', fatalIfMissing=False) is not None else []))
-    _cp = mx.classpath(['NASHORN_INTERNAL_TESTS'])
+    main_dist = mx.distribution('TRUFFLE_JS_TESTS')
+    main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_class if main_dist.use_module_path() else main_class
     _exports = ['--add-exports', 'org.graalvm.js/com.oracle.truffle.js.runtime=com.oracle.truffle.js.test']
-    _vm_args = ['-ea', '-esa', '--module-path', _mp, '-cp', _cp] + _exports + default_vm_args + _vm_args
-    return mx.run_java(_vm_args + [main_class] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd, jdk=get_jdk())
+    _vm_args = ['-ea', '-esa'] + _exports + default_vm_args + _vm_args
+    return mx.run_java(_vm_args + [main_class_arg] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd, jdk=jdk)
 
 def test262(args, nonZeroIsFatal=True):
     """run the test262 conformance suite"""

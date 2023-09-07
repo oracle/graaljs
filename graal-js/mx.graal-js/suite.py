@@ -401,6 +401,9 @@ suite = {
         "JACKSON_DATABIND",
         "TRUFFLE_JS_SNAPSHOT_TOOL",
       ],
+      "requires" : [
+        "java.scripting", # required by testnashorn
+      ],
       "annotationProcessors" : ["truffle:TRUFFLE_DSL_PROCESSOR"],
       "checkstyle" : "com.oracle.truffle.js",
       "spotbugs" : "true",
@@ -527,6 +530,7 @@ suite = {
         "tag": ["default", "public"],
       },
       "allowsJavadocWarnings": True,
+      "useModulePath": True,
     },
 
     "GRAALJS_SCRIPTENGINE" : {
