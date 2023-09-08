@@ -648,7 +648,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     standalone_dependencies={
         'GraalVM license files': ('', ['GRAALVM-README.md']),
         'Graal.nodejs license files': ('', []),
-        **({'GraalWasm' : ('', ['LICENSE_WASM.txt'])} if _is_wasm_available() else {}),
+        **({'GraalWasm' : ('', ['LICENSE_WASM.txt', 'bin/<exe:wasm>', 'lib/<lib:wasmvm>'])} if _is_wasm_available() else {}),
     },
     standalone_dependencies_enterprise={
         'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
