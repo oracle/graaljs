@@ -703,6 +703,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             arraySetArray(object, newArray);
             arraySetUsedLength(object, usedLength + size);
             if (isHolesType()) {
+                fillWithHoles(newArray, offset, offset + size);
                 arraySetHoleCount(object, arrayGetHoleCount(object) + size);
             }
             return this;
