@@ -680,6 +680,10 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 int copySize = (lastIndex - effectiveOffset);
                 if (copySize > 0) {
                     System.arraycopy(array, effectiveOffset, array, (effectiveOffset + size), copySize);
+                    fillWithHoles(array, effectiveOffset, effectiveOffset + size);
+                    if (isHolesType()) {
+                        arraySetHoleCount(object, arrayGetHoleCount(object) + size);
+                    }
                 }
                 arraySetUsedLength(object, usedLength + size);
                 return this;
@@ -703,6 +707,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             arraySetArray(object, newArray);
             arraySetUsedLength(object, usedLength + size);
             if (isHolesType()) {
+                fillWithHoles(newArray, offset, offset + size);
                 arraySetHoleCount(object, arrayGetHoleCount(object) + size);
             }
             return this;
