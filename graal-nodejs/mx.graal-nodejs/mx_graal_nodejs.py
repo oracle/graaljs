@@ -603,7 +603,7 @@ def mx_post_parse_cmd_line(args):
     mx_graal_nodejs_benchmark.register_nodejs_vms()
 
 def _is_wasm_available():
-    return ('wasm', True) in mx.get_dynamic_imports()
+    return any(wasm_suite in mx.get_dynamic_imports() for wasm_suite in [('wasm', True), ('wasm-enterprise', True)])
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     suite=_suite,
