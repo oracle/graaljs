@@ -6,32 +6,42 @@ permalink: /reference-manual/js/JavaInteroperability/
 ---
 # Java Interoperability
 
-GraalVM includes a JavaScript language execution runtime and allows interoperability with Java code.
-This document describes the features and usage of this JavaScript-to-Java interoperability feature.
-
-For a reference of GraalVM public API, see [JavaScript Compatibility](JavaScriptCompatibility.md).
-See the [Embedding Reference](https://www.graalvm.org/reference-manual/embed-languages/) on how to interact with a guest language like JavaScript from a Java host application.
-The [Polyglot Programming](https://www.graalvm.org/reference-manual/polyglot-programming/) guide can be of additional help in that area.
-Specific migration guides for [Rhino](RhinoMigrationGuide.md) and [Nashorn](NashornMigrationGuide.md) are also available.
-
-Both JavaScript and Node.js are separately installable components of GraalVM.
-See the [README](README.md) for details on how to use the GraalVM Updater tool, `gu`, to install JavaScript and Node.js.
-After a successfull installation, the respective native launchers `js` and `node` from the `$GRAALVM/bin` directory can be used.
-
-Although other builds are possible, the following examples assume this setup is used.
+This documentation shows you how to enable interoperability with Java and possible JavaScript-to-Java embedding scenarions. 
 
 ## Enabling Java Interoperability
-In GraalVM, the `js` and `node` launchers are started in an ahead-of-time compiled native mode by default. In that mode, Java interoperability is not available.
 
-To enable Java interoperability, the `--jvm` option has to be provided to the native launcher.
-This way, GraalVM JavaScript is executed on a traditional JVM and allows full Java interoperability.
+As of GraalVM for JDK 21, all necessary artifacts can be downloaded directly from Maven Central. 
+All artifacts relevant to embedders can be found in the Maven dependency group [`org.graalvm.polyglot`](https://central.sonatype.com/namespace/org.graalvm.polyglot).
+
+Here is an example Maven dependency setup that you can put into your Java project:
+
+```xml
+<dependency> 
+	<groupId>org.graalvm.polyglot</groupId> 
+	<artifactId>polyglot</artifactId> 
+	<version>${graalvm.version}</version> 
+</dependency>
+<dependency> 
+	<groupId>org.graalvm.polyglot</groupId> 
+	<artifactId>js</artifactId> 
+	<version>${graalvm.version}</version> 
+	<type>pom</type>
+</dependency>
+```
+
+The JavaScript (GraalJS) and Node.js runtimes are also available as standalone distributions.  
+There are two runtime options to choose from: a Native Image compiled native launcher or a JVM-based runtime (included).
+To enable interoperability with Java, use a JVM-based standalone: it has a `-jvm` suffix in a name, for example: `graaljs-jvm-<version>-<os>-<arch>.tar.gz`. See [Getting Started](README.md#getting-started).
+
+The following examples assume the last setup is used.
 
 ### Classpath
-In order to load Java classes you need to have them on the Java classpath.
+
+To load Java classes you need to have them on the Java classpath.
 You can specify the classpath with the `--vm.classpath=<classpath>` option (or short: `--vm.cp=<classpath>`):
 ```shell
-node --jvm --vm.cp=/my/class/path
-js --jvm --vm.cp=/my/class/path
+node --vm.cp=/my/class/path
+js --vm.cp=/my/class/path
 ```
 The method `Java.addToClasspath()` can be used to programmatically add to the classpath at runtime.
 
@@ -377,7 +387,7 @@ GraalVM JavaScript supports multithreading when used in combination with Java. M
 
 ## Extending Java classes
 
-In the JVM mode (`--jvm`), GraalVM JavaScript provides support for extending Java classes and interfaces using the `Java.extend` function.
+GraalVM JavaScript provides support for extending Java classes and interfaces using the `Java.extend` function.
 Note that host access has to be enabled in the [polyglot context](#polyglot-context) for this feature to be available.
 
 ### Java.extend
