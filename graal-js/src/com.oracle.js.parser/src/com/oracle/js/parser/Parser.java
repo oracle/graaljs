@@ -119,7 +119,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Consumer;
 
-import com.oracle.js.parser.ir.PipelineNode;
 import org.graalvm.collections.Pair;
 
 import com.oracle.js.parser.ir.AccessNode;
@@ -1117,6 +1116,7 @@ public class Parser extends AbstractParser {
 
     private Expression newBinaryExpression(final long op, final Expression lhs, final Expression rhs) {
         final TokenType opType = Token.descType(op);
+
         // Build up node.
         if (BinaryNode.isLogical(opType)) {
             if (forbiddenNullishCoalescingUsage(opType, lhs, rhs)) {
@@ -3971,6 +3971,7 @@ public class Parser extends AbstractParser {
         // Capture first token.
         final int primaryLine = line;
         final long primaryToken = token;
+
         switch (type) {
             case THIS: {
                 final TruffleString name = type.getNameTS();
@@ -6303,9 +6304,6 @@ public class Parser extends AbstractParser {
         } else {
             lhs = unaryExpression(yield, await, coverExpression);
         }
-        if(type == MOD && lhs instanceof IdentNode && AWAIT.getName().equals(((IdentNode) lhs).getName())) {
-            return expression(lhs, MOD.getPrecedence() + 1, in, yield, await);
-        }
         return expression(lhs, minPrecedence, in, yield, await);
     }
 
@@ -6317,8 +6315,9 @@ public class Parser extends AbstractParser {
         // Get the precedence of the next operator.
         int precedence = type.getPrecedence();
         Expression lhs = exprLhs;
+
         // While greater precedence.
-        while (type.isOperator(in) && precedence >= minPrecedence){
+        while (type.isOperator(in) && precedence >= minPrecedence) {
             // Capture the operator token.
             final long op = token;
 
@@ -6339,8 +6338,6 @@ public class Parser extends AbstractParser {
                 lhs = new TernaryNode(op, lhs, new JoinPredecessorExpression(trueExpr), new JoinPredecessorExpression(falseExpr));
             } else {
                 final TokenType opType = type;
-
-
                 // Skip operator.
                 next();
 
@@ -6356,14 +6353,13 @@ public class Parser extends AbstractParser {
 
                 // Get precedence of next operator.
                 int nextPrecedence = type.getPrecedence();
+
                 // Subtask greater precedence.
                 while (type.isOperator(in) && (nextPrecedence > precedence || (nextPrecedence == precedence && !type.isLeftAssociative()))){
                     rhs = expression(rhs, nextPrecedence, in, yield, await);
                     nextPrecedence = type.getPrecedence();
                 }
-
                 lhs = newBinaryExpression(op, lhs, rhs);
-
             }
 
             precedence = type.getPrecedence();
@@ -6486,7 +6482,6 @@ public class Parser extends AbstractParser {
                     verifyExpression(coverExprLhs);
                 }
             }
-
             return exprLhs;
         }
     }
@@ -6939,6 +6934,7 @@ public class Parser extends AbstractParser {
         body.setFlag(Block.NEEDS_SCOPE);
         final Block programBody = new Block(functionToken, finish, body.getFlags() | Block.IS_SYNTHETIC | Block.IS_BODY | Block.IS_MODULE_BODY, body.getScope(), body.getStatements());
         script.setLastToken(token);
+
         expect(EOF);
 
         script.setModule(module.createModule());
