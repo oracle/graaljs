@@ -4,57 +4,57 @@ toc_group: js
 link_title: JavaScript and Node.js Reference
 permalink: /reference-manual/js/
 ---
-# GraalVM JavaScript Implementation
+# GraalVM JavaScript and Node.js Runtime
 
 GraalVM provides an ECMAScript-compliant runtime to execute JavaScript and Node.js applications.
 It is fully standard compliant, executes applications with high performance, and provides all benefits from the GraalVM stack, including language interoperability and common tooling.
-This reference documentation provides information on available JavaScript engine configurations, the Node.js runtime, the `javax.script.ScriptEngine` implementation, multithreading support details, possible embedding scenarios, and more.
-To migrate the code previously targeted to the Nashorn or Rhino engines, migration guides are available.
+This reference documentation provides information on available JavaScript engine configurations, the Node.js runtime, the [`ScriptEngine` implementation](ScriptEngine.md), multithreading support details, possible embedding scenarios, and more.
+To migrate the code previously targeted to the Nashorn or Rhino engines, [migration guides are available](NashornMigrationGuide.md).
+
+## Getting Started
+
+As of GraalVM for JDK 21, the JavaScript (GraalJS) and Node.js runtimes are available as standalone distributions. 
+Two standalone language runtime options are available for both Oracle GraalVM and GraalVM Community Edition: a Native Image compiled native launcher or a JVM-based runtime (included).
+To distinguish between them, the GraalVM Community Edition version has the suffix `-community` in the name: `graaljs-community-<version>-<os>-<arch>.tar.gz`, `graalnodejs-community-<version>-<os>-<arch>.tar.gz`, 
+A standalone that comes with a JVM has a `-jvm` suffix in a name.
+
+1. Navigate to [GitHub releases](https://github.com/oracle/graaljs/releases/) and select a desired standalone for your operating system. 
+
+2. Unzip the archive:
+
+    > Note: If you are using macOS Catalina and later, first remove the quarantine attribute:
+    ```shell
+    sudo xattr -r -d com.apple.quarantine <archive>.tar.gz
+    ```
+    Unzip:
+    ```shell
+    tar -xzf <archive>.tar.gz
+    ```
+    Alternatively, open the file in the Finder.
+
+3. Check the version to see if the runtime is active:
+    ```shell
+    ./path/to/bin/js --version
+    ```
+    ```shell
+    ./path/to/bin/node --version
+    ```
 
 ## Running JavaScript
-Since GraalVM 22.2, the JavaScript support is packaged in a separate GraalVM component.
-It can be installed with the _GraalVM Updater_:
 
+Use the `js` launcher to run plain JavaScript (ECMAScript) code:
 ```shell
-$JAVA_HOME/bin/gu install js
+js [options] [filename...] -- [args]
 ```
-
-Alternatively, you can download the JavaScript component and install it from a file, e.g.:
-
-```shell
-$JAVA_HOME/bin/gu install --file ~/Downloads/js-...-.jar
-```
-This installs `js` in the `$JAVA_HOME/bin` directory.
-When the JavaScript component is installed, GraalVM can run plain JavaScript (ECMAScript) code:
-```shell
-$JAVA_HOME/bin/js [options] [filename...] -- [args]
-```
-
-For information about the compatibility of GraalVM JavaScript with existing standards and engines, see [JavaScriptCompatibility](JavaScriptCompatibility.md).
 
 ## Running Node.js
-GraalVM is capable of executing unmodified Node.js applications.
-Applications can import npm modules, including native ones.
-Since GraalVM 21.1, the Node.js support is packaged in a separate GraalVM component.
-It can be installed with the _GraalVM Updater_:
 
-```shell
-$JAVA_HOME/bin/gu install nodejs
-```
+The Node.js standalone provides `node` and `npm` launchers.
 
-Alternatively, you can download the Node.js component and install it from a file, e.g.:
-
-```shell
-$JAVA_HOME/bin/gu install --file ~/Downloads/nodejs-installable-...-.jar
-```
-
-This installs `node` and `npm` launchers in the `$JAVA_HOME/bin` directory.
 Use the `node` utility to execute Node.js applications:
 ```shell
 node [options] [filename] [args]
 ```
-
-To install a Node.js package, use the `npm` launcher from `$JAVA_HOME/bin`.
 The `npm` command is equivalent to the default Node.js command and supports all Node.js APIs.
 
 1. Install the `colors` and `ansispan` packages using `npm install` as follows:
@@ -82,31 +82,29 @@ The `npm` command is equivalent to the default Node.js command and supports all 
     node app.js
     ```
 
-For more information about running Node.js, continue to [Node.js Runtime](NodeJS.md).
-Node.js functionality is available when an application is started from the `node` binary launcher.
-Certain limits apply when launching a Node.js application or accessing npm packages from a Java context, see [Node.js vs. Java Script Context](NodeJSVSJavaScriptContext.md).
-
-## Interoperability
-
-GraalVM supports several other programming languages like Ruby, R, Python, and LLVM languages.
-While GraalVM is designed to run Node.js and JavaScript applications, it also provides interoperability between those languages and lets you execute code from or call methods in any of those languages using GraalVM Polyglot APIs.
-
-To enable Node.js or JavaScript interoperability with other languages, pass the `--jvm` and `--polyglot` options. For example:
-
-```shell
-node --jvm --polyglot
-Welcome to Node.js v16.14.2.
-Type ".help" for more information.
-> var array = Polyglot.eval("python", "[1,2,42,4]")
-> console.log(array[2]);
-42
-> console.log(Polyglot.eval('R', 'runif(100)')[0]);
-0.8198353068437427
-```
-
-For more information about interoperability with other programming languages, see [Polyglot Programming](https://github.com/oracle/graal/blob/master/docs/reference-manual/polyglot-programming.md) for a general description.
+For more information about running Node.js, go to [Node.js Runtime](NodeJS.md).
+The Node.js functionality is available when an application is started from the `node` binary launcher.
+Certain limits apply when launching a Node.js application or accessing NPM packages from a Java context, see [Node.js vs. Java Script Context](NodeJSVSJavaScriptContext.md).
 
 ## Interoperability with Java
+
+To embed JavaScript in a Java host application, enable JavaScript by adding it as a project dependency.
+Below is the Maven configuration for a JavaScript embedding:
+```xml
+<dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>polyglot</artifactId>
+    <version>${graalvm.version}</version>
+</dependency>
+<dependency>
+    <groupId>org.graalvm.polyglot</groupId>
+    <artifactId>js</artifactId>
+    <version>${graalvm.version}</version>
+    <type>pom</type>
+</dependency>
+```
+It enables the Oracle GraalVM JavaScript runtime by default.
+Use `js-community` if you need the artifact built on top of GraalVM Community Edition.
 
 To access Java from JavaScript, use `Java.type`, as in the following example:
 ```shell
@@ -137,12 +135,8 @@ public class HelloPolyglot {
 By wrapping the function definition (`()`), you return the function immediately.
 The source code unit can be represented with a String, as in the example, a file, read from URL, and [other means](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Source.html).
 
-Run the above Java program:
-```shell
-javac HelloPolyglot.java
-java HelloPolyglot JavaScript
-```
 This way you can evaluate JavaScript context embedded in Java, but you will not be able to call a function and set parameters in the function directly from the Java code.
+
 The Node.js runtime cannot be embedded into a JVM but has to be started as a separate process.
 
 For example, save this code as _app.js_:
@@ -153,23 +147,22 @@ HelloPolyglot.main(["from node.js"]);
 
 console.log("done");
 ```
-Then start `node` with the `--jvm` option to enable interoperability with Java:
+
+Then run it:
 ```shell
-node --jvm --vm.cp=. app.js
+node --vm.cp=. app.js
 Hello Java!
 hello from node.js
 done
 ```
-By setting the classpath, you instruct `node` to start a JVM properly. 
+
 Both Node.js and JVM then run in the same process and the interoperability works using the same `Value` classes as above.
 
 Learn more about language interoperability in the [Java Interoperability](JavaInteroperability.md) guide.
 
 ## Further documentation
 
-For additional information, refer to those documentation pages on specific topics around GraalVM JavaScript:
-
-* [Frequently Asked Questions](FAQ.md)
+For additional information, see the following documentation.
 
 Using GraalVM JavaScript:
 * [JavaScript Compatibility](JavaScriptCompatibility.md)
