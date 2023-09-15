@@ -122,6 +122,7 @@ public enum TokenType {
     ASSIGN_BIT_OR  (BINARY,  "|=",    2, false),
     OR             (BINARY,  "||",    4, true),
     ASSIGN_OR      (BINARY,  "||=",   2, false, 12),
+    PIPELINE        (BINARY, "|>", 2, true),
     RBRACE         (BRACKET, "}"),
     BIT_NOT        (UNARY,   "~",    15, false),
     ELLIPSIS       (UNARY,   "..."),
