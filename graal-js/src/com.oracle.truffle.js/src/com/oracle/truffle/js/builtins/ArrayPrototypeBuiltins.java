@@ -3188,10 +3188,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
             }
 
-            if (!identicalNode.executeBoolean(searchElement, searchElement)) {
-                return true;
-            }
-
             long startIdx = k;
             while (k < len) {
                 Object currentElement = read(thisObj, k);
