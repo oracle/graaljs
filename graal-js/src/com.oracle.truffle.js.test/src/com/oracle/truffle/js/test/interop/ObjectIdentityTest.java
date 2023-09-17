@@ -310,6 +310,24 @@ public class ObjectIdentityTest {
         }
     }
 
+    @Test
+    public void testNoExplicitIdentityObject() {
+        try (Context context = JSTest.newContextBuilder().build()) {
+            Object value = new NoExplicitIdentityObject();
+
+            Value identical = context.eval(ID, "(function(a, b){return a === b;})");
+            Value equals = context.eval(ID, "(function(a, b){return a == b;})");
+
+            assertFalse(identical.execute(value, value).asBoolean());
+            assertFalse(equals.execute(value, value).asBoolean());
+
+            Value singletonArrayIncludes = context.eval(ID, "(function(x, y){return [x].includes(y);})");
+
+            assertFalse(singletonArrayIncludes.execute(42, value).asBoolean());
+            assertFalse(singletonArrayIncludes.execute(value, value).asBoolean());
+        }
+    }
+
     @ExportLibrary(InteropLibrary.class)
     static final class IdentityPreservingWrapper implements TruffleObject {
         final Object original;
@@ -338,4 +356,9 @@ public class ObjectIdentityTest {
             return thisLib.identityHashCode(original);
         }
     }
+
+    @ExportLibrary(InteropLibrary.class)
+    static final class NoExplicitIdentityObject implements TruffleObject {
+    }
+
 }
