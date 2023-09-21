@@ -67,7 +67,7 @@ public final class GraalJSEngineFactory implements ScriptEngineFactory {
     private static final String PLACEHOLDER_VERSION = "1";
 
     static {
-        try (Engine engine = Engine.newBuilder().useSystemProperties(false).build()) {
+        try (Engine engine = Engine.newBuilder().useSystemProperties(false).option("engine.WarnInterpreterOnly", "false").build()) {
             JS_AVAILABLE = engine.getLanguages().containsKey("js");
         }
     }
