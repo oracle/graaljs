@@ -5,7 +5,7 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
-## Version 23.2.0
+## Version 24.0.0
 * Implemented the [WebAssembly threads](https://github.com/WebAssembly/threads) proposal.
 
 ## Version 23.1.0
@@ -21,6 +21,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Deprecated option `js.disable-eval`, superseded by `js.allow-eval`.
 * Implemented the [String.dedent](https://github.com/tc39/proposal-string-dedent) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Duplicate named capture groups are now supported in regular expressions, as per the [duplicate named capturing groups](https://github.com/tc39/proposal-duplicate-named-capturing-groups) proposal.
+* Implemented the [RegExp v flag](https://github.com/tc39/proposal-regexp-v-flag) proposal. It is available behind the experimental option `--js.regexp-unicode-sets`.
 * The Maven coordinates for embedding the GraalVM JavaScript have been updated.
   For consuming the enterprise GraalVM JavaScript, use:
   ```xml
