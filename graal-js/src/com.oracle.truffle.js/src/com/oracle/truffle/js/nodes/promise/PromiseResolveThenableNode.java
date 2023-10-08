@@ -49,6 +49,7 @@ import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JobCallback;
+import com.oracle.truffle.js.runtime.PromiseHook;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -92,9 +93,11 @@ public class PromiseResolveThenableNode extends JavaScriptBaseNode {
         JSAgent agent = getRealm().getAgent();
         try {
             var previousContextMapping = agent.asyncContextSwap(then.asyncContextSnapshot());
+            context.notifyPromiseHook(PromiseHook.TYPE_BEFORE, promiseToResolve);
             try {
                 return callResolveNode.executeCall(JSArguments.create(thenable, then.callback(), resolve, reject));
             } finally {
+                context.notifyPromiseHook(PromiseHook.TYPE_AFTER, promiseToResolve);
                 agent.asyncContextSwap(previousContextMapping);
             }
         } catch (AbstractTruffleException ex) {
