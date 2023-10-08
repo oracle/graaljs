@@ -225,7 +225,7 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
             JSDynamicObject functionObject = JSFrameUtil.getFunctionObject(frame);
             PromiseReactionRecord reaction = (PromiseReactionRecord) getReaction.getValue(functionObject);
             PromiseCapabilityRecord promiseCapability = reaction.getCapability();
-            if (promiseCapability != null) {
+            if (promiseCapability != null && !promiseCapability.isThrowaway()) {
                 return AwaitNode.findAsyncStackFramesFromPromise(promiseCapability.getPromise());
             } else if (reaction.getHandler() != null && reaction.getHandler().callback() instanceof JSFunctionObject callbackFunction) {
                 return AwaitNode.findAsyncStackFramesFromHandler(callbackFunction);

@@ -225,6 +225,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
             return null;
         }
         PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
+        throwawayCapability.markAsThrowaway();
         ((JSPromiseObject) throwawayCapability.getPromise()).setIsHandled(true);
         return throwawayCapability;
     }
