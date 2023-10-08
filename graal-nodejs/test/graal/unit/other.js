@@ -39,6 +39,7 @@
  * SOFTWARE.
  */
 
+var async_hooks = require('async_hooks');
 var assert = require('assert');
 var fs = require('fs');
 var module = require('./_unit');
@@ -109,5 +110,20 @@ describe('Other', function () {
     });
     it('should not define FinalizationGroup', function () {
         assert.strictEqual(global.FinalizationGroup, undefined);
+    });
+    it('should keep local storage after await', function(done) {
+        const { AsyncLocalStorage } = async_hooks;
+        const asyncLocalStorage = new AsyncLocalStorage();
+
+        asyncLocalStorage.run({id: 42}, async () => {
+            try {
+                assert.strictEqual(asyncLocalStorage.getStore().id, 42);
+                await 211;
+                assert.strictEqual(asyncLocalStorage.getStore().id, 42);
+                done();
+            } catch (err) {
+                done(err);
+            }
+        });
     });
 });
