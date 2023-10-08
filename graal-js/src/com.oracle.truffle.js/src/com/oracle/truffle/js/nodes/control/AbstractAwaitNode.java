@@ -221,7 +221,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
     }
 
     private PromiseCapabilityRecord newThrowawayCapability() {
-        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019 && !context.hasPromiseHook()) {
             return null;
         }
         PromiseCapabilityRecord throwawayCapability = newPromiseCapability();

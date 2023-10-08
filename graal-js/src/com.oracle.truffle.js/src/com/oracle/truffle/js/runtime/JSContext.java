@@ -1646,8 +1646,12 @@ public class JSContext {
         }
     }
 
+    public final boolean hasPromiseHook() {
+        return !promiseHookNotUsedAssumption.isValid() && (promiseHook != null);
+    }
+
     public final void notifyPromiseHook(int changeType, JSDynamicObject promise) {
-        if (!promiseHookNotUsedAssumption.isValid() && promiseHook != null) {
+        if (hasPromiseHook()) {
             JSRealm realm = JSRealm.getMain(null);
             if (changeType == -1) {
                 // Information about parent for the incoming INIT event
