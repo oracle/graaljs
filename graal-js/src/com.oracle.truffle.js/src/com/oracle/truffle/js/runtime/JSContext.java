@@ -1658,7 +1658,12 @@ public class JSContext {
                 realm.storeParentPromise(promise);
             } else {
                 JSDynamicObject parent = (changeType == PromiseHook.TYPE_INIT) ? realm.fetchParentPromise() : Undefined.instance;
-                notifyPromiseHookImpl(changeType, promise, parent);
+                try {
+                    notifyPromiseHookImpl(changeType, promise, parent);
+                } catch (GraalJSException ex) {
+                    // Resembles ReportMessageFromMicrotask()
+                    notifyPromiseRejectionTracker(JSPromise.create(this, getRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, ex.getErrorObject());
+                }
             }
         }
     }
