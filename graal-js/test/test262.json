@@ -130,6 +130,27 @@
     },
     "comment" : "GR-22846"
   }, {
+    "filePath" : "built-ins/Atomics/waitAsync/bigint/true-for-timeout.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/returns-result-object-value-is-promise-resolves-to-timed-out.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
+  }, {
+    "filePath" : "built-ins/Atomics/waitAsync/true-for-timeout.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
+  }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
     "comment" : "Long running test"

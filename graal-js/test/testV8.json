@@ -402,6 +402,27 @@
     },
     "comment" : "Time-consuming when instrumented"
   }, {
+    "filePath" : "mjsunit/asm/sqlite3/sqlite-change-heap.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "GR-49316"
+  }, {
+    "filePath" : "mjsunit/asm/sqlite3/sqlite-pointer-masking.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "GR-49316"
+  }, {
+    "filePath" : "mjsunit/asm/sqlite3/sqlite-safe-heap.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "GR-49316"
+  }, {
     "filePath" : "mjsunit/async-hooks/api-methods.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
