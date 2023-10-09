@@ -14,8 +14,7 @@ local cicommon = import '../ci/common.jsonnet';
   local ee = ci.ee,
 
   local vm_env = {
-    // too slow on windows and darwin-amd64
-    local enabled = 'os' in self && !(self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')),
+    local enabled = true,
     // Avoid building native images on machines with very little RAM.
     capabilities+: if enabled && 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then ['ram16gb'] else [],
     artifact:: if enabled then 'nodejs' else '',
