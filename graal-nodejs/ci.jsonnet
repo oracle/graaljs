@@ -91,7 +91,7 @@ local cicommon = import '../ci/common.jsonnet';
       {NODE_SUITE: suite} +
       (if part != '' then {NODE_PART: part} else {}) +
       (if max_heap != '' then {NODE_MAX_HEAP: max_heap} else {}),
-    timelimit: '1:15:00',
+    timelimit: '1:30:00',
   },
   local maxHeapOnWindows(max_heap) = {
     environment+: if 'os' in super && super.os == 'windows' then {
