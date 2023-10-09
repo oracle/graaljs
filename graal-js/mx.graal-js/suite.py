@@ -423,7 +423,6 @@ suite = {
       "spotbugs" : "true",
       "javaCompliance" : "17+",
       "workingSets" : "Truffle,JavaScript,Test",
-      "testProject" : True,
     },
 
     "com.oracle.truffle.js.isolate": {
@@ -613,6 +612,9 @@ suite = {
           "com.oracle.truffle.js.test*",
         ],
         "opens" : [
+          # This non-qualified open is needed by the LoadFromClasspathTest to allow resource loading from a module path,
+          # see jdk.internal.loader.BuiltinClassLoader#isOpen
+          "com.oracle.truffle.js.test.nashorn",
           "com.oracle.truffle.js.test.external.suite to com.fasterxml.jackson.databind",
         ],
       },
@@ -641,6 +643,7 @@ suite = {
       "description" : "Graal JavaScript Tests",
       "allowsJavadocWarnings": True,
       "useModulePath": True,
+      "unittestConfig": "js",
     },
 
     "JS_DEBUG_TESTS" : {
@@ -670,9 +673,17 @@ suite = {
         "mx:JUNIT",
       ],
       "distDependencies" : [
-        "sdk:POLYGLOT_TCK"
+        "sdk:POLYGLOT_TCK",
+        "GRAALJS",
       ],
-      "maven" : False
+      "description" : "Truffle TCK provider for JavaScript language.",
+      "license": "UPL",
+      "testDistribution": False,
+      "maven": {
+        "artifactId": "js-truffle-tck",
+        "tag": ["default", "public"],
+      },
+      "noMavenJavadoc": True,
     },
 
     "GRAALJS_GRAALVM_SUPPORT" : {
