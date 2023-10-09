@@ -100,19 +100,29 @@ local cicommon = import '../ci/common.jsonnet';
     } else {},
   },
 
-  local buildAddons = build + {
+  // mx makeinnodeenv requires NASM on Windows.
+  local makeinnodeenv_deps = {
+    downloads+: if 'os' in super && super.os == 'windows' then {
+      NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
+    } else {},
+    setup+: if 'os' in super && super.os == 'windows' then [
+      ['set-export', 'PATH', '$PATH;$NASM'],
+    ] else [],
+  },
+
+  local buildAddons = build + makeinnodeenv_deps + {
     run+: [
       ['mx', 'makeinnodeenv', 'build-addons'],
     ],
   },
 
-  local buildNodeAPI = build + {
+  local buildNodeAPI = build + makeinnodeenv_deps + {
     run+: [
       ['mx', 'makeinnodeenv', 'build-node-api-tests'],
     ],
   },
 
-  local buildJSNativeAPI = build + {
+  local buildJSNativeAPI = build + makeinnodeenv_deps + {
     run+: [
       ['mx', 'makeinnodeenv', 'build-js-native-api-tests'],
     ],
@@ -149,7 +159,7 @@ local cicommon = import '../ci/common.jsonnet';
     graalNodeJs + vm_env + build            + auxEngineCache                                                                  + ee + {name: 'aux-engine-cache'} + gateOnMain +
       excludePlatforms([common.windows_amd64, common.darwin_amd64]), # unsupported on windows, too slow on darwin-amd64
   ] +
-  // mx makeinnodeenv requires NASM on Windows.
+  // mx makeinnodeenv requires Visual Studio build tools on Windows.
   [gateOnMain + excludePlatforms([common.windows_amd64]) + b for b in [
     graalNodeJs          + buildAddons      + testNode('addons',        max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'addons'},
     graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'node-api'},
