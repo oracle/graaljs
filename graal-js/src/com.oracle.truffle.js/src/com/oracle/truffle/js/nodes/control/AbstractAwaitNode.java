@@ -161,10 +161,10 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         JSPromiseObject promise = promiseResolve(value);
         JSFunctionObject onFulfilled = createAwaitFulfilledFunction(resumeTarget, asyncContext, generatorOrCapability);
         JSFunctionObject onRejected = createAwaitRejectedFunction(resumeTarget, asyncContext, generatorOrCapability);
+        context.notifyPromiseHook(-1 /* parent info */, promise);
         PromiseCapabilityRecord throwawayCapability = newThrowawayCapability();
 
         fillAsyncStackTrace(frame, onFulfilled, onRejected);
-        context.notifyPromiseHook(-1 /* parent info */, promise);
 
         echoInput(frame, promise);
         performPromiseThenNode.execute(promise, onFulfilled, onRejected, throwawayCapability);
@@ -221,10 +221,11 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
     }
 
     private PromiseCapabilityRecord newThrowawayCapability() {
-        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
+        if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2019 && !context.hasPromiseHook()) {
             return null;
         }
         PromiseCapabilityRecord throwawayCapability = newPromiseCapability();
+        throwawayCapability.markAsThrowaway();
         ((JSPromiseObject) throwawayCapability.getPromise()).setIsHandled(true);
         return throwawayCapability;
     }

@@ -274,6 +274,7 @@ public class CreateResolvingFunctionNode extends JavaScriptBaseNode {
                     return Undefined.instance;
                 }
                 alreadyResolved.value = true;
+                context.notifyPromiseHook(PromiseHook.TYPE_RESOLVE, promise);
 
                 return rejectPromiseNode.execute(promise, reason);
             }
