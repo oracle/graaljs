@@ -16,9 +16,11 @@ local cicommon = import '../ci/common.jsonnet';
   local vm_env = {
     // too slow on windows and darwin-amd64
     local enabled = 'os' in self && !(self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')),
+    // Avoid building native images on machines with very little RAM.
+    capabilities+: if enabled && 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then ['ram16gb'] else [],
     artifact:: if enabled then 'nodejs' else '',
     suiteimports+:: if enabled then ['vm', 'substratevm', 'tools'] else ['vm'],
-    nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [], // 'js'
+    nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [],
     build_standalones:: true,
   },
 

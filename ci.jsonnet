@@ -146,7 +146,9 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
         ] else []),
       },
     ],
-    timelimit: if std.objectHasAll(self, 'os') && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:00:00' else '40:00',
+    // Avoid building native images on machines with very little RAM.
+    capabilities+: if 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then ['ram16gb'] else [],
+    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:00:00' else '40:00',
     notify_groups: ['javascript'],
   },
 
