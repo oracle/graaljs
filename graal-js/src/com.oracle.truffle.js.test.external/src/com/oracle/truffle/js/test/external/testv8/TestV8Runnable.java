@@ -237,7 +237,7 @@ public class TestV8Runnable extends TestRunnable {
         }
         if (negative) {
             if (!testResult.isFailure()) {
-                logFailure(ecmaVersion, "negative test, was expected to fail but didn't");
+                testResult = TestFile.Result.failed("negative test, was expected to fail but didn't");
             } else {
                 testResult = TestFile.Result.PASSED;
             }
@@ -245,7 +245,7 @@ public class TestV8Runnable extends TestRunnable {
         // test with --throws must fail
         if (shouldThrow) {
             if (!testResult.isFailure()) {
-                logFailure(ecmaVersion, "--throws test, was expected to fail but didn't");
+                testResult = TestFile.Result.failed("--throws test, was expected to fail but didn't");
             } else {
                 testResult = TestFile.Result.PASSED;
             }
