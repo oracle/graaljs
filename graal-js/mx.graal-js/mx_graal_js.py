@@ -49,7 +49,7 @@ TEST262_REV = "715dd1073bc060f4ee221e2e74770f5728e7b8a0"
 TESTV8_REPO = "https://" + "github.com/v8/v8.git"
 
 # Git revision of V8 to checkout
-TESTV8_REV = "59187809cbc7a6887e45c85ab410e4596aaf5e9c"
+TESTV8_REV = "efb1d76c3f037f206f87ca0d68077bdd7d7cefd9"
 
 def get_jdk(forBuild=False):
     # Graal.nodejs requires a JDK at build time, to be passed as argument to `./configure`.
