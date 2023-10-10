@@ -380,6 +380,7 @@ public final class TestFile {
         MACOS(cfg -> System.getProperty("os.name").startsWith("Mac")),
         STAGING(cfg -> cfg.getMinESVersion() == JSConfig.StagingECMAScriptVersion),
         LAZY_TRANSLATION(cfg -> "true".equals(System.getProperty("polyglot.js.lazy-translation"))),
+        NO_IC(cfg -> "0".equals(System.getProperty("polyglot.js.function-cache-limit"))),
         SHARED_ENGINE(cfg -> cfg.isShareEngine());
 
         private final Predicate<SuiteConfig> condition;

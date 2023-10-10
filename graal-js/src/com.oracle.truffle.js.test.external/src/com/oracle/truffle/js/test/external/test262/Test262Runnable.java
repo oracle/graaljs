@@ -257,6 +257,7 @@ public class Test262Runnable extends TestRunnable {
                     "String.prototype.isWellFormed",
                     "String.prototype.toWellFormed",
                     "arbitrary-module-namespace-names",
+                    "promise-with-resolvers",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     });

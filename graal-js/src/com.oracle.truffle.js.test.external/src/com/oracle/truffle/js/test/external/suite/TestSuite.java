@@ -624,7 +624,7 @@ public abstract class TestSuite {
                 }
             } else if (!isSkipped(testFile)) {
                 // skipped by TestRunnable
-                assert (testFile.getRealStatus(config) == TestFile.Status.SKIP) : testFile;
+                assert (testFile.getStatus() == TestFile.Status.SKIP) : testFile;
                 skippedTests.put(testFile.getFilePath(), testFile);
             }
         }
