@@ -5,10 +5,6 @@ local jdks = {
     jdk:: 'jdk' + super.jdk_version,
   },
 
-  jdk20:: common.jdks["labsjdk-ee-20"] + {
-    jdk:: 'jdk' + super.jdk_version,
-  },
-
   jdk21:: common.jdks["labsjdk-ee-21"] + {
     jdk:: 'jdk' + super.jdk_version,
   },
