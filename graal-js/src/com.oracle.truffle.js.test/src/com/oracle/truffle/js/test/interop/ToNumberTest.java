@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.test.interop;
 
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
@@ -94,6 +95,28 @@ public class ToNumberTest {
             Value value = context.eval(JavaScriptLanguage.ID, jscode);
             assertTrue(value.toString(), value.isBoolean());
             assertTrue(value.toString(), value.asBoolean());
+        }
+    }
+
+    @Test
+    public void testLongIsSafeInteger() {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
+            String jscode = "var longValue = java.lang.Long.valueOf(1699603200000);\n" +
+                            "Number.isSafeInteger(longValue)";
+            Value value = context.eval(JavaScriptLanguage.ID, jscode);
+            assertTrue(value.toString(), value.isBoolean());
+            assertTrue(value.toString(), value.asBoolean());
+        }
+    }
+
+    @Test
+    public void testLongIsNotSafeInteger() {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
+            String jscode = "var longValue = java.lang.Long.valueOf('9223372036854775807');\n" +
+                            "Number.isSafeInteger(longValue)";
+            Value value = context.eval(JavaScriptLanguage.ID, jscode);
+            assertTrue(value.toString(), value.isBoolean());
+            assertFalse(value.toString(), value.asBoolean());
         }
     }
 
