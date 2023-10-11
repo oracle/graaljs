@@ -93,10 +93,16 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     common.jdk21 + common.darwin_amd64,
     common.jdk21 + common.darwin_aarch64,
     common.jdk21 + common.windows_amd64,
+    common.jdklatest + common.linux_amd64,
+    common.jdklatest + common.linux_aarch64,
+    common.jdklatest + common.darwin_amd64,
+    common.jdklatest + common.darwin_aarch64,
+    common.jdklatest + common.windows_amd64,
   ],
   mainGatePlatform:: common.jdk21 + common.linux_amd64,
   styleGatePlatforms:: [
     common.jdk21 + common.linux_amd64,
+    common.jdklatest + common.linux_amd64,
   ],
 
   local artifact_name(jdk, edition, os, arch, prefix='js', suffix='') =
