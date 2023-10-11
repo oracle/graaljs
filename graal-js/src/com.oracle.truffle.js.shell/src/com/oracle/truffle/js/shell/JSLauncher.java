@@ -444,12 +444,8 @@ public class JSLauncher extends AbstractLanguageLauncher {
         }
     }
 
-    private static boolean isInteractiveTerminal() {
-        return System.console() != null;
-    }
-
     private static ConsoleHandler setupConsole() throws IOException {
-        if (isInteractiveTerminal()) {
+        if (isTTY()) {
             return new JLineConsoleHandler(System.in, System.out, PROMPT);
         }
         return new DefaultConsoleHandler(System.in, System.out, null);
