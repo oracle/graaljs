@@ -75,4 +75,26 @@ public class ToNumberTest {
         }
     }
 
+    @Test
+    public void testLongIsFinite() {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
+            String jscode = "var longValue = java.lang.Long.valueOf(1699603200000);\n" +
+                            "Number.isFinite(longValue)";
+            Value value = context.eval(JavaScriptLanguage.ID, jscode);
+            assertTrue(value.toString(), value.isBoolean());
+            assertTrue(value.toString(), value.asBoolean());
+        }
+    }
+
+    @Test
+    public void testLongIsInteger() {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
+            String jscode = "var longValue = java.lang.Long.valueOf(1699603200000);\n" +
+                            "Number.isInteger(longValue)";
+            Value value = context.eval(JavaScriptLanguage.ID, jscode);
+            assertTrue(value.toString(), value.isBoolean());
+            assertTrue(value.toString(), value.asBoolean());
+        }
+    }
+
 }

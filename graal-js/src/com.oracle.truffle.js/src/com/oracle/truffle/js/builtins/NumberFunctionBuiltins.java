@@ -135,6 +135,11 @@ public final class NumberFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
+        protected boolean isFinite(@SuppressWarnings("unused") long arg) {
+            return true;
+        }
+
+        @Specialization
         protected boolean isFinite(double arg) {
             return Double.isFinite(arg);
         }
@@ -155,6 +160,12 @@ public final class NumberFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization
         protected static boolean isInteger(int arg) {
             return true;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization
+        protected static boolean isInteger(long arg) {
+            return JSRuntime.isIntegralNumber((double) arg);
         }
 
         @SuppressWarnings("unused")
@@ -187,12 +198,17 @@ public final class NumberFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
+        protected boolean isSafeIntegerLong(long arg) {
+            return JSRuntime.MIN_SAFE_INTEGER <= arg && arg <= JSRuntime.MAX_SAFE_INTEGER;
+        }
+
+        @Specialization
         protected boolean isSafeIntegerDouble(double arg) {
             if (!JSRuntime.isIntegralNumber(arg)) {
                 return false;
             }
             long l = (long) arg;
-            return JSRuntime.MIN_SAFE_INTEGER <= l && l <= JSRuntime.MAX_SAFE_INTEGER;
+            return this.isSafeIntegerLong(l);
         }
 
         @Specialization(guards = "!isNumber(arg)")
