@@ -96,7 +96,6 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
   ],
   mainGatePlatform:: common.jdk21 + common.linux_amd64,
   styleGatePlatforms:: [
-    common.jdk17 + common.linux_amd64,
     common.jdk21 + common.linux_amd64,
   ],
 
