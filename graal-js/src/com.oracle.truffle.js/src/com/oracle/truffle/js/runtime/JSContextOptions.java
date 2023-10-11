@@ -698,7 +698,7 @@ public final class JSContextOptions {
         this.intl402 = INTL_402.hasBeenSet(optionValues) ? readBooleanOption(INTL_402) : !nashornCompatibilityMode;
         this.regexpStaticResult = readBooleanOption(REGEXP_STATIC_RESULT);
         this.regexpMatchIndices = REGEXP_MATCH_INDICES.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_MATCH_INDICES) : getEcmaScriptVersion() >= JSConfig.ECMAScript2022;
-        this.regexpUnicodeSets = readBooleanOption(REGEXP_UNICODE_SETS);
+        this.regexpUnicodeSets = REGEXP_UNICODE_SETS.hasBeenSet(optionValues) ? readBooleanOption(REGEXP_UNICODE_SETS) : getEcmaScriptVersion() >= JSConfig.ECMAScript2024;
         this.sharedArrayBuffer = readBooleanOption(SHARED_ARRAY_BUFFER);
         this.v8CompatibilityMode = readBooleanOption(V8_COMPATIBILITY_MODE);
         this.v8RealmBuiltin = readBooleanOption(V8_REALM_BUILTIN);
