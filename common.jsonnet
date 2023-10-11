@@ -107,8 +107,7 @@ targets +
   },
 
   gateStyleFullBuild:: common.deps.pylint + common.deps.eclipse + common.deps.jdt + {
-    # GR-45482 SpotBugs does not run on JDK 21.
-    local strict = !('jdk' in self && self.jdk == 'jdk21'),
+    local strict = !('jdk_name' in self && self.jdk_name == 'jdk-latest'),
     environment+: {
       TAGS: 'style,fullbuild',
     },
