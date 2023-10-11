@@ -12,6 +12,10 @@ local jdks = {
   jdk21:: common.jdks["labsjdk-ee-21"] + {
     jdk:: 'jdk' + super.jdk_version,
   },
+
+  jdklatest:: common.jdks["labsjdk-ee-latest"] + {
+    jdk:: 'jdklatest',
+  },
 };
 
 local targets = {
@@ -77,7 +81,7 @@ targets +
   },
 
   windows_amd64:: common.windows_amd64 + self.common_deps + {
-    packages+: common.devkits["windows-" + self.jdk].packages,
+    packages+: common.devkits["windows-" + (if self.jdk_name == "jdk-latest" then "jdkLatest" else self.jdk_name)].packages,
     local devkit_version = std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(self.packages))[0],
     environment+: {
       DEVKIT_VERSION: devkit_version,
