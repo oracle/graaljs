@@ -118,7 +118,10 @@ targets +
   },
 
   gateStyleFullBuild:: common.deps.pylint + common.deps.eclipse + common.deps.jdt + {
-    local strict = !('jdk_name' in self && self.jdk_name == 'jdk-latest'),
+    local is_jdk_latest = 'jdk_name' in self && self.jdk_name == 'jdk-latest',
+    local strict = !is_jdk_latest,
+    // Add JDK21 to EXTRA_JAVA_HOMES for SpotBugs.
+    downloads+: if is_jdk_latest then {EXTRA_JAVA_HOMES: jdks.jdk21.downloads['JAVA_HOME']} else {},
     environment+: {
       TAGS: 'style,fullbuild',
     },
