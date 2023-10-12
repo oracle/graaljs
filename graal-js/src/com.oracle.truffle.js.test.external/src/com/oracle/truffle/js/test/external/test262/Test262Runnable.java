@@ -233,6 +233,7 @@ public class Test262Runnable extends TestRunnable {
                     "object-spread",
                     "optional-catch-binding",
                     "optional-chaining",
+                    "promise-with-resolvers",
                     "proxy-missing-checks",
                     "regexp-dotall",
                     "regexp-duplicate-named-groups",
@@ -257,7 +258,6 @@ public class Test262Runnable extends TestRunnable {
                     "String.prototype.isWellFormed",
                     "String.prototype.toWellFormed",
                     "arbitrary-module-namespace-names",
-                    "promise-with-resolvers",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     });
@@ -272,6 +272,7 @@ public class Test262Runnable extends TestRunnable {
                     "array-grouping",
                     "arraybuffer-transfer",
                     "decorators",
+                    "promise-with-resolvers",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
