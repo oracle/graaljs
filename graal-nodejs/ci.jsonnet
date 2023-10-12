@@ -52,13 +52,18 @@ local cicommon = import '../ci/common.jsonnet';
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=jvm']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
-    ] + (if std.find('lib:graal-nodejs', super.nativeimages) != [] then [
+    ] + (if std.find('lib:graal-nodejs', super.nativeimages) != [] then ([
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=native']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
-      ['${STANDALONE_HOME}/bin/npm', '--prefix', 'test/graal', 'install'],
-      ['${STANDALONE_HOME}/bin/npm', '--prefix', 'test/graal', 'test'],
-    ] else []),
+    ] + if 'os' in super && super.os == 'windows' then [] else [
+      # Uses node-gyp which requires Visual Studio on Windows.
+      # Note: `npm --prefix` does not work on Windows.
+      ['cd', 'test/graal'],
+      ['${STANDALONE_HOME}/bin/npm', 'install'],
+      ['${STANDALONE_HOME}/bin/npm', 'test'],
+      ['cd', '../..'],
+    ]) else []),
   },
 
   local gateCoverage = {
