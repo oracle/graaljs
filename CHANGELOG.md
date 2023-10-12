@@ -7,6 +7,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 
 ## Version 24.0.0
 * Implemented the [WebAssembly threads](https://github.com/WebAssembly/threads) proposal.
+* Implemented the [Promise.withResolvers](https://github.com/tc39/proposal-promise-with-resolvers) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 
 ## Version 23.1.0
 * NOTE: GraalVM no longer ships with a "js" ScriptEngine. Please either use the Maven dependency or explicitly put `js-scriptengine.jar` on the module path. See [ScriptEngine documentation](docs/user/ScriptEngine.md) for details.
