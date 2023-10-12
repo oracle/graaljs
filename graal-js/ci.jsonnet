@@ -161,8 +161,7 @@ local ci = import '../ci.jsonnet';
     // PGO profiles
     graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]) +
-      excludePlatforms([common.darwin_amd64]) +  # Too slow
-      excludePlatforms([common.darwin_aarch64]), # No such file or directory: 'mvn'
+      excludePlatforms([common.darwin_amd64]),   # Too slow
   ], defaultTarget=common.weekly),
 
   // Builds that only need to run on one platform
