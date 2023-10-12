@@ -45,23 +45,34 @@ targets +
     },
   },
 
-  linux_common:: {
-  },
-
-  linux_amd64:: common.linux_amd64 + self.linux_common + self.common_deps + {
+  linux_common:: self.common_deps + {
     packages+: {
-      'apache/ab': '==2.3',
       maven: '==3.3.9',
     },
   },
+  darwin_common:: self.common_deps + self.maven_download,
+  windows_common:: self.common_deps + self.maven_download,
+
+  # for cases where a maven package is not easily accessible
+  maven_download:: {
+    downloads+: {
+      MAVEN_HOME: {name: 'maven', version: '3.3.9', platformspecific: false},
+    },
+    local is_windows = 'os' in self && self.os == 'windows',
+    environment+: {
+      PATH: if is_windows then '$MAVEN_HOME\\bin;$JAVA_HOME\\bin;$PATH' else '$MAVEN_HOME/bin:$JAVA_HOME/bin:$PATH',
+    },
+  },
+
+  linux_amd64:: common.linux_amd64 + self.linux_common,
 
   x52:: self.linux_amd64 + {
     capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
   },
 
-  linux_aarch64:: common.linux_aarch64 + self.linux_common + self.common_deps,
+  linux_aarch64:: common.linux_aarch64 + self.linux_common,
 
-  darwin_amd64:: common.darwin_amd64 + self.common_deps + {
+  darwin_amd64:: common.darwin_amd64 + self.darwin_common + {
     environment+: {
       // for compatibility with macOS High Sierra
       MACOSX_DEPLOYMENT_TARGET: '10.13',
@@ -69,14 +80,14 @@ targets +
     capabilities+: ['darwin_mojave'],
   },
 
-  darwin_aarch64:: common.darwin_aarch64 + self.common_deps + {
+  darwin_aarch64:: common.darwin_aarch64 + self.darwin_common + {
     environment+: {
       // for compatibility with macOS BigSur
       MACOSX_DEPLOYMENT_TARGET: '11.0',
     },
   },
 
-  windows_amd64:: common.windows_amd64 + self.common_deps + {
+  windows_amd64:: common.windows_amd64 + self.windows_common + {
     packages+: common.devkits["windows-" + (if self.jdk_name == "jdk-latest" then "jdkLatest" else self.jdk_name)].packages,
     local devkit_version = std.filterMap(function(p) std.startsWith(p, 'devkit:VS'), function(p) std.substr(p, std.length('devkit:VS'), 4), std.objectFields(self.packages))[0],
     environment+: {
