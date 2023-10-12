@@ -70,7 +70,7 @@ public class SnapshotTool {
     private String outDir = null;
     private String inDir = null;
     private List<String> srcFiles = new ArrayList<>();
-    private int parallelism = Math.min(8, Runtime.getRuntime().availableProcessors());
+    private int parallelism = Math.min(4, Runtime.getRuntime().availableProcessors());
 
     public SnapshotTool(String[] args) {
         for (String arg : args) {
