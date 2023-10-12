@@ -211,7 +211,10 @@ public final class Strings {
     public static final TruffleString PARSE = constant("parse");
     public static final TruffleString POS = constant("pos");
     public static final TruffleString PRIMITIVE_VALUE = constant("PrimitiveValue");
+    public static final TruffleString PROMISE = constant("promise");
     public static final TruffleString RAW = constant("raw");
+    public static final TruffleString REJECT = constant("reject");
+    public static final TruffleString RESOLVE = constant("resolve");
     public static final TruffleString RETURN = constant("return");
     public static final TruffleString SOURCE = constant("source");
     public static final TruffleString STRING = constant("string");

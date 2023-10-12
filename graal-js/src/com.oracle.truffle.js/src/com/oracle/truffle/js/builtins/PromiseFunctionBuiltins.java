@@ -44,9 +44,13 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.PromiseCombinatorNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.RejectNodeGen;
 import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.ResolveNodeGen;
+import com.oracle.truffle.js.builtins.PromiseFunctionBuiltinsFactory.WithResolversNodeGen;
+import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
+import com.oracle.truffle.js.nodes.access.CreateObjectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -67,6 +71,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -93,7 +98,9 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         resolve(1),
 
         allSettled(1),
-        any(1);
+        any(1),
+
+        withResolvers(0);
 
         private final int length;
 
@@ -112,6 +119,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSConfig.ECMAScript2021;
             } else if (this == allSettled) {
                 return JSConfig.ECMAScript2020;
+            } else if (this == withResolvers) {
+                return JSConfig.StagingECMAScriptVersion;
             }
             return 6;
         }
@@ -132,6 +141,8 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return RejectNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case resolve:
                 return ResolveNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case withResolvers:
+                return WithResolversNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -252,5 +263,33 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected JSDynamicObject doNotObject(Object thisObj, Object iterable) {
             throw Errors.createTypeError("Cannot resolve promise from this type");
         }
+    }
+
+    public abstract static class WithResolversNode extends JSBuiltinNode {
+        @Child private NewPromiseCapabilityNode newPromiseCapabilityNode;
+        @Child private CreateObjectNode createObjectNode;
+        @Child private CreateDataPropertyNode definePromisePropertyNode;
+        @Child private CreateDataPropertyNode defineResolvePropertyNode;
+        @Child private CreateDataPropertyNode defineRejectPropertyNode;
+
+        protected WithResolversNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
+            this.createObjectNode = CreateObjectNode.create(context);
+            this.definePromisePropertyNode = CreateDataPropertyNode.create(context, Strings.PROMISE);
+            this.defineResolvePropertyNode = CreateDataPropertyNode.create(context, Strings.RESOLVE);
+            this.defineRejectPropertyNode = CreateDataPropertyNode.create(context, Strings.REJECT);
+        }
+
+        @Specialization
+        protected JSObject withResolvers(VirtualFrame frame, Object thiz) {
+            PromiseCapabilityRecord promiseCapability = newPromiseCapabilityNode.execute(thiz);
+            JSObject obj = createObjectNode.execute(frame);
+            definePromisePropertyNode.executeVoid(obj, promiseCapability.getPromise());
+            defineResolvePropertyNode.executeVoid(obj, promiseCapability.getResolve());
+            defineRejectPropertyNode.executeVoid(obj, promiseCapability.getReject());
+            return obj;
+        }
+
     }
 }
