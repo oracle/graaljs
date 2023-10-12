@@ -117,6 +117,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-intl-number-format-v3",
                     "--harmony-shadow-realm",
                     "--harmony-weak-refs-with-cleanup-some",
+                    "--js-promise-withresolvers",
     });
 
     private static final String FLAGS_PREFIX = "// Flags: ";
