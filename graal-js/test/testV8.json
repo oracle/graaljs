@@ -1061,10 +1061,6 @@
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
   }, {
-    "filePath" : "mjsunit/harmony/promise-withresolvers.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/harmony/regexp-property-special.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
