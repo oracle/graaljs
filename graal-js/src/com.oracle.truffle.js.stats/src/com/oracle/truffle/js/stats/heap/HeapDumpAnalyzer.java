@@ -58,7 +58,7 @@ import com.oracle.truffle.api.nodes.NodeCloneable;
 public class HeapDumpAnalyzer {
     private static final String NODE = Node.class.getName();
     private static final String DEFAULT_CALL_TARGET = DefaultCallTarget.class.getName();
-    private static final String OPTIMIZED_CALL_TARGET = "org.graalvm.compiler.truffle.OptimizedCallTarget";
+    private static final String OPTIMIZED_CALL_TARGET = "com.oracle.truffle.runtime.OptimizedCallTarget";
     private static final String NODE_CLONEABLE = NodeCloneable.class.getName();
 
     public static void analyzeHeap(List<String> classNames, List<File> dumps) throws IOException {
