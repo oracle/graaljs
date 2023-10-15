@@ -699,7 +699,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 this.iteratorCloseNode = IteratorCloseNode.create(context);
 
                 this.callNode = JSFunctionCallNode.createCall();
-                this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(false, context);
+                this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(true, false, context);
 
                 this.getNextValueNode = IteratorGetNextValueNode.create(context, null, JSConstantNode.create(null), true);
             }

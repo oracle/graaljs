@@ -1467,7 +1467,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
                 this.iteratorNextNode = IteratorNextNode.create();
                 this.callNode = JSFunctionCallNode.createCall();
-                this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(true, context);
+                this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(true, true, context);
                 this.awaitInnerNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMapInnerWithValue,
                                 AsyncIteratorFlatMapNode::createFlatMapInnerWithValueFunctionImpl, true);
             }
