@@ -103,9 +103,9 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
     }
 
     public enum GeneratorPrototype implements BuiltinEnum<GeneratorPrototype> {
-        next(1),
-        return_(1),
-        throw_(1);
+        next(0),
+        return_(0),
+        throw_(0);
 
         private final int length;
 

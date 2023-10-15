@@ -70,8 +70,8 @@ public final class WrapForValidIteratorPrototypeBuiltins extends JSBuiltinsConta
     }
 
     public enum WrapForIterator implements BuiltinEnum<WrapForIterator> {
-        next(1),
-        return_(1);
+        next(0),
+        return_(0);
 
         private final int length;
 

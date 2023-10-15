@@ -79,8 +79,8 @@ public final class WrapForValidAsyncIteratorPrototypeBuiltins extends JSBuiltins
     }
 
     public enum WrapForWrapForAsyncIterator implements BuiltinEnum<WrapForWrapForAsyncIterator> {
-        next(1),
-        return_(1);
+        next(0),
+        return_(0);
 
         private final int length;
 

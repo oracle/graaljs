@@ -78,7 +78,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public enum HelperIteratorPrototype implements BuiltinEnum<IteratorHelperPrototypeBuiltins.HelperIteratorPrototype> {
-        next(1),
+        next(0),
         return_(0);
 
         private final int length;
@@ -97,7 +97,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, IteratorHelperPrototypeBuiltins.HelperIteratorPrototype builtinEnum) {
         switch (builtinEnum) {
             case next:
-                return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperNextNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case return_:
                 return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
