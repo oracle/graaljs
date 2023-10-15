@@ -138,17 +138,21 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached InlinedBranchProfile aliveBranch) {
             thisObj.setGeneratorState(JSFunction.GeneratorState.Executing);
 
-            var args = thisObj.getIteratorArgs();
-            if (args instanceof IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs) {
-                var flatMapArgs = (IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs) args;
-                if (flatMapArgs.innerAlive) {
-                    aliveBranch.enter(this);
-                    iteratorCloseNode.executeAbrupt(flatMapArgs.innerIterator.getIterator());
-                }
-            }
-
-            IteratorRecord iterated = args.iterated;
             try {
+                var args = thisObj.getIteratorArgs();
+                IteratorRecord iterated = args.iterated;
+
+                if (args instanceof IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs flatMapArgs) {
+                    assert flatMapArgs.innerAlive;
+                    aliveBranch.enter(this);
+                    try {
+                        iteratorCloseNode.executeVoid(flatMapArgs.innerIterator.getIterator());
+                    } catch (AbstractTruffleException e) {
+                        iteratorCloseNode.executeAbrupt(iterated.getIterator());
+                        throw e;
+                    }
+                }
+
                 iteratorCloseNode.executeVoid(iterated.getIterator());
             } finally {
                 thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);
