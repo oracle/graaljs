@@ -6,7 +6,7 @@ local ci = import '../ci.jsonnet';
     cd:: 'graal-js',
     suite_prefix:: 'js', # for build job names
     // increase default timelimit on windows and darwin-amd64
-    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:15:00' else '45:00',
+    timelimit: if 'os' in self && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:30:00' else '45:00',
   },
 
   local compiler = {suiteimports+:: ['compiler']},
@@ -161,8 +161,7 @@ local ci = import '../ci.jsonnet';
     // PGO profiles
     graalJs + downstreamSubstratevmEE   + {environment+: {TAGS: 'pgo_collect_js'}}                        + {name: 'pgo-profiles'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform]) +
-      excludePlatforms([common.darwin_amd64]) +  # Too slow
-      excludePlatforms([common.darwin_aarch64]), # No such file or directory: 'mvn'
+      excludePlatforms([common.darwin_amd64]),   # Too slow
   ], defaultTarget=common.weekly),
 
   // Builds that only need to run on one platform

@@ -96,7 +96,7 @@ public abstract class TestSuite {
     private static final char LINE_SEPARATOR = '\n';
     private static final int REPORTED_STACK_TRACE_ELEMENTS = 10;
     private static final Pattern JS_FILE_PATTERN = Pattern.compile(".+\\.m?js$");
-    private static final boolean PRINT_PROGRESS = System.console() != null;
+    private final boolean printProgress = ConsoleHelper.isTTY();
 
     private final SuiteConfig config;
     private final ConsolePrintStream consolePrintStream = new ConsolePrintStream(System.out);
@@ -474,7 +474,7 @@ public abstract class TestSuite {
     }
 
     public final void printProgress(TestFile testFile) {
-        if (PRINT_PROGRESS) {
+        if (printProgress) {
             // test index
             int index = testIndex.incrementAndGet();
             // percents
@@ -604,7 +604,7 @@ public abstract class TestSuite {
         }
 
         // clear progress
-        if (PRINT_PROGRESS) {
+        if (printProgress) {
             consolePrintStream.printProgress(null);
         }
 

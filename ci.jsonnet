@@ -93,11 +93,16 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     common.jdk21 + common.darwin_amd64,
     common.jdk21 + common.darwin_aarch64,
     common.jdk21 + common.windows_amd64,
+    common.jdklatest + common.linux_amd64,
+    common.jdklatest + common.linux_aarch64,
+    common.jdklatest + common.darwin_amd64,
+    common.jdklatest + common.darwin_aarch64,
+    common.jdklatest + common.windows_amd64,
   ],
   mainGatePlatform:: common.jdk21 + common.linux_amd64,
   styleGatePlatforms:: [
-    common.jdk17 + common.linux_amd64,
     common.jdk21 + common.linux_amd64,
+    common.jdklatest + common.linux_amd64,
   ],
 
   local artifact_name(jdk, edition, os, arch, prefix='js', suffix='') =
@@ -119,6 +124,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     graalvm:: build.graalvm,
     suiteimports:: build.suiteimports,
     nativeimages:: build.nativeimages,
+    extraimagebuilderarguments:: build.extraimagebuilderarguments,
     name: "build-" + artifactName,
     run+: [
       mx_base_cmd + ["sversions"],
@@ -140,7 +146,9 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
         ] else []),
       },
     ],
-    timelimit: if std.objectHasAll(self, 'os') && (self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')) then '1:00:00' else '40:00',
+    // Avoid building native images on machines with very little RAM.
+    capabilities+: if 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then ['ram16gb'] else [],
+    timelimit: '1:00:00',
     notify_groups: ['javascript'],
   },
 

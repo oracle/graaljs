@@ -14,11 +14,12 @@ local cicommon = import '../ci/common.jsonnet';
   local ee = ci.ee,
 
   local vm_env = {
-    // too slow on windows and darwin-amd64
-    local enabled = 'os' in self && !(self.os == 'windows' || (self.os == 'darwin' && self.arch == 'amd64')),
+    local enabled = true,
+    // Avoid building native images on machines with very little RAM.
+    capabilities+: if enabled && 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then ['ram16gb'] else [],
     artifact:: if enabled then 'nodejs' else '',
     suiteimports+:: if enabled then ['vm', 'substratevm', 'tools'] else ['vm'],
-    nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [], // 'js'
+    nativeimages+:: if enabled then ['lib:graal-nodejs', 'lib:jvmcicompiler'] else [],
     build_standalones:: true,
   },
 
@@ -51,13 +52,18 @@ local cicommon = import '../ci/common.jsonnet';
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=jvm']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
-    ] + (if std.find('lib:graal-nodejs', super.nativeimages) != [] then [
+    ] + (if std.find('lib:graal-nodejs', super.nativeimages) != [] then ([
       ['set-export', 'STANDALONE_HOME', ['mx', '--quiet', 'standalone-home', 'nodejs', '--type=native']],
       ['${STANDALONE_HOME}/bin/node', '-e', "console.log('Hello, World!')"],
       ['${STANDALONE_HOME}/bin/npm', '--version'],
-      ['${STANDALONE_HOME}/bin/npm', '--prefix', 'test/graal', 'install'],
-      ['${STANDALONE_HOME}/bin/npm', '--prefix', 'test/graal', 'test'],
-    ] else []),
+    ] + if 'os' in super && super.os == 'windows' then [] else [
+      # Uses node-gyp which requires Visual Studio on Windows.
+      # Note: `npm --prefix` does not work on Windows.
+      ['cd', 'test/graal'],
+      ['${STANDALONE_HOME}/bin/npm', 'install'],
+      ['${STANDALONE_HOME}/bin/npm', 'test'],
+      ['cd', '../..'],
+    ]) else []),
   },
 
   local gateCoverage = {
@@ -86,12 +92,12 @@ local cicommon = import '../ci/common.jsonnet';
     timelimit: '1:00:00',
   },
 
-  local testNode(suite, part='-r0,1', max_heap='8G') = gateTags('testnode') + {
+  local testNode(suite, part='-r0,1', max_heap='4G') = gateTags('testnode') + {
     environment+:
       {NODE_SUITE: suite} +
       (if part != '' then {NODE_PART: part} else {}) +
       (if max_heap != '' then {NODE_MAX_HEAP: max_heap} else {}),
-    timelimit: '1:15:00',
+    timelimit: '1:30:00',
   },
   local maxHeapOnWindows(max_heap) = {
     environment+: if 'os' in super && super.os == 'windows' then {
@@ -99,19 +105,29 @@ local cicommon = import '../ci/common.jsonnet';
     } else {},
   },
 
-  local buildAddons = build + {
+  // mx makeinnodeenv requires NASM on Windows.
+  local makeinnodeenv_deps = {
+    downloads+: if 'os' in super && super.os == 'windows' then {
+      NASM: {name: 'nasm', version: '2.14.02', platformspecific: true},
+    } else {},
+    setup+: if 'os' in super && super.os == 'windows' then [
+      ['set-export', 'PATH', '$PATH;$NASM'],
+    ] else [],
+  },
+
+  local buildAddons = build + makeinnodeenv_deps + {
     run+: [
       ['mx', 'makeinnodeenv', 'build-addons'],
     ],
   },
 
-  local buildNodeAPI = build + {
+  local buildNodeAPI = build + makeinnodeenv_deps + {
     run+: [
       ['mx', 'makeinnodeenv', 'build-node-api-tests'],
     ],
   },
 
-  local buildJSNativeAPI = build + {
+  local buildJSNativeAPI = build + makeinnodeenv_deps + {
     run+: [
       ['mx', 'makeinnodeenv', 'build-js-native-api-tests'],
     ],
@@ -148,28 +164,28 @@ local cicommon = import '../ci/common.jsonnet';
     graalNodeJs + vm_env + build            + auxEngineCache                                                                  + ee + {name: 'aux-engine-cache'} + gateOnMain +
       excludePlatforms([common.windows_amd64, common.darwin_amd64]), # unsupported on windows, too slow on darwin-amd64
   ] +
-  // mx makeinnodeenv requires NASM on Windows.
+  // mx makeinnodeenv requires Visual Studio build tools on Windows.
   [gateOnMain + excludePlatforms([common.windows_amd64]) + b for b in [
-    graalNodeJs          + buildAddons      + testNode('addons',        max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'addons'},
-    graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'node-api'},
-    graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'js-native-api'},
+    graalNodeJs          + buildAddons      + testNode('addons',        max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'addons'},
+    graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'node-api'},
+    graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'js-native-api'},
   ]] +
   [gateOnMain + promoteToTarget(common.gate, [common.jdk21 + common.windows_amd64]) + b for b in [
-    graalNodeJs + vm_env + build            + testNode('async-hooks',   max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'async-hooks'},
-    graalNodeJs + vm_env + build            + testNode('es-module',     max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'es-module'},
+    graalNodeJs + vm_env + build            + testNode('async-hooks',   max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'async-hooks'},
+    graalNodeJs + vm_env + build            + testNode('es-module',     max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'es-module'},
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
-    graalNodeJs + vm_env + build            + testNode('sequential',    max_heap='8G') + maxHeapOnWindows('512M')                  + {name: 'sequential'} +
+    graalNodeJs + vm_env + build            + testNode('sequential',    max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'sequential'} +
       excludePlatforms([common.darwin_amd64]), # times out on darwin-amd64
   ]] +
   # too slow on darwin-amd64
   [gateOnMain + excludePlatforms([common.darwin_amd64]) + b for b in [
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r0,5', max_heap='8G')                               + {name: 'parallel-1'},
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r1,5', max_heap='8G')                               + {name: 'parallel-2'},
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r2,5', max_heap='8G')                               + {name: 'parallel-3'},
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r3,5', max_heap='8G')                               + {name: 'parallel-4'},
-    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r4,5', max_heap='8G')                               + {name: 'parallel-5'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r0,5', max_heap='4G')                               + {name: 'parallel-1'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r1,5', max_heap='4G')                               + {name: 'parallel-2'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r2,5', max_heap='4G')                               + {name: 'parallel-3'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r3,5', max_heap='4G')                               + {name: 'parallel-4'},
+    graalNodeJs + vm_env + build            + testNode(parallelNoHttp2, part='-r4,5', max_heap='4G')                               + {name: 'parallel-5'},
 
-    graalNodeJs + vm_env + build            + testNode(parallelHttp2, max_heap='8G')                                               + {name: 'parallel-http2'} +
+    graalNodeJs + vm_env + build            + testNode(parallelHttp2, max_heap='4G')                                               + {name: 'parallel-http2'} +
       promoteToTarget(common.postMerge, [ci.mainGatePlatform], override=true),
   ]], defaultTarget=common.weekly),
 
