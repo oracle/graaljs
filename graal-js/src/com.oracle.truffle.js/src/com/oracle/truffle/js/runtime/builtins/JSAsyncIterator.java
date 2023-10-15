@@ -77,8 +77,8 @@ public final class JSAsyncIterator extends JSNonProxy implements JSConstructorFa
 
         JSObjectUtil.putConstructorProperty(iteratorPrototype, ctor);
         JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, AsyncIteratorPrototypeBuiltins.BUILTINS);
-        JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_TO_STRING_TAG, TO_STRING_NAME, JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_ASYNC_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(realm), JSAttributes.getDefaultNotEnumerable());
+        JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_TO_STRING_TAG, TO_STRING_NAME, JSAttributes.getDefaultNotEnumerable());
 
         return iteratorPrototype;
     }
