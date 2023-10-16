@@ -559,6 +559,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> ITERATOR_HELPERS = new OptionKey<>(false);
     @CompilationFinal private boolean iteratorHelpers;
 
+    public static final String ASYNC_ITERATOR_HELPERS_NAME = JS_OPTION_PREFIX + "async-iterator-helpers";
+    @Option(name = ASYNC_ITERATOR_HELPERS_NAME, category = OptionCategory.EXPERT, help = "Enable JavaScript Async Iterator Helpers API.") //
+    public static final OptionKey<Boolean> ASYNC_ITERATOR_HELPERS = new OptionKey<>(false);
+    @CompilationFinal private boolean asyncIteratorHelpers;
+
     public static final String SHADOW_REALM_NAME = JS_OPTION_PREFIX + "shadow-realm";
     @Option(name = SHADOW_REALM_NAME, category = OptionCategory.EXPERT, help = "Enable ShadowRealm API.") //
     public static final OptionKey<Boolean> SHADOW_REALM = new OptionKey<>(false);
@@ -741,7 +746,8 @@ public final class JSContextOptions {
         this.webAssembly = readBooleanOption(WEBASSEMBLY);
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
-        this.iteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && readBooleanOption(ITERATOR_HELPERS);
+        this.asyncIteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && readBooleanOption(ASYNC_ITERATOR_HELPERS);
+        this.iteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && (this.asyncIteratorHelpers || readBooleanOption(ITERATOR_HELPERS));
         this.shadowRealm = getEcmaScriptVersion() >= JSConfig.ECMAScript2015 && readBooleanOption(SHADOW_REALM);
         this.asyncContext = readBooleanOption(ASYNC_CONTEXT);
         this.operatorOverloading = readBooleanOption(OPERATOR_OVERLOADING);
@@ -1135,6 +1141,10 @@ public final class JSContextOptions {
 
     public boolean isIteratorHelpers() {
         return iteratorHelpers;
+    }
+
+    public boolean isAsyncIteratorHelpers() {
+        return asyncIteratorHelpers;
     }
 
     public boolean isShadowRealm() {

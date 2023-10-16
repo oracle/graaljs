@@ -103,6 +103,7 @@ public record JSLanguageOptions(
                 boolean newSetMethods,
                 boolean temporal,
                 boolean iteratorHelpers,
+                boolean asyncIteratorHelpers,
                 boolean shadowRealm,
                 boolean asyncContext,
                 boolean v8Intrinsics,
@@ -178,6 +179,7 @@ public record JSLanguageOptions(
         UnhandledRejectionsTrackingMode unhandledRejectionsMode = options.getUnhandledRejectionsMode();
         boolean newSetMethods = options.isNewSetMethods();
         boolean iteratorHelpers = options.isIteratorHelpers();
+        boolean asyncIteratorHelpers = options.isAsyncIteratorHelpers();
         boolean shadowRealm = options.isShadowRealm();
         boolean asyncContext = options.isAsyncContext();
         boolean operatorOverloading = options.isOperatorOverloading();
@@ -254,6 +256,7 @@ public record JSLanguageOptions(
                         newSetMethods,
                         temporal,
                         iteratorHelpers,
+                        asyncIteratorHelpers,
                         shadowRealm,
                         asyncContext,
                         v8Intrinsics,

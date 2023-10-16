@@ -101,13 +101,13 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<IteratorPrototypeBuiltins.IteratorPrototype> {
 
     public static final JSBuiltinsContainer BUILTINS = new IteratorPrototypeBuiltins();
+    public static final JSBuiltinsContainer ASYNC_BUILTINS = new IteratorPrototypeAsyncBuiltins();
 
     private IteratorPrototypeBuiltins() {
         super(JSIterator.PROTOTYPE_NAME, IteratorPrototype.class);
     }
 
     public enum IteratorPrototype implements BuiltinEnum<IteratorPrototype> {
-        toAsync(0),
         toArray(0),
         forEach(1),
 
@@ -138,8 +138,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, IteratorPrototype builtinEnum) {
         switch (builtinEnum) {
-            case toAsync:
-                return IteratorPrototypeBuiltinsFactory.IteratorToAsyncNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case toArray:
                 return IteratorPrototypeBuiltinsFactory.IteratorToArrayNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case forEach:
@@ -1005,6 +1003,37 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
             return iteratorCloseNode;
+        }
+    }
+
+    public static final class IteratorPrototypeAsyncBuiltins extends JSBuiltinsContainer.SwitchEnum<IteratorPrototypeAsyncBuiltins.IteratorPrototypeAsync> {
+
+        private IteratorPrototypeAsyncBuiltins() {
+            super(IteratorPrototypeAsync.class);
+        }
+
+        public enum IteratorPrototypeAsync implements BuiltinEnum<IteratorPrototypeAsync> {
+            toAsync(0);
+
+            private final int length;
+
+            IteratorPrototypeAsync(int length) {
+                this.length = length;
+            }
+
+            @Override
+            public int getLength() {
+                return length;
+            }
+        }
+
+        @Override
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, IteratorPrototypeAsync builtinEnum) {
+            switch (builtinEnum) {
+                case toAsync:
+                    return IteratorPrototypeBuiltinsFactory.IteratorToAsyncNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
+            }
+            return null;
         }
     }
 }

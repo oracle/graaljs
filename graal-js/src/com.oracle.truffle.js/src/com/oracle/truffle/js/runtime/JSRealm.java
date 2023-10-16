@@ -748,27 +748,30 @@ public class JSRealm {
             this.iteratorPrototype = ctor.getPrototype();
 
             this.wrapForIteratorPrototype = JSWrapForValidIterator.INSTANCE.createPrototype(this, iteratorConstructor);
-            ctor = JSAsyncIterator.createConstructor(this);
-            this.asyncIteratorPrototype = ctor.getPrototype();
-            this.asyncIteratorContructor = ctor.getFunctionObject();
-            this.wrapForAsyncIteratorPrototype = JSWrapForValidAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
-            this.asyncIteratorHelperPrototype = createAsyncIteratorHelperPrototype();
             this.iteratorHelperPrototype = createIteratorHelperPrototype();
         } else {
             this.iteratorPrototype = createIteratorPrototype();
 
             this.iteratorConstructor = null;
             this.wrapForIteratorPrototype = null;
-            this.asyncIteratorContructor = null;
-            this.wrapForAsyncIteratorPrototype = null;
-            this.asyncIteratorHelperPrototype = null;
             this.iteratorHelperPrototype = null;
+        }
 
+        if (context.getLanguageOptions().asyncIteratorHelpers()) {
+            ctor = JSAsyncIterator.createConstructor(this);
+            this.asyncIteratorPrototype = ctor.getPrototype();
+            this.asyncIteratorContructor = ctor.getFunctionObject();
+            this.wrapForAsyncIteratorPrototype = JSWrapForValidAsyncIterator.INSTANCE.createPrototype(this, asyncIteratorContructor);
+            this.asyncIteratorHelperPrototype = createAsyncIteratorHelperPrototype();
+        } else {
             if (ecmaScriptVersion >= JSConfig.ECMAScript2018) {
                 this.asyncIteratorPrototype = JSFunction.createAsyncIteratorPrototype(this);
             } else {
                 this.asyncIteratorPrototype = null;
             }
+            this.asyncIteratorContructor = null;
+            this.wrapForAsyncIteratorPrototype = null;
+            this.asyncIteratorHelperPrototype = null;
         }
 
         this.arrayIteratorPrototype = es6 ? JSArrayIterator.INSTANCE.createPrototype(this, iteratorConstructor) : null;
@@ -1967,6 +1970,8 @@ public class JSRealm {
         }
         if (getContextOptions().isIteratorHelpers()) {
             putGlobalProperty(JSIterator.CLASS_NAME, getIteratorConstructor());
+        }
+        if (getContextOptions().isAsyncIteratorHelpers()) {
             putGlobalProperty(JSAsyncIterator.CLASS_NAME, getAsyncIteratorConstructor());
         }
 
