@@ -55,7 +55,7 @@ public class AsyncIteratorPrototypeBuiltinsTest {
 
     protected static Context.Builder newContextBuilder() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        builder.option(JSContextOptions.ASYNC_ITERATOR_HELPERS_NAME, "true");
         builder.option(JSContextOptions.UNHANDLED_REJECTIONS_NAME, "throw");
         return builder;
     }

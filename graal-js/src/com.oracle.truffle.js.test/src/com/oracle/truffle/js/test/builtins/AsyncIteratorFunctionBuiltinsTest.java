@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@ public class AsyncIteratorFunctionBuiltinsTest {
     @Test
     public void testConstructor() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        builder.option(JSContextOptions.ASYNC_ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             try {
                 context.eval(JavaScriptLanguage.ID, "new AsyncIterator()");
@@ -74,7 +74,7 @@ public class AsyncIteratorFunctionBuiltinsTest {
     @Test
     public void testFrom() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        builder.option(JSContextOptions.ASYNC_ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "AsyncIterator.from({[Symbol.asyncIterator]: () => ({next: () => ({done: true})})})");
             Assert.assertTrue(result.hasMembers());

@@ -357,7 +357,8 @@ public class IteratorPrototypeBuiltinsTest {
     @Test
     public void testToAsync() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
-        Context.Builder builder = newContextBuilder();
+        Context.Builder builder = JSTest.newContextBuilder();
+        builder.option(JSContextOptions.ASYNC_ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "[1, 2].values().toAsync().next().then(x => console.log(x.done, x.value))");
