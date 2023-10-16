@@ -752,10 +752,6 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
-    "filePath" : "mjsunit/es6/iterator-prototype.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/es6/math-log2-log10.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -952,14 +948,6 @@
     "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "mjsunit/harmony/iterator-from.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/harmony/iterator-helpers.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
     "status" : "FAIL",
