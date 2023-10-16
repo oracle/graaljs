@@ -155,10 +155,6 @@
     },
     "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
   }, {
-    "filePath" : "built-ins/Iterator/from/iterable-primitives.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
     "comment" : "Long running test"

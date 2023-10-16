@@ -40,12 +40,9 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNode.OrdinaryHasInstanceNode;
-import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -95,11 +92,11 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
 
         public JSAsyncIteratorFromNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(true, context);
+            this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(false, true, context);
             this.ordinaryHasInstanceNode = OrdinaryHasInstanceNode.create(context);
         }
 
-        @Specialization(guards = "!isString(arg)")
+        @Specialization
         protected Object asyncIteratorFrom(Object arg) {
             IteratorRecord iteratorRecord = getIteratorFlattenableNode.execute(arg);
 
@@ -110,12 +107,6 @@ public final class AsyncIteratorFunctionBuiltins extends JSBuiltinsContainer.Swi
             }
 
             return JSWrapForValidAsyncIterator.create(getContext(), realm, iteratorRecord);
-        }
-
-        @Specialization
-        protected Object asyncIteratorFromString(TruffleString arg,
-                        @Cached JSToObjectNode toObjectNode) {
-            return asyncIteratorFrom(toObjectNode.execute(arg));
         }
 
     }

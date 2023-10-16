@@ -78,7 +78,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     }
 
     public enum HelperIteratorPrototype implements BuiltinEnum<IteratorHelperPrototypeBuiltins.HelperIteratorPrototype> {
-        next(1),
+        next(0),
         return_(0);
 
         private final int length;
@@ -97,7 +97,7 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, IteratorHelperPrototypeBuiltins.HelperIteratorPrototype builtinEnum) {
         switch (builtinEnum) {
             case next:
-                return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperNextNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperNextNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case return_:
                 return IteratorHelperPrototypeBuiltinsFactory.IteratorHelperReturnNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
@@ -138,17 +138,21 @@ public class IteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached InlinedBranchProfile aliveBranch) {
             thisObj.setGeneratorState(JSFunction.GeneratorState.Executing);
 
-            var args = thisObj.getIteratorArgs();
-            if (args instanceof IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs) {
-                var flatMapArgs = (IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs) args;
-                if (flatMapArgs.innerAlive) {
-                    aliveBranch.enter(this);
-                    iteratorCloseNode.executeAbrupt(flatMapArgs.innerIterator.getIterator());
-                }
-            }
-
-            IteratorRecord iterated = args.iterated;
             try {
+                var args = thisObj.getIteratorArgs();
+                IteratorRecord iterated = args.iterated;
+
+                if (args instanceof IteratorPrototypeBuiltins.IteratorFlatMapNode.IteratorFlatMapArgs flatMapArgs) {
+                    assert flatMapArgs.innerAlive;
+                    aliveBranch.enter(this);
+                    try {
+                        iteratorCloseNode.executeVoid(flatMapArgs.innerIterator.getIterator());
+                    } catch (AbstractTruffleException e) {
+                        iteratorCloseNode.executeAbrupt(iterated.getIterator());
+                        throw e;
+                    }
+                }
+
                 iteratorCloseNode.executeVoid(iterated.getIterator());
             } finally {
                 thisObj.setGeneratorState(JSFunction.GeneratorState.Completed);

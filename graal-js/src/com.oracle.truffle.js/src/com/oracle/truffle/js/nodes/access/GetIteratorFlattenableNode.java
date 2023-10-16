@@ -41,11 +41,10 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
@@ -65,30 +64,40 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ImportStatic({Symbol.class, Strings.class})
 public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
 
+    protected final boolean rejectStrings;
     protected final boolean async;
     protected final JSContext context;
 
-    protected GetIteratorFlattenableNode(boolean async, JSContext context) {
+    protected GetIteratorFlattenableNode(boolean rejectStrings, boolean async, JSContext context) {
+        this.rejectStrings = rejectStrings;
         this.async = async;
         this.context = context;
     }
 
     public abstract IteratorRecord execute(Object iteratedObject);
 
-    public static GetIteratorFlattenableNode create(boolean async, JSContext context) {
-        return GetIteratorFlattenableNodeGen.create(async, context);
+    public static GetIteratorFlattenableNode create(boolean rejectStrings, boolean async, JSContext context) {
+        return GetIteratorFlattenableNodeGen.create(rejectStrings, async, context);
     }
 
-    @Specialization(guards = "isObjectNode.executeBoolean(iteratedObject)", limit = "1")
+    @Specialization
     protected final IteratorRecord getIteratorFlattenable(Object iteratedObject,
-                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
-                    @Cached @Exclusive IsObjectNode isIteratorObjectNode,
+                    @Cached IsObjectNode isObjectNode,
+                    @Cached IsObjectNode isIteratorObjectNode,
                     @Cached IsCallableNode isCallableNode,
                     @Cached(value = "create(context, SYMBOL_ASYNC_ITERATOR)") GetMethodNode getAsyncIteratorMethodNode,
                     @Cached(value = "create(context, SYMBOL_ITERATOR)") GetMethodNode getIteratorMethodNode,
                     @Cached(value = "createCall()") JSFunctionCallNode iteratorCallNode,
                     @Cached(value = "create(NEXT, context)") PropertyGetNode getNextMethodNode,
                     @Cached InlinedBranchProfile errorBranch) {
+
+        if (!isObjectNode.executeBoolean(iteratedObject)) {
+            if (rejectStrings || !(iteratedObject instanceof TruffleString)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorNotAnObject(iteratedObject, this);
+            }
+        }
+
         boolean alreadyAsync = false;
         Object method = Undefined.instance;
         if (async) {
@@ -121,12 +130,6 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
         } else {
             return iteratorRecord;
         }
-    }
-
-    @Specialization(guards = "!isObjectNode.executeBoolean(obj)", limit = "1")
-    protected final IteratorRecord unsupported(Object obj,
-                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
-        throw Errors.createTypeErrorNotAnObject(obj, this);
     }
 
     private IteratorRecord createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord, PropertyGetNode getNextMethodNode) {

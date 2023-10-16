@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,7 @@ public class AsyncIteratorHelperPrototypeBuiltinsTest {
     @Test
     public void testPrototype() {
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        builder.option(JSContextOptions.ASYNC_ITERATOR_HELPERS_NAME, "true");
         try (Context context = builder.build()) {
             Value result = context.eval(JavaScriptLanguage.ID, "Object.getPrototypeOf(Object.getPrototypeOf(AsyncIterator.from([1]).drop(0))) === AsyncIterator.prototype");
             Assert.assertTrue(result.asBoolean());
@@ -68,7 +68,7 @@ public class AsyncIteratorHelperPrototypeBuiltinsTest {
     public void testNext() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        builder.option(JSContextOptions.ASYNC_ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "(async function* test(){yield 1})().drop(0).next().then(x => console.log(typeof x.value, x.value, typeof x.done, x.done))");
@@ -84,7 +84,7 @@ public class AsyncIteratorHelperPrototypeBuiltinsTest {
     public void testReturn() {
         AsyncInteropTest.TestOutput out = new AsyncInteropTest.TestOutput();
         Context.Builder builder = JSTest.newContextBuilder();
-        builder.option(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        builder.option(JSContextOptions.ASYNC_ITERATOR_HELPERS_NAME, "true");
         builder.out(out);
         try (Context context = builder.build()) {
             context.eval(JavaScriptLanguage.ID, "async function* test() {yield 1; yield 2;}; " +
