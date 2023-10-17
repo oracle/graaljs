@@ -107,7 +107,7 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
     // localeMatcher unused as our lookup matcher and best fit matcher are the same at the moment
     @TruffleBoundary
     public static void initializeCollator(JSContext ctx, JSCollator.InternalState state, String[] locales, String usage, @SuppressWarnings("unused") String localeMatcher, String optco, Boolean optkn,
-                    String optkf, String sensitivity, Boolean ignorePunctuation) {
+                    String optkf, String sensitivity, boolean ignorePunctuation) {
         state.initializedCollator = true;
         state.usage = usage;
         Locale selectedLocale = IntlUtil.selectedLocale(ctx, locales);
