@@ -106,7 +106,7 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
             Boolean optkn = getNumericOption.executeValue(options);
             String optkf = getCaseFirstOption.executeValue(options);
             String sensitivity = getSensitivityOption.executeValue(options);
-            Boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
+            boolean ignorePunctuation = getIgnorePunctuationOption.executeValue(options);
 
             JSCollator.initializeCollator(context, state, locales, usage, optLocaleMatcher, optco, optkn, optkf, sensitivity, ignorePunctuation);
 
