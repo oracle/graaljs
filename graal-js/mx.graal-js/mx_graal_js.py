@@ -136,7 +136,7 @@ def _graal_js_gate_runner(args, tasks):
             import mx_gate
             jsonResultsFile = tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz').name
             try:
-                mx_truffle._tck(['--json-results=' + jsonResultsFile])
+                mx_truffle.tck(['--json-results=' + jsonResultsFile])
                 mx_gate.make_test_report(jsonResultsFile, task=t.title)
             finally:
                 os.unlink(jsonResultsFile)
@@ -156,6 +156,8 @@ class JsUnittestConfig(mx_unittest.MxUnittestConfig):
         (vmArgs, mainClass, mainClassArgs) = config
         # Disable DefaultRuntime warning
         vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+        # Assert for enter/return parity of ProbeNode
+        vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
         vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
         mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
