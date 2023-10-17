@@ -10265,10 +10265,6 @@
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
   }, {
-    "filePath" : "intl402/Collator/prototype/compare/ignorePunctuation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "intl402/DateTimeFormat/constructor-options-order-dayPeriod.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
