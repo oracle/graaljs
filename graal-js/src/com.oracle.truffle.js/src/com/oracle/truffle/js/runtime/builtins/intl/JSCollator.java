@@ -194,10 +194,8 @@ public final class JSCollator extends JSNonProxy implements JSConstructorFactory
                 state.collator.setStrength(Collator.TERTIARY);
                 break;
         }
-        if (state.ignorePunctuation) {
-            if (state.collator instanceof RuleBasedCollator) {
-                ((RuleBasedCollator) state.collator).setAlternateHandlingShifted(true);
-            }
+        if (state.collator instanceof RuleBasedCollator) {
+            ((RuleBasedCollator) state.collator).setAlternateHandlingShifted(state.ignorePunctuation);
         }
     }
 
