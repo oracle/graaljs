@@ -6,5 +6,13 @@
         "justification" : "Allow setting Truffle Thread name."
       }
     ]
+  },
+  {
+    "name" : "com.oracle.truffle.js.runtime.util.DebugJSAgent",
+    "methods" : [
+      { "name" : "terminate",
+        "justification" : "Allow to terminate agent threads in debugging feature."
+      }
+    ]
   }
 ]
