@@ -2206,6 +2206,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-781583.js",
+    "status" : "SKIP",
+    "comment" : "Transiently failing test; expects a stack overflow RangeError that may not always occur"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-806200.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2020-04-24)"
