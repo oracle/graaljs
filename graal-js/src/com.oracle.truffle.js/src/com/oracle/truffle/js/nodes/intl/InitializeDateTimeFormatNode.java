@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
@@ -62,12 +61,23 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  * https://tc39.github.io/ecma402/#sec-initializedatetimeformat
  */
 public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
+    public enum Required {
+        DATE,
+        TIME,
+        ANY
+    }
 
-    String required;
-    String defaults;
+    public enum Defaults {
+        DATE,
+        TIME,
+        ALL
+    }
+
+    private final Required required;
+    private final Defaults defaults;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-    @Child ToDateTimeOptionsNode createOptionsNode;
+    @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
     @Child PropertyGetNode getTimeZoneNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
@@ -92,12 +102,13 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getDateStyleOption;
     @Child GetStringOptionNode getTimeStyleOption;
 
-    @Child private JSToStringNode toStringNode;
+    @Child JSToStringNode toStringNode;
+
     private final BranchProfile errorBranch = BranchProfile.create();
 
     private final JSContext context;
 
-    protected InitializeDateTimeFormatNode(JSContext context, String required, String defaults) {
+    protected InitializeDateTimeFormatNode(JSContext context, Required required, Defaults defaults) {
 
         this.context = context;
 
@@ -105,7 +116,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.defaults = defaults;
 
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
-        this.createOptionsNode = ToDateTimeOptionsNodeGen.create(context);
+        this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getTimeZoneNode = PropertyGetNode.create(IntlUtil.KEY_TIME_ZONE, context);
 
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
@@ -134,7 +145,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
     public abstract JSDateTimeFormatObject executeInit(JSDateTimeFormatObject dateTimeFormatObj, Object locales, Object options);
 
-    public static InitializeDateTimeFormatNode createInitalizeDateTimeFormatNode(JSContext context, String required, String defaults) {
+    public static InitializeDateTimeFormatNode createInitalizeDateTimeFormatNode(JSContext context, Required required, Defaults defaults) {
         return InitializeDateTimeFormatNodeGen.create(context, required, defaults);
     }
 
@@ -146,7 +157,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             JSDateTimeFormat.InternalState state = dateTimeFormatObj.getInternalState();
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            JSDynamicObject options = createOptionsNode.execute(optionsArg, required, defaults);
+            Object options = coerceOptionsToObjectNode.execute(optionsArg);
 
             // enforce validity check
             getLocaleMatcherOption.executeValue(options);
@@ -180,15 +191,41 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             int fractionalSecondDigitsOpt = getFractionalSecondDigitsOption.executeInt(options, 1, 3, 0);
             String tzNameOpt = getTimeZoneNameOption.executeValue(options);
 
+            boolean hasExplicitFormatComponents = (weekdayOpt != null || eraOpt != null || yearOpt != null || monthOpt != null || dayOpt != null || dayPeriodOpt != null ||
+                            hourOpt != null || minuteOpt != null || secondOpt != null || fractionalSecondDigitsOpt != 0 || tzNameOpt != null);
+
             getFormatMatcherOption.executeValue(options);
 
             String dateStyleOpt = getDateStyleOption.executeValue(options);
             String timeStyleOpt = getTimeStyleOption.executeValue(options);
 
-            if ((dateStyleOpt != null || timeStyleOpt != null) && (weekdayOpt != null || eraOpt != null || yearOpt != null || monthOpt != null || dayOpt != null || dayPeriodOpt != null ||
-                            hourOpt != null || minuteOpt != null || secondOpt != null || fractionalSecondDigitsOpt != 0 || tzNameOpt != null)) {
-                errorBranch.enter();
-                throw Errors.createTypeError("dateStyle and timeStyle options cannot be mixed with other date/time options");
+            if ((dateStyleOpt != null || timeStyleOpt != null)) {
+                if (hasExplicitFormatComponents || (required == Required.DATE && timeStyleOpt != null) || (required == Required.TIME && dateStyleOpt != null)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeError("dateStyle and timeStyle options cannot be mixed with other date/time options");
+                }
+            } else {
+                boolean needDefaults = true;
+                if (required == Required.DATE || required == Required.ANY) {
+                    if (weekdayOpt != null || yearOpt != null || monthOpt != null || dayOpt != null) {
+                        needDefaults = false;
+                    }
+                }
+                if (required == Required.TIME || required == Required.ANY) {
+                    if (dayPeriodOpt != null || hourOpt != null || minuteOpt != null || secondOpt != null || fractionalSecondDigitsOpt != 0) {
+                        needDefaults = false;
+                    }
+                }
+                if (needDefaults && (defaults == Defaults.DATE || defaults == Defaults.ALL)) {
+                    yearOpt = IntlUtil.NUMERIC;
+                    monthOpt = IntlUtil.NUMERIC;
+                    dayOpt = IntlUtil.NUMERIC;
+                }
+                if (needDefaults && (defaults == Defaults.TIME || defaults == Defaults.ALL)) {
+                    hourOpt = IntlUtil.NUMERIC;
+                    minuteOpt = IntlUtil.NUMERIC;
+                    secondOpt = IntlUtil.NUMERIC;
+                }
             }
 
             JSDateTimeFormat.setupInternalDateTimeFormat(context, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt,
