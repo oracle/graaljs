@@ -808,6 +808,10 @@
     "filePath" : "mjsunit/es6/typedarray-map.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "mjsunit/es6/typedarray-of.js",
+    "runInIsolation" : true,
+    "comment" : "Triggers 576 GCs."
+  }, {
     "filePath" : "mjsunit/es6/typedarray-set-bytelength-not-smi.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -2217,6 +2221,10 @@
     "filePath" : "mjsunit/regress/regress-crbug-808192.js",
     "status" : "SKIP",
     "comment" : "causes stack overflows and excessive execution times"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-854299.js",
+    "runInIsolation" : true,
+    "comment" : "Triggers a random number of GCs"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-865892.js",
     "status" : "FAIL",
