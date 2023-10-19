@@ -171,7 +171,6 @@ public class TestV8 extends TestSuite {
 
         // increase default timeouts
         configBuilder.setTimeoutTest(120);
-        configBuilder.setTimeoutOverall(20 * 60);
 
         System.out.println("Checking your Javascript conformance. Using Google V8 testsuite.\n");
 
