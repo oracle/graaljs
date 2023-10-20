@@ -7601,9 +7601,15 @@ public class Parser extends AbstractParser {
             long callToken = token;
             while (type == PERIOD) {
                 next();
-                final IdentNode property = getIdentifierName();
-                assert property != null;
-                decoratorExpression = new AccessNode(callToken, finish, decoratorExpression, property.getNameTS());
+
+                final boolean isPrivate = type == TokenType.PRIVATE_IDENT;
+                final IdentNode property;
+                if (type == PRIVATE_IDENT) {
+                    property = privateIdentifierUse();
+                } else {
+                    property = getIdentifierName();
+                }
+                decoratorExpression = new AccessNode(callToken, finish, decoratorExpression, property.getNameTS(), false, isPrivate, false, false);
             }
             if (type == LPAREN) {
                 final int callLine = line;
