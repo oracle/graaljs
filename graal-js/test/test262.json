@@ -1,9 +1,5 @@
 {
   "testFiles" : [ {
-    "filePath" : "annexB/language/eval-code/direct/script-decl-lex-collision-in-sloppy-mode.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "annexB/language/function-code/block-decl-func-skip-arguments.js",
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."
@@ -11653,27 +11649,11 @@
     "status" : "FAIL",
     "comment" : "new failures 2021-07-08"
   }, {
-    "filePath" : "language/expressions/class/decorator/syntax/class-valid/decorator-member-expr-private-identifier.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex-var-declared-via-eval-sloppy.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
     "statusOverrides" : {
       "MACOS" : "SKIP"
     },
     "comment" : "Skipping on macOS because of transient spurious failures (GR-41067)."
-  }, {
-    "filePath" : "language/module-code/import-assertions/eval-gtbndng-indirect-faux-assertion.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "language/statements/class/decorator/syntax/class-valid/decorator-member-expr-private-identifier.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-05-16"
   } ]
 }
