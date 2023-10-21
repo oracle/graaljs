@@ -27,22 +27,6 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "intl/date-format/constructor-date-style-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl/date-format/constructor-date-time-style-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl/date-format/constructor-no-style-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl/date-format/constructor-time-style-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -266,10 +250,6 @@
     "filePath" : "intl/regress-10613.js",
     "status" : "FAIL",
     "comment" : "Different error message expected, passes otherwise"
-  }, {
-    "filePath" : "intl/regress-10836.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "intl/regress-1130489.js",
     "status" : "PASS",
