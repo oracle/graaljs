@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,7 @@ import com.oracle.truffle.api.nodes.NodeCloneable;
 public class HeapDumpAnalyzer {
     private static final String NODE = Node.class.getName();
     private static final String DEFAULT_CALL_TARGET = DefaultCallTarget.class.getName();
-    private static final String OPTIMIZED_CALL_TARGET = "org.graalvm.compiler.truffle.OptimizedCallTarget";
+    private static final String OPTIMIZED_CALL_TARGET = "com.oracle.truffle.runtime.OptimizedCallTarget";
     private static final String NODE_CLONEABLE = NodeCloneable.class.getName();
 
     public static void analyzeHeap(List<String> classNames, List<File> dumps) throws IOException {
