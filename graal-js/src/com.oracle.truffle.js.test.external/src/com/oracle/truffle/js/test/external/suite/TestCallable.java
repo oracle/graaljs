@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.test.external.suite;
 
-import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.OutputStream;
-import java.nio.ByteBuffer;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -54,22 +52,9 @@ import org.graalvm.polyglot.Source;
 import org.graalvm.polyglot.Value;
 import org.graalvm.polyglot.io.IOAccess;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.nodes.RootNode;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
-import com.oracle.truffle.js.nodes.ScriptNode;
-import com.oracle.truffle.js.parser.JSParser;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSContextOptions;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.snapshot.Recording;
+import com.oracle.truffle.js.snapshot.SnapshotUtil;
 
 public class TestCallable extends AbstractTestCallable {
 
@@ -131,7 +116,7 @@ public class TestCallable extends AbstractTestCallable {
         try (Context context = contextBuilder.build()) {
             boolean snapshot = getConfig().useSnapshots();
             if (snapshot) {
-                installEvalUsingSnapshotBuiltin(context);
+                SnapshotUtil.installEvalUsingSnapshotBuiltin(context, snapshotCache);
             }
 
             for (Source source : getPrequelSources()) {
@@ -156,7 +141,7 @@ public class TestCallable extends AbstractTestCallable {
         }
 
         try {
-            Value value = context.getBindings(JavaScriptLanguage.ID).getMember(Strings.toJavaString(EVAL_USING_SNAPSHOT_NAME));
+            Value value = context.getBindings(JavaScriptLanguage.ID).getMember(SnapshotUtil.EVAL_USING_SNAPSHOT_NAME);
             String path = (source.getPath() == null) ? "" : source.getPath();
             return value.execute(source.getCharacters(), path, source.getName(), cacheSnapshot);
         } catch (RuntimeException ex) {
@@ -180,64 +165,6 @@ public class TestCallable extends AbstractTestCallable {
         contextBuilder.err(err);
     }
 
-    private static final TruffleString EVAL_USING_SNAPSHOT_NAME = Strings.constant("evalUsingSnapshot");
     private static final Map<com.oracle.truffle.api.source.Source, byte[]> snapshotCache = new ConcurrentHashMap<>();
-
-    // Installs a built-in for the evaluation using snapshot. A built-in
-    // is needed for the correct processing of promises, exceptions etc.
-    // This built-in is not defined in com.oracle.truffle.js.builtins
-    // to avoid the dependency on com.oracle.truffle.js.snapshot there.
-    private static void installEvalUsingSnapshotBuiltin(Context polyglotContext) {
-        polyglotContext.initialize(JavaScriptLanguage.ID);
-        polyglotContext.enter();
-        try {
-            JSRealm realm = JavaScriptLanguage.getJSRealm(polyglotContext);
-            JSContext context = realm.getContext();
-            RootNode rootNode = new RootNode(JavaScriptLanguage.getCurrentLanguage()) {
-                @Override
-                public Object execute(VirtualFrame frame) {
-                    Object[] args = frame.getArguments();
-                    return evalUsingSnapshot(
-                                    JSArguments.getUserArgument(args, 0),
-                                    JSArguments.getUserArgument(args, 1),
-                                    JSArguments.getUserArgument(args, 2),
-                                    JSArguments.getUserArgument(args, 3));
-                }
-
-                @CompilerDirectives.TruffleBoundary
-                private Object evalUsingSnapshot(Object arg0, Object arg1, Object arg2, Object arg3) {
-                    String code = arg0.toString();
-                    String path = arg1.toString();
-                    String name = arg2.toString();
-                    boolean cacheSnapshot = (boolean) arg3;
-                    com.oracle.truffle.api.source.Source s;
-                    if (path.isEmpty()) {
-                        s = com.oracle.truffle.api.source.Source.newBuilder(JavaScriptLanguage.ID, code, name).build();
-                    } else {
-                        s = com.oracle.truffle.api.source.Source.newBuilder(JavaScriptLanguage.ID, realm.getEnv().getPublicTruffleFile(path)).content(code).build();
-                    }
-
-                    byte[] bytes = cacheSnapshot ? snapshotCache.get(s) : null;
-                    if (bytes == null) {
-                        Recording rec = Recording.recordSource(s, context, false, "", "");
-                        ByteArrayOutputStream outs = new ByteArrayOutputStream();
-                        rec.saveToStream(null, outs, true);
-                        bytes = outs.toByteArray();
-                        if (cacheSnapshot) {
-                            snapshotCache.put(s, bytes);
-                        }
-                    }
-
-                    JSParser parser = (JSParser) context.getEvaluator();
-                    ScriptNode scriptNode = parser.parseScript(context, s, ByteBuffer.wrap(bytes));
-                    return scriptNode.run(realm);
-                }
-            };
-            Object fn = JSFunction.create(realm, JSFunctionData.create(context, rootNode.getCallTarget(), 4, EVAL_USING_SNAPSHOT_NAME));
-            JSObjectUtil.putDataProperty(realm.getGlobalObject(), EVAL_USING_SNAPSHOT_NAME, fn);
-        } finally {
-            polyglotContext.leave();
-        }
-    }
 
 }
