@@ -1932,7 +1932,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private Object callToLocaleString(Object nextElement, Object[] userArguments) {
-            if (getToLocaleStringNode == null) {
+            if (getToLocaleStringNode == null || callToLocaleStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 getToLocaleStringNode = insert(PropertyGetNode.create(Strings.TO_LOCALE_STRING, false, getContext()));
                 callToLocaleStringNode = insert(JSFunctionCallNode.createCall());
