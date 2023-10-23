@@ -250,7 +250,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             if (hour12Opt) {
                 hc = h11or23 ? IntlUtil.H11 : IntlUtil.H12;
             } else {
-                hc = h11or23 ? IntlUtil.H23 : IntlUtil.H24;
+                boolean h24RequestedByLocaleExtension = IntlUtil.H24.equals(selectedLocale.getUnicodeLocaleType("hc"));
+                hc = h24RequestedByLocaleExtension ? IntlUtil.H24 : IntlUtil.H23;
             }
         }
 
