@@ -304,6 +304,20 @@ def _run_test_suite(custom_args, default_vm_args, max_heap, stack_size, main_cla
     main_dist = mx.distribution('TRUFFLE_JS_TESTS')
     main_class_arg = '--module=' + main_dist.get_declaring_module_name() + '/' + main_class if main_dist.use_module_path() else main_class
     _exports = ['--add-exports', 'org.graalvm.js/com.oracle.truffle.js.runtime=com.oracle.truffle.js.test']
+    if 'snapshot' in custom_args:
+        _exports += [
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.codec=com.oracle.truffle.js.snapshot',
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.lang=com.oracle.truffle.js.snapshot',
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.nodes=com.oracle.truffle.js.snapshot',
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.nodes.control=com.oracle.truffle.js.snapshot',
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.nodes.function=com.oracle.truffle.js.snapshot',
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.parser=com.oracle.truffle.js.snapshot',
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.parser.env=com.oracle.truffle.js.snapshot',
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.runtime=com.oracle.truffle.js.snapshot',
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.runtime.builtins=com.oracle.truffle.js.snapshot',
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.runtime.objects=com.oracle.truffle.js.snapshot',
+                '--add-exports', 'org.graalvm.js/com.oracle.truffle.js.runtime.util=com.oracle.truffle.js.snapshot',
+        ]
     _vm_args = ['-ea', '-esa'] + _exports + default_vm_args + _vm_args
     return mx.run_java(_vm_args + [main_class_arg] + _prog_args, nonZeroIsFatal=nonZeroIsFatal, cwd=cwd, jdk=jdk)
 

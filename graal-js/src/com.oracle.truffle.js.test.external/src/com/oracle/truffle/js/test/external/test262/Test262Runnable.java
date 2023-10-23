@@ -408,15 +408,15 @@ public class Test262Runnable extends TestRunnable {
             if (suite.executeWithSeparateThreads()) {
                 cause = cause.getCause() != null ? cause.getCause() : cause;
             }
-            if (cause instanceof PolyglotException) {
-                if (negative) {
+            if (negative) {
+                if (cause instanceof PolyglotException) {
                     return processFailedNegativeRun(ecmaVersion, negativeExpectedMessage, cause.getMessage());
                 } else {
-                    logFailure(ecmaVersion, cause);
-                    return TestFile.Result.failed(cause);
+                    return failNegativeWrongException(ecmaVersion, negativeExpectedMessage, cause.toString());
                 }
             } else {
-                return failNegativeWrongException(ecmaVersion, negativeExpectedMessage, cause.toString());
+                logFailure(ecmaVersion, cause);
+                return TestFile.Result.failed(cause);
             }
         }
     }
