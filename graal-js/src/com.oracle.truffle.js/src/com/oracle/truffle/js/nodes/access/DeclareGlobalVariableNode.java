@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -52,11 +53,12 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSGlobal;
+import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -97,29 +99,33 @@ public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
         if (!hasOwnPropertyNode.hasProperty(globalObject)) {
             assert JSObject.isExtensible(globalObject);
             executeVoid(globalObject, context);
+        } else if (configurable) {
+            ensureHasVarDeclarationOrRestrictedGlobalProperty(globalObject);
         }
     }
 
     protected abstract void executeVoid(JSDynamicObject globalObject, JSContext context);
 
-    @Specialization(guards = {"context.getPropertyCacheLimit() > 0", "isJSGlobalObject(globalObject)"})
-    protected void doCached(JSDynamicObject globalObject, @SuppressWarnings("unused") JSContext context,
+    @Specialization(guards = {"context.getPropertyCacheLimit() > 0"})
+    protected void doCached(JSGlobalObject globalObject, @SuppressWarnings("unused") JSContext context,
                     @Cached("makeDefineOwnPropertyCache(context)") PropertySetNode cache) {
         cache.setValue(globalObject, Undefined.instance);
     }
 
     @Specialization(replaces = {"doCached"})
-    protected void doUncached(JSDynamicObject globalObject, JSContext context) {
-        if (JSGlobal.isJSGlobalObject(globalObject)) {
-            JSObjectUtil.defineConstantDataProperty(context, globalObject, varName, Undefined.instance, getAttributeFlags());
-        } else {
-            PropertyDescriptor desc = configurable ? PropertyDescriptor.undefinedDataDesc : PropertyDescriptor.undefinedDataDescNotConfigurable;
-            JSObject.defineOwnProperty(globalObject, varName, desc, true);
-        }
+    protected void doUncached(JSGlobalObject globalObject, JSContext context) {
+        JSObjectUtil.defineConstantDataProperty(context, globalObject, varName, Undefined.instance, getAttributeFlags());
+    }
+
+    @Fallback
+    protected void doGeneric(JSDynamicObject globalObject, @SuppressWarnings("unused") JSContext context) {
+        assert !(globalObject instanceof JSGlobalObject);
+        PropertyDescriptor desc = configurable ? PropertyDescriptor.undefinedDataDesc : PropertyDescriptor.undefinedDataDescNotConfigurable;
+        JSObject.defineOwnProperty(globalObject, varName, desc, true);
     }
 
     private int getAttributeFlags() {
-        return configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable();
+        return (configurable ? JSAttributes.configurableEnumerableWritable() | JSProperty.GLOBAL_VAR : JSAttributes.notConfigurableEnumerableWritable());
     }
 
     @NeverDefault

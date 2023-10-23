@@ -1222,7 +1222,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         for (Symbol symbol : functionNode.getBody().getSymbols()) {
             if (symbol.isGlobal() && symbol.isVar()) {
                 if (symbol.isHoistableDeclaration()) {
-                    declarations.add(factory.createDeclareGlobalFunction(symbol.getNameTS(), configurable, null));
+                    declarations.add(factory.createDeclareGlobalFunction(symbol.getNameTS(), configurable));
                 } else {
                     declarations.add(factory.createDeclareGlobalVariable(symbol.getNameTS(), configurable));
                 }
