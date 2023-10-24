@@ -257,7 +257,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
                 }
                 timeZone = IntlUtil.getICUTimeZone(tzId, context);
             } else {
-                timeZone = IntlUtil.getICUTimeZone(prependGMT(tzId), context);
+                timeZone = TimeZone.getTimeZone(prependGMT(tzId));
             }
         } else {
             timeZone = getRealm().getLocalTimeZone();
