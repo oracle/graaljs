@@ -80,6 +80,7 @@ public class Test262Runnable extends TestRunnable {
     private static final String ONLY_STRICT_FLAG = "onlyStrict";
     private static final String ASYNC_FLAG = "async";
     private static final String MODULE_FLAG = "module";
+    private static final String RAW_FLAG = "raw";
     private static final String CAN_BLOCK_IS_FALSE_FLAG = "CanBlockIsFalse";
     private static final Pattern FLAGS_PATTERN = Pattern.compile("flags: \\[((?:(?:, )?[a-zA-Z-]+)*)\\]");
     private static final Pattern INCLUDES_PATTERN = Pattern.compile("includes: \\[(.*)\\]");
@@ -330,7 +331,18 @@ public class Test262Runnable extends TestRunnable {
             }
         }
 
-        Source[] harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
+        Source[] harnessSources;
+        if (flags.contains(RAW_FLAG)) {
+            /*
+             * `raw`: The test source code must not be modified in any way, files from the harness/
+             * directory must not be evaluated, and the test must be executed just once (in
+             * non-strict mode, only).
+             */
+            assert getIncludes(scriptCodeList).count() == 0 && !runStrict && !asyncTest;
+            harnessSources = new Source[0];
+        } else {
+            harnessSources = ((Test262) suite).getHarnessSources(runStrict, asyncTest, getIncludes(scriptCodeList));
+        }
 
         boolean supported = true;
         int minESVersion = suite.getConfig().getMinESVersion();

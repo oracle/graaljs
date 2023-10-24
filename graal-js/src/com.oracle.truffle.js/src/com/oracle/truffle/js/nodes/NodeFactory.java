@@ -1206,8 +1206,8 @@ public class NodeFactory {
         return DeclareGlobalVariableNode.create(varName, configurable);
     }
 
-    public DeclareGlobalNode createDeclareGlobalFunction(TruffleString varName, boolean configurable, JavaScriptNode valueNode) {
-        return DeclareGlobalFunctionNode.create(varName, configurable, valueNode);
+    public DeclareGlobalNode createDeclareGlobalFunction(TruffleString varName, boolean configurable) {
+        return DeclareGlobalFunctionNode.create(varName, configurable);
     }
 
     public DeclareGlobalNode createDeclareGlobalLexicalVariable(TruffleString varName, boolean isConst) {

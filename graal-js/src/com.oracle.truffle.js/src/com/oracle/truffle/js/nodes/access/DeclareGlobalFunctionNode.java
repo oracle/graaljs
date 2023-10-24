@@ -43,38 +43,37 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.builtins.JSGlobal;
+import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public abstract class DeclareGlobalFunctionNode extends DeclareGlobalNode {
     private final boolean configurable;
-    @Child protected JavaScriptNode valueNode;
     @Child private JSGetOwnPropertyNode getOwnPropertyNode;
     @Child private IsExtensibleNode isExtensibleNode = IsExtensibleNode.create();
 
-    protected DeclareGlobalFunctionNode(TruffleString varName, boolean configurable, JavaScriptNode valueNode) {
+    protected DeclareGlobalFunctionNode(TruffleString varName, boolean configurable) {
         super(varName);
         this.configurable = configurable;
-        this.valueNode = valueNode;
         this.getOwnPropertyNode = JSGetOwnPropertyNode.create(false);
     }
 
-    public static DeclareGlobalFunctionNode create(TruffleString varName, boolean configurable, JavaScriptNode valueNode) {
-        return DeclareGlobalFunctionNodeGen.create(varName, configurable, valueNode);
+    public static DeclareGlobalFunctionNode create(TruffleString varName, boolean configurable) {
+        return DeclareGlobalFunctionNodeGen.create(varName, configurable);
     }
 
     @Override
@@ -98,40 +97,52 @@ public abstract class DeclareGlobalFunctionNode extends DeclareGlobalNode {
 
     @Override
     public final void executeVoid(VirtualFrame frame, JSContext context, JSRealm realm) {
-        Object value = valueNode == null ? Undefined.instance : valueNode.execute(frame);
         JSDynamicObject globalObject = realm.getGlobalObject();
         PropertyDescriptor desc = getOwnPropertyNode.execute(globalObject, varName);
-        executeVoid(globalObject, value, desc, context);
+        executeVoid(globalObject, Undefined.instance, desc, context);
     }
 
     protected abstract void executeVoid(JSDynamicObject globalObject, Object value, PropertyDescriptor desc, JSContext context);
 
-    @Specialization(guards = {"context.getPropertyCacheLimit() > 0", "isJSGlobalObject(globalObject)", "desc == null"})
-    protected void doCached(JSDynamicObject globalObject, Object value, @SuppressWarnings("unused") PropertyDescriptor desc, @SuppressWarnings("unused") JSContext context,
+    @Specialization(guards = {"context.getPropertyCacheLimit() > 0", "desc == null"})
+    protected void doCached(JSGlobalObject globalObject, Object value, @SuppressWarnings("unused") PropertyDescriptor desc, @SuppressWarnings("unused") JSContext context,
                     @Cached("makeDefineOwnPropertyCache(context)") PropertySetNode cache) {
         cache.setValue(globalObject, value);
     }
 
     @Specialization(replaces = {"doCached"})
-    protected void doUncached(JSDynamicObject globalObject, Object value, PropertyDescriptor desc, JSContext context) {
-        if (valueNode == null && desc == null && JSGlobal.isJSGlobalObject(globalObject)) {
+    protected void doUncached(JSGlobalObject globalObject, Object value, PropertyDescriptor desc, JSContext context) {
+        if (desc == null) {
             JSObjectUtil.defineConstantDataProperty(context, globalObject, varName, value, getAttributeFlags());
         } else {
-            if (desc == null || desc.getConfigurable()) {
+            if (desc.getConfigurable()) {
                 JSObject.defineOwnProperty(globalObject, varName, PropertyDescriptor.createData(value, true, true, configurable), true);
+                if (configurable) {
+                    ensureHasVarDeclarationOrRestrictedGlobalProperty(globalObject);
+                }
             } else {
                 JSObject.defineOwnProperty(globalObject, varName, PropertyDescriptor.createData(value), true);
             }
         }
     }
 
+    @Fallback
+    protected void doGeneric(JSDynamicObject globalObject, Object value, PropertyDescriptor desc, @SuppressWarnings("unused") JSContext context) {
+        assert !(globalObject instanceof JSGlobalObject);
+        if (desc == null || desc.getConfigurable()) {
+            JSObject.defineOwnProperty(globalObject, varName, PropertyDescriptor.createData(value, true, true, configurable), true);
+        } else {
+            JSObject.defineOwnProperty(globalObject, varName, PropertyDescriptor.createData(value), true);
+        }
+    }
+
     private int getAttributeFlags() {
-        return configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable();
+        return (configurable ? JSAttributes.configurableEnumerableWritable() | JSProperty.GLOBAL_VAR : JSAttributes.notConfigurableEnumerableWritable());
     }
 
     @NeverDefault
     protected final PropertySetNode makeDefineOwnPropertyCache(JSContext context) {
-        return PropertySetNode.createImpl(varName, false, context, true, true, getAttributeFlags(), valueNode == null);
+        return PropertySetNode.createImpl(varName, false, context, true, true, getAttributeFlags(), true);
     }
 
     @Override
@@ -141,6 +152,6 @@ public abstract class DeclareGlobalFunctionNode extends DeclareGlobalNode {
 
     @Override
     protected DeclareGlobalNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(varName, configurable, JavaScriptNode.cloneUninitialized(valueNode, materializedTags));
+        return create(varName, configurable);
     }
 }

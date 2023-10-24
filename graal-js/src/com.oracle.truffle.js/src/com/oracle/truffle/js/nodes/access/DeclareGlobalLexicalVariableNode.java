@@ -42,15 +42,21 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.object.Property;
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.objects.Dead;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -59,14 +65,17 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
+/**
+ * Instantiates a global lexical (let or const) declaration.
+ */
 public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
     private final boolean isConst;
-    @Child private JSGetOwnPropertyNode getOwnPropertyNode;
+    @Child private HasVarDeclarationOrRestrictedGlobalPropertyNode hasVarDeclarationOrRestrictedGlobalPropertyNode;
 
     protected DeclareGlobalLexicalVariableNode(TruffleString varName, boolean isConst) {
         super(varName);
         this.isConst = isConst;
-        this.getOwnPropertyNode = JSGetOwnPropertyNode.create(false);
+        this.hasVarDeclarationOrRestrictedGlobalPropertyNode = HasVarDeclarationOrRestrictedGlobalPropertyNodeGen.create();
     }
 
     public static DeclareGlobalLexicalVariableNode create(TruffleString varName, boolean isConst) {
@@ -76,9 +85,7 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
     @Override
     public void verify(JSContext context, JSRealm realm) {
         super.verify(context, realm);
-        // HasRestrictedGlobalProperty
-        PropertyDescriptor desc = getOwnPropertyNode.execute(realm.getGlobalObject(), varName);
-        if (desc != null && !desc.getConfigurable()) {
+        if (hasVarDeclarationOrRestrictedGlobalPropertyNode.execute(realm.getGlobalObject(), varName)) {
             errorProfile.enter();
             throw Errors.createSyntaxErrorVariableAlreadyDeclared(varName, this);
         }
@@ -124,5 +131,40 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
     @Override
     protected DeclareGlobalNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return create(varName, isConst);
+    }
+}
+
+/**
+ * Checks if either HasVarDeclaration or HasRestrictedGlobalProperty is true for this binding.
+ *
+ * The object must be either a {@link JSGlobalObject} or a {@link JSProxyObject}.
+ */
+abstract class HasVarDeclarationOrRestrictedGlobalPropertyNode extends JavaScriptBaseNode {
+    protected HasVarDeclarationOrRestrictedGlobalPropertyNode() {
+    }
+
+    public abstract boolean execute(JSDynamicObject object, Object key);
+
+    @Specialization(guards = {
+                    "cachedShape == thisObj.getShape()"}, assumptions = {"cachedShape.getValidAssumption()"}, limit = "3")
+    static boolean doGlobalObjectCached(@SuppressWarnings("unused") JSGlobalObject thisObj, Object propertyKey,
+                    @Cached("thisObj.getShape()") @SuppressWarnings("unused") Shape cachedShape,
+                    @Cached("cachedShape.getProperty(propertyKey)") Property cachedProperty) {
+        CompilerAsserts.partialEvaluationConstant(propertyKey);
+        return cachedProperty != null && (!JSProperty.isConfigurable(cachedProperty.getFlags()) || JSProperty.isGlobalVarDeclaration(cachedProperty.getFlags()));
+    }
+
+    @Specialization(replaces = "doGlobalObjectCached", limit = "1")
+    static boolean doGlobalObjectUncached(JSGlobalObject thisObj, Object propertyKey) {
+        CompilerAsserts.partialEvaluationConstant(propertyKey);
+        Property property = thisObj.getShape().getProperty(propertyKey);
+        return property != null && (!JSProperty.isConfigurable(property.getFlags()) || JSProperty.isGlobalVarDeclaration(property.getFlags()));
+    }
+
+    @Specialization
+    static boolean doProxy(JSProxyObject thisObj, Object propertyKey) {
+        CompilerAsserts.partialEvaluationConstant(propertyKey);
+        PropertyDescriptor desc = JSObject.getOwnProperty(thisObj, propertyKey);
+        return desc != null && !desc.getConfigurable();
     }
 }
