@@ -182,6 +182,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                     int fractionalSecondDigitsOpt,
                     String tzNameOpt,
                     TimeZone timeZone,
+                    String timeZoneId,
                     String calendarOpt,
                     String numberingSystemOpt,
                     String dateStyleOpt,
@@ -249,7 +250,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
             if (hour12Opt) {
                 hc = h11or23 ? IntlUtil.H11 : IntlUtil.H12;
             } else {
-                hc = h11or23 ? IntlUtil.H23 : IntlUtil.H24;
+                boolean h24RequestedByLocaleExtension = IntlUtil.H24.equals(selectedLocale.getUnicodeLocaleType("hc"));
+                hc = h24RequestedByLocaleExtension ? IntlUtil.H24 : IntlUtil.H23;
             }
         }
 
@@ -355,7 +357,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
 
         state.dateFormat.setTimeZone(timeZone);
-        state.timeZone = timeZone.getID();
+        state.timeZone = timeZoneId;
         state.initialized = true;
     }
 
@@ -664,8 +666,8 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
      * https://tc39.github.io/ecma402/#sec-canonicalizetimezonename
      */
     @TruffleBoundary
-    public static String canonicalizeTimeZoneName(TruffleString tzId) {
-        String ucTzId = IntlUtil.toUpperCase(Strings.toJavaString(tzId));
+    public static String canonicalizeTimeZoneName(String tzId) {
+        String ucTzId = IntlUtil.toUpperCase(tzId);
         String canTzId = canonicalTimeZoneIDMap.get().get(ucTzId);
         if (canTzId == null) {
             return null;
@@ -675,6 +677,10 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         } else {
             return canTzId;
         }
+    }
+
+    public static String canonicalizeTimeZoneName(TruffleString tzId) {
+        return canonicalizeTimeZoneName(Strings.toJavaString(tzId));
     }
 
     private static boolean containsOneOf(String suspect, String containees) {

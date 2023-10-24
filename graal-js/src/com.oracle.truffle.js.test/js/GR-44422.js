@@ -23,11 +23,8 @@ new Intl.ListFormat('en', foreignObject);
 new Intl.RelativeTimeFormat('en', foreignObject);
 new Intl.Segmenter('en', foreignObject);
 new Intl.Locale('en', foreignObject);
+new Intl.DateTimeFormat('en', foreignObject);
 
 var foreignObjectWithType = new java.util.HashMap();
 foreignObjectWithType.put('type', 'language');
 new Intl.DisplayNames('en', foreignObjectWithType);
-
-// Intl.DateTimeFormat constructor creates an object with the options object
-// as the prototype, but we do not support foreign prototypes.
-assertThrows(() => new Intl.DateTimeFormat('en', foreignObject), TypeError);

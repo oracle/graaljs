@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.intl;
 import java.util.MissingResourceException;
 
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -52,22 +53,34 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
+import com.oracle.truffle.js.runtime.util.Pair;
 
 /*
  * https://tc39.github.io/ecma402/#sec-initializedatetimeformat
  */
 public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
+    public enum Required {
+        DATE,
+        TIME,
+        ANY
+    }
 
-    String required;
-    String defaults;
+    public enum Defaults {
+        DATE,
+        TIME,
+        ALL
+    }
+
+    private final Required required;
+    private final Defaults defaults;
 
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
-    @Child ToDateTimeOptionsNode createOptionsNode;
+    @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
     @Child PropertyGetNode getTimeZoneNode;
 
     @Child GetStringOptionNode getLocaleMatcherOption;
@@ -92,12 +105,13 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getDateStyleOption;
     @Child GetStringOptionNode getTimeStyleOption;
 
-    @Child private JSToStringNode toStringNode;
+    @Child JSToStringNode toStringNode;
+
     private final BranchProfile errorBranch = BranchProfile.create();
 
     private final JSContext context;
 
-    protected InitializeDateTimeFormatNode(JSContext context, String required, String defaults) {
+    protected InitializeDateTimeFormatNode(JSContext context, Required required, Defaults defaults) {
 
         this.context = context;
 
@@ -105,7 +119,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.defaults = defaults;
 
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
-        this.createOptionsNode = ToDateTimeOptionsNodeGen.create(context);
+        this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getTimeZoneNode = PropertyGetNode.create(IntlUtil.KEY_TIME_ZONE, context);
 
         this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
@@ -134,7 +148,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
 
     public abstract JSDateTimeFormatObject executeInit(JSDateTimeFormatObject dateTimeFormatObj, Object locales, Object options);
 
-    public static InitializeDateTimeFormatNode createInitalizeDateTimeFormatNode(JSContext context, String required, String defaults) {
+    public static InitializeDateTimeFormatNode createInitalizeDateTimeFormatNode(JSContext context, Required required, Defaults defaults) {
         return InitializeDateTimeFormatNodeGen.create(context, required, defaults);
     }
 
@@ -146,7 +160,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             JSDateTimeFormat.InternalState state = dateTimeFormatObj.getInternalState();
 
             String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(localesArg);
-            JSDynamicObject options = createOptionsNode.execute(optionsArg, required, defaults);
+            Object options = coerceOptionsToObjectNode.execute(optionsArg);
 
             // enforce validity check
             getLocaleMatcherOption.executeValue(options);
@@ -166,7 +180,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             String hcOpt = getHourCycleOption.executeValue(options);
 
             Object timeZoneValue = getTimeZoneNode.getValue(options);
-            TimeZone timeZone = toTimeZone(timeZoneValue);
+            Pair<TimeZone, String> timeZone = toTimeZone(timeZoneValue);
 
             String weekdayOpt = getWeekdayOption.executeValue(options);
             String eraOpt = getEraOption.executeValue(options);
@@ -180,19 +194,45 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
             int fractionalSecondDigitsOpt = getFractionalSecondDigitsOption.executeInt(options, 1, 3, 0);
             String tzNameOpt = getTimeZoneNameOption.executeValue(options);
 
+            boolean hasExplicitFormatComponents = (weekdayOpt != null || eraOpt != null || yearOpt != null || monthOpt != null || dayOpt != null || dayPeriodOpt != null ||
+                            hourOpt != null || minuteOpt != null || secondOpt != null || fractionalSecondDigitsOpt != 0 || tzNameOpt != null);
+
             getFormatMatcherOption.executeValue(options);
 
             String dateStyleOpt = getDateStyleOption.executeValue(options);
             String timeStyleOpt = getTimeStyleOption.executeValue(options);
 
-            if ((dateStyleOpt != null || timeStyleOpt != null) && (weekdayOpt != null || eraOpt != null || yearOpt != null || monthOpt != null || dayOpt != null || dayPeriodOpt != null ||
-                            hourOpt != null || minuteOpt != null || secondOpt != null || fractionalSecondDigitsOpt != 0 || tzNameOpt != null)) {
-                errorBranch.enter();
-                throw Errors.createTypeError("dateStyle and timeStyle options cannot be mixed with other date/time options");
+            if ((dateStyleOpt != null || timeStyleOpt != null)) {
+                if (hasExplicitFormatComponents || (required == Required.DATE && timeStyleOpt != null) || (required == Required.TIME && dateStyleOpt != null)) {
+                    errorBranch.enter();
+                    throw Errors.createTypeError("dateStyle and timeStyle options cannot be mixed with other date/time options");
+                }
+            } else {
+                boolean needDefaults = true;
+                if (required == Required.DATE || required == Required.ANY) {
+                    if (weekdayOpt != null || yearOpt != null || monthOpt != null || dayOpt != null) {
+                        needDefaults = false;
+                    }
+                }
+                if (required == Required.TIME || required == Required.ANY) {
+                    if (dayPeriodOpt != null || hourOpt != null || minuteOpt != null || secondOpt != null || fractionalSecondDigitsOpt != 0) {
+                        needDefaults = false;
+                    }
+                }
+                if (needDefaults && (defaults == Defaults.DATE || defaults == Defaults.ALL)) {
+                    yearOpt = IntlUtil.NUMERIC;
+                    monthOpt = IntlUtil.NUMERIC;
+                    dayOpt = IntlUtil.NUMERIC;
+                }
+                if (needDefaults && (defaults == Defaults.TIME || defaults == Defaults.ALL)) {
+                    hourOpt = IntlUtil.NUMERIC;
+                    minuteOpt = IntlUtil.NUMERIC;
+                    secondOpt = IntlUtil.NUMERIC;
+                }
             }
 
             JSDateTimeFormat.setupInternalDateTimeFormat(context, state, locales, weekdayOpt, eraOpt, yearOpt, monthOpt, dayOpt, dayPeriodOpt, hourOpt, hcOpt, hour12Opt, minuteOpt, secondOpt,
-                            fractionalSecondDigitsOpt, tzNameOpt, timeZone, calendarOpt, numberingSystemOpt, dateStyleOpt, timeStyleOpt);
+                            fractionalSecondDigitsOpt, tzNameOpt, timeZone.getFirst(), timeZone.getSecond(), calendarOpt, numberingSystemOpt, dateStyleOpt, timeStyleOpt);
 
         } catch (MissingResourceException e) {
             errorBranch.enter();
@@ -202,19 +242,106 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         return dateTimeFormatObj;
     }
 
-    private TimeZone toTimeZone(Object timeZoneValue) {
+    private Pair<TimeZone, String> toTimeZone(Object timeZoneValue) {
+        TimeZone timeZone;
         String tzId;
         if (timeZoneValue != Undefined.instance) {
-            TruffleString name = toStringNode.executeString(timeZoneValue);
-            tzId = JSDateTimeFormat.canonicalizeTimeZoneName(name);
+            TruffleString nameTS = toStringNode.executeString(timeZoneValue);
+            String name = Strings.toJavaString(nameTS);
+            tzId = maybeParseAndFormatTimeZoneOffset(name);
             if (tzId == null) {
-                errorBranch.enter();
-                throw Errors.createRangeErrorInvalidTimeZone(name);
+                tzId = JSDateTimeFormat.canonicalizeTimeZoneName(name);
+                if (tzId == null) {
+                    errorBranch.enter();
+                    throw Errors.createRangeErrorInvalidTimeZone(nameTS);
+                }
+                timeZone = IntlUtil.getICUTimeZone(tzId, context);
+            } else {
+                timeZone = IntlUtil.getICUTimeZone(prependGMT(tzId), context);
             }
-            return IntlUtil.getICUTimeZone(tzId, context);
         } else {
-            return getRealm().getLocalTimeZone();
+            timeZone = getRealm().getLocalTimeZone();
+            tzId = timeZone.getID();
         }
+        return new Pair<>(timeZone, tzId);
+    }
+
+    @TruffleBoundary
+    private static String prependGMT(String tzId) {
+        return "GMT" + tzId;
+    }
+
+    private static String maybeParseAndFormatTimeZoneOffset(String name) {
+        // TemporalSign Hour TimeSeparator MinuteSecond
+        boolean reformatNeeded = false;
+
+        // TemporalSign
+        int length = name.length();
+        if (length < 3) {
+            return null;
+        }
+        char sign = name.charAt(0);
+        if (sign == '\u2212') {
+            reformatNeeded = true;
+            sign = '-';
+        } else if (sign != '+' && sign != '-') {
+            return null;
+        }
+
+        // Hour
+        int hourTens = name.charAt(1) - '0';
+        int hourOnes = name.charAt(2) - '0';
+        int hours = 10 * hourTens + hourOnes;
+        if (hourOnes < 0 || 9 < hourOnes || hours < 0 || 23 < hours) {
+            return null;
+        }
+
+        int minutes;
+        if (length > 3) {
+            // TimeSeparator
+            int pos = 3;
+            if (name.charAt(pos) == ':') {
+                pos++;
+            } else {
+                reformatNeeded = true;
+            }
+            if (length != pos + 2) {
+                return null;
+            }
+
+            // MinuteSecond
+            int minuteTens = name.charAt(pos) - '0';
+            int minuteOnes = name.charAt(pos + 1) - '0';
+            minutes = 10 * minuteTens + minuteOnes;
+            if (minuteOnes < 0 || 9 < minuteOnes || minutes < 0 || 59 < minutes) {
+                return null;
+            }
+        } else {
+            reformatNeeded = true;
+            minutes = 0;
+        }
+
+        if (sign == '-' && hours == 0 && minutes == 0) {
+            reformatNeeded = true;
+            sign = '+';
+        }
+
+        if (reformatNeeded) {
+            return formatOffsetTimeZoneIdentifier(sign, hours, minutes);
+        } else {
+            return name;
+        }
+    }
+
+    @TruffleBoundary
+    private static String formatOffsetTimeZoneIdentifier(char sign, int hours, int minutes) {
+        return sign + formatUsing2Digits(hours) + ':' + formatUsing2Digits(minutes);
+    }
+
+    @TruffleBoundary
+    private static String formatUsing2Digits(int value) {
+        String valueStr = Integer.toString(value);
+        return (valueStr.length() == 1) ? ("0" + valueStr) : valueStr;
     }
 
     private static String[] timeZoneNameOptions(JSContext context) {

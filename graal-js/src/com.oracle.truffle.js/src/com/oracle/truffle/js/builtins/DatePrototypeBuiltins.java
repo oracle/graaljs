@@ -417,7 +417,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         public JSDateToStringIntlNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
             super(context, builtin, isUTC);
-            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, "any", "all");
+            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, InitializeDateTimeFormatNode.Required.ANY, InitializeDateTimeFormatNode.Defaults.ALL);
         }
 
         @Specialization
@@ -485,7 +485,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         public JSDateToLocaleDateStringIntlNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, NO_UTC);
-            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, "date", "date");
+            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, InitializeDateTimeFormatNode.Required.DATE,
+                            InitializeDateTimeFormatNode.Defaults.DATE);
         }
 
         @Specialization
@@ -521,7 +522,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         public JSDateToLocaleTimeStringIntlNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, NO_UTC);
-            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, "time", "time");
+            this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, InitializeDateTimeFormatNode.Required.TIME,
+                            InitializeDateTimeFormatNode.Defaults.TIME);
         }
 
         @Specialization
