@@ -265,7 +265,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
                     "Atomics.waitAsync",
                     "FinalizationRegistry.prototype.cleanupSome",
-                    "Intl-enumeration",
                     "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.Locale-info",
                     "Intl.NumberFormat-v3",

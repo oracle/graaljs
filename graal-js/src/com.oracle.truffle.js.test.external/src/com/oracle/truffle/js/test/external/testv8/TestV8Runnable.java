@@ -111,7 +111,6 @@ public class TestV8Runnable extends TestRunnable {
     private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
                     "--harmony-array-grouping",
                     "--harmony-atomics-waitasync",
-                    "--harmony-intl-enumeration",
                     "--harmony-intl-locale_info",
                     "--harmony-intl-more_timezone",
                     "--harmony-intl-number-format-v3",

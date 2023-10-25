@@ -93,7 +93,7 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
                 case getCanonicalLocales:
                     return JSConfig.ECMAScript2016;
                 case supportedValuesOf:
-                    return JSConfig.StagingECMAScriptVersion;
+                    return JSConfig.ECMAScript2023;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
