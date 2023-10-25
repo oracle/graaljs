@@ -589,9 +589,15 @@ public final class IntlUtil {
         }
     }
 
+    public static void ensureIsStructurallyValidLanguageId(String languageId) {
+        if (!UTS35Validator.isStructurallyValidLanguageId(languageId)) {
+            throw Errors.createRangeErrorInvalidLanguageId(languageId);
+        }
+    }
+
     public static void ensureIsStructurallyValidLanguageSubtag(String region) {
         if (!UTS35Validator.isStructurallyValidLanguageSubtag(region)) {
-            throw Errors.createRangeErrorInvalidLanguage(region);
+            throw Errors.createRangeErrorInvalidLanguageSubtag(region);
         }
     }
 
@@ -619,16 +625,21 @@ public final class IntlUtil {
     private static final String TRUE_PLACEHOLDER = "true2718";
 
     @TruffleBoundary
-    // https://tc39.github.io/ecma402/#sec-canonicalizelanguagetag
     public static String validateAndCanonicalizeLanguageTag(String languageTag) {
-        try {
-            // We cannot use (U)Locale class to check whether the tag is well-formed.
-            // Locale class allows wider range of tags (irregular grandfathered tags,
-            // extlang subtags, private use only tags etc.)
-            if (!UTS35Validator.isWellFormedUnicodeBCP47LocaleIdentifier(languageTag)) {
-                throw Errors.createRangeErrorFormat("Language tag is not well-formed: %s", null, languageTag);
-            }
+        // We cannot use (U)Locale class to check whether the tag is well-formed.
+        // Locale class allows wider range of tags (irregular grandfathered tags,
+        // extlang subtags, private use only tags etc.)
+        if (!UTS35Validator.isWellFormedUnicodeBCP47LocaleIdentifier(languageTag)) {
+            throw Errors.createRangeErrorFormat("Language tag is not well-formed: %s", null, languageTag);
+        }
 
+        return canonicalizeLanguageTag(languageTag);
+    }
+
+    // https://tc39.github.io/ecma402/#sec-canonicalizelanguagetag
+    @TruffleBoundary
+    public static String canonicalizeLanguageTag(String languageTag) {
+        try {
             ULocale locale = ULocale.createCanonical(ULocale.getName(languageTag));
             ULocale.Builder builder = new ULocale.Builder().setLocale(locale);
 
