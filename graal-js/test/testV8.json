@@ -227,10 +227,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "intl/number-format/use-grouping-v3.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "intl/overrides/caching.js",
     "status" : "SKIP",
     "comment" : "suspicious performance test"

@@ -549,7 +549,11 @@ public final class Errors {
         return createRangeError(String.format("Invalid unit argument for %s() '%s'", functionName, unit));
     }
 
-    public static JSException createRangeErrorInvalidLanguage(String language) {
+    public static JSException createRangeErrorInvalidLanguageId(String languageId) {
+        return createRangeErrorFormat("Invalid language ID: %s", null, languageId);
+    }
+
+    public static JSException createRangeErrorInvalidLanguageSubtag(String language) {
         return createRangeErrorFormat("Invalid language subtag: %s", null, language);
     }
 

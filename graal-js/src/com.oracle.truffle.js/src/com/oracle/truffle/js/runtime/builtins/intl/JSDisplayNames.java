@@ -237,7 +237,8 @@ public final class JSDisplayNames extends JSNonProxy implements JSConstructorFac
         String result;
         switch (type) {
             case IntlUtil.LANGUAGE:
-                result = displayNames.localeDisplayName(IntlUtil.validateAndCanonicalizeLanguageTag(code));
+                IntlUtil.ensureIsStructurallyValidLanguageId(code);
+                result = displayNames.localeDisplayName(IntlUtil.canonicalizeLanguageTag(code));
                 break;
             case IntlUtil.REGION:
                 IntlUtil.ensureIsStructurallyValidRegionSubtag(code);
