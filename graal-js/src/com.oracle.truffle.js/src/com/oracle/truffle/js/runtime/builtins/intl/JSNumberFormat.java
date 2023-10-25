@@ -942,7 +942,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             }
             super.fillResolvedOptions(context, realm, result);
             Object resolvedUseGrouping = useGrouping;
-            if (useGrouping instanceof String && context.getEcmaScriptVersion() < JSConfig.StagingECMAScriptVersion) {
+            if (useGrouping instanceof String && context.getEcmaScriptVersion() < JSConfig.ECMAScript2023) {
                 resolvedUseGrouping = true;
             }
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_USE_GROUPING,

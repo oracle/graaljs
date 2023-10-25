@@ -267,7 +267,6 @@ public class Test262Runnable extends TestRunnable {
                     "FinalizationRegistry.prototype.cleanupSome",
                     "Intl.DateTimeFormat-extend-timezonename",
                     "Intl.Locale-info",
-                    "Intl.NumberFormat-v3",
                     "ShadowRealm",
                     "array-grouping",
                     "arraybuffer-transfer",
