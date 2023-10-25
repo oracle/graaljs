@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
  * Includes static methods for dealing with JS objects (internal methods).
  */
 @ExportLibrary(InteropLibrary.class)
-public abstract class JSObject extends JSDynamicObject {
+public abstract non-sealed class JSObject extends JSDynamicObject {
 
     public static final TruffleString CONSTRUCTOR = Strings.constant("constructor");
     public static final TruffleString PROTOTYPE = Strings.constant("prototype");
