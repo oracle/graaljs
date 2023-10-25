@@ -72,7 +72,6 @@ import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleString.CodeRange;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
-import com.oracle.truffle.api.strings.TruffleStringIterator;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.JSRegExpExecES5Node;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateHTMLNodeGen;
 import com.oracle.truffle.js.builtins.StringPrototypeBuiltinsFactory.CreateStringIteratorNodeGen;
@@ -3013,39 +3012,15 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected static TruffleString doString(TruffleString thisStr,
-                        @Shared @Cached TruffleString.IsValidNode isValidNode,
-                        @Shared @Cached TruffleString.CreateCodePointIteratorNode codePointIteratorNode,
-                        @Shared @Cached TruffleStringIterator.NextNode nextNode,
-                        @Shared @Cached TruffleStringBuilder.AppendCodePointNode appendCodePointNode,
-                        @Shared @Cached TruffleStringBuilder.ToStringNode toStringNode) {
-            if (isValidNode.execute(thisStr, TruffleString.Encoding.UTF_16)) {
-                return thisStr;
-            } else {
-                TruffleStringIterator it = codePointIteratorNode.execute(thisStr, TruffleString.Encoding.UTF_16);
-                TruffleStringBuilder sb = Strings.builderCreate(Strings.length(thisStr));
-                while (it.hasNext()) {
-                    int cp = nextNode.execute(it);
-                    if (cp >= Character.MIN_SURROGATE && cp <= Character.MAX_SURROGATE) {
-                        appendCodePointNode.execute(sb, 0xfffd);
-                    } else {
-                        appendCodePointNode.execute(sb, cp);
-                    }
-                }
-                TruffleString result = toStringNode.execute(sb);
-                assert result.isValidUncached(TruffleString.Encoding.UTF_16) : result;
-                return result;
-            }
+                        @Shared @Cached TruffleString.ToValidStringNode toValidNode) {
+            return toValidNode.execute(thisStr, TruffleString.Encoding.UTF_16);
         }
 
         @Specialization(guards = "!isString(thisObj)")
         protected final TruffleString doOther(Object thisObj,
-                        @Shared @Cached TruffleString.IsValidNode isValidNode,
-                        @Shared @Cached TruffleString.CreateCodePointIteratorNode codePointIteratorNode,
-                        @Shared @Cached TruffleStringIterator.NextNode nextNode,
-                        @Shared @Cached TruffleStringBuilder.AppendCodePointNode appendCodePointNode,
-                        @Shared @Cached TruffleStringBuilder.ToStringNode toStringNode) {
+                        @Shared @Cached TruffleString.ToValidStringNode toValidNode) {
             requireObjectCoercible(thisObj);
-            return doString(toString(thisObj), isValidNode, codePointIteratorNode, nextNode, appendCodePointNode, toStringNode);
+            return doString(toString(thisObj), toValidNode);
         }
     }
 
