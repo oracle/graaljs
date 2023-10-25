@@ -10381,10 +10381,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "intl402/DisplayNames/prototype/of/type-language-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "intl402/Locale/constructor-non-iana-canon.js",
     "status" : "FAIL",
     "comment" : "new failures 2013-06-28"
