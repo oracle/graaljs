@@ -112,7 +112,6 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-array-grouping",
                     "--harmony-atomics-waitasync",
                     "--harmony-intl-locale_info",
-                    "--harmony-intl-more_timezone",
                     "--harmony-shadow-realm",
                     "--harmony-weak-refs-with-cleanup-some",
                     "--js-promise-withresolvers",
