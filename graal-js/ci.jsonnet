@@ -128,10 +128,10 @@ local ci = import '../ci.jsonnet';
   // Builds that should run on all supported platforms
   local testingBuilds = generateBuilds([
     graalJs + gateTags('default')                                                                    + ce + {name: 'default-ce'} +
-      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64, common.jdk21 + common.linux_aarch64, common.jdk21 + common.windows_amd64]),
+      promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.linux_aarch64, common.jdklatest + common.windows_amd64]),
     graalJs + gateTags('default')                                                                    + ee + {name: 'default-ee'} +
-      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64, common.jdk21 + common.darwin_aarch64]) +
-      promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
+      promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.darwin_aarch64]) +
+      promoteToTarget(common.postMerge, [common.jdklatest + common.darwin_amd64]),
 
     graalJs + gateTags('noic')                                                                            + {name: 'noic'} + gateOnMain,
     graalJs + gateTags('directbytebuffer')                                                                + {name: 'directbytebuffer'} + gateOnMain,
@@ -170,7 +170,7 @@ local ci = import '../ci.jsonnet';
     # Note: weekly coverage is sync'ed with the graal repo (while ondemand is not).
     graalJs + common.weekly    + gateCoverage                                                             + {name: 'coverage'},
     graalJs + common.ondemand  + gateCoverage                                                             + {name: 'coverage'},
-  ], platforms=[ci.mainGatePlatform]),
+  ], platforms=[common.jdk21 + common.linux_amd64]),
 
   // Benchmark builds; need to run on a benchmark machine
   local benchBuilds = generateBuilds([
