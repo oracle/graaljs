@@ -160,11 +160,9 @@ public final class JSPluralRules extends JSNonProxy implements JSConstructorFact
         void fillResolvedOptions(JSContext context, JSRealm realm, JSDynamicObject result) {
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TYPE, Strings.fromJavaString(type), JSAttributes.getDefault());
-            super.fillResolvedOptions(context, realm, result);
+            super.fillBasicResolvedOptions(result);
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_PLURAL_CATEGORIES, JSRuntime.createArrayFromList(realm.getContext(), realm, pluralCategories), JSAttributes.getDefault());
-            String roundingType = getRoundingType();
-            String resolvedRoundingType = (IntlUtil.MORE_PRECISION.equals(roundingType) || IntlUtil.LESS_PRECISION.equals(roundingType)) ? roundingType : IntlUtil.AUTO;
-            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
+            super.fillRoundingResolvedOptions(result);
         }
 
         @TruffleBoundary

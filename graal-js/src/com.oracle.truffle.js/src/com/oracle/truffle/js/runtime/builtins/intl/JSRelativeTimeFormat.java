@@ -70,7 +70,6 @@ import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -199,13 +198,11 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
         private String numeric;
 
         @Override
-        JSObject toResolvedOptionsObject(JSContext context, JSRealm realm) {
-            JSObject result = JSOrdinary.create(context, realm);
+        void fillResolvedOptions(JSContext context, JSRealm realm, JSDynamicObject result) {
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_LOCALE, Strings.fromJavaString(getLocale()), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_STYLE, Strings.fromJavaString(style), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NUMERIC, Strings.fromJavaString(numeric), JSAttributes.getDefault());
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_NUMBERING_SYSTEM, Strings.fromJavaString(getNumberingSystem()), JSAttributes.getDefault());
-            return result;
         }
 
         @TruffleBoundary
