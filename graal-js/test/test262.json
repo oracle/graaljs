@@ -10525,30 +10525,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2013-06-28"
   }, {
-    "filePath" : "intl402/NumberFormat/constructor-option-read-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/NumberFormat/prototype/resolvedOptions/return-keys-order-default.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/NumberFormat/throws-for-maximumFractionDigits-over-limit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/NumberFormat/throws-for-minimumFractionDigits-over-limit.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/PluralRules/constructor-option-read-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl402/PluralRules/prototype/resolvedOptions/return-keys-order-default.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "intl402/Temporal/Calendar/calendar-case-insensitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
