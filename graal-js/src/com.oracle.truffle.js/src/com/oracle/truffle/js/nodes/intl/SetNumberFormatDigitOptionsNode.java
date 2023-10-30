@@ -101,7 +101,6 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
         Object mnsdValue = getMinSignificantDigitsOption.getValue(options);
         Object mxsdValue = getMaxSignificantDigitsOption.getValue(options);
         intlObj.setMinimumIntegerDigits(mnid);
-        String roundingPriority = getRoundingPriorityOption.executeValue(options);
 
         int roundingIncrement = getRoundingIncrementOption.executeInt(options, 1, 5000, 1);
         if (!isValidRoundingIncrement(roundingIncrement)) {
@@ -110,6 +109,7 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
         }
 
         String roundingMode = getRoundingModeOption.executeValue(options);
+        String roundingPriority = getRoundingPriorityOption.executeValue(options);
         String trailingZeroDisplay = getTrailingZeroDisplayOption.executeValue(options);
 
         int mxfdDefault = (roundingIncrement == 1) ? mxfdDefaultParam : mnfdDefault;
@@ -136,8 +136,8 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
         }
         if (needFd) {
             if (hasFd) {
-                int mnfd = getMnfdDNO.executeInt(mnfdValue, 0, 20, -1);
-                int mxfd = getMxfdDNO.executeInt(mxfdValue, 0, 20, -1);
+                int mnfd = getMnfdDNO.executeInt(mnfdValue, 0, 100, -1);
+                int mxfd = getMxfdDNO.executeInt(mxfdValue, 0, 100, -1);
                 if (mnfd == -1) {
                     mnfd = Math.min(mnfdDefault, mxfd);
                 } else if (mxfd == -1) {

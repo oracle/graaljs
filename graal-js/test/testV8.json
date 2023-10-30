@@ -211,18 +211,6 @@
     "status" : "FAIL",
     "comment" : "localeMatcher best fit"
   }, {
-    "filePath" : "intl/number-format/check-digit-ranges.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "intl/number-format/format-range-string.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
-    "filePath" : "intl/number-format/format-string.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "intl/number-format/resolved-options-order.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"

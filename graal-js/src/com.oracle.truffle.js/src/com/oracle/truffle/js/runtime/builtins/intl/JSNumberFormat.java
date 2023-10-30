@@ -707,7 +707,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         }
     }
 
-    public static class BasicInternalState {
+    public abstract static class BasicInternalState {
         private UnlocalizedNumberFormatter unlocalizedFormatter;
 
         private Locale javaLocale;
@@ -730,7 +730,9 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             return resolvedOptions;
         }
 
-        void fillResolvedOptions(@SuppressWarnings("unused") JSContext context, @SuppressWarnings("unused") JSRealm realm, JSDynamicObject result) {
+        abstract void fillResolvedOptions(JSContext context, JSRealm realm, JSDynamicObject result);
+
+        void fillBasicResolvedOptions(JSDynamicObject result) {
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MINIMUM_INTEGER_DIGITS, minimumIntegerDigits, JSAttributes.getDefault());
             if (minimumFractionDigits != null) {
                 JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MINIMUM_FRACTION_DIGITS, minimumFractionDigits, JSAttributes.getDefault());
@@ -744,8 +746,15 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             if (maximumSignificantDigits != null) {
                 JSObjectUtil.putDataProperty(result, IntlUtil.KEY_MAXIMUM_SIGNIFICANT_DIGITS, maximumSignificantDigits, JSAttributes.getDefault());
             }
-            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_MODE, Strings.fromJavaString(roundingMode), JSAttributes.getDefault());
+        }
+
+        void fillRoundingResolvedOptions(JSDynamicObject result) {
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_INCREMENT, roundingIncrement, JSAttributes.getDefault());
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_MODE, Strings.fromJavaString(roundingMode), JSAttributes.getDefault());
+
+            String resolvedRoundingType = (IntlUtil.MORE_PRECISION.equals(roundingType) || IntlUtil.LESS_PRECISION.equals(roundingType)) ? roundingType : IntlUtil.AUTO;
+            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
+
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, Strings.fromJavaString(trailingZeroDisplay), JSAttributes.getDefault());
         }
 
@@ -940,7 +949,9 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             if (unitDisplay != null) {
                 JSObjectUtil.putDataProperty(result, IntlUtil.KEY_UNIT_DISPLAY, Strings.fromJavaString(unitDisplay), JSAttributes.getDefault());
             }
-            super.fillResolvedOptions(context, realm, result);
+
+            fillBasicResolvedOptions(result);
+
             Object resolvedUseGrouping = useGrouping;
             if (useGrouping instanceof String && context.getEcmaScriptVersion() < JSConfig.ECMAScript2023) {
                 resolvedUseGrouping = true;
@@ -953,9 +964,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
             }
             JSObjectUtil.putDataProperty(result, IntlUtil.KEY_SIGN_DISPLAY, Strings.fromJavaString(signDisplay), JSAttributes.getDefault());
 
-            String roundingType = getRoundingType();
-            String resolvedRoundingType = (IntlUtil.MORE_PRECISION.equals(roundingType) || IntlUtil.LESS_PRECISION.equals(roundingType)) ? roundingType : IntlUtil.AUTO;
-            JSObjectUtil.putDataProperty(result, IntlUtil.KEY_ROUNDING_PRIORITY, Strings.fromJavaString(resolvedRoundingType), JSAttributes.getDefault());
+            fillRoundingResolvedOptions(result);
         }
 
         @TruffleBoundary
