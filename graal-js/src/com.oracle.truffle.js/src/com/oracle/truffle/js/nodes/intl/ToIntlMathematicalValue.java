@@ -98,7 +98,7 @@ public abstract class ToIntlMathematicalValue extends JavaScriptBaseNode {
     @TruffleBoundary
     @Specialization
     protected Number doString(TruffleString value) {
-        return parseStringNumericLiteral(Strings.toJavaString(value));
+        return parseStringNumericLiteral(Strings.toJavaString(JSRuntime.trimJSWhiteSpace(value)));
     }
 
     @Specialization
@@ -134,12 +134,11 @@ public abstract class ToIntlMathematicalValue extends JavaScriptBaseNode {
     private static final BigDecimal SIXTEEN = BigDecimal.valueOf(16);
 
     private static Number parseStringNumericLiteral(String s) {
-        String trimmed = s.trim();
-        if (trimmed.isEmpty()) {
+        if (s.isEmpty()) {
             return BigDecimal.ZERO;
         }
         try {
-            Number result = parseStrNumericLiteral(trimmed);
+            Number result = parseStrNumericLiteral(s);
             return (result == null) ? Double.NaN : result;
         } catch (ArithmeticException | NumberFormatException ex) {
             return Double.NaN;
