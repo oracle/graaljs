@@ -280,11 +280,7 @@ public abstract class ToIntlMathematicalValue extends JavaScriptBaseNode {
         if (exponentIndex != -1) {
             String exponentPart = s.substring(exponentIndex + 1);
             int exponent = parseSignedInteger(exponentPart);
-            if (exponent > 0) {
-                result = result.movePointRight(exponent);
-            } else {
-                result = result.movePointLeft(exponent);
-            }
+            result = result.movePointRight(exponent);
         }
 
         return result;
