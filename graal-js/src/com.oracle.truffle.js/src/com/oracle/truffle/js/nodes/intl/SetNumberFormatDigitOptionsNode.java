@@ -136,8 +136,8 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
         }
         if (needFd) {
             if (hasFd) {
-                int mnfd = getMnfdDNO.executeInt(mnfdValue, 0, 20, -1);
-                int mxfd = getMxfdDNO.executeInt(mxfdValue, 0, 20, -1);
+                int mnfd = getMnfdDNO.executeInt(mnfdValue, 0, 100, -1);
+                int mxfd = getMxfdDNO.executeInt(mxfdValue, 0, 100, -1);
                 if (mnfd == -1) {
                     mnfd = Math.min(mnfdDefault, mxfd);
                 } else if (mxfd == -1) {
