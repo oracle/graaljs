@@ -108,7 +108,7 @@ Use `js-community` if you need the artifact built on top of GraalVM Community Ed
 
 To access Java from JavaScript, use `Java.type`, as in the following example:
 ```shell
-node --jvm
+node
 > var BigInteger = Java.type('java.math.BigInteger');
 > console.log(BigInteger.valueOf(2).pow(100).toString(16));
 10000000000000000000000000
