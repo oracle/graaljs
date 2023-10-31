@@ -24,7 +24,7 @@ In a production setup you might consider specifying a fixed ECMAScript version t
 GraalVM JavaScript provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
 Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, SharedArrayBuffer, String, Symbol, TypedArray, WeakMap, and WeakSet.
 
-Additional objects are available under flags, for instance `Intl` (flag: `--js.intl-402`).
+Additional objects are available under flags, for instance `Temporal` (flag: `--js.temporal`).
 Run `js --help` or `js --help:languages` for the list of available flags.
 
 Several of these function objects and some of their members are only available when a certain version of the specification is selected for execution.
@@ -33,16 +33,20 @@ Extensions to the specification are specified below.
 
 ### Internationalization API (ECMA-402)
 
-Internationalization API implementation (see [https://tc39.github.io/ecma402](https://tc39.github.io/ecma402)) can be activated using the following flag: `--js.intl-402=true`.
+GraalVM JavaScript comes with an implementation of the [ECMA-402 Internationalization API](https://tc39.github.io/ecma402), enabled by default (can be disabled using the following flag: `--js.intl-402=false`).
+This includes the following extensions:
 
-Once you activate the Internationalization API, you can use the following built-ins:
-
-- `Intl.NumberFormat`
-- `Intl.DateTimeFormat`
 - `Intl.Collator`
+- `Intl.DateTimeFormat`
+- `Intl.DisplayNames`
+- `Intl.ListFormat`
+- `Intl.Locale`
+- `Intl.NumberFormat`
 - `Intl.PluralRules`
+- `Intl.RelativeTimeFormat`
+- `Intl.Segmenter`
 
-The functionality of a few other built-ins is then also updated according to the specification linked above.
+The functionality of a few other built-ins, like `toLocaleString`, is also updated according to the ECMA-402 specification.
 
 ### JavaScript Modules
 
@@ -55,7 +59,7 @@ Loading with the `import` keyword is not limited by that, and can `import` from 
 
 ## Compatibility Extensions
 
-The following objects and methods are available in GraalVM JavaScript for compatibility with other JavaScript execution engines.
+The following objects and methods are available in GraalVM JavaScript for compatibility with other JavaScript engines.
 Note that the behavior of such methods might not strictly match the semantics of those methods in all existing engines.
 
 ### Language Features
