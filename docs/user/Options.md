@@ -71,22 +71,23 @@ For a complete list, use `js --help:js:internal`
 #### ECMAScript Version
 
 This option provides compatibility to a specific version of the ECMAScript specification.
-It expects an integer value, where both the counting version numbers (`5`, `6`, ...) and the publication years (starting from `2015`) are supported.
+It expects an integer value, where both the edition numbers (`5`, `6`, ...) and the publication years (starting from `2015`) are supported.
 As of GraalVM 21.2, `latest`, `staging` are supported, too.
-The default in GraalVM 22.x is the [`ECMAScript 2022 specification`](https://tc39.es/ecma262/).
+The default in GraalVM 23.1 is the [`ECMAScript 2023 specification`](https://tc39.es/ecma262/).
 GraalVM JavaScript implements some features of the future draft specification and of open proposals, if you explicitly select that version and/or enable specific experimental flags.
 For production settings, it is recommended to set the `ecmascript-version` to a released, finalized version of the specification (e.g., `2022`).
 
 Available versions are:
 * `5` for ECMAScript 5.x
-* `6` or `2015` for ECMAScript 2015
-* `7` or `2016` for ECMAScript 2016
-* `8` or `2017` for ECMAScript 2017
-* `9` or `2018` for ECMAScript 2018
-* `10` or `2019` for ECMAScript 2019
-* `11` or `2020` for ECMAScript 2020
-* `12` or `2021` for ECMAScript 2021 (**default** in 21.3)
-* `13` or `2022` for ECMAScript 2022 (**default** in 22.0+, latest released version, [ECMAScript 2022 specification](https://262.ecma-international.org/13.0/))
+* `2015` (or `6`) for ECMAScript 2015
+* `2016` (or `7`) for ECMAScript 2016
+* `2017` (or `8`) for ECMAScript 2017
+* `2018` (or `9`) for ECMAScript 2018
+* `2019` (or `10`) for ECMAScript 2019
+* `2020` (or `11`) for ECMAScript 2020
+* `2021` (or `12`) for ECMAScript 2021 (**default** in 21.3)
+* `2022` (or `13`) for ECMAScript 2022 (**default** in 22.0+)
+* `2023` (or `14`) for [ECMAScript 2023](https://262.ecma-international.org/14.0/) (**default** in 23.1)
 * `latest` for the latest supported language version (the default version)
 * `staging` for the latest supported language features including experimental unstable, unfinished [proposals](https://github.com/tc39/proposals) (_do not use in production!_)
 
