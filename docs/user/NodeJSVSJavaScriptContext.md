@@ -31,13 +31,9 @@ In this scenario, Java classes can be exposed to the Node.js application by usin
 ## Java Interoperability
 
 JavaScript applications can interact with Java classes using the `Java` built-in object.
-The object is not available by default, and can be enabled in the following way:
+This object is available by default in the `js` and `node` launchers, but accessing Java classes is only possible in the JVM standalones (that have `-jvm` in the name).
 
-1. In Node.js mode, start GraalVM using the `bin/node --jvm` command.
-2. In Java, create a GraalVM context using the `withHostInterop()` option, e.g.:
-```java
-Context.create("js").withHostInterop()
-```
+When embedding GraalVM JavaScript using the Polyglot API, you have to explicitly enable host access in the [`Context.Builder`](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html) (`allowHostAccess`, `allowHostClassLookup`).
 More details on the Java interoperability capabilities of GraalVM JavaScript are available in [Java Interoperability](JavaInteroperability.md).
 
 ## Multithreading
@@ -57,7 +53,7 @@ More details on parallel execution in GraalVM JavaScript are available in [this 
 Java libraries can be accessed from JavaScript in GraalVM through the `Java` built-in object.
 In order for a Java library to be accessible from a `Context`, its `jar` files need to be added to the GraalVM classpath. This can be done in the following way:
 
-1. In Node.js mode, the classpath can be modified using the `--jvm.cp` option.
+1. In Node.js mode, the classpath can be modified using the `--vm.cp` option.
 2. In Java, the default Java's `-cp` option can be used.
 
 More details on GraalVM command line options are available in [Options](Options.md).
