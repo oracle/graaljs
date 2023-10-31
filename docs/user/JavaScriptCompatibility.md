@@ -228,22 +228,27 @@ The Graal object is available in GraalVM JavaScript by default, unless deactivat
 
 ### Java
 
-The `Java` object is only available when the engine is started in JVM mode (`--jvm` flag).
+The `Java` object is only available when [host class lookup](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowHostClassLookup-java.util.function.Predicate-) is allowed.
+In order to access Java host classes and its members, they first need to be allowed by the [host access policy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) and when running on a Native Image, be registered for [run time reflection](https://www.graalvm.org/latest/reference-manual/native-image/dynamic-features/Reflection/).
 
-Note that some functions require a Nashorn compatibility mode flag to be set.
-On GraalVM, this flag can be set with:
+Note that some functions require the Nashorn compatibility mode flag to be set.
+When running on the standalone distribution, this flag can be set with:
 ```shell
-js --jvm --experimental-options --js.nashorn-compat=true
+js --experimental-options --js.nashorn-compat=true
 ```
 
 #### `Java.type(className)`
 
-- loads the specified Java class and provides it as an object
-- fields of this object can be read directly from it, and new instances can be created with the JavaScript ```new``` keyword:
+Loads the specified Java class and returns a constructible object that has the static members (i.e. methods and fields) of the class and can be used with the `new` keyword to construct new instances:
 ```js
-var BigDec = Java.type('java.math.BigDecimal');
-var bd = new BigDec("0.1");
-console.log(bd.add(bd).toString());
+var BigDecimal = Java.type('java.math.BigDecimal');
+var point1 = new BigDecimal("0.1");
+var two = BigDecimal.TWO;
+console.log(point1.multiply(two).toString());
+```
+Note that when used directly with the `new` operator, `Java.type(...)` needs to be enclosed in parentheses:
+```js
+console.log(new (Java.type('java.math.BigDecimal'))("1.1").pow(15));
 ```
 
 #### `Java.from(javaData)`
