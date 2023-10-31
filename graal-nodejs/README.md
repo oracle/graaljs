@@ -291,6 +291,8 @@ For information about the governance of the Node.js project, see
   **Anatoli Papirovski** <<apapirovski@mac.com>> (he/him)
 * [AshCripps](https://github.com/AshCripps) -
   **Ash Cripps** <<email@ashleycripps.co.uk>>
+* [atlowChemi](https://github.com/atlowChemi) -
+  **Chemi Atlow** <<chemi@atlow.co.il>> (he/him)
 * [Ayase-252](https://github.com/Ayase-252) -
   **Qingyu Deng** <<i@ayase-lab.com>>
 * [bengl](https://github.com/bengl) -
@@ -377,6 +379,8 @@ For information about the governance of the Node.js project, see
   **Matthew Aitken** <<maitken033380023@gmail.com>> (he/him)
 * [kuriyosh](https://github.com/kuriyosh) -
   **Yoshiki Kurihara** <<yosyos0306@gmail.com>> (he/him)
+* [kvakil](https://github.com/kvakil) -
+  **Keyhan Vakil** <<kvakil@sylph.kvakil.me>>
 * [legendecas](https://github.com/legendecas) -
   **Chengzhong Wu** <<legendecas@gmail.com>> (he/him)
 * [Leko](https://github.com/Leko) -
@@ -461,6 +465,8 @@ For information about the governance of the Node.js project, see
   **Rich Trott** <<rtrott@gmail.com>> (he/him)
 * [vdeturckheim](https://github.com/vdeturckheim) -
   **Vladimir de Turckheim** <<vlad2t@hotmail.com>> (he/him)
+* [vmoroz](https://github.com/vmoroz) -
+  **Vladimir Morozov** <<vmorozov@microsoft.com>> (he/him)
 * [VoltrexKeyva](https://github.com/VoltrexKeyva) -
   **Mohammed Keyvanzadeh** <<mohammadkeyvanzade94@gmail.com>> (he/him)
 * [watilde](https://github.com/watilde) -
@@ -705,14 +711,14 @@ maintaining the Node.js project.
   **Himadri Ganguly** <<himadri.tech@gmail.com>> (he/him)
 * [iam-frankqiu](https://github.com/iam-frankqiu) -
   **Frank Qiu** <<iam.frankqiu@gmail.com>> (he/him)
-* [kvakil](https://github.com/kvakil) -
-  **Keyhan Vakil** <<kvakil@sylph.kvakil.me>> (they/them)
 * [marsonya](https://github.com/marsonya) -
   **Akhil Marsonya** <<akhil.marsonya27@gmail.com>> (he/him)
 * [meixg](https://github.com/meixg) -
   **Xuguang Mei** <<meixuguang@gmail.com>> (he/him)
 * [Mesteery](https://github.com/Mesteery) -
   **Mestery** <<mestery@protonmail.com>> (he/him)
+* [preveen-stack](https://github.com/preveen-stack) -
+  **Preveen Padmanabhan** <<wide4head@gmail.com>> (he/him)
 * [PoojaDurgad](https://github.com/PoojaDurgad) -
   **Pooja Durgad** <<Pooja.D.P@ibm.com>>
 * [RaisinTen](https://github.com/RaisinTen) -
@@ -745,6 +751,8 @@ Primary GPG keys for Node.js Releasers (some Releasers sign with subkeys):
   `C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C`
 * **Ruy Adorno** <<ruyadorno@hotmail.com>>
   `108F52B48DB57BB0CC439B2997B01419BD92F80A`
+* **Ulises Gascón** <<ulisesgascongonzalez@gmail.com>>
+  `A363A499291CBBC940DD62E41F10027AF002F8B0`
 
 To import the full set of trusted release keys (including subkeys possibly used
 to sign releases):
@@ -759,6 +767,7 @@ gpg --keyserver hkps://keys.openpgp.org --recv-keys C4F0DFFF4E8C1A8236409D08E73B
 gpg --keyserver hkps://keys.openpgp.org --recv-keys 890C08DB8579162FEE0DF9DB8BEAB4DFCF555EF4
 gpg --keyserver hkps://keys.openpgp.org --recv-keys C82FA3AE1CBEDC6BE46B9360C43CEC45C17AB93C
 gpg --keyserver hkps://keys.openpgp.org --recv-keys 108F52B48DB57BB0CC439B2997B01419BD92F80A
+gpg --keyserver hkps://keys.openpgp.org --recv-keys A363A499291CBBC940DD62E41F10027AF002F8B0
 ```
 
 See [Verifying binaries](#verifying-binaries) for how to use these keys to

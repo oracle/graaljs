@@ -1402,6 +1402,16 @@ setTimeout(() => {
 }, 2000);
 ```
 
+### `subprocess[Symbol.dispose]()`
+
+<!-- YAML
+added: v18.18.0
+-->
+
+> Stability: 1 - Experimental
+
+Calls [`subprocess.kill()`][] with `'SIGTERM'`.
+
 ### `subprocess.killed`
 
 <!-- YAML
