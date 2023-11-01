@@ -22,6 +22,7 @@ const {
   ReflectOwnKeys,
   RegExpPrototypeSymbolReplace,
   SafeMap,
+  SafeWeakMap,
   StringPrototypeCharAt,
   StringPrototypeCharCodeAt,
   StringPrototypeCodePointAt,
@@ -98,6 +99,12 @@ const FORWARD_SLASH = /\//g;
 
 const context = Symbol('context');
 const searchParams = Symbol('query');
+
+/**
+ * We cannot use private fields without a breaking change, so a WeakMap is the alternative.
+ * @type {WeakMap<URL,URLSearchParams>}
+ */
+const internalSearchParams = new SafeWeakMap();
 
 const updateActions = {
   kProtocol: 0,
@@ -179,7 +186,7 @@ class URLContext {
 }
 
 function isURLSearchParams(self) {
-  return self && self[searchParams] && !self[searchParams][searchParams];
+  return self?.[searchParams];
 }
 
 class URLSearchParams {
@@ -337,8 +344,8 @@ class URLSearchParams {
     }
   }
 
-  delete(name) {
-    if (!isURLSearchParams(this))
+  delete(name, value = undefined) {
+    if (typeof this !== 'object' || this === null || !isURLSearchParams(this))
       throw new ERR_INVALID_THIS('URLSearchParams');
 
     if (arguments.length < 1) {
@@ -347,12 +354,23 @@ class URLSearchParams {
 
     const list = this[searchParams];
     name = toUSVString(name);
-    for (let i = 0; i < list.length;) {
-      const cur = list[i];
-      if (cur === name) {
-        list.splice(i, 2);
-      } else {
-        i += 2;
+
+    if (value !== undefined) {
+      value = toUSVString(value);
+      for (let i = 0; i < list.length;) {
+        if (list[i] === name && list[i + 1] === value) {
+          list.splice(i, 2);
+        } else {
+          i += 2;
+        }
+      }
+    } else {
+      for (let i = 0; i < list.length;) {
+        if (list[i] === name) {
+          list.splice(i, 2);
+        } else {
+          i += 2;
+        }
       }
     }
     if (this[context]) {
@@ -397,8 +415,8 @@ class URLSearchParams {
     return values;
   }
 
-  has(name) {
-    if (!isURLSearchParams(this))
+  has(name, value = undefined) {
+    if (typeof this !== 'object' || this === null || !isURLSearchParams(this))
       throw new ERR_INVALID_THIS('URLSearchParams');
 
     if (arguments.length < 1) {
@@ -407,11 +425,19 @@ class URLSearchParams {
 
     const list = this[searchParams];
     name = toUSVString(name);
+
+    if (value !== undefined) {
+      value = toUSVString(value);
+    }
+
     for (let i = 0; i < list.length; i += 2) {
       if (list[i] === name) {
-        return true;
+        if (value === undefined || list[i + 1] === value) {
+          return true;
+        }
       }
     }
+
     return false;
   }
 
@@ -672,11 +698,12 @@ class URL {
     ctx.hash_start = hash_start;
     ctx.scheme_type = scheme_type;
 
-    if (this[searchParams]) {
+    const alreadyInstantiatedSearchParams = internalSearchParams.get(this);
+    if (alreadyInstantiatedSearchParams) {
       if (ctx.hasSearch) {
-        this[searchParams][searchParams] = parseParams(this.search);
+        alreadyInstantiatedSearchParams[searchParams] = parseParams(this.search);
       } else {
-        this[searchParams][searchParams] = [];
+        alreadyInstantiatedSearchParams[searchParams] = [];
       }
     }
   }
@@ -723,7 +750,9 @@ class URL {
       if (path.length > 0) {
         try {
           const out = new URL(path);
-          if (out[context].scheme_type !== 1) {
+          // Only return origin of scheme is `http` or `https`
+          // Otherwise return a new opaque origin (null).
+          if (out[context].scheme_type === 0 || out[context].scheme_type === 2) {
             return `${out.protocol}//${out.host}`;
           }
         } catch {
@@ -898,11 +927,15 @@ class URL {
   get searchParams() {
     if (!isURL(this))
       throw new ERR_INVALID_THIS('URL');
-    if (this[searchParams] == null) {
-      this[searchParams] = new URLSearchParams(this.search);
-      this[searchParams][context] = this;
-    }
-    return this[searchParams];
+
+    const cachedValue = internalSearchParams.get(this);
+    if (cachedValue != null)
+      return cachedValue;
+
+    const value = new URLSearchParams(this.search);
+    value[context] = this;
+    internalSearchParams.set(this, value);
+    return value;
   }
 
   get hash() {

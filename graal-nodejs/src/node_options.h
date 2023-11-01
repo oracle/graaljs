@@ -128,6 +128,7 @@ class EnvironmentOptions : public Options {
   bool frozen_intrinsics = false;
   int64_t heap_snapshot_near_heap_limit = 0;
   std::string heap_snapshot_signal;
+  bool enable_network_family_autoselection = false;
   uint64_t max_http_header_size = 16 * 1024;
   bool deprecation = true;
   bool force_async_hooks_checks = true;
@@ -199,7 +200,9 @@ class EnvironmentOptions : public Options {
   bool tls_max_v1_3 = false;
   std::string tls_keylog;
 
-  std::vector<std::string> preload_modules;
+  std::vector<std::string> preload_cjs_modules;
+
+  std::vector<std::string> preload_esm_modules;
 
   std::vector<std::string> user_argv;
 

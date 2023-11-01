@@ -11,10 +11,11 @@
 #endif
 
 #include <errno.h>
-#include <sstream>
-#include <limits>
 #include <algorithm>
 #include <cstdlib>  // strtoul, errno
+#include <limits>
+#include <sstream>
+#include <string_view>
 
 using v8::Boolean;
 using v8::Context;
@@ -50,14 +51,15 @@ void DebugOptions::CheckOptions(std::vector<std::string>* errors,
                       "`node --inspect-brk` instead.");
   }
 
-  std::vector<std::string> destinations =
-      SplitString(inspect_publish_uid_string, ',');
+  using std::string_view_literals::operator""sv;
+  const std::vector<std::string_view> destinations =
+      SplitString(inspect_publish_uid_string, ","sv);
   inspect_publish_uid.console = false;
   inspect_publish_uid.http = false;
-  for (const std::string& destination : destinations) {
-    if (destination == "stderr") {
+  for (const std::string_view destination : destinations) {
+    if (destination == "stderr"sv) {
       inspect_publish_uid.console = true;
-    } else if (destination == "http") {
+    } else if (destination == "http"sv) {
       inspect_publish_uid.http = true;
     } else {
       errors->push_back("--inspect-publish-uid destination can be "
@@ -359,6 +361,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "'verbatim' (addresses are in the order the DNS resolver "
             "returned)",
             &EnvironmentOptions::dns_result_order,
+            kAllowedInEnvvar);
+  AddOption("--enable-network-family-autoselection",
+            "Enable network address family autodetection algorithm",
+            &EnvironmentOptions::enable_network_family_autoselection,
             kAllowedInEnvvar);
   AddOption("--enable-source-maps",
             "Source Map V3 support for stack traces",
@@ -663,10 +669,14 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddAlias("-pe", { "--print", "--eval" });
   AddAlias("-p", "--print");
   AddOption("--require",
-            "module to preload (option can be repeated)",
-            &EnvironmentOptions::preload_modules,
+            "CommonJS module to preload (option can be repeated)",
+            &EnvironmentOptions::preload_cjs_modules,
             kAllowedInEnvvar);
   AddAlias("-r", "--require");
+  AddOption("--import",
+            "ES module to preload (option can be repeated)",
+            &EnvironmentOptions::preload_esm_modules,
+            kAllowedInEnvironment);
   AddOption("--interactive",
             "always enter the REPL even if stdin does not appear "
             "to be a terminal",
