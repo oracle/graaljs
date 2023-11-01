@@ -3191,8 +3191,7 @@ namespace v8 {
     }
 
     bool Isolate::InContext() {
-        TRACE
-        return true;
+        return reinterpret_cast<GraalIsolate*> (this)->ContextEntered();
     }
 
     void Isolate::Initialize(Isolate* isolate, const CreateParams& params) {
