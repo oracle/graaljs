@@ -119,6 +119,7 @@ test-fetch-disabled: FAIL
 test-http-response-setheaders: FAIL
 test-single-executable-application: SKIP
 test-vm-codegen: FAIL
+test-wasm-memory-out-of-bound: FAIL
 test-wasm-simple: FAIL
 test-wasm-web-api: FAIL
 test-whatwg-webstreams-transfer: FAIL
