@@ -27,6 +27,7 @@ const {
   SafeSet,
   StringPrototypeSlice,
   Symbol,
+  SymbolDispose,
   TypedArrayPrototypeGetLength,
   Uint32Array,
   Uint8Array,
@@ -1810,10 +1811,8 @@ class ClientHttp2Session extends Http2Session {
       if (signal.aborted) {
         aborter();
       } else {
-        signal.addEventListener('abort', aborter);
-        stream.once('close', () => {
-          signal.removeEventListener('abort', aborter);
-        });
+        const disposable = EventEmitter.addAbortListener(signal, aborter);
+        stream.once('close', disposable[SymbolDispose]);
       }
     }
 
@@ -2318,10 +2317,17 @@ class Http2Stream extends Duplex {
     // this stream's close and destroy operations.
     // Previously, this always overrode a successful close operation code
     // NGHTTP2_NO_ERROR (0) with sessionCode because the use of the || operator.
-    const code = (err != null ?
-      (sessionCode || NGHTTP2_INTERNAL_ERROR) :
-      (this.closed ? this.rstCode : sessionCode)
-    );
+    let code = this.closed ? this.rstCode : sessionCode;
+    if (err != null) {
+      if (sessionCode) {
+        code = sessionCode;
+      } else if (err instanceof AbortError) {
+        // Enables using AbortController to cancel requests with RST code 8.
+        code = NGHTTP2_CANCEL;
+      } else {
+        code = NGHTTP2_INTERNAL_ERROR;
+      }
+    }
     const hasHandle = handle !== undefined;
 
     if (!this.closed)

@@ -3217,6 +3217,10 @@ changes:
   * `IncomingMessage` {http.IncomingMessage} Specifies the `IncomingMessage`
     class to be used. Useful for extending the original `IncomingMessage`.
     **Default:** `IncomingMessage`.
+  * `joinDuplicateHeaders` {boolean} It joins the field line values of multiple
+    headers in a request with `, ` instead of discarding the duplicates.
+    See [`message.headers`][] for more information.
+    **Default:** `false`.
   * `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality
     on the socket immediately after a new incoming connection is received,
     similarly on what is done in \[`socket.setKeepAlive([enable][, initialDelay])`]\[`socket.setKeepAlive(enable, initialDelay)`].
@@ -3228,10 +3232,6 @@ changes:
     the entire request from the client.
     See [`server.requestTimeout`][] for more information.
     **Default:** `300000`.
-  * `joinDuplicateHeaders` {boolean} It joins the field line values of multiple
-    headers in a request with `, ` instead of discarding the duplicates.
-    See [`message.headers`][] for more information.
-    **Default:** `false`.
   * `ServerResponse` {http.ServerResponse} Specifies the `ServerResponse` class
     to be used. Useful for extending the original `ServerResponse`. **Default:**
     `ServerResponse`.
@@ -3297,14 +3297,13 @@ changes:
 
 * `url` {string | URL}
 * `options` {Object} Accepts the same `options` as
-  [`http.request()`][], with the `method` always set to `GET`.
-  Properties that are inherited from the prototype are ignored.
+  [`http.request()`][], with the method set to GET by default.
 * `callback` {Function}
 * Returns: {http.ClientRequest}
 
 Since most requests are GET requests without bodies, Node.js provides this
 convenience method. The only difference between this method and
-[`http.request()`][] is that it sets the method to GET and calls `req.end()`
+[`http.request()`][] is that it sets the method to GET by default and calls `req.end()`
 automatically. The callback must take care to consume the response
 data for reasons stated in [`http.ClientRequest`][] section.
 
@@ -3454,6 +3453,10 @@ changes:
     invalid HTTP headers when `true`. Using the insecure parser should be
     avoided. See [`--insecure-http-parser`][] for more information.
     **Default:** `false`
+  * `joinDuplicateHeaders` {boolean} It joins the field line values of
+    multiple headers in a request with `, ` instead of discarding
+    the duplicates. See [`message.headers`][] for more information.
+    **Default:** `false`.
   * `localAddress` {string} Local interface to bind for network connections.
   * `localPort` {number} Local port to connect from.
   * `lookup` {Function} Custom lookup function. **Default:** [`dns.lookup()`][].
@@ -3481,10 +3484,6 @@ changes:
   * `uniqueHeaders` {Array} A list of request headers that should be sent
     only once. If the header's value is an array, the items will be joined
     using `; `.
-  * `joinDuplicateHeaders` {boolean} It joins the field line values of
-    multiple headers in a request with `, ` instead of discarding
-    the duplicates. See [`message.headers`][] for more information.
-    **Default:** `false`.
 * `callback` {Function}
 * Returns: {http.ClientRequest}
 

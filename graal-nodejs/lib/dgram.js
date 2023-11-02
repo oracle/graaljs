@@ -30,6 +30,8 @@ const {
   ObjectDefineProperty,
   ObjectSetPrototypeOf,
   ReflectApply,
+  SymbolAsyncDispose,
+  SymbolDispose,
 } = primordials;
 
 const errors = require('internal/errors');
@@ -59,7 +61,7 @@ const {
   validatePort,
 } = require('internal/validators');
 const { Buffer } = require('buffer');
-const { deprecate } = require('internal/util');
+const { deprecate, promisify } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
 const EventEmitter = require('events');
 const {
@@ -144,8 +146,8 @@ function Socket(type, listener) {
     if (signal.aborted) {
       onAborted();
     } else {
-      signal.addEventListener('abort', onAborted);
-      this.once('close', () => signal.removeEventListener('abort', onAborted));
+      const disposable = EventEmitter.addAbortListener(signal, onAborted);
+      this.once('close', disposable[SymbolDispose]);
     }
   }
   if (udpSocketChannel.hasSubscribers) {
@@ -750,6 +752,13 @@ Socket.prototype.close = function(callback) {
                              this);
 
   return this;
+};
+
+Socket.prototype[SymbolAsyncDispose] = async function() {
+  if (!this[kStateSymbol].handle) {
+    return;
+  }
+  return FunctionPrototypeCall(promisify(this.close), this);
 };
 
 
