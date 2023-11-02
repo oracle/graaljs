@@ -539,7 +539,8 @@ void Environment::AssignToContext(Local<v8::Context> context,
   context->SetAlignedPointerInEmbedderData(ContextEmbedderIndex::kRealm, realm);
   // Used to retrieve bindings
   context->SetAlignedPointerInEmbedderData(
-      ContextEmbedderIndex::kBindingListIndex, &(this->bindings_));
+      ContextEmbedderIndex::kBindingDataStoreIndex,
+      realm->binding_data_store());
 
   // ContextifyContexts will update this to a pointer to the native object.
   context->SetAlignedPointerInEmbedderData(
@@ -902,10 +903,11 @@ void Environment::InitializeLibuv() {
   StartProfilerIdleNotifier();
 }
 
-void Environment::ExitEnv() {
+void Environment::ExitEnv(StopFlags::Flags flags) {
   // Should not access non-thread-safe methods here.
   set_stopping(true);
-  isolate_->TerminateExecution();
+  if ((flags & StopFlags::kDoNotTerminateIsolate) == 0)
+    isolate_->TerminateExecution();
   SetImmediateThreadsafe([](Environment* env) {
     env->set_can_call_into_js(false);
     uv_stop(env->event_loop());
@@ -1009,7 +1011,6 @@ MaybeLocal<Value> Environment::RunSnapshotDeserializeMain() const {
 void Environment::RunCleanup() {
   started_cleanup_ = true;
   TRACE_EVENT0(TRACING_CATEGORY_NODE1(environment), "RunCleanup");
-  bindings_.clear();
   // Only BaseObject's cleanups are registered as per-realm cleanup hooks now.
   // Defer the BaseObject cleanup after handles are cleaned up.
   CleanupHandles();

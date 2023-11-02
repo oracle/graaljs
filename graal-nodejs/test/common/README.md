@@ -642,6 +642,12 @@ environment variables.
 If set, `NODE_COMMON_PORT`'s value overrides the `common.PORT` default value of
 12346\.
 
+### `NODE_REGENERATE_SNAPSHOTS`
+
+If set, test snapshots for a the current test are regenerated.
+for example `NODE_REGENERATE_SNAPSHOTS=1 out/Release/node test/parallel/test-runner-output.mjs`
+will update all the test runner output snapshots.
+
 ### `NODE_SKIP_FLAG_CHECK`
 
 If set, command line arguments passed to individual tests are not validated.
@@ -1020,6 +1026,15 @@ It is usually only necessary to call `refresh()` once in a test file.
 Avoid calling it more than once in an asynchronous context as one call
 might refresh the temporary directory of a different context, causing
 the test to fail somewhat mysteriously.
+
+### `hasEnoughSpace(size)`
+
+* `size` [\<number>][<number>] Required size, in bytes.
+
+Returns `true` if the available blocks of the file system underlying `path`
+are likely sufficient to hold a single file of `size` bytes. This is useful for
+skipping tests that require hundreds of megabytes or even gigabytes of temporary
+files, but it is inaccurate and susceptible to race conditions.
 
 ## UDP pair helper
 

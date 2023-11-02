@@ -60,7 +60,7 @@ function internalCompileFunction(code, params, options) {
       throw new ERR_INVALID_ARG_TYPE(
         'options.parsingContext',
         'Context',
-        parsingContext
+        parsingContext,
       );
     }
   }
@@ -79,7 +79,7 @@ function internalCompileFunction(code, params, options) {
     produceCachedData,
     parsingContext,
     contextExtensions,
-    params
+    params,
   );
 
   if (produceCachedData) {
@@ -88,6 +88,10 @@ function internalCompileFunction(code, params, options) {
 
   if (result.cachedData) {
     result.function.cachedData = result.cachedData;
+  }
+
+  if (typeof result.cachedDataRejected === 'boolean') {
+    result.function.cachedDataRejected = result.cachedDataRejected;
   }
 
   if (importModuleDynamically !== undefined) {

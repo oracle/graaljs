@@ -61,6 +61,7 @@ const {
   Int32ArrayPrototype,
   Int8Array,
   Int8ArrayPrototype,
+  IteratorPrototype,
   Map,
   MapPrototype,
   Number,
@@ -130,7 +131,7 @@ const {
   Atomics,
   Intl,
   SharedArrayBuffer,
-  WebAssembly
+  WebAssembly,
 } = globalThis;
 
 module.exports = function() {
@@ -142,7 +143,7 @@ module.exports = function() {
     clearTimeout,
     setImmediate,
     setInterval,
-    setTimeout
+    setTimeout,
   } = require('timers');
 
   const intrinsicPrototypes = [
@@ -211,10 +212,10 @@ module.exports = function() {
 
     // 27 Control Abstraction Objects
     // 27.1 Iteration
-    ObjectGetPrototypeOf(ArrayIteratorPrototype), // 27.1.2 IteratorPrototype
+    IteratorPrototype, // 27.1.2 IteratorPrototype
     // 27.1.3 AsyncIteratorPrototype
     ObjectGetPrototypeOf(ObjectGetPrototypeOf(ObjectGetPrototypeOf(
-      (async function*() {})()
+      (async function*() {})(),
     ))),
     PromisePrototype, // 27.2
 
@@ -316,7 +317,7 @@ module.exports = function() {
     ObjectGetPrototypeOf(ArrayIteratorPrototype), // 27.1.2 IteratorPrototype
     // 27.1.3 AsyncIteratorPrototype
     ObjectGetPrototypeOf(ObjectGetPrototypeOf(ObjectGetPrototypeOf(
-      (async function*() {})()
+      (async function*() {})(),
     ))),
     Promise, // 27.2
     // 27.3 GeneratorFunction
@@ -499,7 +500,7 @@ module.exports = function() {
         if (obj === this) {
           // eslint-disable-next-line no-restricted-syntax
           throw new TypeError(
-            `Cannot assign to read only property '${prop}' of object '${obj}'`
+            `Cannot assign to read only property '${prop}' of object '${obj}'`,
           );
         }
         if (ObjectPrototypeHasOwnProperty(this, prop)) {
@@ -510,7 +511,7 @@ module.exports = function() {
             value: newValue,
             writable: true,
             enumerable: true,
-            configurable: true
+            configurable: true,
           });
         }
       }
@@ -520,7 +521,7 @@ module.exports = function() {
         get: getter,
         set: setter,
         enumerable: desc.enumerable,
-        configurable: desc.configurable
+        configurable: desc.configurable,
       });
     }
   }

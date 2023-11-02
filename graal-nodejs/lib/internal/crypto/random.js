@@ -43,7 +43,7 @@ const {
     ERR_MISSING_ARGS,
     ERR_OUT_OF_RANGE,
     ERR_OPERATION_FAILED,
-  }
+  },
 } = require('internal/errors');
 
 const {
@@ -52,7 +52,6 @@ const {
   validateFunction,
   validateInt32,
   validateObject,
-  validateUint32,
 } = require('internal/validators');
 
 const {
@@ -232,7 +231,7 @@ function randomInt(min, max, callback) {
   }
   if (max <= min) {
     throw new ERR_OUT_OF_RANGE(
-      'max', `greater than the value of "min" (${min})`, max
+      'max', `greater than the value of "min" (${min})`, max,
     );
   }
 
@@ -550,7 +549,7 @@ function checkPrime(candidate, options = kEmptyObject, callback) {
         'DataView',
         'bigint',
       ],
-      candidate
+      candidate,
     );
   }
   if (typeof options === 'function') {
@@ -563,7 +562,8 @@ function checkPrime(candidate, options = kEmptyObject, callback) {
     checks = 0,
   } = options;
 
-  validateUint32(checks, 'options.checks');
+  // The checks option is unsigned but must fit into a signed C int for OpenSSL.
+  validateInt32(checks, 'options.checks', 0);
 
   const job = new CheckPrimeJob(kCryptoJobAsync, candidate, checks);
   job.ondone = callback;
@@ -583,7 +583,7 @@ function checkPrimeSync(candidate, options = kEmptyObject) {
         'DataView',
         'bigint',
       ],
-      candidate
+      candidate,
     );
   }
   validateObject(options, 'options');
@@ -591,7 +591,8 @@ function checkPrimeSync(candidate, options = kEmptyObject) {
     checks = 0,
   } = options;
 
-  validateUint32(checks, 'options.checks');
+  // The checks option is unsigned but must fit into a signed C int for OpenSSL.
+  validateInt32(checks, 'options.checks', 0);
 
   const job = new CheckPrimeJob(kCryptoJobSync, candidate, checks);
   const { 0: err, 1: result } = job.run();

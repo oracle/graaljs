@@ -226,7 +226,7 @@ class TransformStream {
         writable,
       },
       deserializeInfo:
-        'internal/webstreams/transformstream:TransferredTransformStream'
+        'internal/webstreams/transformstream:TransferredTransformStream',
     };
   }
 
@@ -358,6 +358,7 @@ function initializeTransformStream(
   readableSizeAlgorithm) {
 
   const writable = new WritableStream({
+    __proto__: null,
     start() { return startPromise.promise; },
     write(chunk) {
       return transformStreamDefaultSinkWriteAlgorithm(stream, chunk);
@@ -374,6 +375,7 @@ function initializeTransformStream(
   });
 
   const readable = new ReadableStream({
+    __proto__: null,
     start() { return startPromise.promise; },
     pull() {
       return transformStreamDefaultSourcePullAlgorithm(stream);
@@ -396,7 +398,7 @@ function initializeTransformStream(
       promise: undefined,
       resolve: undefined,
       reject: undefined,
-    }
+    },
   };
 
   transformStreamSetBackpressure(stream, true);

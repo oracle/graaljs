@@ -289,16 +289,6 @@ npm exec --package yo --package generator-node --call "yo node"
 ```
 
 
-#### `ci-name`
-
-* Default: The name of the current CI system, or `null` when not on a known CI
-  platform.
-* Type: null or String
-
-The name of a continuous integration system. If not set explicitly, npm will
-detect the current CI environment using the
-[`ci-info`](http://npm.im/ci-info) module.
-
 #### `cidr`
 
 * Default: null
@@ -691,7 +681,7 @@ number, if not already set in package.json.
 
 #### `install-links`
 
-* Default: true
+* Default: false
 * Type: Boolean
 
 When set file: protocol dependencies will be packed and installed as regular
@@ -701,13 +691,13 @@ workspaces.
 #### `install-strategy`
 
 * Default: "hoisted"
-* Type: "hoisted", "nested", or "shallow"
+* Type: "hoisted", "nested", "shallow", or "linked"
 
 Sets the strategy for installing packages in node_modules. hoisted
 (default): Install non-duplicated in top-level, and duplicated as necessary
 within directory structure. nested: (formerly --legacy-bundling) install in
 place, no hoisting. shallow (formerly --global-style) only install direct
-deps at top-level. linked: (coming soon) install in node_modules/.store,
+deps at top-level. linked: (experimental) install in node_modules/.store,
 link in place, unhoisted.
 
 #### `json`
@@ -1004,6 +994,14 @@ When set to `true`, npm will display a progress bar during time intensive
 operations, if `process.stderr` is a TTY.
 
 Set to `false` to suppress the progress bar.
+
+#### `provenance`
+
+* Default: false
+* Type: Boolean
+
+When publishing from a supported cloud CI/CD system, the package will be
+publicly linked to where it was built and published from.
 
 #### `proxy`
 
@@ -1505,6 +1503,18 @@ cert="-----BEGIN CERTIFICATE-----\nXXXX\nXXXX\n-----END CERTIFICATE-----"
 It is _not_ the path to a certificate file, though you can set a
 registry-scoped "certfile" path like
 "//other-registry.tld/:certfile=/path/to/cert.pem".
+
+#### `ci-name`
+
+* Default: The name of the current CI system, or `null` when not on a known CI
+  platform.
+* Type: null or String
+* DEPRECATED: This config is deprecated and will not be changeable in future
+  version of npm.
+
+The name of a continuous integration system. If not set explicitly, npm will
+detect the current CI environment using the
+[`ci-info`](http://npm.im/ci-info) module.
 
 #### `dev`
 

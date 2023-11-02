@@ -9,7 +9,7 @@ const {
 } = require('internal/errors');
 const {
   ERR_INVALID_ARG_TYPE,
-  ERR_STREAM_PREMATURE_CLOSE
+  ERR_STREAM_PREMATURE_CLOSE,
 } = codes;
 const {
   kEmptyObject,
@@ -19,7 +19,7 @@ const {
   validateAbortSignal,
   validateFunction,
   validateObject,
-  validateBoolean
+  validateBoolean,
 } = require('internal/validators');
 
 const { Promise, PromisePrototypeThen } = primordials;
@@ -261,11 +261,34 @@ function eos(stream, options, callback) {
   return cleanup;
 }
 
-function eosWeb(stream, opts, callback) {
+function eosWeb(stream, options, callback) {
+  let isAborted = false;
+  let abort = nop;
+  if (options.signal) {
+    abort = () => {
+      isAborted = true;
+      callback.call(stream, new AbortError(undefined, { cause: options.signal.reason }));
+    };
+    if (options.signal.aborted) {
+      process.nextTick(abort);
+    } else {
+      const originalCallback = callback;
+      callback = once((...args) => {
+        options.signal.removeEventListener('abort', abort);
+        originalCallback.apply(stream, args);
+      });
+      options.signal.addEventListener('abort', abort);
+    }
+  }
+  const resolverFn = (...args) => {
+    if (!isAborted) {
+      process.nextTick(() => callback.apply(stream, args));
+    }
+  };
   PromisePrototypeThen(
     stream[kIsClosedPromise].promise,
-    () => process.nextTick(() => callback.call(stream)),
-    (err) => process.nextTick(() => callback.call(stream, err)),
+    resolverFn,
+    resolverFn,
   );
   return nop;
 }

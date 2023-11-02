@@ -154,7 +154,10 @@ class EnvironmentOptions : public Options {
   std::string redirect_warnings;
   std::string diagnostic_dir;
   bool test_runner = false;
+  bool test_runner_coverage = false;
   std::vector<std::string> test_name_pattern;
+  std::vector<std::string> test_reporter;
+  std::vector<std::string> test_reporter_destination;
   bool test_only = false;
   bool test_udp_no_try_send = false;
   bool throw_deprecation = false;
@@ -182,7 +185,6 @@ class EnvironmentOptions : public Options {
 
   bool syntax_check_only = false;
   bool has_eval_string = false;
-  bool experimental_wasi = false;
   std::string eval_string;
   bool print_eval = false;
   bool force_repl = false;
@@ -333,37 +335,37 @@ class OptionsParser {
   // sources (i.e. NODE_OPTIONS).
   void AddOption(const char* name,
                  const char* help_text,
-                 bool Options::* field,
-                 OptionEnvvarSettings env_setting = kDisallowedInEnvironment,
+                 bool Options::*field,
+                 OptionEnvvarSettings env_setting = kDisallowedInEnvvar,
                  bool default_is_true = false);
   void AddOption(const char* name,
                  const char* help_text,
-                 uint64_t Options::* field,
-                 OptionEnvvarSettings env_setting = kDisallowedInEnvironment);
+                 uint64_t Options::*field,
+                 OptionEnvvarSettings env_setting = kDisallowedInEnvvar);
   void AddOption(const char* name,
                  const char* help_text,
-                 int64_t Options::* field,
-                 OptionEnvvarSettings env_setting = kDisallowedInEnvironment);
+                 int64_t Options::*field,
+                 OptionEnvvarSettings env_setting = kDisallowedInEnvvar);
   void AddOption(const char* name,
                  const char* help_text,
-                 std::string Options::* field,
-                 OptionEnvvarSettings env_setting = kDisallowedInEnvironment);
+                 std::string Options::*field,
+                 OptionEnvvarSettings env_setting = kDisallowedInEnvvar);
   void AddOption(const char* name,
                  const char* help_text,
-                 std::vector<std::string> Options::* field,
-                 OptionEnvvarSettings env_setting = kDisallowedInEnvironment);
+                 std::vector<std::string> Options::*field,
+                 OptionEnvvarSettings env_setting = kDisallowedInEnvvar);
   void AddOption(const char* name,
                  const char* help_text,
-                 HostPort Options::* field,
-                 OptionEnvvarSettings env_setting = kDisallowedInEnvironment);
+                 HostPort Options::*field,
+                 OptionEnvvarSettings env_setting = kDisallowedInEnvvar);
   void AddOption(const char* name,
                  const char* help_text,
                  NoOp no_op_tag,
-                 OptionEnvvarSettings env_setting = kDisallowedInEnvironment);
+                 OptionEnvvarSettings env_setting = kDisallowedInEnvvar);
   void AddOption(const char* name,
                  const char* help_text,
                  V8Option v8_option_tag,
-                 OptionEnvvarSettings env_setting = kDisallowedInEnvironment);
+                 OptionEnvvarSettings env_setting = kDisallowedInEnvvar);
 
   // Adds aliases. An alias can be of the form "--option-a" -> "--option-b",
   // or have a more complex group expansion, like

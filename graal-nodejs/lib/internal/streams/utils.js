@@ -1,18 +1,23 @@
 'use strict';
 
 const {
-  Symbol,
   SymbolAsyncIterator,
   SymbolIterator,
   SymbolFor,
 } = primordials;
 
-const kDestroyed = Symbol('kDestroyed');
-const kIsErrored = Symbol('kIsErrored');
-const kIsReadable = Symbol('kIsReadable');
-const kIsDisturbed = Symbol('kIsDisturbed');
+// We need to use SymbolFor to make these globally available
+// for interopt with readable-stream, i.e. readable-stream
+// and node core needs to be able to read/write private state
+// from each other for proper interoperability.
+const kIsDestroyed = SymbolFor('nodejs.stream.destroyed');
+const kIsErrored = SymbolFor('nodejs.stream.errored');
+const kIsReadable = SymbolFor('nodejs.stream.readable');
+const kIsWritable = SymbolFor('nodejs.stream.writable');
+const kIsDisturbed = SymbolFor('nodejs.stream.disturbed');
 
 const kIsClosedPromise = SymbolFor('nodejs.webstream.isClosedPromise');
+const kControllerErrorFunction = SymbolFor('nodejs.webstream.controllerErrorFunction');
 
 function isReadableNodeStream(obj, strict = false) {
   return !!(
@@ -77,6 +82,19 @@ function isWritableStream(obj) {
   );
 }
 
+function isTransformStream(obj) {
+  return !!(
+    obj &&
+    !isNodeStream(obj) &&
+    typeof obj.readable === 'object' &&
+    typeof obj.writable === 'object'
+  );
+}
+
+function isWebStream(obj) {
+  return isReadableStream(obj) || isWritableStream(obj) || isTransformStream(obj);
+}
+
 function isIterable(obj, isAsync) {
   if (obj == null) return false;
   if (isAsync === true) return typeof obj[SymbolAsyncIterator] === 'function';
@@ -90,7 +108,7 @@ function isDestroyed(stream) {
   const wState = stream._writableState;
   const rState = stream._readableState;
   const state = wState || rState;
-  return !!(stream.destroyed || stream[kDestroyed] || state?.destroyed);
+  return !!(stream.destroyed || stream[kIsDestroyed] || state?.destroyed);
 }
 
 // Have been end():d.
@@ -148,6 +166,7 @@ function isReadable(stream) {
 }
 
 function isWritable(stream) {
+  if (stream && stream[kIsWritable] != null) return stream[kIsWritable];
   if (typeof stream?.writable !== 'boolean') return null;
   if (isDestroyed(stream)) return false;
   return isWritableNodeStream(stream) &&
@@ -284,7 +303,8 @@ function isErrored(stream) {
 }
 
 module.exports = {
-  kDestroyed,
+  isDestroyed,
+  kIsDestroyed,
   isDisturbed,
   kIsDisturbed,
   isErrored,
@@ -292,8 +312,9 @@ module.exports = {
   isReadable,
   kIsReadable,
   kIsClosedPromise,
+  kControllerErrorFunction,
+  kIsWritable,
   isClosed,
-  isDestroyed,
   isDuplexNodeStream,
   isFinished,
   isIterable,
@@ -303,6 +324,7 @@ module.exports = {
   isReadableFinished,
   isReadableErrored,
   isNodeStream,
+  isWebStream,
   isWritable,
   isWritableNodeStream,
   isWritableStream,
@@ -312,4 +334,5 @@ module.exports = {
   isServerRequest,
   isServerResponse,
   willEmitClose,
+  isTransformStream,
 };

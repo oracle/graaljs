@@ -20,6 +20,7 @@
 namespace node {
 using errors::TryCatchScope;
 using v8::Array;
+using v8::Boolean;
 using v8::Context;
 using v8::EscapableHandleScope;
 using v8::Function;
@@ -263,8 +264,16 @@ void SetIsolateMiscHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
   auto* allow_wasm_codegen_cb = s.allow_wasm_code_generation_callback ?
     s.allow_wasm_code_generation_callback : AllowWasmCodeGenerationCallback;
   isolate->SetAllowWasmCodeGenerationCallback(allow_wasm_codegen_cb);
+
+  auto* modify_code_generation_from_strings_callback =
+      ModifyCodeGenerationFromStrings;
+  if (s.flags & ALLOW_MODIFY_CODE_GENERATION_FROM_STRINGS_CALLBACK &&
+      s.modify_code_generation_from_strings_callback) {
+    modify_code_generation_from_strings_callback =
+        s.modify_code_generation_from_strings_callback;
+  }
   isolate->SetModifyCodeGenerationFromStringsCallback(
-      ModifyCodeGenerationFromStrings);
+      modify_code_generation_from_strings_callback);
 
   Mutex::ScopedLock lock(node::per_process::cli_options_mutex);
   if (per_process::cli_options->get_per_isolate_options()
@@ -392,12 +401,13 @@ Environment* CreateEnvironment(
   // options than the global parse call.
   Environment* env = new Environment(
       isolate_data, context, args, exec_args, nullptr, flags, thread_id);
+
 #if HAVE_INSPECTOR
   if (env->should_create_inspector()) {
     if (inspector_parent_handle) {
-      env->InitializeInspector(
-          std::move(static_cast<InspectorParentHandleImpl*>(
-              inspector_parent_handle.get())->impl));
+      env->InitializeInspector(std::move(
+          static_cast<InspectorParentHandleImpl*>(inspector_parent_handle.get())
+              ->impl));
     } else {
       env->InitializeInspector({});
     }
@@ -447,11 +457,20 @@ NODE_EXTERN std::unique_ptr<InspectorParentHandle> GetInspectorParentHandle(
     Environment* env,
     ThreadId thread_id,
     const char* url) {
+  return GetInspectorParentHandle(env, thread_id, url, "");
+}
+
+NODE_EXTERN std::unique_ptr<InspectorParentHandle> GetInspectorParentHandle(
+    Environment* env, ThreadId thread_id, const char* url, const char* name) {
   CHECK_NOT_NULL(env);
+  if (name == nullptr) name = "";
   CHECK_NE(thread_id.id, static_cast<uint64_t>(-1));
+  if (!env->should_create_inspector()) {
+    return nullptr;
+  }
 #if HAVE_INSPECTOR
   return std::make_unique<InspectorParentHandleImpl>(
-      env->inspector_agent()->GetParentHandle(thread_id.id, url));
+      env->inspector_agent()->GetParentHandle(thread_id.id, url, name));
 #else
   return {};
 #endif
@@ -590,7 +609,7 @@ Maybe<bool> InitializeContextRuntime(Local<Context> context) {
   context->AllowCodeGenerationFromStrings(false);
   context->SetEmbedderData(
       ContextEmbedderIndex::kAllowCodeGenerationFromStrings,
-      is_code_generation_from_strings_allowed ? True(isolate) : False(isolate));
+      Boolean::New(isolate, is_code_generation_from_strings_allowed));
 
   if (per_process::cli_options->disable_proto == "") {
     return Just(true);
@@ -648,8 +667,7 @@ Maybe<bool> InitializeContextRuntime(Local<Context> context) {
     }
   } else if (per_process::cli_options->disable_proto != "") {
     // Validated in ProcessGlobalArgs
-    FatalError("InitializeContextRuntime()",
-               "invalid --disable-proto mode");
+    OnFatalError("InitializeContextRuntime()", "invalid --disable-proto mode");
   }
 
   return Just(true);
@@ -768,7 +786,9 @@ void AddLinkedBinding(Environment* env, const node_module& mod) {
 }
 
 void AddLinkedBinding(Environment* env, const napi_module& mod) {
-  AddLinkedBinding(env, napi_module_to_node_module(&mod));
+  node_module node_mod = napi_module_to_node_module(&mod);
+  node_mod.nm_flags = NM_F_LINKED;
+  AddLinkedBinding(env, node_mod);
 }
 
 void AddLinkedBinding(Environment* env,
@@ -789,6 +809,24 @@ void AddLinkedBinding(Environment* env,
   AddLinkedBinding(env, mod);
 }
 
+void AddLinkedBinding(Environment* env,
+                      const char* name,
+                      napi_addon_register_func fn,
+                      int32_t module_api_version) {
+  node_module mod = {
+      -1,           // nm_version for Node-API
+      NM_F_LINKED,  // nm_flags
+      nullptr,      // nm_dso_handle
+      nullptr,      // nm_filename
+      nullptr,      // nm_register_func
+      get_node_api_context_register_func(env, name, module_api_version),
+      name,                         // nm_modname
+      reinterpret_cast<void*>(fn),  // nm_priv
+      nullptr                       // nm_link
+  };
+  AddLinkedBinding(env, mod);
+}
+
 static std::atomic<uint64_t> next_thread_id{0};
 
 ThreadId AllocateEnvironmentThreadId() {
@@ -796,9 +834,14 @@ ThreadId AllocateEnvironmentThreadId() {
 }
 
 void DefaultProcessExitHandler(Environment* env, int exit_code) {
+  env->set_stopping(true);
   env->set_can_call_into_js(false);
   env->stop_sub_worker_contexts();
   env->isolate()->DumpAndResetStats();
+  // The tracing agent could be in the process of writing data using the
+  // threadpool. Stop it before shutting down libuv. The rest of the tracing
+  // agent disposal will be performed in DisposePlatform().
+  per_process::v8_platform.StopTracingAgent();
   // When the process exits, the tasks in the thread pool may also need to
   // access the data of V8Platform, such as trace agent, or a field
   // added in the future. So make sure the thread pool exits first.

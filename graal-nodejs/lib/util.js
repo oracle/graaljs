@@ -49,11 +49,11 @@ const {
   codes: {
     ERR_FALSY_VALUE_REJECTION,
     ERR_INVALID_ARG_TYPE,
-    ERR_OUT_OF_RANGE
+    ERR_OUT_OF_RANGE,
   },
   errnoException,
   exceptionWithHostPort,
-  hideStackFrames
+  hideStackFrames,
 } = require('internal/errors');
 const {
   format,
@@ -233,7 +233,6 @@ function log(...args) {
  * during bootstrapping this function needs to be rewritten using some native
  * functions as prototype setup using normal JavaScript does not work as
  * expected during bootstrapping (see mirror.js in r114903).
- *
  * @param {Function} ctor Constructor function which needs to inherit the
  *     prototype.
  * @param {Function} superCtor Constructor function to inherit prototype from.
@@ -256,7 +255,7 @@ function inherits(ctor, superCtor) {
     __proto__: null,
     value: superCtor,
     writable: true,
-    configurable: true
+    configurable: true,
   });
   ObjectSetPrototypeOf(ctor.prototype, superCtor.prototype);
 }
@@ -400,5 +399,8 @@ module.exports = {
   get transferableAbortController() {
     return lazyAbortController().transferableAbortController;
   },
-  types
+  get aborted() {
+    return lazyAbortController().aborted;
+  },
+  types,
 };

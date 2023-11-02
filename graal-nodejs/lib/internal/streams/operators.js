@@ -23,6 +23,7 @@ const {
   addAbortSignalNoValidate,
 } = require('internal/streams/add-abort-signal');
 const { isWritable, isNodeStream } = require('internal/streams/utils');
+const { deprecate } = require('internal/util');
 
 const {
   ArrayPrototypePush,
@@ -56,7 +57,7 @@ function compose(stream, options) {
     // Not validating as we already validated before
     addAbortSignalNoValidate(
       options.signal,
-      composedStream
+      composedStream,
     );
   }
 
@@ -409,7 +410,10 @@ function take(number, options = undefined) {
       }
       if (number-- > 0) {
         yield val;
-      } else {
+      }
+
+      // Don't get another item from iterator in case we reached the end
+      if (number <= 0) {
         return;
       }
     }
@@ -417,7 +421,7 @@ function take(number, options = undefined) {
 }
 
 module.exports.streamReturningOperators = {
-  asIndexedPairs,
+  asIndexedPairs: deprecate(asIndexedPairs, 'readable.asIndexedPairs will be removed in a future version.'),
   drop,
   filter,
   flatMap,

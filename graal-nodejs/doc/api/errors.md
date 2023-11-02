@@ -232,14 +232,27 @@ The `constructorOpt` argument is useful for hiding implementation
 details of error generation from the user. For instance:
 
 ```js
-function MyError() {
-  Error.captureStackTrace(this, MyError);
+function a() {
+  b();
 }
 
-// Without passing MyError to captureStackTrace, the MyError
-// frame would show up in the .stack property. By passing
-// the constructor, we omit that frame, and retain all frames below it.
-new MyError().stack;
+function b() {
+  c();
+}
+
+function c() {
+  // Create an error without stack trace to avoid calculating the stack trace twice.
+  const { stackTraceLimit } = Error;
+  Error.stackTraceLimit = 0;
+  const error = new Error();
+  Error.stackTraceLimit = stackTraceLimit;
+
+  // Capture the stack trace above function b
+  Error.captureStackTrace(error, b); // Neither function c, nor b is included in the stack trace
+  throw error;
+}
+
+a();
 ```
 
 ### `Error.stackTraceLimit`
@@ -679,6 +692,14 @@ APIs _not_ using `AbortSignal`s typically do not raise an error with this code.
 This code does not use the regular `ERR_*` convention Node.js errors use in
 order to be compatible with the web platform's `AbortError`.
 
+<a id="ERR_ACCESS_DENIED"></a>
+
+### `ERR_ACCESS_DENIED`
+
+A special type of error that is triggered whenever Node.js tries to get access
+to a resource restricted by the [policy][] manifest.
+For example, `process.binding`.
+
 <a id="ERR_AMBIGUOUS_ARGUMENT"></a>
 
 ### `ERR_AMBIGUOUS_ARGUMENT`
@@ -841,8 +862,9 @@ size is reached when the context is created.
 
 ### `ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED`
 
-A client certificate engine was requested that is not supported by the version
-of OpenSSL being used.
+An OpenSSL engine was requested (for example, through the `clientCertEngine` or
+`privateKeyEngine` TLS options) that is not supported by the version of OpenSSL
+being used, likely due to the compile-time flag `OPENSSL_NO_ENGINE`.
 
 <a id="ERR_CRYPTO_ECDH_INVALID_FORMAT"></a>
 
@@ -1318,6 +1340,11 @@ When using [`fs.cp()`][], `src` or `dest` pointed to an invalid path.
 
 <a id="ERR_FS_CP_FIFO_PIPE"></a>
 
+### `ERR_HTTP_BODY_NOT_ALLOWED`
+
+An error is thrown when writing to an HTTP response which does not allow
+contents. <a id="ERR_HTTP_BODY_NOT_ALLOWED"></a>
+
 ### `ERR_HTTP_CONTENT_LENGTH_MISMATCH`
 
 Response body size doesn't match with the specified content-length header value.
@@ -1417,6 +1444,12 @@ Status code was outside the regular status code range (100-999).
 ### `ERR_HTTP_REQUEST_TIMEOUT`
 
 The client has not sent the entire request within the allowed time.
+
+<a id="ERR_HTTP_SOCKET_ASSIGNED"></a>
+
+### `ERR_HTTP_SOCKET_ASSIGNED`
+
+The given [`ServerResponse`][] was already assigned a socket.
 
 <a id="ERR_HTTP_SOCKET_ENCODING"></a>
 
@@ -3552,6 +3585,7 @@ The native call from `process.cpuUsage` could not be processed.
 [`Object.getPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/getPrototypeOf
 [`Object.setPrototypeOf`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/setPrototypeOf
 [`REPL`]: repl.md
+[`ServerResponse`]: http.md#class-httpserverresponse
 [`Writable`]: stream.md#class-streamwritable
 [`child_process`]: child_process.md
 [`cipher.getAuthTag()`]: crypto.md#ciphergetauthtag

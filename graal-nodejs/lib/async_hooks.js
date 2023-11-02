@@ -18,12 +18,11 @@ const {
 const {
   ERR_ASYNC_CALLBACK,
   ERR_ASYNC_TYPE,
-  ERR_INVALID_ASYNC_ID
+  ERR_INVALID_ASYNC_ID,
 } = require('internal/errors').codes;
 const { kEmptyObject } = require('internal/util');
 const {
   validateFunction,
-  validateObject,
   validateString,
 } = require('internal/validators');
 const internal_async_hooks = require('internal/async_hooks');
@@ -59,7 +58,7 @@ const {
 const {
   async_id_symbol, trigger_async_id_symbol,
   init_symbol, before_symbol, after_symbol, destroy_symbol,
-  promise_resolve_symbol
+  promise_resolve_symbol,
 } = internal_async_hooks.symbols;
 
 // Get constants
@@ -252,7 +251,7 @@ class AsyncResource {
         enumerable: true,
         value: this,
         writable: true,
-      }
+      },
     });
     return bound;
   }
@@ -271,21 +270,21 @@ const storageHook = createHook({
     for (let i = 0; i < storageList.length; ++i) {
       storageList[i]._propagate(resource, currentResource, type);
     }
-  }
+  },
 });
 
 class AsyncLocalStorage {
-  constructor(options = kEmptyObject) {
-    validateObject(options, 'options');
-
-    const { onPropagate = null } = options;
-    if (onPropagate !== null) {
-      validateFunction(onPropagate, 'options.onPropagate');
-    }
-
+  constructor() {
     this.kResourceStore = Symbol('kResourceStore');
     this.enabled = false;
-    this._onPropagate = onPropagate;
+  }
+
+  static bind(fn) {
+    return AsyncResource.bind(fn);
+  }
+
+  static snapshot() {
+    return AsyncLocalStorage.bind((cb, ...args) => cb(...args));
   }
 
   disable() {
@@ -312,9 +311,7 @@ class AsyncLocalStorage {
   _propagate(resource, triggerResource, type) {
     const store = triggerResource[this.kResourceStore];
     if (this.enabled) {
-      if (this._onPropagate === null || this._onPropagate(type, store)) {
-        resource[this.kResourceStore] = store;
-      }
+      resource[this.kResourceStore] = store;
     }
   }
 

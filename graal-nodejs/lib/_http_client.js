@@ -58,12 +58,12 @@ const {
 const {
   kUniqueHeaders,
   parseUniqueHeadersOption,
-  OutgoingMessage
+  OutgoingMessage,
 } = require('_http_outgoing');
 const Agent = require('_http_agent');
 const { Buffer } = require('buffer');
 const { defaultTriggerAsyncIdScope } = require('internal/async_hooks');
-const { URL, urlToHttpOptions, searchParamsSymbol } = require('internal/url');
+const { URL, urlToHttpOptions, isURL } = require('internal/url');
 const {
   kOutHeaders,
   kNeedDrain,
@@ -78,7 +78,7 @@ const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_HTTP_TOKEN,
   ERR_INVALID_PROTOCOL,
-  ERR_UNESCAPED_CHARACTERS
+  ERR_UNESCAPED_CHARACTERS,
 } = codes;
 const {
   validateInteger,
@@ -87,7 +87,7 @@ const {
 const { getTimerDuration } = require('internal/timers');
 const {
   DTRACE_HTTP_CLIENT_REQUEST,
-  DTRACE_HTTP_CLIENT_RESPONSE
+  DTRACE_HTTP_CLIENT_RESPONSE,
 } = require('internal/dtrace');
 
 const {
@@ -138,8 +138,7 @@ function ClientRequest(input, options, cb) {
   if (typeof input === 'string') {
     const urlStr = input;
     input = urlToHttpOptions(new URL(urlStr));
-  } else if (input && input[searchParamsSymbol] &&
-             input[searchParamsSymbol][searchParamsSymbol]) {
+  } else if (isURL(input)) {
     // url.URL instance
     input = urlToHttpOptions(input);
   } else {
@@ -650,7 +649,7 @@ function parserOnIncomingClient(res, shouldKeepAlive) {
       httpVersionMajor: res.httpVersionMajor,
       httpVersionMinor: res.httpVersionMinor,
       headers: res.headers,
-      rawHeaders: res.rawHeaders
+      rawHeaders: res.rawHeaders,
     });
 
     return 1;  // Skip body but don't treat as Upgrade.
@@ -786,8 +785,8 @@ function responseOnTimeout() {
   res.emit('timeout');
 }
 
-// This function is necessary in the case where we receive the entire reponse
-// from server before we finish sending out the request
+// This function is necessary in the case where we receive the entire response
+// from the server before we finish sending out the request.
 function requestOnFinish() {
   const req = this;
 
@@ -977,5 +976,5 @@ ClientRequest.prototype.clearTimeout = function clearTimeout(cb) {
 };
 
 module.exports = {
-  ClientRequest
+  ClientRequest,
 };

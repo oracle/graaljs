@@ -22,6 +22,7 @@
 'use strict';
 
 const {
+  Boolean,
   Int8Array,
   ObjectCreate,
   ObjectKeys,
@@ -38,7 +39,10 @@ const {
   ERR_INVALID_ARG_TYPE,
   ERR_INVALID_URL,
 } = require('internal/errors').codes;
-const { validateString } = require('internal/validators');
+const {
+  validateString,
+  validateObject,
+} = require('internal/validators');
 
 // This ensures setURLConstructor() is called before the native
 // URL::ToObject() method is used.
@@ -51,10 +55,13 @@ const {
   domainToASCII,
   domainToUnicode,
   fileURLToPath,
-  formatSymbol,
   pathToFileURL,
   urlToHttpOptions,
 } = require('internal/url');
+
+const bindingUrl = internalBinding('url');
+
+const { getOptionValue } = require('internal/options');
 
 // Original url.parse() API
 
@@ -140,7 +147,20 @@ const {
   CHAR_COLON,
 } = require('internal/constants');
 
+let urlParseWarned = false;
+
 function urlParse(url, parseQueryString, slashesDenoteHost) {
+  if (!urlParseWarned && getOptionValue('--pending-deprecation')) {
+    urlParseWarned = true;
+    process.emitWarning(
+      '`url.parse()` behavior is not standardized and prone to ' +
+      'errors that have security implications. Use the WHATWG URL API ' +
+      'instead. CVEs are not issued for `url.parse()` vulnerabilities.',
+      'DeprecationWarning',
+      'DEP0169',
+    );
+  }
+
   if (url instanceof Url) return url;
 
   const urlObject = new Url();
@@ -579,13 +599,36 @@ function urlFormat(urlObject, options) {
   } else if (typeof urlObject !== 'object' || urlObject === null) {
     throw new ERR_INVALID_ARG_TYPE('urlObject',
                                    ['Object', 'string'], urlObject);
-  } else if (!(urlObject instanceof Url)) {
-    const format = urlObject[formatSymbol];
-    return format ?
-      format.call(urlObject, options) :
-      Url.prototype.format.call(urlObject);
+  } else if (urlObject instanceof URL) {
+    let fragment = true;
+    let unicode = false;
+    let search = true;
+    let auth = true;
+
+    if (options) {
+      validateObject(options, 'options');
+
+      if (options.fragment != null) {
+        fragment = Boolean(options.fragment);
+      }
+
+      if (options.unicode != null) {
+        unicode = Boolean(options.unicode);
+      }
+
+      if (options.search != null) {
+        search = Boolean(options.search);
+      }
+
+      if (options.auth != null) {
+        auth = Boolean(options.auth);
+      }
+    }
+
+    return bindingUrl.format(urlObject.href, fragment, unicode, search, auth);
   }
-  return urlObject.format();
+
+  return Url.prototype.format.call(urlObject);
 }
 
 // These characters do not need escaping:
@@ -602,7 +645,7 @@ const noEscapeAuth = new Int8Array([
   0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x40 - 0x4F
   1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 0, 1, // 0x50 - 0x5F
   0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, // 0x60 - 0x6F
-  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0,  // 0x70 - 0x7F
+  1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0, 0, 1, 0, // 0x70 - 0x7F
 ]);
 
 Url.prototype.format = function format() {

@@ -87,11 +87,11 @@ function wrapConsole(consoleFromNode) {
         consoleCall,
         consoleFromNode,
         consoleFromVM[key],
-        consoleFromNode[key]
+        consoleFromNode[key],
       );
       ObjectDefineProperty(consoleFromNode[key], 'name', {
         __proto__: null,
-        value: key
+        value: key,
       });
     } else {
       // Add additional console APIs from the inspector

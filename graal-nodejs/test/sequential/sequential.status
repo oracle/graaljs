@@ -51,6 +51,8 @@ test-worker-fshandles-open-close-on-termination: SKIP
 ### Graal-specific end ###
 
 [$system==win32]
+# https://github.com/nodejs/node/issues/47116
+test-http-max-sockets: PASS, FLAKY
 
 [$system==linux]
 

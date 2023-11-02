@@ -32,7 +32,7 @@ const {
     ERR_EVENT_RECURSION,
     ERR_MISSING_ARGS,
     ERR_INVALID_THIS,
-  }
+  },
 } = require('internal/errors');
 const { validateObject, validateString } = require('internal/validators');
 
@@ -42,6 +42,7 @@ const {
   kEnumerableProperty,
 } = require('internal/util');
 const { inspect } = require('util');
+const webidl = require('internal/webidl');
 
 const kIsEventTarget = SymbolFor('nodejs.event_target');
 const kIsNodeEventTarget = Symbol('kIsNodeEventTarget');
@@ -75,8 +76,15 @@ const isTrustedSet = new SafeWeakSet();
 const isTrusted = ObjectGetOwnPropertyDescriptor({
   get isTrusted() {
     return isTrustedSet.has(this);
-  }
+  },
 }, 'isTrusted').get;
+
+const isTrustedDescriptor = {
+  __proto__: null,
+  configurable: false,
+  enumerable: true,
+  get: isTrusted,
+};
 
 function isEvent(value) {
   return typeof value?.[kType] === 'string';
@@ -112,13 +120,6 @@ class Event {
       isTrustedSet.add(this);
     }
 
-    // isTrusted is special (LegacyUnforgeable)
-    ObjectDefineProperty(this, 'isTrusted', {
-      __proto__: null,
-      get: isTrusted,
-      enumerable: true,
-      configurable: false
-    });
     this[kTarget] = null;
     this[kIsBeingDispatched] = false;
   }
@@ -131,7 +132,7 @@ class Event {
       return name;
 
     const opts = ObjectAssign({}, options, {
-      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
+      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth,
     });
 
     return `${name} ${inspect({
@@ -323,6 +324,11 @@ ObjectDefineProperties(
     eventPhase: kEnumerableProperty,
     cancelBubble: kEnumerableProperty,
     stopPropagation: kEnumerableProperty,
+    // Don't conform to the spec with isTrusted. The spec defines it as
+    // LegacyUnforgeable but defining it in the constructor has a big
+    // performance impact and the property doesn't seem to be useful outside of
+    // browsers.
+    isTrusted: isTrustedDescriptor,
   });
 
 function isCustomEvent(value) {
@@ -385,7 +391,7 @@ let weakListenersState = null;
 let objectToWeakListenerMap = null;
 function weakListeners() {
   weakListenersState ??= new SafeFinalizationRegistry(
-    (listener) => listener.remove()
+    (listener) => listener.remove(),
   );
   objectToWeakListenerMap ??= new SafeWeakMap();
   return { registry: weakListenersState, map: objectToWeakListenerMap };
@@ -572,7 +578,7 @@ class EventTarget {
       process.emitWarning(w);
       return;
     }
-    type = String(type);
+    type = webidl.converters.DOMString(type);
 
     if (signal) {
       if (signal.aborted) {
@@ -638,7 +644,7 @@ class EventTarget {
     if (!validateEventListener(listener))
       return;
 
-    type = String(type);
+    type = webidl.converters.DOMString(type);
     const capture = options?.capture === true;
 
     const root = this[kEvents].get(type);
@@ -761,7 +767,7 @@ class EventTarget {
       return name;
 
     const opts = ObjectAssign({}, options, {
-      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
+      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth,
     });
 
     return `${name} ${inspect({}, opts)}`;
@@ -778,7 +784,7 @@ ObjectDefineProperties(EventTarget.prototype, {
     enumerable: false,
     configurable: true,
     value: 'EventTarget',
-  }
+  },
 });
 
 function initNodeEventTarget(self) {
@@ -914,7 +920,7 @@ class NodeEventTarget extends EventTarget {
   }
 
   /**
-   * @param {string} type
+   * @param {string} [type]
    * @returns {NodeEventTarget}
    */
   removeAllListeners(type) {
@@ -978,7 +984,7 @@ function validateEventListenerOptions(options) {
     passive: Boolean(options.passive),
     signal: options.signal,
     weak: options[kWeakHandler],
-    isNodeStyleListener: Boolean(options[kIsNodeStyleListener])
+    isNodeStyleListener: Boolean(options[kIsNodeStyleListener]),
   };
 }
 
@@ -1054,7 +1060,7 @@ function defineEventHandler(emitter, name) {
       this[kHandlers].set(name, wrappedHandler);
     },
     configurable: true,
-    enumerable: true
+    enumerable: true,
   });
 }
 

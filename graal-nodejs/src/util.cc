@@ -140,7 +140,7 @@ std::string GetProcessTitle(const char* default_title) {
   std::string buf(16, '\0');
 
   for (;;) {
-    const int rc = uv_get_process_title(&buf[0], buf.size());
+    const int rc = uv_get_process_title(buf.data(), buf.size());
 
     if (rc == 0)
       break;
@@ -156,7 +156,7 @@ std::string GetProcessTitle(const char* default_title) {
 
   // Strip excess trailing nul bytes. Using strlen() here is safe,
   // uv_get_process_title() always zero-terminates the result.
-  buf.resize(strlen(&buf[0]));
+  buf.resize(strlen(buf.data()));
 
   return buf;
 }
@@ -361,6 +361,27 @@ void SetFastMethod(Local<v8::Context> context,
                    const char* name,
                    v8::FunctionCallback slow_callback,
                    const v8::CFunction* c_function) {
+  Isolate* isolate = context->GetIsolate();
+  Local<v8::Function> function =
+      NewFunctionTemplate(isolate,
+                          slow_callback,
+                          Local<v8::Signature>(),
+                          v8::ConstructorBehavior::kThrow,
+                          v8::SideEffectType::kHasSideEffect,
+                          c_function)
+          ->GetFunction(context)
+          .ToLocalChecked();
+  const v8::NewStringType type = v8::NewStringType::kInternalized;
+  Local<v8::String> name_string =
+      v8::String::NewFromUtf8(isolate, name, type).ToLocalChecked();
+  that->Set(context, name_string, function).Check();
+}
+
+void SetFastMethodNoSideEffect(Local<v8::Context> context,
+                               Local<v8::Object> that,
+                               const char* name,
+                               v8::FunctionCallback slow_callback,
+                               const v8::CFunction* c_function) {
   Isolate* isolate = context->GetIsolate();
   Local<v8::Function> function =
       NewFunctionTemplate(isolate,
