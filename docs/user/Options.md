@@ -19,6 +19,10 @@ js -e 'print(1+2);'
 ```shell
 js -f myfile.js
 ```
+* `--module FILE`: load and execute the provided module file. Note that `.mjs` files are treated as modules by default.
+```shell
+js --module myfile.mjs
+```
 * `--version`: print the version information of GraalVM JavaScript, then exit.
 * `--strict`: execute the engine in JavaScript's _strict mode_.
 
@@ -27,21 +31,21 @@ js -f myfile.js
 There are several options to configure the behavior of the GraalVM JavaScript engine.
 Depending on how the engine is started, the options can be passed either to the launcher or programmatically.
 
-For a full list of options of the JavaScript engine, pass the `--help:js` flag to the `js` launcher (available from GraalVM 22.1., for older releases use `--help:languages`).
+For a full list of options of the JavaScript engine, pass the `--help:js` flag to the `js` launcher (available from GraalVM 22.1, for older releases use `--help:languages`).
 To include internal options, use `--help:js:internal`.
 Note that those lists both include stable, supported options and experimental options.
 
 ### Provide Options to the Launcher
 To the launcher, the options are passed with `--js.<option-name>=<value>`:
 ```shell
-js --js.ecmascript-version=6
+js --js.ecmascript-version=2015
 ```
 
 ### Provide Options Programmatically Using the Context API
 When started from Java using GraalVM's Polyglot API, the options are passed programmatically to the `Context` object:
 ```java
 Context context = Context.newBuilder("js")
-                         .option("js.ecmascript-version", "6")
+                         .option("js.ecmascript-version", "2015")
                          .build();
 context.eval("js", "42");
 ```
@@ -65,6 +69,10 @@ The following stable options are frequently relevant:
    * `--js.intl-402`: enable ECMAScript Internationalization API. Boolean value, default is `true`.
    * `--js.regexp-static-result`: provide static `RegExp` properties containing the results of the last successful match, e.g., `RegExp.$1` (legacy). Boolean value, default is `true`.
    * `--js.strict`: enable strict mode for all scripts. Boolean value, default is `false`.
+   * `--js.console`: enable the `console` global property. Boolean value, default is `true`.
+   * `--js.allow-eval`: allow the code generation from strings, e.g. using `eval()` or the `Function` constructor. Boolean value, default is `true`.
+   * `--js.timer-resolution`: sets the resolution of timing functions, like `Date.now()` and `performance.now()`, in nanoseconds. Default: `1000000` (i.e. 1 ms).
+   * `--js.unhandled-rejections`: configure unhandled promise rejection tracking. Accepted values are `none` (default, no tracking), `warn` (print a warning to stderr), `throw` (throw an exception), and `handler` (invoke a custom handler).
 
 For a complete list, use `js --help:js:internal`
 
@@ -108,3 +116,6 @@ To use them, the `--experimental-options` flag is required or the experimental o
    * `--js.nashorn-compat`: provide compatibility mode with the Nashorn engine. Sets ECMAScript version to 5 by default. Might conflict with newer ECMAScript versions. Boolean value, default is `false`.
    * `--js.timezone`: set the local time zone. String value, default is the system default.
    * `--js.v8-compat`: provide better compatibility with Google's V8 engine. Boolean value, default is `false`.
+   * `--js.esm-eval-returns-exports`: `context.eval` of an ES module `Source` returns its exported symbols.
+   * `--js.temporal`: enable  [`Temporal` API](https://github.com/tc39/proposal-temporal).
+   * `--js.webassembly`: enable `WebAssembly` API.
