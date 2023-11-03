@@ -25,12 +25,13 @@ const {
   MathTrunc,
   ObjectCreate,
   ObjectDefineProperty,
-  SymbolToPrimitive
+  SymbolDispose,
+  SymbolToPrimitive,
 } = primordials;
 
 const {
   immediateInfo,
-  toggleImmediateRef
+  toggleImmediateRef,
 } = internalBinding('timers');
 const L = require('internal/linkedlist');
 const {
@@ -40,7 +41,7 @@ const {
   decRefCount,
   immediateInfoFields: {
     kCount,
-    kRefCount
+    kRefCount,
   },
   kRefed,
   kHasPrimitive,
@@ -50,11 +51,11 @@ const {
   immediateQueue,
   active,
   unrefActive,
-  insert
+  insert,
 } = require('internal/timers');
 const {
   promisify: { custom: customPromisify },
-  deprecate
+  deprecate,
 } = require('internal/util');
 let debug = require('internal/util/debuglog').debuglog('timer', (fn) => {
   debug = fn;
@@ -66,7 +67,7 @@ let timersPromises;
 const {
   destroyHooksExist,
   // The needed emit*() functions.
-  emitDestroy
+  emitDestroy,
 } = require('internal/async_hooks');
 
 // This stores all the known timer async ids to allow users to clearTimeout and
@@ -174,7 +175,7 @@ ObjectDefineProperty(setTimeout, customPromisify, {
     if (!timersPromises)
       timersPromises = require('timers/promises');
     return timersPromises.setTimeout;
-  }
+  },
 });
 
 /**
@@ -254,6 +255,10 @@ Timeout.prototype.close = function() {
   return this;
 };
 
+Timeout.prototype[SymbolDispose] = function() {
+  clearTimeout(this);
+};
+
 /**
  * Coerces a `Timeout` to a primitive.
  * @returns {number}
@@ -309,7 +314,7 @@ ObjectDefineProperty(setImmediate, customPromisify, {
     if (!timersPromises)
       timersPromises = require('timers/promises');
     return timersPromises.setImmediate;
-  }
+  },
 });
 
 /**
@@ -337,6 +342,10 @@ function clearImmediate(immediate) {
   immediateQueue.remove(immediate);
 }
 
+Immediate.prototype[SymbolDispose] = function() {
+  clearImmediate(this);
+};
+
 module.exports = {
   setTimeout,
   clearTimeout,
@@ -360,5 +369,5 @@ module.exports = {
   enroll: deprecate(
     enroll,
     'timers.enroll() is deprecated. Please use setTimeout instead.',
-    'DEP0095')
+    'DEP0095'),
 };

@@ -220,7 +220,7 @@ class Module {
         status !== kEvaluated &&
         status !== kErrored) {
       throw new ERR_VM_MODULE_STATUS(
-        'must be one of linked, evaluated, or errored'
+        'must be one of linked, evaluated, or errored',
       );
     }
     await this[kWrap].evaluate(timeout, breakOnSigint);
@@ -243,7 +243,7 @@ class Module {
     ObjectDefineProperty(o, SymbolToStringTag, {
       __proto__: null,
       value: constructor.name,
-      configurable: true
+      configurable: true,
     });
 
     // Lazy to avoid circular dependency

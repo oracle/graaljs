@@ -7,6 +7,8 @@ const {
   ObjectSetPrototypeOf,
   SafeArrayIterator,
   SafeSet,
+  StringPrototypeStartsWith,
+  StringPrototypeSlice,
 } = primordials;
 
 const binding = internalBinding('mksnapshot');
@@ -16,11 +18,11 @@ const {
 } = binding;
 
 const {
-  getOptionValue
+  getOptionValue,
 } = require('internal/options');
 
 const {
-  readFileSync
+  readFileSync,
 } = require('fs');
 
 const supportedModules = new SafeSet(new SafeArrayIterator([
@@ -95,28 +97,34 @@ function supportedInUserSnapshot(id) {
 }
 
 function requireForUserSnapshot(id) {
-  if (!BuiltinModule.canBeRequiredByUsers(id)) {
+  let normalizedId = id;
+  if (StringPrototypeStartsWith(id, 'node:')) {
+    normalizedId = StringPrototypeSlice(id, 5);
+  }
+  if (!BuiltinModule.canBeRequiredByUsers(normalizedId) ||
+      (id !== normalizedId &&
+        !BuiltinModule.canBeRequiredWithoutScheme(normalizedId))) {
     // eslint-disable-next-line no-restricted-syntax
     const err = new Error(
-      `Cannot find module '${id}'. `
+      `Cannot find module '${id}'. `,
     );
     err.code = 'MODULE_NOT_FOUND';
     throw err;
   }
-  if (!supportedInUserSnapshot(id)) {
-    if (!warnedModules.has(id)) {
+  if (!supportedInUserSnapshot(normalizedId)) {
+    if (!warnedModules.has(normalizedId)) {
       process.emitWarning(
         `built-in module ${id} is not yet supported in user snapshots`);
-      warnedModules.add(id);
+      warnedModules.add(normalizedId);
     }
   }
 
-  return require(id);
+  return require(normalizedId);
 }
 
 function main() {
   const {
-    prepareMainThreadExecution
+    prepareMainThreadExecution,
   } = require('internal/process/pre_execution');
 
   prepareMainThreadExecution(true, false);

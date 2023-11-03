@@ -14,8 +14,9 @@ const {
   StringPrototypeStartsWith,
 } = primordials;
 const {
+  ERR_INVALID_ARG_TYPE,
   ERR_MANIFEST_DEPENDENCY_MISSING,
-  ERR_UNKNOWN_BUILTIN_MODULE
+  ERR_UNKNOWN_BUILTIN_MODULE,
 } = require('internal/errors').codes;
 const { BuiltinModule } = require('internal/bootstrap/loaders');
 
@@ -58,12 +59,22 @@ function loadBuiltinModule(filename, request) {
   }
 }
 
+let $Module = null;
+function lazyModule() {
+  $Module = $Module || require('internal/modules/cjs/loader').Module;
+  return $Module;
+}
+
 // Invoke with makeRequireFunction(module) where |module| is the Module object
 // to use as the context for the require() function.
 // Use redirects to set up a mapping from a policy and restrict dependencies
 const urlToFileCache = new SafeMap();
 function makeRequireFunction(mod, redirects) {
-  const Module = mod.constructor;
+  // lazy due to cycle
+  const Module = lazyModule();
+  if (mod instanceof Module !== true) {
+    throw new ERR_INVALID_ARG_TYPE('mod', 'Module', mod);
+  }
 
   let require;
   if (redirects) {
@@ -76,19 +87,17 @@ function makeRequireFunction(mod, redirects) {
       if (destination === true) {
         missing = false;
       } else if (destination) {
-        const href = destination.href;
-        if (destination.protocol === 'node:') {
+        const { href, protocol } = destination;
+        if (protocol === 'node:') {
           const specifier = destination.pathname;
           const mod = loadBuiltinModule(specifier, href);
           if (mod && mod.canBeRequiredByUsers) {
             return mod.exports;
           }
           throw new ERR_UNKNOWN_BUILTIN_MODULE(specifier);
-        } else if (destination.protocol === 'file:') {
-          let filepath;
-          if (urlToFileCache.has(href)) {
-            filepath = urlToFileCache.get(href);
-          } else {
+        } else if (protocol === 'file:') {
+          let filepath = urlToFileCache.get(href);
+          if (!filepath) {
             filepath = fileURLToPath(destination);
             urlToFileCache.set(href, filepath);
           }
@@ -99,7 +108,7 @@ function makeRequireFunction(mod, redirects) {
         reaction(new ERR_MANIFEST_DEPENDENCY_MISSING(
           id,
           specifier,
-          ArrayPrototypeJoin([...conditions], ', ')
+          ArrayPrototypeJoin([...conditions], ', '),
         ));
       }
       return mod[require_private_symbol](mod, specifier);
@@ -201,7 +210,7 @@ function addBuiltinLibsToObject(object, dummyModuleName) {
       },
       set: setReal,
       configurable: true,
-      enumerable: false
+      enumerable: false,
     });
   });
 }

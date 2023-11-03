@@ -1902,6 +1902,17 @@ option. In the code example above, data will be in a single chunk if the file
 has less then 64 KiB of data because no `highWaterMark` option is provided to
 [`fs.createReadStream()`][].
 
+##### `readable[Symbol.asyncDispose]()`
+
+<!-- YAML
+added: v18.18.0
+-->
+
+> Stability: 1 - Experimental
+
+Calls [`readable.destroy()`][readable-destroy] with an `AbortError` and returns
+a promise that fulfills when the stream is finished.
+
 ##### `readable.compose(stream[, options])`
 
 <!-- YAML
@@ -2229,7 +2240,7 @@ const anyBigFile = await Readable.from([
   'file3',
 ]).some(async (fileName) => {
   const stats = await stat(fileName);
-  return stat.size > 1024 * 1024;
+  return stats.size > 1024 * 1024;
 }, { concurrency: 2 });
 console.log(anyBigFile); // `true` if any file in the list is bigger than 1MB
 console.log('done'); // Stream has finished
@@ -2279,7 +2290,7 @@ const foundBigFile = await Readable.from([
   'file3',
 ]).find(async (fileName) => {
   const stats = await stat(fileName);
-  return stat.size > 1024 * 1024;
+  return stats.size > 1024 * 1024;
 }, { concurrency: 2 });
 console.log(foundBigFile); // File name of large file, if any file in the list is bigger than 1MB
 console.log('done'); // Stream has finished
@@ -2327,7 +2338,7 @@ const allBigFiles = await Readable.from([
   'file3',
 ]).every(async (fileName) => {
   const stats = await stat(fileName);
-  return stat.size > 1024 * 1024;
+  return stats.size > 1024 * 1024;
 }, { concurrency: 2 });
 // `true` if all files in the list are bigger than 1MiB
 console.log(allBigFiles);
@@ -2431,6 +2442,11 @@ await Readable.from([1, 2, 3, 4]).take(2).toArray(); // [1, 2]
 
 <!-- YAML
 added: v17.5.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/48102
+    description: Using the `asIndexedPairs` method emits a runtime warning that
+                  it will be removed in a future version.
 -->
 
 > Stability: 1 - Experimental
@@ -2477,21 +2493,44 @@ This method calls `fn` on each chunk of the stream in order, passing it the
 result from the calculation on the previous element. It returns a promise for
 the final value of the reduction.
 
-The reducer function iterates the stream element-by-element which means that
-there is no `concurrency` parameter or parallelism. To perform a `reduce`
-concurrently, it can be chained to the [`readable.map`][] method.
-
 If no `initial` value is supplied the first chunk of the stream is used as the
 initial value. If the stream is empty, the promise is rejected with a
 `TypeError` with the `ERR_INVALID_ARGS` code property.
 
 ```mjs
 import { Readable } from 'node:stream';
+import { readdir, stat } from 'node:fs/promises';
+import { join } from 'node:path';
 
-const ten = await Readable.from([1, 2, 3, 4]).reduce((previous, data) => {
-  return previous + data;
-});
-console.log(ten); // 10
+const directoryPath = './src';
+const filesInDir = await readdir(directoryPath);
+
+const folderSize = await Readable.from(filesInDir)
+  .reduce(async (totalSize, file) => {
+    const { size } = await stat(join(directoryPath, file));
+    return totalSize + size;
+  }, 0);
+
+console.log(folderSize);
+```
+
+The reducer function iterates the stream element-by-element which means that
+there is no `concurrency` parameter or parallelism. To perform a `reduce`
+concurrently, you can extract the async function to [`readable.map`][] method.
+
+```mjs
+import { Readable } from 'node:stream';
+import { readdir, stat } from 'node:fs/promises';
+import { join } from 'node:path';
+
+const directoryPath = './src';
+const filesInDir = await readdir(directoryPath);
+
+const folderSize = await Readable.from(filesInDir)
+  .map((file) => stat(join(directoryPath, file)), { concurrency: 2 })
+  .reduce((totalSize, { size }) => totalSize + size, 0);
+
+console.log(folderSize);
 ```
 
 ### Duplex and transform streams
@@ -2579,6 +2618,9 @@ further errors except from `_destroy()` may be emitted as `'error'`.
 <!-- YAML
 added: v10.0.0
 changes:
+  - version: v18.14.0
+    pr-url: https://github.com/nodejs/node/pull/46205
+    description: Added support for `ReadableStream` and `WritableStream`.
   - version: v15.11.0
     pr-url: https://github.com/nodejs/node/pull/37354
     description: The `signal` option was added.
@@ -2598,7 +2640,9 @@ changes:
                  finished before the call to `finished(stream, cb)`.
 -->
 
-* `stream` {Stream} A readable and/or writable stream.
+* `stream` {Stream|ReadableStream|WritableStream}
+
+A readable and/or writable stream/webstream.
 
 * `options` {Object}
   * `error` {boolean} If set to `false`, then a call to `emit('error', err)` is
@@ -2669,6 +2713,9 @@ const cleanup = finished(rs, (err) => {
 <!-- YAML
 added: v10.0.0
 changes:
+  - version: v18.16.0
+    pr-url: https://github.com/nodejs/node/pull/46307
+    description: Added support for webstreams.
   - version: v18.0.0
     pr-url: https://github.com/nodejs/node/pull/41678
     description: Passing an invalid callback to the `callback` argument
@@ -2685,13 +2732,14 @@ changes:
     description: Add support for async generators.
 -->
 
-* `streams` {Stream\[]|Iterable\[]|AsyncIterable\[]|Function\[]}
-* `source` {Stream|Iterable|AsyncIterable|Function}
+* `streams` {Stream\[]|Iterable\[]|AsyncIterable\[]|Function\[]|
+  ReadableStream\[]|WritableStream\[]|TransformStream\[]}
+* `source` {Stream|Iterable|AsyncIterable|Function|ReadableStream}
   * Returns: {Iterable|AsyncIterable}
-* `...transforms` {Stream|Function}
+* `...transforms` {Stream|Function|TransformStream}
   * `source` {AsyncIterable}
   * Returns: {AsyncIterable}
-* `destination` {Stream|Function}
+* `destination` {Stream|Function|WritableStream}
   * `source` {AsyncIterable}
   * Returns: {AsyncIterable|Promise}
 * `callback` {Function} Called when the pipeline is fully done.
@@ -2765,11 +2813,16 @@ const server = http.createServer((req, res) => {
 
 <!-- YAML
 added: v16.9.0
+changes:
+  - version: v18.16.0
+    pr-url: https://github.com/nodejs/node/pull/46675
+    description: Added support for webstreams.
 -->
 
 > Stability: 1 - `stream.compose` is experimental.
 
-* `streams` {Stream\[]|Iterable\[]|AsyncIterable\[]|Function\[]}
+* `streams` {Stream\[]|Iterable\[]|AsyncIterable\[]|Function\[]|
+  ReadableStream\[]|WritableStream\[]|TransformStream\[]}
 * Returns: {stream.Duplex}
 
 Combines two or more streams into a `Duplex` stream that writes to the
@@ -2972,8 +3025,14 @@ added: v17.0.0
 * `streamReadable` {stream.Readable}
 * `options` {Object}
   * `strategy` {Object}
-    * `highWaterMark` {number}
-    * `size` {Function}
+    * `highWaterMark` {number} The maximum internal queue size (of the created
+      `ReadableStream`) before backpressure is applied in reading from the given
+      `stream.Readable`. If no value is provided, it will be taken from the
+      given `stream.Readable`.
+    * `size` {Function} A function that size of the given chunk of data.
+      If no value is provided, the size will be `1` for all the chunks.
+      * `chunk` {any}
+      * Returns: {number}
 * Returns: {ReadableStream}
 
 ### `stream.Writable.fromWeb(writableStream[, options])`
@@ -3007,10 +3066,16 @@ added: v17.0.0
 
 <!-- YAML
 added: v16.8.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/46190
+    description: The `src` argument can now be a `ReadableStream` or
+                 `WritableStream`.
 -->
 
 * `src` {Stream|Blob|ArrayBuffer|string|Iterable|AsyncIterable|
-  AsyncGeneratorFunction|AsyncFunction|Promise|Object}
+  AsyncGeneratorFunction|AsyncFunction|Promise|Object|
+  ReadableStream|WritableStream}
 
 A utility method for creating duplex streams.
 
@@ -3030,6 +3095,8 @@ A utility method for creating duplex streams.
   `writable` into `Stream` and then combines them into `Duplex` where the
   `Duplex` will write to the `writable` and read from the `readable`.
 * `Promise` converts into readable `Duplex`. Value `null` is ignored.
+* `ReadableStream` converts into readable `Duplex`.
+* `WritableStream` converts into writable `Duplex`.
 * Returns: {stream.Duplex}
 
 If an `Iterable` object containing promises is passed as an argument,
@@ -3187,17 +3254,24 @@ readable.getReader().read().then((result) => {
 
 <!-- YAML
 added: v15.4.0
+changes:
+  - version: v18.16.0
+    pr-url: https://github.com/nodejs/node/pull/46273
+    description: Added support for `ReadableStream` and
+                 `WritableStream`.
 -->
 
 * `signal` {AbortSignal} A signal representing possible cancellation
-* `stream` {Stream} a stream to attach a signal to
+* `stream` {Stream|ReadableStream|WritableStream}
+
+A stream to attach a signal to.
 
 Attaches an AbortSignal to a readable or writeable stream. This lets code
 control stream destruction using an `AbortController`.
 
 Calling `abort` on the `AbortController` corresponding to the passed
 `AbortSignal` will behave the same way as calling `.destroy(new AbortError())`
-on the stream.
+on the stream, and `controller.error(new AbortError())` for webstreams.
 
 ```js
 const fs = require('node:fs');
@@ -3234,6 +3308,60 @@ const stream = addAbortSignal(
   }
 })();
 ```
+
+Or using an `AbortSignal` with a ReadableStream:
+
+```js
+const controller = new AbortController();
+const rs = new ReadableStream({
+  start(controller) {
+    controller.enqueue('hello');
+    controller.enqueue('world');
+    controller.close();
+  },
+});
+
+addAbortSignal(controller.signal, rs);
+
+finished(rs, (err) => {
+  if (err) {
+    if (err.name === 'AbortError') {
+      // The operation was cancelled
+    }
+  }
+});
+
+const reader = rs.getReader();
+
+reader.read().then(({ value, done }) => {
+  console.log(value); // hello
+  console.log(done); // false
+  controller.abort();
+});
+```
+
+### `stream.getDefaultHighWaterMark(objectMode)`
+
+<!-- YAML
+added: v18.17.0
+-->
+
+* `objectMode` {boolean}
+* Returns: {integer}
+
+Returns the default highWaterMark used by streams.
+Defaults to `16384` (16 KiB), or `16` for `objectMode`.
+
+### `stream.setDefaultHighWaterMark(objectMode, value)`
+
+<!-- YAML
+added: v18.17.0
+-->
+
+* `objectMode` {boolean}
+* `value` {integer} highWaterMark value
+
+Sets the default highWaterMark used by streams.
 
 ## API for stream implementers
 
@@ -4390,7 +4518,8 @@ The `callback` function must be called only when the current chunk is completely
 consumed. The first argument passed to the `callback` must be an `Error` object
 if an error occurred while processing the input or `null` otherwise. If a second
 argument is passed to the `callback`, it will be forwarded on to the
-`transform.push()` method. In other words, the following are equivalent:
+`transform.push()` method, but only if the first argument is falsy. In other
+words, the following are equivalent:
 
 ```js
 transform.prototype._transform = function(data, encoding, callback) {

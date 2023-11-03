@@ -1,8 +1,9 @@
 local common = import '../common.jsonnet';
 local ci = import '../ci.jsonnet';
+local cicommon = import '../ci/common.jsonnet';
 
 {
-  local graalNodeJs = ci.jobtemplate + {
+  local graalNodeJs = ci.jobtemplate + cicommon.deps.graalnodejs + {
     cd:: 'graal-nodejs',
   },
 

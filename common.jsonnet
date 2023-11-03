@@ -31,9 +31,6 @@ local common = (import "ci/common.jsonnet");
   },
 
   linux_common:: {
-    packages+: {
-      devtoolset: '==7', # GCC 7.3.1, make 4.2.1, binutils 2.28, valgrind 3.13.0
-    },
   },
 
   linux_amd64:: common.linux_amd64 + self.linux_common + self.common_deps + {
@@ -53,8 +50,8 @@ local common = (import "ci/common.jsonnet");
 
   darwin_amd64:: common.darwin_amd64 + self.common_deps + {
     environment+: {
-      // for compatibility with macOS El Capitan
-      MACOSX_DEPLOYMENT_TARGET: '10.11',
+      // for compatibility with macOS High Sierra
+      MACOSX_DEPLOYMENT_TARGET: '10.13',
     },
     capabilities+: ['darwin_mojave'],
   },

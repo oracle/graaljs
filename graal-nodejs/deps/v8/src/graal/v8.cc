@@ -1940,6 +1940,14 @@ namespace v8 {
         return Just(GetEndColumn());
     }
 
+    Maybe<bool> Object::CreateDataProperty(Local<Context> context, Local<Name> key, Local<Value> value) {
+        return reinterpret_cast<GraalObject*> (this)->CreateDataProperty(context, key, value);
+    }
+
+    Maybe<bool> Object::CreateDataProperty(Local<Context> context, uint32_t index, Local<Value> value) {
+        return reinterpret_cast<GraalObject*> (this)->CreateDataProperty(context, index, value);
+    }
+
     Maybe<bool> Object::DefineOwnProperty(Local<Context> context, Local<Name> key, Local<Value> value, PropertyAttribute attributes) {
         return Just(reinterpret_cast<GraalObject*> (this)->ForceSet(key, value, attributes));
     }
@@ -3191,8 +3199,7 @@ namespace v8 {
     }
 
     bool Isolate::InContext() {
-        TRACE
-        return true;
+        return reinterpret_cast<GraalIsolate*> (this)->ContextEntered();
     }
 
     void Isolate::Initialize(Isolate* isolate, const CreateParams& params) {

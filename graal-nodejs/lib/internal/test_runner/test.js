@@ -1,7 +1,7 @@
 'use strict';
 const {
-  ArrayPrototypeMap,
   ArrayPrototypePush,
+  ArrayPrototypePushApply,
   ArrayPrototypeReduce,
   ArrayPrototypeShift,
   ArrayPrototypeSlice,
@@ -31,13 +31,13 @@ const {
   },
   AbortError,
 } = require('internal/errors');
-const { getOptionValue } = require('internal/options');
 const { MockTracker } = require('internal/test_runner/mock');
-const { TapStream } = require('internal/test_runner/tap_stream');
+const { TestsStream } = require('internal/test_runner/tests_stream');
 const {
-  convertStringToRegExp,
   createDeferredCallback,
+  countCompletedTest,
   isTestFailureError,
+  parseCommandLine,
 } = require('internal/test_runner/utils');
 const {
   createDeferredPromise,
@@ -57,29 +57,21 @@ const { cpus } = require('os');
 const { bigint: hrtime } = process.hrtime;
 const kCallbackAndPromisePresent = 'callbackAndPromisePresent';
 const kCancelledByParent = 'cancelledByParent';
+const kAborted = 'testAborted';
 const kParentAlreadyFinished = 'parentAlreadyFinished';
 const kSubtestsFailed = 'subtestsFailed';
 const kTestCodeFailure = 'testCodeFailure';
 const kTestTimeoutFailure = 'testTimeoutFailure';
 const kHookFailure = 'hookFailed';
 const kDefaultTimeout = null;
-const kDefaultIndent = '    '; // 4 spaces
 const noop = FunctionPrototype;
-const isTestRunner = getOptionValue('--test');
-const testOnlyFlag = !isTestRunner && getOptionValue('--test-only');
-const testNamePatternFlag = isTestRunner ? null :
-  getOptionValue('--test-name-pattern');
-const testNamePatterns = testNamePatternFlag?.length > 0 ?
-  ArrayPrototypeMap(
-    testNamePatternFlag,
-    (re) => convertStringToRegExp(re, '--test-name-pattern')
-  ) : null;
 const kShouldAbort = Symbol('kShouldAbort');
+const kFilename = process.argv?.[1];
 const kHookNames = ObjectSeal(['before', 'after', 'beforeEach', 'afterEach']);
 const kUnwrapErrors = new SafeSet()
   .add(kTestCodeFailure).add(kHookFailure)
   .add('uncaughtException').add('unhandledRejection');
-
+const { testNamePatterns, testOnlyFlag } = parseCommandLine();
 
 function stopTest(timeout, signal) {
   if (timeout === kDefaultTimeout) {
@@ -88,7 +80,7 @@ function stopTest(timeout, signal) {
   return PromisePrototypeThen(setTimeout(timeout, null, { ref: false, signal }), () => {
     throw new ERR_TEST_FAILURE(
       `test timed out after ${timeout}ms`,
-      kTestTimeoutFailure
+      kTestTimeoutFailure,
     );
   });
 }
@@ -134,6 +126,10 @@ class TestContext {
     const subtest = this.#test.createSubtest(Test, name, options, fn);
 
     return subtest.start();
+  }
+
+  before(fn, options) {
+    this.#test.createHook('before', fn, options);
   }
 
   after(fn, options) {
@@ -190,23 +186,39 @@ class Test extends AsyncResource {
 
     if (parent === null) {
       this.concurrency = 1;
-      this.indent = '';
+      this.nesting = 0;
       this.only = testOnlyFlag;
-      this.reporter = new TapStream();
+      this.reporter = new TestsStream();
       this.runOnlySubtests = this.only;
       this.testNumber = 0;
       this.timeout = kDefaultTimeout;
+      this.root = this;
+      this.hooks = {
+        __proto__: null,
+        before: [],
+        after: [],
+        beforeEach: [],
+        afterEach: [],
+      };
     } else {
-      const indent = parent.parent === null ? parent.indent :
-        parent.indent + kDefaultIndent;
+      const nesting = parent.parent === null ? parent.nesting :
+        parent.nesting + 1;
 
       this.concurrency = parent.concurrency;
-      this.indent = indent;
+      this.nesting = nesting;
       this.only = only ?? !parent.runOnlySubtests;
       this.reporter = parent.reporter;
       this.runOnlySubtests = !this.only;
       this.testNumber = parent.subtests.length + 1;
       this.timeout = parent.timeout;
+      this.root = parent.root;
+      this.hooks = {
+        __proto__: null,
+        before: [],
+        after: [],
+        beforeEach: ArrayPrototypeSlice(parent.hooks.beforeEach),
+        afterEach: ArrayPrototypeSlice(parent.hooks.afterEach),
+      };
     }
 
     switch (typeof concurrency) {
@@ -234,16 +246,11 @@ class Test extends AsyncResource {
       this.timeout = timeout;
     }
 
-    if (testNamePatterns !== null) {
-      // eslint-disable-next-line no-use-before-define
-      const match = this instanceof TestHook || ArrayPrototypeSome(
-        testNamePatterns,
-        (re) => RegExpPrototypeExec(re, name) !== null
-      );
+    this.name = name;
+    this.parent = parent;
 
-      if (!match) {
-        skip = 'test name does not match pattern';
-      }
+    if (testNamePatterns !== null && !this.matchesTestNamePatterns()) {
+      skip = 'test name does not match pattern';
     }
 
     if (testOnlyFlag && !this.only) {
@@ -262,9 +269,8 @@ class Test extends AsyncResource {
     this.#outerSignal?.addEventListener('abort', this.#abortHandler);
 
     this.fn = fn;
+    this.harness = null; // Configured on the root test by the test harness.
     this.mock = null;
-    this.name = name;
-    this.parent = parent;
     this.cancelled = false;
     this.skipped = !!skip;
     this.isTodo = !!todo;
@@ -279,14 +285,19 @@ class Test extends AsyncResource {
     this.pendingSubtests = [];
     this.readySubtests = new SafeMap();
     this.subtests = [];
-    this.hooks = {
-      before: [],
-      after: [],
-      beforeEach: [],
-      afterEach: [],
-    };
     this.waitingOn = 0;
     this.finished = false;
+
+    if (!testOnlyFlag && (only || this.runOnlySubtests)) {
+      const warning =
+        "'only' and 'runOnly' require the --test-only command-line option.";
+      this.diagnostic(warning);
+    }
+  }
+
+  matchesTestNamePatterns() {
+    return ArrayPrototypeSome(testNamePatterns, (re) => RegExpPrototypeExec(re, this.name) !== null) ||
+      this.parent?.matchesTestNamePatterns();
   }
 
   hasConcurrency() {
@@ -300,7 +311,9 @@ class Test extends AsyncResource {
   async processPendingSubtests() {
     while (this.pendingSubtests.length > 0 && this.hasConcurrency()) {
       const deferred = ArrayPrototypeShift(this.pendingSubtests);
-      await deferred.test.run();
+      const test = deferred.test;
+      this.reporter.dequeue(test.nesting, kFilename, test.name);
+      await test.run();
       deferred.resolve();
     }
   }
@@ -334,7 +347,7 @@ class Test extends AsyncResource {
       }
 
       if (i === 1 && this.parent !== null) {
-        this.reportSubtest();
+        this.reportStarted();
       }
 
       // Report the subtest's results and remove it from the ready map.
@@ -379,8 +392,8 @@ class Test extends AsyncResource {
       test.fail(
         new ERR_TEST_FAILURE(
           'test could not be started because its parent finished',
-          kParentAlreadyFinished
-        )
+          kParentAlreadyFinished,
+        ),
       );
     }
 
@@ -389,10 +402,12 @@ class Test extends AsyncResource {
   }
 
   #abortHandler = () => {
-    this.cancel(this.#outerSignal?.reason || new AbortError('The test was aborted'));
+    const error = this.#outerSignal?.reason || new AbortError('The test was aborted');
+    error.failureType = kAborted;
+    this.#cancel(error);
   };
 
-  cancel(error) {
+  #cancel(error) {
     if (this.endTime !== null) {
       return;
     }
@@ -400,8 +415,8 @@ class Test extends AsyncResource {
     this.fail(error ||
       new ERR_TEST_FAILURE(
         'test did not finish before its parent and was cancelled',
-        kCancelledByParent
-      )
+        kCancelledByParent,
+      ),
     );
     this.startTime = this.startTime || this.endTime; // If a test was canceled before it was started, e.g inside a hook
     this.cancelled = true;
@@ -412,6 +427,9 @@ class Test extends AsyncResource {
     validateOneOf(name, 'hook name', kHookNames);
     // eslint-disable-next-line no-use-before-define
     const hook = new TestHook(fn, options);
+    if (name === 'before' || name === 'after') {
+      hook.run = runOnce(hook.run);
+    }
     ArrayPrototypePush(this.hooks[name], hook);
     return hook;
   }
@@ -453,6 +471,7 @@ class Test extends AsyncResource {
     // If there is enough available concurrency to run the test now, then do
     // it. Otherwise, return a Promise to the caller and mark the test as
     // pending for later execution.
+    this.reporter.enqueue(this.nesting, kFilename, this.name);
     if (!this.parent.hasConcurrency()) {
       const deferred = createDeferredPromise();
 
@@ -461,6 +480,7 @@ class Test extends AsyncResource {
       return deferred.promise;
     }
 
+    this.reporter.dequeue(this.nesting, kFilename, this.name);
     return this.run();
   }
 
@@ -469,7 +489,7 @@ class Test extends AsyncResource {
       return true;
     }
     if (this.#outerSignal?.aborted) {
-      this.cancel(this.#outerSignal.reason || new AbortError('The test was aborted'));
+      this.#abortHandler();
       return true;
     }
   }
@@ -496,7 +516,7 @@ class Test extends AsyncResource {
     }
   }
 
-  async run() {
+  async run(pendingSubtestsError) {
     if (this.parent !== null) {
       this.parent.activeSubtests++;
     }
@@ -508,11 +528,11 @@ class Test extends AsyncResource {
     }
 
     const { args, ctx } = this.getRunArgs();
-    const after = runOnce(async () => {
+    const after = async () => {
       if (this.hooks.after.length > 0) {
         await this.runHook('after', { args, ctx });
       }
-    });
+    };
     const afterEach = runOnce(async () => {
       if (this.parent?.hooks.afterEach.length > 0) {
         await this.parent.runHook('afterEach', { args, ctx });
@@ -520,6 +540,9 @@ class Test extends AsyncResource {
     });
 
     try {
+      if (this.parent?.hooks.before.length > 0) {
+        await this.parent.runHook('before', this.parent.getRunArgs());
+      }
       if (this.parent?.hooks.beforeEach.length > 0) {
         await this.parent.runHook('beforeEach', { args, ctx });
       }
@@ -537,7 +560,7 @@ class Test extends AsyncResource {
         if (isPromise(ret)) {
           this.fail(new ERR_TEST_FAILURE(
             'passed a callback but also returned a Promise',
-            kCallbackAndPromisePresent
+            kCallbackAndPromisePresent,
           ));
           await SafePromiseRace([ret, stopPromise]);
         } else {
@@ -554,15 +577,15 @@ class Test extends AsyncResource {
         return;
       }
 
-      await after();
       await afterEach();
+      await after();
       this.pass();
     } catch (err) {
+      try { await afterEach(); } catch { /* test is already failing, let's ignore the error */ }
       try { await after(); } catch { /* Ignore error. */ }
-      try { await afterEach(); } catch { /* test is already failing, let's the error */ }
       if (isTestFailureError(err)) {
         if (err.failureType === kTestTimeoutFailure) {
-          this.cancel(err);
+          this.#cancel(err);
         } else {
           this.fail(err);
         }
@@ -573,12 +596,10 @@ class Test extends AsyncResource {
 
     // Clean up the test. Then, try to report the results and execute any
     // tests that were pending due to available concurrency.
-    this.postRun();
+    this.postRun(pendingSubtestsError);
   }
 
   postRun(pendingSubtestsError) {
-    const counters = { __proto__: null, failed: 0, passed: 0, cancelled: 0, skipped: 0, todo: 0, totalFailed: 0 };
-
     // If the test was failed before it even started, then the end time will
     // be earlier than the start time. Correct that here.
     if (this.endTime < this.startTime) {
@@ -589,36 +610,22 @@ class Test extends AsyncResource {
     // The test has run, so recursively cancel any outstanding subtests and
     // mark this test as failed if any subtests failed.
     this.pendingSubtests = [];
+    let failed = 0;
     for (let i = 0; i < this.subtests.length; i++) {
       const subtest = this.subtests[i];
 
       if (!subtest.finished) {
-        subtest.cancel(pendingSubtestsError);
+        subtest.#cancel(pendingSubtestsError);
         subtest.postRun(pendingSubtestsError);
       }
-
-      // Check SKIP and TODO tests first, as those should not be counted as
-      // failures.
-      if (subtest.skipped) {
-        counters.skipped++;
-      } else if (subtest.isTodo) {
-        counters.todo++;
-      } else if (subtest.cancelled) {
-        counters.cancelled++;
-      } else if (!subtest.passed) {
-        counters.failed++;
-      } else {
-        counters.passed++;
-      }
-
       if (!subtest.passed) {
-        counters.totalFailed++;
+        failed++;
       }
     }
 
-    if ((this.passed || this.parent === null) && counters.totalFailed > 0) {
-      const subtestString = `subtest${counters.totalFailed > 1 ? 's' : ''}`;
-      const msg = `${counters.totalFailed} ${subtestString} failed`;
+    if ((this.passed || this.parent === null) && failed > 0) {
+      const subtestString = `subtest${failed > 1 ? 's' : ''}`;
+      const msg = `${failed} ${subtestString} failed`;
 
       this.fail(new ERR_TEST_FAILURE(msg, kSubtestsFailed));
     }
@@ -633,20 +640,28 @@ class Test extends AsyncResource {
       this.parent.processPendingSubtests();
     } else if (!this.reported) {
       this.reported = true;
-      this.reporter.plan(this.indent, this.subtests.length);
+      this.reporter.plan(this.nesting, kFilename, this.root.harness.counters.topLevel);
 
       for (let i = 0; i < this.diagnostics.length; i++) {
-        this.reporter.diagnostic(this.indent, this.diagnostics[i]);
+        this.reporter.diagnostic(this.nesting, kFilename, this.diagnostics[i]);
       }
 
-      this.reporter.diagnostic(this.indent, `tests ${this.subtests.length}`);
-      this.reporter.diagnostic(this.indent, `pass ${counters.passed}`);
-      this.reporter.diagnostic(this.indent, `fail ${counters.failed}`);
-      this.reporter.diagnostic(this.indent, `cancelled ${counters.cancelled}`);
-      this.reporter.diagnostic(this.indent, `skipped ${counters.skipped}`);
-      this.reporter.diagnostic(this.indent, `todo ${counters.todo}`);
-      this.reporter.diagnostic(this.indent, `duration_ms ${this.#duration()}`);
-      this.reporter.push(null);
+      this.reporter.diagnostic(this.nesting, kFilename, `tests ${this.root.harness.counters.all}`);
+      this.reporter.diagnostic(this.nesting, kFilename, `suites ${this.root.harness.counters.suites}`);
+      this.reporter.diagnostic(this.nesting, kFilename, `pass ${this.root.harness.counters.passed}`);
+      this.reporter.diagnostic(this.nesting, kFilename, `fail ${this.root.harness.counters.failed}`);
+      this.reporter.diagnostic(this.nesting, kFilename, `cancelled ${this.root.harness.counters.cancelled}`);
+      this.reporter.diagnostic(this.nesting, kFilename, `skipped ${this.root.harness.counters.skipped}`);
+      this.reporter.diagnostic(this.nesting, kFilename, `todo ${this.root.harness.counters.todo}`);
+      this.reporter.diagnostic(this.nesting, kFilename, `duration_ms ${this.#duration()}`);
+
+      const coverage = this.harness.coverage();
+
+      if (coverage) {
+        this.reporter.coverage(this.nesting, kFilename, coverage);
+      }
+
+      this.reporter.end();
     }
   }
 
@@ -680,10 +695,11 @@ class Test extends AsyncResource {
   }
 
   report() {
+    countCompletedTest(this);
     if (this.subtests.length > 0) {
-      this.reporter.plan(this.subtests[0].indent, this.subtests.length);
+      this.reporter.plan(this.subtests[0].nesting, kFilename, this.subtests.length);
     } else {
-      this.reportSubtest();
+      this.reportStarted();
     }
     let directive;
     const details = { __proto__: null, duration_ms: this.#duration() };
@@ -694,25 +710,29 @@ class Test extends AsyncResource {
       directive = this.reporter.getTodo(this.message);
     }
 
+    if (this.reportedType) {
+      details.type = this.reportedType;
+    }
+
     if (this.passed) {
-      this.reporter.ok(this.indent, this.testNumber, this.name, details, directive);
+      this.reporter.ok(this.nesting, kFilename, this.testNumber, this.name, details, directive);
     } else {
       details.error = this.error;
-      this.reporter.fail(this.indent, this.testNumber, this.name, details, directive);
+      this.reporter.fail(this.nesting, kFilename, this.testNumber, this.name, details, directive);
     }
 
     for (let i = 0; i < this.diagnostics.length; i++) {
-      this.reporter.diagnostic(this.indent, this.diagnostics[i]);
+      this.reporter.diagnostic(this.nesting, kFilename, this.diagnostics[i]);
     }
   }
 
-  reportSubtest() {
+  reportStarted() {
     if (this.#reportedSubtest || this.parent === null) {
       return;
     }
     this.#reportedSubtest = true;
-    this.parent.reportSubtest();
-    this.reporter.subtest(this.indent, this.name);
+    this.parent.reportStarted();
+    this.reporter.start(this.nesting, kFilename, this.name);
   }
 }
 
@@ -732,25 +752,30 @@ class TestHook extends Test {
   getRunArgs() {
     return this.#args;
   }
+  matchesTestNamePatterns() {
+    return true;
+  }
   postRun() {
   }
 }
 
-class ItTest extends Test {
-  constructor(opt) { super(opt); } // eslint-disable-line no-useless-constructor
-  getRunArgs() {
-    return { ctx: { signal: this.signal, name: this.name }, args: [] };
-  }
-}
-
 class Suite extends Test {
+  reportedType = 'suite';
   constructor(options) {
     super(options);
 
+    if (testNamePatterns !== null && !options.skip && !options.todo) {
+      this.fn = options.fn || this.fn;
+      this.skipped = false;
+    }
+    this.runOnlySubtests = testOnlyFlag;
+
     try {
       const { ctx, args } = this.getRunArgs();
+      const runArgs = [this.fn, ctx];
+      ArrayPrototypePushApply(runArgs, args);
       this.buildSuite = PromisePrototypeThen(
-        PromiseResolve(this.runInAsyncScope(this.fn, ctx, args)),
+        PromiseResolve(ReflectApply(this.runInAsyncScope, this, runArgs)),
         undefined,
         (err) => {
           this.fail(new ERR_TEST_FAILURE(err, kTestCodeFailure));
@@ -769,11 +794,6 @@ class Suite extends Test {
 
   async run() {
     const hookArgs = this.getRunArgs();
-    const afterEach = runOnce(async () => {
-      if (this.parent?.hooks.afterEach.length > 0) {
-        await this.parent.runHook('afterEach', hookArgs);
-      }
-    });
 
     try {
       this.parent.activeSubtests++;
@@ -786,10 +806,6 @@ class Suite extends Test {
         return;
       }
 
-      if (this.parent?.hooks.beforeEach.length > 0) {
-        await this.parent.runHook('beforeEach', hookArgs);
-      }
-
       await this.runHook('before', hookArgs);
 
       const stopPromise = stopTest(this.timeout, this.signal);
@@ -798,11 +814,9 @@ class Suite extends Test {
 
       await SafePromiseRace([promise, stopPromise]);
       await this.runHook('after', hookArgs);
-      await afterEach();
 
       this.pass();
     } catch (err) {
-      try { await afterEach(); } catch { /* test is already failing, let's the error */ }
       if (isTestFailureError(err)) {
         this.fail(err);
       } else {
@@ -815,11 +829,11 @@ class Suite extends Test {
 }
 
 module.exports = {
-  ItTest,
   kCancelledByParent,
-  kDefaultIndent,
   kSubtestsFailed,
   kTestCodeFailure,
+  kTestTimeoutFailure,
+  kAborted,
   kUnwrapErrors,
   Suite,
   Test,

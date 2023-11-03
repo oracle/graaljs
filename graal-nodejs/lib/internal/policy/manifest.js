@@ -16,7 +16,6 @@ const {
   StringPrototypeEndsWith,
   StringPrototypeStartsWith,
   Symbol,
-  uncurryThis,
 } = primordials;
 const {
   ERR_MANIFEST_ASSERT_INTEGRITY,
@@ -28,17 +27,12 @@ let debug = require('internal/util/debuglog').debuglog('policy', (fn) => {
   debug = fn;
 });
 const SRI = require('internal/policy/sri');
-const crypto = require('crypto');
-const { Buffer } = require('buffer');
 const { URL } = require('internal/url');
-const { createHash, timingSafeEqual } = crypto;
-const HashUpdate = uncurryThis(crypto.Hash.prototype.update);
-const HashDigest = uncurryThis(crypto.Hash.prototype.digest);
-const BufferToString = uncurryThis(Buffer.prototype.toString);
+const { internalVerifyIntegrity } = internalBinding('crypto');
 const kRelativeURLStringPattern = /^\.{0,2}\//;
 const { getOptionValue } = require('internal/options');
 const shouldAbortOnUncaughtException = getOptionValue(
-  '--abort-on-uncaught-exception'
+  '--abort-on-uncaught-exception',
 );
 const { abort, exit, _rawDebug } = process;
 // #endregion
@@ -138,7 +132,7 @@ class DependencyMapperInstance {
           if (!target) {
             throw new ERR_MANIFEST_INVALID_SPECIFIER(
               this.href,
-              `${target}, pattern needs to have a single trailing "*" in target`
+              `${target}, pattern needs to have a single trailing "*" in target`,
             );
           }
           const prefix = target[1];
@@ -192,7 +186,7 @@ class DependencyMapperInstance {
         const to = searchDependencies(
           this.href,
           dependencies[normalizedSpecifier],
-          conditions
+          conditions,
         );
         debug({ to });
         if (to === true) {
@@ -217,7 +211,7 @@ class DependencyMapperInstance {
     if (parentDependencyMapper === undefined) {
       parentDependencyMapper = manifest.getScopeDependencyMapper(
         this.href,
-        this.allowSameHREFScope
+        this.allowSameHREFScope,
       );
       this.#parentDependencyMapper = parentDependencyMapper;
     }
@@ -227,7 +221,7 @@ class DependencyMapperInstance {
     return parentDependencyMapper._resolveAlreadyNormalized(
       normalizedSpecifier,
       conditions,
-      manifest
+      manifest,
     );
   }
 }
@@ -236,13 +230,13 @@ const kArbitraryDependencies = new DependencyMapperInstance(
   'arbitrary dependencies',
   kFallThrough,
   false,
-  true
+  true,
 );
 const kNoDependencies = new DependencyMapperInstance(
   'no dependencies',
   null,
   false,
-  true
+  true,
 );
 /**
  * @param {string} href
@@ -256,7 +250,7 @@ const insertDependencyMap = (
   dependencies,
   cascade,
   allowSameHREFScope,
-  store
+  store,
 ) => {
   if (cascade !== undefined && typeof cascade !== 'boolean') {
     throw new ERR_MANIFEST_INVALID_RESOURCE_FIELD(href, 'cascade');
@@ -270,7 +264,7 @@ const insertDependencyMap = (
       href,
       cascade ?
         new DependencyMapperInstance(href, null, true, allowSameHREFScope) :
-        kNoDependencies
+        kNoDependencies,
     );
     return;
   }
@@ -281,8 +275,8 @@ const insertDependencyMap = (
         href,
         dependencies,
         cascade,
-        allowSameHREFScope
-      )
+        allowSameHREFScope,
+      ),
     );
     return;
   }
@@ -417,7 +411,6 @@ class Manifest {
    * the prototype to `null` for values or by running prior to any user code.
    *
    * `manifestURL` is a URL to resolve relative locations against.
-   *
    * @param {object} obj
    * @param {string} manifestHREF
    */
@@ -441,7 +434,7 @@ class Manifest {
 
     this.#reaction = reaction;
     const jsonResourcesEntries = ObjectEntries(
-      obj.resources ?? ObjectCreate(null)
+      obj.resources ?? ObjectCreate(null),
     );
     const jsonScopesEntries = ObjectEntries(obj.scopes ?? ObjectCreate(null));
     const defaultDependencies = obj.dependencies ?? ObjectCreate(null);
@@ -449,7 +442,7 @@ class Manifest {
     this.#defaultDependencies = new DependencyMapperInstance(
       'default',
       defaultDependencies === true ? kFallThrough : defaultDependencies,
-      false
+      false,
     );
 
     for (let i = 0; i < jsonResourcesEntries.length; i++) {
@@ -474,7 +467,7 @@ class Manifest {
         dependencies,
         cascade,
         true,
-        resourceDependencies
+        resourceDependencies,
       );
     }
 
@@ -518,12 +511,12 @@ class Manifest {
       resolve: (specifier, conditions) => {
         const normalizedSpecifier = canonicalizeSpecifier(
           specifier,
-          requesterHREF
+          requesterHREF,
         );
         const result = instance._resolveAlreadyNormalized(
           normalizedSpecifier,
           conditions,
-          this
+          this,
         );
         if (result === kFallThrough) return true;
         return result;
@@ -589,16 +582,13 @@ class Manifest {
         // Avoid clobbered Symbol.iterator
         for (let i = 0; i < integrityEntries.length; i++) {
           const { algorithm, value: expected } = integrityEntries[i];
-          const hash = createHash(algorithm);
           // TODO(tniessen): the content should not be passed as a string in the
           // first place, see https://github.com/nodejs/node/issues/39707
-          HashUpdate(hash, content, 'utf8');
-          const digest = HashDigest(hash, 'buffer');
-          if (digest.length === expected.length &&
-            timingSafeEqual(digest, expected)) {
+          const mismatchedIntegrity = internalVerifyIntegrity(algorithm, content, expected);
+          if (mismatchedIntegrity === undefined) {
             return true;
           }
-          realIntegrities.set(algorithm, BufferToString(digest, 'base64'));
+          realIntegrities.set(algorithm, mismatchedIntegrity);
         }
       }
 
@@ -639,7 +629,7 @@ class Manifest {
     const scopeHREF = findScopeHREF(
       href,
       this.#scopeDependencies,
-      allowSameHREFScope
+      allowSameHREFScope,
     );
     if (scopeHREF === null) return this.#defaultDependencies;
     return this.#scopeDependencies.get(scopeHREF);
@@ -693,7 +683,7 @@ const emptyOrProtocolOrResolve = (resourceHREF, base) => {
       // eslint-disable-next-line
       /^[\x00-\x1F\x20]|\x09\x0A\x0D|[\x00-\x1F\x20]$/g,
       resourceHREF,
-      ''
+      '',
     );
     if (RegExpPrototypeExec(/^[a-zA-Z][a-zA-Z+\-.]*:$/, resourceHREF) !== null) {
       return resourceHREF;

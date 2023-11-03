@@ -4,7 +4,7 @@
 
 const {
   prepareMainThreadExecution,
-  markBootstrapComplete
+  markBootstrapComplete,
 } = require('internal/process/pre_execution');
 
 const { getOptionValue } = require('internal/options');
@@ -12,7 +12,7 @@ const { getOptionValue } = require('internal/options');
 const {
   evalModule,
   evalScript,
-  readStdin
+  readStdin,
 } = require('internal/process/execution');
 
 prepareMainThreadExecution();
@@ -24,11 +24,13 @@ readStdin((code) => {
   process._eval = code;
 
   const print = getOptionValue('--print');
+  const loadESM = getOptionValue('--import').length > 0;
   if (getOptionValue('--input-type') === 'module')
     evalModule(code, print);
   else
     evalScript('[stdin]',
                code,
                getOptionValue('--inspect-brk'),
-               print);
+               print,
+               loadESM);
 });

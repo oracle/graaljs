@@ -67,8 +67,7 @@ You must have privileges to set the access of a package:
 * You have been given read-write privileges for a package, either as a member
   of a team or directly as an owner.
 
-If you have two-factor authentication enabled then you'll be prompted to
-provide an otp token, or may use the `--otp=...` option to specify it on
+If you have two-factor authentication enabled then you'll be prompted to provide a second factor, or may use the `--otp=...` option to specify it on
 the command line.
 
 If your account is not paid, then attempts to publish scoped packages will
@@ -91,6 +90,8 @@ Whether or not to output JSON data, rather than the normal output.
 
 Not supported by all npm commands.
 
+
+
 #### `otp`
 
 * Default: null
@@ -102,12 +103,16 @@ when publishing or changing package permissions with `npm access`.
 If not set, and a registry response fails with a challenge for a one-time
 password, npm will prompt on the command line for one.
 
+
+
 #### `registry`
 
 * Default: "https://registry.npmjs.org/"
 * Type: URL
 
 The base URL of the npm registry.
+
+
 
 ### See Also
 

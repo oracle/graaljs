@@ -29,6 +29,7 @@ const {
   StringPrototypeStartsWith,
   StringPrototypeTrim,
   Symbol,
+  SymbolDispose,
   SymbolAsyncIterator,
   SafeStringIterator,
 } = primordials;
@@ -170,7 +171,7 @@ function InterfaceConstructor(input, output, completer, terminal) {
       } else {
         throw new ERR_INVALID_ARG_VALUE(
           'input.escapeCodeTimeout',
-          this.escapeCodeTimeout
+          this.escapeCodeTimeout,
         );
       }
     }
@@ -332,8 +333,8 @@ function InterfaceConstructor(input, output, completer, terminal) {
     if (signal.aborted) {
       process.nextTick(onAborted);
     } else {
-      signal.addEventListener('abort', onAborted, { once: true });
-      self.once('close', () => signal.removeEventListener('abort', onAborted));
+      const disposable = EventEmitter.addAbortListener(signal, onAborted);
+      self.once('close', disposable[SymbolDispose]);
     }
   }
 
@@ -597,6 +598,7 @@ class Interface extends InterfaceConstructor {
       if (this[kLine_buffer]) {
         string = this[kLine_buffer] + string;
         this[kLine_buffer] = null;
+        lineEnding.lastIndex = 0; // Start the search from the beginning of the string.
         newPartContainsEnding = RegExpPrototypeExec(lineEnding, string);
       }
       this[kSawReturnAt] = StringPrototypeEndsWith(string, '\r') ?
@@ -631,7 +633,7 @@ class Interface extends InterfaceConstructor {
       const end = StringPrototypeSlice(
         this.line,
         this.cursor,
-        this.line.length
+        this.line.length,
       );
       this.line = beg + c + end;
       this.cursor += c.length;
@@ -674,7 +676,7 @@ class Interface extends InterfaceConstructor {
 
     // If there is a common prefix to all matches, then apply that portion.
     const prefix = commonPrefix(
-      ArrayPrototypeFilter(completions, (e) => e !== '')
+      ArrayPrototypeFilter(completions, (e) => e !== ''),
     );
     if (StringPrototypeStartsWith(prefix, completeOn) &&
         prefix.length > completeOn.length) {
@@ -701,7 +703,7 @@ class Interface extends InterfaceConstructor {
 
     // Apply/show completions.
     const completionsWidth = ArrayPrototypeMap(completions, (e) =>
-      getStringWidth(e)
+      getStringWidth(e),
     );
     const width = MathMaxApply(completionsWidth) + 2; // 2 space padding
     let maxColumns = MathFloor(this.columns / width) || 1;
@@ -742,7 +744,7 @@ class Interface extends InterfaceConstructor {
       const leading = StringPrototypeSlice(this.line, 0, this.cursor);
       const reversed = ArrayPrototypeJoin(
         ArrayPrototypeReverse(ArrayFrom(leading)),
-        ''
+        '',
       );
       const match = RegExpPrototypeExec(/^\s*(?:[^\w\s]+|\w+)?/, reversed);
       this[kMoveCursor](-match[0].length);
@@ -781,7 +783,7 @@ class Interface extends InterfaceConstructor {
         StringPrototypeSlice(
           this.line,
           this.cursor + charSize,
-          this.line.length
+          this.line.length,
         );
       this[kRefreshLine]();
     }
@@ -795,13 +797,13 @@ class Interface extends InterfaceConstructor {
       let leading = StringPrototypeSlice(this.line, 0, this.cursor);
       const reversed = ArrayPrototypeJoin(
         ArrayPrototypeReverse(ArrayFrom(leading)),
-        ''
+        '',
       );
       const match = RegExpPrototypeExec(/^\s*(?:[^\w\s]+|\w+)?/, reversed);
       leading = StringPrototypeSlice(
         leading,
         0,
-        leading.length - match[0].length
+        leading.length - match[0].length,
       );
       this.line =
         leading +
@@ -1079,7 +1081,7 @@ class Interface extends InterfaceConstructor {
         this[kSubstringSearch] = StringPrototypeSlice(
           this.line,
           0,
-          this.cursor
+          this.cursor,
         );
       }
     } else if (this[kSubstringSearch] !== null) {
@@ -1328,19 +1330,21 @@ class Interface extends InterfaceConstructor {
         // falls through
         default:
           if (typeof s === 'string' && s) {
-            let nextMatch = RegExpPrototypeExec(lineEnding, s);
-            if (nextMatch !== null) {
-              this[kInsertString](StringPrototypeSlice(s, 0, nextMatch.index));
-              let { lastIndex } = lineEnding;
-              while ((nextMatch = RegExpPrototypeExec(lineEnding, s)) !== null) {
-                this[kLine]();
-                this[kInsertString](StringPrototypeSlice(s, lastIndex, nextMatch.index));
-                ({ lastIndex } = lineEnding);
-              }
-              if (lastIndex === s.length) this[kLine]();
-            } else {
-              this[kInsertString](s);
+            // Erase state of previous searches.
+            lineEnding.lastIndex = 0;
+            let nextMatch;
+            // Keep track of the end of the last match.
+            let lastIndex = 0;
+            while ((nextMatch = RegExpPrototypeExec(lineEnding, s)) !== null) {
+              this[kInsertString](StringPrototypeSlice(s, lastIndex, nextMatch.index));
+              ({ lastIndex } = lineEnding);
+              this[kLine]();
+              // Restore lastIndex as the call to kLine could have mutated it.
+              lineEnding.lastIndex = lastIndex;
             }
+            // This ensures that the last line is written if it doesn't end in a newline.
+            // Note that the last line may be the first line, in which case this still works.
+            this[kInsertString](StringPrototypeSlice(s, lastIndex));
           }
       }
     }

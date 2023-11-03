@@ -61,10 +61,34 @@ int VerifyCallback(int preverify_ok, X509_STORE_CTX* ctx) {
 }
 
 MUST_USE_RESULT CSPRNGResult CSPRNG(void* buffer, size_t length) {
+  unsigned char* buf = static_cast<unsigned char*>(buffer);
   do {
-    if (1 == RAND_status())
-      if (1 == RAND_bytes(static_cast<unsigned char*>(buffer), length))
+    if (1 == RAND_status()) {
+#if OPENSSL_VERSION_MAJOR >= 3
+      if (1 == RAND_bytes_ex(nullptr, buf, length, 0)) return {true};
+#else
+      while (length > INT_MAX && 1 == RAND_bytes(buf, INT_MAX)) {
+        buf += INT_MAX;
+        length -= INT_MAX;
+      }
+      if (length <= INT_MAX && 1 == RAND_bytes(buf, static_cast<int>(length)))
         return {true};
+#endif
+    }
+#if OPENSSL_VERSION_MAJOR >= 3
+    const auto code = ERR_peek_last_error();
+    // A misconfigured OpenSSL 3 installation may report 1 from RAND_poll()
+    // and RAND_status() but fail in RAND_bytes() if it cannot look up
+    // a matching algorithm for the CSPRNG.
+    if (ERR_GET_LIB(code) == ERR_LIB_RAND) {
+      const auto reason = ERR_GET_REASON(code);
+      if (reason == RAND_R_ERROR_INSTANTIATING_DRBG ||
+          reason == RAND_R_UNABLE_TO_FETCH_DRBG ||
+          reason == RAND_R_UNABLE_TO_CREATE_DRBG) {
+        return {false};
+      }
+    }
+#endif
   } while (1 == RAND_poll());
 
   return {false};
@@ -106,7 +130,8 @@ bool ProcessFipsOptions() {
     return EVP_default_properties_enable_fips(nullptr, 1) &&
            EVP_default_properties_is_fips_enabled(nullptr);
 #else
-    return FIPS_mode() == 0 && FIPS_mode_set(1);
+    if (FIPS_mode() == 0) return FIPS_mode_set(1);
+
 #endif
   }
   return true;
@@ -229,7 +254,6 @@ void TestFipsCrypto(const v8::FunctionCallbackInfo<v8::Value>& args) {
   Mutex::ScopedLock lock(per_process::cli_options_mutex);
   Mutex::ScopedLock fips_lock(fips_mutex);
 
-#ifdef OPENSSL_FIPS
 #if OPENSSL_VERSION_MAJOR >= 3
   OSSL_PROVIDER* fips_provider = nullptr;
   if (OSSL_PROVIDER_available(nullptr, "fips")) {
@@ -238,11 +262,12 @@ void TestFipsCrypto(const v8::FunctionCallbackInfo<v8::Value>& args) {
   const auto enabled = fips_provider == nullptr ? 0 :
       OSSL_PROVIDER_self_test(fips_provider) ? 1 : 0;
 #else
+#ifdef OPENSSL_FIPS
   const auto enabled = FIPS_selftest() ? 1 : 0;
-#endif
 #else  // OPENSSL_FIPS
   const auto enabled = 0;
 #endif  // OPENSSL_FIPS
+#endif
 
   args.GetReturnValue().Set(enabled);
 }

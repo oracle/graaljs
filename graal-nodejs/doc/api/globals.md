@@ -43,7 +43,7 @@ ac.signal.addEventListener('abort', () => console.log('Aborted!'),
 
 ac.abort();
 
-console.log(ac.signal.aborted);  // Prints True
+console.log(ac.signal.aborted);  // Prints true
 ```
 
 ### `abortController.abort([reason])`
@@ -121,6 +121,18 @@ added:
 
 Returns a new `AbortSignal` which will be aborted in `delay` milliseconds.
 
+#### Static method: `AbortSignal.any(signals)`
+
+<!-- YAML
+added: v18.17.0
+-->
+
+* `signals` {AbortSignal\[]} The `AbortSignal`s of which to compose a new `AbortSignal`.
+
+Returns a new `AbortSignal` which will be aborted if any of the provided
+signals are aborted. Its [`abortSignal.reason`][] will be set to whichever
+one of the `signals` caused it to be aborted.
+
 #### Event: `'abort'`
 
 <!-- YAML
@@ -196,7 +208,7 @@ An optional reason specified when the `AbortSignal` was triggered.
 ```js
 const ac = new AbortController();
 ac.abort(new Error('boom!'));
-console.log(ac.signal.reason);  // Error('boom!');
+console.log(ac.signal.reason);  // Error: boom!
 ```
 
 #### `abortSignal.throwIfAborted()`
@@ -469,12 +481,16 @@ added: v0.1.27
 
 <!-- type=global -->
 
+> Stability: 3 - Legacy. Use [`globalThis`][] instead.
+
 * {Object} The global namespace object.
 
-In browsers, the top-level scope is the global scope. This means that
-within the browser `var something` will define a new global variable. In
-Node.js this is different. The top-level scope is not the global scope;
-`var something` inside a Node.js module will be local to that module.
+In browsers, the top-level scope has traditionally been the global scope. This
+means that `var something` will define a new global variable, except within
+ECMAScript modules. In Node.js, this is different. The top-level scope is not
+the global scope; `var something` inside a Node.js module will be local to that
+module, regardless of whether it is a [CommonJS module][] or an
+[ECMAScript module][].
 
 ## Class `Headers`
 
@@ -866,6 +882,8 @@ added: v18.0.0
 
 A browser-compatible implementation of [`WritableStreamDefaultWriter`][].
 
+[CommonJS module]: modules.md
+[ECMAScript module]: esm.md
 [Web Crypto API]: webcrypto.md
 [`--experimental-global-customevent`]: cli.md#--experimental-global-customevent
 [`--experimental-global-webcrypto`]: cli.md#--experimental-global-webcrypto
@@ -900,6 +918,7 @@ A browser-compatible implementation of [`WritableStreamDefaultWriter`][].
 [`WritableStream`]: webstreams.md#class-writablestream
 [`__dirname`]: modules.md#__dirname
 [`__filename`]: modules.md#__filename
+[`abortSignal.reason`]: #abortsignalreason
 [`buffer.atob()`]: buffer.md#bufferatobdata
 [`buffer.btoa()`]: buffer.md#bufferbtoadata
 [`clearImmediate`]: timers.md#clearimmediateimmediate
@@ -908,6 +927,7 @@ A browser-compatible implementation of [`WritableStreamDefaultWriter`][].
 [`console`]: console.md
 [`exports`]: modules.md#exports
 [`fetch()`]: https://developer.mozilla.org/en-US/docs/Web/API/fetch
+[`globalThis`]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/globalThis
 [`module`]: modules.md#module
 [`perf_hooks.performance`]: perf_hooks.md#perf_hooksperformance
 [`process.nextTick()`]: process.md#processnexttickcallback-args

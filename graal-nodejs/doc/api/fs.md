@@ -444,13 +444,21 @@ Reads data from the file and stores that in the given buffer.
 If the file is not modified concurrently, the end-of-file is reached when the
 number of bytes read is zero.
 
-#### `filehandle.readableWebStream()`
+#### `filehandle.readableWebStream(options)`
 
 <!-- YAML
 added: v17.0.0
+changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/46933
+    description: Added option to create a 'bytes' stream.
 -->
 
 > Stability: 1 - Experimental
+
+* `options` {Object}
+  * `type` {string|undefined} Whether to open a normal or a `'bytes'` stream.
+    **Default:** `undefined`
 
 * Returns: {ReadableStream}
 
@@ -805,6 +813,16 @@ On Linux, positional writes don't work when the file is opened in append mode.
 The kernel ignores the position argument and always appends the data to
 the end of the file.
 
+#### `filehandle[Symbol.asyncDispose]()`
+
+<!-- YAML
+added: v18.18.0
+-->
+
+> Stability: 1 - Experimental
+
+An alias for `filehandle.close()`.
+
 ### `fsPromises.access(path[, mode])`
 
 <!-- YAML
@@ -954,6 +972,10 @@ try {
 <!-- YAML
 added: v16.7.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47084
+    description: Accept an additional `mode` option to specify
+                 the copy behavior as the `mode` argument of `fs.copyFile()`.
   - version: v17.6.0
     pr-url: https://github.com/nodejs/node/pull/41819
     description: Accepts an additional `verbatimSymlinks` option to specify
@@ -978,6 +1000,8 @@ changes:
     operation will ignore errors if you set this to false and the destination
     exists. Use the `errorOnExist` option to change this behavior.
     **Default:** `true`.
+  * `mode` {integer} modifiers for copy operation. **Default:** `0`.
+    See `mode` flag of [`fsPromises.copyFile()`][].
   * `preserveTimestamps` {boolean} When `true` timestamps from `src` will
     be preserved. **Default:** `false`.
   * `recursive` {boolean} copy directories recursively **Default:** `false`
@@ -1111,7 +1135,7 @@ try {
 
 ```cjs
 const { mkdir } = require('node:fs/promises');
-const { resolve, join } = require('node:path');
+const { join } = require('node:path');
 
 async function makeDirectory() {
   const projectFolder = join(__dirname, 'test', 'project');
@@ -1153,9 +1177,11 @@ object with an `encoding` property specifying the character encoding to use.
 
 ```mjs
 import { mkdtemp } from 'node:fs/promises';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
 try {
-  await mkdtemp(path.join(os.tmpdir(), 'foo-'));
+  await mkdtemp(join(tmpdir(), 'foo-'));
 } catch (err) {
   console.error(err);
 }
@@ -1198,6 +1224,9 @@ a colon, Node.js will open a file system stream, as described by
 <!-- YAML
 added: v12.12.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
   - version:
      - v13.1.0
      - v12.16.0
@@ -1211,6 +1240,8 @@ changes:
   * `bufferSize` {number} Number of directory entries that are buffered
     internally when reading from the directory. Higher values lead to better
     performance but higher memory usage. **Default:** `32`
+  * `recursive` {boolean} Resolved `Dir` will be an {AsyncIterable}
+    containing all sub files and directories. **Default:** `false`
 * Returns: {Promise}  Fulfills with an {fs.Dir}.
 
 Asynchronously open a directory for iterative scanning. See the POSIX
@@ -1244,6 +1275,9 @@ closed after the iterator exits.
 <!-- YAML
 added: v10.0.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
   - version: v10.11.0
     pr-url: https://github.com/nodejs/node/pull/22020
     description: New option `withFileTypes` was added.
@@ -1253,6 +1287,7 @@ changes:
 * `options` {string|Object}
   * `encoding` {string} **Default:** `'utf8'`
   * `withFileTypes` {boolean} **Default:** `false`
+  * `recursive` {boolean} **Default:** `false`
 * Returns: {Promise}  Fulfills with an array of the names of the files in
   the directory excluding `'.'` and `'..'`.
 
@@ -1525,6 +1560,19 @@ changes:
 * Returns: {Promise}  Fulfills with the {fs.Stats} object for the
   given `path`.
 
+### `fsPromises.statfs(path[, options])`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* `path` {string|Buffer|URL}
+* `options` {Object}
+  * `bigint` {boolean} Whether the numeric values in the returned
+    {fs.StatFs} object should be `bigint`. **Default:** `false`.
+* Returns: {Promise} Fulfills with the {fs.StatFs} object for the
+  given `path`.
+
 ### `fsPromises.symlink(target, path[, type])`
 
 <!-- YAML
@@ -1541,7 +1589,8 @@ Creates a symbolic link.
 The `type` argument is only used on Windows platforms and can be one of `'dir'`,
 `'file'`, or `'junction'`. Windows junction points require the destination path
 to be absolute. When using `'junction'`, the `target` argument will
-automatically be normalized to absolute path.
+automatically be normalized to absolute path. Junction points on NTFS volumes
+can only point to directories.
 
 ### `fsPromises.truncate(path[, len])`
 
@@ -1612,7 +1661,7 @@ added:
     should stop.
 * Returns: {AsyncIterator} of objects with the properties:
   * `eventType` {string} The type of change
-  * `filename` {string|Buffer} The name of the file changed.
+  * `filename` {string|Buffer|null} The name of the file changed.
 
 Returns an async iterator that watches for changes on `filename`, where `filename`
 is either a file or a directory.
@@ -2246,6 +2295,10 @@ copyFile('source.txt', 'destination.txt', constants.COPYFILE_EXCL, callback);
 <!-- YAML
 added: v16.7.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47084
+    description: Accept an additional `mode` option to specify
+                 the copy behavior as the `mode` argument of `fs.copyFile()`.
   - version: v18.0.0
     pr-url: https://github.com/nodejs/node/pull/41678
     description: Passing an invalid callback to the `callback` argument
@@ -2275,6 +2328,8 @@ changes:
     operation will ignore errors if you set this to false and the destination
     exists. Use the `errorOnExist` option to change this behavior.
     **Default:** `true`.
+  * `mode` {integer} modifiers for copy operation. **Default:** `0`.
+    See `mode` flag of [`fs.copyFile()`][].
   * `preserveTimestamps` {boolean} When `true` timestamps from `src` will
     be preserved. **Default:** `false`.
   * `recursive` {boolean} copy directories recursively **Default:** `false`
@@ -2299,6 +2354,9 @@ changes:
   - version: v16.10.0
     pr-url: https://github.com/nodejs/node/pull/40013
     description: The `fs` option does not need `close` method if `autoClose` is `false`.
+  - version: v15.5.0
+    pr-url: https://github.com/nodejs/node/pull/36431
+    description: Add support for `AbortSignal`.
   - version:
      - v15.4.0
     pr-url: https://github.com/nodejs/node/pull/35922
@@ -2345,6 +2403,7 @@ changes:
   * `end` {integer} **Default:** `Infinity`
   * `highWaterMark` {integer} **Default:** `64 * 1024`
   * `fs` {Object|null} **Default:** `null`
+  * `signal` {AbortSignal|null} **Default:** `null`
 * Returns: {fs.ReadStream}
 
 Unlike the 16 KiB default `highWaterMark` for a {stream.Readable}, the stream
@@ -2424,6 +2483,9 @@ changes:
   - version: v16.10.0
     pr-url: https://github.com/nodejs/node/pull/40013
     description: The `fs` option does not need `close` method if `autoClose` is `false`.
+  - version: v15.5.0
+    pr-url: https://github.com/nodejs/node/pull/36431
+    description: Add support for `AbortSignal`.
   - version:
      - v15.4.0
     pr-url: https://github.com/nodejs/node/pull/35922
@@ -2466,6 +2528,7 @@ changes:
   * `emitClose` {boolean} **Default:** `true`
   * `start` {integer}
   * `fs` {Object|null} **Default:** `null`
+  * `signal` {AbortSignal|null} **Default:** `null`
 * Returns: {fs.WriteStream}
 
 `options` may also include a `start` option to allow writing data at some
@@ -3126,19 +3189,20 @@ Asynchronously creates a directory.
 The callback is given a possible exception and, if `recursive` is `true`, the
 first directory path created, `(err[, path])`.
 `path` can still be `undefined` when `recursive` is `true`, if no directory was
-created.
+created (for instance, if it was previously created).
 
 The optional `options` argument can be an integer specifying `mode` (permission
 and sticky bits), or an object with a `mode` property and a `recursive`
 property indicating whether parent directories should be created. Calling
 `fs.mkdir()` when `path` is a directory that exists results in an error only
-when `recursive` is false.
+when `recursive` is false. If `recursive` is false and the directory exists,
+an `EEXIST` error occurs.
 
 ```mjs
 import { mkdir } from 'node:fs';
 
-// Creates /tmp/a/apple, regardless of whether `/tmp` and /tmp/a exist.
-mkdir('/tmp/a/apple', { recursive: true }, (err) => {
+// Create ./tmp/a/apple, regardless of whether ./tmp and ./tmp/a exist.
+mkdir('./tmp/a/apple', { recursive: true }, (err) => {
   if (err) throw err;
 });
 ```
@@ -3207,8 +3271,10 @@ object with an `encoding` property specifying the character encoding to use.
 
 ```mjs
 import { mkdtemp } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
 
-mkdtemp(path.join(os.tmpdir(), 'foo-'), (err, directory) => {
+mkdtemp(join(tmpdir(), 'foo-'), (err, directory) => {
   if (err) throw err;
   console.log(directory);
   // Prints: /tmp/foo-itXde2 or C:\Users\...\AppData\Local\Temp\foo-itXde2
@@ -3299,6 +3365,9 @@ Functions based on `fs.open()` exhibit this behavior as well:
 <!-- YAML
 added: v12.12.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
   - version: v18.0.0
     pr-url: https://github.com/nodejs/node/pull/41678
     description: Passing an invalid callback to the `callback` argument
@@ -3317,6 +3386,7 @@ changes:
   * `bufferSize` {number} Number of directory entries that are buffered
     internally when reading from the directory. Higher values lead to better
     performance but higher memory usage. **Default:** `32`
+  * `recursive` {boolean} **Default:** `false`
 * `callback` {Function}
   * `err` {Error}
   * `dir` {fs.Dir}
@@ -3433,6 +3503,9 @@ above values.
 <!-- YAML
 added: v0.1.8
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
   - version: v18.0.0
     pr-url: https://github.com/nodejs/node/pull/41678
     description: Passing an invalid callback to the `callback` argument
@@ -3462,6 +3535,7 @@ changes:
 * `options` {string|Object}
   * `encoding` {string} **Default:** `'utf8'`
   * `withFileTypes` {boolean} **Default:** `false`
+  * `recursive` {boolean} **Default:** `false`
 * `callback` {Function}
   * `err` {Error}
   * `files` {string\[]|Buffer\[]|fs.Dirent\[]}
@@ -4004,6 +4078,9 @@ Asynchronous stat(2). The callback gets two arguments `(err, stats)` where
 
 In case of an error, the `err.code` will be one of [Common System Errors][].
 
+[`fs.stat()`][] follows symbolic links. Use [`fs.lstat()`][] to look at the
+links themselves.
+
 Using `fs.stat()` to check for the existence of a file before calling
 `fs.open()`, `fs.readFile()`, or `fs.writeFile()` is not recommended.
 Instead, user code should open/read/write the file directly and handle the
@@ -4082,6 +4159,26 @@ Stats {
 }
 ```
 
+### `fs.statfs(path[, options], callback)`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* `path` {string|Buffer|URL}
+* `options` {Object}
+  * `bigint` {boolean} Whether the numeric values in the returned
+    {fs.StatFs} object should be `bigint`. **Default:** `false`.
+* `callback` {Function}
+  * `err` {Error}
+  * `stats` {fs.StatFs}
+
+Asynchronous statfs(2). Returns information about the mounted file system which
+contains `path`. The callback gets two arguments `(err, stats)` where `stats`
+is an {fs.StatFs} object.
+
+In case of an error, the `err.code` will be one of [Common System Errors][].
+
 ### `fs.symlink(target, path[, type], callback)`
 
 <!-- YAML
@@ -4119,7 +4216,8 @@ It can be set to `'dir'`, `'file'`, or `'junction'`. If the `type` argument is
 not a string, Node.js will autodetect `target` type and use `'file'` or `'dir'`.
 If the `target` does not exist, `'file'` will be used. Windows junction points
 require the destination path to be absolute. When using `'junction'`, the
-`target` argument will automatically be normalized to absolute path.
+`target` argument will automatically be normalized to absolute path. Junction
+points on NTFS volumes can only point to directories.
 
 Relative targets are relative to the link's parent directory.
 
@@ -4340,7 +4438,7 @@ changes:
   * `signal` {AbortSignal} allows closing the watcher with an AbortSignal.
 * `listener` {Function|undefined} **Default:** `undefined`
   * `eventType` {string}
-  * `filename` {string|Buffer}
+  * `filename` {string|Buffer|null}
 * Returns: {fs.FSWatcher}
 
 Watch for changes on `filename`, where `filename` is either a file or a
@@ -5067,6 +5165,10 @@ copyFileSync('source.txt', 'destination.txt', constants.COPYFILE_EXCL);
 <!-- YAML
 added: v16.7.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47084
+    description: Accept an additional `mode` option to specify
+                 the copy behavior as the `mode` argument of `fs.copyFile()`.
   - version: v17.6.0
     pr-url: https://github.com/nodejs/node/pull/41819
     description: Accepts an additional `verbatimSymlinks` option to specify
@@ -5090,6 +5192,8 @@ changes:
     operation will ignore errors if you set this to false and the destination
     exists. Use the `errorOnExist` option to change this behavior.
     **Default:** `true`.
+  * `mode` {integer} modifiers for copy operation. **Default:** `0`.
+    See `mode` flag of [`fs.copyFileSync()`][].
   * `preserveTimestamps` {boolean} When `true` timestamps from `src` will
     be preserved. **Default:** `false`.
   * `recursive` {boolean} copy directories recursively **Default:** `false`
@@ -5399,6 +5503,9 @@ object with an `encoding` property specifying the character encoding to use.
 <!-- YAML
 added: v12.12.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
   - version:
      - v13.1.0
      - v12.16.0
@@ -5412,6 +5519,7 @@ changes:
   * `bufferSize` {number} Number of directory entries that are buffered
     internally when reading from the directory. Higher values lead to better
     performance but higher memory usage. **Default:** `32`
+  * `recursive` {boolean} **Default:** `false`
 * Returns: {fs.Dir}
 
 Synchronously open a directory. See opendir(3).
@@ -5455,6 +5563,9 @@ this API: [`fs.open()`][].
 <!-- YAML
 added: v0.1.21
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/41439
+    description: Added `recursive` option.
   - version: v10.10.0
     pr-url: https://github.com/nodejs/node/pull/22020
     description: New option `withFileTypes` was added.
@@ -5468,6 +5579,7 @@ changes:
 * `options` {string|Object}
   * `encoding` {string} **Default:** `'utf8'`
   * `withFileTypes` {boolean} **Default:** `false`
+  * `recursive` {boolean} **Default:** `false`
 * Returns: {string\[]|Buffer\[]|fs.Dirent\[]}
 
 Reads the contents of the directory.
@@ -5821,6 +5933,23 @@ changes:
 * Returns: {fs.Stats}
 
 Retrieves the {fs.Stats} for the path.
+
+### `fs.statfsSync(path[, options])`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* `path` {string|Buffer|URL}
+* `options` {Object}
+  * `bigint` {boolean} Whether the numeric values in the returned
+    {fs.StatFs} object should be `bigint`. **Default:** `false`.
+* Returns: {fs.StatFs}
+
+Synchronous statfs(2). Returns information about the mounted file system which
+contains `path`.
+
+In case of an error, the `err.code` will be one of [Common System Errors][].
 
 ### `fs.symlinkSync(target, path[, type])`
 
@@ -6295,6 +6424,16 @@ added: v10.10.0
 The file name that this {fs.Dirent} object refers to. The type of this
 value is determined by the `options.encoding` passed to [`fs.readdir()`][] or
 [`fs.readdirSync()`][].
+
+#### `dirent.path`
+
+<!-- YAML
+added: v18.17.0
+-->
+
+* {string}
+
+The base path that this {fs.Dirent} object refers to.
 
 ### Class: `fs.FSWatcher`
 
@@ -6908,6 +7047,114 @@ The times in the stat object have the following semantics:
 Prior to Node.js 0.12, the `ctime` held the `birthtime` on Windows systems. As
 of 0.12, `ctime` is not "creation time", and on Unix systems, it never was.
 
+### Class: `fs.StatFs`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+Provides information about a mounted file system.
+
+Objects returned from [`fs.statfs()`][] and its synchronous counterpart are of
+this type. If `bigint` in the `options` passed to those methods is `true`, the
+numeric values will be `bigint` instead of `number`.
+
+```console
+StatFs {
+  type: 1397114950,
+  bsize: 4096,
+  blocks: 121938943,
+  bfree: 61058895,
+  bavail: 61058895,
+  files: 999,
+  ffree: 1000000
+}
+```
+
+`bigint` version:
+
+```console
+StatFs {
+  type: 1397114950n,
+  bsize: 4096n,
+  blocks: 121938943n,
+  bfree: 61058895n,
+  bavail: 61058895n,
+  files: 999n,
+  ffree: 1000000n
+}
+```
+
+#### `statfs.bavail`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Free blocks available to unprivileged users.
+
+#### `statfs.bfree`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Free blocks in file system.
+
+#### `statfs.blocks`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Total data blocks in file system.
+
+#### `statfs.bsize`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Optimal transfer block size.
+
+#### `statfs.ffree`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Free file nodes in file system.
+
+#### `statfs.files`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Total file nodes in file system.
+
+#### `statfs.type`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* {number|bigint}
+
+Type of file system.
+
 ### Class: `fs.WriteStream`
 
 <!-- YAML
@@ -7309,6 +7556,8 @@ For example, the following is prone to error because the `fs.stat()`
 operation might complete before the `fs.rename()` operation:
 
 ```js
+const fs = require('node:fs');
+
 fs.rename('/tmp/hello', '/tmp/world', (err) => {
   if (err) throw err;
   console.log('renamed complete');
@@ -7325,12 +7574,12 @@ of one before invoking the other:
 ```mjs
 import { rename, stat } from 'node:fs/promises';
 
-const from = '/tmp/hello';
-const to = '/tmp/world';
+const oldPath = '/tmp/hello';
+const newPath = '/tmp/world';
 
 try {
-  await rename(from, to);
-  const stats = await stat(to);
+  await rename(oldPath, newPath);
+  const stats = await stat(newPath);
   console.log(`stats: ${JSON.stringify(stats)}`);
 } catch (error) {
   console.error('there was an error:', error.message);
@@ -7340,10 +7589,10 @@ try {
 ```cjs
 const { rename, stat } = require('node:fs/promises');
 
-(async function(from, to) {
+(async function(oldPath, newPath) {
   try {
-    await rename(from, to);
-    const stats = await stat(to);
+    await rename(oldPath, newPath);
+    const stats = await stat(newPath);
     console.log(`stats: ${JSON.stringify(stats)}`);
   } catch (error) {
     console.error('there was an error:', error.message);
@@ -7399,7 +7648,7 @@ try {
   fd = await open('/open/some/file.txt', 'r');
   // Do something with the file
 } finally {
-  await fd.close();
+  await fd?.close();
 }
 ```
 
@@ -7413,7 +7662,7 @@ try {
   fd = await open('file.txt', 'r');
   // Do something with the file
 } finally {
-  await fd.close();
+  await fd?.close();
 }
 ```
 
@@ -7528,7 +7777,7 @@ try {
   fd = await open(Buffer.from('/open/some/file.txt'), 'r');
   // Do something with the file
 } finally {
-  await fd.close();
+  await fd?.close();
 }
 ```
 
@@ -7638,6 +7887,9 @@ string.
 * `'r'`: Open file for reading.
   An exception occurs if the file does not exist.
 
+* `'rs'`: Open file for reading in synchronous mode.
+  An exception occurs if the file does not exist.
+
 * `'r+'`: Open file for reading and writing.
   An exception occurs if the file does not exist.
 
@@ -7727,6 +7979,7 @@ the file contents.
 [`fs.chmod()`]: #fschmodpath-mode-callback
 [`fs.chown()`]: #fschownpath-uid-gid-callback
 [`fs.copyFile()`]: #fscopyfilesrc-dest-mode-callback
+[`fs.copyFileSync()`]: #fscopyfilesyncsrc-dest-mode
 [`fs.createReadStream()`]: #fscreatereadstreampath-options
 [`fs.createWriteStream()`]: #fscreatewritestreampath-options
 [`fs.exists()`]: #fsexistspath-callback
@@ -7751,6 +8004,7 @@ the file contents.
 [`fs.rmSync()`]: #fsrmsyncpath-options
 [`fs.rmdir()`]: #fsrmdirpath-options-callback
 [`fs.stat()`]: #fsstatpath-options-callback
+[`fs.statfs()`]: #fsstatfspath-options-callback
 [`fs.symlink()`]: #fssymlinktarget-path-type-callback
 [`fs.utimes()`]: #fsutimespath-atime-mtime-callback
 [`fs.watch()`]: #fswatchfilename-options-listener
@@ -7759,6 +8013,7 @@ the file contents.
 [`fs.writeFile()`]: #fswritefilefile-data-options-callback
 [`fs.writev()`]: #fswritevfd-buffers-position-callback
 [`fsPromises.access()`]: #fspromisesaccesspath-mode
+[`fsPromises.copyFile()`]: #fspromisescopyfilesrc-dest-mode
 [`fsPromises.open()`]: #fspromisesopenpath-flags-mode
 [`fsPromises.opendir()`]: #fspromisesopendirpath-options
 [`fsPromises.rm()`]: #fspromisesrmpath-options

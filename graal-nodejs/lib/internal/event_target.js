@@ -32,7 +32,7 @@ const {
     ERR_EVENT_RECURSION,
     ERR_MISSING_ARGS,
     ERR_INVALID_THIS,
-  }
+  },
 } = require('internal/errors');
 const { validateObject, validateString } = require('internal/validators');
 
@@ -42,6 +42,7 @@ const {
   kEnumerableProperty,
 } = require('internal/util');
 const { inspect } = require('util');
+const webidl = require('internal/webidl');
 
 const kIsEventTarget = SymbolFor('nodejs.event_target');
 const kIsNodeEventTarget = Symbol('kIsNodeEventTarget');
@@ -58,6 +59,7 @@ const kStop = Symbol('kStop');
 const kTarget = Symbol('kTarget');
 const kHandlers = Symbol('kHandlers');
 const kWeakHandler = Symbol('kWeak');
+const kResistStopPropagation = Symbol('kResistStopPropagation');
 
 const kHybridDispatch = SymbolFor('nodejs.internal.kHybridDispatch');
 const kCreateEvent = Symbol('kCreateEvent');
@@ -75,8 +77,15 @@ const isTrustedSet = new SafeWeakSet();
 const isTrusted = ObjectGetOwnPropertyDescriptor({
   get isTrusted() {
     return isTrustedSet.has(this);
-  }
+  },
 }, 'isTrusted').get;
+
+const isTrustedDescriptor = {
+  __proto__: null,
+  configurable: false,
+  enumerable: true,
+  get: isTrusted,
+};
 
 function isEvent(value) {
   return typeof value?.[kType] === 'string';
@@ -112,13 +121,6 @@ class Event {
       isTrustedSet.add(this);
     }
 
-    // isTrusted is special (LegacyUnforgeable)
-    ObjectDefineProperty(this, 'isTrusted', {
-      __proto__: null,
-      get: isTrusted,
-      enumerable: true,
-      configurable: false
-    });
     this[kTarget] = null;
     this[kIsBeingDispatched] = false;
   }
@@ -131,7 +133,7 @@ class Event {
       return name;
 
     const opts = ObjectAssign({}, options, {
-      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
+      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth,
     });
 
     return `${name} ${inspect({
@@ -323,6 +325,11 @@ ObjectDefineProperties(
     eventPhase: kEnumerableProperty,
     cancelBubble: kEnumerableProperty,
     stopPropagation: kEnumerableProperty,
+    // Don't conform to the spec with isTrusted. The spec defines it as
+    // LegacyUnforgeable but defining it in the constructor has a big
+    // performance impact and the property doesn't seem to be useful outside of
+    // browsers.
+    isTrusted: isTrustedDescriptor,
   });
 
 function isCustomEvent(value) {
@@ -385,7 +392,7 @@ let weakListenersState = null;
 let objectToWeakListenerMap = null;
 function weakListeners() {
   weakListenersState ??= new SafeFinalizationRegistry(
-    (listener) => listener.remove()
+    (listener) => listener.remove(),
   );
   objectToWeakListenerMap ??= new SafeWeakMap();
   return { registry: weakListenersState, map: objectToWeakListenerMap };
@@ -397,6 +404,7 @@ const kFlagPassive = 1 << 2;
 const kFlagNodeStyle = 1 << 3;
 const kFlagWeak = 1 << 4;
 const kFlagRemoved = 1 << 5;
+const kFlagResistStopPropagation = 1 << 6;
 
 // The listeners for an EventTarget are maintained as a linked list.
 // Unfortunately, the way EventTarget is defined, listeners are accounted
@@ -407,7 +415,7 @@ const kFlagRemoved = 1 << 5;
 // slower.
 class Listener {
   constructor(previous, listener, once, capture, passive,
-              isNodeStyleListener, weak) {
+              isNodeStyleListener, weak, resistStopPropagation) {
     this.next = undefined;
     if (previous !== undefined)
       previous.next = this;
@@ -425,6 +433,8 @@ class Listener {
       flags |= kFlagNodeStyle;
     if (weak)
       flags |= kFlagWeak;
+    if (resistStopPropagation)
+      flags |= kFlagResistStopPropagation;
     this.flags = flags;
 
     this.removed = false;
@@ -461,6 +471,9 @@ class Listener {
   }
   get weak() {
     return Boolean(this.flags & kFlagWeak);
+  }
+  get resistStopPropagation() {
+    return Boolean(this.flags & kFlagResistStopPropagation);
   }
   get removed() {
     return Boolean(this.flags & kFlagRemoved);
@@ -558,6 +571,7 @@ class EventTarget {
       signal,
       isNodeStyleListener,
       weak,
+      resistStopPropagation,
     } = validateEventListenerOptions(options);
 
     if (!validateEventListener(listener)) {
@@ -572,7 +586,7 @@ class EventTarget {
       process.emitWarning(w);
       return;
     }
-    type = String(type);
+    type = webidl.converters.DOMString(type);
 
     if (signal) {
       if (signal.aborted) {
@@ -582,16 +596,16 @@ class EventTarget {
       // not prevent the event target from GC.
       signal.addEventListener('abort', () => {
         this.removeEventListener(type, listener, options);
-      }, { once: true, [kWeakHandler]: this });
+      }, { __proto__: null, once: true, [kWeakHandler]: this, [kResistStopPropagation]: true });
     }
 
     let root = this[kEvents].get(type);
 
     if (root === undefined) {
-      root = { size: 1, next: undefined };
+      root = { size: 1, next: undefined, resistStopPropagation: Boolean(resistStopPropagation) };
       // This is the first handler in our linked list.
       new Listener(root, listener, once, capture, passive,
-                   isNodeStyleListener, weak);
+                   isNodeStyleListener, weak, resistStopPropagation);
       this[kNewListener](
         root.size,
         type,
@@ -618,8 +632,9 @@ class EventTarget {
     }
 
     new Listener(previous, listener, once, capture, passive,
-                 isNodeStyleListener, weak);
+                 isNodeStyleListener, weak, resistStopPropagation);
     root.size++;
+    root.resistStopPropagation ||= Boolean(resistStopPropagation);
     this[kNewListener](root.size, type, listener, once, capture, passive, weak);
   }
 
@@ -638,7 +653,7 @@ class EventTarget {
     if (!validateEventListener(listener))
       return;
 
-    type = String(type);
+    type = webidl.converters.DOMString(type);
     const capture = options?.capture === true;
 
     const root = this[kEvents].get(type);
@@ -703,14 +718,21 @@ class EventTarget {
     let handler = root.next;
     let next;
 
-    while (handler !== undefined &&
-           (handler.passive || event?.[kStop] !== true)) {
+    const iterationCondition = () => {
+      if (handler === undefined) {
+        return false;
+      }
+      return root.resistStopPropagation || handler.passive || event?.[kStop] !== true;
+    };
+    while (iterationCondition()) {
       // Cache the next item in case this iteration removes the current one
       next = handler.next;
 
-      if (handler.removed) {
+      if (handler.removed || (event?.[kStop] === true && !handler.resistStopPropagation)) {
         // Deal with the case an event is removed while event handlers are
         // Being processed (removeEventListener called from a listener)
+        // And the case of event.stopImmediatePropagation() being called
+        // For events not flagged as resistStopPropagation
         handler = next;
         continue;
       }
@@ -761,7 +783,7 @@ class EventTarget {
       return name;
 
     const opts = ObjectAssign({}, options, {
-      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth
+      depth: NumberIsInteger(options.depth) ? options.depth - 1 : options.depth,
     });
 
     return `${name} ${inspect({}, opts)}`;
@@ -778,7 +800,7 @@ ObjectDefineProperties(EventTarget.prototype, {
     enumerable: false,
     configurable: true,
     value: 'EventTarget',
-  }
+  },
 });
 
 function initNodeEventTarget(self) {
@@ -914,7 +936,7 @@ class NodeEventTarget extends EventTarget {
   }
 
   /**
-   * @param {string} type
+   * @param {string} [type]
    * @returns {NodeEventTarget}
    */
   removeAllListeners(type) {
@@ -978,7 +1000,8 @@ function validateEventListenerOptions(options) {
     passive: Boolean(options.passive),
     signal: options.signal,
     weak: options[kWeakHandler],
-    isNodeStyleListener: Boolean(options[kIsNodeStyleListener])
+    resistStopPropagation: options[kResistStopPropagation] ?? false,
+    isNodeStyleListener: Boolean(options[kIsNodeStyleListener]),
   };
 }
 
@@ -1054,7 +1077,7 @@ function defineEventHandler(emitter, name) {
       this[kHandlers].set(name, wrappedHandler);
     },
     configurable: true,
-    enumerable: true
+    enumerable: true,
   });
 }
 
@@ -1093,5 +1116,6 @@ module.exports = {
   kRemoveListener,
   kEvents,
   kWeakHandler,
+  kResistStopPropagation,
   isEventTarget,
 };

@@ -48,6 +48,7 @@ const {
   Symbol,
   SymbolFor,
   SymbolAsyncIterator,
+  SymbolDispose,
 } = primordials;
 const kRejection = SymbolFor('nodejs.rejection');
 
@@ -59,6 +60,7 @@ const {
 } = require('internal/util/inspect');
 
 let spliceOne;
+let kResistStopPropagation;
 
 const {
   AbortError,
@@ -67,7 +69,7 @@ const {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_THIS,
     ERR_OUT_OF_RANGE,
-    ERR_UNHANDLED_ERROR
+    ERR_UNHANDLED_ERROR,
   },
   genericNodeError,
 } = require('internal/errors');
@@ -95,7 +97,7 @@ let EventEmitterAsyncResource;
 function lazyEventEmitterAsyncResource() {
   if (EventEmitterAsyncResource === undefined) {
     const {
-      AsyncResource
+      AsyncResource,
     } = require('async_hooks');
 
     const kEventEmitter = Symbol('kEventEmitter');
@@ -213,9 +215,11 @@ function EventEmitter(opts) {
   EventEmitter.init.call(this, opts);
 }
 module.exports = EventEmitter;
+module.exports.addAbortListener = addAbortListener;
 module.exports.once = once;
 module.exports.on = on;
 module.exports.getEventListeners = getEventListeners;
+module.exports.getMaxListeners = getMaxListeners;
 // Backwards-compat with node 0.10.x
 EventEmitter.EventEmitter = EventEmitter;
 
@@ -232,7 +236,7 @@ ObjectDefineProperty(EventEmitter, 'captureRejections', {
 
     EventEmitter.prototype[kCapture] = value;
   },
-  enumerable: true
+  enumerable: true,
 });
 
 ObjectDefineProperty(EventEmitter, 'EventEmitterAsyncResource', {
@@ -250,7 +254,7 @@ ObjectDefineProperty(EventEmitter.prototype, kCapture, {
   __proto__: null,
   value: false,
   writable: true,
-  enumerable: false
+  enumerable: false,
 });
 
 EventEmitter.prototype._events = undefined;
@@ -279,7 +283,7 @@ ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
                                  arg);
     }
     defaultMaxListeners = arg;
-  }
+  },
 });
 
 ObjectDefineProperties(EventEmitter, {
@@ -296,7 +300,7 @@ ObjectDefineProperties(EventEmitter, {
     enumerable: false,
     configurable: false,
     writable: false,
-  }
+  },
 });
 
 /**
@@ -480,7 +484,7 @@ EventEmitter.prototype.emit = function emit(type, ...args) {
         ObjectDefineProperty(er, kEnhanceStackBeforeInspector, {
           __proto__: null,
           value: FunctionPrototypeBind(enhanceStackTrace, this, er, capture),
-          configurable: true
+          configurable: true,
         });
       } catch {
         // Continue regardless of error.
@@ -835,17 +839,34 @@ EventEmitter.prototype.listenerCount = listenerCount;
  * Returns the number of listeners listening to event name
  * specified as `type`.
  * @param {string | symbol} type
+ * @param {Function} listener
  * @returns {number}
  */
-function listenerCount(type) {
+function listenerCount(type, listener) {
   const events = this._events;
 
   if (events !== undefined) {
     const evlistener = events[type];
 
     if (typeof evlistener === 'function') {
+      if (listener != null) {
+        return listener === evlistener || listener === evlistener.listener ? 1 : 0;
+      }
+
       return 1;
     } else if (evlistener !== undefined) {
+      if (listener != null) {
+        let matching = 0;
+
+        for (let i = 0, l = evlistener.length; i < l; i++) {
+          if (evlistener[i] === listener || evlistener[i].listener === listener) {
+            matching++;
+          }
+        }
+
+        return matching;
+      }
+
       return evlistener.length;
     }
   }
@@ -917,6 +938,23 @@ function getEventListeners(emitterOrTarget, type) {
 }
 
 /**
+ * Returns the max listeners set.
+ * @param {EventEmitter | EventTarget} emitterOrTarget
+ * @returns {number}
+ */
+function getMaxListeners(emitterOrTarget) {
+  if (typeof emitterOrTarget?.getMaxListeners === 'function') {
+    return _getMaxListeners(emitterOrTarget);
+  } else if (emitterOrTarget?.[kMaxEventTargetListeners]) {
+    return emitterOrTarget[kMaxEventTargetListeners];
+  }
+
+  throw new ERR_INVALID_ARG_TYPE('emitter',
+                                 ['EventEmitter', 'EventTarget'],
+                                 emitterOrTarget);
+}
+
+/**
  * Creates a `Promise` that is fulfilled when the emitter
  * emits the given event.
  * @param {EventEmitter} emitter
@@ -946,7 +984,10 @@ async function once(emitter, name, options = kEmptyObject) {
       }
       resolve(args);
     };
-    eventTargetAgnosticAddListener(emitter, name, resolver, { once: true });
+
+    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
+    const opts = { __proto__: null, once: true, [kResistStopPropagation]: true };
+    eventTargetAgnosticAddListener(emitter, name, resolver, opts);
     if (name !== 'error' && typeof emitter.once === 'function') {
       // EventTarget does not have `error` event semantics like Node
       // EventEmitters, we listen to `error` events only on EventEmitters.
@@ -959,7 +1000,7 @@ async function once(emitter, name, options = kEmptyObject) {
     }
     if (signal != null) {
       eventTargetAgnosticAddListener(
-        signal, 'abort', abortListener, { once: true });
+        signal, 'abort', abortListener, { __proto__: null, once: true, [kResistStopPropagation]: true });
     }
   });
 }
@@ -1075,7 +1116,7 @@ function on(emitter, event, options = kEmptyObject) {
 
     [SymbolAsyncIterator]() {
       return this;
-    }
+    },
   }, AsyncIteratorPrototype);
 
   eventTargetAgnosticAddListener(emitter, event, eventHandler);
@@ -1084,11 +1125,12 @@ function on(emitter, event, options = kEmptyObject) {
   }
 
   if (signal) {
+    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
     eventTargetAgnosticAddListener(
       signal,
       'abort',
       abortListener,
-      { once: true });
+      { __proto__: null, once: true, [kResistStopPropagation]: true });
   }
 
   function abortListener() {
@@ -1119,4 +1161,33 @@ function on(emitter, event, options = kEmptyObject) {
     iterator.return();
   }
   return iterator;
+}
+
+let queueMicrotask;
+
+function addAbortListener(signal, listener) {
+  if (signal === undefined) {
+    throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
+  }
+  validateAbortSignal(signal, 'signal');
+  validateFunction(listener, 'listener');
+
+  let removeEventListener;
+  if (signal.aborted) {
+    queueMicrotask ??= require('internal/process/task_queues').queueMicrotask;
+    queueMicrotask(() => listener());
+  } else {
+    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
+    // TODO(atlowChemi) add { subscription: true } and return directly
+    signal.addEventListener('abort', listener, { __proto__: null, once: true, [kResistStopPropagation]: true });
+    removeEventListener = () => {
+      signal.removeEventListener('abort', listener);
+    };
+  }
+  return {
+    __proto__: null,
+    [SymbolDispose]() {
+      removeEventListener?.();
+    },
+  };
 }

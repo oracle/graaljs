@@ -3,13 +3,15 @@
 // If user passed `-c` or `--check` arguments to Node, check its syntax
 // instead of actually running the file.
 
+const { URL } = require('internal/url');
+const { getOptionValue } = require('internal/options');
 const {
   prepareMainThreadExecution,
-  markBootstrapComplete
+  markBootstrapComplete,
 } = require('internal/process/pre_execution');
 
 const {
-  readStdin
+  readStdin,
 } = require('internal/process/execution');
 
 const { pathToFileURL } = require('url');
@@ -37,32 +39,46 @@ if (process.argv[1] && process.argv[1] !== '-') {
 
   markBootstrapComplete();
 
-  checkSyntax(source, filename);
+  loadESMIfNeeded(() => checkSyntax(source, filename));
 } else {
   markBootstrapComplete();
 
-  readStdin((code) => {
+  loadESMIfNeeded(() => readStdin((code) => {
     checkSyntax(code, '[stdin]');
-  });
+  }));
+}
+
+function loadESMIfNeeded(cb) {
+  const { getOptionValue } = require('internal/options');
+  const hasModulePreImport = getOptionValue('--import').length > 0;
+
+  if (hasModulePreImport) {
+    const { loadESM } = require('internal/process/esm_loader');
+    loadESM(cb);
+    return;
+  }
+  cb();
 }
 
 async function checkSyntax(source, filename) {
-  const { getOptionValue } = require('internal/options');
-  let isModule = false;
+  let isModule = true;
   if (filename === '[stdin]' || filename === '[eval]') {
     isModule = getOptionValue('--input-type') === 'module';
   } else {
     const { defaultResolve } = require('internal/modules/esm/resolve');
     const { defaultGetFormat } = require('internal/modules/esm/get_format');
     const { url } = await defaultResolve(pathToFileURL(filename).toString());
-    const format = await defaultGetFormat(url);
+    const format = await defaultGetFormat(new URL(url));
     isModule = format === 'module';
   }
+
   if (isModule) {
     const { ModuleWrap } = internalBinding('module_wrap');
     new ModuleWrap(filename, undefined, source, 0, 0);
     return;
   }
 
-  wrapSafe(filename, source);
+  const { loadESM } = require('internal/process/esm_loader');
+  const { handleMainPromise } = require('internal/modules/run_main');
+  handleMainPromise(loadESM((loader) => wrapSafe(filename, source)));
 }

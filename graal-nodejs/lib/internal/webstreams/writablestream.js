@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-use-before-define */
-
 const {
   ArrayPrototypePush,
   ArrayPrototypeShift,
@@ -71,6 +69,7 @@ const {
 
 const {
   kIsClosedPromise,
+  kControllerErrorFunction,
 } = require('internal/streams/utils');
 
 const {
@@ -199,6 +198,7 @@ class WritableStream {
     };
 
     this[kIsClosedPromise] = createDeferredPromise();
+    this[kControllerErrorFunction] = () => {};
 
     const size = extractSizeAlgorithm(strategy?.size);
     const highWaterMark = extractHighWaterMark(strategy?.highWaterMark, 1);
@@ -260,6 +260,7 @@ class WritableStream {
   getWriter() {
     if (!isWritableStream(this))
       throw new ERR_INVALID_THIS('WritableStream');
+    // eslint-disable-next-line no-use-before-define
     return new WritableStreamDefaultWriter(this);
   }
 
@@ -297,7 +298,7 @@ class WritableStream {
     return {
       data: { port: this[kState].transfer.port2 },
       deserializeInfo:
-        'internal/webstreams/writablestream:TransferredWritableStream'
+        'internal/webstreams/writablestream:TransferredWritableStream',
     };
   }
 
@@ -370,6 +371,7 @@ function TransferredWritableStream() {
         },
       };
       this[kIsClosedPromise] = createDeferredPromise();
+      this[kControllerErrorFunction] = () => {};
     },
     [], WritableStream));
 }
@@ -395,7 +397,7 @@ class WritableStreamDefaultWriter {
         promise: undefined,
         resolve: undefined,
         reject: undefined,
-      }
+      },
     };
     setupWritableStreamDefaultWriter(this, stream);
   }
@@ -435,7 +437,7 @@ class WritableStreamDefaultWriter {
   }
 
   /**
-   * @param {any} reason
+   * @param {any} [reason]
    * @returns {Promise<void>}
    */
   abort(reason = undefined) {
@@ -545,7 +547,7 @@ class WritableStreamDefaultController {
   }
 
   /**
-   * @param {any} error
+   * @param {any} [error]
    */
   error(error = undefined) {
     if (!isWritableStreamDefaultController(this))
@@ -1282,6 +1284,7 @@ function setupWritableStreamDefaultController(
     writeAlgorithm,
   };
   stream[kState].controller = controller;
+  stream[kControllerErrorFunction] = FunctionPrototypeBind(controller.error, controller);
 
   writableStreamUpdateBackpressure(
     stream,
@@ -1356,5 +1359,3 @@ module.exports = {
   setupWritableStreamDefaultControllerFromSink,
   setupWritableStreamDefaultController,
 };
-
-/* eslint-enable no-use-before-define */

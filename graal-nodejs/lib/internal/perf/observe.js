@@ -66,6 +66,7 @@ const {
 const { inspect } = require('util');
 
 const { now } = require('internal/perf/utils');
+const { convertToInt } = require('internal/webidl');
 
 const kDispatch = Symbol('kDispatch');
 const kMaybeBuffer = Symbol('kMaybeBuffer');
@@ -202,7 +203,7 @@ class PerformanceObserverEntryList {
 
     const opts = {
       ...options,
-      depth: options.depth == null ? null : options.depth - 1
+      depth: options.depth == null ? null : options.depth - 1,
     };
 
     return `PerformanceObserverEntryList ${inspect(this.#buffer, opts)}`;
@@ -327,7 +328,7 @@ class PerformanceObserver {
 
     const opts = {
       ...options,
-      depth: options.depth == null ? null : options.depth - 1
+      depth: options.depth == null ? null : options.depth - 1,
     };
 
     return `PerformanceObserver ${inspect({
@@ -410,7 +411,7 @@ function bufferResourceTiming(entry) {
         // Calculate the number of items to be pushed to the global buffer.
         const numbersToPreserve = MathMax(
           MathMin(resourceTimingBufferSizeLimit - resourceTimingBuffer.length, resourceTimingSecondaryBuffer.length),
-          0
+          0,
         );
         const excessNumberAfter = resourceTimingSecondaryBuffer.length - numbersToPreserve;
         for (let idx = 0; idx < numbersToPreserve; idx++) {
@@ -430,6 +431,8 @@ function bufferResourceTiming(entry) {
 
 // https://w3c.github.io/resource-timing/#dom-performance-setresourcetimingbuffersize
 function setResourceTimingBufferSize(maxSize) {
+  // unsigned long
+  maxSize = convertToInt('maxSize', maxSize, 32);
   // If the maxSize parameter is less than resource timing buffer current
   // size, no PerformanceResourceTiming objects are to be removed from the
   // performance entry buffer.

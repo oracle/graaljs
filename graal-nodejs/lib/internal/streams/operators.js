@@ -1,6 +1,6 @@
 'use strict';
 
-const { AbortController } = require('internal/abort_controller');
+const { AbortController, AbortSignal } = require('internal/abort_controller');
 
 const {
   codes: {
@@ -16,16 +16,18 @@ const {
   validateInteger,
   validateObject,
 } = require('internal/validators');
-const { kWeakHandler } = require('internal/event_target');
+const { kWeakHandler, kResistStopPropagation } = require('internal/event_target');
 const { finished } = require('internal/streams/end-of-stream');
 const staticCompose = require('internal/streams/compose');
 const {
   addAbortSignalNoValidate,
 } = require('internal/streams/add-abort-signal');
 const { isWritable, isNodeStream } = require('internal/streams/utils');
+const { deprecate } = require('internal/util');
 
 const {
   ArrayPrototypePush,
+  Boolean,
   MathFloor,
   Number,
   NumberIsNaN,
@@ -56,7 +58,7 @@ function compose(stream, options) {
     // Not validating as we already validated before
     addAbortSignalNoValidate(
       options.signal,
-      composedStream
+      composedStream,
     );
   }
 
@@ -83,18 +85,10 @@ function map(fn, options) {
   validateInteger(concurrency, 'concurrency', 1);
 
   return async function* map() {
-    const ac = new AbortController();
+    const signal = AbortSignal.any([options?.signal].filter(Boolean));
     const stream = this;
     const queue = [];
-    const signal = ac.signal;
     const signalOpt = { signal };
-
-    const abort = () => ac.abort();
-    if (options?.signal?.aborted) {
-      abort();
-    }
-
-    options?.signal?.addEventListener('abort', abort);
 
     let next;
     let resume;
@@ -152,7 +146,6 @@ function map(fn, options) {
           next();
           next = null;
         }
-        options?.signal?.removeEventListener('abort', abort);
       }
     }
 
@@ -187,8 +180,6 @@ function map(fn, options) {
         });
       }
     } finally {
-      ac.abort();
-
       done = true;
       if (resume) {
         resume();
@@ -300,7 +291,7 @@ async function reduce(reducer, initialValue, options) {
   const ac = new AbortController();
   const signal = ac.signal;
   if (options?.signal) {
-    const opts = { once: true, [kWeakHandler]: this };
+    const opts = { once: true, [kWeakHandler]: this, [kResistStopPropagation]: true };
     options.signal.addEventListener('abort', () => ac.abort(), opts);
   }
   let gotAnyItemFromStream = false;
@@ -409,7 +400,10 @@ function take(number, options = undefined) {
       }
       if (number-- > 0) {
         yield val;
-      } else {
+      }
+
+      // Don't get another item from iterator in case we reached the end
+      if (number <= 0) {
         return;
       }
     }
@@ -417,7 +411,7 @@ function take(number, options = undefined) {
 }
 
 module.exports.streamReturningOperators = {
-  asIndexedPairs,
+  asIndexedPairs: deprecate(asIndexedPairs, 'readable.asIndexedPairs will be removed in a future version.'),
   drop,
   filter,
   flatMap,

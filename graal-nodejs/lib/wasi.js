@@ -10,7 +10,7 @@ const {
 } = primordials;
 
 const {
-  ERR_WASI_ALREADY_STARTED
+  ERR_WASI_ALREADY_STARTED,
 } = require('internal/errors').codes;
 const {
   emitExperimentalWarning,
@@ -66,7 +66,7 @@ class WASI {
       ArrayPrototypeForEach(
         ObjectEntries(options.preopens),
         ({ 0: key, 1: value }) =>
-          ArrayPrototypePush(preopens, String(key), String(value))
+          ArrayPrototypePush(preopens, String(key), String(value)),
       );
     }
 

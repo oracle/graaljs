@@ -230,7 +230,7 @@ $ git push upstream v1.x-staging
 <summary>Security release</summary>
 
 Security releases with private patches need to be prepared in the `nodejs-private`
-GitHub organisation.
+GitHub organization.
 
 Add the `nodejs-private` remote:
 
@@ -252,7 +252,7 @@ The list of patches to include should be listed in the "Next Security Release"
 issue in `nodejs-private`. Ask the security release steward if you're unsure.
 
 The `git node land` tool does not work with the `nodejs-private`
-organisation. To land a PR in Node.js private, use `git cherry-pick` to apply
+organization. To land a PR in Node.js private, use `git cherry-pick` to apply
 each commit from the PR. You will also need to manually apply the PR
 metadata (`PR-URL`, `Reviewed-by`, etc.) by amending the commit messages. If
 known, additionally include `CVE-ID: CVE-XXXX-XXXXX` in the commit metadata.
@@ -263,6 +263,17 @@ You can integrate the PRs into the proposal without running full CI.
 </details>
 
 ### 2. Create a new branch for the release
+
+⚠️ At this point, you can either run `git node release --prepare`:
+
+```console
+$ git node release --prepare x.y.z
+```
+
+to automate the remaining steps until step 6 or you can perform it manually
+following the below steps.
+
+***
 
 Create a new branch named `vx.y.z-proposal`, off the corresponding staging
 branch.
@@ -341,10 +352,8 @@ The new entry should take the following form:
 
 ### Notable changes
 
-* List interesting changes here
-* Particularly changes that are responsible for minor or major version bumps
-* Also be sure to look at any changes introduced by dependencies such as npm
-* ... and include any notable items from there
+* List notable changes here
+* ...
 
 ### Commits
 
@@ -353,6 +362,12 @@ The new entry should take the following form:
 
 The release type should be either Current, LTS, or Maintenance, depending on the
 type of release being produced.
+
+By default, the `### Notable changes` section should be populated with the
+commits in the release that have either the `notable-change` or `semver-minor`
+label. Some `semver-minor` features may be determined by the releaser, or
+indicated by another contributor, to not be appropriate to be listed as a
+notable. The ultimate decision rests with the releaser.
 
 You can use `branch-diff` to get a list of commits with the `notable-change`
 label:
@@ -369,7 +384,7 @@ all.
 
 For security releases, it is necessary to include more detailed information
 including which vulnerabilities have been fixed, and any revert flags or
-workarounds to revert to the old behaviour.
+workarounds to revert to the old behavior.
 
 You can use the following template as a guide:
 
@@ -426,6 +441,12 @@ and substitute this node version with
 
 ```console
 sed -i "s/REPLACEME/$VERSION/g" doc/api/*.md
+```
+
+For macOS requires the extension to be specified.
+
+```bash
+sed -i "" "s/REPLACEME/$VERSION/g" doc/api/*.md
 ```
 
 or
@@ -741,7 +762,7 @@ $ git push upstream v1.x-staging
 <summary>Security release</summary>
 
 For security releases, you can start merging the release in the `nodejs-private`
-GitHub organisation in advance by following the same steps:
+GitHub organization in advance by following the same steps:
 
 ```console
 $ git checkout v1.x
@@ -944,7 +965,12 @@ There is an automatic build that is kicked off when you promote new builds, so
 within a few minutes nodejs.org will be listing your new version as the latest
 release. However, the blog post is not yet fully automatic.
 
-Create a new blog post by running the [nodejs.org release-post.js script][].
+Create a new blog post by running the [nodejs.org release-post.js script][]:
+
+```console
+$ node ./scripts/release-post/index.mjs x.y.z
+```
+
 This script will use the promoted builds and changelog to generate the post. Run
 `npm run serve` to preview the post locally before pushing to the
 [nodejs.org repository][].
@@ -1126,6 +1152,10 @@ Major releases should be targeted for the third Tuesday of the release month.
 A major release must not slip beyond the release month. In other words, major
 releases must not slip into May or November.
 
+The @nodejs/releasers make a call for releasers 3 months in advance.
+Currently, this call is automated in the `#nodejs-release-private`
+Slack channel.
+
 The release date for the next major release should be announced immediately
 following the current release (e.g. the release date for 13.0.0 should be
 announced immediately following the release of 12.0.0).
@@ -1134,8 +1164,8 @@ announced immediately following the release of 12.0.0).
 
 Approximately two months before a major release, new `vN.x` and
 `vN.x-staging` branches (where `N` indicates the major release) should be
-created as forks of the `main` branch. Up until one week before the release
-date, these must be kept in sync with `main`.
+created as forks of the `main` branch. Up until the cut-off date announced by
+the releaser, these must be kept in sync with `main`.
 
 The `vN.x` and `vN.x-staging` branches must be kept in sync with one another
 up until the date of the release.
@@ -1273,5 +1303,5 @@ take place once a new LTS line has been released.
 [Snap]: https://snapcraft.io/node
 [build-infra team]: https://github.com/orgs/nodejs/teams/build-infra
 [expected assets]: https://github.com/nodejs/build/tree/HEAD/ansible/www-standalone/tools/promote/expected_assets
-[nodejs.org release-post.js script]: https://github.com/nodejs/nodejs.org/blob/HEAD/scripts/release-post.js
+[nodejs.org release-post.js script]: https://github.com/nodejs/nodejs.org/blob/HEAD/scripts/release-post/index.mjs
 [nodejs.org repository]: https://github.com/nodejs/nodejs.org

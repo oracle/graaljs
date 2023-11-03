@@ -40,10 +40,8 @@ const {
   ERR_INVALID_ARG_TYPE,
 } = require('internal/errors').codes;
 const {
-  isArrayBufferView,
-} = require('internal/util/types');
-const {
   validateBoolean,
+  validateBuffer,
   validateFunction,
   validateInt32,
   validateObject,
@@ -84,12 +82,8 @@ class Script extends ContextifyScript {
     validateString(filename, 'options.filename');
     validateInt32(lineOffset, 'options.lineOffset');
     validateInt32(columnOffset, 'options.columnOffset');
-    if (cachedData !== undefined && !isArrayBufferView(cachedData)) {
-      throw new ERR_INVALID_ARG_TYPE(
-        'options.cachedData',
-        ['Buffer', 'TypedArray', 'DataView'],
-        cachedData
-      );
+    if (cachedData !== undefined) {
+      validateBuffer(cachedData, 'options.cachedData');
     }
     validateBoolean(produceCachedData, 'options.produceCachedData');
 
@@ -225,7 +219,7 @@ function createContext(contextObject = {}, options = kEmptyObject) {
     name = `VM Context ${defaultContextNameIndex++}`,
     origin,
     codeGeneration,
-    microtaskMode
+    microtaskMode,
   } = options;
 
   validateString(name, 'options.name');
@@ -242,14 +236,12 @@ function createContext(contextObject = {}, options = kEmptyObject) {
     validateBoolean(wasm, 'options.codeGeneration.wasm');
   }
 
-  let microtaskQueue = null;
-  if (microtaskMode !== undefined) {
-    validateOneOf(microtaskMode, 'options.microtaskMode',
-                  ['afterEvaluate', undefined]);
-
-    if (microtaskMode === 'afterEvaluate')
-      microtaskQueue = new MicrotaskQueue();
-  }
+  validateOneOf(microtaskMode,
+                'options.microtaskMode',
+                ['afterEvaluate', undefined]);
+  const microtaskQueue = microtaskMode === 'afterEvaluate' ?
+    new MicrotaskQueue() :
+    null;
 
   makeContext(contextObject, name, origin, strings, wasm, microtaskQueue);
   return contextObject;
@@ -282,7 +274,7 @@ function runInContext(code, contextifiedObject, options) {
   if (typeof options === 'string') {
     options = {
       filename: options,
-      [kParsingContext]: contextifiedObject
+      [kParsingContext]: contextifiedObject,
     };
   } else {
     options = { ...options, [kParsingContext]: contextifiedObject };

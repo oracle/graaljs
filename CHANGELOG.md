@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [version roadmap](https://www.graalvm.org/release-notes/version-roadmap/) for release dates.
 
+## Version 23.0.3
+* Updated Node.js to version 18.18.2.
+
 ## Version 23.0.0
 * Implemented the [WebAssembly reference types](https://github.com/WebAssembly/reference-types) proposal.
 * Implemented the [Iterator Helpers](https://github.com/tc39/proposal-iterator-helpers) proposal. It is available behind the experimental option `--js.iterator-helpers`.

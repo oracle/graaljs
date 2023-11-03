@@ -55,7 +55,18 @@ function onexit() {
   }
 }
 
+function resolve(...paths) {
+  return path.resolve(tmpPath, ...paths);
+}
+
+function hasEnoughSpace(size) {
+  const { bavail, bsize } = fs.statfsSync(tmpPath);
+  return bavail >= Math.ceil(size / bsize);
+}
+
 module.exports = {
   path: tmpPath,
   refresh,
+  hasEnoughSpace,
+  resolve,
 };

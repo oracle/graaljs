@@ -571,25 +571,6 @@ class Environment : public MemoryRetainer {
   static inline Environment* GetCurrent(
       const v8::PropertyCallbackInfo<T>& info);
 
-  // Methods created using SetMethod(), SetPrototypeMethod(), etc. inside
-  // this scope can access the created T* object using
-  // GetBindingData<T>(args) later.
-  template <typename T>
-  T* AddBindingData(v8::Local<v8::Context> context,
-                    v8::Local<v8::Object> target);
-  template <typename T, typename U>
-  static inline T* GetBindingData(const v8::PropertyCallbackInfo<U>& info);
-  template <typename T>
-  static inline T* GetBindingData(
-      const v8::FunctionCallbackInfo<v8::Value>& info);
-  template <typename T>
-  static inline T* GetBindingData(v8::Local<v8::Context> context);
-
-  typedef std::unordered_map<
-      FastStringKey,
-      BaseObjectPtr<BaseObject>,
-      FastStringKey::Hash> BindingDataStore;
-
   // Create an Environment without initializing a main Context. Use
   // InitializeMainContext() to initialize a main context for it.
   Environment(IsolateData* isolate_data,
@@ -628,7 +609,7 @@ class Environment : public MemoryRetainer {
   void RegisterHandleCleanups();
   void CleanupHandles();
   void Exit(int code);
-  void ExitEnv();
+  void ExitEnv(StopFlags::Flags flags);
 
   // Register clean-up cb to be called on environment destruction.
   inline void RegisterHandleCleanup(uv_handle_t* handle,
@@ -988,6 +969,10 @@ class Environment : public MemoryRetainer {
   uv_async_t task_queues_async_;
   int64_t task_queues_async_refs_ = 0;
 
+  // These may be read by ctors and should be listed before complex fields.
+  std::atomic_bool is_stopping_{false};
+  std::atomic_bool can_call_into_js_{true};
+
   AsyncHooks async_hooks_;
   ImmediateInfo immediate_info_;
   AliasedInt32Array timeout_info_;
@@ -1053,7 +1038,6 @@ class Environment : public MemoryRetainer {
 
   bool has_serialized_options_ = false;
 
-  std::atomic_bool can_call_into_js_ { true };
   uint64_t flags_;
   uint64_t thread_id_;
   std::unordered_set<worker::Worker*> sub_worker_contexts_;
@@ -1108,12 +1092,8 @@ class Environment : public MemoryRetainer {
   void RequestInterruptFromV8();
   static void CheckImmediate(uv_check_t* handle);
 
-  BindingDataStore bindings_;
-
   CleanupQueue cleanup_queue_;
   bool started_cleanup_ = false;
-
-  std::atomic_bool is_stopping_ { false };
 
   std::unordered_set<int> unmanaged_fds_;
 

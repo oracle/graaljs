@@ -12,6 +12,7 @@ const {
   ReflectApply,
   StringPrototypeSlice,
   Symbol,
+  SymbolDispose,
   Uint8Array,
 } = primordials;
 
@@ -26,8 +27,8 @@ const {
     ERR_IPC_DISCONNECTED,
     ERR_IPC_ONE_PIPE,
     ERR_IPC_SYNC_FORK,
-    ERR_MISSING_ARGS
-  }
+    ERR_MISSING_ARGS,
+  },
 } = require('internal/errors');
 const {
   validateArray,
@@ -47,7 +48,7 @@ const {
   kReadBytesOrError,
   kArrayBufferOffset,
   kLastWriteWasAsync,
-  streamBaseState
+  streamBaseState,
 } = internalBinding('stream_wrap');
 const { Pipe, constants: PipeConstants } = internalBinding('pipe_wrap');
 const { TCP } = internalBinding('tcp_wrap');
@@ -68,7 +69,7 @@ const {
   UV_ENFILE,
   UV_ENOENT,
   UV_ENOSYS,
-  UV_ESRCH
+  UV_ESRCH,
 } = internalBinding('uv');
 
 const { SocketListSend, SocketListReceive } = SocketList;
@@ -95,7 +96,7 @@ const handleConversion = {
 
     got(message, handle, emit) {
       emit(handle);
-    }
+    },
   },
 
   'net.Server': {
@@ -110,7 +111,7 @@ const handleConversion = {
       server.listen(handle, () => {
         emit(server);
       });
-    }
+    },
   },
 
   'net.Socket': {
@@ -184,7 +185,7 @@ const handleConversion = {
       const socket = new net.Socket({
         handle: handle,
         readable: true,
-        writable: true
+        writable: true,
       });
 
       // If the socket was created by net.Server we will track the socket
@@ -193,12 +194,12 @@ const handleConversion = {
         // Add socket to connections list
         const socketList = getSocketList('got', this, message.key);
         socketList.add({
-          socket: socket
+          socket: socket,
         });
       }
 
       emit(socket);
-    }
+    },
   },
 
   'dgram.Native': {
@@ -210,7 +211,7 @@ const handleConversion = {
 
     got(message, handle, emit) {
       emit(handle);
-    }
+    },
   },
 
   'dgram.Socket': {
@@ -228,8 +229,8 @@ const handleConversion = {
       socket.bind(handle, () => {
         emit(socket);
       });
-    }
-  }
+    },
+  },
 };
 
 function stdioStringToArray(stdio, channel) {
@@ -513,6 +514,12 @@ ChildProcess.prototype.kill = function(sig) {
   return false;
 };
 
+ChildProcess.prototype[SymbolDispose] = function() {
+  if (!this.killed) {
+    this.kill();
+  }
+};
+
 
 ChildProcess.prototype.ref = function() {
   if (this._handle) this._handle.ref();
@@ -584,7 +591,7 @@ function setupChannel(target, channel, serializationMode) {
       target.channel = val;
     }, channelDeprecationMsg, 'DEP0129'),
     configurable: true,
-    enumerable: false
+    enumerable: false,
   });
 
   target._handleQueue = null;
@@ -595,7 +602,7 @@ function setupChannel(target, channel, serializationMode) {
   const {
     initMessageChannel,
     parseChannelMessages,
-    writeChannelMessage
+    writeChannelMessage,
   } = serialization[serializationMode];
 
   let pendingHandle = null;
@@ -781,7 +788,7 @@ function setupChannel(target, channel, serializationMode) {
       message = {
         cmd: 'NODE_HANDLE',
         type: null,
-        msg: message
+        msg: message,
       };
 
       if (handle instanceof net.Socket) {
@@ -944,7 +951,7 @@ function setupChannel(target, channel, serializationMode) {
 
     ArrayPrototypePush(
       target.channel[kPendingMessages],
-      [event, message, handle]
+      [event, message, handle],
     );
   }
 
@@ -1012,7 +1019,7 @@ function getValidStdio(stdio, sync) {
       const a = {
         type: stdio === 'overlapped' ? 'overlapped' : 'pipe',
         readable: i === 0,
-        writable: i !== 0
+        writable: i !== 0,
       };
 
       if (!sync)
@@ -1035,17 +1042,17 @@ function getValidStdio(stdio, sync) {
       ArrayPrototypePush(acc, {
         type: 'pipe',
         handle: ipc,
-        ipc: true
+        ipc: true,
       });
     } else if (stdio === 'inherit') {
       ArrayPrototypePush(acc, {
         type: 'inherit',
-        fd: i
+        fd: i,
       });
     } else if (typeof stdio === 'number' || typeof stdio.fd === 'number') {
       ArrayPrototypePush(acc, {
         type: 'fd',
-        fd: typeof stdio === 'number' ? stdio : stdio.fd
+        fd: typeof stdio === 'number' ? stdio : stdio.fd,
       });
     } else if (getHandleWrapType(stdio) || getHandleWrapType(stdio.handle) ||
                getHandleWrapType(stdio._handle)) {
@@ -1057,7 +1064,7 @@ function getValidStdio(stdio, sync) {
         type: 'wrap',
         wrapType: getHandleWrapType(handle),
         handle: handle,
-        _stdio: stdio
+        _stdio: stdio,
       });
     } else if (isArrayBufferView(stdio) || typeof stdio === 'string') {
       if (!sync) {
@@ -1125,5 +1132,5 @@ module.exports = {
   setupChannel,
   getValidStdio,
   stdioStringToArray,
-  spawnSync
+  spawnSync,
 };

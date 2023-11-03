@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-use-before-define */
-
 const {
   ArrayBuffer,
   ArrayBufferPrototypeGetByteLength,
@@ -24,6 +22,7 @@ const {
   SafePromiseAll,
   Symbol,
   SymbolAsyncIterator,
+  SymbolDispose,
   SymbolToStringTag,
   Uint8Array,
 } = primordials;
@@ -58,13 +57,10 @@ const {
 } = require('internal/util');
 
 const {
+  validateAbortSignal,
   validateBuffer,
   validateObject,
 } = require('internal/validators');
-
-const {
-  kAborted,
-} = require('internal/abort_controller');
 
 const {
   MessageChannel,
@@ -86,6 +82,7 @@ const {
   kIsErrored,
   kIsReadable,
   kIsClosedPromise,
+  kControllerErrorFunction,
 } = require('internal/streams/utils');
 
 const {
@@ -144,6 +141,7 @@ const kRelease = Symbol('kRelease');
 
 let releasedError;
 let releasingError;
+let addAbortListener;
 
 const userModuleRegExp = /^ {4}at (?:[^/\\(]+ \()(?!node:(.+):\d+:\d+\)$).*/gm;
 
@@ -263,6 +261,7 @@ class ReadableStream {
     };
 
     this[kIsClosedPromise] = createDeferredPromise();
+    this[kControllerErrorFunction] = () => {};
 
     // The spec requires handling of the strategy first
     // here. Specifically, if getting the size and
@@ -281,16 +280,15 @@ class ReadableStream {
         this,
         source,
         extractHighWaterMark(highWaterMark, 0));
-      return;
+    } else {
+      if (type !== undefined)
+        throw new ERR_INVALID_ARG_VALUE('source.type', type);
+      setupReadableStreamDefaultControllerFromSource(
+        this,
+        source,
+        extractHighWaterMark(highWaterMark, 1),
+        extractSizeAlgorithm(size));
     }
-
-    if (type !== undefined)
-      throw new ERR_INVALID_ARG_VALUE('source.type', type);
-    setupReadableStreamDefaultControllerFromSource(
-      this,
-      source,
-      extractHighWaterMark(highWaterMark, 1),
-      extractSizeAlgorithm(size));
 
     // eslint-disable-next-line no-constructor-return
     return makeTransferable(this);
@@ -345,10 +343,12 @@ class ReadableStream {
     const mode = options?.mode;
 
     if (mode === undefined)
+      // eslint-disable-next-line no-use-before-define
       return new ReadableStreamDefaultReader(this);
 
     if (`${mode}` !== 'byob')
       throw new ERR_INVALID_ARG_VALUE('options.mode', mode);
+    // eslint-disable-next-line no-use-before-define
     return new ReadableStreamBYOBReader(this);
   }
 
@@ -382,8 +382,9 @@ class ReadableStream {
     const preventClose = options?.preventClose;
     const signal = options?.signal;
 
-    if (signal !== undefined && signal?.[kAborted] === undefined)
-      throw new ERR_INVALID_ARG_TYPE('options.signal', 'AbortSignal', signal);
+    if (signal !== undefined) {
+      validateAbortSignal(signal, 'options.signal');
+    }
 
     if (isReadableStreamLocked(this))
       throw new ERR_INVALID_STATE.TypeError('The ReadableStream is locked');
@@ -423,8 +424,9 @@ class ReadableStream {
       const preventClose = options?.preventClose;
       const signal = options?.signal;
 
-      if (signal !== undefined && signal?.[kAborted] === undefined)
-        throw new ERR_INVALID_ARG_TYPE('options.signal', 'AbortSignal', signal);
+      if (signal !== undefined) {
+        validateAbortSignal(signal, 'options.signal');
+      }
 
       if (isReadableStreamLocked(this))
         throw new ERR_INVALID_STATE.TypeError('The ReadableStream is locked');
@@ -466,6 +468,7 @@ class ReadableStream {
       preventCancel = false,
     } = options;
 
+    // eslint-disable-next-line no-use-before-define
     const reader = new ReadableStreamDefaultReader(this);
     let done = false;
     let started = false;
@@ -504,7 +507,7 @@ class ReadableStream {
           done = true;
           readableStreamReaderGenericRelease(reader);
           promise.reject(error);
-        }
+        },
       });
       return promise.promise;
     }
@@ -567,7 +570,7 @@ class ReadableStream {
           returnSteps(error);
       },
 
-      [SymbolAsyncIterator]() { return this; }
+      [SymbolAsyncIterator]() { return this; },
     }, AsyncIterator);
   }
 
@@ -576,6 +579,7 @@ class ReadableStream {
       locked: this.locked,
       state: this[kState].state,
       supportsBYOB:
+        // eslint-disable-next-line no-use-before-define
         this[kState].controller instanceof ReadableByteStreamController,
     });
   }
@@ -605,7 +609,7 @@ class ReadableStream {
     return {
       data: { port: this[kState].transfer.port2 },
       deserializeInfo:
-        'internal/webstreams/readablestream:TransferredReadableStream'
+        'internal/webstreams/readablestream:TransferredReadableStream',
     };
   }
 
@@ -758,7 +762,7 @@ function createReadableStreamBYOBRequest(controller, view) {
       };
     },
     [],
-    ReadableStreamBYOBRequest
+    ReadableStreamBYOBRequest,
   );
 }
 
@@ -861,7 +865,7 @@ class ReadableStreamDefaultReader {
   }
 
   /**
-   * @param {any} reason
+   * @param {any} [reason]
    * @returns {Promise<void>}
    */
   cancel(reason = undefined) {
@@ -977,7 +981,7 @@ class ReadableStreamBYOBReader {
   }
 
   /**
-   * @param {any} reason
+   * @param {any} [reason]
    * @returns {Promise<void>}
    */
   cancel(reason = undefined) {
@@ -1029,7 +1033,7 @@ class ReadableStreamDefaultController {
   }
 
   /**
-   * @param {any} chunk
+   * @param {any} [chunk]
    */
   enqueue(chunk = undefined) {
     if (!readableStreamDefaultControllerCanCloseOrEnqueue(this))
@@ -1038,7 +1042,7 @@ class ReadableStreamDefaultController {
   }
 
   /**
-   * @param {any} error
+   * @param {any} [error]
    */
   error(error = undefined) {
     readableStreamDefaultControllerError(this, error);
@@ -1152,7 +1156,7 @@ class ReadableByteStreamController {
   }
 
   /**
-   * @param {any} error
+   * @param {any} [error]
    */
   error(error = undefined) {
     if (!isReadableByteStreamController(this))
@@ -1225,7 +1229,7 @@ function createTeeReadableStream(start, pull, cancel) {
         ObjectCreate(null, {
           start: { __proto__: null, value: start },
           pull: { __proto__: null, value: pull },
-          cancel: { __proto__: null, value: cancel }
+          cancel: { __proto__: null, value: cancel },
         }),
         1,
         () => 1);
@@ -1257,6 +1261,7 @@ function readableStreamPipeTo(
 
   let reader;
   let writer;
+  let disposable;
   // Both of these can throw synchronously. We want to capture
   // the error and return a rejected promise instead.
   try {
@@ -1270,12 +1275,12 @@ function readableStreamPipeTo(
 
   let shuttingDown = false;
 
-  if (signal !== undefined && signal?.[kAborted] === undefined) {
-    return PromiseReject(
-      new ERR_INVALID_ARG_TYPE(
-        'options.signal',
-        'AbortSignal',
-        signal));
+  if (signal !== undefined) {
+    try {
+      validateAbortSignal(signal, 'options.signal');
+    } catch (error) {
+      return PromiseReject(error);
+    }
   }
 
   const promise = createDeferredPromise();
@@ -1289,7 +1294,7 @@ function readableStreamPipeTo(
     writableStreamDefaultWriterRelease(writer);
     readableStreamReaderGenericRelease(reader);
     if (signal !== undefined)
-      signal.removeEventListener('abort', abortAlgorithm);
+      disposable?.[SymbolDispose]();
     if (rejected)
       promise.reject(error);
     else
@@ -1416,7 +1421,8 @@ function readableStreamPipeTo(
       abortAlgorithm();
       return promise.promise;
     }
-    signal.addEventListener('abort', abortAlgorithm, { once: true });
+    addAbortListener ??= require('events').addAbortListener;
+    disposable = addAbortListener(signal, abortAlgorithm);
   }
 
   setPromiseHandled(run());
@@ -1594,7 +1600,7 @@ function readableByteStreamTee(stream) {
         if (!canceled1 || !canceled2) {
           cancelDeferred.resolve();
         }
-      }
+      },
     );
   }
 
@@ -1619,11 +1625,11 @@ function readableByteStreamTee(stream) {
             } catch (error) {
               readableByteStreamControllerError(
                 branch1[kState].controller,
-                error
+                error,
               );
               readableByteStreamControllerError(
                 branch2[kState].controller,
-                error
+                error,
               );
               cancelDeferred.resolve(readableStreamCancel(stream, error));
               return;
@@ -1632,13 +1638,13 @@ function readableByteStreamTee(stream) {
           if (!canceled1) {
             readableByteStreamControllerEnqueue(
               branch1[kState].controller,
-              chunk1
+              chunk1,
             );
           }
           if (!canceled2) {
             readableByteStreamControllerEnqueue(
               branch2[kState].controller,
-              chunk2
+              chunk2,
             );
           }
           reading = false;
@@ -1702,11 +1708,11 @@ function readableByteStreamTee(stream) {
             } catch (error) {
               readableByteStreamControllerError(
                 byobBranch[kState].controller,
-                error
+                error,
               );
               readableByteStreamControllerError(
                 otherBranch[kState].controller,
-                error
+                error,
               );
               cancelDeferred.resolve(readableStreamCancel(stream, error));
               return;
@@ -1714,18 +1720,18 @@ function readableByteStreamTee(stream) {
             if (!byobCanceled) {
               readableByteStreamControllerRespondWithNewView(
                 byobBranch[kState].controller,
-                chunk
+                chunk,
               );
             }
 
             readableByteStreamControllerEnqueue(
               otherBranch[kState].controller,
-              clonedChunk
+              clonedChunk,
             );
           } else if (!byobCanceled) {
             readableByteStreamControllerRespondWithNewView(
               byobBranch[kState].controller,
-              chunk
+              chunk,
             );
           }
           reading = false;
@@ -1753,7 +1759,7 @@ function readableByteStreamTee(stream) {
           if (!byobCanceled) {
             readableByteStreamControllerRespondWithNewView(
               byobBranch[kState].controller,
-              chunk
+              chunk,
             );
           }
           if (
@@ -1762,7 +1768,7 @@ function readableByteStreamTee(stream) {
           ) {
             readableByteStreamControllerRespond(
               otherBranch[kState].controller,
-              0
+              0,
             );
           }
         }
@@ -1893,7 +1899,6 @@ function readableStreamClose(stream) {
   assert(stream[kState].state === 'readable');
   stream[kState].state = 'closed';
   stream[kIsClosedPromise].resolve();
-
   const {
     reader,
   } = stream[kState];
@@ -1918,7 +1923,7 @@ function readableStreamError(stream, error) {
   setPromiseHandled(stream[kIsClosedPromise].promise);
 
   const {
-    reader
+    reader,
   } = stream[kState];
 
   if (reader === undefined)
@@ -2332,6 +2337,7 @@ function setupReadableStreamDefaultController(
     stream,
   };
   stream[kState].controller = controller;
+  stream[kControllerErrorFunction] = FunctionPrototypeBind(controller.error, controller);
 
   const startResult = startAlgorithm();
 
@@ -2675,13 +2681,13 @@ function readableByteStreamControllerEnqueue(controller, chunk) {
     readableByteStreamControllerInvalidateBYOBRequest(controller);
 
     firstPendingPullInto.buffer = transferArrayBuffer(
-      firstPendingPullInto.buffer
+      firstPendingPullInto.buffer,
     );
 
     if (firstPendingPullInto.type === 'none') {
       readableByteStreamControllerEnqueueDetachedPullIntoToQueue(
         controller,
-        firstPendingPullInto
+        firstPendingPullInto,
       );
     }
   }
@@ -2727,14 +2733,14 @@ function readableByteStreamControllerEnqueueClonedChunkToQueue(
   controller,
   buffer,
   byteOffset,
-  byteLength
+  byteLength,
 ) {
   let cloneResult;
   try {
     cloneResult = ArrayBufferPrototypeSlice(
       buffer,
       byteOffset,
-      byteOffset + byteLength
+      byteOffset + byteLength,
     );
   } catch (error) {
     readableByteStreamControllerError(controller, error);
@@ -2744,7 +2750,7 @@ function readableByteStreamControllerEnqueueClonedChunkToQueue(
     controller,
     cloneResult,
     0,
-    byteLength
+    byteLength,
   );
 }
 
@@ -2765,7 +2771,7 @@ function readableByteStreamControllerEnqueueChunkToQueue(
 
 function readableByteStreamControllerEnqueueDetachedPullIntoToQueue(
   controller,
-  desc
+  desc,
 ) {
   const {
     buffer,
@@ -2780,7 +2786,7 @@ function readableByteStreamControllerEnqueueDetachedPullIntoToQueue(
       controller,
       buffer,
       byteOffset,
-      bytesFilled
+      bytesFilled,
     );
   }
   readableByteStreamControllerShiftPendingPullInto(controller);
@@ -2895,10 +2901,10 @@ function readableByteStreamControllerRespondInReadableState(
   if (type === 'none') {
     readableByteStreamControllerEnqueueDetachedPullIntoToQueue(
       controller,
-      desc
+      desc,
     );
     readableByteStreamControllerProcessPullIntoDescriptorsUsingQueue(
-      controller
+      controller,
     );
     return;
   }
@@ -2965,7 +2971,7 @@ function readableByteStreamControllerRespondWithNewView(controller, view) {
   if (byteOffset + bytesFilled !== viewByteOffset)
     throw new ERR_INVALID_ARG_VALUE.RangeError('view', view);
 
-  if (bytesFilled + viewByteOffset > byteLength)
+  if (bytesFilled + viewByteLength > byteLength)
     throw new ERR_INVALID_ARG_VALUE.RangeError('view', view);
 
   if (bufferByteLength !== viewBufferByteLength)
@@ -3070,7 +3076,7 @@ function readableByteStreamControllerPullSteps(controller, readRequest) {
     assert(!readableStreamGetNumReadRequests(stream));
     readableByteStreamControllerFillReadRequestFromQueue(
       controller,
-      readRequest
+      readRequest,
     );
     return;
   }
@@ -3259,5 +3265,3 @@ module.exports = {
   setupReadableByteStreamController,
   setupReadableByteStreamControllerFromSource,
 };
-
-/* eslint-enable no-use-before-define */

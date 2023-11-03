@@ -29,24 +29,29 @@ const {
 
 const DATA_URL_PATTERN = /^[^/]+\/[^,;]+(?:[^,]*?)(;base64)?,([\s\S]*)$/;
 
+/**
+ * @param {URL} url URL to the module
+ * @param {ESModuleContext} context used to decorate error messages
+ * @returns {{ responseURL: string, source: string | BufferView }}
+ */
 async function getSource(url, context) {
-  const parsed = new URL(url);
-  let responseURL = url;
+  const { protocol, href } = url;
+  let responseURL = href;
   let source;
-  if (parsed.protocol === 'file:') {
-    source = await readFileAsync(parsed);
-  } else if (parsed.protocol === 'data:') {
-    const match = RegExpPrototypeExec(DATA_URL_PATTERN, parsed.pathname);
+  if (protocol === 'file:') {
+    source = await readFileAsync(url);
+  } else if (protocol === 'data:') {
+    const match = RegExpPrototypeExec(DATA_URL_PATTERN, url.pathname);
     if (!match) {
-      throw new ERR_INVALID_URL(url);
+      throw new ERR_INVALID_URL(responseURL);
     }
     const { 1: base64, 2: body } = match;
     source = BufferFrom(decodeURIComponent(body), base64 ? 'base64' : 'utf8');
   } else if (experimentalNetworkImports && (
-    parsed.protocol === 'https:' ||
-    parsed.protocol === 'http:'
+    protocol === 'https:' ||
+    protocol === 'http:'
   )) {
-    const res = await fetchModule(parsed, context);
+    const res = await fetchModule(url, context);
     source = await res.body;
     responseURL = res.resolvedHREF;
   } else {
@@ -54,10 +59,10 @@ async function getSource(url, context) {
     if (experimentalNetworkImports) {
       ArrayPrototypePush(supportedSchemes, 'http', 'https');
     }
-    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed, supportedSchemes);
+    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(url, supportedSchemes);
   }
   if (policy?.manifest) {
-    policy.manifest.assertIntegrity(parsed, source);
+    policy.manifest.assertIntegrity(href, source);
   }
   return { __proto__: null, responseURL, source };
 }
@@ -77,9 +82,11 @@ async function defaultLoad(url, context) {
     source,
   } = context;
 
-  if (format == null) {
-    format = await defaultGetFormat(url, context);
-  }
+  const urlInstance = new URL(url);
+
+  throwIfUnsupportedURLScheme(urlInstance, experimentalNetworkImports);
+
+  format ??= await defaultGetFormat(urlInstance, context);
 
   validateAssertions(url, format, importAssertions);
 
@@ -89,7 +96,7 @@ async function defaultLoad(url, context) {
   ) {
     source = null;
   } else if (source == null) {
-    ({ responseURL, source } = await getSource(url, context));
+    ({ responseURL, source } = await getSource(urlInstance, context));
   }
 
   return {
@@ -98,6 +105,36 @@ async function defaultLoad(url, context) {
     responseURL,
     source,
   };
+}
+
+/**
+ * throws an error if the protocol is not one of the protocols
+ * that can be loaded in the default loader
+ * @param {URL} parsed
+ * @param {boolean} experimentalNetworkImports
+ */
+function throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports) {
+  // Avoid accessing the `protocol` property due to the lazy getters.
+  const protocol = parsed?.protocol;
+  if (
+    protocol &&
+    protocol !== 'file:' &&
+    protocol !== 'data:' &&
+    protocol !== 'node:' &&
+    (
+      !experimentalNetworkImports ||
+      (
+        protocol !== 'https:' &&
+        protocol !== 'http:'
+      )
+    )
+  ) {
+    const schemes = ['file', 'data', 'node'];
+    if (experimentalNetworkImports) {
+      ArrayPrototypePush(schemes, 'https', 'http');
+    }
+    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(parsed, schemes);
+  }
 }
 
 module.exports = {

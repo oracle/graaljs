@@ -109,9 +109,9 @@ declare namespace Dispatcher {
     blocking?: boolean;
     /** Upgrade the request. Should be used to specify the kind of upgrade i.e. `'Websocket'`. Default: `method === 'CONNECT' || null`. */
     upgrade?: boolean | string | null;
-    /** The amount of time the parser will wait to receive the complete HTTP headers. Defaults to 30 seconds. */
+    /** The amount of time the parser will wait to receive the complete HTTP headers. Defaults to 300 seconds. */
     headersTimeout?: number | null;
-    /** The timeout after which a request will time out, in milliseconds. Monitors time between receiving body data. Use 0 to disable it entirely. Defaults to 30 seconds. */
+    /** The timeout after which a request will time out, in milliseconds. Monitors time between receiving body data. Use 0 to disable it entirely. Defaults to 300 seconds. */
     bodyTimeout?: number | null;
     /** Whether the request should stablish a keep-alive or not. Default `false` */
     reset?: boolean;
@@ -142,6 +142,8 @@ declare namespace Dispatcher {
     onInfo?: (info: { statusCode: number, headers: Record<string, string | string[]> }) => void;
     /** Default: `null` */
     responseHeader?: 'raw' | null;
+    /** Default: `64 KiB` */
+    highWaterMark?: number;
   }
   export interface PipelineOptions extends RequestOptions {
     /** `true` if the `handler` will return an object stream. Default: `false` */

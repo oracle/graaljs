@@ -47,12 +47,6 @@ void Realm::MemoryInfo(MemoryTracker* tracker) const {
 
   tracker->TrackField("env", env_);
   tracker->TrackField("cleanup_queue", cleanup_queue_);
-
-  ForEachBaseObject([&](BaseObject* obj) {
-    if (obj->IsDoneInitializing()) {
-      tracker->Track(obj);
-    }
-  });
 }
 
 void Realm::CreateProperties() {
@@ -325,6 +319,7 @@ void Realm::DoneBootstrapping() {
 
 void Realm::RunCleanup() {
   TRACE_EVENT0(TRACING_CATEGORY_NODE1(realm), "RunCleanup");
+  binding_data_store_.clear();
 
   cleanup_queue_.Drain();
 }

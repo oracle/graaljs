@@ -168,15 +168,13 @@ bool AsyncHooks::pop_async_context(double async_id) {
 }
 
 void AsyncHooks::clear_async_id_stack() {
-  if (env()->can_call_into_js()) {
+  if (!js_execution_async_resources_.IsEmpty() && env()->can_call_into_js()) {
     Isolate* isolate = env()->isolate();
     HandleScope handle_scope(isolate);
-    if (!js_execution_async_resources_.IsEmpty()) {
-      USE(PersistentToLocal::Strong(js_execution_async_resources_)
-              ->Set(env()->context(),
-                    env()->length_string(),
-                    Integer::NewFromUnsigned(isolate, 0)));
-    }
+    USE(PersistentToLocal::Strong(js_execution_async_resources_)
+            ->Set(env()->context(),
+                  env()->length_string(),
+                  Integer::NewFromUnsigned(isolate, 0)));
   }
 
   native_execution_async_resources_.clear();
@@ -539,7 +537,8 @@ void Environment::AssignToContext(Local<v8::Context> context,
   context->SetAlignedPointerInEmbedderData(ContextEmbedderIndex::kRealm, realm);
   // Used to retrieve bindings
   context->SetAlignedPointerInEmbedderData(
-      ContextEmbedderIndex::kBindingListIndex, &(this->bindings_));
+      ContextEmbedderIndex::kBindingDataStoreIndex,
+      realm->binding_data_store());
 
   // ContextifyContexts will update this to a pointer to the native object.
   context->SetAlignedPointerInEmbedderData(
@@ -902,10 +901,11 @@ void Environment::InitializeLibuv() {
   StartProfilerIdleNotifier();
 }
 
-void Environment::ExitEnv() {
+void Environment::ExitEnv(StopFlags::Flags flags) {
   // Should not access non-thread-safe methods here.
   set_stopping(true);
-  isolate_->TerminateExecution();
+  if ((flags & StopFlags::kDoNotTerminateIsolate) == 0)
+    isolate_->TerminateExecution();
   SetImmediateThreadsafe([](Environment* env) {
     env->set_can_call_into_js(false);
     uv_stop(env->event_loop());
@@ -1009,7 +1009,6 @@ MaybeLocal<Value> Environment::RunSnapshotDeserializeMain() const {
 void Environment::RunCleanup() {
   started_cleanup_ = true;
   TRACE_EVENT0(TRACING_CATEGORY_NODE1(environment), "RunCleanup");
-  bindings_.clear();
   // Only BaseObject's cleanups are registered as per-realm cleanup hooks now.
   // Defer the BaseObject cleanup after handles are cleaned up.
   CleanupHandles();

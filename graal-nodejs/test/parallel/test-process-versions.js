@@ -9,7 +9,6 @@ const expected_keys = [
   'ares',
   'brotli',
   'modules',
-  'node',
   'uv',
   'v8',
   'zlib',
@@ -19,6 +18,7 @@ const expected_keys = [
   'uvwasi',
   'acorn',
   'simdutf',
+  'ada',
 ];
 
 const hasUndici = process.config.variables.node_builtin_shareable_builtins.includes('deps/undici/undici.js');
@@ -44,7 +44,9 @@ if (common.hasIntl) {
 }
 
 expected_keys.sort();
-const actual_keys = Object.keys(process.versions).sort();
+expected_keys.unshift('node');
+
+const actual_keys = Object.keys(process.versions);
 
 assert.deepStrictEqual(actual_keys, expected_keys);
 
@@ -56,7 +58,7 @@ assert.match(process.versions.brotli, commonTemplate);
 assert.match(process.versions.llhttp, commonTemplate);
 assert.match(process.versions.node, commonTemplate);
 assert.match(process.versions.uv, commonTemplate);
-assert.match(process.versions.zlib, commonTemplate);
+assert.match(process.versions.zlib, /^\d+(?:\.\d+){2,3}(?:-.*)?$/);
 
 if (hasUndici) {
   assert.match(process.versions.undici, commonTemplate);

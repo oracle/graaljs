@@ -6,13 +6,12 @@ const { cleanTime } = require('../../fixtures/clean-snapshot')
 
 t.cleanSnapshot = cleanTime
 
-const mockNpm = async (t, { noLog, libnpmexec, initPackageJson, packageJson, ...opts } = {}) => {
+const mockNpm = async (t, { noLog, libnpmexec, initPackageJson, ...opts } = {}) => {
   const res = await _mockNpm(t, {
     ...opts,
     mocks: {
       ...(libnpmexec ? { libnpmexec } : {}),
       ...(initPackageJson ? { 'init-package-json': initPackageJson } : {}),
-      ...(packageJson ? { '@npmcli/package-json': packageJson } : {}),
     },
     globals: {
       // init-package-json prints directly to console.log
@@ -26,7 +25,7 @@ const mockNpm = async (t, { noLog, libnpmexec, initPackageJson, packageJson, ...
 
 t.test('displays output', async t => {
   const { npm, joinedOutput } = await mockNpm(t, {
-    initPackageJson: (...args) => args[3](),
+    initPackageJson: async () => {},
   })
 
   await npm.exec('init', [])
@@ -50,13 +49,12 @@ t.test('classic interactive npm init', async t => {
   t.plan(1)
 
   const { npm } = await mockNpm(t, {
-    initPackageJson: (...args) => {
+    initPackageJson: async (path) => {
       t.equal(
-        args[0],
+        path,
         resolve(npm.localPrefix),
         'should start init package.json in expected path'
       )
-      args[3]()
     },
   })
 
@@ -233,9 +231,9 @@ t.test('should not rewrite flatOptions', async t => {
 
 t.test('npm init cancel', async t => {
   const { npm, logs } = await mockNpm(t, {
-    initPackageJson: (...args) => args[3](
-      new Error('canceled')
-    ),
+    initPackageJson: async () => {
+      throw new Error('canceled')
+    },
   })
 
   await npm.exec('init', [])
@@ -246,9 +244,9 @@ t.test('npm init cancel', async t => {
 
 t.test('npm init error', async t => {
   const { npm } = await mockNpm(t, {
-    initPackageJson: (...args) => args[3](
-      new Error('Unknown Error')
-    ),
+    initPackageJson: async () => {
+      throw new Error('Unknown Error')
+    },
   })
 
   await t.rejects(
@@ -314,14 +312,7 @@ t.test('workspaces', async t => {
   await t.test('fail parsing top-level package.json to set workspace', async t => {
     const { npm } = await mockNpm(t, {
       prefixDir: {
-        'package.json': JSON.stringify({
-          name: 'top-level',
-        }),
-      },
-      packageJson: {
-        async load () {
-          throw new Error('ERR')
-        },
+        'package.json': 'not json[',
       },
       config: { workspace: 'a', yes: true },
       noLog: true,
@@ -329,8 +320,7 @@ t.test('workspaces', async t => {
 
     await t.rejects(
       npm.exec('init', []),
-      /ERR/,
-      'should exit with error'
+      { code: 'EJSONPARSE' }
     )
   })
 
@@ -409,7 +399,6 @@ t.test('workspaces', async t => {
             name: basename(dir),
           }), 'utf-8')
         }
-        args[3]()
       },
       config: { yes: true, workspace: ['a', 'c'] },
     })

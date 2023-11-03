@@ -421,8 +421,9 @@ the data is read it will consume memory that can eventually lead to a
 For backward compatibility, `res` will only emit `'error'` if there is an
 `'error'` listener registered.
 
-Set `Content-Length` header to limit the response body size. Mismatching the
-`Content-Length` header value will result in an \[`Error`]\[] being thrown,
+Set `Content-Length` header to limit the response body size.
+If [`response.strictContentLength`][] is set to `true`, mismatching the
+`Content-Length` header value will result in an `Error` being thrown,
 identified by `code:` [`'ERR_HTTP_CONTENT_LENGTH_MISMATCH'`][].
 
 `Content-Length` value should be in bytes, not characters. Use
@@ -1308,7 +1309,8 @@ changes:
 If a client connection emits an `'error'` event, it will be forwarded here.
 Listener of this event is responsible for closing/destroying the underlying
 socket. For example, one may wish to more gracefully close the socket with a
-custom HTTP response instead of abruptly severing the connection.
+custom HTTP response instead of abruptly severing the connection. The socket
+**must be closed or destroyed** before the listener ends.
 
 This event is guaranteed to be passed an instance of the {net.Socket} class,
 a subclass of {stream.Duplex}, unless the user specifies a socket
@@ -2058,6 +2060,21 @@ response.statusMessage = 'Not found';
 After response header was sent to the client, this property indicates the
 status message which was sent out.
 
+### `response.strictContentLength`
+
+<!-- YAML
+added:
+  - v18.10.0
+  - v16.18.0
+-->
+
+* {boolean} **Default:** `false`
+
+If set to `true`, Node.js will check whether the `Content-Length`
+header value and the size of the body, in bytes, are equal.
+Mismatching the `Content-Length` header value will result
+in an `Error` being thrown, identified by `code:` [`'ERR_HTTP_CONTENT_LENGTH_MISMATCH'`][].
+
 ### `response.uncork()`
 
 <!-- YAML
@@ -2112,9 +2129,10 @@ it will switch to implicit header mode and flush the implicit headers.
 This sends a chunk of the response body. This method may
 be called multiple times to provide successive parts of the body.
 
-In the `node:http` module, the response body is omitted when the
-request is a HEAD request. Similarly, the `204` and `304` responses
-_must not_ include a message body.
+Writing to the body is not allowed when the request method or response status
+do not support content. If an attempt is made to write to the body for a
+HEAD request or as part of a `204` or `304`response, a synchronous `Error`
+with the code `ERR_HTTP_BODY_NOT_ALLOWED` is thrown.
 
 `chunk` can be a string or a buffer. If `chunk` is a string,
 the second parameter specifies how to encode it into a byte stream.
@@ -2950,6 +2968,48 @@ Sets a single header value. If the header already exists in the to-be-sent
 headers, its value will be replaced. Use an array of strings to send multiple
 headers with the same name.
 
+### `outgoingMessage.setHeaders(headers)`
+
+<!-- YAML
+added: v18.15.0
+-->
+
+* `headers` {Headers|Map}
+* Returns: {http.ServerResponse}
+
+Returns the response object.
+
+Sets multiple header values for implicit headers.
+`headers` must be an instance of [`Headers`][] or `Map`,
+if a header already exists in the to-be-sent headers,
+its value will be replaced.
+
+```js
+const headers = new Headers({ foo: 'bar' });
+response.setHeaders(headers);
+```
+
+or
+
+```js
+const headers = new Map([['foo', 'bar']]);
+res.setHeaders(headers);
+```
+
+When headers have been set with [`outgoingMessage.setHeaders()`][],
+they will be merged with any headers passed to [`response.writeHead()`][],
+with the headers passed to [`response.writeHead()`][] given precedence.
+
+```js
+// Returns content-type = text/plain
+const server = http.createServer((req, res) => {
+  const headers = new Headers({ 'Content-Type': 'text/html' });
+  res.setHeaders(headers);
+  res.writeHead(200, { 'Content-Type': 'text/plain' });
+  res.end('ok');
+});
+```
+
 ### `outgoingMessage.setTimeout(msesc[, callback])`
 
 <!-- YAML
@@ -3108,6 +3168,9 @@ Found'`.
 <!-- YAML
 added: v0.1.13
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47405
+    description: The `highWaterMark` option is supported now.
   - version: v18.0.0
     pr-url: https://github.com/nodejs/node/pull/41263
     description: The `requestTimeout`, `headersTimeout`, `keepAliveTimeout`, and
@@ -3143,6 +3206,10 @@ changes:
     the complete HTTP headers from the client.
     See [`server.headersTimeout`][] for more information.
     **Default:** `60000`.
+  * `highWaterMark` {number} Optionally overrides all `socket`s'
+    `readableHighWaterMark` and `writableHighWaterMark`. This affects
+    `highWaterMark` property of both `IncomingMessage` and `ServerResponse`.
+    **Default:** See [`stream.getDefaultHighWaterMark()`][].
   * `insecureHTTPParser` {boolean} Use an insecure HTTP parser that accepts
     invalid HTTP headers when `true`. Using the insecure parser should be
     avoided. See [`--insecure-http-parser`][] for more information.
@@ -3150,6 +3217,10 @@ changes:
   * `IncomingMessage` {http.IncomingMessage} Specifies the `IncomingMessage`
     class to be used. Useful for extending the original `IncomingMessage`.
     **Default:** `IncomingMessage`.
+  * `joinDuplicateHeaders` {boolean} It joins the field line values of multiple
+    headers in a request with `, ` instead of discarding the duplicates.
+    See [`message.headers`][] for more information.
+    **Default:** `false`.
   * `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality
     on the socket immediately after a new incoming connection is received,
     similarly on what is done in \[`socket.setKeepAlive([enable][, initialDelay])`]\[`socket.setKeepAlive(enable, initialDelay)`].
@@ -3160,14 +3231,10 @@ changes:
   * `requestTimeout`: Sets the timeout value in milliseconds for receiving
     the entire request from the client.
     See [`server.requestTimeout`][] for more information.
-  * `joinDuplicateHeaders` {boolean} It joins the field line values of multiple
-    headers in a request with `, ` instead of discarding the duplicates.
-    See [`message.headers`][] for more information.
-    **Default:** `false`.
+    **Default:** `300000`.
   * `ServerResponse` {http.ServerResponse} Specifies the `ServerResponse` class
     to be used. Useful for extending the original `ServerResponse`. **Default:**
     `ServerResponse`.
-    **Default:** `300000`.
   * `uniqueHeaders` {Array} A list of response headers that should be sent only
     once. If the header's value is an array, the items will be joined
     using `; `.
@@ -3230,14 +3297,13 @@ changes:
 
 * `url` {string | URL}
 * `options` {Object} Accepts the same `options` as
-  [`http.request()`][], with the `method` always set to `GET`.
-  Properties that are inherited from the prototype are ignored.
+  [`http.request()`][], with the method set to GET by default.
 * `callback` {Function}
 * Returns: {http.ClientRequest}
 
 Since most requests are GET requests without bodies, Node.js provides this
 convenience method. The only difference between this method and
-[`http.request()`][] is that it sets the method to GET and calls `req.end()`
+[`http.request()`][] is that it sets the method to GET by default and calls `req.end()`
 automatically. The callback must take care to consume the response
 data for reasons stated in [`http.ClientRequest`][] section.
 
@@ -3387,6 +3453,10 @@ changes:
     invalid HTTP headers when `true`. Using the insecure parser should be
     avoided. See [`--insecure-http-parser`][] for more information.
     **Default:** `false`
+  * `joinDuplicateHeaders` {boolean} It joins the field line values of
+    multiple headers in a request with `, ` instead of discarding
+    the duplicates. See [`message.headers`][] for more information.
+    **Default:** `false`.
   * `localAddress` {string} Local interface to bind for network connections.
   * `localPort` {number} Local port to connect from.
   * `lookup` {Function} Custom lookup function. **Default:** [`dns.lookup()`][].
@@ -3414,10 +3484,6 @@ changes:
   * `uniqueHeaders` {Array} A list of request headers that should be sent
     only once. If the header's value is an array, the items will be joined
     using `; `.
-  * `joinDuplicateHeaders` {boolean} It joins the field line values of
-    multiple headers in a request with `, ` instead of discarding
-    the duplicates. See [`message.headers`][] for more information.
-    **Default:** `false`.
 * `callback` {Function}
 * Returns: {http.ClientRequest}
 
@@ -3547,7 +3613,7 @@ the following events will be emitted in the following order:
 * (connection closed here)
 * `'aborted'` on the `res` object
 * `'error'` on the `res` object with an error with message
-  `'Error: aborted'` and code `'ECONNRESET'`.
+  `'Error: aborted'` and code `'ECONNRESET'`
 * `'close'`
 * `'close'` on the `res` object
 
@@ -3556,7 +3622,7 @@ events will be emitted in the following order:
 
 * (`req.destroy()` called here)
 * `'error'` with an error with message `'Error: socket hang up'` and code
-  `'ECONNRESET'`
+  `'ECONNRESET'`, or the error with which `req.destroy()` was called
 * `'close'`
 
 If `req.destroy()` is called before the connection succeeds, the following
@@ -3565,7 +3631,7 @@ events will be emitted in the following order:
 * `'socket'`
 * (`req.destroy()` called here)
 * `'error'` with an error with message `'Error: socket hang up'` and code
-  `'ECONNRESET'`
+  `'ECONNRESET'`, or the error with which `req.destroy()` was called
 * `'close'`
 
 If `req.destroy()` is called after the response is received, the following
@@ -3576,8 +3642,8 @@ events will be emitted in the following order:
   * `'data'` any number of times, on the `res` object
 * (`req.destroy()` called here)
 * `'aborted'` on the `res` object
-* `'error'` on the `res` object with an error with message
-  `'Error: aborted'` and code `'ECONNRESET'`.
+* `'error'` on the `res` object with an error with message `'Error: aborted'`
+  and code `'ECONNRESET'`, or the error with which `req.destroy()` was called
 * `'close'`
 * `'close'` on the `res` object
 
@@ -3615,9 +3681,11 @@ events will be emitted in the following order:
 Setting the `timeout` option or using the `setTimeout()` function will
 not abort the request or do anything besides add a `'timeout'` event.
 
-Passing an `AbortSignal` and then calling `abort` on the corresponding
+Passing an `AbortSignal` and then calling `abort()` on the corresponding
 `AbortController` will behave the same way as calling `.destroy()` on the
-request itself.
+request. Specifically, the `'error'` event will be emitted with an error with
+the message `'AbortError: The operation was aborted'`, the code `'ABORT_ERR'`
+and the `cause`, if one was provided.
 
 ## `http.validateHeaderName(name[, label])`
 
@@ -3721,6 +3789,7 @@ Set the maximum number of idle HTTP parsers.
 [`Buffer.byteLength()`]: buffer.md#static-method-bufferbytelengthstring-encoding
 [`Duplex`]: stream.md#class-streamduplex
 [`HPE_HEADER_OVERFLOW`]: errors.md#hpe_header_overflow
+[`Headers`]: globals.md#class-headers
 [`TypeError`]: errors.md#class-typeerror
 [`URL`]: url.md#the-whatwg-url-api
 [`agent.createConnection()`]: #agentcreateconnectionoptions-callback
@@ -3747,6 +3816,7 @@ Set the maximum number of idle HTTP parsers.
 [`net.createConnection()`]: net.md#netcreateconnectionoptions-connectlistener
 [`new URL()`]: url.md#new-urlinput-base
 [`outgoingMessage.setHeader(name, value)`]: #outgoingmessagesetheadername-value
+[`outgoingMessage.setHeaders()`]: #outgoingmessagesetheadersheaders
 [`outgoingMessage.socket`]: #outgoingmessagesocket
 [`removeHeader(name)`]: #requestremoveheadername
 [`request.destroy()`]: #requestdestroyerror
@@ -3765,6 +3835,7 @@ Set the maximum number of idle HTTP parsers.
 [`response.getHeader()`]: #responsegetheadername
 [`response.setHeader()`]: #responsesetheadername-value
 [`response.socket`]: #responsesocket
+[`response.strictContentLength`]: #responsestrictcontentlength
 [`response.writableEnded`]: #responsewritableended
 [`response.writableFinished`]: #responsewritablefinished
 [`response.write()`]: #responsewritechunk-encoding-callback
@@ -3781,6 +3852,7 @@ Set the maximum number of idle HTTP parsers.
 [`socket.setNoDelay()`]: net.md#socketsetnodelaynodelay
 [`socket.setTimeout()`]: net.md#socketsettimeouttimeout-callback
 [`socket.unref()`]: net.md#socketunref
+[`stream.getDefaultHighWaterMark()`]: stream.md#streamgetdefaulthighwatermarkobjectmode
 [`url.parse()`]: url.md#urlparseurlstring-parsequerystring-slashesdenotehost
 [`writable.cork()`]: stream.md#writablecork
 [`writable.destroy()`]: stream.md#writabledestroyerror

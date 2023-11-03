@@ -31,8 +31,9 @@ const {
   ObjectSetPrototypeOf,
   Promise,
   SafeSet,
+  SymbolAsyncDispose,
   SymbolAsyncIterator,
-  Symbol
+  Symbol,
 } = primordials;
 
 module.exports = Readable;
@@ -54,7 +55,7 @@ const BufferList = require('internal/streams/buffer_list');
 const destroyImpl = require('internal/streams/destroy');
 const {
   getHighWaterMark,
-  getDefaultHighWaterMark
+  getDefaultHighWaterMark,
 } = require('internal/streams/state');
 
 const {
@@ -65,7 +66,8 @@ const {
     ERR_OUT_OF_RANGE,
     ERR_STREAM_PUSH_AFTER_EOF,
     ERR_STREAM_UNSHIFT_AFTER_END_EVENT,
-  }
+  },
+  AbortError,
 } = require('internal/errors');
 const { validateObject } = require('internal/validators');
 
@@ -224,6 +226,15 @@ Readable.prototype._destroy = function(err, cb) {
 
 Readable.prototype[EE.captureRejectionSymbol] = function(err) {
   this.destroy(err);
+};
+
+Readable.prototype[SymbolAsyncDispose] = function() {
+  let error;
+  if (!this.destroyed) {
+    error = this.readableEnded ? null : new AbortError();
+    this.destroy(error);
+  }
+  return new Promise((resolve, reject) => eos(this, (err) => (err && err !== error ? reject(err) : resolve(null))));
 };
 
 // Manually shove something into the read() buffer.
@@ -671,7 +682,7 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
     if (!state.multiAwaitDrain) {
       state.multiAwaitDrain = true;
       state.awaitDrainWriters = new SafeSet(
-        state.awaitDrainWriters ? [state.awaitDrainWriters] : []
+        state.awaitDrainWriters ? [state.awaitDrainWriters] : [],
       );
     }
   }
@@ -814,9 +825,7 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
   // Start the flow if it hasn't been started already.
 
   if (dest.writableNeedDrain === true) {
-    if (state.flowing) {
-      pause();
-    }
+    pause();
   } else if (!state.flowing) {
     debug('pipe resume');
     src.resume();
@@ -1166,7 +1175,7 @@ ObjectDefineProperties(Readable.prototype, {
       if (this._readableState) {
         this._readableState.readable = !!val;
       }
-    }
+    },
   },
 
   readableDidRead: {
@@ -1174,7 +1183,7 @@ ObjectDefineProperties(Readable.prototype, {
     enumerable: false,
     get: function() {
       return this._readableState.dataEmitted;
-    }
+    },
   },
 
   readableAborted: {
@@ -1186,7 +1195,7 @@ ObjectDefineProperties(Readable.prototype, {
         (this._readableState.destroyed || this._readableState.errored) &&
         !this._readableState.endEmitted
       );
-    }
+    },
   },
 
   readableHighWaterMark: {
@@ -1194,7 +1203,7 @@ ObjectDefineProperties(Readable.prototype, {
     enumerable: false,
     get: function() {
       return this._readableState.highWaterMark;
-    }
+    },
   },
 
   readableBuffer: {
@@ -1202,7 +1211,7 @@ ObjectDefineProperties(Readable.prototype, {
     enumerable: false,
     get: function() {
       return this._readableState && this._readableState.buffer;
-    }
+    },
   },
 
   readableFlowing: {
@@ -1215,7 +1224,7 @@ ObjectDefineProperties(Readable.prototype, {
       if (this._readableState) {
         this._readableState.flowing = state;
       }
-    }
+    },
   },
 
   readableLength: {
@@ -1223,7 +1232,7 @@ ObjectDefineProperties(Readable.prototype, {
     enumerable: false,
     get() {
       return this._readableState.length;
-    }
+    },
   },
 
   readableObjectMode: {
@@ -1231,7 +1240,7 @@ ObjectDefineProperties(Readable.prototype, {
     enumerable: false,
     get() {
       return this._readableState ? this._readableState.objectMode : false;
-    }
+    },
   },
 
   readableEncoding: {
@@ -1239,7 +1248,7 @@ ObjectDefineProperties(Readable.prototype, {
     enumerable: false,
     get() {
       return this._readableState ? this._readableState.encoding : null;
-    }
+    },
   },
 
   errored: {
@@ -1247,14 +1256,14 @@ ObjectDefineProperties(Readable.prototype, {
     enumerable: false,
     get() {
       return this._readableState ? this._readableState.errored : null;
-    }
+    },
   },
 
   closed: {
     __proto__: null,
     get() {
       return this._readableState ? this._readableState.closed : false;
-    }
+    },
   },
 
   destroyed: {
@@ -1273,7 +1282,7 @@ ObjectDefineProperties(Readable.prototype, {
       // Backward compatibility, the user is explicitly
       // managing destroyed.
       this._readableState.destroyed = value;
-    }
+    },
   },
 
   readableEnded: {
@@ -1281,7 +1290,7 @@ ObjectDefineProperties(Readable.prototype, {
     enumerable: false,
     get() {
       return this._readableState ? this._readableState.endEmitted : false;
-    }
+    },
   },
 
 });
@@ -1292,7 +1301,7 @@ ObjectDefineProperties(ReadableState.prototype, {
     __proto__: null,
     get() {
       return this.pipes.length;
-    }
+    },
   },
 
   // Legacy property for `paused`.
@@ -1303,8 +1312,8 @@ ObjectDefineProperties(ReadableState.prototype, {
     },
     set(value) {
       this[kPaused] = !!value;
-    }
-  }
+    },
+  },
 });
 
 // Exposed for testing purposes only.
@@ -1418,6 +1427,6 @@ Readable.wrap = function(src, options) {
     destroy(err, callback) {
       destroyImpl.destroyer(src, err);
       callback(err);
-    }
+    },
   }).wrap(src);
 };

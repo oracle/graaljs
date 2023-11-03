@@ -1,5 +1,6 @@
 // META: title=WebCryptoAPI: importKey() for EC keys
 // META: timeout=long
+// META: script=../util/helpers.js
 
 // Test importKey and exportKey for EC algorithms. Only "happy paths" are
 // currently tested - those where the operation should succeed.
@@ -84,13 +85,13 @@
                 });
 
                 // Next, test private keys
-                allValidUsages(vector.privateUsages, []).forEach(function(usages) {
-                    ['pkcs8', 'jwk'].forEach(function(format) {
-                        var algorithm = {name: vector.name, namedCurve: curve};
-                        var data = keyData[curve];
-
+                ['pkcs8', 'jwk'].forEach(function(format) {
+                    var algorithm = {name: vector.name, namedCurve: curve};
+                    var data = keyData[curve];
+                    allValidUsages(vector.privateUsages, []).forEach(function(usages) {
                         testFormat(format, algorithm, data, curve, usages, extractable);
                     });
+                    testEmptyUsages(format, algorithm, data, curve, extractable);
                 });
             });
 
@@ -110,6 +111,7 @@
             return subtle.importKey(format, keyData, algorithm, extractable, usages).
             then(function(key) {
                 assert_equals(key.constructor, CryptoKey, "Imported a CryptoKey object");
+                assert_goodCryptoKey(key, algorithm, extractable, usages, (format === 'pkcs8' || (format === 'jwk' && keyData.d)) ? 'private' : 'public');
                 if (!extractable) {
                     return;
                 }
@@ -132,6 +134,21 @@
                 }
             });
         }, "Good parameters: " + keySize.toString() + " bits " + parameterString(format, compressed, keyData, algorithm, extractable, usages));
+    }
+
+    // Test importKey with a given key format and other parameters but with empty usages.
+    // Should fail with SyntaxError
+    function testEmptyUsages(format, algorithm, data, keySize, extractable) {
+        const keyData = data[format];
+        const usages = [];
+        promise_test(function(test) {
+            return subtle.importKey(format, keyData, algorithm, extractable, usages).
+            then(function(key) {
+                assert_unreached("importKey succeeded but should have failed with SyntaxError");
+            }, function(err) {
+                assert_equals(err.name, "SyntaxError", "Should throw correct error, not " + err.name + ": " + err.message);
+            });
+        }, "Empty Usages: " + keySize.toString() + " bits " + parameterString(format, false, keyData, algorithm, extractable, usages));
     }
 
 

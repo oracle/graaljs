@@ -3,6 +3,7 @@ const zlib = require('zlib')
 const path = require('path')
 const t = require('tap')
 
+const { default: tufmock } = require('@tufjs/repo-mock')
 const { load: loadMockNpm } = require('../../fixtures/mock-npm')
 const MockRegistry = require('@npmcli/mock-registry')
 
@@ -210,8 +211,7 @@ t.test('audit fix - bulk endpoint', async t => {
 })
 
 t.test('completion', async t => {
-  const { npm } = await loadMockNpm(t)
-  const audit = await npm.cmd('audit')
+  const { audit } = await loadMockNpm(t, { command: 'audit' })
   t.test('fix', async t => {
     await t.resolveMatch(
       audit.completion({ conf: { argv: { remain: ['npm', 'audit'] } } }),
@@ -247,27 +247,68 @@ t.test('audit signatures', async t => {
     }],
   }
 
-  const MISMATCHING_REGISTRY_KEYS = {
+  const TUF_VALID_REGISTRY_KEYS = {
     keys: [{
-      expires: null,
-      keyid: 'SHA256:2l3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA',
-      keytype: 'ecdsa-sha2-nistp256',
-      scheme: 'ecdsa-sha2-nistp256',
-      key: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+' +
+      keyId: 'SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA',
+      keyUsage: 'npm:signatures',
+      publicKey: {
+        rawBytes: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+' +
            'IhuteBJbuHcA5UogKo0EWtlWwW6KSaKoTNEYL7JlCQiVnkhBktUgg==',
+        keyDetails: 'PKIX_ECDSA_P256_SHA_256',
+        validFor: {
+          start: '1999-01-01T00:00:00.000Z',
+        },
+      },
     }],
   }
 
-  const EXPIRED_REGISTRY_KEYS = {
+  const TUF_MISMATCHING_REGISTRY_KEYS = {
     keys: [{
-      expires: '2021-01-11T15:45:42.144Z',
-      keyid: 'SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA',
-      keytype: 'ecdsa-sha2-nistp256',
-      scheme: 'ecdsa-sha2-nistp256',
-      key: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+' +
+      keyId: 'SHA256:2l3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA',
+      keyUsage: 'npm:signatures',
+      publicKey: {
+        rawBytes: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+' +
            'IhuteBJbuHcA5UogKo0EWtlWwW6KSaKoTNEYL7JlCQiVnkhBktUgg==',
+        keyDetails: 'PKIX_ECDSA_P256_SHA_256',
+        validFor: {
+          start: '1999-01-01T00:00:00.000Z',
+        },
+      },
     }],
   }
+
+  const TUF_EXPIRED_REGISTRY_KEYS = {
+    keys: [{
+      keyId: 'SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA',
+      keyUsage: 'npm:signatures',
+      publicKey: {
+        rawBytes: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+' +
+           'IhuteBJbuHcA5UogKo0EWtlWwW6KSaKoTNEYL7JlCQiVnkhBktUgg==',
+        keyDetails: 'PKIX_ECDSA_P256_SHA_256',
+        validFor: {
+          start: '1999-01-01T00:00:00.000Z',
+          end: '2021-01-11T15:45:42.144Z',
+        },
+      },
+    }],
+  }
+
+  const TUF_VALID_KEYS_TARGET = {
+    name: 'registry.npmjs.org/keys.json',
+    content: JSON.stringify(TUF_VALID_REGISTRY_KEYS),
+  }
+
+  const TUF_MISMATCHING_KEYS_TARGET = {
+    name: 'registry.npmjs.org/keys.json',
+    content: JSON.stringify(TUF_MISMATCHING_REGISTRY_KEYS),
+  }
+
+  const TUF_EXPIRED_KEYS_TARGET = {
+    name: 'registry.npmjs.org/keys.json',
+    content: JSON.stringify(TUF_EXPIRED_REGISTRY_KEYS),
+  }
+
+  const TUF_TARGET_NOT_FOUND = []
 
   const installWithValidSigs = {
     'package.json': JSON.stringify({
@@ -304,6 +345,102 @@ t.test('audit signatures', async t => {
       },
       dependencies: {
         'kms-demo': {
+          version: '1.0.0',
+        },
+      },
+    }),
+  }
+
+  const installWithValidAttestations = {
+    'package.json': JSON.stringify({
+      name: 'test-dep',
+      version: '1.0.0',
+      dependencies: {
+        sigstore: '1.0.0',
+      },
+    }),
+    node_modules: {
+      sigstore: {
+        'package.json': JSON.stringify({
+          name: 'sigstore',
+          version: '1.0.0',
+        }),
+      },
+    },
+    'package-lock.json': JSON.stringify({
+      name: 'test-dep',
+      version: '1.0.0',
+      lockfileVersion: 2,
+      requires: true,
+      packages: {
+        '': {
+          name: 'test-dep',
+          version: '1.0.0',
+          dependencies: {
+            sigstore: '^1.0.0',
+          },
+        },
+        'node_modules/sigstore': {
+          version: '1.0.0',
+        },
+      },
+      dependencies: {
+        sigstore: {
+          version: '1.0.0',
+        },
+      },
+    }),
+  }
+
+  const installWithMultipleValidAttestations = {
+    'package.json': JSON.stringify({
+      name: 'test-dep',
+      version: '1.0.0',
+      dependencies: {
+        sigstore: '1.0.0',
+        'tuf-js': '1.0.0',
+      },
+    }),
+    node_modules: {
+      sigstore: {
+        'package.json': JSON.stringify({
+          name: 'sigstore',
+          version: '1.0.0',
+        }),
+      },
+      'tuf-js': {
+        'package.json': JSON.stringify({
+          name: 'tuf-js',
+          version: '1.0.0',
+        }),
+      },
+    },
+    'package-lock.json': JSON.stringify({
+      name: 'test-dep',
+      version: '1.0.0',
+      lockfileVersion: 2,
+      requires: true,
+      packages: {
+        '': {
+          name: 'test-dep',
+          version: '1.0.0',
+          dependencies: {
+            sigstore: '^1.0.0',
+            'tuf-js': '^1.0.0',
+          },
+        },
+        'node_modules/sigstore': {
+          version: '1.0.0',
+        },
+        'node_modules/tuf-js': {
+          version: '1.0.0',
+        },
+      },
+      dependencies: {
+        sigstore: {
+          version: '1.0.0',
+        },
+        'tuf-js': {
           version: '1.0.0',
         },
       },
@@ -717,6 +854,44 @@ t.test('audit signatures', async t => {
     await registry.package({ manifest })
   }
 
+  async function manifestWithValidAttestations ({ registry }) {
+    const manifest = registry.manifest({
+      name: 'sigstore',
+      packuments: [{
+        version: '1.0.0',
+        dist: {
+          // eslint-disable-next-line max-len
+          integrity: 'sha512-e+qfbn/zf1+rCza/BhIA//Awmf0v1pa5HQS8Xk8iXrn9bgytytVLqYD0P7NSqZ6IELTgq+tcDvLPkQjNHyWLNg==',
+          tarball: 'https://registry.npmjs.org/sigstore/-/sigstore-1.0.0.tgz',
+          // eslint-disable-next-line max-len
+          attestations: { url: 'https://registry.npmjs.org/-/npm/v1/attestations/sigstore@1.0.0', provenance: { predicateType: 'https://slsa.dev/provenance/v0.2' } },
+          // eslint-disable-next-line max-len
+          signatures: [{ keyid: 'SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA', sig: 'MEQCIBlpcHT68iWOpx8pJr3WUzD1EqQ7tb0CmY36ebbceR6IAiAVGRaxrFoyh0/5B7H1o4VFhfsHw9F8G+AxOZQq87q+lg==' }],
+        },
+      }],
+    })
+    await registry.package({ manifest })
+  }
+
+  async function manifestWithMultipleValidAttestations ({ registry }) {
+    const manifest = registry.manifest({
+      name: 'tuf-js',
+      packuments: [{
+        version: '1.0.0',
+        dist: {
+          // eslint-disable-next-line max-len
+          integrity: 'sha512-1dxsQwESDzACJjTdYHQ4wJ1f/of7jALWKfJEHSBWUQB/5UTJUx9SW6GHXp4mZ1KvdBRJCpGjssoPFGi4hvw8/A==',
+          tarball: 'https://registry.npmjs.org/tuf-js/-/tuf-js-1.0.0.tgz',
+          // eslint-disable-next-line max-len
+          attestations: { url: 'https://registry.npmjs.org/-/npm/v1/attestations/tuf-js@1.0.0', provenance: { predicateType: 'https://slsa.dev/provenance/v0.2' } },
+          // eslint-disable-next-line max-len
+          signatures: [{ keyid: 'SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA', sig: 'MEYCIQDgGQeY2QLkLuoO9YxOqFZ+a6zYuaZpXhc77kUfdCUXDQIhAJp/vV+9Xg1bfM5YlTvKIH9agUEOu5T76+tQaHY2vZyO' }],
+        },
+      }],
+    })
+    await registry.package({ manifest })
+  }
+
   async function manifestWithInvalidSigs ({ registry, name = 'kms-demo', version = '1.0.0' }) {
     const manifest = registry.manifest({
       name,
@@ -748,17 +923,26 @@ t.test('audit signatures', async t => {
     await registry.package({ manifest })
   }
 
+  function mockTUF ({ target, npm }) {
+    const opts = {
+      baseURL: 'https://tuf-repo-cdn.sigstore.dev',
+      metadataPathPrefix: '',
+      cachePath: path.join(npm.cache, '_tuf'),
+    }
+    return tufmock(target, opts)
+  }
+
   t.test('with valid signatures', async t => {
     const { npm, joinedOutput } = await loadMockNpm(t, {
       prefixDir: installWithValidSigs,
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithValidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
-    t.equal(process.exitCode, 0, 'should exit successfully')
+    t.notOk(process.exitCode, 'should exit successfully')
     t.match(joinedOutput(), /audited 1 package/)
     t.matchSnapshot(joinedOutput())
   })
@@ -787,11 +971,27 @@ t.test('audit signatures', async t => {
       }],
     })
     await registry.package({ manifest })
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
+
+    await npm.exec('audit', ['signatures'])
+
+    t.notOk(process.exitCode, 'should exit successfully')
+    t.match(joinedOutput(), /audited 1 package/)
+    t.matchSnapshot(joinedOutput())
+  })
+
+  t.test('with key fallback to legacy API', async t => {
+    const { npm, joinedOutput } = await loadMockNpm(t, {
+      prefixDir: installWithValidSigs,
+    })
+    const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
+    await manifestWithValidSigs({ registry })
+    mockTUF({ npm, target: TUF_TARGET_NOT_FOUND })
     registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
 
     await npm.exec('audit', ['signatures'])
 
-    t.equal(process.exitCode, 0, 'should exit successfully')
+    t.notOk(process.exitCode, 'should exit successfully')
     t.match(joinedOutput(), /audited 1 package/)
     t.matchSnapshot(joinedOutput())
   })
@@ -893,7 +1093,7 @@ t.test('audit signatures', async t => {
     })
     await registry.package({ manifest: asyncManifest })
     await manifestWithInvalidSigs({ registry, name: 'node-fetch', version: '1.6.0' })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -910,11 +1110,11 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithValidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
-    t.equal(process.exitCode, 0, 'should exit successfully')
+    t.notOk(process.exitCode, 'should exit successfully')
     t.match(joinedOutput(), /audited 1 package/)
     t.matchSnapshot(joinedOutput())
   })
@@ -925,7 +1125,7 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithInvalidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -942,7 +1142,7 @@ t.test('audit signatures', async t => {
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithValidSigs({ registry })
     await manifestWithoutSigs({ registry, name: 'async', version: '1.1.1' })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -960,7 +1160,7 @@ t.test('audit signatures', async t => {
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithInvalidSigs({ registry })
     await manifestWithoutSigs({ registry, name: 'async', version: '1.1.1' })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -978,7 +1178,7 @@ t.test('audit signatures', async t => {
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithInvalidSigs({ registry, name: 'kms-demo', version: '1.0.0' })
     await manifestWithInvalidSigs({ registry, name: 'async', version: '1.1.1' })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -993,7 +1193,7 @@ t.test('audit signatures', async t => {
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithoutSigs({ registry, name: 'kms-demo', version: '1.0.0' })
     await manifestWithoutSigs({ registry, name: 'async', version: '1.1.1' })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -1007,6 +1207,7 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithValidSigs({ registry })
+    mockTUF({ npm, target: TUF_TARGET_NOT_FOUND })
     registry.nock.get('/-/npm/v1/keys').reply(404)
 
     await t.rejects(
@@ -1022,7 +1223,7 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithValidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, EXPIRED_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_EXPIRED_KEYS_TARGET })
 
     await t.rejects(
       npm.exec('audit', ['signatures']),
@@ -1037,7 +1238,7 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithValidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, MISMATCHING_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_MISMATCHING_KEYS_TARGET })
 
     await t.rejects(
       npm.exec('audit', ['signatures']),
@@ -1052,7 +1253,7 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithoutSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -1070,7 +1271,7 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithoutSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -1091,11 +1292,11 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithValidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
-    t.equal(process.exitCode, 0, 'should exit successfully')
+    t.notOk(process.exitCode, 'should exit successfully')
     t.match(joinedOutput(), JSON.stringify({ invalid: [], missing: [] }, null, 2))
     t.matchSnapshot(joinedOutput())
   })
@@ -1109,7 +1310,7 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithInvalidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -1127,7 +1328,7 @@ t.test('audit signatures', async t => {
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithInvalidSigs({ registry })
     await manifestWithoutSigs({ registry, name: 'async', version: '1.1.1' })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -1144,11 +1345,11 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithValidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
-    t.equal(process.exitCode, 0, 'should exit successfully')
+    t.notOk(process.exitCode, 'should exit successfully')
     t.match(joinedOutput(), /audited 1 package/)
     t.matchSnapshot(joinedOutput())
   })
@@ -1175,6 +1376,7 @@ t.test('audit signatures', async t => {
       }],
     })
     await registry.package({ manifest })
+    mockTUF({ npm, target: TUF_TARGET_NOT_FOUND })
     registry.nock.get('/-/npm/v1/keys').reply(404)
 
     await t.rejects(
@@ -1205,6 +1407,7 @@ t.test('audit signatures', async t => {
       }],
     })
     await registry.package({ manifest })
+    mockTUF({ npm, target: TUF_TARGET_NOT_FOUND })
     registry.nock.get('/-/npm/v1/keys').reply(400)
 
     await t.rejects(
@@ -1243,21 +1446,15 @@ t.test('audit signatures', async t => {
       }],
     })
     await registry.package({ manifest })
-    registry.nock.get('/-/npm/v1/keys')
-      .reply(200, {
-        keys: [{
-          expires: null,
-          keyid: 'SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA',
-          keytype: 'ecdsa-sha2-nistp256',
-          scheme: 'ecdsa-sha2-nistp256',
-          key: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+' +
-               'IhuteBJbuHcA5UogKo0EWtlWwW6KSaKoTNEYL7JlCQiVnkhBktUgg==',
-        }],
-      })
+    mockTUF({ npm,
+      target: {
+        name: 'verdaccio-clone.org/keys.json',
+        content: JSON.stringify(TUF_VALID_REGISTRY_KEYS),
+      } })
 
     await npm.exec('audit', ['signatures'])
 
-    t.equal(process.exitCode, 0, 'should exit successfully')
+    t.notOk(process.exitCode, 'should exit successfully')
     t.match(joinedOutput(), /audited 1 package/)
     t.matchSnapshot(joinedOutput())
   })
@@ -1291,17 +1488,11 @@ t.test('audit signatures', async t => {
       }],
     })
     await registry.package({ manifest })
-    registry.nock.get('/-/npm/v1/keys')
-      .reply(200, {
-        keys: [{
-          expires: null,
-          keyid: 'SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA',
-          keytype: 'ecdsa-sha2-nistp256',
-          scheme: 'ecdsa-sha2-nistp256',
-          key: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+' +
-               'IhuteBJbuHcA5UogKo0EWtlWwW6KSaKoTNEYL7JlCQiVnkhBktUgg==',
-        }],
-      })
+    mockTUF({ npm,
+      target: {
+        name: 'verdaccio-clone.org/keys.json',
+        content: JSON.stringify(TUF_VALID_REGISTRY_KEYS),
+      } })
 
     await npm.exec('audit', ['signatures'])
 
@@ -1333,22 +1524,104 @@ t.test('audit signatures', async t => {
       }],
     })
     await registry.package({ manifest })
-    registry.nock.get('/-/npm/v1/keys')
-      .reply(200, {
-        keys: [{
-          expires: null,
-          keyid: 'SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA',
-          keytype: 'ecdsa-sha2-nistp256',
-          scheme: 'ecdsa-sha2-nistp256',
-          key: 'MFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE1Olb3zMAFFxXKHiIkQO5cJ3Yhl5i6UPp+' +
-               'IhuteBJbuHcA5UogKo0EWtlWwW6KSaKoTNEYL7JlCQiVnkhBktUgg==',
-        }],
-      })
+    mockTUF({ npm,
+      target: {
+        name: 'verdaccio-clone.org/keys.json',
+        content: JSON.stringify(TUF_VALID_REGISTRY_KEYS),
+      } })
 
     await npm.exec('audit', ['signatures'])
 
     t.equal(process.exitCode, 1, 'should exit with error')
     t.match(joinedOutput(), /1 package has a missing registry signature/)
+    t.matchSnapshot(joinedOutput())
+  })
+
+  t.test('third-party registry with sub-path', async t => {
+    const registryUrl = 'https://verdaccio-clone.org/npm'
+    const { npm, joinedOutput } = await loadMockNpm(t, {
+      prefixDir: installWithThirdPartyRegistry,
+      config: {
+        scope: '@npmcli',
+        registry: registryUrl,
+      },
+    })
+    const registry = new MockRegistry({ tap: t, registry: registryUrl })
+
+    const manifest = registry.manifest({
+      name: '@npmcli/arborist',
+      packuments: [{
+        version: '1.0.14',
+        dist: {
+          tarball: 'https://registry.npmjs.org/@npmcli/arborist/-/@npmcli/arborist-1.0.14.tgz',
+          integrity: 'sha512-caa8hv5rW9VpQKk6tyNRvSaVDySVjo9GkI7Wj/wcsFyxPm3tYrE' +
+                     'sFyTjSnJH8HCIfEGVQNjqqKXaXLFVp7UBag==',
+          signatures: [
+            {
+              keyid: 'SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA',
+              sig: 'MEUCIAvNpR3G0j7WOPUuVMhE0ZdM8PnDNcsoeFD8Iwz9YWIMAiEAn8cicDC2' +
+                   'Sf9MFQydqTv6S5XYsAh9Af1sig1nApNI11M=',
+            },
+          ],
+        },
+      }],
+    })
+    await registry.package({ manifest })
+
+    mockTUF({ npm,
+      target: {
+        name: 'verdaccio-clone.org/npm/keys.json',
+        content: JSON.stringify(TUF_VALID_REGISTRY_KEYS),
+      } })
+
+    await npm.exec('audit', ['signatures'])
+
+    t.notOk(process.exitCode, 'should exit successfully')
+    t.match(joinedOutput(), /audited 1 package/)
+    t.matchSnapshot(joinedOutput())
+  })
+
+  t.test('third-party registry with sub-path (trailing slash)', async t => {
+    const registryUrl = 'https://verdaccio-clone.org/npm/'
+    const { npm, joinedOutput } = await loadMockNpm(t, {
+      prefixDir: installWithThirdPartyRegistry,
+      config: {
+        scope: '@npmcli',
+        registry: registryUrl,
+      },
+    })
+    const registry = new MockRegistry({ tap: t, registry: registryUrl })
+
+    const manifest = registry.manifest({
+      name: '@npmcli/arborist',
+      packuments: [{
+        version: '1.0.14',
+        dist: {
+          tarball: 'https://registry.npmjs.org/@npmcli/arborist/-/@npmcli/arborist-1.0.14.tgz',
+          integrity: 'sha512-caa8hv5rW9VpQKk6tyNRvSaVDySVjo9GkI7Wj/wcsFyxPm3tYrE' +
+                     'sFyTjSnJH8HCIfEGVQNjqqKXaXLFVp7UBag==',
+          signatures: [
+            {
+              keyid: 'SHA256:jl3bwswu80PjjokCgh0o2w5c2U4LhQAE57gj9cz1kzA',
+              sig: 'MEUCIAvNpR3G0j7WOPUuVMhE0ZdM8PnDNcsoeFD8Iwz9YWIMAiEAn8cicDC2' +
+                   'Sf9MFQydqTv6S5XYsAh9Af1sig1nApNI11M=',
+            },
+          ],
+        },
+      }],
+    })
+    await registry.package({ manifest })
+
+    mockTUF({ npm,
+      target: {
+        name: 'verdaccio-clone.org/npm/keys.json',
+        content: JSON.stringify(TUF_VALID_REGISTRY_KEYS),
+      } })
+
+    await npm.exec('audit', ['signatures'])
+
+    t.notOk(process.exitCode, 'should exit successfully')
+    t.match(joinedOutput(), /audited 1 package/)
     t.matchSnapshot(joinedOutput())
   })
 
@@ -1366,7 +1639,7 @@ t.test('audit signatures', async t => {
       registry: registryUrl,
     })
     await manifestWithValidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     const manifest = thirdPartyRegistry.manifest({
       name: '@npmcli/arborist',
@@ -1401,7 +1674,7 @@ t.test('audit signatures', async t => {
 
     await npm.exec('audit', ['signatures'])
 
-    t.equal(process.exitCode, 0, 'should exit successfully')
+    t.notOk(process.exitCode, 'should exit successfully')
     t.match(joinedOutput(), /audited 2 packages/)
     t.matchSnapshot(joinedOutput())
   })
@@ -1422,11 +1695,36 @@ t.test('audit signatures', async t => {
     )
   })
 
+  t.test('errors when TUF errors', async t => {
+    const { npm } = await loadMockNpm(t, {
+      prefixDir: installWithMultipleDeps,
+      mocks: {
+        sigstore: {
+          sigstore: {
+            tuf: {
+              client: async () => ({
+                getTarget: async () => {
+                  throw new Error('error refreshing TUF metadata')
+                },
+              }),
+            },
+          },
+        },
+      },
+    })
+
+    await t.rejects(
+      npm.exec('audit', ['signatures']),
+      /error refreshing TUF metadata/
+    )
+  })
+
   t.test('errors when the keys endpoint errors', async t => {
     const { npm } = await loadMockNpm(t, {
       prefixDir: installWithMultipleDeps,
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
+    mockTUF({ npm, target: TUF_TARGET_NOT_FOUND })
     registry.nock.get('/-/npm/v1/keys')
       .reply(500, { error: 'keys broke' })
 
@@ -1443,11 +1741,11 @@ t.test('audit signatures', async t => {
 
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithValidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
-    t.equal(process.exitCode, 0, 'should exit successfully')
+    t.notOk(process.exitCode, 'should exit successfully')
     t.match(joinedOutput(), /audited 1 package/)
     t.matchSnapshot(joinedOutput())
   })
@@ -1456,8 +1754,7 @@ t.test('audit signatures', async t => {
     const { npm } = await loadMockNpm(t, {
       prefixDir: noInstall,
     })
-    const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await t.rejects(
       npm.exec('audit', ['signatures']),
@@ -1478,8 +1775,7 @@ t.test('audit signatures', async t => {
         node_modules: {},
       },
     })
-    const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await t.rejects(
       npm.exec('audit', ['signatures']),
@@ -1507,6 +1803,7 @@ t.test('audit signatures', async t => {
         },
       },
     })
+    mockTUF({ npm, target: TUF_TARGET_NOT_FOUND })
 
     await t.rejects(
       npm.exec('audit', ['signatures']),
@@ -1535,8 +1832,7 @@ t.test('audit signatures', async t => {
       },
     })
 
-    const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await t.rejects(
       npm.exec('audit', ['signatures']),
@@ -1563,7 +1859,7 @@ t.test('audit signatures', async t => {
     })
     const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
     await manifestWithInvalidSigs({ registry })
-    registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
     await npm.exec('audit', ['signatures'])
 
@@ -1572,6 +1868,173 @@ t.test('audit signatures', async t => {
       joinedOutput(),
       // eslint-disable-next-line no-control-regex
       /\u001b\[1m\u001b\[31minvalid\u001b\[39m\u001b\[22m registry signature/
+    )
+    t.matchSnapshot(joinedOutput())
+  })
+
+  t.test('with valid attestations', async t => {
+    const { npm, joinedOutput } = await loadMockNpm(t, {
+      prefixDir: installWithValidAttestations,
+      mocks: {
+        pacote: t.mock('pacote', {
+          sigstore: {
+            sigstore: { verify: async () => true },
+          },
+        }),
+      },
+    })
+    const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
+    await manifestWithValidAttestations({ registry })
+    const fixture = fs.readFileSync(
+      path.join(__dirname, '..', 'fixtures', 'sigstore/valid-sigstore-attestations.json'),
+      'utf8'
+    )
+    registry.nock.get('/-/npm/v1/attestations/sigstore@1.0.0').reply(200, fixture)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
+
+    await npm.exec('audit', ['signatures'])
+
+    t.notOk(process.exitCode, 'should exit successfully')
+    t.match(joinedOutput(), /1 package has a verified attestation/)
+    t.matchSnapshot(joinedOutput())
+  })
+
+  t.test('with multiple valid attestations', async t => {
+    const { npm, joinedOutput } = await loadMockNpm(t, {
+      prefixDir: installWithMultipleValidAttestations,
+      mocks: {
+        pacote: t.mock('pacote', {
+          sigstore: {
+            sigstore: { verify: async () => true },
+          },
+        }),
+      },
+    })
+    const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
+    await manifestWithValidAttestations({ registry })
+    await manifestWithMultipleValidAttestations({ registry })
+    const fixture1 = fs.readFileSync(
+      path.join(__dirname, '..', 'fixtures', 'sigstore/valid-sigstore-attestations.json'),
+      'utf8'
+    )
+    const fixture2 = fs.readFileSync(
+      path.join(__dirname, '..', 'fixtures', 'sigstore/valid-tuf-js-attestations.json'),
+      'utf8'
+    )
+    registry.nock.get('/-/npm/v1/attestations/sigstore@1.0.0').reply(200, fixture1)
+    registry.nock.get('/-/npm/v1/attestations/tuf-js@1.0.0').reply(200, fixture2)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
+
+    await npm.exec('audit', ['signatures'])
+
+    t.notOk(process.exitCode, 'should exit successfully')
+    t.match(joinedOutput(), /2 packages have verified attestations/)
+  })
+
+  t.test('with invalid attestations', async t => {
+    const { npm, joinedOutput } = await loadMockNpm(t, {
+      prefixDir: installWithValidAttestations,
+      mocks: {
+        pacote: t.mock('pacote', {
+          sigstore: {
+            sigstore: {
+              verify: async () => {
+                throw new Error(`artifact signature verification failed`)
+              },
+            },
+          },
+        }),
+      },
+    })
+    const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
+    await manifestWithValidAttestations({ registry })
+    const fixture = fs.readFileSync(
+      path.join(__dirname, '..', 'fixtures', 'sigstore/valid-sigstore-attestations.json'),
+      'utf8'
+    )
+    registry.nock.get('/-/npm/v1/attestations/sigstore@1.0.0').reply(200, fixture)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
+
+    await npm.exec('audit', ['signatures'])
+
+    t.equal(process.exitCode, 1, 'should exit with error')
+    t.match(
+      joinedOutput(),
+      '1 package has an invalid attestation'
+    )
+    t.matchSnapshot(joinedOutput())
+  })
+
+  t.test('json output with invalid attestations', async t => {
+    const { npm, joinedOutput } = await loadMockNpm(t, {
+      prefixDir: installWithValidAttestations,
+      config: {
+        json: true,
+      },
+      mocks: {
+        pacote: t.mock('pacote', {
+          sigstore: {
+            sigstore: {
+              verify: async () => {
+                throw new Error(`artifact signature verification failed`)
+              },
+            },
+          },
+        }),
+      },
+    })
+    const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
+    await manifestWithValidAttestations({ registry })
+    const fixture = fs.readFileSync(
+      path.join(__dirname, '..', 'fixtures', 'sigstore/valid-sigstore-attestations.json'),
+      'utf8'
+    )
+    registry.nock.get('/-/npm/v1/attestations/sigstore@1.0.0').reply(200, fixture)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
+
+    await npm.exec('audit', ['signatures'])
+
+    t.equal(process.exitCode, 1, 'should exit with error')
+    t.match(joinedOutput(), 'artifact signature verification failed')
+    t.matchSnapshot(joinedOutput())
+  })
+
+  t.test('with multiple invalid attestations', async t => {
+    const { npm, joinedOutput } = await loadMockNpm(t, {
+      prefixDir: installWithMultipleValidAttestations,
+      mocks: {
+        pacote: t.mock('pacote', {
+          sigstore: {
+            sigstore: {
+              verify: async () => {
+                throw new Error(`artifact signature verification failed`)
+              },
+            },
+          },
+        }),
+      },
+    })
+    const registry = new MockRegistry({ tap: t, registry: npm.config.get('registry') })
+    await manifestWithValidAttestations({ registry })
+    await manifestWithMultipleValidAttestations({ registry })
+    const fixture1 = fs.readFileSync(
+      path.join(__dirname, '..', 'fixtures', 'sigstore/valid-sigstore-attestations.json'),
+      'utf8'
+    )
+    const fixture2 = fs.readFileSync(
+      path.join(__dirname, '..', 'fixtures', 'sigstore/valid-tuf-js-attestations.json'),
+      'utf8'
+    )
+    registry.nock.get('/-/npm/v1/attestations/sigstore@1.0.0').reply(200, fixture1)
+    registry.nock.get('/-/npm/v1/attestations/tuf-js@1.0.0').reply(200, fixture2)
+    mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
+
+    await npm.exec('audit', ['signatures'])
+
+    t.equal(process.exitCode, 1, 'should exit with error')
+    t.match(
+      joinedOutput(),
+      '2 packages have invalid attestations'
     )
     t.matchSnapshot(joinedOutput())
   })
@@ -1621,11 +2084,11 @@ t.test('audit signatures', async t => {
       })
       await registry.package({ manifest: asyncManifest })
       await registry.package({ manifest: lightCycleManifest })
-      registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+      mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
       await npm.exec('audit', ['signatures'])
 
-      t.equal(process.exitCode, 0, 'should exit successfully')
+      t.notOk(process.exitCode, 'should exit successfully')
       t.match(joinedOutput(), /audited 3 packages/)
       t.matchSnapshot(joinedOutput())
     })
@@ -1674,11 +2137,11 @@ t.test('audit signatures', async t => {
       })
       await registry.package({ manifest: asyncManifest })
       await registry.package({ manifest: lightCycleManifest })
-      registry.nock.get('/-/npm/v1/keys').reply(200, VALID_REGISTRY_KEYS)
+      mockTUF({ npm, target: TUF_VALID_KEYS_TARGET })
 
       await npm.exec('audit', ['signatures'])
 
-      t.equal(process.exitCode, 0, 'should exit successfully')
+      t.notOk(process.exitCode, 'should exit successfully')
       t.match(joinedOutput(), /audited 2 packages/)
       t.matchSnapshot(joinedOutput())
     })

@@ -9,7 +9,7 @@ const {
 } = require('internal/errors');
 const {
   ERR_INVALID_ARG_TYPE,
-  ERR_STREAM_PREMATURE_CLOSE
+  ERR_STREAM_PREMATURE_CLOSE,
 } = codes;
 const {
   kEmptyObject,
@@ -19,10 +19,14 @@ const {
   validateAbortSignal,
   validateFunction,
   validateObject,
-  validateBoolean
+  validateBoolean,
 } = require('internal/validators');
 
-const { Promise, PromisePrototypeThen } = primordials;
+const {
+  Promise,
+  PromisePrototypeThen,
+  SymbolDispose,
+} = primordials;
 
 const {
   isClosed,
@@ -40,6 +44,7 @@ const {
   willEmitClose: _willEmitClose,
   kIsClosedPromise,
 } = require('internal/streams/utils');
+let addAbortListener;
 
 function isRequest(stream) {
   return stream.setHeader && typeof stream.abort === 'function';
@@ -249,23 +254,48 @@ function eos(stream, options, callback) {
     if (options.signal.aborted) {
       process.nextTick(abort);
     } else {
+      addAbortListener ??= require('events').addAbortListener;
+      const disposable = addAbortListener(options.signal, abort);
       const originalCallback = callback;
       callback = once((...args) => {
-        options.signal.removeEventListener('abort', abort);
+        disposable[SymbolDispose]();
         originalCallback.apply(stream, args);
       });
-      options.signal.addEventListener('abort', abort);
     }
   }
 
   return cleanup;
 }
 
-function eosWeb(stream, opts, callback) {
+function eosWeb(stream, options, callback) {
+  let isAborted = false;
+  let abort = nop;
+  if (options.signal) {
+    abort = () => {
+      isAborted = true;
+      callback.call(stream, new AbortError(undefined, { cause: options.signal.reason }));
+    };
+    if (options.signal.aborted) {
+      process.nextTick(abort);
+    } else {
+      addAbortListener ??= require('events').addAbortListener;
+      const disposable = addAbortListener(options.signal, abort);
+      const originalCallback = callback;
+      callback = once((...args) => {
+        disposable[SymbolDispose]();
+        originalCallback.apply(stream, args);
+      });
+    }
+  }
+  const resolverFn = (...args) => {
+    if (!isAborted) {
+      process.nextTick(() => callback.apply(stream, args));
+    }
+  };
   PromisePrototypeThen(
     stream[kIsClosedPromise].promise,
-    () => process.nextTick(() => callback.call(stream)),
-    (err) => process.nextTick(() => callback.call(stream, err)),
+    resolverFn,
+    resolverFn,
   );
   return nop;
 }

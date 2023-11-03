@@ -9,7 +9,7 @@ const {
 
 const {
   prepareMainThreadExecution,
-  markBootstrapComplete
+  markBootstrapComplete,
 } = require('internal/process/pre_execution');
 const { evalModule, evalScript } = require('internal/process/execution');
 const { addBuiltinLibsToObject } = require('internal/modules/cjs/helpers');
@@ -22,10 +22,12 @@ markBootstrapComplete();
 
 const source = getOptionValue('--eval');
 const print = getOptionValue('--print');
+const loadESM = getOptionValue('--import').length > 0;
 if (getOptionValue('--input-type') === 'module')
   evalModule(source, print);
 else
   evalScript('[eval]',
              source,
              getOptionValue('--inspect-brk'),
-             print);
+             print,
+             loadESM);

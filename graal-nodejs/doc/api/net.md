@@ -355,6 +355,17 @@ The optional `callback` will be called once the `'close'` event occurs. Unlike
 that event, it will be called with an `Error` as its only argument if the server
 was not open when it was closed.
 
+### `server[Symbol.asyncDispose]()`
+
+<!-- YAML
+added: v18.18.0
+-->
+
+> Stability: 1 - Experimental
+
+Calls [`server.close()`][] and returns a promise that fulfills when the
+server has closed.
+
 ### `server.getConnections(callback)`
 
 <!-- YAML
@@ -778,6 +789,20 @@ Returns the bound `address`, the address `family` name and `port` of the
 socket as reported by the operating system:
 `{ port: 12346, family: 'IPv4', address: '127.0.0.1' }`
 
+### `socket.autoSelectFamilyAttemptedAddresses`
+
+<!-- YAML
+added: v18.18.0
+-->
+
+* {string\[]}
+
+This property is only present if the family autoselection algorithm is enabled in
+[`socket.connect(options)`][] and it is an array of the addresses that have been attempted.
+
+Each address is a string in the form of `$IP:$PORT`. If the connection was successful,
+then the last address is the one that the socket is currently connected to.
+
 ### `socket.bufferSize`
 
 <!-- YAML
@@ -854,6 +879,11 @@ behavior.
 <!-- YAML
 added: v0.1.90
 changes:
+  - version: v18.18.0
+    pr-url: https://github.com/nodejs/node/pull/45777
+    description: The default value for autoSelectFamily option can be changed
+                 at runtime using `setDefaultAutoSelectFamily` or via the
+                 command line option `--enable-network-family-autoselection`.
   - version: v18.13.0
     pr-url: https://github.com/nodejs/node/pull/44731
     description: Added the `autoSelectFamily` option.
@@ -905,16 +935,18 @@ For TCP connections, available `options` are:
   that loosely implements section 5 of [RFC 8305][].
   The `all` option passed to lookup is set to `true` and the sockets attempts to connect to all
   obtained IPv6 and IPv4 addresses, in sequence, until a connection is established.
-  The first returned AAAA address is tried first, then the first returned A address and so on.
+  The first returned AAAA address is tried first, then the first returned A address,
+  then the second returned AAAA address and so on.
   Each connection attempt is given the amount of time specified by the `autoSelectFamilyAttemptTimeout`
   option before timing out and trying the next address.
   Ignored if the `family` option is not `0` or if `localAddress` is set.
   Connection errors are not emitted if at least one connection succeeds.
-  **Default:** `false`.
+  **Default:** initially `false`, but it can be changed at runtime using [`net.setDefaultAutoSelectFamily(value)`][]
+  or via the command line option `--enable-network-family-autoselection`.
 * `autoSelectFamilyAttemptTimeout` {number}: The amount of time in milliseconds to wait
   for a connection attempt to finish before trying the next address when using the `autoSelectFamily` option.
   If set to a positive integer less than `10`, then the value `10` will be used instead.
-  **Default:** `250`.
+  **Default:** initially `250`, but it can be changed at runtime using [`net.setDefaultAutoSelectFamilyAttemptTimeout(value)`][]
 
 For [IPC][] connections, available `options` are:
 
@@ -1024,6 +1056,16 @@ See [`writable.destroy()`][] for further details.
 
 See [`writable.destroyed`][] for further details.
 
+### `socket.destroySoon()`
+
+<!-- YAML
+added: v0.3.4
+-->
+
+Destroys the socket after all data is written. If the `'finish'` event was
+already emitted the socket is destroyed immediately. If the socket is still
+writable it implicitly calls `socket.end()`.
+
 ### `socket.end([data[, encoding]][, callback])`
 
 <!-- YAML
@@ -1126,7 +1168,8 @@ added: v0.11.14
 
 * {string}
 
-The string representation of the remote IP family. `'IPv4'` or `'IPv6'`.
+The string representation of the remote IP family. `'IPv4'` or `'IPv6'`. Value may be `undefined` if
+the socket is destroyed (for example, if the client disconnected).
 
 ### `socket.remotePort`
 
@@ -1136,7 +1179,8 @@ added: v0.5.10
 
 * {integer}
 
-The numeric representation of the remote port. For example, `80` or `21`.
+The numeric representation of the remote port. For example, `80` or `21`. Value may be `undefined` if
+the socket is destroyed (for example, if the client disconnected).
 
 ### `socket.resetAndDestroy()`
 
@@ -1492,6 +1536,9 @@ then returns the `net.Socket` that starts the connection.
 <!-- YAML
 added: v0.5.0
 changes:
+  - version: v18.17.0
+    pr-url: https://github.com/nodejs/node/pull/47405
+    description: The `highWaterMark` option is supported now.
   - version:
     - v17.7.0
     - v16.15.0
@@ -1504,6 +1551,9 @@ changes:
   * `allowHalfOpen` {boolean} If set to `false`, then the socket will
     automatically end the writable side when the readable side ends.
     **Default:** `false`.
+  * `highWaterMark` {number} Optionally overrides all [`net.Socket`][]s'
+    `readableHighWaterMark` and `writableHighWaterMark`.
+    **Default:** See [`stream.getDefaultHighWaterMark()`][].
   * `pauseOnConnect` {boolean} Indicates whether the socket should be
     paused on incoming connections. **Default:** `false`.
   * `noDelay` {boolean} If set to `true`, it disables the use of Nagle's algorithm immediately
@@ -1580,6 +1630,47 @@ Use `nc` to connect to a Unix domain socket server:
 ```console
 $ nc -U /tmp/echo.sock
 ```
+
+## `net.getDefaultAutoSelectFamily()`
+
+<!-- YAML
+added: v19.4.0
+-->
+
+Gets the current default value of the `autoSelectFamily` option of [`socket.connect(options)`][].
+
+* Returns: {boolean} The current default value of the `autoSelectFamily` option.
+
+## `net.setDefaultAutoSelectFamily(value)`
+
+<!-- YAML
+added: v19.4.0
+-->
+
+Sets the default value of the `autoSelectFamily` option of [`socket.connect(options)`][].
+
+* `value` {boolean} The new default value. The initial default value is `false`.
+
+## `net.getDefaultAutoSelectFamilyAttemptTimeout()`
+
+<!-- YAML
+added: v18.18.0
+-->
+
+Gets the current default value of the `autoSelectFamilyAttemptTimeout` option of [`socket.connect(options)`][].
+
+* Returns: {number} The current default value of the `autoSelectFamilyAttemptTimeout` option.
+
+## `net.setDefaultAutoSelectFamilyAttemptTimeout(value)`
+
+<!-- YAML
+added: v18.18.0
+-->
+
+Sets the default value of the `autoSelectFamilyAttemptTimeout` option of [`socket.connect(options)`][].
+
+* `value` {number} The new default value, which must be a positive number. If the number is less than `10`,
+  the value `10` is used insted The initial default value is `250`.
 
 ## `net.isIP(input)`
 
@@ -1665,6 +1756,8 @@ net.isIPv6('fhqwhgads'); // returns false
 [`net.createConnection(path)`]: #netcreateconnectionpath-connectlistener
 [`net.createConnection(port, host)`]: #netcreateconnectionport-host-connectlistener
 [`net.createServer()`]: #netcreateserveroptions-connectionlistener
+[`net.setDefaultAutoSelectFamily(value)`]: #netsetdefaultautoselectfamilyvalue
+[`net.setDefaultAutoSelectFamilyAttemptTimeout(value)`]: #netsetdefaultautoselectfamilyattempttimeoutvalue
 [`new net.Socket(options)`]: #new-netsocketoptions
 [`readable.setEncoding()`]: stream.md#readablesetencodingencoding
 [`server.close()`]: #serverclosecallback
@@ -1687,6 +1780,7 @@ net.isIPv6('fhqwhgads'); // returns false
 [`socket.setKeepAlive(enable, initialDelay)`]: #socketsetkeepaliveenable-initialdelay
 [`socket.setTimeout()`]: #socketsettimeouttimeout-callback
 [`socket.setTimeout(timeout)`]: #socketsettimeouttimeout-callback
+[`stream.getDefaultHighWaterMark()`]: stream.md#streamgetdefaulthighwatermarkobjectmode
 [`writable.destroy()`]: stream.md#writabledestroyerror
 [`writable.destroyed`]: stream.md#writabledestroyed
 [`writable.end()`]: stream.md#writableendchunk-encoding-callback

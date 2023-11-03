@@ -1,7 +1,5 @@
 'use strict';
 
-/* eslint-disable no-use-before-define */
-
 const {
   ArrayFrom,
   ArrayIsArray,
@@ -29,6 +27,7 @@ const {
   SafeSet,
   StringPrototypeSlice,
   Symbol,
+  SymbolDispose,
   TypedArrayPrototypeGetLength,
   Uint32Array,
   Uint8Array,
@@ -56,7 +55,7 @@ const { setImmediate, setTimeout, clearTimeout } = require('timers');
 
 const {
   kIncomingMessage,
-  _checkIsHttpToken: checkIsHttpToken
+  _checkIsHttpToken: checkIsHttpToken,
 } = require('_http_common');
 const { kServerResponse } = require('_http_server');
 const JSStreamSocket = require('internal/js_stream_socket');
@@ -114,20 +113,21 @@ const {
     ERR_INVALID_CHAR,
     ERR_INVALID_HTTP_TOKEN,
     ERR_OUT_OF_RANGE,
-    ERR_SOCKET_CLOSED
+    ERR_SOCKET_CLOSED,
   },
   hideStackFrames,
-  AbortError
+  AbortError,
 } = require('internal/errors');
 const {
   isUint32,
+  validateAbortSignal,
+  validateBuffer,
   validateFunction,
   validateInt32,
   validateInteger,
   validateNumber,
   validateString,
   validateUint32,
-  validateAbortSignal
 } = require('internal/validators');
 const fsPromisesInternal = require('internal/fs/promises');
 const { utcDate } = require('internal/http');
@@ -158,7 +158,7 @@ const {
   sessionName,
   toHeaderObject,
   updateOptionsBuffer,
-  updateSettingsBuffer
+  updateSettingsBuffer,
 } = require('internal/http2/util');
 const {
   writeGeneric,
@@ -169,7 +169,7 @@ const {
   kUpdateTimer,
   kHandle,
   kSession,
-  setStreamTimeout
+  setStreamTimeout,
 } = require('internal/stream_base_commons');
 const { kTimeout } = require('internal/timers');
 const { isArrayBufferView } = require('internal/util/types');
@@ -180,7 +180,7 @@ const binding = internalBinding('http2');
 const {
   ShutdownWrap,
   kReadBytesOrError,
-  streamBaseState
+  streamBaseState,
 } = internalBinding('stream_wrap');
 const { UV_EOF } = internalBinding('uv');
 
@@ -309,7 +309,7 @@ const {
   HTTP_STATUS_MISDIRECTED_REQUEST,
 
   STREAM_OPTION_EMPTY_PAYLOAD,
-  STREAM_OPTION_GET_TRAILERS
+  STREAM_OPTION_GET_TRAILERS,
 } = constants;
 
 const STREAM_FLAGS_PENDING = 0x0;
@@ -362,6 +362,7 @@ function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
     }
     // session[kType] can be only one of two possible values
     if (type === NGHTTP2_SESSION_SERVER) {
+      // eslint-disable-next-line no-use-before-define
       stream = new ServerHttp2Stream(session, handle, id, {}, obj);
       if (endOfStream) {
         stream.push(null);
@@ -373,6 +374,7 @@ function onSessionHeaders(handle, id, cat, flags, headers, sensitiveHeaders) {
         stream[kState].flags |= STREAM_FLAGS_HEAD_REQUEST;
       }
     } else {
+      // eslint-disable-next-line no-use-before-define
       stream = new ClientHttp2Stream(session, handle, id, {});
       if (endOfStream) {
         stream.push(null);
@@ -538,7 +540,7 @@ function onStreamClose(code) {
 
   debugStreamObj(
     stream, 'closed with code %d, closed %s, readable %s',
-    code, stream.closed, stream.readable
+    code, stream.closed, stream.readable,
   );
 
   if (!stream.closed)
@@ -913,7 +915,7 @@ const proxySocketHandler = {
         return true;
       }
     }
-  }
+  },
 };
 
 // pingCallback() returns a function that is invoked when an HTTP2 PING
@@ -1000,7 +1002,7 @@ function trackAssignmentsTypedArray(typedArray) {
         modifiedEntries[prop] = 1;
       }
       return ReflectSet(obj, prop, value);
-    }
+    },
   });
 }
 
@@ -1232,7 +1234,7 @@ class Http2Session extends EventEmitter {
       pendingAck: 0,
       shutdownWritableCalled: false,
       writeQueueSize: 0,
-      originSet: undefined
+      originSet: undefined,
     };
 
     this[kEncrypted] = undefined;
@@ -1377,10 +1379,8 @@ class Http2Session extends EventEmitter {
       callback = payload;
       payload = undefined;
     }
-    if (payload && !isArrayBufferView(payload)) {
-      throw new ERR_INVALID_ARG_TYPE('payload',
-                                     ['Buffer', 'TypedArray', 'DataView'],
-                                     payload);
+    if (payload) {
+      validateBuffer(payload, 'payload');
     }
     if (payload && payload.length !== 8) {
       throw new ERR_HTTP2_PING_LENGTH();
@@ -1406,7 +1406,7 @@ class Http2Session extends EventEmitter {
       destroyed: this.destroyed,
       state: this.state,
       localSettings: this.localSettings,
-      remoteSettings: this.remoteSettings
+      remoteSettings: this.remoteSettings,
     };
     return `Http2Session ${format(obj)}`;
   }
@@ -1506,10 +1506,8 @@ class Http2Session extends EventEmitter {
     if (this.destroyed)
       throw new ERR_HTTP2_INVALID_SESSION();
 
-    if (opaqueData !== undefined && !isArrayBufferView(opaqueData)) {
-      throw new ERR_INVALID_ARG_TYPE('opaqueData',
-                                     ['Buffer', 'TypedArray', 'DataView'],
-                                     opaqueData);
+    if (opaqueData !== undefined) {
+      validateBuffer(opaqueData, 'opaqueData');
     }
     validateNumber(code, 'code');
     validateNumber(lastStreamID, 'lastStreamID');
@@ -1791,6 +1789,7 @@ class ClientHttp2Session extends Http2Session {
 
     const headersList = mapToHeaders(headers);
 
+    // eslint-disable-next-line no-use-before-define
     const stream = new ClientHttp2Stream(this, undefined, undefined, {});
     stream[kSentHeaders] = headers;
     stream[kOrigin] = `${headers[HTTP2_HEADER_SCHEME]}://` +
@@ -1812,10 +1811,8 @@ class ClientHttp2Session extends Http2Session {
       if (signal.aborted) {
         aborter();
       } else {
-        signal.addEventListener('abort', aborter);
-        stream.once('close', () => {
-          signal.removeEventListener('abort', aborter);
-        });
+        const disposable = EventEmitter.addAbortListener(signal, aborter);
+        stream.once('close', disposable[SymbolDispose]);
       }
     }
 
@@ -1982,7 +1979,7 @@ class Http2Stream extends Duplex {
       rstCode: NGHTTP2_NO_ERROR,
       writeQueueSize: 0,
       trailersReady: false,
-      endAfterHeaders: false
+      endAfterHeaders: false,
     };
 
     // Fields used by the compat API to avoid megamorphisms.
@@ -2031,7 +2028,7 @@ class Http2Stream extends Duplex {
       destroyed: this.destroyed,
       state: this.state,
       readableState: this._readableState,
-      writableState: this._writableState
+      writableState: this._writableState,
     };
     return `Http2Stream ${format(obj)}`;
   }
@@ -2126,7 +2123,7 @@ class Http2Stream extends Duplex {
       this.once(
         'ready',
         FunctionPrototypeBind(this[kWriteGeneric],
-                              this, writev, data, encoding, cb)
+                              this, writev, data, encoding, cb),
       );
       return;
     }
@@ -2320,10 +2317,17 @@ class Http2Stream extends Duplex {
     // this stream's close and destroy operations.
     // Previously, this always overrode a successful close operation code
     // NGHTTP2_NO_ERROR (0) with sessionCode because the use of the || operator.
-    const code = (err != null ?
-      (sessionCode || NGHTTP2_INTERNAL_ERROR) :
-      (this.closed ? this.rstCode : sessionCode)
-    );
+    let code = this.closed ? this.rstCode : sessionCode;
+    if (err != null) {
+      if (sessionCode) {
+        code = sessionCode;
+      } else if (err instanceof AbortError) {
+        // Enables using AbortController to cancel requests with RST code 8.
+        code = NGHTTP2_CANCEL;
+      } else {
+        code = NGHTTP2_INTERNAL_ERROR;
+      }
+    }
     const hasHandle = handle !== undefined;
 
     if (!this.closed)
@@ -2540,7 +2544,7 @@ function doSendFD(session, options, fd, headers, streamOptions, err, stat) {
 
   const statOptions = {
     offset: options.offset !== undefined ? options.offset : 0,
-    length: options.length !== undefined ? options.length : -1
+    length: options.length !== undefined ? options.length : -1,
   };
 
   // options.statCheck is a user-provided function that can be used to
@@ -2600,7 +2604,7 @@ function doSendFileFD(session, options, fd, headers, streamOptions, err, stat) {
 
   const statOptions = {
     offset: options.offset !== undefined ? options.offset : 0,
-    length: options.length !== undefined ? options.length : -1
+    length: options.length !== undefined ? options.length : -1,
   };
 
   // options.statCheck is a user-provided function that can be used to
@@ -2979,7 +2983,7 @@ const setTimeoutValue = {
   configurable: true,
   enumerable: true,
   writable: true,
-  value: setStreamTimeout
+  value: setStreamTimeout,
 };
 ObjectDefineProperty(Http2Stream.prototype, 'setTimeout', setTimeoutValue);
 ObjectDefineProperty(Http2Session.prototype, 'setTimeout', setTimeoutValue);
@@ -3099,7 +3103,7 @@ function initializeOptions(options) {
   if (options.maxSessionRejectedStreams !== undefined) {
     validateUint32(
       options.maxSessionRejectedStreams,
-      'maxSessionRejectedStreams'
+      'maxSessionRejectedStreams',
     );
   }
 
@@ -3236,7 +3240,7 @@ function setupCompat(ev) {
     this.on('stream', FunctionPrototypeBind(onServerStream,
                                             this,
                                             this[kOptions].Http2ServerRequest,
-                                            this[kOptions].Http2ServerResponse)
+                                            this[kOptions].Http2ServerResponse),
     );
   }
 }
@@ -3316,7 +3320,7 @@ ObjectDefineProperty(connect, promisify.custom, {
     return new Promise((resolve) => {
       const server = connect(authority, options, () => resolve(server));
     });
-  }
+  },
 });
 
 function createSecureServer(options, handler) {
@@ -3396,7 +3400,7 @@ binding.setCallbackFunctions(
   onAltSvc,
   onOrigin,
   onStreamTrailers,
-  onStreamClose
+  onStreamClose,
 );
 
 // Exports
@@ -3413,7 +3417,5 @@ module.exports = {
   Http2Stream,
   ServerHttp2Session,
   Http2ServerRequest,
-  Http2ServerResponse
+  Http2ServerResponse,
 };
-
-/* eslint-enable no-use-before-define */

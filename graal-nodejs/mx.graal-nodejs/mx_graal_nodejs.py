@@ -128,6 +128,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         pre_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=False)
 
         build_env = os.environ.copy()
+        _prepare_build_env(build_env)
 
         debug = ['--debug'] if self._debug_mode else []
         shared_library = ['--enable-shared-library'] if hasattr(self.args, 'sharedlibrary') and self.args.sharedlibrary else []
@@ -375,11 +376,22 @@ def processDevkitRoot(env=None):
         if devkit_version is not None:
             _setEnvVar('GYP_MSVS_VERSION', devkit_version, _env)
 
+def _prepare_build_env(build_env=None):
+    if _current_os == 'darwin' and _current_arch == 'amd64':
+        env = build_env or os.environ
+        min_version = env.get('MACOSX_DEPLOYMENT_TARGET')
+        if min_version:
+            # override MACOSX_DEPLOYMENT_TARGET in common.gypi
+            for flags_var in ('CXXFLAGS', 'CFLAGS', 'LDFLAGS'):
+                other_flags = env.get(flags_var)
+                _setEnvVar(flags_var, f"-mmacosx-version-min={min_version}{' ' + other_flags if other_flags else ''}", env)
+
 def setupNodeEnvironment(args, add_graal_vm_args=True):
     args = args if args else []
     mode, vmArgs, progArgs = _parseArgs(args)
     setLibraryPath()
 
+    _prepare_build_env()
     if _is_windows:
         processDevkitRoot()
 

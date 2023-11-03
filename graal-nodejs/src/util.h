@@ -37,10 +37,10 @@
 #include <array>
 #include <limits>
 #include <memory>
+#include <set>
 #include <string>
 #include <string_view>
 #include <type_traits>
-#include <set>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -411,19 +411,7 @@ class MaybeStackBuffer {
   // This method can be called multiple times throughout the lifetime of the
   // buffer, but once this has been called Invalidate() cannot be used.
   // Content of the buffer in the range [0, length()) is preserved.
-  void AllocateSufficientStorage(size_t storage) {
-    CHECK(!IsInvalidated());
-    if (storage > capacity()) {
-      bool was_allocated = IsAllocated();
-      T* allocated_ptr = was_allocated ? buf_ : nullptr;
-      buf_ = Realloc(allocated_ptr, storage);
-      capacity_ = storage;
-      if (!was_allocated && length_ > 0)
-        memcpy(buf_, buf_st_, length_ * sizeof(buf_[0]));
-    }
-
-    length_ = storage;
-  }
+  void AllocateSufficientStorage(size_t storage);
 
   void SetLength(size_t length) {
     // capacity() returns how much memory is actually available.
@@ -483,6 +471,11 @@ class MaybeStackBuffer {
   ~MaybeStackBuffer() {
     if (IsAllocated())
       free(buf_);
+  }
+
+  inline std::basic_string<T> ToString() const { return {out(), length()}; }
+  inline std::basic_string_view<T> ToStringView() const {
+    return {out(), length()};
   }
 
  private:
@@ -668,11 +661,8 @@ class Utf8Value : public MaybeStackBuffer<char> {
  public:
   explicit Utf8Value(v8::Isolate* isolate, v8::Local<v8::Value> value);
 
-  inline std::string ToString() const { return std::string(out(), length()); }
-
-  inline bool operator==(const char* a) const {
-    return strcmp(out(), a) == 0;
-  }
+  inline bool operator==(const char* a) const { return strcmp(out(), a) == 0; }
+  inline bool operator!=(const char* a) const { return !(*this == a); }
 };
 
 class TwoByteValue : public MaybeStackBuffer<uint16_t> {
@@ -744,7 +734,7 @@ struct MallocedBuffer {
   }
 
   void Truncate(size_t new_size) {
-    CHECK(new_size <= size);
+    CHECK_LE(new_size, size);
     size = new_size;
   }
 
@@ -753,7 +743,7 @@ struct MallocedBuffer {
     data = UncheckedRealloc(data, new_size);
   }
 
-  inline bool is_empty() const { return data == nullptr; }
+  bool is_empty() const { return data == nullptr; }
 
   MallocedBuffer() : data(nullptr), size(0) {}
   explicit MallocedBuffer(size_t size) : data(Malloc<T>(size)), size(size) {}
@@ -822,9 +812,8 @@ struct FunctionDeleter {
 template <typename T, void (*function)(T*)>
 using DeleteFnPtr = typename FunctionDeleter<T, function>::Pointer;
 
-std::vector<std::string> SplitString(const std::string& in,
-                                     char delim,
-                                     bool skipEmpty = true);
+std::vector<std::string_view> SplitString(const std::string_view in,
+                                          const std::string_view delim);
 
 inline v8::MaybeLocal<v8::Value> ToV8Value(v8::Local<v8::Context> context,
                                            std::string_view str,
@@ -1017,6 +1006,11 @@ void SetFastMethod(v8::Local<v8::Context> context,
                    const char* name,
                    v8::FunctionCallback slow_callback,
                    const v8::CFunction* c_function);
+void SetFastMethodNoSideEffect(v8::Local<v8::Context> context,
+                               v8::Local<v8::Object> that,
+                               const char* name,
+                               v8::FunctionCallback slow_callback,
+                               const v8::CFunction* c_function);
 
 void SetProtoMethod(v8::Isolate* isolate,
                     v8::Local<v8::FunctionTemplate> that,

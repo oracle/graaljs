@@ -196,7 +196,7 @@ module.exports = {
   url,
   waitForDebugger: inspectorWaitForDebugger,
   console,
-  Session
+  Session,
 };
 
 // Use the mockup provided by 'inspect' instrument

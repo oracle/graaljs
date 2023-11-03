@@ -67,10 +67,10 @@ function makeSyncWrite(fd) {
 }
 
 module.exports = {
-  kWrapConnectedHandle: Symbol('wrapConnectedHandle'),
+  kReinitializeHandle: Symbol('reinitializeHandle'),
   isIP,
   isIPv4,
   isIPv6,
   makeSyncWrite,
-  normalizedArgsSymbol: Symbol('normalizedArgs')
+  normalizedArgsSymbol: Symbol('normalizedArgs'),
 };

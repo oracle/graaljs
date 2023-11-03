@@ -18,7 +18,6 @@ const { fileURLToPath } = require('url');
 const { resolve, dirname } = require('path');
 const { setTimeout } = require('timers');
 
-
 const supportsRecursiveWatching = process.platform === 'win32' ||
   process.platform === 'darwin';
 
@@ -30,14 +29,20 @@ class FilesWatcher extends EventEmitter {
   #ownerDependencies = new SafeMap();
   #throttle;
   #mode;
+  #signal;
 
-  constructor({ throttle = 500, mode = 'filter' } = kEmptyObject) {
+  constructor({ throttle = 500, mode = 'filter', signal } = kEmptyObject) {
     super();
 
     validateNumber(throttle, 'options.throttle', 0, TIMEOUT_MAX);
     validateOneOf(mode, 'options.mode', ['filter', 'all']);
     this.#throttle = throttle;
     this.#mode = mode;
+    this.#signal = signal;
+
+    if (signal) {
+      EventEmitter.addAbortListener(signal, () => this.clear());
+    }
   }
 
   #isPathWatched(path) {
@@ -89,7 +94,7 @@ class FilesWatcher extends EventEmitter {
     if (this.#isPathWatched(path)) {
       return;
     }
-    const watcher = watch(path, { recursive });
+    const watcher = watch(path, { recursive, signal: this.#signal });
     watcher.on('change', (eventType, fileName) => this
       .#onChange(recursive ? resolve(path, fileName) : path));
     this.#watchers.set(path, { handle: watcher, recursive });
