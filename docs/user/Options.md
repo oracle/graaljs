@@ -81,7 +81,7 @@ For a complete list, use `js --help:js:internal`
 This option provides compatibility to a specific version of the ECMAScript specification.
 It expects an integer value, where both the edition numbers (`5`, `6`, ...) and the publication years (starting from `2015`) are supported.
 As of GraalVM 21.2, `latest`, `staging` are supported, too.
-The default in GraalVM 23.1 is the [`ECMAScript 2023 specification`](https://tc39.es/ecma262/).
+The default in GraalVM 23.1 is the [`ECMAScript 2023 specification`](https://262.ecma-international.org/14.0/).
 GraalVM JavaScript implements some features of the future draft specification and of open proposals, if you explicitly select that version and/or enable specific experimental flags.
 For production settings, it is recommended to set the `ecmascript-version` to a released, finalized version of the specification (e.g., `2022`).
 

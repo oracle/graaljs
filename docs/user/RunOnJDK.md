@@ -16,17 +16,17 @@ This document describes how to run GraalVM JavaScript on stock Java VMs, and sho
 
 ## GraalVM JavaScript on Maven Central
 GraalVM JavaScript is open source and regularly pushed to Maven Central Repository by the community.
-You can find it as pom artifact [org.graalvm.polyglot:js](https://mvnrepository.com/artifact/org.graalvm.polyglot/js).
+You can find it as a POM artifact, under [`org.graalvm.polyglot:js`](https://mvnrepository.com/artifact/org.graalvm.polyglot/js).
 
-There are example Maven projects for GraalVM JavaScript on JDK21 (or later) using the Graal compiler:
+There are example Maven projects for GraalVM JavaScript on JDK 21 (or later) using the Graal compiler:
 * [Polyglot Embedding Demo](https://github.com/graalvm/polyglot-embedding-demo).
 Example Maven and Gradle projects for a simple JavaScript "Hello World" application.
-* [JS Maven Demo](https://github.com/oracle/graaljs/tree/master/graal-js/test/maven-demo)
+* [JS Maven Demo](https://github.com/oracle/graaljs/tree/master/graal-js/test/maven-demo).
 This example contains a Maven project for a JavaScript benchmark (a prime number generator).
 It allows a user to compare the performance of GraalVM JavaScript running with or without the GraalVM compiler as the optimizing compiler.
 Running with the GraalVM compiler will significantly improve the execution performance of any relatively large JavaScript codebase.
 
-In essence, the example `pom.xml` file activates JVMCI to install additional JIT compilers, and configures the JIT compiler to be the Graal Compiler by providing it on `--module-path` and `--upgrade-module-path`.
+In essence, the example `pom.xml` file activates the JVM Compiler Interface (JVMCI) and configures the JIT compiler to be the Graal compiler by providing it on `--module-path` and `--upgrade-module-path`.
 
 ### ScriptEngine JSR 223
 GraalVM JavaScript can be started via `ScriptEngine` when _js-scriptengine.jar_ is included on the module path.

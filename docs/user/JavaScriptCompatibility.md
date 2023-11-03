@@ -223,23 +223,23 @@ The Graal object is available in GraalVM JavaScript by default, unless deactivat
 ### `Graal.setUnhandledPromiseRejectionHandler(handler)`
 
 - provides the unhandled promise rejection handler when using option (`js.unhandled-rejections=handler`).
-- the handler is called with two arguments: (rejection, promise).
-- `Graal.setUnhandledPromiseRejectionHandler` can be called with null, undefined, or empty args to clear the handler.
+- the handler is called with two arguments: (rejectionReason, unhandledPromise).
+- `Graal.setUnhandledPromiseRejectionHandler` can be called with `null`, `undefined`, or empty arguments to clear the handler.
 
 ### Java
 
 The `Java` object is only available when [host class lookup](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowHostClassLookup-java.util.function.Predicate-) is allowed.
-In order to access Java host classes and its members, they first need to be allowed by the [host access policy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html) and when running on a Native Image, be registered for [run time reflection](https://www.graalvm.org/latest/reference-manual/native-image/dynamic-features/Reflection/).
+In order to access Java host classes and its members, they first need to be allowed by the [host access policy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html), and when running from a Native Image, be registered for [run time reflection](https://www.graalvm.org/latest/reference-manual/native-image/dynamic-features/Reflection/).
 
 Note that some functions require the Nashorn compatibility mode flag to be set.
-When running on the standalone distribution, this flag can be set with:
+When running from the JVM standalone distribution, this flag can be set with:
 ```shell
 js --experimental-options --js.nashorn-compat=true
 ```
 
 #### `Java.type(className)`
 
-Loads the specified Java class and returns a constructible object that has the static members (i.e. methods and fields) of the class and can be used with the `new` keyword to construct new instances:
+`Java.type` loads the specified Java class and returns a constructible object that has the static members (i.e. methods and fields) of the class and can be used with the `new` keyword to construct new instances:
 ```js
 var BigDecimal = Java.type('java.math.BigDecimal');
 var point1 = new BigDecimal("0.1");
@@ -253,36 +253,39 @@ console.log(new (Java.type('java.math.BigDecimal'))("1.1").pow(15));
 
 #### `Java.from(javaData)`
 
-- creates a shallow copy of the Java datastructure (Array, List) as a JavaScript array
+`Java.from` creates a shallow copy of the Java data structure (Array, List) as a JavaScript array.
 
-In many cases, this is not necessary; you can typically use the Java datastructure directly from JavaScript.
+In many cases, this is not necessary; you can typically use the Java data structure directly from JavaScript.
 
-#### `Java.to(jsData, toType)`
+#### `Java.to(jsData, javaType)`
 
-- converts the argument to a Java dataype
+`Java.to` converts the argument to the Java type.
 
-The source object `jsData` is expected to be a JavaScript array, or an object with a `length` property.
-The target `toType` can either be a String (e.g. `"int[]"`) or a type object (e.g., `Java.type("int[]")`).
+The source object `jsData` is expected to be a JavaScript array, or an array-like object with a `length` property.
+The target `javaType` can either be a String (e.g. `"int[]"`) or a type object (e.g., `Java.type("int[]")`).
 Valid target types are Java arrays.
-When no target type is provided, `Object[]` is assumed:
+When the target type is omitted, it defaults to `Object[]`.
+
 ```js
-var jsArr = ["a", "b", "c"];
-var strArrType = Java.type("java.lang.String[]");
-var javaArr = Java.to(jsArr, strArrType);
-assertEquals('class java.lang.String[]', String(javaArr.getClass()));
+var jsArray = ["a", "b", "c"];
+var stringArrayType = Java.type("java.lang.String[]");
+var javaArray = Java.to(jsArray, stringArrayType);
+assertEquals('class java.lang.String[]', String(javaArray.getClass()));
+var javaArray = Java.to(jsArray);
+assertEquals('class java.lang.Object[]', String(javaArray.getClass()));
 ```
 
 The conversion methods as defined by ECMAScript (e.g., `ToString` and `ToDouble`) are executed when a JavaScript value has to be converted to a Java type.
-Lossy conversion is disallowed and results in a TypeError.
+Lossy conversion is disallowed and results in a `TypeError`.
 
 #### `Java.isJavaObject(obj)`
 
-- returns whether `obj` is an object of the Java language
+- returns `true` if `obj` is a Java host object
 - returns `false` for native JavaScript objects, as well as for objects of other polyglot languages
 
 #### `Java.isType(obj)`
 
-- returns `true` if `obj` is an object representing the constructor and static members of a Java class, as obtained (for example) by `Java.type()`
+- returns `true` if `obj` is an object representing the constructor and static members of a Java class, as obtained by `Java.type()` or package objects.
 - returns `false` for all other arguments
 
 #### `Java.typeName(obj)`
@@ -295,25 +298,25 @@ Lossy conversion is disallowed and results in a TypeError.
 - returns whether `fn` is an object of the Java language that represents a Java function
 - returns `false` for all other types, including native JavaScript function, and functions of other polyglot languages
 
-This function requires the Nashorn compatibility mode flag.
+> This function is only available in Nashorn compatibility mode (`--js.nashorn-compat=true`).
 
 #### `Java.isScriptObject(obj)`
 
 - returns whether `obj` is an object of the JavaScript language
 - returns `false` for all other types, including objects of Java and other polyglot languages
 
-This function requires the Nashorn compatibility mode flag.
+> This function is only available in Nashorn compatibility mode (`--js.nashorn-compat=true`).
 
 #### `Java.isScriptFunction(fn)`
 
 - returns whether `fn` is a JavaScript function
 - returns `false` for all other types, including Java function, and functions of other polyglot languages
 
-This function requires the Nashorn compatibility mode flag.
+> This function is only available in Nashorn compatibility mode (`--js.nashorn-compat=true`).
 
 #### `Java.addToClasspath(location)`
 
-- adds the specified location (file name or path name, as String) to Java's classpath
+- adds the specified location (a `.jar` file or directory path string) to Java's classpath
 
 ### Polyglot
 

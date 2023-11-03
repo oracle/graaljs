@@ -14,8 +14,8 @@ The goals of GraalVM JavaScript are:
 
 
 ## Getting Started
-The preferred way to run GraalVM JavaScript is from a [GraalVM](https://www.graalvm.org/downloads/).
-Starting with GraalVM for JDK 21 (23.1), GraalVM JavaScript is available as a [standalone distribution](https://github.com/oracle/graaljs/releases) and a [Maven artifact](https://central.sonatype.com/artifact/org.graalvm.polyglot/js) (but no longer as a GraalVM component).
+The preferred way to run GraalVM JavaScript (a.k.a. GraalJS) is from a [GraalVM](https://www.graalvm.org/downloads/).
+As of GraalVM for JDK 21, (23.1), GraalVM JavaScript and Node.js runtimes are available as [standalone distributions](https://github.com/oracle/graaljs/releases) and [Maven artifacts](https://central.sonatype.com/artifact/org.graalvm.polyglot/js) (but no longer as GraalVM components).
 See the documentation on the [GraalVM website](https://www.graalvm.org/latest/reference-manual/js/) for more information on how to set up GraalVM JavaScript.
 
 ### Standalone Distribution
@@ -73,7 +73,7 @@ Due to those limitations, running on a stock JVM is not a supported feature - pl
 ## Documentation
 
 Extensive documentation is available on [graalvm.org](https://www.graalvm.org/): see [Getting Started](https://www.graalvm.org/docs/getting-started/) and the more extensive [JavaScript and Node.js Reference Manual](https://www.graalvm.org/reference-manual/js/).
-In addition there is documentation in the source code repository in the [`docs`](https://github.com/graalvm/graaljs/tree/master/docs) folder, for [users](https://github.com/graalvm/graaljs/tree/master/docs/user) and [contributors](https://github.com/graalvm/graaljs/tree/master/docs/contributor).
+In addition, there is documentation in the source code repository in the [`docs`](https://github.com/graalvm/graaljs/tree/master/docs) directory, for [users](https://github.com/graalvm/graaljs/tree/master/docs/user) and [contributors](https://github.com/graalvm/graaljs/tree/master/docs/contributor).
 
 For contributors, a guide how to build GraalVM JavaScript from source code can be found in [`Building.md`](https://github.com/graalvm/graaljs/tree/master/docs/Building.md).
 

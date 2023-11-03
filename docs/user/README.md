@@ -13,12 +13,12 @@ To migrate the code previously targeted to the Nashorn or Rhino engines, [migrat
 
 ## Getting Started
 
-As of GraalVM for JDK 21, the JavaScript (GraalJS) and Node.js runtimes are available as standalone distributions. 
+As of GraalVM for JDK 21, the JavaScript (GraalJS) and Node.js runtimes are available as standalone distributions.
 Two standalone language runtime options are available for both Oracle GraalVM and GraalVM Community Edition: a Native Image compiled native launcher or a JVM-based runtime (included).
-To distinguish between them, the GraalVM Community Edition version has the suffix `-community` in the name: `graaljs-community-<version>-<os>-<arch>.tar.gz`, `graalnodejs-community-<version>-<os>-<arch>.tar.gz`, 
+To distinguish between them, the GraalVM Community Edition version has the suffix `-community` in the name: `graaljs-community-<version>-<os>-<arch>.tar.gz`, `graalnodejs-community-<version>-<os>-<arch>.tar.gz`.
 A standalone that comes with a JVM has a `-jvm` suffix in a name.
 
-1. Navigate to [GitHub releases](https://github.com/oracle/graaljs/releases/) and select a desired standalone for your operating system. 
+1. Navigate to [GitHub releases](https://github.com/oracle/graaljs/releases/) and select a desired standalone for your operating system.
 
 2. Unzip the archive:
 
