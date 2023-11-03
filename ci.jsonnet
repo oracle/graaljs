@@ -57,6 +57,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
       + self.graalvmtests_run
       + (if std.length(self.cd_run) > 0 then [['mx', 'sversions']] else []),
     timelimit: error "timelimit not set for '" + (if std.objectHasAll(self, 'name') then self.name else '') + "'",
+    diskspace_required: '30GB',
   },
 
   defs:: {
@@ -99,7 +100,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     common.jdklatest + common.darwin_aarch64,
     common.jdklatest + common.windows_amd64,
   ],
-  mainGatePlatform:: common.jdk21 + common.linux_amd64,
+  mainGatePlatform:: common.jdklatest + common.linux_amd64,
   styleGatePlatforms:: [
     common.jdk21 + common.linux_amd64,
     common.jdklatest + common.linux_amd64,

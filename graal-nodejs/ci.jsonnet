@@ -151,13 +151,13 @@ local cicommon = import '../ci/common.jsonnet';
   // Builds that should run on all supported platforms
   local testingBuilds = generateBuilds([
     graalNodeJs          + build            + defaultGateTags          + {dynamicimports+:: ['/wasm']}                             + {name: 'default'} +
-      promoteToTarget(common.gate, [common.jdk21 + common.linux_amd64, common.jdk21 + common.linux_aarch64, common.jdk21 + common.darwin_aarch64, common.jdk21 + common.windows_amd64]) +
-      promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
+      promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.linux_aarch64, common.jdklatest + common.darwin_aarch64, common.jdklatest + common.windows_amd64]) +
+      promoteToTarget(common.postMerge, [common.jdklatest + common.darwin_amd64]),
 
     graalNodeJs + vm_env + build            + gateVmSmokeTest                                                                 + ce + {name: 'graalvm-ce'} +
       promoteToTarget(common.gate, [ci.mainGatePlatform]) +
-      promoteToTarget(common.gate, [common.jdk21 + common.darwin_aarch64, common.jdk21 + common.windows_amd64]) +
-      promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
+      promoteToTarget(common.gate, [common.jdklatest + common.darwin_aarch64, common.jdklatest + common.windows_amd64]) +
+      promoteToTarget(common.postMerge, [common.jdklatest + common.darwin_amd64]),
     graalNodeJs + vm_env + build            + gateVmSmokeTest                                                                 + ee + {name: 'graalvm-ee'} +
       promoteToTarget(common.gate, [ci.mainGatePlatform]),
 
@@ -170,7 +170,7 @@ local cicommon = import '../ci/common.jsonnet';
     graalNodeJs          + buildNodeAPI     + testNode('node-api',      max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'node-api'},
     graalNodeJs          + buildJSNativeAPI + testNode('js-native-api', max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'js-native-api'},
   ]] +
-  [gateOnMain + promoteToTarget(common.gate, [common.jdk21 + common.windows_amd64]) + b for b in [
+  [gateOnMain + promoteToTarget(common.gate, [common.jdklatest + common.windows_amd64]) + b for b in [
     graalNodeJs + vm_env + build            + testNode('async-hooks',   max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'async-hooks'},
     graalNodeJs + vm_env + build            + testNode('es-module',     max_heap='4G') + maxHeapOnWindows('512M')                  + {name: 'es-module'},
     # We run the `sequential` tests with a smaller heap because `test/sequential/test-child-process-pass-fd.js` starts 80 child processes.
@@ -195,7 +195,7 @@ local cicommon = import '../ci/common.jsonnet';
     graalNodeJs + common.weekly    + gateCoverage                                                                                  + {name: 'coverage'},
     graalNodeJs + common.ondemand  + gateCoverage                                                                                  + {name: 'coverage'},
 
-  ], platforms=[ci.mainGatePlatform]),
+  ], platforms=[common.jdk21 + common.linux_amd64]),
 
   builds: styleBuilds + testingBuilds + otherBuilds,
 }
