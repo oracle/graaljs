@@ -85,7 +85,7 @@ Additionally, you can upload your `package-lock.json` or `package.json` file int
 ### My application is slower on GraalVM JavaScript than on another engine
 Reason:
 * Ensure your benchmark considers warmup. During the first few iterations, GraalVM JavaScript may be slower than other engines, but after sufficient warmup, this difference should level out.
-* GraalVM JavaScript is shipped in two different standalones: Native (default) and JVM (with a `-jvm` infix). While the default _native_ mode offers faster startup and lower latency, it might exhibit slower peak performance (lower throughput) once the application is warmed up. In the _JVM_ mode, the application might need hundreds of milliseconds more to start, but typically shows better peak performance.
+* GraalVM JavaScript is shipped in two different standalones: Native (default) and JVM (with a `-jvm` infix). While the default _Native_ mode offers faster startup and lower latency, it might exhibit slower peak performance (lower throughput) once the application is warmed up. In the _JVM_ mode, the application might need hundreds of milliseconds more to start, but typically shows better peak performance.
 * Repeated execution of code via newly created `org.graalvm.polyglot.Context` is slow, despite the same code being executed every time.
 
 Solution:
