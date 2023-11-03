@@ -16,15 +16,15 @@ This document explains the public API it presents for user applications written 
 ## ECMAScript Language Compliance
 
 GraalVM JavaScript implements JavaScript as prescribed in the ECMAScript (ECMA-262) specification.
-It is fully compatible with the [ECMAScript 2022 specification](https://262.ecma-international.org/13.0/) (sometimes referred to as the 13th edition or "ES13").
-New features are frequently added to GraalVM when they are confirmed to be part of ECMAScript 2023, see the [CHANGELOG.md](https://github.com/oracle/graaljs/blob/master/CHANGELOG.md) for details.
+It is fully compatible with the [ECMAScript 2023 specification](https://262.ecma-international.org/14.0/) (sometimes referred to as the 14th edition).
+New features are frequently added to GraalVM when they are confirmed to be part of ECMAScript 2024, see the [CHANGELOG.md](https://github.com/oracle/graaljs/blob/master/CHANGELOG.md) for details.
 Older versions starting from ECMAScript 5 can be enabled with a config flag (by number: `--js.ecmascript-version=5` or by year: `--js.ecmascript-version=2019`).
 In a production setup you might consider specifying a fixed ECMAScript version to be used, as future versions of GraalVM JavaScript will use newer versions of the specification once available.
 
 GraalVM JavaScript provides the following function objects in the global scope as specified by ECMAScript, representing the JavaScript core library:
 Array, ArrayBuffer, Boolean, DataView, Date, Error, Function, JSON, Map, Math, Number, Object, Promise, Proxy, Reflect, RegExp, Set, SharedArrayBuffer, String, Symbol, TypedArray, WeakMap, and WeakSet.
 
-Additional objects are available under flags, for instance `Intl` (flag: `--js.intl-402`).
+Additional objects are available under flags, for instance `Temporal` (flag: `--js.temporal`).
 Run `js --help` or `js --help:languages` for the list of available flags.
 
 Several of these function objects and some of their members are only available when a certain version of the specification is selected for execution.
@@ -33,19 +33,20 @@ Extensions to the specification are specified below.
 
 ### Internationalization API (ECMA-402)
 
-Internationalization API implementation (see [https://tc39.github.io/ecma402](https://tc39.github.io/ecma402)) can be activated using the following flag: `--js.intl-402=true`.
-If you run in native mode (default option), you also need to specify the path to your ICU data directory using the following option: `--vm.Dcom.ibm.icu.impl.ICUBinary.dataPath=$GRAAL_VM_DIR/jre/languages/js/icu4j/icudt`,
-where `$GRAAL_VM_DIR` refers to your GraalVM installation directory.
-If you run in the JVM mode (the `--jvm` flag is used), you do not need to specify where your ICU data are located, although you can do it with the above option.
+GraalVM JavaScript comes with an implementation of the [ECMA-402 Internationalization API](https://tc39.github.io/ecma402), enabled by default (can be disabled using the following flag: `--js.intl-402=false`).
+This includes the following extensions:
 
-Once you activate the Internationalization API, you can use the following built-ins:
-
-- `Intl.NumberFormat`
-- `Intl.DateTimeFormat`
 - `Intl.Collator`
+- `Intl.DateTimeFormat`
+- `Intl.DisplayNames`
+- `Intl.ListFormat`
+- `Intl.Locale`
+- `Intl.NumberFormat`
 - `Intl.PluralRules`
+- `Intl.RelativeTimeFormat`
+- `Intl.Segmenter`
 
-The functionality of a few other built-ins is then also updated according to the specification linked above.
+The functionality of a few other built-ins, like `toLocaleString`, is also updated according to the ECMA-402 specification.
 
 ### JavaScript Modules
 
@@ -58,7 +59,7 @@ Loading with the `import` keyword is not limited by that, and can `import` from 
 
 ## Compatibility Extensions
 
-The following objects and methods are available in GraalVM JavaScript for compatibility with other JavaScript execution engines.
+The following objects and methods are available in GraalVM JavaScript for compatibility with other JavaScript engines.
 Note that the behavior of such methods might not strictly match the semantics of those methods in all existing engines.
 
 ### Language Features
@@ -222,61 +223,69 @@ The Graal object is available in GraalVM JavaScript by default, unless deactivat
 ### `Graal.setUnhandledPromiseRejectionHandler(handler)`
 
 - provides the unhandled promise rejection handler when using option (`js.unhandled-rejections=handler`).
-- the handler is called with two arguments: (rejection, promise).
-- `Graal.setUnhandledPromiseRejectionHandler` can be called with null, undefined, or empty args to clear the handler.
+- the handler is called with two arguments: (rejectionReason, unhandledPromise).
+- `Graal.setUnhandledPromiseRejectionHandler` can be called with `null`, `undefined`, or empty arguments to clear the handler.
 
 ### Java
 
-The `Java` object is only available when the engine is started in JVM mode (`--jvm` flag).
+The `Java` object is only available when [host class lookup](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/Context.Builder.html#allowHostClassLookup-java.util.function.Predicate-) is allowed.
+In order to access Java host classes and its members, they first need to be allowed by the [host access policy](https://www.graalvm.org/sdk/javadoc/org/graalvm/polyglot/HostAccess.html), and when running from a Native Image, be registered for [run time reflection](https://www.graalvm.org/latest/reference-manual/native-image/dynamic-features/Reflection/).
 
-Note that some functions require a Nashorn compatibility mode flag to be set.
-On GraalVM, this flag can be set with:
+Note that some functions require the Nashorn compatibility mode flag to be set.
+When running from the JVM standalone distribution, this flag can be set with:
 ```shell
-js --jvm --experimental-options --js.nashorn-compat=true
+js --experimental-options --js.nashorn-compat=true
 ```
 
 #### `Java.type(className)`
 
-- loads the specified Java class and provides it as an object
-- fields of this object can be read directly from it, and new instances can be created with the JavaScript ```new``` keyword:
+`Java.type` loads the specified Java class and returns a constructible object that has the static members (i.e. methods and fields) of the class and can be used with the `new` keyword to construct new instances:
 ```js
-var BigDec = Java.type('java.math.BigDecimal');
-var bd = new BigDec("0.1");
-console.log(bd.add(bd).toString());
+var BigDecimal = Java.type('java.math.BigDecimal');
+var point1 = new BigDecimal("0.1");
+var two = BigDecimal.TWO;
+console.log(point1.multiply(two).toString());
+```
+Note that when used directly with the `new` operator, `Java.type(...)` needs to be enclosed in parentheses:
+```js
+console.log(new (Java.type('java.math.BigDecimal'))("1.1").pow(15));
 ```
 
 #### `Java.from(javaData)`
 
-- creates a shallow copy of the Java datastructure (Array, List) as a JavaScript array
+`Java.from` creates a shallow copy of the Java data structure (Array, List) as a JavaScript array.
 
-In many cases, this is not necessary; you can typically use the Java datastructure directly from JavaScript.
+In many cases, this is not necessary; you can typically use the Java data structure directly from JavaScript.
 
-#### `Java.to(jsData, toType)`
+#### `Java.to(jsData, javaType)`
 
-- converts the argument to a Java dataype
+`Java.to` converts the argument to the Java type.
 
-The source object `jsData` is expected to be a JavaScript array, or an object with a `length` property.
-The target `toType` can either be a String (e.g. `"int[]"`) or a type object (e.g., `Java.type("int[]")`).
+The source object `jsData` is expected to be a JavaScript array, or an array-like object with a `length` property.
+The target `javaType` can either be a String (e.g. `"int[]"`) or a type object (e.g., `Java.type("int[]")`).
 Valid target types are Java arrays.
-When no target type is provided, `Object[]` is assumed:
+When the target type is omitted, it defaults to `Object[]`.
+
 ```js
-var jsArr = ["a", "b", "c"];
-var strArrType = Java.type("java.lang.String[]");
-var javaArr = Java.to(jsArr, strArrType);
-assertEquals('class java.lang.String[]', String(javaArr.getClass()));
+var jsArray = ["a", "b", "c"];
+var stringArrayType = Java.type("java.lang.String[]");
+var javaArray = Java.to(jsArray, stringArrayType);
+assertEquals('class java.lang.String[]', String(javaArray.getClass()));
+var javaArray = Java.to(jsArray);
+assertEquals('class java.lang.Object[]', String(javaArray.getClass()));
 ```
 
 The conversion methods as defined by ECMAScript (e.g., `ToString` and `ToDouble`) are executed when a JavaScript value has to be converted to a Java type.
-Lossy conversion is disallowed and results in a TypeError.
+Lossy conversion is disallowed and results in a `TypeError`.
 
 #### `Java.isJavaObject(obj)`
 
-- returns whether `obj` is an object of the Java language
+- returns `true` if `obj` is a Java host object
 - returns `false` for native JavaScript objects, as well as for objects of other polyglot languages
 
 #### `Java.isType(obj)`
 
-- returns `true` if `obj` is an object representing the constructor and static members of a Java class, as obtained (for example) by `Java.type()`
+- returns `true` if `obj` is an object representing the constructor and static members of a Java class, as obtained by `Java.type()` or package objects.
 - returns `false` for all other arguments
 
 #### `Java.typeName(obj)`
@@ -289,25 +298,25 @@ Lossy conversion is disallowed and results in a TypeError.
 - returns whether `fn` is an object of the Java language that represents a Java function
 - returns `false` for all other types, including native JavaScript function, and functions of other polyglot languages
 
-This function requires the Nashorn compatibility mode flag.
+> This function is only available in Nashorn compatibility mode (`--js.nashorn-compat=true`).
 
 #### `Java.isScriptObject(obj)`
 
 - returns whether `obj` is an object of the JavaScript language
 - returns `false` for all other types, including objects of Java and other polyglot languages
 
-This function requires the Nashorn compatibility mode flag.
+> This function is only available in Nashorn compatibility mode (`--js.nashorn-compat=true`).
 
 #### `Java.isScriptFunction(fn)`
 
 - returns whether `fn` is a JavaScript function
 - returns `false` for all other types, including Java function, and functions of other polyglot languages
 
-This function requires the Nashorn compatibility mode flag.
+> This function is only available in Nashorn compatibility mode (`--js.nashorn-compat=true`).
 
 #### `Java.addToClasspath(location)`
 
-- adds the specified location (file name or path name, as String) to Java's classpath
+- adds the specified location (a `.jar` file or directory path string) to Java's classpath
 
 ### Polyglot
 
