@@ -11,7 +11,7 @@ Below are the most frequently asked questions and answers about JavaScript runni
 ## Compatibility
 
 ### Is GraalVM compatible with the JavaScript language?
-GraalVM is compatible with the ECMAScript 2022 specification and is further developed alongside the 2023 draft specification.
+GraalVM is compatible with the ECMAScript 2023 specification and is further developed alongside the 2024 draft specification.
 The compatibility of GraalVM's JavaScript runtime is verified by external sources, like the [Kangax ECMAScript compatibility table](https://kangax.github.io/compat-table/es6/).
 
 GraalVM JavaScript is tested against a set of test engines, like the official test suite of ECMAScript, [test262](https://github.com/tc39/test262), as well as tests published by V8 and Nashorn, Node.js unit tests, and GraalVM's own unit tests.
@@ -84,16 +84,17 @@ Additionally, you can upload your `package-lock.json` or `package.json` file int
 
 ### My application is slower on GraalVM JavaScript than on another engine
 Reason:
-* Ensure your benchmark considers warmup. During the first few iterations, GraalVM JavaScript will be slower than natively implemented engines, while on peak performance, this difference should level out.
-* GraalVM JavaScript is shipped in two different modes: `native` (default) and `JVM`. While the default of `native` offers fast startup, it might show slower peak performance once the application is warmed up. In the `JVM` mode, the application might need a few hundred milliseconds more to start, but typically shows better peak performance.
+* Ensure your benchmark considers warmup. During the first few iterations, GraalVM JavaScript may be slower than other engines, but after sufficient warmup, this difference should level out.
+* GraalVM JavaScript is shipped in two different standalones: Native (default) and JVM (with a `-jvm` infix). While the default _Native_ mode offers faster startup and lower latency, it might exhibit slower peak performance (lower throughput) once the application is warmed up. In the _JVM_ mode, the application might need hundreds of milliseconds more to start, but typically shows better peak performance.
 * Repeated execution of code via newly created `org.graalvm.polyglot.Context` is slow, despite the same code being executed every time.
 
 Solution:
 * Use proper warmup in your benchmark, and disregard the first few iterations where the application still warms up.
-* Use the `--jvm` option for slower startup, but higher peak performance.
+* When embedding GraalVM JavaScript in a Java application, ensure you're running on a GraalVM JDK for best performance.
+* Use `-jvm` standalones for slower startup, but higher peak performance.
 * Double-check you have no flags set that might lower your performance, e.g., `-ea`/`-esa`.
+* When running code via `org.graalvm.polyglot.Context`, make sure that one `org.graalvm.polyglot.Engine` object is shared and passed to each newly created `Context`. Use `org.graalvm.polyglot.Source` objects and cache them when possible. Then, GraalVM makes sure already compiled code can be shared across the Contexts, leading to improved performance. See [Reference Manual: Code Caching across multiple Contexts](https://www.graalvm.org/latest/reference-manual/embed-languages/#code-caching-across-multiple-contexts) for more details and an example.
 * Try to minify the problem to the root cause and [file an issue](https://github.com/graalvm/graaljs/issues) so the GraalVM team can have a look.
-* When running code via `org.graalvm.polyglot.Context`, make sure that one `org.graalvm.polyglot.Engine` object is shared and passed to each newly created `Context`. Use `org.graalvm.polyglot.Source` objects and cache them when possible. Then, GraalVM makes sure already compiled code can be shared across the Contexts, leading to improved performance. See [Reference Manual: Code Caching across multiple Contexts](https://www.graalvm.org/22.1/reference-manual/embed-languages/#code-caching-across-multiple-contexts) for more details and an example.
 
 ### How to achieve the best peak performance?
 Here are a few tips you can follow to analyse and improve peak performance:
@@ -106,7 +107,7 @@ Here are a few tips you can follow to analyse and improve peak performance:
 
 ### What is the difference between running GraalVM's JavaScript in Native Image compared to the JVM?
 In essence, the JavaScript engine of GraalVM is a plain Java application.
-Running it on any JVM (JDK 11 or higher) is possible, but, for a better result, it should be GraalVM or a compatible JVMCI-enabled JDK using the GraalVM compiler.
+Running it on any JVM (JDK 21 or later) is possible, but, for a better result, it should be GraalVM JDK, or a compatible Oracle JDK or OpenJDK using the Graal Compiler.
 This mode gives the JavaScript engine full access to Java at runtime, but also requires the JVM to first (just-in-time) compile the JavaScript engine when executed, just like any other Java application.
 
 Running in Native Image means that the JavaScript engine, including all its dependencies from, e.g., the JDK, is pre-compiled into a native executable.
@@ -252,7 +253,7 @@ HostAccess ha = HostAccess.newBuilder(HostAccess.EXPLICIT)
 
 ### Warning: Implementation does not support runtime compilation.
 
-If you get the following warning, you are not running on GraalVM or a JVMCI-enabled JVM using the GraalVM compiler:
+If you get the following warning, you are not running on GraalVM JDK, or a compatible Oracle JDK or OpenJDK using the Graal Compiler:
 ```
 [engine] WARNING: The polyglot context is using an implementation that does not support runtime compilation.
 The guest application code will therefore be executed in interpreted mode only.
@@ -260,7 +261,7 @@ Execution only in interpreted mode will strongly impact the guest application pe
 To disable this warning the '--engine.WarnInterpreterOnly=false' option or use the '-Dpolyglot.engine.WarnInterpreterOnly=false' system property.
 ```
 
-To resolve this, use [GraalVM](https://github.com/oracle/graal/blob/master/docs/getting-started/graalvm-community/get-started-graalvm-community.md) or see the [Run GraalVM JavaScript on a Stock JDK guide](RunOnJDK.md) for instructions how to set up the Graal compiler on a compatible JVMCI-enabled stock JDK.
+To resolve this, use [GraalVM](https://github.com/oracle/graal/blob/master/docs/getting-started/graalvm-community/get-started-graalvm-community.md) or see the [Run GraalVM JavaScript on a Stock JDK guide](RunOnJDK.md) for instructions how to set up the Graal compiler on a compatible Graal-enabled stock JDK.
 
 Nevertheless, if this is intentional, you can disable the warning and continue to run with degraded performance by setting the above mentioned option, either via the command line or using the `Context.Builder`, e.g.:
 ```java
