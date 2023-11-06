@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -162,22 +162,20 @@ public class TruffleJSONParser {
     }
 
     private void parseJSONMemberList(JSObject object, JSRealm realm) {
-        Member member = parseJSONMember(realm);
-        JSRuntime.createDataProperty(object, member.getKey(), member.getValue());
+        parseJSONMember(object, realm);
         while (get() == ',') {
             skipChar(',');
             skipWhitespace();
-            member = parseJSONMember(realm);
-            JSRuntime.createDataProperty(object, member.getKey(), member.getValue());
+            parseJSONMember(object, realm);
         }
     }
 
-    private Member parseJSONMember(JSRealm realm) {
+    private void parseJSONMember(JSObject object, JSRealm realm) {
         TruffleString jsonString = parseJSONString();
         expectChar(':');
         skipWhitespace();
         Object jsonValue = parseJSONValue(realm);
-        return new Member(jsonString, jsonValue);
+        JSRuntime.createDataProperty(object, jsonString, jsonValue);
     }
 
     private Object parseJSONArray(JSRealm realm) {
@@ -591,23 +589,5 @@ public class TruffleJSONParser {
             }
         }
         return true;
-    }
-
-    protected final class Member {
-        private final TruffleString key;
-        private final Object value;
-
-        public Member(TruffleString key, Object value) {
-            this.key = key;
-            this.value = value;
-        }
-
-        public TruffleString getKey() {
-            return key;
-        }
-
-        public Object getValue() {
-            return value;
-        }
     }
 }
