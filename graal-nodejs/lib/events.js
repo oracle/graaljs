@@ -48,6 +48,7 @@ const {
   Symbol,
   SymbolFor,
   SymbolAsyncIterator,
+  SymbolDispose,
 } = primordials;
 const kRejection = SymbolFor('nodejs.rejection');
 
@@ -59,6 +60,7 @@ const {
 } = require('internal/util/inspect');
 
 let spliceOne;
+let kResistStopPropagation;
 
 const {
   AbortError,
@@ -213,6 +215,7 @@ function EventEmitter(opts) {
   EventEmitter.init.call(this, opts);
 }
 module.exports = EventEmitter;
+module.exports.addAbortListener = addAbortListener;
 module.exports.once = once;
 module.exports.on = on;
 module.exports.getEventListeners = getEventListeners;
@@ -847,7 +850,7 @@ function listenerCount(type, listener) {
 
     if (typeof evlistener === 'function') {
       if (listener != null) {
-        return listener === evlistener ? 1 : 0;
+        return listener === evlistener || listener === evlistener.listener ? 1 : 0;
       }
 
       return 1;
@@ -981,7 +984,10 @@ async function once(emitter, name, options = kEmptyObject) {
       }
       resolve(args);
     };
-    eventTargetAgnosticAddListener(emitter, name, resolver, { once: true });
+
+    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
+    const opts = { __proto__: null, once: true, [kResistStopPropagation]: true };
+    eventTargetAgnosticAddListener(emitter, name, resolver, opts);
     if (name !== 'error' && typeof emitter.once === 'function') {
       // EventTarget does not have `error` event semantics like Node
       // EventEmitters, we listen to `error` events only on EventEmitters.
@@ -994,7 +1000,7 @@ async function once(emitter, name, options = kEmptyObject) {
     }
     if (signal != null) {
       eventTargetAgnosticAddListener(
-        signal, 'abort', abortListener, { once: true });
+        signal, 'abort', abortListener, { __proto__: null, once: true, [kResistStopPropagation]: true });
     }
   });
 }
@@ -1119,11 +1125,12 @@ function on(emitter, event, options = kEmptyObject) {
   }
 
   if (signal) {
+    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
     eventTargetAgnosticAddListener(
       signal,
       'abort',
       abortListener,
-      { once: true });
+      { __proto__: null, once: true, [kResistStopPropagation]: true });
   }
 
   function abortListener() {
@@ -1154,4 +1161,33 @@ function on(emitter, event, options = kEmptyObject) {
     iterator.return();
   }
   return iterator;
+}
+
+let queueMicrotask;
+
+function addAbortListener(signal, listener) {
+  if (signal === undefined) {
+    throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
+  }
+  validateAbortSignal(signal, 'signal');
+  validateFunction(listener, 'listener');
+
+  let removeEventListener;
+  if (signal.aborted) {
+    queueMicrotask ??= require('internal/process/task_queues').queueMicrotask;
+    queueMicrotask(() => listener());
+  } else {
+    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
+    // TODO(atlowChemi) add { subscription: true } and return directly
+    signal.addEventListener('abort', listener, { __proto__: null, once: true, [kResistStopPropagation]: true });
+    removeEventListener = () => {
+      signal.removeEventListener('abort', listener);
+    };
+  }
+  return {
+    __proto__: null,
+    [SymbolDispose]() {
+      removeEventListener?.();
+    },
+  };
 }

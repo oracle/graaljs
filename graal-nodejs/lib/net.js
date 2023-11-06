@@ -27,6 +27,7 @@ const {
   ArrayPrototypePush,
   Boolean,
   FunctionPrototypeBind,
+  FunctionPrototypeCall,
   MathMax,
   Number,
   NumberIsNaN,
@@ -35,6 +36,7 @@ const {
   ObjectSetPrototypeOf,
   Symbol,
   ObjectCreate,
+  SymbolAsyncDispose,
 } = primordials;
 
 const EventEmitter = require('events');
@@ -43,7 +45,7 @@ let debug = require('internal/util/debuglog').debuglog('net', (fn) => {
   debug = fn;
 });
 const {
-  kWrapConnectedHandle,
+  kReinitializeHandle,
   isIP,
   isIPv4,
   isIPv6,
@@ -55,6 +57,7 @@ const {
   UV_EADDRINUSE,
   UV_EINVAL,
   UV_ENOTCONN,
+  UV_ECANCELED,
 } = internalBinding('uv');
 
 const { Buffer } = require('buffer');
@@ -109,7 +112,7 @@ const {
 } = require('internal/errors');
 const { isUint8Array } = require('internal/util/types');
 const { queueMicrotask } = require('internal/process/task_queues');
-const { kEmptyObject } = require('internal/util');
+const { kEmptyObject, promisify } = require('internal/util');
 const {
   validateAbortSignal,
   validateBoolean,
@@ -124,16 +127,18 @@ const {
   DTRACE_NET_SERVER_CONNECTION,
   DTRACE_NET_STREAM_END,
 } = require('internal/dtrace');
+const { getOptionValue } = require('internal/options');
 
 // Lazy loaded to improve startup performance.
 let cluster;
 let dns;
 let BlockList;
 let SocketAddress;
+let autoSelectFamilyDefault = getOptionValue('--enable-network-family-autoselection');
+let autoSelectFamilyAttemptTimeoutDefault = 250;
 
 const { clearTimeout, setTimeout } = require('timers');
 const { kTimeout } = require('internal/timers');
-const kTimeoutTriggered = Symbol('kTimeoutTriggered');
 
 const DEFAULT_IPV4_ADDR = '0.0.0.0';
 const DEFAULT_IPV6_ADDR = '::';
@@ -244,6 +249,28 @@ function connect(...args) {
   return socket.connect(normalized);
 }
 
+function getDefaultAutoSelectFamily() {
+  return autoSelectFamilyDefault;
+}
+
+function setDefaultAutoSelectFamily(value) {
+  validateBoolean(value, 'value');
+  autoSelectFamilyDefault = value;
+}
+
+function getDefaultAutoSelectFamilyAttemptTimeout() {
+  return autoSelectFamilyAttemptTimeoutDefault;
+}
+
+function setDefaultAutoSelectFamilyAttemptTimeout(value) {
+  validateInt32(value, 'value', 1);
+
+  if (value < 1) {
+    value = 10;
+  }
+
+  autoSelectFamilyAttemptTimeoutDefault = value;
+}
 
 // Returns an array [options, cb], where options is an object,
 // cb is either a function or null.
@@ -685,7 +712,11 @@ function tryReadStart(socket) {
 
 // Just call handle.readStart until we have enough in the buffer
 Socket.prototype._read = function(n) {
-  debug('_read');
+  debug(
+    '_read - n', n,
+    'isConnecting?', !!this.connecting,
+    'hasHandle?', !!this._handle,
+  );
 
   if (this.connecting || !this._handle) {
     debug('_read wait for connection');
@@ -1025,7 +1056,7 @@ function internalConnect(
       localAddress = localAddress || DEFAULT_IPV6_ADDR;
       err = self._handle.bind6(localAddress, localPort, flags);
     }
-    debug('binding to localAddress: %s and localPort: %d (addressType: %d)',
+    debug('connect: binding to localAddress: %s and localPort: %d (addressType: %d)',
           localAddress, localPort, addressType);
 
     err = checkBindError(err, localPort, self._handle);
@@ -1035,6 +1066,8 @@ function internalConnect(
       return;
     }
   }
+
+  debug('connect: attempting to connect to %s:%d (addressType: %d)', address, port, addressType);
 
   if (addressType === 6 || addressType === 4) {
     const req = new TCPConnectWrap();
@@ -1072,20 +1105,22 @@ function internalConnect(
 }
 
 
-function internalConnectMultiple(context) {
+function internalConnectMultiple(context, canceled) {
   clearTimeout(context[kTimeout]);
   const self = context.socket;
-  assert(self.connecting);
 
   // All connections have been tried without success, destroy with error
-  if (context.current === context.addresses.length) {
+  if (canceled || context.current === context.addresses.length) {
     self.destroy(aggregateErrors(context.errors));
     return;
   }
 
+  assert(self.connecting);
+
+  const current = context.current++;
+  const handle = current === 0 ? self._handle : new TCP(TCPConstants.SOCKET);
   const { localPort, port, flags } = context;
-  const { address, family: addressType } = context.addresses[context.current++];
-  const handle = new TCP(TCPConstants.SOCKET);
+  const { address, family: addressType } = context.addresses[current];
   let localAddress;
   let err;
 
@@ -1109,12 +1144,16 @@ function internalConnectMultiple(context) {
     }
   }
 
+  debug('connect/multiple: attempting to connect to %s:%d (addressType: %d)', address, port, addressType);
+
   const req = new TCPConnectWrap();
-  req.oncomplete = FunctionPrototypeBind(afterConnectMultiple, undefined, context);
+  req.oncomplete = FunctionPrototypeBind(afterConnectMultiple, undefined, context, current);
   req.address = address;
   req.port = port;
   req.localAddress = localAddress;
   req.localPort = localPort;
+
+  ArrayPrototypePush(self.autoSelectFamilyAttemptedAddresses, `${address}:${port}`);
 
   if (addressType === 4) {
     err = handle.connect(req, address, port);
@@ -1135,8 +1174,12 @@ function internalConnectMultiple(context) {
     return;
   }
 
-  // If the attempt has not returned an error, start the connection timer
-  context[kTimeout] = setTimeout(internalConnectMultipleTimeout, context.timeout, context, req);
+  if (current < context.addresses.length - 1) {
+    debug('connect/multiple: setting the attempt timeout to %d ms', context.timeout);
+
+    // If the attempt has not returned an error, start the connection timer
+    context[kTimeout] = setTimeout(internalConnectMultipleTimeout, context.timeout, context, req, handle);
+  }
 }
 
 Socket.prototype.connect = function(...args) {
@@ -1196,6 +1239,15 @@ Socket.prototype.connect = function(...args) {
   return this;
 };
 
+Socket.prototype[kReinitializeHandle] = function reinitializeHandle(handle) {
+  this._handle?.close();
+
+  this._handle = handle;
+  this._handle[owner_symbol] = this;
+
+  initSocketHandle(this);
+};
+
 function socketToDnsFamily(family) {
   switch (family) {
     case 'IPv4':
@@ -1208,9 +1260,9 @@ function socketToDnsFamily(family) {
 }
 
 function lookupAndConnect(self, options) {
-  const { localAddress, localPort, autoSelectFamily } = options;
+  const { localAddress, localPort } = options;
   const host = options.host || 'localhost';
-  let { port, autoSelectFamilyAttemptTimeout } = options;
+  let { port, autoSelectFamilyAttemptTimeout, autoSelectFamily } = options;
 
   if (localAddress && !isIP(localAddress)) {
     throw new ERR_INVALID_IP_ADDRESS(localAddress);
@@ -1229,18 +1281,21 @@ function lookupAndConnect(self, options) {
   }
   port |= 0;
 
-  if (autoSelectFamily !== undefined) {
-    validateBoolean(autoSelectFamily);
+
+  if (autoSelectFamily != null) {
+    validateBoolean(autoSelectFamily, 'options.autoSelectFamily');
+  } else {
+    autoSelectFamily = autoSelectFamilyDefault;
   }
 
-  if (autoSelectFamilyAttemptTimeout !== undefined) {
+  if (autoSelectFamilyAttemptTimeout != null) {
     validateInt32(autoSelectFamilyAttemptTimeout, 'options.autoSelectFamilyAttemptTimeout', 1);
 
     if (autoSelectFamilyAttemptTimeout < 10) {
       autoSelectFamilyAttemptTimeout = 10;
     }
   } else {
-    autoSelectFamilyAttemptTimeout = 250;
+    autoSelectFamilyAttemptTimeout = autoSelectFamilyAttemptTimeoutDefault;
   }
 
   // If host is an IP, skip performing a lookup
@@ -1257,7 +1312,7 @@ function lookupAndConnect(self, options) {
     return;
   }
 
-  if (options.lookup !== undefined)
+  if (options.lookup != null)
     validateFunction(options.lookup, 'options.lookup');
 
   if (dns === undefined) dns = require('dns');
@@ -1282,17 +1337,19 @@ function lookupAndConnect(self, options) {
     debug('connect: autodetecting');
 
     dnsopts.all = true;
-    lookupAndConnectMultiple(
-      self,
-      async_id_symbol,
-      lookup,
-      host,
-      options,
-      dnsopts,
-      port,
-      localPort,
-      autoSelectFamilyAttemptTimeout,
-    );
+    defaultTriggerAsyncIdScope(self[async_id_symbol], function() {
+      lookupAndConnectMultiple(
+        self,
+        async_id_symbol,
+        lookup,
+        host,
+        options,
+        dnsopts,
+        port,
+        localPort,
+        autoSelectFamilyAttemptTimeout,
+      );
+    });
 
     return;
   }
@@ -1340,6 +1397,8 @@ function lookupAndConnectMultiple(self, async_id_symbol, lookup, host, options, 
       if (!self.connecting) {
         return;
       } else if (err) {
+        self.emit('lookup', err, undefined, undefined, host);
+
         // net.createConnection() creates a net.Socket object and immediately
         // calls net.Socket.connect() on it (that's us). There are no event
         // listeners registered yet so defer the error event to the next tick.
@@ -1394,15 +1453,16 @@ function lookupAndConnectMultiple(self, async_id_symbol, lookup, host, options, 
         }
       }
 
+      self.autoSelectFamilyAttemptedAddresses = [];
+
       const context = {
         socket: self,
-        addresses,
+        addresses: toAttempt,
         current: 0,
         port,
         localPort,
         timeout,
         [kTimeout]: null,
-        [kTimeoutTriggered]: false,
         errors: [],
       };
 
@@ -1505,11 +1565,19 @@ function afterConnect(status, handle, req, readable, writable) {
   }
 }
 
-function afterConnectMultiple(context, status, handle, req, readable, writable) {
-  const self = context.socket;
-
+function afterConnectMultiple(context, current, status, handle, req, readable, writable) {
   // Make sure another connection is not spawned
   clearTimeout(context[kTimeout]);
+
+  // One of the connection has completed and correctly dispatched but after timeout, ignore this one
+  if (status === 0 && current !== context.current - 1) {
+    debug('connect/multiple: ignoring successful but timedout connection to %s:%s', req.address, req.port);
+    handle.close();
+    return;
+  }
+
+  const self = context.socket;
+
 
   // Some error occurred, add to the list of exceptions
   if (status !== 0) {
@@ -1530,24 +1598,20 @@ function afterConnectMultiple(context, status, handle, req, readable, writable) 
     ArrayPrototypePush(context.errors, ex);
 
     // Try the next address
-    internalConnectMultiple(context);
+    internalConnectMultiple(context, status === UV_ECANCELED);
     return;
   }
 
   // One of the connection has completed and correctly dispatched but after timeout, ignore this one
-  if (context[kTimeoutTriggered]) {
+  if (status === 0 && current !== context.current - 1) {
     debug('connect/multiple: ignoring successful but timedout connection to %s:%s', req.address, req.port);
     handle.close();
     return;
   }
 
-  // Perform initialization sequence on the handle, then move on with the regular callback
-  self._handle = handle;
-  initSocketHandle(self);
-
-  if (self[kWrapConnectedHandle]) {
-    self[kWrapConnectedHandle](handle);
-    initSocketHandle(self); // This is called again to initialize the TLSWrap
+  if (context.current > 1 && self[kReinitializeHandle]) {
+    self[kReinitializeHandle](handle);
+    handle = self._handle;
   }
 
   if (hasObserver('net')) {
@@ -1561,8 +1625,10 @@ function afterConnectMultiple(context, status, handle, req, readable, writable) 
   afterConnect(status, handle, req, readable, writable);
 }
 
-function internalConnectMultipleTimeout(context, req) {
-  context[kTimeoutTriggered] = true;
+function internalConnectMultipleTimeout(context, req, handle) {
+  debug('connect/multiple: connection to %s:%s timed out', req.address, req.port);
+  req.oncomplete = undefined;
+  handle.close();
   internalConnectMultiple(context);
 }
 
@@ -2127,6 +2193,13 @@ Server.prototype.close = function(cb) {
   return this;
 };
 
+Server.prototype[SymbolAsyncDispose] = async function() {
+  if (!this._handle) {
+    return;
+  }
+  return FunctionPrototypeCall(promisify(this.close), this);
+};
+
 Server.prototype._emitCloseIfDrained = function() {
   debug('SERVER _emitCloseIfDrained');
 
@@ -2262,4 +2335,8 @@ module.exports = {
   Server,
   Socket,
   Stream: Socket, // Legacy naming
+  getDefaultAutoSelectFamily,
+  setDefaultAutoSelectFamily,
+  getDefaultAutoSelectFamilyAttemptTimeout,
+  setDefaultAutoSelectFamilyAttemptTimeout,
 };

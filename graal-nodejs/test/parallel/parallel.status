@@ -119,6 +119,7 @@ test-fetch-disabled: FAIL
 test-http-response-setheaders: FAIL
 test-single-executable-application: SKIP
 test-vm-codegen: FAIL
+test-wasm-memory-out-of-bound: FAIL
 test-wasm-simple: FAIL
 test-wasm-web-api: FAIL
 test-whatwg-webstreams-transfer: FAIL
@@ -256,8 +257,6 @@ test-tls-passphrase: FAIL
 ### Graal-specific end ###
 
 [$system==win32]
-# https://github.com/nodejs/node/issues/24497
-test-timers-immediate-queue: PASS,FLAKY
 # https://github.com/nodejs/node/issues/41206
 test-crypto-keygen: PASS,FLAKY
 # https://github.com/nodejs/node/issues/41201

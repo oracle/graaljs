@@ -31,6 +31,7 @@ const {
   ObjectSetPrototypeOf,
   Promise,
   SafeSet,
+  SymbolAsyncDispose,
   SymbolAsyncIterator,
   Symbol,
 } = primordials;
@@ -66,6 +67,7 @@ const {
     ERR_STREAM_PUSH_AFTER_EOF,
     ERR_STREAM_UNSHIFT_AFTER_END_EVENT,
   },
+  AbortError,
 } = require('internal/errors');
 const { validateObject } = require('internal/validators');
 
@@ -224,6 +226,15 @@ Readable.prototype._destroy = function(err, cb) {
 
 Readable.prototype[EE.captureRejectionSymbol] = function(err) {
   this.destroy(err);
+};
+
+Readable.prototype[SymbolAsyncDispose] = function() {
+  let error;
+  if (!this.destroyed) {
+    error = this.readableEnded ? null : new AbortError();
+    this.destroy(error);
+  }
+  return new Promise((resolve, reject) => eos(this, (err) => (err && err !== error ? reject(err) : resolve(null))));
 };
 
 // Manually shove something into the read() buffer.
@@ -814,9 +825,7 @@ Readable.prototype.pipe = function(dest, pipeOpts) {
   // Start the flow if it hasn't been started already.
 
   if (dest.writableNeedDrain === true) {
-    if (state.flowing) {
-      pause();
-    }
+    pause();
   } else if (!state.flowing) {
     debug('pipe resume');
     src.resume();

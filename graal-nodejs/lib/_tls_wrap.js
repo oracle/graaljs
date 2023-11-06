@@ -54,7 +54,7 @@ const EE = require('events');
 const net = require('net');
 const tls = require('tls');
 const common = require('_tls_common');
-const { kWrapConnectedHandle } = require('internal/net');
+const { kReinitializeHandle } = require('internal/net');
 const JSStreamSocket = require('internal/js_stream_socket');
 const { Buffer } = require('buffer');
 let debug = require('internal/util/debuglog').debuglog('tls', (fn) => {
@@ -502,17 +502,28 @@ function TLSSocket(socket, opts) {
   this[kPendingSession] = null;
 
   let wrap;
-  if ((socket instanceof net.Socket && socket._handle) || !socket) {
-    // 1. connected socket
-    // 2. no socket, one will be created with net.Socket().connect
-    wrap = socket;
+  let handle;
+  let wrapHasActiveWriteFromPrevOwner;
+
+  if (socket) {
+    if (socket instanceof net.Socket && socket._handle) {
+      // 1. connected socket
+      wrap = socket;
+    } else {
+      // 2. socket has no handle so it is js not c++
+      // 3. unconnected sockets are wrapped
+      // TLS expects to interact from C++ with a net.Socket that has a C++ stream
+      // handle, but a JS stream doesn't have one. Wrap it up to make it look like
+      // a socket.
+      wrap = new JSStreamSocket(socket);
+    }
+
+    handle = wrap._handle;
+    wrapHasActiveWriteFromPrevOwner = wrap.writableLength > 0;
   } else {
-    // 3. socket has no handle so it is js not c++
-    // 4. unconnected sockets are wrapped
-    // TLS expects to interact from C++ with a net.Socket that has a C++ stream
-    // handle, but a JS stream doesn't have one. Wrap it up to make it look like
-    // a socket.
-    wrap = new JSStreamSocket(socket);
+    // 4. no socket, one will be created with net.Socket().connect
+    wrap = null;
+    wrapHasActiveWriteFromPrevOwner = false;
   }
 
   // Just a documented property to make secure sockets
@@ -520,7 +531,7 @@ function TLSSocket(socket, opts) {
   this.encrypted = true;
 
   ReflectApply(net.Socket, this, [{
-    handle: this._wrapHandle(wrap),
+    handle: this._wrapHandle(wrap, handle, wrapHasActiveWriteFromPrevOwner),
     allowHalfOpen: socket ? socket.allowHalfOpen : tlsOptions.allowHalfOpen,
     pauseOnCreate: tlsOptions.pauseOnConnect,
     manualStart: true,
@@ -538,6 +549,21 @@ function TLSSocket(socket, opts) {
 
   if (enableTrace && this._handle)
     this._handle.enableTrace();
+
+  if (wrapHasActiveWriteFromPrevOwner) {
+    // `wrap` is a streams.Writable in JS. This empty write will be queued
+    // and hence finish after all existing writes, which is the timing
+    // we want to start to send any tls data to `wrap`.
+    wrap.write('', (err) => {
+      if (err) {
+        debug('error got before writing any tls data to the underlying stream');
+        this.destroy(err);
+        return;
+      }
+
+      this._handle.writesIssuedByPrevListenerDone();
+    });
+  }
 
   // Read on next tick so the caller has a chance to setup listeners
   process.nextTick(initRead, this, socket);
@@ -599,11 +625,14 @@ TLSSocket.prototype.disableRenegotiation = function disableRenegotiation() {
   this[kDisableRenegotiation] = true;
 };
 
-TLSSocket.prototype._wrapHandle = function(wrap, handle) {
-  if (!handle && wrap) {
-    handle = wrap._handle;
-  }
-
+/**
+ *
+ * @param {null|net.Socket} wrap
+ * @param {null|object} handle
+ * @param {boolean} wrapHasActiveWriteFromPrevOwner
+ * @returns {object}
+ */
+TLSSocket.prototype._wrapHandle = function(wrap, handle, wrapHasActiveWriteFromPrevOwner) {
   const options = this._tlsOptions;
   if (!handle) {
     handle = options.pipe ?
@@ -620,7 +649,10 @@ TLSSocket.prototype._wrapHandle = function(wrap, handle) {
   if (!(context.context instanceof NativeSecureContext)) {
     throw new ERR_TLS_INVALID_CONTEXT('context');
   }
-  const res = tls_wrap.wrap(handle, context.context, !!options.isServer);
+
+  const res = tls_wrap.wrap(handle, context.context,
+                            !!options.isServer,
+                            wrapHasActiveWriteFromPrevOwner);
   res._parent = handle;  // C++ "wrap" object: TCPWrap, JSStream, ...
   res._parentWrap = wrap;  // JS object: net.Socket, JSStreamSocket, ...
   res._secureContext = context;
@@ -633,13 +665,26 @@ TLSSocket.prototype._wrapHandle = function(wrap, handle) {
   return res;
 };
 
-TLSSocket.prototype[kWrapConnectedHandle] = function(handle) {
-  this._handle = this._wrapHandle(null, handle);
+TLSSocket.prototype[kReinitializeHandle] = function reinitializeHandle(handle) {
+  const originalServername = this.ssl ? this._handle.getServername() : null;
+  const originalSession = this.ssl ? this._handle.getSession() : null;
+
+  this.handle = this._wrapHandle(null, handle, false);
   this.ssl = this._handle;
+
+  net.Socket.prototype[kReinitializeHandle].call(this, this.handle);
   this._init();
 
   if (this._tlsOptions.enableTrace) {
     this._handle.enableTrace();
+  }
+
+  if (originalSession) {
+    this.setSession(originalSession);
+  }
+
+  if (originalServername) {
+    this.setServername(originalServername);
   }
 };
 
@@ -679,6 +724,30 @@ TLSSocket.prototype._destroySSL = function _destroySSL() {
   this[kIsVerified] = false;
 };
 
+function keylogNewListener(event) {
+  if (event !== 'keylog')
+    return;
+
+  // Guard against enableKeylogCallback after destroy
+  if (!this._handle) return;
+  this._handle.enableKeylogCallback();
+
+  // Remove this listener since it's no longer needed.
+  this.removeListener('newListener', keylogNewListener);
+}
+
+function newListener(event) {
+  if (event !== 'session')
+    return;
+
+  // Guard against enableSessionCallbacks after destroy
+  if (!this._handle) return;
+  this._handle.enableSessionCallbacks();
+
+  // Remove this listener since it's no longer needed.
+  this.removeListener('newListener', newListener);
+}
+
 // Constructor guts, arbitrarily factored out.
 let warnOnTlsKeylog = true;
 let warnOnTlsKeylogError = true;
@@ -704,18 +773,9 @@ TLSSocket.prototype._init = function(socket, wrap) {
 
   // Only call .onkeylog if there is a keylog listener.
   ssl.onkeylog = onkeylog;
-  this.on('newListener', keylogNewListener);
 
-  function keylogNewListener(event) {
-    if (event !== 'keylog')
-      return;
-
-    // Guard against enableKeylogCallback after destroy
-    if (!this._handle) return;
-    this._handle.enableKeylogCallback();
-
-    // Remove this listener since it's no longer needed.
-    this.removeListener('newListener', keylogNewListener);
+  if (this.listenerCount('newListener', keylogNewListener) === 0) {
+    this.on('newListener', keylogNewListener);
   }
 
   if (options.isServer) {
@@ -750,18 +810,8 @@ TLSSocket.prototype._init = function(socket, wrap) {
     ssl.onnewsession = onnewsessionclient;
 
     // Only call .onnewsession if there is a session listener.
-    this.on('newListener', newListener);
-
-    function newListener(event) {
-      if (event !== 'session')
-        return;
-
-      // Guard against enableSessionCallbacks after destroy
-      if (!this._handle) return;
-      this._handle.enableSessionCallbacks();
-
-      // Remove this listener since it's no longer needed.
-      this.removeListener('newListener', newListener);
+    if (this.listenerCount('newListener', newListener) === 0) {
+      this.on('newListener', newListener);
     }
   }
 
