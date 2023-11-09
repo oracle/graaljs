@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,15 +109,6 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
      */
     private static JSArrayObject createEmptyChecked(JSContext context, JSRealm realm, int length) {
         return createConstantEmptyArray(context, realm, length);
-    }
-
-    public static JSArrayObject createEmpty(JSContext context, JSRealm realm, long length) {
-        if (!JSRuntime.isValidArrayLength(length)) {
-            throw Errors.createRangeErrorInvalidArrayLength();
-        } else if (length > Integer.MAX_VALUE) {
-            return createSparseArray(context, realm, length);
-        }
-        return createEmptyChecked(context, realm, length);
     }
 
     /**
@@ -416,36 +407,10 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return create(context, realm, LazyRegexResultArray.createLazyRegexResultArray(), array, length);
     }
 
-    public static JSArrayObject createLazyRegexArray(JSContext context, JSRealm realm, int length, Object regexResult, TruffleString input, JSDynamicObject groups, JSDynamicObject indicesGroups) {
-        assert JSRuntime.isRepresentableAsUnsignedInt(length);
-        JSArrayObject obj = createLazyRegexArray(context, realm, length);
-        JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_RESULT_ID, regexResult);
-        JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_ORIGINAL_INPUT_ID, input);
-        JSObjectUtil.putProxyProperty(obj, JSRegExp.INDEX, JSRegExp.LAZY_INDEX_PROXY, JSAttributes.getDefault());
-        JSObjectUtil.putDataProperty(obj, JSRegExp.INPUT, input, JSAttributes.getDefault());
-        JSObjectUtil.putDataProperty(obj, JSRegExp.GROUPS, groups, JSAttributes.getDefault());
-        if (context.isOptionRegexpMatchIndices()) {
-            JSArrayObject indices = createLazyRegexIndicesArray(context, realm, length, regexResult, indicesGroups);
-            JSObjectUtil.putDataProperty(obj, JSRegExp.INDICES, indices, JSAttributes.getDefault());
-        }
-        assert isJSArray(obj);
-        return obj;
-    }
-
     public static JSArrayObject createLazyRegexIndicesArray(JSContext context, JSRealm realm, int length) {
         assert JSRuntime.isRepresentableAsUnsignedInt(length);
         Object[] array = new Object[length];
         return create(context, realm, LazyRegexResultIndicesArray.createLazyRegexResultIndicesArray(), array, length);
-    }
-
-    private static JSArrayObject createLazyRegexIndicesArray(JSContext context, JSRealm realm, int length, Object regexResult, JSDynamicObject indicesGroups) {
-        assert JSRuntime.isRepresentableAsUnsignedInt(length);
-        Object[] array = new Object[length];
-        JSArrayObject obj = create(context, realm, LazyRegexResultIndicesArray.createLazyRegexResultIndicesArray(), array, length);
-        JSObjectUtil.putHiddenProperty(obj, JSArray.LAZY_REGEX_RESULT_ID, regexResult);
-        JSObjectUtil.putDataProperty(obj, JSRegExp.GROUPS, indicesGroups, JSAttributes.getDefault());
-        assert isJSArray(obj);
-        return obj;
     }
 
     public static JSArrayObject createLazyArray(JSContext context, JSRealm realm, List<?> list, int size) {

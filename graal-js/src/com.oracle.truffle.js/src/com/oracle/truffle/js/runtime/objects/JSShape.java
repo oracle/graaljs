@@ -212,11 +212,6 @@ public final class JSShape {
         getSharedData(shape).invalidatePrototypeAssumption();
     }
 
-    public static UnmodifiableArrayList<Property> getProperties(Shape shape) {
-        assert JSConfig.FastOwnKeys;
-        return JSShapeData.getProperties(shape);
-    }
-
     public static <T> UnmodifiablePropertyKeyList<T> getPropertyKeyList(Shape shape, boolean strings, boolean symbols) {
         assert JSConfig.FastOwnKeys;
         return JSShapeData.getPropertyKeyList(shape, strings, symbols);
@@ -245,10 +240,6 @@ public final class JSShape {
 
     public static Shape createRootWithNullProto(JSContext context, JSClass jsclass) {
         return createObjectShape(context, jsclass, Null.instance);
-    }
-
-    public static Shape createRootWithProto(JSContext context, JSClass jsclass, JSDynamicObject prototype) {
-        return createObjectShape(context, jsclass, prototype);
     }
 
     /**

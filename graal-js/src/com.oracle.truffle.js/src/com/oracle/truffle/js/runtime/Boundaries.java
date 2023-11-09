@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -76,11 +75,6 @@ public final class Boundaries {
     @TruffleBoundary
     public static String stringFormat(String format, Object... params) {
         return String.format(format, params);
-    }
-
-    @TruffleBoundary
-    public static boolean characterIsDigit(char ch) {
-        return Character.isDigit(ch);
     }
 
     @TruffleBoundary
@@ -171,21 +165,6 @@ public final class Boundaries {
     @TruffleBoundary
     public static <T> Object[] listToArray(List<T> list) {
         return list.toArray();
-    }
-
-    @TruffleBoundary
-    public static <T> boolean iteratorHasNext(Iterator<T> it) {
-        return it.hasNext();
-    }
-
-    @TruffleBoundary
-    public static <T> T iteratorNext(Iterator<T> it) {
-        return it.next();
-    }
-
-    @TruffleBoundary
-    public static <T> Iterator<T> iterator(Iterable<T> iterable) {
-        return iterable.iterator();
     }
 
     @TruffleBoundary

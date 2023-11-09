@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,10 +52,6 @@ public class ExitException extends AbstractTruffleException {
 
     private static final long serialVersionUID = -1456196298096686373L;
     private final int status;
-
-    public ExitException(int status) {
-        this(status, null);
-    }
 
     public ExitException(int status, Node location) {
         super(location);

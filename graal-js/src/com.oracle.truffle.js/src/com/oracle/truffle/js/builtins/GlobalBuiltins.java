@@ -597,7 +597,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected final Object runImpl(JSRealm realm, Source source) {
             if (loadNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                loadNode = insert(JSLoadNode.create(getContext()));
+                loadNode = insert(JSLoadNode.create());
             }
             return loadNode.executeLoad(source, realm);
         }

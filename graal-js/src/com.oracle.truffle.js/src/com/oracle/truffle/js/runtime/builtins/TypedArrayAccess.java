@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,68 +40,34 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.nio.ByteBuffer;
-
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
-public class TypedArrayAccess {
-    public static final TypedArrayAccess SINGLETON = new TypedArrayAccess();
+public abstract class TypedArrayAccess {
 
-    protected TypedArrayAccess() {
+    private TypedArrayAccess() {
+        // no instances
     }
 
-    public int getLength(JSDynamicObject thisObj) {
+    public static int getLength(JSDynamicObject thisObj) {
         return ((JSArrayBufferViewBase) thisObj).length;
     }
 
-    public void setLength(JSDynamicObject thisObj, int length) {
-        ((JSArrayBufferViewBase) thisObj).length = length;
-    }
-
-    public int getOffset(JSDynamicObject thisObj) {
+    public static int getOffset(JSDynamicObject thisObj) {
         return ((JSArrayBufferViewBase) thisObj).offset;
     }
 
-    public void setOffset(JSDynamicObject thisObj, int offset) {
-        ((JSArrayBufferViewBase) thisObj).offset = offset;
-    }
-
-    public byte[] getByteArray(JSDynamicObject thisObj) {
-        byte[] byteArray = ((JSArrayBufferObject.Heap) getArrayBuffer(thisObj)).getByteArray();
-        if (byteArray == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
-        return byteArray;
-    }
-
-    public ByteBuffer getByteBuffer(JSDynamicObject thisObj) {
-        ByteBuffer byteBuffer = ((JSArrayBufferObject.DirectBase) getArrayBuffer(thisObj)).getByteBuffer();
-        if (byteBuffer == null) {
-            CompilerDirectives.transferToInterpreter();
-            throw Errors.createTypeErrorDetachedBuffer();
-        }
-        return byteBuffer;
-    }
-
-    public JSArrayBufferObject getArrayBuffer(JSDynamicObject thisObj) {
+    public static JSArrayBufferObject getArrayBuffer(JSDynamicObject thisObj) {
         assert JSArrayBufferView.isJSArrayBufferView(thisObj);
         return ((JSArrayBufferViewBase) thisObj).getArrayBuffer();
     }
 
-    public TypedArray getArrayType(Object thisObj) {
+    public static TypedArray getArrayType(Object thisObj) {
         return ((JSTypedArrayObject) thisObj).arrayType;
     }
 
-    public void setArrayType(JSDynamicObject thisObj, TypedArray arrayType) {
-        ((JSTypedArrayObject) thisObj).arrayType = arrayType;
-    }
-
-    public TruffleString getTypedArrayName(JSDynamicObject thisObj) {
+    public static TruffleString getTypedArrayName(JSDynamicObject thisObj) {
         return getArrayType(thisObj).getFactory().getName();
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -142,14 +142,6 @@ class JSFunctionOneArgumentNode extends AbstractFunctionArgumentsNode {
 
     public static AbstractFunctionArgumentsNode create(JavaScriptNode child) {
         return new JSFunctionOneArgumentNode(child);
-    }
-
-    public static AbstractFunctionArgumentsNode create(JavaScriptNode child, boolean optimizeConstantArguments) {
-        if (optimizeConstantArguments) {
-            return create(child);
-        } else {
-            return new JSFunctionOneArgumentNode(child);
-        }
     }
 
     @Override

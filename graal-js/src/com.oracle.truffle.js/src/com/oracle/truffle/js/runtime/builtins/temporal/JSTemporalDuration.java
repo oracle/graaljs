@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,13 +105,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             throw TemporalErrors.createTypeErrorDurationOutsideRange();
         }
         return createIntl(context, realm, proto, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-    }
-
-    public static JSTemporalDurationObject createTemporalDuration(JSContext context, JSRealm realm, JSDynamicObject proto,
-                    double years, double months, double weeks, double days,
-                    double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {
-        return createTemporalDuration(context, realm, proto, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds,
-                        null, InlinedBranchProfile.getUncached());
     }
 
     private static JSTemporalDurationObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,

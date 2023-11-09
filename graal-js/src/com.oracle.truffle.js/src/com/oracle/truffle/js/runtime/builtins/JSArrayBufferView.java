@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
-import java.nio.ByteBuffer;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -68,7 +67,6 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 public final class JSArrayBufferView extends JSNonProxy {
@@ -79,29 +77,17 @@ public final class JSArrayBufferView extends JSNonProxy {
 
     public static final JSArrayBufferView INSTANCE = new JSArrayBufferView();
 
-    private static TypedArrayAccess typedArray() {
-        return TypedArrayAccess.SINGLETON;
-    }
-
     public static TypedArray typedArrayGetArrayType(JSDynamicObject thisObj) {
         assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        return typedArray().getArrayType(thisObj);
+        return TypedArrayAccess.getArrayType(thisObj);
     }
 
     public static int typedArrayGetLength(JSDynamicObject thisObj) {
-        return typedArray().getLength(thisObj);
+        return TypedArrayAccess.getLength(thisObj);
     }
 
     public static int typedArrayGetOffset(JSDynamicObject thisObj) {
-        return typedArray().getOffset(thisObj);
-    }
-
-    public static byte[] typedArrayGetByteArray(JSDynamicObject thisObj) {
-        return typedArray().getByteArray(thisObj);
-    }
-
-    public static ByteBuffer typedArrayGetByteBuffer(JSDynamicObject thisObj) {
-        return DirectByteBufferHelper.cast(typedArray().getByteBuffer(thisObj));
+        return TypedArrayAccess.getOffset(thisObj);
     }
 
     public static TruffleString typedArrayGetName(JSDynamicObject thisObj) {
@@ -113,7 +99,7 @@ public final class JSArrayBufferView extends JSNonProxy {
 
     public static JSArrayBufferObject getArrayBuffer(JSDynamicObject thisObj) {
         assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        return typedArray().getArrayBuffer(thisObj);
+        return TypedArrayAccess.getArrayBuffer(thisObj);
     }
 
     public static int getByteLength(JSDynamicObject store, JSContext ctx) {

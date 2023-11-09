@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -237,13 +237,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         descriptor.addProperty("isNew", isNew());
         descriptor.addProperty("isInvoke", isInvoke());
         return descriptor;
-    }
-
-    /**
-     * @param arguments function, this, ...rest
-     */
-    public static JSFunctionCallNode createInternalCall(JavaScriptNode[] arguments) {
-        return createCall(arguments[0], arguments[1], Arrays.copyOfRange(arguments, 2, arguments.length), false, false);
     }
 
     @ExplodeLoop
@@ -711,11 +704,6 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     public abstract static class InvokeNode extends JSFunctionCallNode {
         @Child protected JavaScriptNode targetNode;
         @Child protected JSTargetableNode functionTargetNode;
-
-        protected InvokeNode(JSTargetableNode functionTargetNode, byte flags) {
-            super(flags);
-            this.functionTargetNode = functionTargetNode;
-        }
 
         protected InvokeNode(JavaScriptNode targetNode, JSTargetableNode functionTargetNode, byte flags) {
             super(flags);

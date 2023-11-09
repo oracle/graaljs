@@ -677,10 +677,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             setLengthIntl(thisObject, JSRuntime.longToIntOrDouble(length));
         }
 
-        protected void setLength(Object thisObject, double length) {
-            setLengthIntl(thisObject, length);
-        }
-
         private void setLengthIntl(Object thisObject, Object length) {
             assert !(length instanceof Long);
             if (setLengthNode == null) {
@@ -752,10 +748,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         protected boolean hasProperty(Object target, long propertyIdx) {
             return getOrCreateHasPropertyNode().executeBoolean(target, propertyIdx);
-        }
-
-        protected boolean hasProperty(Object target, Object propertyName) {
-            return getOrCreateHasPropertyNode().executeBoolean(target, propertyName);
         }
 
         protected long nextElementIndex(Object target, long currentIndex, long length) {

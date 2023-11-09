@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,10 +56,6 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 public abstract class HasOnlyShapePropertiesNode extends JavaScriptBaseNode {
 
     protected HasOnlyShapePropertiesNode() {
-    }
-
-    public final boolean execute(JSDynamicObject object) {
-        return execute(object, JSObject.getJSClass(object));
     }
 
     public abstract boolean execute(JSDynamicObject object, JSClass jsclass);

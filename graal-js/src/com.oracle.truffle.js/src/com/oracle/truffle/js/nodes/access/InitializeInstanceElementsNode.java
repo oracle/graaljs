@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,7 +123,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
     @ExplodeLoop(kind = LoopExplosionKind.FULL_UNROLL)
     @Specialization
     protected static Object withFields(Object target, Object constructor, ClassElementDefinitionRecord[] fields, Object[] initializers, Object brand,
-                    @Cached(value = "createBrandAddNode(brand, context)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
+                    @Cached(value = "createBrandAddNode(brand)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode,
                     @Cached("createFieldNodes(fields, context)") InitializeFieldOrAccessorNode[] fieldNodes,
                     @Cached("createCall()") JSFunctionCallNode callInit) {
         privateBrandAdd(target, constructor, fields, initializers, brand, privateBrandAddNode);
@@ -146,7 +146,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
 
     @Specialization
     protected static Object privateBrandAdd(Object target, Object constructor, @SuppressWarnings("unused") Object fields, @SuppressWarnings("unused") Object initializers, Object brand,
-                    @Cached(value = "createBrandAddNode(brand, context)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode) {
+                    @Cached(value = "createBrandAddNode(brand)", neverDefault = false) @Shared("privateBrandAdd") PrivateFieldAddNode privateBrandAddNode) {
         // If constructor.[[PrivateBrand]] is not undefined,
         // Perform ? PrivateBrandAdd(O, constructor.[[PrivateBrand]]).
         assert (privateBrandAddNode != null) == (brand != Undefined.instance);
@@ -161,10 +161,10 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
         return create(context, cloneUninitialized(targetNode, materializedTags), cloneUninitialized(constructorNode, materializedTags));
     }
 
-    static PrivateFieldAddNode createBrandAddNode(Object brand, JSContext context) {
+    static PrivateFieldAddNode createBrandAddNode(Object brand) {
         CompilerAsserts.neverPartOfCompilation();
         if (brand != Undefined.instance) {
-            return PrivateFieldAddNode.create(context);
+            return PrivateFieldAddNode.create();
         } else {
             return null;
         }
@@ -184,7 +184,7 @@ public abstract class InitializeInstanceElementsNode extends JavaScriptNode {
             Node writeNode = null;
             if (field.isAutoAccessor() || (field.isPrivate() && field.isField())) {
                 assert field.getBackingStorageKey() != null : key;
-                writeNode = PrivateFieldAddNode.create(context);
+                writeNode = PrivateFieldAddNode.create();
             } else if (field.isField()) {
                 assert JSRuntime.isPropertyKey(key) : key;
                 writeNode = WriteElementNode.create(context, true, true);

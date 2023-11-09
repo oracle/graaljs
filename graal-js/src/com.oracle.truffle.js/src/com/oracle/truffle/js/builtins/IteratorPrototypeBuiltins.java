@@ -343,12 +343,6 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public final boolean isCallable(Object fn) {
             return isCallableNode.executeBoolean(fn);
         }
-
-        protected final void requireCallable(Object fn) {
-            if (!isCallableNode.executeBoolean(fn)) {
-                throw Errors.createTypeErrorNotAFunction(fn);
-            }
-        }
     }
 
     private abstract static class IteratorFromGeneratorNode<T extends IteratorArgs> extends IteratorMethodWithCallableNode {

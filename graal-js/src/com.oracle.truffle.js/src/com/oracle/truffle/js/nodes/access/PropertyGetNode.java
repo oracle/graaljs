@@ -522,11 +522,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             super(receiverCheck, specializationFlags);
         }
 
-        protected GetCacheNode(GetCacheNode next, ReceiverCheckNode receiverCheck) {
-            this(receiverCheck);
-            this.next = next;
-        }
-
         @Override
         protected final GetCacheNode getNext() {
             return next;

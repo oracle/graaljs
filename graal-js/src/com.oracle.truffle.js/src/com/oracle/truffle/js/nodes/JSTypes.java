@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,12 +41,9 @@
 package com.oracle.truffle.js.nodes;
 
 import com.oracle.truffle.api.dsl.ImplicitCast;
-import com.oracle.truffle.api.dsl.TypeCheck;
 import com.oracle.truffle.api.dsl.TypeSystem;
-import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.SafeInteger;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 /**
  * @see JavaScriptNode
@@ -66,14 +63,5 @@ public class JSTypes {
     @ImplicitCast
     public static double safeIntegerToDouble(SafeInteger value) {
         return value.doubleValue();
-    }
-
-    /**
-     * @deprecated Use {@link JSDynamicObject} or another subtype instead.
-     */
-    @Deprecated
-    @TypeCheck(DynamicObject.class)
-    public static boolean isDynamicObject(Object value) {
-        return JSDynamicObject.isJSDynamicObject(value);
     }
 }

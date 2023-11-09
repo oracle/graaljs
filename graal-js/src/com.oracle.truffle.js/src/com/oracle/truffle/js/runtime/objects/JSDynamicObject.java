@@ -52,14 +52,12 @@ import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Properties;
@@ -379,14 +377,6 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
         return object instanceof JSDynamicObject;
     }
 
-    public static JSContext getJSContext(JSDynamicObject obj) {
-        return getJSSharedData(obj).getContext();
-    }
-
-    public static JSClass getJSClass(JSDynamicObject obj) {
-        return (JSClass) getDynamicType(obj);
-    }
-
     public static void setJSClass(JSDynamicObject obj, JSClass jsclass) {
         DynamicObjectLibrary.getUncached().setDynamicType(obj, jsclass);
     }
@@ -399,14 +389,6 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
         return Properties.containsKeyUncached(obj, key);
     }
 
-    public static Property getProperty(JSDynamicObject obj, Object key) {
-        return Properties.getPropertyUncached(obj, key);
-    }
-
-    public static Object[] getKeyArray(JSDynamicObject obj) {
-        return obj.getShape().getKeyList().toArray();
-    }
-
     public static Property[] getPropertyArray(JSDynamicObject obj) {
         return obj.getShape().getPropertyList().toArray(new Property[0]);
     }
@@ -417,14 +399,6 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
 
     public static Object getOrDefault(JSDynamicObject obj, Object key, Object defaultValue) {
         return Properties.getOrDefaultUncached(obj, key, defaultValue);
-    }
-
-    public static int getIntOrDefault(JSDynamicObject obj, Object key, int defaultValue) {
-        try {
-            return DynamicObjectLibrary.getUncached().getIntOrDefault(obj, key, defaultValue);
-        } catch (UnexpectedResultException e) {
-            throw Errors.shouldNotReachHere();
-        }
     }
 
     public static int getObjectFlags(JSDynamicObject obj) {
@@ -469,10 +443,6 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
 
     public static boolean testProperties(JSDynamicObject obj, Predicate<Property> predicate) {
         return obj.getShape().allPropertiesMatch(predicate);
-    }
-
-    public static boolean removeKey(JSDynamicObject obj, Object key) {
-        return Properties.removeKeyUncached(obj, key);
     }
 
     public static JSSharedData getJSSharedData(JSDynamicObject obj) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -125,10 +125,6 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
         return createProperty(ctx, target, propertyKey, false);
     }
 
-    public static PropertyNode createMethod(JSContext ctx, JavaScriptNode target, Object propertyKey) {
-        return createProperty(ctx, target, propertyKey, true);
-    }
-
     public static PropertyNode createGetHidden(JSContext ctx, JavaScriptNode target, HiddenKey hiddenKey) {
         return new PropertyNode(ctx, target, hiddenKey, true, false);
     }
@@ -158,10 +154,6 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
         return executeInt(targetValue, evaluateReceiver(target, frame, targetValue));
     }
 
-    public int executeInt(Object targetValue) throws UnexpectedResultException {
-        return executeInt(targetValue, targetValue);
-    }
-
     public int executeInt(Object targetValue, Object receiverValue) throws UnexpectedResultException {
         return cache.getValueInt(targetValue, receiverValue);
     }
@@ -170,10 +162,6 @@ public class PropertyNode extends JSTargetableNode implements ReadNode {
     public double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
         Object targetValue = evaluateTarget(frame);
         return executeDouble(targetValue, evaluateReceiver(target, frame, targetValue));
-    }
-
-    public double executeDouble(Object targetValue) throws UnexpectedResultException {
-        return executeDouble(targetValue, targetValue);
     }
 
     public double executeDouble(Object targetValue, Object receiverValue) throws UnexpectedResultException {

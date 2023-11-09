@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,20 +53,13 @@ import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 
 public abstract class JSLoadNode extends JavaScriptBaseNode {
 
-    protected final JSContext context;
-
     @NeverDefault
-    public static JSLoadNode create(JSContext context) {
-        return JSLoadNodeGen.create(context);
-    }
-
-    protected JSLoadNode(JSContext context) {
-        this.context = context;
+    public static JSLoadNode create() {
+        return JSLoadNodeGen.create();
     }
 
     public abstract Object executeLoad(Source source, JSRealm realm);

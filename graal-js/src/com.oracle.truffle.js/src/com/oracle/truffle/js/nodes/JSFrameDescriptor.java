@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import com.oracle.js.parser.ir.Scope;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.frame.FrameDescriptor;
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -165,16 +164,6 @@ public final class JSFrameDescriptor {
 
     public boolean isClosed() {
         return frameDescriptor != null;
-    }
-
-    public static JSFrameDescriptor createFunctionFrameDescriptor() {
-        return new JSFrameDescriptor(Undefined.instance);
-    }
-
-    public static JSFrameDescriptor createBlockFrameDescriptor() {
-        JSFrameDescriptor desc = new JSFrameDescriptor(Undefined.instance);
-        desc.addFrameSlot(ScopeFrameNode.PARENT_SCOPE_IDENTIFIER, FrameSlotKind.Object);
-        return desc;
     }
 
     private static int toSlotFlags(int flags) {

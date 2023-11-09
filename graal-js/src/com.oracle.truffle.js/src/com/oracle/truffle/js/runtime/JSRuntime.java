@@ -408,14 +408,6 @@ public final class JSRuntime {
         return JSToBooleanNode.getUncached().executeBoolean(value);
     }
 
-    public static boolean toBoolean(Number number) {
-        double val = doubleValue(number);
-        if (val == 0 || Double.isNaN(val)) {
-            return false;
-        }
-        return Boolean.TRUE;
-    }
-
     private static Object toPrimitiveHintNumber(Object value) {
         if (isObject(value)) {
             return JSObject.toPrimitive((JSObject) value, JSToPrimitiveNode.Hint.Number);

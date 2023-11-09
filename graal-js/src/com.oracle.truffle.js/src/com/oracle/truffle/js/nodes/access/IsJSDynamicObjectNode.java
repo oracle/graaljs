@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,7 @@ package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JSGuards;
@@ -53,7 +51,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 /**
  * Checks whether the argument is a JS object, null, or undefined.
  */
-@GenerateUncached
 @ImportStatic({CompilerDirectives.class})
 public abstract class IsJSDynamicObjectNode extends JavaScriptBaseNode {
 
@@ -73,14 +70,5 @@ public abstract class IsJSDynamicObjectNode extends JavaScriptBaseNode {
     protected boolean isObject(Object object,
                     @Cached InlinedConditionProfile resultProfile) {
         return resultProfile.profile(this, JSGuards.isJSDynamicObject(object));
-    }
-
-    @NeverDefault
-    public static IsJSDynamicObjectNode create() {
-        return IsJSDynamicObjectNodeGen.create();
-    }
-
-    public static IsJSDynamicObjectNode getUncached() {
-        return IsJSDynamicObjectNodeGen.getUncached();
     }
 }

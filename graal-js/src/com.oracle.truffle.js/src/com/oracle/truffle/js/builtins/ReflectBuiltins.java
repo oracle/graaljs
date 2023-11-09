@@ -298,7 +298,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         protected boolean delete(Object target, Object property,
                         @Cached IsObjectNode isObjectNode,
                         @Cached JSToPropertyKeyNode toPropertyKeyNode,
-                        @Cached("createNonStrict(getContext())") DeletePropertyNode deletePropertyNode) {
+                        @Cached("create(false, getContext())") DeletePropertyNode deletePropertyNode) {
             if (isObjectNode.executeBoolean(target)) {
                 Object key = toPropertyKeyNode.execute(property);
                 return deletePropertyNode.executeEvaluated(target, key);

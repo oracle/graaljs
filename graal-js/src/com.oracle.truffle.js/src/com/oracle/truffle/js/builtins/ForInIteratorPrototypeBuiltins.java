@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSForInIterator;
 import com.oracle.truffle.js.runtime.builtins.JSForInIteratorObject;
@@ -87,21 +86,6 @@ public final class ForInIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
     protected ForInIteratorPrototypeBuiltins() {
         super(JSForInIterator.PROTOTYPE_NAME);
         defineFunction(Strings.NEXT, 0);
-    }
-
-    public enum EnumerateIteratorPrototype implements BuiltinEnum<EnumerateIteratorPrototype> {
-        next(0);
-
-        private final int length;
-
-        EnumerateIteratorPrototype(int length) {
-            this.length = length;
-        }
-
-        @Override
-        public int getLength() {
-            return length;
-        }
     }
 
     @Override

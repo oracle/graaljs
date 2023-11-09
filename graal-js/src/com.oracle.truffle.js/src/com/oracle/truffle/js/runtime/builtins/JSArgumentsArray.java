@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,10 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
-import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -64,25 +62,6 @@ public final class JSArgumentsArray extends JSAbstractArgumentsArray {
 
     public static JSArgumentsObject.Mapped createMapped(Shape shape, JSDynamicObject proto, Object[] elements) {
         return new JSArgumentsObject.Mapped(shape, proto, ScriptArray.createConstantArray(elements), elements, elements.length);
-    }
-
-    @TruffleBoundary
-    public static JSArgumentsObject createStrictSlow(JSRealm realm, Object[] elements) {
-        JSContext context = realm.getContext();
-        JSObjectFactory factory = context.getStrictArgumentsFactory();
-        JSArgumentsObject argumentsObject = createUnmapped(factory.getShape(realm), factory.getPrototype(realm), elements);
-        factory.initProto(argumentsObject, realm);
-
-        JSObjectUtil.putDataProperty(argumentsObject, LENGTH, elements.length, JSAttributes.configurableNotEnumerableWritable());
-        JSObjectUtil.putDataProperty(argumentsObject, Symbol.SYMBOL_ITERATOR, realm.getArrayProtoValuesIterator(), JSAttributes.configurableNotEnumerableWritable());
-
-        Accessor throwerAccessor = realm.getThrowerAccessor();
-        JSObjectUtil.putBuiltinAccessorProperty(argumentsObject, CALLEE, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
-        if (context.getEcmaScriptVersion() < JSConfig.ECMAScript2017) {
-            JSObjectUtil.putBuiltinAccessorProperty(argumentsObject, CALLER, throwerAccessor, JSAttributes.notConfigurableNotEnumerable());
-        }
-
-        return context.trackAllocation(argumentsObject);
     }
 
     @TruffleBoundary

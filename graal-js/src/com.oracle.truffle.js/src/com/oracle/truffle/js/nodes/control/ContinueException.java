@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,20 +46,6 @@ public final class ContinueException extends ControlFlowException {
 
     private static final long serialVersionUID = 5329687983726237188L;
     static final ContinueException instance = new ContinueException();
-
-    private final int id;
-
-    public ContinueException() {
-        this.id = 0;
-    }
-
-    public ContinueException(int id) {
-        this.id = id;
-    }
-
-    public boolean matchTarget(int targetId) {
-        return id == targetId;
-    }
 
     public boolean matchTarget(ContinueTarget target) {
         return this == target.getContinueException();

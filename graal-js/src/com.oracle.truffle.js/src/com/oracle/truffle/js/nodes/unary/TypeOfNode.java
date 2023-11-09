@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,7 +82,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @NodeInfo(shortName = "typeof")
 @ImportStatic({JSRuntime.class, JSConfig.class})
 public abstract class TypeOfNode extends JSUnaryNode {
-    protected static final int MAX_CLASSES = 3;
 
     protected TypeOfNode(JavaScriptNode operand) {
         super(operand);

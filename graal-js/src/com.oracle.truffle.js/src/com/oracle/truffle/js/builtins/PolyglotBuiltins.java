@@ -64,7 +64,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.PolyglotBuiltinsFactory.PolyglotConstructNodeGen;
@@ -736,8 +735,6 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
 
     @ImportStatic(Strings.class)
     abstract static class PolyglotEvalBaseNode extends JSBuiltinNode {
-
-        protected final ConditionProfile isValid = ConditionProfile.create();
 
         PolyglotEvalBaseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

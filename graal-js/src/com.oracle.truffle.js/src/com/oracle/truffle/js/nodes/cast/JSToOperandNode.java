@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,21 +63,6 @@ public abstract class JSToOperandNode extends JavaScriptBaseNode {
     protected JSToOperandNode(Hint hint, boolean checkOperatorAllowed) {
         this.hint = hint;
         this.checkOperatorAllowed = checkOperatorAllowed;
-    }
-
-    @NeverDefault
-    public static JSToOperandNode createHintDefault() {
-        return create(Hint.Default);
-    }
-
-    @NeverDefault
-    public static JSToOperandNode createHintString() {
-        return create(Hint.String);
-    }
-
-    @NeverDefault
-    public static JSToOperandNode createHintNumber() {
-        return create(Hint.Number);
     }
 
     @NeverDefault

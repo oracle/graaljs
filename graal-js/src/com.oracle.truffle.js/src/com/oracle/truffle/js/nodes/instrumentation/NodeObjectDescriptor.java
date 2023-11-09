@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,8 +48,6 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * A container class used to store per-node attributes used by the instrumentation framework.
@@ -63,11 +61,6 @@ public final class NodeObjectDescriptor implements TruffleObject {
     @TruffleBoundary
     public void addProperty(String name, Object value) {
         data.put(name, value);
-    }
-
-    @TruffleBoundary
-    public void addProperty(TruffleString name, Object value) {
-        addProperty(Strings.toJavaString(name), value);
     }
 
     @SuppressWarnings("static-method")

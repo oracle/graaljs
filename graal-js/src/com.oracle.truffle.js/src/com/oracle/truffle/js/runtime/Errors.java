@@ -69,18 +69,6 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createAggregateError(Object errors, TruffleString message, Node originatingNode) {
-        JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
-        JSRealm realm = JSRealm.get(originatingNode);
-        JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError);
-        JSError.setMessage(errorObj, message);
-        JSObjectUtil.putDataProperty(errorObj, JSError.ERRORS_NAME, errors, JSError.ERRORS_ATTRIBUTES);
-        JSException exception = JSException.create(JSErrorType.AggregateError, Strings.toJavaString(message), errorObj, realm);
-        JSError.setException(realm, errorObj, exception, false);
-        return exception;
-    }
-
-    @TruffleBoundary
     public static JSException createAggregateError(Object errors, Node originatingNode) {
         JSContext context = JavaScriptLanguage.get(originatingNode).getJSContext();
         JSRealm realm = JSRealm.get(originatingNode);
@@ -606,11 +594,6 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorSymbolExpected() {
-        return Errors.createTypeError("Symbol expected");
-    }
-
-    @TruffleBoundary
     public static JSException createTypeErrorDetachedBuffer() {
         return Errors.createTypeError("Detached buffer");
     }
@@ -1002,10 +985,5 @@ public final class Errors {
     @TruffleBoundary
     public static JSException createTypeErrorWrongDecoratorReturn(Node originatingNode) {
         return Errors.createTypeError("Class decorator must return undefined or function", originatingNode);
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorIllegalAccessorTarget(Node originatingNode) {
-        return Errors.createTypeError("Illegal accessor target", originatingNode);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,9 +41,7 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.function.BiConsumer;
 import java.util.function.Consumer;
 
@@ -315,17 +313,6 @@ public final class JSObjectUtil {
         return (JSPrototypeData) JSDynamicObject.getOrNull(obj, PROTOTYPE_DATA);
     }
 
-    public static Map<Object, Object> archive(JSDynamicObject obj) {
-        HashMap<Object, Object> ret = new HashMap<>();
-        Shape shape = obj.getShape();
-        for (Property prop : shape.getPropertyListInternal(false)) {
-            if (!prop.getLocation().isConstant() && !ret.containsKey(prop.getKey())) {
-                ret.put(prop.getKey(), JSDynamicObject.getOrNull(obj, prop.getKey()));
-            }
-        }
-        return ret;
-    }
-
     @TruffleBoundary
     public static void setPrototypeImpl(JSDynamicObject object, JSDynamicObject newPrototype) {
         CompilerAsserts.neverPartOfCompilation();
@@ -408,10 +395,6 @@ public final class JSObjectUtil {
     public static boolean isNoSuchPropertyOrMethod(Object key) {
         CompilerAsserts.neverPartOfCompilation();
         return (Strings.isTString(key) && (Strings.equals(JSObject.NO_SUCH_PROPERTY_NAME, (TruffleString) key) || Strings.equals(JSObject.NO_SUCH_METHOD_NAME, (TruffleString) key)));
-    }
-
-    public static JSDynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {
-        return JSFunction.create(realm, realm.getContext().getSymbolSpeciesThisGetterFunctionData());
     }
 
     public static void putFunctionsFromContainer(JSRealm realm, JSDynamicObject thisObj, JSBuiltinsContainer container) {

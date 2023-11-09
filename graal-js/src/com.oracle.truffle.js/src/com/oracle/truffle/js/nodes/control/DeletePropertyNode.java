@@ -112,11 +112,6 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         return create(null, null, strict, context);
     }
 
-    @NeverDefault
-    public static DeletePropertyNode createNonStrict(JSContext context) {
-        return create(null, null, false, context);
-    }
-
     public static DeletePropertyNode create(JavaScriptNode object, JavaScriptNode property, boolean strict, JSContext context) {
         return DeletePropertyNodeGen.create(strict, context, object, property);
     }
@@ -210,7 +205,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                     @Cached InlinedConditionProfile arrayProfile,
                     @Shared("toArrayIndex") @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached InlinedConditionProfile arrayIndexProfile,
-                    @Cached("create(context, strict)") JSArrayDeleteIndexNode deleteArrayIndexNode,
+                    @Cached("create(strict)") JSArrayDeleteIndexNode deleteArrayIndexNode,
                     @Cached JSClassProfile jsclassProfile,
                     @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode) {
         final Object propertyKey;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -112,10 +112,6 @@ public class JSBuiltinsContainer {
         return new SwitchEnum<>(name, builtinEnum);
     }
 
-    public static <E extends Enum<E> & BuiltinEnum<E>> JSBuiltinsContainer fromEnum(Class<E> builtinEnum) {
-        return fromEnum(null, builtinEnum);
-    }
-
     /**
      * Builtins container for builtin nodes created via switch dispatch method.
      */
@@ -131,11 +127,6 @@ public class JSBuiltinsContainer {
 
         protected final void defineFunction(TruffleString name, int length, int attributeFlags) {
             defineBuiltin(name, length, attributeFlags, false, false);
-        }
-
-        protected final void defineConstructor(TruffleString name, int length, boolean isNewTargetConstructor) {
-            assert !Strings.isEmpty(name);
-            defineBuiltin(name, length, JSAttributes.getDefaultNotEnumerable(), true, isNewTargetConstructor);
         }
 
         private void defineBuiltin(TruffleString name, int length, int attributeFlags, boolean isConstructor, boolean isNewTargetConstructor) {
@@ -244,11 +235,6 @@ public class JSBuiltinsContainer {
         protected final void defineFunction(TruffleString name, int length, int attributeFlags, BuiltinNodeFactory nodeFactory) {
             assert !Strings.isEmpty(name);
             register(new JSBuiltin(getName(), name, length, attributeFlags, nodeFactory));
-        }
-
-        protected final void defineConstructor(TruffleString name, int length, BuiltinNodeFactory nodeFactory, BuiltinNodeFactory constructorFactory) {
-            assert !Strings.isEmpty(name);
-            register(new JSBuiltin(getName(), name, name, length, JSAttributes.getDefaultNotEnumerable(), 5, false, nodeFactory, constructorFactory, null));
         }
     }
 }

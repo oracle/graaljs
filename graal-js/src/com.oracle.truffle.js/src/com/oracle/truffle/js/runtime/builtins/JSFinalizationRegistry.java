@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import java.util.Iterator;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.FinalizationRegistryPrototypeBuiltins;
@@ -70,8 +69,6 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
 
     public static final TruffleString CLASS_NAME = Strings.constant("FinalizationRegistry");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("FinalizationRegistry.prototype");
-
-    public static final HiddenKey FINALIZATION_REGISTRY_ID = new HiddenKey("FinalizationRegistry");
 
     private JSFinalizationRegistry() {
     }

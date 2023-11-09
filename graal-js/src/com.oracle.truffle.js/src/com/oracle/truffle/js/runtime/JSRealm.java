@@ -595,10 +595,6 @@ public class JSRealm {
     /** 0 = Number, 1 = BigInt, 2 = String. */
     private int operatorCounter = 3;
 
-    protected JSRealm(JSContext context, TruffleLanguage.Env env) {
-        this(context, env, null);
-    }
-
     protected JSRealm(JSContext context, TruffleLanguage.Env env, JSRealm parentRealm) {
         this.context = context;
         this.contextOptions = JSContextOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions());
