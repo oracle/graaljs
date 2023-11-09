@@ -591,8 +591,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @TruffleBoundary
         private static TruffleString direction(JSLocaleObject localeObject) {
             ULocale locale = localeObject.getInternalState().getULocale();
-            String orientation = locale.getCharacterOrientation();
-            return "right-to-left".equals(orientation) ? IntlUtil.KEY_RTL : IntlUtil.KEY_LTR;
+            return locale.isRightToLeft() ? IntlUtil.KEY_RTL : IntlUtil.KEY_LTR;
         }
 
     }
