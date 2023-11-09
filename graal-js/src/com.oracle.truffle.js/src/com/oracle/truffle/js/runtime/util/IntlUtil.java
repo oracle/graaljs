@@ -1003,14 +1003,14 @@ public final class IntlUtil {
             collations = trimmed;
         }
 
+        Arrays.sort(collations);
+
         return collations;
     }
 
     @TruffleBoundary
     public static String[] availableCollations() {
-        String[] collations = availableCollations(null, false);
-        Arrays.sort(collations);
-        return collations;
+        return availableCollations(null, false);
     }
 
     @TruffleBoundary
