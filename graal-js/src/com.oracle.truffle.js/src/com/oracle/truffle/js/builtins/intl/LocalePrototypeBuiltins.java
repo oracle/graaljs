@@ -55,24 +55,24 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleBaseNameAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCalendarAccessorNodeGen;
-import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCalendarsAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCaseFirstAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCollationAccessorNodeGen;
-import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCollationsAccessorNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleGetCalendarsNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleGetCollationsNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleGetHourCyclesNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleGetNumberingSystemsNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleGetTextInfoNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleGetTimeZonesNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleGetWeekInfoNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleHourCycleAccessorNodeGen;
-import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleHourCyclesAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleLanguageAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleMaximizeNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleMinimizeNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleNumberingSystemAccessorNodeGen;
-import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleNumberingSystemsAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleNumericAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleRegionAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleScriptAccessorNodeGen;
-import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleTextInfoAccessorNodeGen;
-import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleTimeZonesAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleToStringNodeGen;
-import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleWeekInfoAccessorNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -119,13 +119,13 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         script(0),
         region(0),
 
-        calendars(0),
-        collations(0),
-        hourCycles(0),
-        numberingSystems(0),
-        timeZones(0),
-        textInfo(0),
-        weekInfo(0);
+        getCalendars(0),
+        getCollations(0),
+        getHourCycles(0),
+        getNumberingSystems(0),
+        getTimeZones(0),
+        getTextInfo(0),
+        getWeekInfo(0);
 
         private final int length;
 
@@ -140,12 +140,12 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public boolean isGetter() {
-            return baseName.ordinal() <= ordinal();
+            return baseName.ordinal() <= ordinal() && ordinal() <= region.ordinal();
         }
 
         @Override
         public int getECMAScriptVersion() {
-            if (calendars.ordinal() <= ordinal()) {
+            if (getCalendars.ordinal() <= ordinal()) {
                 return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
@@ -181,20 +181,20 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSLocaleScriptAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case region:
                 return JSLocaleRegionAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case calendars:
-                return JSLocaleCalendarsAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case collations:
-                return JSLocaleCollationsAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case hourCycles:
-                return JSLocaleHourCyclesAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case numberingSystems:
-                return JSLocaleNumberingSystemsAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case timeZones:
-                return JSLocaleTimeZonesAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case textInfo:
-                return JSLocaleTextInfoAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case weekInfo:
-                return JSLocaleWeekInfoAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case getCalendars:
+                return JSLocaleGetCalendarsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case getCollations:
+                return JSLocaleGetCollationsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case getHourCycles:
+                return JSLocaleGetHourCyclesNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case getNumberingSystems:
+                return JSLocaleGetNumberingSystemsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case getTimeZones:
+                return JSLocaleGetTimeZonesNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case getTextInfo:
+                return JSLocaleGetTextInfoNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case getWeekInfo:
+                return JSLocaleGetWeekInfoNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
     }
@@ -435,9 +435,9 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     }
 
-    public abstract static class JSLocaleCalendarsAccessor extends JSBuiltinNode {
+    public abstract static class JSLocaleGetCalendarsNode extends JSBuiltinNode {
 
-        public JSLocaleCalendarsAccessor(JSContext context, JSBuiltin builtin) {
+        public JSLocaleGetCalendarsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -462,9 +462,9 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     }
 
-    public abstract static class JSLocaleCollationsAccessor extends JSBuiltinNode {
+    public abstract static class JSLocaleGetCollationsNode extends JSBuiltinNode {
 
-        public JSLocaleCollationsAccessor(JSContext context, JSBuiltin builtin) {
+        public JSLocaleGetCollationsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -489,9 +489,9 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     }
 
-    public abstract static class JSLocaleHourCyclesAccessor extends JSBuiltinNode {
+    public abstract static class JSLocaleGetHourCyclesNode extends JSBuiltinNode {
 
-        public JSLocaleHourCyclesAccessor(JSContext context, JSBuiltin builtin) {
+        public JSLocaleGetHourCyclesNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -514,9 +514,9 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     }
 
-    public abstract static class JSLocaleNumberingSystemsAccessor extends JSBuiltinNode {
+    public abstract static class JSLocaleGetNumberingSystemsNode extends JSBuiltinNode {
 
-        public JSLocaleNumberingSystemsAccessor(JSContext context, JSBuiltin builtin) {
+        public JSLocaleGetNumberingSystemsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -538,9 +538,9 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     }
 
-    public abstract static class JSLocaleTimeZonesAccessor extends JSBuiltinNode {
+    public abstract static class JSLocaleGetTimeZonesNode extends JSBuiltinNode {
 
-        public JSLocaleTimeZonesAccessor(JSContext context, JSBuiltin builtin) {
+        public JSLocaleGetTimeZonesNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -569,10 +569,10 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     }
 
-    public abstract static class JSLocaleTextInfoAccessor extends JSBuiltinNode {
+    public abstract static class JSLocaleGetTextInfoNode extends JSBuiltinNode {
         @Child CreateDataPropertyNode createDirectionNode = CreateDataPropertyNode.create(getContext(), IntlUtil.KEY_DIRECTION);
 
-        public JSLocaleTextInfoAccessor(JSContext context, JSBuiltin builtin) {
+        public JSLocaleGetTextInfoNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
@@ -597,12 +597,12 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     }
 
-    public abstract static class JSLocaleWeekInfoAccessor extends JSBuiltinNode {
+    public abstract static class JSLocaleGetWeekInfoNode extends JSBuiltinNode {
         @Child CreateDataPropertyNode createFirstDayNode = CreateDataPropertyNode.create(getContext(), IntlUtil.KEY_FIRST_DAY);
         @Child CreateDataPropertyNode createWeekendNode = CreateDataPropertyNode.create(getContext(), IntlUtil.KEY_WEEKEND);
         @Child CreateDataPropertyNode createMinimalDaysNode = CreateDataPropertyNode.create(getContext(), IntlUtil.KEY_MINIMAL_DAYS);
 
-        public JSLocaleWeekInfoAccessor(JSContext context, JSBuiltin builtin) {
+        public JSLocaleGetWeekInfoNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
