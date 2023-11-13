@@ -261,10 +261,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "mjsunit/array-tostring.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/asm/asm-heap.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
@@ -725,10 +721,6 @@
     "filePath" : "mjsunit/es6/typedarray-set-bytelength-not-smi.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/es6/typedarray-tostring.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/es6/typedarray.js",
     "status" : "FAIL",
