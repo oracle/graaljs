@@ -1879,7 +1879,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public JSArrayToLocaleStringNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
-            this.passArguments = context.isOptionIntl402() && !context.isOptionV8CompatibilityMode();
+            this.passArguments = context.isOptionIntl402();
             this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
         }
 
