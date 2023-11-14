@@ -117,11 +117,15 @@ public final class StringBuilderProfile extends NodeCloneable {
     public void append(TruffleStringBuilder.AppendSubstringByteIndexNode node, TruffleStringBuilderUTF16 builder, TruffleString charSequence, int start, int end) {
         assert start <= end;
         int length = end - start;
-        if (Strings.builderLength(builder) + length > stringLengthLimit) {
+        appendLen(node, builder, charSequence, start, length);
+    }
+
+    public void appendLen(TruffleStringBuilder.AppendSubstringByteIndexNode node, TruffleStringBuilderUTF16 builder, TruffleString str, int start, int length) {
+        if ((Strings.builderLength(builder) + length) > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
         }
-        Strings.builderAppend(node, builder, charSequence, start, end);
+        Strings.builderAppendLen(node, builder, str, start, length);
     }
 
     public static int length(TruffleStringBuilderUTF16 builder) {
