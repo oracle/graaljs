@@ -841,7 +841,7 @@ public final class Strings {
         if (length(s) == length(search)) {
             return replace;
         }
-        TruffleStringBuilder sb = builderCreate(length(s));
+        var sb = builderCreate(length(s));
         int lastEndPos = 0;
         do {
             builderAppend(sb, s, lastEndPos, pos);
@@ -1043,71 +1043,71 @@ public final class Strings {
         return TruffleStringBuilder.createUTF16(capacity << 1);
     }
 
-    public static void builderAppend(TruffleStringBuilder sb, char chr) {
+    public static void builderAppend(TruffleStringBuilderUTF16 sb, char chr) {
         TruffleStringBuilder.AppendCharUTF16Node.getUncached().execute(sb, chr);
     }
 
-    public static void builderAppend(TruffleStringBuilder.AppendCharUTF16Node node, TruffleStringBuilder sb, char chr) {
+    public static void builderAppend(TruffleStringBuilder.AppendCharUTF16Node node, TruffleStringBuilderUTF16 sb, char chr) {
         node.execute(sb, chr);
     }
 
-    public static void builderAppend(TruffleStringBuilder sb, int i) {
+    public static void builderAppend(TruffleStringBuilderUTF16 sb, int i) {
         TruffleStringBuilder.AppendIntNumberNode.getUncached().execute(sb, i);
     }
 
-    public static void builderAppend(TruffleStringBuilder.AppendIntNumberNode node, TruffleStringBuilder sb, int i) {
+    public static void builderAppend(TruffleStringBuilder.AppendIntNumberNode node, TruffleStringBuilderUTF16 sb, int i) {
         node.execute(sb, i);
     }
 
-    public static void builderAppend(TruffleStringBuilder sb, long i) {
+    public static void builderAppend(TruffleStringBuilderUTF16 sb, long i) {
         TruffleStringBuilder.AppendLongNumberNode.getUncached().execute(sb, i);
     }
 
-    public static void builderAppend(TruffleStringBuilder.AppendLongNumberNode node, TruffleStringBuilder sb, long i) {
+    public static void builderAppend(TruffleStringBuilder.AppendLongNumberNode node, TruffleStringBuilderUTF16 sb, long i) {
         node.execute(sb, i);
     }
 
-    public static void builderAppend(TruffleStringBuilder sb, String str) {
+    public static void builderAppend(TruffleStringBuilderUTF16 sb, String str) {
         TruffleStringBuilder.AppendJavaStringUTF16Node.getUncached().execute(sb, str, 0, str.length());
     }
 
-    public static void builderAppend(TruffleStringBuilder sb, TruffleString str) {
+    public static void builderAppend(TruffleStringBuilderUTF16 sb, TruffleString str) {
         builderAppendLen(sb, str, 0, length(str));
     }
 
-    public static void builderAppend(TruffleStringBuilder.AppendStringNode node, TruffleStringBuilder sb, TruffleString str) {
+    public static void builderAppend(TruffleStringBuilder.AppendStringNode node, TruffleStringBuilderUTF16 sb, TruffleString str) {
         node.execute(sb, str);
     }
 
-    public static void builderAppend(TruffleStringBuilder sb, TruffleString str, int start, int end) {
+    public static void builderAppend(TruffleStringBuilderUTF16 sb, TruffleString str, int start, int end) {
         builderAppendLen(sb, str, start, end - start);
     }
 
-    public static void builderAppend(TruffleStringBuilder.AppendSubstringByteIndexNode node, TruffleStringBuilder sb, TruffleString str, int start, int end) {
+    public static void builderAppend(TruffleStringBuilder.AppendSubstringByteIndexNode node, TruffleStringBuilderUTF16 sb, TruffleString str, int start, int end) {
         builderAppendLen(node, sb, str, start, end - start);
     }
 
-    public static void builderAppendLen(TruffleStringBuilder sb, TruffleString str, int start, int len) {
+    public static void builderAppendLen(TruffleStringBuilderUTF16 sb, TruffleString str, int start, int len) {
         builderAppendLen(TruffleStringBuilder.AppendSubstringByteIndexNode.getUncached(), sb, str, start, len);
     }
 
-    public static void builderAppendLen(TruffleStringBuilder.AppendSubstringByteIndexNode node, TruffleStringBuilder sb, TruffleString str, int start, int len) {
+    public static void builderAppendLen(TruffleStringBuilder.AppendSubstringByteIndexNode node, TruffleStringBuilderUTF16 sb, TruffleString str, int start, int len) {
         node.execute(sb, str, start << 1, len << 1);
     }
 
-    public static TruffleString builderToString(TruffleStringBuilder sb) {
+    public static TruffleString builderToString(TruffleStringBuilderUTF16 sb) {
         return builderToString(TruffleStringBuilder.ToStringNode.getUncached(), sb);
     }
 
-    public static TruffleString builderToString(TruffleStringBuilder.ToStringNode node, TruffleStringBuilder sb) {
+    public static TruffleString builderToString(TruffleStringBuilder.ToStringNode node, TruffleStringBuilderUTF16 sb) {
         return node.execute(sb);
     }
 
-    public static String builderToJavaString(TruffleStringBuilder sb) {
+    public static String builderToJavaString(TruffleStringBuilderUTF16 sb) {
         return toJavaString(builderToString(sb));
     }
 
-    public static int builderLength(TruffleStringBuilder sb) {
+    public static int builderLength(TruffleStringBuilderUTF16 sb) {
         return sb.byteLength() >> 1;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.api.strings.TruffleStringIterator;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.DedentTemplateStringsArrayNodeGen;
 import com.oracle.truffle.js.builtins.StringFunctionBuiltinsFactory.JSFromCharCodeNodeGen;
@@ -258,7 +259,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 return Strings.EMPTY_STRING;
             }
 
-            TruffleStringBuilder result = Strings.builderCreate();
+            var result = Strings.builderCreate();
             for (int i = 0;; i++) {
                 Object rawElement = readRawElementNode.executeWithTargetAndIndex(raw, i);
                 TruffleString nextSeg = segToStringNode.executeString(rawElement);
@@ -283,7 +284,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private void appendChecked(TruffleStringBuilder result, TruffleString str) {
+        private void appendChecked(TruffleStringBuilderUTF16 result, TruffleString str) {
             if (Strings.builderLength(result) + Strings.length(str) > getContext().getStringLengthLimit()) {
                 CompilerDirectives.transferToInterpreter();
                 throw Errors.createRangeErrorInvalidStringLength();
@@ -363,7 +364,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             if (literalCount <= 0) {
                 return Strings.EMPTY_STRING;
             }
-            TruffleStringBuilder result = Strings.builderCreate();
+            var result = Strings.builderCreate();
             for (int i = 0; i < literalCount; i++) {
                 TruffleString nextSeg = segToStringNode.executeString(readElementNode.executeWithTargetAndIndex(dedentedArray, i));
                 appendChecked(result, nextSeg, stringLengthLimit,
@@ -381,7 +382,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return Strings.builderToString(builderToStringNode, result);
         }
 
-        private static void appendChecked(TruffleStringBuilder result, TruffleString str, int stringLengthLimit,
+        private static void appendChecked(TruffleStringBuilderUTF16 result, TruffleString str, int stringLengthLimit,
                         Node self,
                         InlinedBranchProfile errorBranch,
                         TruffleStringBuilder.AppendStringNode appendStringNode) {
@@ -482,7 +483,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             TruffleString[] dedented = new TruffleString[blocks.length];
             for (int j = 0; j < blocks.length; j++) {
                 SegmentRecord[] lines = blocks[j];
-                TruffleStringBuilder partialResult = Strings.builderCreate();
+                var partialResult = Strings.builderCreate();
                 for (int i = 0; i < lines.length; i++) {
                     SegmentRecord line = lines[i];
                     int currentIndentation = i == 0 || Strings.isEmpty(line.substr) ? 0 : indentLength;
@@ -689,7 +690,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
          */
         private Object parseText(TruffleStringIterator iterator,
                         InlinedBranchProfile errorBranch) {
-            TruffleStringBuilder partialResult = Strings.builderCreate();
+            var partialResult = Strings.builderCreate();
             while (iterator.hasNext()) {
                 int ch = iteratorNextNode.execute(iterator);
                 if (ch == '\\') {

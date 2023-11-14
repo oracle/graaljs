@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.parser.json;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.runtime.Strings;
 
 public class JSONParserUtil {
@@ -55,7 +54,7 @@ public class JSONParserUtil {
      * @return quoted and escaped string
      */
     public static TruffleString quote(final TruffleString value) {
-        TruffleStringBuilder product = Strings.builderCreate();
+        var product = Strings.builderCreate();
         Strings.builderAppend(product, Strings.DOUBLE_QUOTE);
         int len = Strings.length(value);
         for (int i = 0; i < len; i++) {

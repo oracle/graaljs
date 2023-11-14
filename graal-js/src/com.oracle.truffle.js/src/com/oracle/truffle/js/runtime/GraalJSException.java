@@ -64,7 +64,6 @@ import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.function.FunctionRootNode;
@@ -921,7 +920,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
         @TruffleBoundary
         public TruffleString toString(JSContext context) {
-            TruffleStringBuilder sb = Strings.builderCreate();
+            var sb = Strings.builderCreate();
             if (isPromiseAll()) {
                 Strings.builderAppend(sb, Strings.ASYNC_PROMISE_ALL_BEGIN);
                 Strings.builderAppend(sb, promiseIndex);

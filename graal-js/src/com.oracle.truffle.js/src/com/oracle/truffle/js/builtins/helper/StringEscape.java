@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 
@@ -79,7 +79,7 @@ public final class StringEscape {
     @TruffleBoundary
     public static TruffleString escape(TruffleString s) {
         int len = Strings.length(s);
-        TruffleStringBuilder out = null;
+        TruffleStringBuilderUTF16 out = null;
 
         for (int i = 0; i < len; i++) {
             int c = Strings.charAt(s, i);
@@ -116,7 +116,7 @@ public final class StringEscape {
     @TruffleBoundary
     public static TruffleString unescape(TruffleString string) {
         int len = Strings.length(string);
-        TruffleStringBuilder sb = null;
+        TruffleStringBuilderUTF16 sb = null;
 
         int k = 0;
         while (k < len) {
@@ -146,15 +146,15 @@ public final class StringEscape {
         return sb != null ? Strings.builderToString(sb) : string;
     }
 
-    private static TruffleStringBuilder allocStringBuilder(TruffleString s, int i, int estimatedLength) {
-        TruffleStringBuilder sb = Strings.builderCreate(estimatedLength);
+    private static TruffleStringBuilderUTF16 allocStringBuilder(TruffleString s, int i, int estimatedLength) {
+        var sb = Strings.builderCreate(estimatedLength);
         if (i > 0) {
             Strings.builderAppend(sb, s, 0, i);
         }
         return sb;
     }
 
-    private static boolean unescapeU0000(TruffleString string, TruffleStringBuilder builder, int k) {
+    private static boolean unescapeU0000(TruffleString string, TruffleStringBuilderUTF16 builder, int k) {
         char c1 = Strings.charAt(string, k + 1);
         if (c1 == 'u') {
             char c2 = Strings.charAt(string, k + 2);
@@ -170,7 +170,7 @@ public final class StringEscape {
         return false;
     }
 
-    private static boolean unescape00(TruffleString string, TruffleStringBuilder builder, int k) {
+    private static boolean unescape00(TruffleString string, TruffleStringBuilderUTF16 builder, int k) {
         char c1 = Strings.charAt(string, k + 1);
         char c2 = Strings.charAt(string, k + 2);
         if (JSRuntime.isHex(c1) && JSRuntime.isHex(c2)) {

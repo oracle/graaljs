@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,7 +75,7 @@ import java.util.BitSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.Strings;
@@ -181,7 +181,7 @@ public final class JSURLEncoder {
     @TruffleBoundary(transferToInterpreterOnException = false)
     public TruffleString encode(TruffleString s) {
         int length = Strings.length(s);
-        TruffleStringBuilder sb = null;
+        TruffleStringBuilderUTF16 sb = null;
         CharsetEncoder encoder = null;
 
         int i = 0;
@@ -206,15 +206,15 @@ public final class JSURLEncoder {
         return sb != null ? Strings.builderToString(sb) : s;
     }
 
-    static TruffleStringBuilder allocStringBuilder(TruffleString s, int i, int estimatedLength) {
-        TruffleStringBuilder sb = Strings.builderCreate(estimatedLength);
+    static TruffleStringBuilderUTF16 allocStringBuilder(TruffleString s, int i, int estimatedLength) {
+        var sb = Strings.builderCreate(estimatedLength);
         if (i > 0) {
             Strings.builderAppend(sb, s, 0, i);
         }
         return sb;
     }
 
-    private int encodeConvert(String s, int iParam, int cParam, TruffleStringBuilder buffer, CharsetEncoder encoder) {
+    private int encodeConvert(String s, int iParam, int cParam, TruffleStringBuilderUTF16 buffer, CharsetEncoder encoder) {
         int i = iParam;
         int c = cParam;
         int startPos = i;

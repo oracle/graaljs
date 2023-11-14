@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,7 +62,7 @@ import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -985,7 +985,7 @@ public final class JSRuntime {
                     Object[] internalValues) {
         assert !JSFunction.isJSFunction(obj) && !JSProxy.isJSProxy(obj);
         boolean v8CompatMode = JSObject.getJSContext(obj).isOptionV8CompatibilityMode();
-        TruffleStringBuilder sb = Strings.builderCreate();
+        var sb = Strings.builderCreate();
 
         if (name != null) {
             Strings.builderAppend(sb, name);
@@ -1175,7 +1175,7 @@ public final class JSRuntime {
             return Strings.concatAll(Strings.ARRAY_PAREN_OPEN, Strings.fromLong(size), Strings.PAREN_CLOSE);
         }
         boolean topLevel = depth == 0;
-        TruffleStringBuilder sb = Strings.builderCreate();
+        var sb = Strings.builderCreate();
         if (topLevel && size >= 2 && format.includeArrayLength()) {
             Strings.builderAppend(sb, Strings.PAREN_OPEN);
             Strings.builderAppend(sb, size);
@@ -1212,7 +1212,7 @@ public final class JSRuntime {
         } else if (depth >= format.getMaxDepth()) {
             return Strings.EMPTY_OBJECT_DOTS;
         }
-        TruffleStringBuilder sb = Strings.builderCreate();
+        var sb = Strings.builderCreate();
         Strings.builderAppend(sb, '{');
         for (long i = 0; i < keyCount; i++) {
             if (i > 0) {
@@ -1234,7 +1234,7 @@ public final class JSRuntime {
         return Strings.builderToString(sb);
     }
 
-    private static boolean fillEmptyArrayElements(TruffleStringBuilder sb, long index, long prevArrayIndex, boolean prependComma) {
+    private static boolean fillEmptyArrayElements(TruffleStringBuilderUTF16 sb, long index, long prevArrayIndex, boolean prependComma) {
         if (prevArrayIndex < (index - 1)) {
             if (prependComma) {
                 Strings.builderAppend(sb, Strings.COMMA_SPC);
@@ -1255,7 +1255,7 @@ public final class JSRuntime {
         assert JSMap.isJSMap(obj) || JSSet.isJSSet(obj);
         assert name != null;
         int size = map.size();
-        TruffleStringBuilder sb = Strings.builderCreate();
+        var sb = Strings.builderCreate();
         Strings.builderAppend(sb, name);
         Strings.builderAppend(sb, Strings.PAREN_OPEN);
         Strings.builderAppend(sb, size);
@@ -2765,7 +2765,7 @@ public final class JSRuntime {
             pos++;
         }
 
-        TruffleStringBuilder builder = Strings.builderCreate(Strings.length(value) + 2);
+        var builder = Strings.builderCreate(Strings.length(value) + 2);
         Strings.builderAppend(builder, '"');
         Strings.builderAppend(builder, value, 0, pos);
         for (int i = pos; i < Strings.length(value); i++) {
