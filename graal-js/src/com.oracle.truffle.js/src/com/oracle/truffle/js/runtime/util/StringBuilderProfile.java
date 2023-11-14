@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import com.oracle.truffle.api.nodes.NodeCloneable;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Strings;
 
@@ -68,12 +69,12 @@ public final class StringBuilderProfile extends NodeCloneable {
     }
 
     @SuppressWarnings("static-method")
-    public TruffleStringBuilder newStringBuilder() {
+    public TruffleStringBuilderUTF16 newStringBuilder() {
         return Strings.builderCreate();
     }
 
     @SuppressWarnings("static-method")
-    public TruffleStringBuilder newStringBuilder(int capacity) {
+    public TruffleStringBuilderUTF16 newStringBuilder(int capacity) {
         return Strings.builderCreate(capacity);
     }
 
