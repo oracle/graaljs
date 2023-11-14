@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,6 +52,7 @@ import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -109,7 +110,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             if (!isStringifyable(value)) {
                 return Undefined.instance;
             }
-            TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder();
+            var sb = stringBuilderProfile.newStringBuilder();
             serializeJSONPropertyValue(sb, data, value);
             return builderToString(sb);
         } catch (StackOverflowError ex) {
@@ -129,7 +130,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
      * @see #prepareJSONPropertyValue
      */
     @TruffleBoundary
-    private void serializeJSONPropertyValue(TruffleStringBuilder builder, JSONData data, Object value) {
+    private void serializeJSONPropertyValue(TruffleStringBuilderUTF16 builder, JSONData data, Object value) {
         assert isStringifyable(value);
         if (value == Null.instance) {
             append(builder, Null.NAME);
@@ -162,7 +163,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return Errors.createTypeError("Do not know how to serialize a value of type " + (value == null ? "null" : value.getClass().getTypeName()));
     }
 
-    private void serializeForeignObject(TruffleStringBuilder sb, JSONData data, Object obj) {
+    private void serializeForeignObject(TruffleStringBuilderUTF16 sb, JSONData data, Object obj) {
         assert JSGuards.isForeignObjectOrNumber(obj);
         InteropLibrary interop = InteropLibrary.getFactory().getUncached(obj);
         if (interop.isNull(obj)) {
@@ -192,11 +193,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private void appendBoolean(TruffleStringBuilder builder, boolean value) {
+    private void appendBoolean(TruffleStringBuilderUTF16 builder, boolean value) {
         append(builder, value ? JSBoolean.TRUE_NAME : JSBoolean.FALSE_NAME);
     }
 
-    private void appendNumber(TruffleStringBuilder builder, Object number) {
+    private void appendNumber(TruffleStringBuilderUTF16 builder, Object number) {
         assert number instanceof Number;
         if (number instanceof Integer) {
             append(builder, ((Integer) number).intValue());
@@ -317,7 +318,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private TruffleStringBuilder serializeJSONObject(TruffleStringBuilder sb, JSONData data, Object value) {
+    private TruffleStringBuilder serializeJSONObject(TruffleStringBuilderUTF16 sb, JSONData data, Object value) {
         assert !JSRuntime.isNullish(value) : value;
         checkCycle(data, value);
         data.pushStack(value);
@@ -344,7 +345,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return sb;
     }
 
-    private TruffleStringBuilder serializeJSONObjectProperties(TruffleStringBuilder sb, JSONData data, Object value, int indent, List<? extends Object> keys) {
+    private TruffleStringBuilder serializeJSONObjectProperties(TruffleStringBuilderUTF16 sb, JSONData data, Object value, int indent, List<? extends Object> keys) {
         boolean isFirst = true;
         for (Object key : keys) {
             TruffleString name = (TruffleString) key;
@@ -364,14 +365,14 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return sb;
     }
 
-    private void appendColon(TruffleStringBuilder sb, JSONData data) {
+    private void appendColon(TruffleStringBuilderUTF16 sb, JSONData data) {
         append(sb, ':');
         if (Strings.length(data.getGap()) > 0) {
             append(sb, ' ');
         }
     }
 
-    private void serializeForeignObjectProperties(TruffleStringBuilder sb, JSONData data, Object obj, int indent) {
+    private void serializeForeignObjectProperties(TruffleStringBuilderUTF16 sb, JSONData data, Object obj, int indent) {
         try {
             InteropLibrary objInterop = InteropLibrary.getFactory().getUncached(obj);
             if (!objInterop.hasMembers(obj)) {
@@ -407,7 +408,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private TruffleStringBuilder serializeJSONArray(TruffleStringBuilder sb, JSONData data, Object value) {
+    private TruffleStringBuilder serializeJSONArray(TruffleStringBuilderUTF16 sb, JSONData data, Object value) {
         assert JSRuntime.isArray(value) : value;
         checkCycle(data, value);
         data.pushStack(value);
@@ -472,11 +473,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         throw Errors.createRangeError("cannot stringify objects nested that deep");
     }
 
-    private void concatStart(TruffleStringBuilder builder, char c) {
+    private void concatStart(TruffleStringBuilderUTF16 builder, char c) {
         append(builder, c);
     }
 
-    private void concatFirstStep(TruffleStringBuilder sb, JSONData data) {
+    private void concatFirstStep(TruffleStringBuilderUTF16 sb, JSONData data) {
         if (Strings.length(data.getGap()) > 0) {
             append(sb, '\n');
             for (int i = 0; i < data.getIndent(); i++) {
@@ -485,7 +486,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private void concatEnd(TruffleStringBuilder sb, JSONData data, int stepback, char close, boolean hasContent) {
+    private void concatEnd(TruffleStringBuilderUTF16 sb, JSONData data, int stepback, char close, boolean hasContent) {
         if (Strings.length(data.getGap()) > 0 && hasContent) {
             append(sb, '\n');
             for (int i = 0; i < stepback; i++) {
@@ -496,7 +497,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private void appendSeparator(TruffleStringBuilder sb, JSONData data, int indent) {
+    private void appendSeparator(TruffleStringBuilderUTF16 sb, JSONData data, int indent) {
         if (Strings.length(data.getGap()) <= 0) {
             append(sb, ',');
         } else {
@@ -513,11 +514,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private TruffleStringBuilder jsonQuote(TruffleStringBuilder builder, TruffleString valueStr) {
+    private TruffleStringBuilder jsonQuote(TruffleStringBuilderUTF16 builder, TruffleString valueStr) {
         return jsonQuote(stringBuilderProfile, builder, valueStr, getAppendCharNode(), getAppendStringNode());
     }
 
-    public static TruffleStringBuilder jsonQuote(StringBuilderProfile stringBuilderProfile, TruffleStringBuilder sb, TruffleString valueStr,
+    public static TruffleStringBuilder jsonQuote(StringBuilderProfile stringBuilderProfile, TruffleStringBuilderUTF16 sb, TruffleString valueStr,
                     TruffleStringBuilder.AppendCharUTF16Node appendCharNode,
                     TruffleStringBuilder.AppendStringNode appendStringNode) {
         stringBuilderProfile.append(appendCharNode, sb, '"');
@@ -568,7 +569,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return sb;
     }
 
-    private static void jsonQuoteUnicode(StringBuilderProfile stringBuilderProfile, TruffleStringBuilder sb, char c,
+    private static void jsonQuoteUnicode(StringBuilderProfile stringBuilderProfile, TruffleStringBuilderUTF16 sb, char c,
                     TruffleStringBuilder.AppendCharUTF16Node appendCharNode,
                     TruffleStringBuilder.AppendStringNode appendStringNode) {
         stringBuilderProfile.append(appendStringNode, sb, Strings.BACKSLASH_U00);
@@ -576,7 +577,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         stringBuilderProfile.append(appendCharNode, sb, Character.forDigit(c & 0xF, 16));
     }
 
-    private static void jsonQuoteSurrogate(StringBuilderProfile stringBuilderProfile, TruffleStringBuilder sb, char c,
+    private static void jsonQuoteSurrogate(StringBuilderProfile stringBuilderProfile, TruffleStringBuilderUTF16 sb, char c,
                     TruffleStringBuilder.AppendCharUTF16Node appendCharNode,
                     TruffleStringBuilder.AppendStringNode appendStringNode) {
         stringBuilderProfile.append(appendStringNode, sb, Strings.BACKSLASH_UD);
@@ -613,7 +614,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return appendStringNode;
     }
 
-    private void append(TruffleStringBuilder sb, TruffleString s) {
+    private void append(TruffleStringBuilderUTF16 sb, TruffleString s) {
         stringBuilderProfile.append(getAppendStringNode(), sb, s);
     }
 
@@ -625,11 +626,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         return appendCharNode;
     }
 
-    private void append(TruffleStringBuilder sb, char value) {
+    private void append(TruffleStringBuilderUTF16 sb, char value) {
         stringBuilderProfile.append(getAppendCharNode(), sb, value);
     }
 
-    private void append(TruffleStringBuilder sb, int value) {
+    private void append(TruffleStringBuilderUTF16 sb, int value) {
         if (appendIntNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             appendIntNode = insert(TruffleStringBuilder.AppendIntNumberNode.create());
@@ -637,7 +638,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         stringBuilderProfile.append(appendIntNode, sb, value);
     }
 
-    private void append(TruffleStringBuilder sb, long value) {
+    private void append(TruffleStringBuilderUTF16 sb, long value) {
         if (appendLongNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             appendLongNode = insert(TruffleStringBuilder.AppendLongNumberNode.create());
@@ -645,7 +646,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         stringBuilderProfile.append(appendLongNode, sb, value);
     }
 
-    private TruffleString builderToString(TruffleStringBuilder sb) {
+    private TruffleString builderToString(TruffleStringBuilderUTF16 sb) {
         if (builderToStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             builderToStringNode = insert(TruffleStringBuilder.ToStringNode.create());
