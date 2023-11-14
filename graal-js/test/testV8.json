@@ -622,13 +622,6 @@
     "filePath" : "mjsunit/error-tostring-omit.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "mjsunit/es6/array-concat-typedarray.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SHARED_ENGINE" : "FAIL"
-    },
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/es6/block-eval-var-over-let.js",
     "status" : "FAIL"
   }, {
