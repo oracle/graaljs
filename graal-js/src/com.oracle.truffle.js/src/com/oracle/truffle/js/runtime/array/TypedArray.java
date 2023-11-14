@@ -133,7 +133,7 @@ public abstract class TypedArray extends ScriptArray {
 
     @Override
     public final long previousElementIndex(JSDynamicObject object, long index) {
-        return index - 1;
+        return Math.min(index, length(object)) - 1;
     }
 
     @Override
