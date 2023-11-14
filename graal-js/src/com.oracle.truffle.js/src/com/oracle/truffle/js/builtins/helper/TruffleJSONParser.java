@@ -66,9 +66,6 @@ public class TruffleJSONParser {
     protected TruffleString parseStr;
     protected int parseDepth;
 
-    protected static final char[] NullLiteral = new char[]{'n', 'u', 'l', 'l'};
-    protected static final char[] BooleanTrueLiteral = new char[]{'t', 'r', 'u', 'e'};
-    protected static final char[] BooleanFalseLiteral = new char[]{'f', 'a', 'l', 's', 'e'};
     protected static final int MAX_PARSE_DEPTH = 100000;
 
     private static final String MALFORMED_NUMBER = "malformed number";
@@ -467,7 +464,7 @@ public class TruffleJSONParser {
     }
 
     protected boolean isNullLiteral(char c) {
-        return c == 'n' && isLiteral(NullLiteral, 1);
+        return c == 'n' && isLiteral(Strings.NULL, 1);
     }
 
     protected Object parseNullLiteral() {
@@ -477,7 +474,7 @@ public class TruffleJSONParser {
     }
 
     protected boolean isBooleanLiteral(char c) {
-        return (c == 't' && isLiteral(BooleanTrueLiteral, 1)) || (c == 'f' && isLiteral(BooleanFalseLiteral, 1));
+        return (c == 't' && isLiteral(Strings.TRUE, 1)) || (c == 'f' && isLiteral(Strings.FALSE, 1));
     }
 
     protected Object parseBooleanLiteral() {
@@ -575,15 +572,15 @@ public class TruffleJSONParser {
         return pos < len;
     }
 
-    protected boolean isLiteral(char[] literal, int startPos) {
-        if (len < pos + literal.length) {
+    protected boolean isLiteral(TruffleString literalStr, int literalPos) {
+        if (len < pos + Strings.length(literalStr)) {
             return false;
         }
-        for (int i = startPos; i < literal.length; i++) {
-            if (get(pos + i) != literal[i]) {
-                return false;
-            }
-        }
-        return true;
+        int startPos = pos + literalPos;
+        return TruffleString.RegionEqualByteIndexNode.getUncached().execute(
+                        parseStr, startPos << 1,
+                        literalStr, literalPos << 1,
+                        literalStr.byteLength(TruffleString.Encoding.UTF_16) - (literalPos << 1),
+                        TruffleString.Encoding.UTF_16);
     }
 }
