@@ -50,6 +50,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 
 public final class Strings {
 
@@ -669,7 +670,7 @@ public final class Strings {
         for (TruffleString c : concat) {
             len += length(c);
         }
-        TruffleStringBuilder sb = TruffleStringBuilder.create(TruffleString.Encoding.UTF_16, len);
+        var sb = builderCreate(len);
         TruffleStringBuilder.AppendStringNode.getUncached().execute(sb, s);
         for (TruffleString c : concat) {
             TruffleStringBuilder.AppendStringNode.getUncached().execute(sb, c);
@@ -1038,12 +1039,12 @@ public final class Strings {
         return new BigInteger(toJavaString(s), radix);
     }
 
-    public static TruffleStringBuilder builderCreate() {
-        return TruffleStringBuilder.create(TruffleString.Encoding.UTF_16);
+    public static TruffleStringBuilderUTF16 builderCreate() {
+        return TruffleStringBuilder.createUTF16();
     }
 
-    public static TruffleStringBuilder builderCreate(int capacity) {
-        return TruffleStringBuilder.create(TruffleString.Encoding.UTF_16, capacity << 1);
+    public static TruffleStringBuilderUTF16 builderCreate(int capacity) {
+        return TruffleStringBuilder.createUTF16(capacity << 1);
     }
 
     public static void builderAppend(TruffleStringBuilder sb, char chr) {
