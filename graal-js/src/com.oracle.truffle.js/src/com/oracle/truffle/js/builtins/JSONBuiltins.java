@@ -278,7 +278,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                         @Cached TruffleStringBuilder.AppendCharUTF16Node appendRawValueNode,
                         @Cached TruffleStringBuilder.AppendStringNode appendStringNode,
                         @Cached TruffleStringBuilder.ToStringNode builderToStringNode) {
-            TruffleStringBuilder builder = Strings.builderCreate(Strings.length(str) + 8);
+            var builder = Strings.builderCreate(Strings.length(str) + 8);
             JSONStringifyStringNode.jsonQuote(stringBuilderProfile, builder, str, appendRawValueNode, appendStringNode);
             return StringBuilderProfile.toString(builderToStringNode, builder);
         }
