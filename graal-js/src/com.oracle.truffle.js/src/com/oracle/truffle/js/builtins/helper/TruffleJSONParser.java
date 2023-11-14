@@ -575,10 +575,6 @@ public class TruffleJSONParser {
         return pos < len;
     }
 
-    protected boolean isLiteral(char[] literal) {
-        return isLiteral(literal, 0);
-    }
-
     protected boolean isLiteral(char[] literal, int startPos) {
         if (len < pos + literal.length) {
             return false;
