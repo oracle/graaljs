@@ -82,11 +82,11 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getToJSONProperty;
     @Child private JSFunctionCallNode callToJSONFunction;
 
-    @Child private TruffleStringBuilder.AppendCharUTF16Node appendCharNode;
+    @Child private TruffleStringBuilder.AppendCharUTF16Node appendCharNode = TruffleStringBuilder.AppendCharUTF16Node.create();
     @Child private TruffleStringBuilder.AppendIntNumberNode appendIntNode;
     @Child private TruffleStringBuilder.AppendLongNumberNode appendLongNode;
-    @Child private TruffleStringBuilder.AppendStringNode appendStringNode;
-    @Child private TruffleStringBuilder.ToStringNode builderToStringNode;
+    @Child private TruffleStringBuilder.AppendStringNode appendStringNode = TruffleStringBuilder.AppendStringNode.create();
+    @Child private TruffleStringBuilder.ToStringNode builderToStringNode = TruffleStringBuilder.ToStringNode.create();
 
     private final StringBuilderProfile stringBuilderProfile;
 
@@ -515,7 +515,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     private TruffleStringBuilder jsonQuote(TruffleStringBuilderUTF16 builder, TruffleString valueStr) {
-        return jsonQuote(stringBuilderProfile, builder, valueStr, getAppendCharNode(), getAppendStringNode());
+        return jsonQuote(stringBuilderProfile, builder, valueStr, appendCharNode, appendStringNode);
     }
 
     public static TruffleStringBuilder jsonQuote(StringBuilderProfile stringBuilderProfile, TruffleStringBuilderUTF16 sb, TruffleString valueStr,
@@ -606,28 +606,12 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
     }
 
-    private TruffleStringBuilder.AppendStringNode getAppendStringNode() {
-        if (appendStringNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            appendStringNode = insert(TruffleStringBuilder.AppendStringNode.create());
-        }
-        return appendStringNode;
-    }
-
     private void append(TruffleStringBuilderUTF16 sb, TruffleString s) {
-        stringBuilderProfile.append(getAppendStringNode(), sb, s);
-    }
-
-    private TruffleStringBuilder.AppendCharUTF16Node getAppendCharNode() {
-        if (appendCharNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            appendCharNode = insert(TruffleStringBuilder.AppendCharUTF16Node.create());
-        }
-        return appendCharNode;
+        stringBuilderProfile.append(appendStringNode, sb, s);
     }
 
     private void append(TruffleStringBuilderUTF16 sb, char value) {
-        stringBuilderProfile.append(getAppendCharNode(), sb, value);
+        stringBuilderProfile.append(appendCharNode, sb, value);
     }
 
     private void append(TruffleStringBuilderUTF16 sb, int value) {
@@ -647,10 +631,6 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     private TruffleString builderToString(TruffleStringBuilderUTF16 sb) {
-        if (builderToStringNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            builderToStringNode = insert(TruffleStringBuilder.ToStringNode.create());
-        }
         return StringBuilderProfile.toString(builderToStringNode, sb);
     }
 }
