@@ -60,7 +60,7 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugArrayTypeNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugAssertIntNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
@@ -363,7 +363,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
         @TruffleBoundary
         protected TruffleString debugPrint(JSDynamicObject object, int level, int levelStop) {
             List<TruffleString> properties = JSObject.enumerableOwnNames(object);
-            TruffleStringBuilder sb = Strings.builderCreate(properties.size() * 10);
+            var sb = Strings.builderCreate(properties.size() * 10);
             Strings.builderAppend(sb, "{\n");
             for (TruffleString key : properties) {
                 indent(sb, level + 1);
@@ -397,7 +397,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             return Strings.builderToString(sb);
         }
 
-        private static void indent(TruffleStringBuilder sb, int level) {
+        private static void indent(TruffleStringBuilderUTF16 sb, int level) {
             for (int i = 0; i < level; i++) {
                 Strings.builderAppend(sb, ' ');
             }

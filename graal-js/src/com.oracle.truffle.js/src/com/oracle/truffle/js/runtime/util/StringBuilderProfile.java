@@ -78,11 +78,11 @@ public final class StringBuilderProfile extends NodeCloneable {
         return Strings.builderCreate(capacity);
     }
 
-    public static TruffleString toString(TruffleStringBuilder.ToStringNode node, TruffleStringBuilder builder) {
+    public static TruffleString toString(TruffleStringBuilder.ToStringNode node, TruffleStringBuilderUTF16 builder) {
         return Strings.builderToString(node, builder);
     }
 
-    public void append(TruffleStringBuilder.AppendStringNode node, TruffleStringBuilder builder, TruffleString str) {
+    public void append(TruffleStringBuilder.AppendStringNode node, TruffleStringBuilderUTF16 builder, TruffleString str) {
         if ((Strings.builderLength(builder) + Strings.length(str)) > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
@@ -90,7 +90,7 @@ public final class StringBuilderProfile extends NodeCloneable {
         Strings.builderAppend(node, builder, str);
     }
 
-    public void append(TruffleStringBuilder.AppendCharUTF16Node node, TruffleStringBuilder builder, char c) {
+    public void append(TruffleStringBuilder.AppendCharUTF16Node node, TruffleStringBuilderUTF16 builder, char c) {
         if (Strings.builderLength(builder) + 1 > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
@@ -98,7 +98,7 @@ public final class StringBuilderProfile extends NodeCloneable {
         Strings.builderAppend(node, builder, c);
     }
 
-    public void append(TruffleStringBuilder.AppendIntNumberNode node, TruffleStringBuilder builder, int intValue) {
+    public void append(TruffleStringBuilder.AppendIntNumberNode node, TruffleStringBuilderUTF16 builder, int intValue) {
         if (Strings.builderLength(builder) + MAX_INT_STRING_LENGTH > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
@@ -106,7 +106,7 @@ public final class StringBuilderProfile extends NodeCloneable {
         Strings.builderAppend(node, builder, intValue);
     }
 
-    public void append(TruffleStringBuilder.AppendLongNumberNode node, TruffleStringBuilder builder, long longValue) {
+    public void append(TruffleStringBuilder.AppendLongNumberNode node, TruffleStringBuilderUTF16 builder, long longValue) {
         if (Strings.builderLength(builder) + MAX_LONG_STRING_LENGTH > stringLengthLimit) {
             errorBranch.enter();
             throw Errors.createRangeErrorInvalidStringLength();
@@ -114,7 +114,7 @@ public final class StringBuilderProfile extends NodeCloneable {
         Strings.builderAppend(node, builder, longValue);
     }
 
-    public void append(TruffleStringBuilder.AppendSubstringByteIndexNode node, TruffleStringBuilder builder, TruffleString charSequence, int start, int end) {
+    public void append(TruffleStringBuilder.AppendSubstringByteIndexNode node, TruffleStringBuilderUTF16 builder, TruffleString charSequence, int start, int end) {
         assert start <= end;
         int length = end - start;
         if (Strings.builderLength(builder) + length > stringLengthLimit) {
@@ -124,7 +124,7 @@ public final class StringBuilderProfile extends NodeCloneable {
         Strings.builderAppend(node, builder, charSequence, start, end);
     }
 
-    public static int length(TruffleStringBuilder builder) {
+    public static int length(TruffleStringBuilderUTF16 builder) {
         return Strings.builderLength(builder);
     }
 

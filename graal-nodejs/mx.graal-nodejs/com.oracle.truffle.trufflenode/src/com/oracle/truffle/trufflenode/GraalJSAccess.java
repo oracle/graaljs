@@ -162,7 +162,6 @@ import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.JSONBuiltins;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -3562,7 +3561,7 @@ public final class GraalJSAccess {
     }
 
     private static TruffleString regexpFlagsToString(int flags) {
-        TruffleStringBuilder builder = Strings.builderCreate();
+        var builder = Strings.builderCreate();
         if ((flags & 1 /* kGlobal */) != 0) {
             Strings.builderAppend(builder, 'g');
         } else if ((flags & 2 /* kIgnoreCase */) != 0) {
