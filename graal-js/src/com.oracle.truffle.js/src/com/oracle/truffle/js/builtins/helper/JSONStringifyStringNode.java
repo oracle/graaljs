@@ -82,10 +82,6 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getToJSONProperty;
     @Child private JSFunctionCallNode callToJSONFunction;
 
-    @Child private TruffleStringBuilder.AppendCharUTF16Node appendCharNode = TruffleStringBuilder.AppendCharUTF16Node.create();
-    @Child private TruffleStringBuilder.AppendIntNumberNode appendIntNode;
-    @Child private TruffleStringBuilder.AppendLongNumberNode appendLongNode;
-    @Child private TruffleStringBuilder.AppendStringNode appendStringNode = TruffleStringBuilder.AppendStringNode.create();
     @Child private TruffleStringBuilder.ToStringNode builderToStringNode = TruffleStringBuilder.ToStringNode.create();
 
     private final StringBuilderProfile stringBuilderProfile;
@@ -515,7 +511,10 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     private TruffleStringBuilder jsonQuote(TruffleStringBuilderUTF16 builder, TruffleString valueStr) {
-        return jsonQuote(stringBuilderProfile, builder, valueStr, appendCharNode, appendStringNode, TruffleStringBuilder.AppendSubstringByteIndexNode.getUncached());
+        return jsonQuote(stringBuilderProfile, builder, valueStr,
+                        TruffleStringBuilder.AppendCharUTF16Node.getUncached(),
+                        TruffleStringBuilder.AppendStringNode.getUncached(),
+                        TruffleStringBuilder.AppendSubstringByteIndexNode.getUncached());
     }
 
     public static TruffleStringBuilder jsonQuote(StringBuilderProfile stringBuilderProfile, TruffleStringBuilderUTF16 sb, TruffleString valueStr,
@@ -635,27 +634,19 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
     }
 
     private void append(TruffleStringBuilderUTF16 sb, TruffleString s) {
-        stringBuilderProfile.append(appendStringNode, sb, s);
+        stringBuilderProfile.append(TruffleStringBuilder.AppendStringNode.getUncached(), sb, s);
     }
 
     private void append(TruffleStringBuilderUTF16 sb, char value) {
-        stringBuilderProfile.append(appendCharNode, sb, value);
+        stringBuilderProfile.append(TruffleStringBuilder.AppendCharUTF16Node.getUncached(), sb, value);
     }
 
     private void append(TruffleStringBuilderUTF16 sb, int value) {
-        if (appendIntNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            appendIntNode = insert(TruffleStringBuilder.AppendIntNumberNode.create());
-        }
-        stringBuilderProfile.append(appendIntNode, sb, value);
+        stringBuilderProfile.append(TruffleStringBuilder.AppendIntNumberNode.getUncached(), sb, value);
     }
 
     private void append(TruffleStringBuilderUTF16 sb, long value) {
-        if (appendLongNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            appendLongNode = insert(TruffleStringBuilder.AppendLongNumberNode.create());
-        }
-        stringBuilderProfile.append(appendLongNode, sb, value);
+        stringBuilderProfile.append(TruffleStringBuilder.AppendLongNumberNode.getUncached(), sb, value);
     }
 
     private TruffleString builderToString(TruffleStringBuilderUTF16 sb) {
