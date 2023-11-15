@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,7 @@
 
 package com.oracle.truffle.js.runtime.doubleconv;
 
-// @formatter:off
+import java.nio.charset.StandardCharsets;
 
 /**
  * A buffer for generating string representations of doubles.
@@ -78,7 +78,7 @@ public class DtoaBuffer {
     private static final char EXPONENT_CHARACTER = 'e';
 
     // The character buffer
-    final char[] chars;
+    final byte[] chars;
 
     // The number of characters in the buffer
     int length = 0;
@@ -96,18 +96,21 @@ public class DtoaBuffer {
 
     /**
      * Create a buffer with the given capacity.
+     *
      * @param capacity the capacity of the buffer.
      */
     public DtoaBuffer(final int capacity) {
-        chars = new char[capacity];
+        chars = new byte[capacity];
     }
 
     /**
      * Append a character to the buffer, increasing its length.
+     *
      * @param c character
      */
-    void append(final char c) {
-        chars[length++] = c;
+    void append(final int c) {
+        assert (c & 0xff) == c : c;
+        chars[length++] = (byte) c;
     }
 
     /**
@@ -120,6 +123,7 @@ public class DtoaBuffer {
 
     /**
      * Get the raw digits of this buffer as string.
+     *
      * @return the raw buffer contents
      */
     public String getRawDigits() {
@@ -128,6 +132,7 @@ public class DtoaBuffer {
 
     /**
      * Get the position of the decimal point.
+     *
      * @return the decimal point position
      */
     public int getDecimalPoint() {
@@ -136,6 +141,7 @@ public class DtoaBuffer {
 
     /**
      * Returns the number of characters in the buffer.
+     *
      * @return buffer length
      */
     public int getLength() {
@@ -143,8 +149,8 @@ public class DtoaBuffer {
     }
 
     /**
-     * Returns the formatted buffer content as string, using the specified conversion mode
-     * and padding.
+     * Returns the formatted buffer content as string, using the specified conversion mode and
+     * padding.
      *
      * @param mode conversion mode
      * @param digitsAfterPoint number of digits after point
@@ -190,21 +196,21 @@ public class DtoaBuffer {
                 for (int i = 0; i < padding; i++) {
                     buffer.append('0');
                 }
-                buffer.append(chars, 0, length);
+                appendBytes(buffer, chars, 0, length);
             } else {
                 decimalPoint = 1;
             }
         } else if (decimalPoint >= length) {
             // large integer, add trailing zeroes
-            buffer.append(chars, 0, length);
+            appendBytes(buffer, chars, 0, length);
             for (int i = length; i < decimalPoint; i++) {
                 buffer.append('0');
             }
         } else if (decimalPoint < length) {
             // >= 1, split decimals and insert decimalPoint
-            buffer.append(chars, 0, decimalPoint);
+            appendBytes(buffer, chars, 0, decimalPoint);
             buffer.append('.');
-            buffer.append(chars, decimalPoint, length - decimalPoint);
+            appendBytes(buffer, chars, decimalPoint, length - decimalPoint);
         }
 
         // Create trailing zeros if requested
@@ -220,11 +226,11 @@ public class DtoaBuffer {
 
     void toExponentialFormat(final StringBuilder buffer) {
         assert length != 0;
-        buffer.append(chars[0]);
+        buffer.append((char) chars[0]);
         if (length > 1) {
             // insert decimal decimalPoint if more than one digit was produced
             buffer.append('.');
-            buffer.append(chars, 1, length - 1);
+            appendBytes(buffer, chars, 1, length - 1);
         }
         buffer.append(EXPONENT_CHARACTER);
         final int exponent = decimalPoint - 1;
@@ -235,8 +241,12 @@ public class DtoaBuffer {
         buffer.append(exponent);
     }
 
+    private static StringBuilder appendBytes(StringBuilder buffer, byte[] chars, int start, int len) {
+        return buffer.append(new String(chars, start, len, StandardCharsets.ISO_8859_1));
+    }
+
     @Override
     public String toString() {
-        return "[chars:" + new String(chars, 0, length) + ", decimalPoint:" + decimalPoint + "]";
+        return "[chars:" + new String(chars, 0, length, StandardCharsets.ISO_8859_1) + ", decimalPoint:" + decimalPoint + "]";
     }
 }

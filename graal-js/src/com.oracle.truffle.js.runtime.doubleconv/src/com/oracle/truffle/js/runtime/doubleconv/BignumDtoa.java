@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -216,7 +216,7 @@ class BignumDtoa {
             assert (digit <= 9);  // digit is a uint16_t and therefore always positive.
             // digit = numerator / denominator (integer division).
             // numerator = numerator % denominator.
-            buffer.append((char) (digit + '0'));
+            buffer.append(digit + '0');
 
             // Can we stop already?
             // If the remainder of the division is less than the distance to the lower
@@ -308,7 +308,7 @@ class BignumDtoa {
             assert (digit <= 9);  // digit is a uint16_t and therefore always positive.
             // digit = numerator / denominator (integer division).
             // numerator = numerator % denominator.
-            buffer.chars[i] = (char)(digit + '0');
+            buffer.chars[i] = (byte) (digit + '0');
             // Prepare for next iteration.
             numerator.times10();
         }
@@ -319,7 +319,7 @@ class BignumDtoa {
             digit++;
         }
         assert (digit <= 10);
-        buffer.chars[count - 1] = (char) (digit + '0');
+        buffer.chars[count - 1] = (byte) (digit + '0');
         // Correct bad digits (in case we had a sequence of '9's). Propagate the
         // carry until we hat a non-'9' or til we reach the first digit.
         for (int i = count - 1; i > 0; --i) {
