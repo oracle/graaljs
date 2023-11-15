@@ -73,7 +73,7 @@ import java.nio.charset.StandardCharsets;
 /**
  * A buffer for generating string representations of doubles.
  */
-public class DtoaBuffer {
+public final class DtoaBuffer {
 
     private static final char EXPONENT_CHARACTER = 'e';
 
@@ -157,36 +157,31 @@ public class DtoaBuffer {
      * @return formatted string
      */
     public String format(final DtoaMode mode, final int digitsAfterPoint) {
-        final StringBuilder buffer = new StringBuilder();
-        if (isNegative) {
-            buffer.append('-');
-        }
-
-        // check for minus sign
         switch (mode) {
             case SHORTEST:
                 if (decimalPoint < -5 || decimalPoint > 21) {
-                    toExponentialFormat(buffer);
+                    return toExponentialFormat(isNegative);
                 } else {
-                    toFixedFormat(buffer, digitsAfterPoint);
+                    return toFixedFormat(digitsAfterPoint, isNegative);
                 }
-                break;
             case FIXED:
-                toFixedFormat(buffer, digitsAfterPoint);
-                break;
+                return toFixedFormat(digitsAfterPoint, isNegative);
             case PRECISION:
+            default:
                 if (decimalPoint < -5 || decimalPoint > length) {
-                    toExponentialFormat(buffer);
+                    return toExponentialFormat(isNegative);
                 } else {
-                    toFixedFormat(buffer, digitsAfterPoint);
+                    return toFixedFormat(digitsAfterPoint, isNegative);
                 }
-                break;
         }
-
-        return buffer.toString();
     }
 
-    private void toFixedFormat(final StringBuilder buffer, final int digitsAfterPoint) {
+    private String toFixedFormat(final int digitsAfterPoint, boolean minus) {
+        final int formatLength = calculateFixedFormatLength(digitsAfterPoint, minus);
+        final StringBuilder buffer = new StringBuilder(formatLength);
+        if (minus) {
+            buffer.append('-');
+        }
         if (decimalPoint <= 0) {
             // < 1,
             buffer.append('0');
@@ -206,7 +201,8 @@ public class DtoaBuffer {
             for (int i = length; i < decimalPoint; i++) {
                 buffer.append('0');
             }
-        } else if (decimalPoint < length) {
+        } else {
+            assert decimalPoint < length;
             // >= 1, split decimals and insert decimalPoint
             appendBytes(buffer, chars, 0, decimalPoint);
             buffer.append('.');
@@ -222,9 +218,51 @@ public class DtoaBuffer {
                 buffer.append('0');
             }
         }
+        assert buffer.length() == formatLength : "expected length: " + formatLength + " actual length: " + buffer.length();
+        return buffer.toString();
     }
 
-    void toExponentialFormat(final StringBuilder buffer) {
+    private int calculateFixedFormatLength(final int digitsAfterPoint, boolean minus) {
+        int formatLength = minus ? 1 : 0; // '-'
+        if (decimalPoint <= 0) {
+            // < 1,
+            formatLength += 1; // '0'
+            if (length > 0) {
+                formatLength += 1; // '1'
+                final int padding = -decimalPoint;
+                formatLength += padding; // zero padding
+                formatLength += length; // digits
+            } else {
+                decimalPoint = 1;
+            }
+        } else if (decimalPoint >= length) {
+            // large integer, add trailing zeroes
+            formatLength += length; // digits
+            formatLength += decimalPoint - length; // trailing zeroes
+        } else {
+            assert decimalPoint < length;
+            // >= 1, split decimals and insert decimalPoint
+            formatLength += decimalPoint; // digits
+            formatLength += 1; // '.'
+            formatLength += length - decimalPoint; // digits
+        }
+
+        // Create trailing zeros if requested
+        if (digitsAfterPoint > 0) {
+            if (decimalPoint >= length) {
+                formatLength += 1; // '.'
+            }
+            formatLength += Math.max(0, digitsAfterPoint - Math.max(0, length - decimalPoint));
+        }
+        return formatLength;
+    }
+
+    String toExponentialFormat(boolean minus) {
+        final int formatLength = calculateExponentialFormatLength(minus);
+        final StringBuilder buffer = new StringBuilder(formatLength);
+        if (minus) {
+            buffer.append('-');
+        }
         assert length != 0;
         buffer.append((char) chars[0]);
         if (length > 1) {
@@ -239,6 +277,31 @@ public class DtoaBuffer {
             buffer.append('+');
         }
         buffer.append(exponent);
+        assert buffer.length() == formatLength : "expected length: " + formatLength + " actual length: " + buffer.length();
+        return buffer.toString();
+    }
+
+    private int calculateExponentialFormatLength(boolean minus) {
+        assert length != 0;
+        int formatLength = minus ? 1 : 0; // '-'
+        formatLength += length;
+        if (length > 1) {
+            formatLength += 1; // '.'
+        }
+        formatLength += 2; // 'e+' or 'e-'
+        int exponent = decimalPoint - 1;
+        formatLength += numberOfDigits(Math.abs(exponent));
+        return formatLength;
+    }
+
+    private static int numberOfDigits(int x) {
+        assert x >= 0 : x;
+        for (int i = 1, p = 10; i < 10; i++, p *= 10) {
+            if (x < p) {
+                return i;
+            }
+        }
+        return 10;
     }
 
     private static StringBuilder appendBytes(StringBuilder buffer, byte[] chars, int start, int len) {
