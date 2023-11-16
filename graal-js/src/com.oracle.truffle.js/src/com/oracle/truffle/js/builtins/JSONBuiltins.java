@@ -46,11 +46,14 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.api.profiles.ConditionProfile;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
 import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONParseNodeGen;
@@ -58,7 +61,10 @@ import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONStringifyNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSONData;
 import com.oracle.truffle.js.builtins.helper.JSONStringifyStringNode;
 import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
+import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -72,10 +78,11 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSNumberObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.builtins.JSStringObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -196,84 +203,44 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
     }
 
-    public abstract static class JSONStringifyNode extends JSONOperation {
-
-        public JSONStringifyNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
+    public abstract static class JSONStringifyNode extends JSBuiltinNode {
 
         @Child private JSONStringifyStringNode jsonStringifyStringNode;
         @Child private CreateDataPropertyNode createWrapperPropertyNode;
-        @Child private JSToIntegerAsIntNode toIntegerNode;
-        @Child private JSToNumberNode toNumberNode;
-        @Child private JSIsArrayNode isArrayNode;
-        @Child private IsCallableNode isCallableNode;
-        private final BranchProfile spaceIsStringBranch = BranchProfile.create();
-        private final ConditionProfile spaceIsUndefinedProfile = ConditionProfile.create();
 
-        protected Object jsonStr(Object jsonData, Object keyStr, JSObject holder) {
-            if (jsonStringifyStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                jsonStringifyStringNode = insert(JSONStringifyStringNode.create(getContext()));
-            }
-            return jsonStringifyStringNode.execute(jsonData, keyStr, holder);
+        public JSONStringifyNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            this.createWrapperPropertyNode = CreateDataPropertyNode.create(getContext(), Strings.EMPTY_STRING);
+            this.jsonStringifyStringNode = JSONStringifyStringNode.create(getContext());
         }
 
-        @Override
-        protected boolean isArray(Object replacer) {
-            if (isArrayNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isArrayNode = insert(JSIsArrayNode.createIsArrayLike());
-            }
-            return isArrayNode.execute(replacer);
+        @Specialization(guards = {"!isString(value)", "isUndefined(replacer)"})
+        protected Object stringifyNoReplacer(Object value, @SuppressWarnings("unused") Object replacer, Object space,
+                        @Cached @Shared GetGapNode getGapNode) {
+            return stringifyIntl(value, space, null, null, getGapNode);
         }
 
-        protected boolean isCallable(Object obj) {
-            if (isCallableNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isCallableNode = insert(IsCallableNode.create());
+        @Specialization(guards = "!isUndefined(replacer)")
+        protected Object stringifyWithReplacer(Object value, Object replacer, Object space,
+                        @Bind("this") Node node,
+                        @Cached @Shared GetGapNode getGapNode,
+                        @Cached IsCallableNode isCallableNode,
+                        @Cached("createIsArrayLike()") JSIsArrayNode isArrayNode,
+                        @Cached ToReplacerListNode toReplacerListNode) {
+            Object replacerFn = null;
+            List<Object> replacerList = null;
+            if (isCallableNode.executeBoolean(replacer)) {
+                replacerFn = replacer;
+            } else if (isArrayNode.execute(replacer)) {
+                replacerList = toReplacerListNode.execute(node, replacer);
             }
-            return isCallableNode.executeBoolean(obj);
-        }
-
-        @Specialization(guards = "isCallable(replacerFn)")
-        protected Object stringify(Object value, Object replacerFn, Object spaceParam) {
-            assert JSRuntime.isCallable(replacerFn);
-            return stringifyIntl(value, spaceParam, replacerFn, null);
-        }
-
-        @Specialization(guards = "isArray(replacerObj)")
-        protected Object stringifyReplacerArray(Object value, JSDynamicObject replacerObj, Object spaceParam) {
-            long len = JSRuntime.toLength(JSObject.get(replacerObj, JSArray.LENGTH));
-            List<Object> replacerList = new ArrayList<>();
-            for (long i = 0; i < len; i++) {
-                // harmony/proxies-json.js requires toString()
-                TruffleString k = Strings.fromLong(i);
-                Object v = JSObject.get(replacerObj, k);
-                Object item = null; // Let item be undefined.
-                if (Strings.isTString(v)) {
-                    item = JSRuntime.toStringIsString(v);
-                } else if (JSRuntime.isNumber(v) || JSNumber.isJSNumber(v) || JSString.isJSString(v)) {
-                    item = toString(v);
-                }
-                if (item != null) { // If item is not undefined ...
-                    addToReplacer(replacerList, item);
-                }
-            }
-            return stringifyIntl(value, spaceParam, null, replacerList);
-        }
-
-        @TruffleBoundary
-        private static void addToReplacer(List<Object> replacerList, Object item) {
-            if (!replacerList.contains(item)) {
-                replacerList.add(item);
-            }
+            return stringifyIntl(value, space, replacerFn, replacerList, getGapNode);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isCallable(replacer)", "!isArray(replacer)"})
+        @Specialization(guards = {"isUndefined(replacer)"})
         // GR-24628: JSON.stringify is frequently called with (just) a String argument
-        protected Object stringifyAStringNoReplacer(TruffleString str, Object replacer, Object spaceParam,
+        protected Object stringifyAStringNoReplacer(TruffleString str, Object replacer, Object space,
                         @Cached("createStringBuilderProfile()") StringBuilderProfile stringBuilderProfile,
                         @Cached TruffleStringBuilder.AppendCharUTF16Node appendRawValueNode,
                         @Cached TruffleStringBuilder.AppendStringNode appendStringNode,
@@ -288,70 +255,105 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             return StringBuilderProfile.create(getContext().getStringLengthLimit());
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!isString(value)", "!isCallable(replacer)", "!isArray(replacer)"})
-        protected Object stringifyNoReplacer(Object value, Object replacer, Object spaceParam) {
-            return stringifyIntl(value, spaceParam, null, null);
-        }
-
-        private Object stringifyIntl(Object value, Object spaceParam, Object replacerFnObj, List<Object> replacerList) {
-            final TruffleString gap = spaceIsUndefinedProfile.profile(spaceParam == Undefined.instance) ? Strings.EMPTY_STRING : getGap(spaceParam);
+        private Object stringifyIntl(Object value, Object space, Object replacerFnObj, List<Object> replacerList, GetGapNode getGapNode) {
+            final TruffleString gap = getGapNode.execute(this, space);
 
             JSObject wrapper = JSOrdinary.create(getContext(), getRealm());
-            if (createWrapperPropertyNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                createWrapperPropertyNode = insert(CreateDataPropertyNode.create(getContext(), Strings.EMPTY_STRING));
-            }
             createWrapperPropertyNode.executeVoid(wrapper, value);
-            return jsonStr(new JSONData(gap, replacerFnObj, replacerList), Strings.EMPTY_STRING, wrapper);
+            return jsonStringifyStringNode.execute(new JSONData(gap, replacerFnObj, replacerList), Strings.EMPTY_STRING, wrapper);
+        }
+    }
+
+    @GenerateInline
+    @GenerateCached(false)
+    abstract static class GetGapNode extends JavaScriptBaseNode {
+
+        public abstract TruffleString execute(Node node, Object space);
+
+        @Specialization(guards = "isUndefined(space)")
+        static TruffleString doUndefined(@SuppressWarnings("unused") Object space) {
+            return Strings.EMPTY_STRING;
         }
 
-        private TruffleString getGap(Object spaceParam) {
-            Object space = spaceParam;
-            if (JSDynamicObject.isJSDynamicObject(space)) {
-                if (JSNumber.isJSNumber(space)) {
-                    space = toNumber(space);
-                } else if (JSString.isJSString(space)) {
-                    space = toString(space);
-                }
-            }
-            if (JSRuntime.isNumber(space)) {
-                if (toIntegerNode == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    toIntegerNode = insert(JSToIntegerAsIntNode.create());
-                }
-                int newSpace = Math.max(0, Math.min(10, toIntegerNode.executeInt(space)));
-                return makeGap(newSpace);
-            } else if (Strings.isTString(space)) {
-                spaceIsStringBranch.enter();
-                return makeGap(JSRuntime.toStringIsString(space));
+        @Specialization
+        static TruffleString doNumberObject(JSNumberObject space,
+                        @Cached JSToNumberNode toNumberNode,
+                        @Cached @Shared JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared TruffleString.FromByteArrayNode fromByteArrayNode,
+                        @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode) {
+            // Even though space is Number object, ToNumber may not return its [[NumberData]].
+            return doNumber(toNumberNode.execute(space), toIntegerNode, fromByteArrayNode, switchEncodingNode);
+        }
+
+        @Specialization
+        static TruffleString doStringObject(JSStringObject space,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode) {
+            // Even though space is String object, ToString may not return its [[StringData]].
+            return doString(toStringNode.executeString(space), substringNode);
+        }
+
+        @Specialization(guards = "isNumber(space)")
+        static TruffleString doNumber(Object space,
+                        @Cached @Shared JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared TruffleString.FromByteArrayNode fromByteArrayNode,
+                        @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode) {
+            int newSpace = Math.max(0, Math.min(10, toIntegerNode.executeInt(space)));
+            byte[] ar = new byte[newSpace];
+            Arrays.fill(ar, (byte) ' ');
+            return switchEncodingNode.execute(fromByteArrayNode.execute(ar, TruffleString.Encoding.ISO_8859_1, false), TruffleString.Encoding.UTF_16);
+        }
+
+        @Specialization
+        static TruffleString doString(TruffleString space,
+                        @Cached @Shared TruffleString.SubstringByteIndexNode substringNode) {
+            if (Strings.length(space) <= 10) {
+                return space;
             } else {
-                return Strings.EMPTY_STRING;
+                return Strings.lazySubstring(substringNode, space, 0, 10);
             }
+        }
+
+        @Fallback
+        static TruffleString doOther(@SuppressWarnings("unused") Object space) {
+            return Strings.EMPTY_STRING;
+        }
+    }
+
+    @GenerateInline
+    @GenerateCached(false)
+    abstract static class ToReplacerListNode extends JavaScriptBaseNode {
+
+        public abstract List<Object> execute(Node node, Object replacer);
+
+        @Specialization
+        static List<Object> makeReplacerList(Object replacerObj,
+                        @Cached("create(getLanguage().getJSContext())") JSGetLengthNode getLengthNode,
+                        @Cached("create(getLanguage().getJSContext())") ReadElementNode getElementNode,
+                        @Cached JSToStringNode toStringNode) {
+            long len = getLengthNode.executeLong(replacerObj);
+            List<Object> replacerList = new ArrayList<>();
+            for (long k = 0; k < len; k++) {
+                // harmony/proxies-json.js requires toString()
+                Object v = getElementNode.executeWithTargetAndIndex(replacerObj, k);
+                TruffleString item = null; // Let item be undefined.
+                if (v instanceof TruffleString str) {
+                    item = str;
+                } else if (JSRuntime.isNumber(v) || JSNumber.isJSNumber(v) || JSString.isJSString(v)) {
+                    item = toStringNode.executeString(v);
+                }
+                if (item != null) { // If item is not undefined ...
+                    addToReplacer(replacerList, item);
+                }
+            }
+            return replacerList;
         }
 
         @TruffleBoundary
-        private TruffleString makeGap(TruffleString spaceStr) {
-            if (Strings.length(spaceStr) <= 10) {
-                return spaceStr;
-            } else {
-                return Strings.substring(getContext(), spaceStr, 0, 10);
+        private static void addToReplacer(List<Object> replacerList, TruffleString item) {
+            if (!replacerList.contains(item)) {
+                replacerList.add(item);
             }
-        }
-
-        @TruffleBoundary
-        private static TruffleString makeGap(int spaceValue) {
-            char[] ar = new char[spaceValue];
-            Arrays.fill(ar, ' ');
-            return Strings.fromCharArray(ar);
-        }
-
-        protected Number toNumber(Object target) {
-            if (toNumberNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toNumberNode = insert(JSToNumberNode.create());
-            }
-            return toNumberNode.executeNumber(target);
         }
     }
 }
