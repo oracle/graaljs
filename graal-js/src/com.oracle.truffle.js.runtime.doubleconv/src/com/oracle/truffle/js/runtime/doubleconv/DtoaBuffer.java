@@ -304,8 +304,10 @@ public final class DtoaBuffer {
         return 10;
     }
 
-    private static StringBuilder appendBytes(StringBuilder buffer, byte[] chars, int start, int len) {
-        return buffer.append(new String(chars, start, len, StandardCharsets.ISO_8859_1));
+    private static void appendBytes(StringBuilder buffer, byte[] chars, int start, int len) {
+        for (int i = start; i < start + len; i++) {
+            buffer.append((char) chars[i]);
+        }
     }
 
     @Override
