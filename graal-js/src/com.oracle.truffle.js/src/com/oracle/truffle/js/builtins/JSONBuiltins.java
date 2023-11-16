@@ -44,7 +44,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -52,6 +51,7 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -82,9 +82,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumberObject;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSStringObject;
-import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 
@@ -126,45 +124,34 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         return null;
     }
 
-    public abstract static class JSONOperation extends JSBuiltinNode {
-        public JSONOperation(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Child private JSToStringNode toStringNode;
-
-        protected TruffleString toString(Object target) {
-            if (toStringNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                toStringNode = insert(JSToStringNode.create());
-            }
-            return toStringNode.executeString(target);
-        }
-
-        protected boolean isArray(Object replacer) {
-            return JSRuntime.isArray(replacer);
-        }
-    }
-
-    public abstract static class JSONParseNode extends JSONOperation {
+    @ImportStatic(Strings.class)
+    public abstract static class JSONParseNode extends JSBuiltinNode {
 
         public JSONParseNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
-        @Specialization(guards = "isCallable.executeBoolean(reviver)", limit = "1")
-        protected Object parse(Object text, Object reviver,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
-            Object unfiltered = parseIntl(toString(text));
-            JSObject root = JSOrdinary.create(getContext(), getRealm());
-            JSObjectUtil.putDataProperty(root, Strings.EMPTY_STRING, unfiltered, JSAttributes.getDefault());
-            return walk(reviver, root, Strings.EMPTY_STRING);
+        @Specialization(guards = "isUndefined(reviver)")
+        protected Object parseString(TruffleString text, @SuppressWarnings("unused") Object reviver) {
+            return parseIntl(text);
         }
 
-        @Specialization(guards = "!isCallable.executeBoolean(reviver)", limit = "1")
+        @Specialization(guards = "!isCallable.executeBoolean(reviver)", limit = "1", replaces = "parseString")
         protected Object parseUnfiltered(Object text, @SuppressWarnings("unused") Object reviver,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
-            return parseIntl(toString(text));
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached @Shared JSToStringNode toStringNode) {
+            return parseIntl(toStringNode.executeString(text));
+        }
+
+        @Specialization(guards = "isCallable.executeBoolean(reviver)", limit = "1")
+        protected Object parse(Object text, Object reviver,
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached @Shared JSToStringNode toStringNode,
+                        @Cached("create(getContext(), EMPTY_STRING)") CreateDataPropertyNode createWrapperPropertyNode) {
+            Object unfiltered = parseIntl(toStringNode.executeString(text));
+            JSObject root = JSOrdinary.create(getContext(), getRealm());
+            createWrapperPropertyNode.executeVoid(root, unfiltered);
+            return walk(reviver, root, Strings.EMPTY_STRING);
         }
 
         @TruffleBoundary(transferToInterpreterOnException = false)
@@ -177,7 +164,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             Object value = JSObject.get(holder, property);
             if (JSRuntime.isObject(value)) {
                 JSObject object = (JSObject) value;
-                if (isArray(object)) {
+                if (JSRuntime.isArray(object)) {
                     int len = (int) JSRuntime.toLength(JSObject.get(object, JSArray.LENGTH));
                     for (int i = 0; i < len; i++) {
                         Object stringIndex = Strings.fromInt(i);
