@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.json;
 
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -57,15 +57,12 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
-import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONIsRawJSONNodeGen;
-import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONParseNodeGen;
-import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONRawJSONNodeGen;
-import com.oracle.truffle.js.builtins.JSONBuiltinsFactory.JSONStringifyNodeGen;
-import com.oracle.truffle.js.builtins.helper.JSONData;
-import com.oracle.truffle.js.builtins.helper.JSONParseRecord;
-import com.oracle.truffle.js.builtins.helper.JSONStringifyStringNode;
-import com.oracle.truffle.js.builtins.helper.TruffleJSONParser;
-import com.oracle.truffle.js.builtins.helper.TruffleJSONParser.Mode;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.json.JSONBuiltinsFactory.JSONIsRawJSONNodeGen;
+import com.oracle.truffle.js.builtins.json.JSONBuiltinsFactory.JSONParseNodeGen;
+import com.oracle.truffle.js.builtins.json.JSONBuiltinsFactory.JSONRawJSONNodeGen;
+import com.oracle.truffle.js.builtins.json.JSONBuiltinsFactory.JSONStringifyNodeGen;
+import com.oracle.truffle.js.builtins.json.TruffleJSONParser.Mode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -105,7 +102,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
     public static final JSBuiltinsContainer BUILTINS = new JSONBuiltins();
 
     protected JSONBuiltins() {
-        super(com.oracle.truffle.js.runtime.builtins.JSON.CLASS_NAME, JSON.class);
+        super(com.oracle.truffle.js.builtins.json.JSON.CLASS_NAME, JSON.class);
     }
 
     public enum JSON implements BuiltinEnum<JSON> {

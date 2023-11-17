@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,26 +38,29 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins;
+package com.oracle.truffle.js.builtins.json;
+
+import java.util.List;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.JSONBuiltins;
-import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public final class JSON {
+public record JSONParseRecord(
+                Object value,
+                TruffleString source,
+                List<JSONParseRecord> elements,
+                EconomicMap<TruffleString, JSONParseRecord> entries) {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("JSON");
-
-    private JSON() {
+    public JSONParseRecord(Object value, TruffleString source) {
+        this(value, source, List.of(), EconomicMap.emptyMap());
     }
 
-    public static JSObject create(JSRealm realm) {
-        JSObject obj = JSOrdinary.createInit(realm);
-        JSObjectUtil.putToStringTag(obj, CLASS_NAME);
-        JSObjectUtil.putFunctionsFromContainer(realm, obj, JSONBuiltins.BUILTINS);
-        return obj;
+    public JSONParseRecord(Object value, List<JSONParseRecord> elements) {
+        this(value, null, elements, EconomicMap.emptyMap());
+    }
+
+    public JSONParseRecord(Object value, EconomicMap<TruffleString, JSONParseRecord> entries) {
+        this(value, null, List.of(), entries);
     }
 }

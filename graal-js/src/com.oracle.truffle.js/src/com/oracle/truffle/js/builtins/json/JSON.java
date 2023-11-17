@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,58 +38,26 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins.helper;
-
-import java.util.ArrayList;
-import java.util.List;
+package com.oracle.truffle.js.builtins.json;
 
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
-public class JSONData {
+public final class JSON {
 
-    protected List<Object> stack = new ArrayList<>();
-    private int indent;
-    private final TruffleString gap;
-    private final List<Object> propertyList;
-    private final Object replacerFnObj;
+    public static final TruffleString CLASS_NAME = Strings.constant("JSON");
 
-    private static final int MAX_STACK_SIZE = 1000;
-
-    public JSONData(TruffleString gap, Object replacerFnObj, List<Object> replacerList) {
-        this.gap = gap;
-        this.replacerFnObj = replacerFnObj;
-        this.propertyList = replacerList;
+    private JSON() {
     }
 
-    public TruffleString getGap() {
-        return gap;
-    }
-
-    public int getIndent() {
-        return indent;
-    }
-
-    public void setIndent(int indentCount) {
-        this.indent = indentCount;
-    }
-
-    public List<Object> getPropertyList() {
-        return propertyList;
-    }
-
-    public Object getReplacerFnObj() {
-        return replacerFnObj;
-    }
-
-    public void pushStack(Object value) {
-        stack.add(value);
-    }
-
-    public boolean stackTooDeep() {
-        return stack.size() > MAX_STACK_SIZE;
-    }
-
-    public void popStack() {
-        stack.remove(stack.size() - 1);
+    public static JSObject create(JSRealm realm) {
+        JSObject obj = JSOrdinary.createInit(realm);
+        JSObjectUtil.putToStringTag(obj, CLASS_NAME);
+        JSObjectUtil.putFunctionsFromContainer(realm, obj, JSONBuiltins.BUILTINS);
+        return obj;
     }
 }

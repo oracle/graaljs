@@ -39,7 +39,7 @@
  * SOFTWARE.
  */
 
-package com.oracle.truffle.js.builtins.helper;
+package com.oracle.truffle.js.builtins.json;
 
 import static com.oracle.js.parser.TokenType.STRING;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;

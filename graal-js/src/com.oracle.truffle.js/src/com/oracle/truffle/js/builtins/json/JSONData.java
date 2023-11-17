@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,29 +38,58 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins.helper;
+package com.oracle.truffle.js.builtins.json;
 
+import java.util.ArrayList;
 import java.util.List;
-
-import org.graalvm.collections.EconomicMap;
 
 import com.oracle.truffle.api.strings.TruffleString;
 
-public record JSONParseRecord(
-                Object value,
-                TruffleString source,
-                List<JSONParseRecord> elements,
-                EconomicMap<TruffleString, JSONParseRecord> entries) {
+public class JSONData {
 
-    public JSONParseRecord(Object value, TruffleString source) {
-        this(value, source, List.of(), EconomicMap.emptyMap());
+    protected List<Object> stack = new ArrayList<>();
+    private int indent;
+    private final TruffleString gap;
+    private final List<Object> propertyList;
+    private final Object replacerFnObj;
+
+    private static final int MAX_STACK_SIZE = 1000;
+
+    public JSONData(TruffleString gap, Object replacerFnObj, List<Object> replacerList) {
+        this.gap = gap;
+        this.replacerFnObj = replacerFnObj;
+        this.propertyList = replacerList;
     }
 
-    public JSONParseRecord(Object value, List<JSONParseRecord> elements) {
-        this(value, null, elements, EconomicMap.emptyMap());
+    public TruffleString getGap() {
+        return gap;
     }
 
-    public JSONParseRecord(Object value, EconomicMap<TruffleString, JSONParseRecord> entries) {
-        this(value, null, List.of(), entries);
+    public int getIndent() {
+        return indent;
+    }
+
+    public void setIndent(int indentCount) {
+        this.indent = indentCount;
+    }
+
+    public List<Object> getPropertyList() {
+        return propertyList;
+    }
+
+    public Object getReplacerFnObj() {
+        return replacerFnObj;
+    }
+
+    public void pushStack(Object value) {
+        stack.add(value);
+    }
+
+    public boolean stackTooDeep() {
+        return stack.size() > MAX_STACK_SIZE;
+    }
+
+    public void popStack() {
+        stack.remove(stack.size() - 1);
     }
 }
