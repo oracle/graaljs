@@ -69,6 +69,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSNumber;
+import com.oracle.truffle.js.runtime.builtins.JSRawJSONObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -139,7 +140,9 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         } else if (JSObject.isJSObject(value)) {
             JSObject valueObj = (JSObject) value;
             assert !JSRuntime.isCallableIsJSObject(valueObj);
-            if (JSRuntime.isArray(valueObj)) {
+            if (valueObj instanceof JSRawJSONObject rawJSONObject) {
+                append(builder, rawJSONObject.getRawJSON());
+            } else if (JSRuntime.isArray(valueObj)) {
                 serializeJSONArray(builder, data, valueObj);
             } else {
                 serializeJSONObject(builder, data, valueObj);

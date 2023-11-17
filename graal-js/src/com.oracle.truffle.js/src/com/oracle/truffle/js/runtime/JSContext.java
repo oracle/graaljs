@@ -112,6 +112,7 @@ import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSRawJSON;
 import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
@@ -527,6 +528,7 @@ public class JSContext {
     private final JSObjectFactory shadowRealmFactory;
     private final JSObjectFactory asyncContextSnapshotFactory;
     private final JSObjectFactory asyncContextVariableFactory;
+    private final JSObjectFactory rawJSONFactory;
 
     private final int factoryCount;
 
@@ -728,6 +730,7 @@ public class JSContext {
         this.shadowRealmFactory = builder.create(JSShadowRealm.INSTANCE);
         this.asyncContextSnapshotFactory = builder.create(JSAsyncContextSnapshot.INSTANCE);
         this.asyncContextVariableFactory = builder.create(JSAsyncContextVariable.INSTANCE);
+        this.rawJSONFactory = JSObjectFactory.createBound(this, Null.instance, JSRawJSON.makeInitialShape(this));
 
         this.factoryCount = builder.finish();
 
@@ -1269,6 +1272,10 @@ public class JSContext {
 
     public final JSObjectFactory getAsyncContextVariableFactory() {
         return asyncContextVariableFactory;
+    }
+
+    public final JSObjectFactory getRawJSONFactory() {
+        return rawJSONFactory;
     }
 
     private static final String REGEX_OPTION_REGRESSION_TEST_MODE = "RegressionTestMode";
