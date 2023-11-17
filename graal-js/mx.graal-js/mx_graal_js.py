@@ -136,20 +136,35 @@ def _graal_js_gate_runner(args, tasks):
             import mx_gate
             jsonResultsFile = tempfile.NamedTemporaryFile(delete=False, suffix='.json.gz').name
             try:
-                mx_truffle._tck(['--json-results=' + jsonResultsFile])
+                mx_truffle.tck(['--json-results=' + jsonResultsFile])
                 mx_gate.make_test_report(jsonResultsFile, task=t.title)
             finally:
                 os.unlink(jsonResultsFile)
 
-def _unittest_config_participant(config):
-    (vmArgs, mainClass, mainClassArgs) = config
-    vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
-    mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
-    mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
-    mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=ALL-UNNAMED']
-    return (vmArgs, mainClass, mainClassArgs)
 
-mx_unittest.add_config_participant(_unittest_config_participant)
+class JsUnittestConfig(mx_unittest.MxUnittestConfig):
+
+    def __init__(self):
+        super(JsUnittestConfig, self).__init__('js')
+
+    def processDeps(self, deps):
+        wasm = mx.distribution('WASM', False)
+        if wasm:
+            deps.update([wasm])
+
+    def apply(self, config):
+        (vmArgs, mainClass, mainClassArgs) = config
+        # Disable DefaultRuntime warning
+        vmArgs = vmArgs + ['-Dpolyglot.engine.WarnInterpreterOnly=false']
+        # Assert for enter/return parity of ProbeNode
+        vmArgs = vmArgs + ['-Dpolyglot.engine.AssertProbes=true', '-Dpolyglot.engine.AllowExperimentalOptions=true']
+        vmArgs += ['-Dpolyglotimpl.DisableClassPathIsolation=true']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.test']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=com.oracle.truffle.js.snapshot']
+        mainClassArgs += ['-JUnitOpenPackages', 'org.graalvm.js/*=ALL-UNNAMED']
+        return (vmArgs, mainClass, mainClassArgs)
+
+mx_unittest.register_unittest_config(JsUnittestConfig())
 prepend_gate_runner(_suite, _graal_js_pre_gate_runner)
 add_gate_runner(_suite, _graal_js_gate_runner)
 
