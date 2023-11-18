@@ -1823,6 +1823,10 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
+    "filePath" : "built-ins/RegExp/unicode_full_case_folding.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 74.1 update"
+  }, {
     "filePath" : "built-ins/RegExp/unicodeSets/generated/rgi-emoji-15.1.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -10384,6 +10388,10 @@
     "filePath" : "intl402/Locale/constructor-non-iana-canon.js",
     "status" : "FAIL",
     "comment" : "new failures 2013-06-28"
+  }, {
+    "filePath" : "intl402/Locale/likely-subtags.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 74.1 update"
   }, {
     "filePath" : "intl402/Locale/prototype/minimize/removing-likely-subtags-first-adds-likely-subtags.js",
     "status" : "FAIL",
