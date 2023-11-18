@@ -545,7 +545,10 @@ def _parseArgs(args):
     vmArgs, progArgs = parse_js_args(arguments)
     if mx.suite('compiler', fatalIfMissing=False):
         import mx_compiler
+        vmArgsBefore = vmArgs
         vmArgs = mx_compiler._parseVmArgs(vmArgs)
+        # Filter out ObjdumpExecutables, unless explicitly specified, since it may not be recognized by SVM (GR-50195)
+        vmArgs = vmArgs if any(arg.startswith('-Djdk.graal.ObjdumpExecutables=') for arg in vmArgsBefore) else [arg for arg in vmArgs if not arg.startswith('-Djdk.graal.ObjdumpExecutables=')]
     else:
         vmArgs += mx.java_debug_args()
 
