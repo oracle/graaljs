@@ -105,6 +105,7 @@ import static com.oracle.js.parser.TokenType.THIS;
 import static com.oracle.js.parser.TokenType.VAR;
 import static com.oracle.js.parser.TokenType.VOID;
 import static com.oracle.js.parser.TokenType.WHILE;
+import static com.oracle.js.parser.TokenType.WITH;
 import static com.oracle.js.parser.TokenType.YIELD;
 import static com.oracle.js.parser.TokenType.YIELD_STAR;
 
@@ -7007,8 +7008,8 @@ public class Parser extends AbstractParser {
             next();
             LiteralNode<TruffleString> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
             Map<TruffleString, TruffleString> assertions = Map.of();
-            if (env.importAssertions && type == ASSERT && last != EOL) {
-                assertions = assertClause();
+            if (env.importAssertions && ((type == WITH) || (type == ASSERT && last != EOL))) {
+                assertions = withClause();
             }
             module.addModuleRequest(ModuleRequest.create(moduleSpecifier, assertions));
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier));
@@ -7054,8 +7055,8 @@ public class Parser extends AbstractParser {
 
             FromNode fromNode = fromClause();
             Map<TruffleString, TruffleString> assertions = Map.of();
-            if (env.importAssertions && type == ASSERT && last != EOL) {
-                assertions = assertClause();
+            if (env.importAssertions && ((type == WITH) || (type == ASSERT && last != EOL))) {
+                assertions = withClause();
             }
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromNode));
             TruffleString moduleSpecifier = fromNode.getModuleSpecifier().getValue();
@@ -7072,42 +7073,42 @@ public class Parser extends AbstractParser {
      * Parse assert clause.
      *
      * <pre>
-     *     assert { }
-     *     assert { AssertEntries ,opt }
+     *     AttributesKeyword { }
+     *     AttributesKeyword { WithEntries ,opt }
      * </pre>
      */
-    private Map<TruffleString, TruffleString> assertClause() {
-        assert type == ASSERT;
+    private Map<TruffleString, TruffleString> withClause() {
+        assert (type == ASSERT || type == WITH);
         next();
         expect(LBRACE);
-        Map<TruffleString, TruffleString> assertions = assertEntries();
+        Map<TruffleString, TruffleString> entries = withEntries();
         expect(RBRACE);
-        return assertions;
+        return entries;
     }
 
     /**
      * Parse assert entry.
      *
      * <pre>
-     * AssertEntries:
-     *     AssertionKey : StringLiteral
-     *     AssertionKey : StringLiteral , AssertEntries
-     * AssertKey:
+     * WithEntries:
+     *     AttributeKey : StringLiteral
+     *     AttributeKey : StringLiteral , WithEntries
+     * AttributeKey:
      *     IdentifierName
      *     StringLiteral
      * </pre>
      */
-    private Map<TruffleString, TruffleString> assertEntries() {
-        Map<TruffleString, TruffleString> assertions = new LinkedHashMap<>();
+    private Map<TruffleString, TruffleString> withEntries() {
+        Map<TruffleString, TruffleString> entries = new LinkedHashMap<>();
 
         while (type != RBRACE) {
             final long errorToken = token;
-            TruffleString assertionKey;
+            TruffleString attributeKey;
             if (type == STRING || type == ESCSTRING) {
-                assertionKey = (TruffleString) getValue();
+                attributeKey = (TruffleString) getValue();
                 next();
             } else {
-                assertionKey = getIdentifierName().getNameTS();
+                attributeKey = getIdentifierName().getNameTS();
             }
             expect(COLON);
             TruffleString value = null;
@@ -7117,10 +7118,10 @@ public class Parser extends AbstractParser {
             } else {
                 expect(STRING);
             }
-            if (assertions.containsKey(assertionKey)) {
-                throw error(AbstractParser.message(MSG_DUPLICATE_IMPORT_ASSERTION, assertionKey.toJavaStringUncached()), errorToken);
+            if (entries.containsKey(attributeKey)) {
+                throw error(AbstractParser.message(MSG_DUPLICATE_IMPORT_ASSERTION, attributeKey.toJavaStringUncached()), errorToken);
             } else {
-                assertions.put(assertionKey, value);
+                entries.put(attributeKey, value);
             }
             if (type == COMMARIGHT) {
                 next();
@@ -7128,7 +7129,7 @@ public class Parser extends AbstractParser {
                 break;
             }
         }
-        return assertions;
+        return entries;
     }
 
     /**
@@ -7254,8 +7255,8 @@ public class Parser extends AbstractParser {
                     exportName = getIdentifierName();
                 }
                 FromNode from = fromClause();
-                if (env.importAssertions && type == ASSERT && last != EOL) {
-                    assertions = assertClause();
+                if (env.importAssertions && ((type == WITH) || (type == ASSERT && last != EOL))) {
+                    assertions = withClause();
                 }
                 TruffleString moduleRequest = from.getModuleSpecifier().getValue();
                 module.addModuleRequest(ModuleRequest.create(moduleRequest, assertions));
@@ -7268,8 +7269,8 @@ public class Parser extends AbstractParser {
                 FromNode from = null;
                 if (type == FROM) {
                     from = fromClause();
-                    if (env.importAssertions && type == ASSERT && last != EOL) {
-                        assertions = assertClause();
+                    if (env.importAssertions && ((type == WITH) || (type == ASSERT && last != EOL))) {
+                        assertions = withClause();
                     }
                     TruffleString moduleRequest = from.getModuleSpecifier().getValue();
                     module.addModuleRequest(ModuleRequest.create(moduleRequest, assertions));
