@@ -187,14 +187,14 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             return parseIntl(text, Mode.WithoutReviver, getRealm());
         }
 
-        @Specialization(guards = "!isCallable.executeBoolean(reviver)", limit = "1", replaces = "parseString")
+        @Specialization(guards = "!isCallable.executeBoolean(reviver)", replaces = "parseString")
         protected Object parseUnfiltered(Object text, @SuppressWarnings("unused") Object reviver,
                         @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached @Shared JSToStringNode toStringNode) {
             return parseIntl(toStringNode.executeString(text), Mode.WithoutReviver, getRealm());
         }
 
-        @Specialization(guards = "isCallable.executeBoolean(reviver)", limit = "1")
+        @Specialization(guards = "isCallable.executeBoolean(reviver)")
         protected Object parse(Object value, Object reviver,
                         @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached @Shared JSToStringNode toStringNode,
@@ -267,6 +267,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
     }
 
+    @SuppressWarnings("truffle-inlining") // TruffleString nodes do not support object inlining.
     public abstract static class JSONStringifyNode extends JSBuiltinNode {
 
         @Child private JSONStringifyStringNode jsonStringifyStringNode;
@@ -328,6 +329,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
     }
 
+    @SuppressWarnings("truffle-inlining") // TruffleString nodes do not support object inlining.
     @GenerateInline
     @GenerateCached(false)
     abstract static class GetGapNode extends JavaScriptBaseNode {
