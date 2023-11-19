@@ -75,6 +75,7 @@ public class TestV8Runnable extends TestRunnable {
     private static final String ALLOW_NATIVES_FOR_DIFFERENTIAL_FUZZING = "--allow-natives-for-differential-fuzzing";
     private static final String HARMONY_ERROR_CAUSE = "--harmony-error-cause";
     private static final String HARMONY_IMPORT_ASSERTIONS = "--harmony-import-assertions";
+    private static final String HARMONY_IMPORT_ATTRIBUTES = "--harmony-import-attributes";
     private static final String HARMONY_ITERATOR_HELPERS = "--harmony-iterator-helpers";
     private static final String HARMONY_SHAREDARRAYBUFFER = "--harmony-sharedarraybuffer";
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
@@ -195,7 +196,7 @@ public class TestV8Runnable extends TestRunnable {
         if (flags.contains(HARMONY_ERROR_CAUSE)) {
             extraOptions.put(JSContextOptions.ERROR_CAUSE_NAME, "true");
         }
-        if (flags.contains(HARMONY_IMPORT_ASSERTIONS)) {
+        if (flags.contains(HARMONY_IMPORT_ASSERTIONS) || flags.contains(HARMONY_IMPORT_ATTRIBUTES)) {
             extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
             extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");
         }
