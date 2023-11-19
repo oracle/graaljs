@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -175,35 +175,35 @@ public final class Module {
 
     public static final class ModuleRequest {
         private final TruffleString specifier;
-        private Map<TruffleString, TruffleString> assertions;
+        private Map<TruffleString, TruffleString> attributes;
 
-        private ModuleRequest(TruffleString specifier, Map<TruffleString, TruffleString> assertions) {
+        private ModuleRequest(TruffleString specifier, Map<TruffleString, TruffleString> attributes) {
             this.specifier = specifier;
-            this.assertions = assertions;
+            this.attributes = attributes;
         }
 
         public static ModuleRequest create(TruffleString specifier) {
             return new ModuleRequest(specifier, Collections.emptyMap());
         }
 
-        public static ModuleRequest create(TruffleString specifier, Map<TruffleString, TruffleString> assertions) {
-            return new ModuleRequest(specifier, Map.copyOf(assertions));
+        public static ModuleRequest create(TruffleString specifier, Map<TruffleString, TruffleString> attributes) {
+            return new ModuleRequest(specifier, Map.copyOf(attributes));
         }
 
-        public static ModuleRequest create(TruffleString specifier, Map.Entry<TruffleString, TruffleString>[] assertions) {
-            return new ModuleRequest(specifier, Map.ofEntries(assertions));
+        public static ModuleRequest create(TruffleString specifier, Map.Entry<TruffleString, TruffleString>[] attributes) {
+            return new ModuleRequest(specifier, Map.ofEntries(attributes));
         }
 
         public TruffleString getSpecifier() {
             return specifier;
         }
 
-        public Map<TruffleString, TruffleString> getAssertions() {
-            return assertions;
+        public Map<TruffleString, TruffleString> getAttributes() {
+            return attributes;
         }
 
-        public void setAssertions(Map<TruffleString, TruffleString> assertions) {
-            this.assertions = assertions;
+        public void setAttributes(Map<TruffleString, TruffleString> attributes) {
+            this.attributes = attributes;
         }
     }
 

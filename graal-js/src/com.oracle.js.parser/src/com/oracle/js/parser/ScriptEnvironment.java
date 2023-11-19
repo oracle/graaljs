@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,8 +110,8 @@ public final class ScriptEnvironment {
     /** Is class field support enabled. */
     final boolean classFields;
 
-    /** Are import assertions enabled. */
-    final boolean importAssertions;
+    /** Are import attributes enabled. */
+    final boolean importAttributes;
 
     /** Is private field in enabled */
     final boolean privateFieldsIn;
@@ -123,7 +123,7 @@ public final class ScriptEnvironment {
     final boolean v8Intrinsics;
 
     private ScriptEnvironment(boolean strict, int ecmaScriptVersion, boolean emptyStatements, boolean syntaxExtensions, boolean scripting, boolean shebang,
-                    boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, boolean importAssertions, boolean privateFieldsIn, boolean topLevelAwait, boolean v8Intrinsics,
+                    boolean constAsVar, boolean allowBigInt, boolean annexB, boolean classFields, boolean importAttributes, boolean privateFieldsIn, boolean topLevelAwait, boolean v8Intrinsics,
                     FunctionStatementBehavior functionStatementBehavior,
                     PrintWriter dumpOnError) {
         this.err = dumpOnError;
@@ -140,7 +140,7 @@ public final class ScriptEnvironment {
         this.allowBigInt = allowBigInt;
         this.annexB = annexB;
         this.classFields = classFields;
-        this.importAssertions = importAssertions;
+        this.importAttributes = importAttributes;
         this.privateFieldsIn = privateFieldsIn;
         this.topLevelAwait = topLevelAwait;
         this.v8Intrinsics = v8Intrinsics;
@@ -175,7 +175,7 @@ public final class ScriptEnvironment {
         private boolean allowBigInt;
         private boolean annexB = true;
         private boolean classFields = true;
-        private boolean importAssertions = false;
+        private boolean importAttributes = false;
         private boolean privateFieldsIn = false;
         private boolean topLevelAwait = false;
         private boolean v8Intrinsics = false;
@@ -235,8 +235,8 @@ public final class ScriptEnvironment {
             return this;
         }
 
-        public Builder importAssertions(boolean importAssertions) {
-            this.importAssertions = importAssertions;
+        public Builder importAttributes(boolean importAttributes) {
+            this.importAttributes = importAttributes;
             return this;
         }
 
@@ -267,7 +267,7 @@ public final class ScriptEnvironment {
 
         public ScriptEnvironment build() {
             return new ScriptEnvironment(strict, ecmaScriptVersion, emptyStatements, syntaxExtensions, scripting, shebang, constAsVar, allowBigInt, annexB,
-                            classFields, importAssertions, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior, dumpOnError);
+                            classFields, importAttributes, privateFieldsIn, topLevelAwait, v8Intrinsics, functionStatementBehavior, dumpOnError);
         }
     }
 }

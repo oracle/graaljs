@@ -110,7 +110,7 @@ public record JSLanguageOptions(
                 UnhandledRejectionsTrackingMode unhandledRejectionsMode,
                 boolean operatorOverloading,
                 boolean errorCause,
-                boolean importAssertions,
+                boolean importAttributes,
                 boolean jsonModules,
                 boolean wasmBigInt,
                 boolean esmEvalReturnsExports,
@@ -184,7 +184,7 @@ public record JSLanguageOptions(
         boolean asyncContext = options.isAsyncContext();
         boolean operatorOverloading = options.isOperatorOverloading();
         boolean errorCause = options.isErrorCauseEnabled();
-        boolean importAssertions = options.isImportAssertions();
+        boolean importAttributes = options.isImportAttributes();
         boolean jsonModules = options.isJsonModules();
         boolean wasmBigInt = options.isWasmBigInt();
         boolean esmEvalReturnsExports = options.isEsmEvalReturnsExports();
@@ -263,7 +263,7 @@ public record JSLanguageOptions(
                         unhandledRejectionsMode,
                         operatorOverloading,
                         errorCause,
-                        importAssertions,
+                        importAttributes,
                         jsonModules,
                         wasmBigInt,
                         esmEvalReturnsExports,

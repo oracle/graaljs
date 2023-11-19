@@ -300,7 +300,7 @@ public class Test262Runnable extends TestRunnable {
             extraOptions.put(JSContextOptions.ERROR_CAUSE_NAME, "true");
         }
         if (features.contains("import-assertions")) {
-            extraOptions.put(JSContextOptions.IMPORT_ASSERTIONS_NAME, "true");
+            extraOptions.put(JSContextOptions.IMPORT_ATTRIBUTES_NAME, "true");
         }
         if (features.contains("json-modules")) {
             extraOptions.put(JSContextOptions.JSON_MODULES_NAME, "true");

@@ -11,6 +11,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Implementation of [Async Iterator Helpers](https://github.com/tc39/proposal-async-iterator-helpers) proposal (that was split out from Iterator Helpers proposal) was moved behind the experimental option `--js.async-iterator-helpers`.
 * Implemented the [Well-Formed Unicode Strings](https://github.com/tc39/proposal-is-usv-string) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Updated Node.js to version 18.18.2.
+* `--js.import-assertions` option has been replaced by `--js.import-attributes` option because [the corresponding proposal](https://github.com/tc39/proposal-import-attributes) has migrated from the usage of assertions to the usage of attributes.
 
 ## Version 23.1.0
 * NOTE: GraalVM no longer ships with a "js" ScriptEngine. Please either use the Maven dependency or explicitly put `js-scriptengine.jar` on the module path. See [ScriptEngine documentation](docs/user/ScriptEngine.md) for details.
