@@ -584,6 +584,11 @@ public abstract class JSNonProxy extends JSClass {
 
     @Override
     public final boolean isExtensible(JSDynamicObject thisObj) {
+        return ordinaryIsExtensible(thisObj);
+    }
+
+    public static boolean ordinaryIsExtensible(JSDynamicObject thisObj) {
+        assert thisObj.getJSClass().usesOrdinaryIsExtensible() : thisObj;
         return JSShape.isExtensible(thisObj.getShape());
     }
 
@@ -687,7 +692,7 @@ public abstract class JSNonProxy extends JSClass {
     }
 
     @Override
-    public boolean usesOrdinaryIsExtensible() {
+    public final boolean usesOrdinaryIsExtensible() {
         return true;
     }
 }
