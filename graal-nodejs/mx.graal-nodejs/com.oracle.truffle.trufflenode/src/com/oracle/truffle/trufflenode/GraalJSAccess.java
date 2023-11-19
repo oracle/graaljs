@@ -3871,15 +3871,15 @@ public final class GraalJSAccess {
     }
 
     private static Object[] moduleRequestGetImportAssertionsImpl(ModuleRequest request, boolean withSourceOffset) {
-        List<Object> assertions = new ArrayList<>();
-        for (Map.Entry<TruffleString, TruffleString> entry : request.getAssertions().entrySet()) {
-            assertions.add(entry.getKey());
-            assertions.add(entry.getValue());
+        List<Object> attributes = new ArrayList<>();
+        for (Map.Entry<TruffleString, TruffleString> entry : request.getAttributes().entrySet()) {
+            attributes.add(entry.getKey());
+            attributes.add(entry.getValue());
             if (withSourceOffset) {
-                assertions.add(0);
+                attributes.add(0);
             }
         }
-        return assertions.toArray();
+        return attributes.toArray();
     }
 
     public Object moduleRequestGetImportAssertions(Object moduleRequest) {

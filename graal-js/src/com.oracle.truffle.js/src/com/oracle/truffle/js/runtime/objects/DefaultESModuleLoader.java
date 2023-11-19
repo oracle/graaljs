@@ -185,9 +185,9 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         }
 
         Source source = Source.newBuilder(JavaScriptLanguage.ID, moduleFile).name(Strings.toJavaString(moduleRequest.getSpecifier())).mimeType(JavaScriptLanguage.MODULE_MIME_TYPE).build();
-        Map<TruffleString, TruffleString> assertions = moduleRequest.getAssertions();
+        Map<TruffleString, TruffleString> attributes = moduleRequest.getAttributes();
         int moduleType = getModuleType(moduleFile.getName());
-        TruffleString assertedType = assertions.get(JSContext.getTypeImportAssertion());
+        TruffleString assertedType = attributes.get(JSContext.getTypeImportAttribute());
         if (!doesModuleTypeMatchAssertionType(assertedType, moduleType)) {
             throw Errors.createTypeError("Invalid module type was asserted");
         }

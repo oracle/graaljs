@@ -191,7 +191,7 @@ public final class GraalJSParserHelper {
         builder.allowBigInt(parserOptions.allowBigInt());
         builder.annexB(parserOptions.annexB());
         builder.classFields(parserOptions.classFields());
-        builder.importAssertions(parserOptions.importAssertions());
+        builder.importAttributes(parserOptions.importAttributes());
         builder.privateFieldsIn(parserOptions.privateFieldsIn());
         builder.topLevelAwait(parserOptions.topLevelAwait());
         builder.v8Intrinsics(parserOptions.v8Intrinsics());

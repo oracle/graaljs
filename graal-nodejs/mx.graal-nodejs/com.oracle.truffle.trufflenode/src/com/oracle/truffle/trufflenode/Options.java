@@ -233,7 +233,7 @@ public final class Options {
                     continue;
                 }
                 if ("harmony-import-assertions".equals(normalizedKey)) {
-                    polyglotOptions.put("js.import-assertions", "true");
+                    polyglotOptions.put("js.import-attributes", "true");
                     continue;
                 }
                 if ("harmony-shadow-realm".equals(normalizedKey)) {

@@ -532,9 +532,9 @@ public class JSContext {
 
     @CompilationFinal private Locale locale;
 
-    private final Set<TruffleString> supportedImportAssertions;
+    private final Set<TruffleString> supportedImportAttributes;
 
-    private static final TruffleString TYPE_IMPORT_ASSERTION = Strings.constant("type");
+    private static final TruffleString TYPE_IMPORT_ATTRIBUTE = Strings.constant("type");
 
     /**
      * A shared root node that acts as a parent providing a lock to nodes that are not rooted in a
@@ -736,7 +736,7 @@ public class JSContext {
         this.regexOptions = createRegexOptions(languageOptions);
         this.regexValidateOptions = regexOptions.isEmpty() ? REGEX_OPTION_VALIDATE : REGEX_OPTION_VALIDATE + "," + regexOptions;
 
-        this.supportedImportAssertions = languageOptions.importAssertions() ? Set.of(TYPE_IMPORT_ASSERTION) : Set.of();
+        this.supportedImportAttributes = languageOptions.importAttributes() ? Set.of(TYPE_IMPORT_ATTRIBUTE) : Set.of();
 
         if (languageOptions.unhandledRejectionsMode() != JSContextOptions.UnhandledRejectionsTrackingMode.NONE) {
             setPromiseRejectionTracker(new BuiltinPromiseRejectionTracker(this, languageOptions.unhandledRejectionsMode()));
@@ -1902,12 +1902,12 @@ public class JSContext {
         return getLanguageOptions().topLevelAwait();
     }
 
-    public final Set<TruffleString> getSupportedImportAssertions() {
-        return supportedImportAssertions;
+    public final Set<TruffleString> getSupportedImportAttributes() {
+        return supportedImportAttributes;
     }
 
-    public static TruffleString getTypeImportAssertion() {
-        return TYPE_IMPORT_ASSERTION;
+    public static TruffleString getTypeImportAttribute() {
+        return TYPE_IMPORT_ATTRIBUTE;
     }
 
     void updateStableOptions(JSContextOptions contextOptions, StableContextOptionValue.UpdateKind kind) {

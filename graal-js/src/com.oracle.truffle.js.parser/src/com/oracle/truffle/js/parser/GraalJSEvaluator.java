@@ -448,29 +448,29 @@ public final class GraalJSEvaluator implements JSParser {
     @TruffleBoundary
     @Override
     public JSModuleRecord hostResolveImportedModule(JSContext context, ScriptOrModule referrer, ModuleRequest moduleRequest) {
-        filterSupportedImportAssertions(context, moduleRequest);
+        filterSupportedImportAttributes(context, moduleRequest);
         JSModuleLoader moduleLoader = referrer instanceof JSModuleRecord ? ((JSModuleRecord) referrer).getModuleLoader() : JSRealm.get(null).getModuleLoader();
         return moduleLoader.resolveImportedModule(referrer, moduleRequest);
     }
 
     private static JSModuleRecord hostResolveImportedModule(JSModuleRecord referencingModule, ModuleRequest moduleRequest) {
-        filterSupportedImportAssertions(referencingModule.getContext(), moduleRequest);
+        filterSupportedImportAttributes(referencingModule.getContext(), moduleRequest);
         return referencingModule.getModuleLoader().resolveImportedModule(referencingModule, moduleRequest);
     }
 
-    private static void filterSupportedImportAssertions(final JSContext context, final ModuleRequest moduleRequest) {
-        if (moduleRequest.getAssertions().isEmpty()) {
+    private static void filterSupportedImportAttributes(final JSContext context, final ModuleRequest moduleRequest) {
+        if (moduleRequest.getAttributes().isEmpty()) {
             return;
         }
-        Map<TruffleString, TruffleString> supportedAssertions = new HashMap<>();
-        for (Map.Entry<TruffleString, TruffleString> assertion : moduleRequest.getAssertions().entrySet()) {
-            TruffleString key = assertion.getKey();
-            TruffleString value = assertion.getValue();
-            if (context.getSupportedImportAssertions().contains(key)) {
-                supportedAssertions.put(key, value);
+        Map<TruffleString, TruffleString> supportedAttributes = new HashMap<>();
+        for (Map.Entry<TruffleString, TruffleString> attributes : moduleRequest.getAttributes().entrySet()) {
+            TruffleString key = attributes.getKey();
+            TruffleString value = attributes.getValue();
+            if (context.getSupportedImportAttributes().contains(key)) {
+                supportedAttributes.put(key, value);
             }
         }
-        moduleRequest.setAssertions(supportedAssertions);
+        moduleRequest.setAttributes(supportedAttributes);
     }
 
     Collection<TruffleString> getExportedNames(JSModuleRecord moduleRecord) {

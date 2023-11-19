@@ -278,7 +278,7 @@ public class Parser extends AbstractParser {
     private static final String MSG_ASYNC_CONSTRUCTOR = "async.constructor";
     private static final String MSG_CONSTRUCTOR_FIELD = "constructor.field";
     private static final String MSG_DUPLICATE_DEFAULT_IN_SWITCH = "duplicate.default.in.switch";
-    private static final String MSG_DUPLICATE_IMPORT_ASSERTION = "duplicate.import.assertion";
+    private static final String MSG_DUPLICATE_IMPORT_ATTRIBUTE = "duplicate.import.attribute";
     private static final String MSG_DUPLICATE_LABEL = "duplicate.label";
     private static final String MSG_ESCAPED_KEYWORD = "escaped.keyword";
     private static final String MSG_EXPECTED_ARROW_PARAMETER = "expected.arrow.parameter";
@@ -5138,7 +5138,7 @@ public class Parser extends AbstractParser {
             next();
             List<Expression> arguments = new ArrayList<>();
             arguments.add(assignmentExpression(true, yield, await));
-            if (env.importAssertions && type == COMMARIGHT) {
+            if (env.importAttributes && type == COMMARIGHT) {
                 next();
                 if (type != RPAREN) {
                     arguments.add(assignmentExpression(true, yield, await));
@@ -7007,11 +7007,11 @@ public class Parser extends AbstractParser {
             long specifierToken = token;
             next();
             LiteralNode<TruffleString> specifier = LiteralNode.newInstance(specifierToken, moduleSpecifier);
-            Map<TruffleString, TruffleString> assertions = Map.of();
-            if (env.importAssertions && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                assertions = withClause();
+            Map<TruffleString, TruffleString> attributes = Map.of();
+            if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
+                attributes = withClause();
             }
-            module.addModuleRequest(ModuleRequest.create(moduleSpecifier, assertions));
+            module.addModuleRequest(ModuleRequest.create(moduleSpecifier, attributes));
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, specifier));
         } else {
             // import ImportClause FromClause ;
@@ -7054,13 +7054,13 @@ public class Parser extends AbstractParser {
             }
 
             FromNode fromNode = fromClause();
-            Map<TruffleString, TruffleString> assertions = Map.of();
-            if (env.importAssertions && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                assertions = withClause();
+            Map<TruffleString, TruffleString> attributes = Map.of();
+            if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
+                attributes = withClause();
             }
             module.addImport(new ImportNode(importToken, Token.descPosition(importToken), finish, importClause, fromNode));
             TruffleString moduleSpecifier = fromNode.getModuleSpecifier().getValue();
-            ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, assertions);
+            ModuleRequest moduleRequest = ModuleRequest.create(moduleSpecifier, attributes);
             module.addModuleRequest(moduleRequest);
             for (int i = 0; i < importEntries.size(); i++) {
                 module.addImportEntry(importEntries.get(i).withFrom(moduleRequest));
@@ -7119,7 +7119,7 @@ public class Parser extends AbstractParser {
                 expect(STRING);
             }
             if (entries.containsKey(attributeKey)) {
-                throw error(AbstractParser.message(MSG_DUPLICATE_IMPORT_ASSERTION, attributeKey.toJavaStringUncached()), errorToken);
+                throw error(AbstractParser.message(MSG_DUPLICATE_IMPORT_ATTRIBUTE, attributeKey.toJavaStringUncached()), errorToken);
             } else {
                 entries.put(attributeKey, value);
             }
@@ -7242,7 +7242,7 @@ public class Parser extends AbstractParser {
      */
     private void exportDeclaration(ParserContextModuleNode module) {
         final long exportToken = token;
-        Map<TruffleString, TruffleString> assertions = Map.of();
+        Map<TruffleString, TruffleString> attributes = Map.of();
         expect(EXPORT);
         final boolean yield = false;
         final boolean await = isTopLevelAwait();
@@ -7255,12 +7255,12 @@ public class Parser extends AbstractParser {
                     exportName = getIdentifierName();
                 }
                 FromNode from = fromClause();
-                if (env.importAssertions && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                    assertions = withClause();
+                if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
+                    attributes = withClause();
                 }
                 TruffleString moduleRequest = from.getModuleSpecifier().getValue();
-                module.addModuleRequest(ModuleRequest.create(moduleRequest, assertions));
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, from, assertions));
+                module.addModuleRequest(ModuleRequest.create(moduleRequest, attributes));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportName, from, attributes));
                 endOfLine();
                 break;
             }
@@ -7269,13 +7269,13 @@ public class Parser extends AbstractParser {
                 FromNode from = null;
                 if (type == FROM) {
                     from = fromClause();
-                    if (env.importAssertions && ((type == WITH) || (type == ASSERT && last != EOL))) {
-                        assertions = withClause();
+                    if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
+                        attributes = withClause();
                     }
                     TruffleString moduleRequest = from.getModuleSpecifier().getValue();
-                    module.addModuleRequest(ModuleRequest.create(moduleRequest, assertions));
+                    module.addModuleRequest(ModuleRequest.create(moduleRequest, attributes));
                 }
-                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from, assertions));
+                module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from, attributes));
                 endOfLine();
                 break;
             }

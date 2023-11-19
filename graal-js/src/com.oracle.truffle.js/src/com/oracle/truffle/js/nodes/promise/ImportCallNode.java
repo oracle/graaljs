@@ -141,14 +141,14 @@ public class ImportCallNode extends JavaScriptNode {
     public Object execute(VirtualFrame frame) {
         ScriptOrModule referencingScriptOrModule = activeScriptOrModule;
         Object specifier = argRefNode.execute(frame);
-        if (context.getLanguageOptions().importAssertions() && optionsRefNode != null) {
-            return executeAssertions(frame, referencingScriptOrModule, specifier);
+        if (context.getLanguageOptions().importAttributes() && optionsRefNode != null) {
+            return executeAttributes(frame, referencingScriptOrModule, specifier);
         } else {
-            return executeWithoutAssertions(referencingScriptOrModule, specifier);
+            return executeWithoutAttributes(referencingScriptOrModule, specifier);
         }
     }
 
-    private Object executeWithoutAssertions(ScriptOrModule referencingScriptOrModule, Object specifier) {
+    private Object executeWithoutAttributes(ScriptOrModule referencingScriptOrModule, Object specifier) {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         TruffleString specifierString;
         try {
@@ -160,7 +160,7 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     @SuppressWarnings("unchecked")
-    private Object executeAssertions(VirtualFrame frame, ScriptOrModule referencingScriptOrModule, Object specifier) {
+    private Object executeAttributes(VirtualFrame frame, ScriptOrModule referencingScriptOrModule, Object specifier) {
         assert optionsRefNode != null;
         if (enumerableOwnPropertyNamesNode == null || getWithNode == null || getAssertNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -176,32 +176,32 @@ public class ImportCallNode extends JavaScriptNode {
         } catch (AbstractTruffleException ex) {
             return rejectPromise(promiseCapability, ex);
         }
-        Map.Entry<TruffleString, TruffleString>[] assertions = null;
+        Map.Entry<TruffleString, TruffleString>[] attributes = null;
         if (options != Undefined.instance) {
             if (!JSRuntime.isObject(options)) {
                 return rejectPromiseWithTypeError(promiseCapability, "The second argument to import() must be an object");
             }
-            Object assertionsObj;
+            Object attributesObj;
             try {
-                assertionsObj = getWithNode.getValue(options);
-                if (assertionsObj == Undefined.instance) {
-                    assertionsObj = getAssertNode.getValue(options);
+                attributesObj = getWithNode.getValue(options);
+                if (attributesObj == Undefined.instance) {
+                    attributesObj = getAssertNode.getValue(options);
                 }
             } catch (AbstractTruffleException ex) {
                 return rejectPromise(promiseCapability, ex);
             }
-            if (assertionsObj != Undefined.instance) {
-                if (!JSRuntime.isObject(assertionsObj)) {
+            if (attributesObj != Undefined.instance) {
+                if (!JSRuntime.isObject(attributesObj)) {
                     return rejectPromiseWithTypeError(promiseCapability, "The 'assert' option must be an object");
                 }
-                JSDynamicObject obj = (JSDynamicObject) assertionsObj;
+                JSDynamicObject obj = (JSDynamicObject) attributesObj;
                 UnmodifiableArrayList<? extends Object> keys;
                 try {
                     keys = enumerableOwnPropertyNamesNode.execute(obj);
                 } catch (AbstractTruffleException ex) {
                     return rejectPromise(promiseCapability, ex);
                 }
-                assertions = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
+                attributes = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
                 boolean allStrings = true;
                 for (int i = 0; i < keys.size(); i++) {
                     TruffleString key = (TruffleString) keys.get(i);
@@ -212,7 +212,7 @@ public class ImportCallNode extends JavaScriptNode {
                         return rejectPromise(promiseCapability, ex);
                     }
                     if (Strings.isTString(value)) {
-                        assertions[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
+                        attributes[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
                     } else {
                         // Read all values before rejecting the promise,
                         // we were supposed to do EnumerableOwnProperties(KEY+VALUE) above.
@@ -224,13 +224,13 @@ public class ImportCallNode extends JavaScriptNode {
                 }
             }
         }
-        ModuleRequest moduleRequest = assertions == null ? ModuleRequest.create(specifierString) : createModuleRequestWithAssertions(specifierString, assertions);
+        ModuleRequest moduleRequest = attributes == null ? ModuleRequest.create(specifierString) : createModuleRequestWithAttributes(specifierString, attributes);
         return hostImportModuleDynamically(referencingScriptOrModule, moduleRequest, promiseCapability);
     }
 
     @TruffleBoundary
-    private static ModuleRequest createModuleRequestWithAssertions(TruffleString specifierString, Map.Entry<TruffleString, TruffleString>[] assertions) {
-        return ModuleRequest.create(specifierString, assertions);
+    private static ModuleRequest createModuleRequestWithAttributes(TruffleString specifierString, Map.Entry<TruffleString, TruffleString>[] attributes) {
+        return ModuleRequest.create(specifierString, attributes);
     }
 
     public final JSDynamicObject hostImportModuleDynamically(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability) {
