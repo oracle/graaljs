@@ -202,6 +202,7 @@ public class ImportCallNode extends JavaScriptNode {
                     return rejectPromise(promiseCapability, ex);
                 }
                 assertions = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
+                boolean allStrings = true;
                 for (int i = 0; i < keys.size(); i++) {
                     TruffleString key = (TruffleString) keys.get(i);
                     Object value;
@@ -210,10 +211,16 @@ public class ImportCallNode extends JavaScriptNode {
                     } catch (AbstractTruffleException ex) {
                         return rejectPromise(promiseCapability, ex);
                     }
-                    if (!Strings.isTString(value)) {
-                        return rejectPromiseWithTypeError(promiseCapability, "Import assertion value must be a string");
+                    if (Strings.isTString(value)) {
+                        assertions[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
+                    } else {
+                        // Read all values before rejecting the promise,
+                        // we were supposed to do EnumerableOwnProperties(KEY+VALUE) above.
+                        allStrings = false;
                     }
-                    assertions[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
+                }
+                if (!allStrings) {
+                    return rejectPromiseWithTypeError(promiseCapability, "Import assertion value must be a string");
                 }
             }
         }
