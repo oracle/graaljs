@@ -490,8 +490,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
                             roundingMode, relativeTo);
-            JSTemporalDurationRecord adjustResult = TemporalUtil.adjustRoundedDurationDays(getContext(), realm, namesNode, durationAddNode,
-                            roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(), roundResult.getDays(), roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
+            JSTemporalDurationRecord adjustResult = TemporalUtil.adjustRoundedDurationDays(getContext(), realm, namesNode, durationAddNode, roundDurationNode,
+                            roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(), roundResult.getDays(),
+                            roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
                             roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, relativeTo);
             JSTemporalDurationRecord balanceResult = balanceDurationRelativeNode.execute(adjustResult.getYears(), adjustResult.getMonths(), adjustResult.getWeeks(), adjustResult.getDays(),

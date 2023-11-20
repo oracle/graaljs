@@ -739,7 +739,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             difference.getDays(),
                             difference.getHours(), difference.getMinutes(), difference.getSeconds(), difference.getMilliseconds(), difference.getMicroseconds(), difference.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
-            JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), realm, namesNode, durationAddNode,
+            JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), realm, namesNode, durationAddNode, roundDurationNode,
                             roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(), roundResult.getDays(),
                             roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
                             roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
@@ -876,7 +876,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalDurationRecord roundResult = roundDurationNode.execute(difference.getYears(), difference.getMonths(), difference.getWeeks(), difference.getDays(),
                             difference.getHours(), difference.getMinutes(), difference.getSeconds(), difference.getMilliseconds(), difference.getMicroseconds(), difference.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
-            JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), realm, namesNode, durationAddNode,
+            JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), realm, namesNode, durationAddNode, roundDurationNode,
                             roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(), roundResult.getDays(),
                             roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
                             roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
