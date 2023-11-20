@@ -10,6 +10,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Implemented the [Promise.withResolvers](https://github.com/tc39/proposal-promise-with-resolvers) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implementation of [Async Iterator Helpers](https://github.com/tc39/proposal-async-iterator-helpers) proposal (that was split out from Iterator Helpers proposal) was moved behind the experimental option `--js.async-iterator-helpers`.
 * Implemented the [Well-Formed Unicode Strings](https://github.com/tc39/proposal-is-usv-string) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
+* Implemented the [JSON.parse source text access](https://github.com/tc39/proposal-json-parse-with-source) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Updated Node.js to version 18.18.2.
 * `--js.import-assertions` option has been replaced by `--js.import-attributes` option because [the corresponding proposal](https://github.com/tc39/proposal-import-attributes) has migrated from the usage of assertions to the usage of attributes.
 

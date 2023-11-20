@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,12 +38,15 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins.helper;
+package com.oracle.truffle.js.builtins.json;
+
+import java.util.ArrayList;
+
+import org.graalvm.collections.EconomicMap;
 
 import com.oracle.js.parser.ParserException;
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -58,23 +61,36 @@ import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 
-public class TruffleJSONParser {
+public final class TruffleJSONParser {
 
+    protected final Mode mode;
+    protected final boolean withSource;
     protected final JSContext context;
+
     protected int pos;
     protected int len;
     protected TruffleString parseStr;
     protected int parseDepth;
 
-    protected static final char[] NullLiteral = new char[]{'n', 'u', 'l', 'l'};
-    protected static final char[] BooleanTrueLiteral = new char[]{'t', 'r', 'u', 'e'};
-    protected static final char[] BooleanFalseLiteral = new char[]{'f', 'a', 'l', 's', 'e'};
     protected static final int MAX_PARSE_DEPTH = 100000;
 
     private static final String MALFORMED_NUMBER = "malformed number";
 
+    public enum Mode {
+        RawJSON,
+        WithoutReviver,
+        WithReviver,
+        WithReviverAndSource;
+    }
+
     public TruffleJSONParser(JSContext context) {
+        this(context, Mode.WithoutReviver);
+    }
+
+    public TruffleJSONParser(JSContext context, Mode mode) {
         this.context = context;
+        this.mode = mode;
+        this.withSource = mode == Mode.WithReviverAndSource;
     }
 
     public Object parse(TruffleString value, JSRealm realm) {
@@ -83,25 +99,30 @@ public class TruffleJSONParser {
         this.parseStr = value;
         this.len = Strings.length(parseStr);
         try {
-            skipWhitespace();
+            if (mode != Mode.RawJSON) {
+                skipWhitespace();
+            } else if (isObjectOrArrayStart(get())) {
+                throw unexpectedToken();
+            }
             Object result = parseJSONValue(realm);
-            skipWhitespace();
+            if (mode != Mode.RawJSON) {
+                skipWhitespace();
+            }
             if (posValid()) {
-                error("JSON cannot be fully parsed");
+                throw error("JSON cannot be fully parsed");
             }
             return result;
         } catch (StackOverflowError ex) {
-            throwStackError();
+            throw stackOverflowError();
         } catch (JSException ex) {
             throw ex;
         } catch (IndexOutOfBoundsException ex) {
-            throwSyntaxError(unexpectedEndOfInputMessage());
+            throw syntaxError(unexpectedEndOfInputMessage());
         } catch (Exception ex) {
-            throwSyntaxError(null);
+            throw syntaxError(null);
         } finally {
             parseStr = null;
         }
-        return null;
     }
 
     private String unexpectedEndOfInputMessage() {
@@ -124,7 +145,7 @@ public class TruffleJSONParser {
         } else if (isNumber(c)) {
             return parseJSONNumber();
         }
-        return unexpectedToken();
+        throw unexpectedToken();
     }
 
     protected static boolean isNumber(char cur) {
@@ -139,45 +160,65 @@ public class TruffleJSONParser {
         return c == '[';
     }
 
+    protected static boolean isObjectOrArrayStart(char c) {
+        return isObjectStart(c) || isArrayStart(c);
+    }
+
     private Object parseJSONObject(JSRealm realm) {
         assert isObjectStart(get());
         incDepth();
         skipChar('{');
         skipWhitespace();
         JSObject object = JSOrdinary.create(context, realm);
+        JSONParseRecord parseRecord = null;
+        if (withSource) {
+            parseRecord = new JSONParseRecord(object, EconomicMap.create());
+        }
         if (get() != '}') {
-            parseJSONMemberList(object, realm);
+            parseJSONMemberList(object, realm, parseRecord);
             if (get() != '}') {
                 if (get() == '"') {
-                    unexpectedString();
+                    throw unexpectedString();
                 } else {
-                    unexpectedToken();
+                    throw unexpectedToken();
                 }
             }
         }
-        skipChar('}');
         skipWhitespace();
+        skipChar('}');
         decDepth();
+        if (withSource) {
+            return parseRecord;
+        }
         return object;
     }
 
-    private void parseJSONMemberList(JSObject object, JSRealm realm) {
-        Member member = parseJSONMember(realm);
-        JSRuntime.createDataProperty(object, member.getKey(), member.getValue());
-        while (get() == ',') {
-            skipChar(',');
+    private void parseJSONMemberList(JSObject object, JSRealm realm, JSONParseRecord parseRecord) {
+        while (true) {
+            parseJSONMember(object, realm, parseRecord);
+
             skipWhitespace();
-            member = parseJSONMember(realm);
-            JSRuntime.createDataProperty(object, member.getKey(), member.getValue());
+            if (get() == ',') {
+                skipChar(',');
+                skipWhitespace();
+            } else {
+                break;
+            }
         }
     }
 
-    private Member parseJSONMember(JSRealm realm) {
-        TruffleString jsonString = parseJSONString();
+    private void parseJSONMember(JSObject object, JSRealm realm, JSONParseRecord parseRecord) {
+        TruffleString jsonKey = getJSONString();
+        skipWhitespace();
         expectChar(':');
         skipWhitespace();
         Object jsonValue = parseJSONValue(realm);
-        return new Member(jsonString, jsonValue);
+        if (withSource) {
+            JSONParseRecord entryRecord = (JSONParseRecord) jsonValue;
+            jsonValue = entryRecord.value();
+            parseRecord.entries().put(jsonKey, entryRecord);
+        }
+        JSRuntime.createDataProperty(object, jsonKey, jsonValue);
     }
 
     private Object parseJSONArray(JSRealm realm) {
@@ -186,30 +227,37 @@ public class TruffleJSONParser {
         skipChar('[');
         skipWhitespace();
         JSArrayObject array = JSArray.createEmptyZeroLength(context, realm);
+        JSONParseRecord parseRecord = null;
+        if (withSource) {
+            parseRecord = new JSONParseRecord(array, new ArrayList<>());
+        }
         if (get() != ']') {
-            parseJSONElementList(array, realm);
+            parseJSONElementList(array, realm, parseRecord);
             if (get() != ']') {
-                error("closing quote ] expected");
+                throw error("closing quote ] expected");
             }
         }
-        skipChar(']');
         skipWhitespace();
+        skipChar(']');
         decDepth();
+        if (withSource) {
+            return parseRecord;
+        }
         return array;
     }
 
     private void incDepth() {
         this.parseDepth++;
         if (this.parseDepth > MAX_PARSE_DEPTH) {
-            throwStackError();
+            throw stackOverflowError();
         }
     }
 
-    protected static void throwStackError() {
+    protected static RuntimeException stackOverflowError() {
         throw Errors.createRangeError("Cannot parse JSON constructs nested that deep");
     }
 
-    protected static void throwSyntaxError(String msg) {
+    protected static RuntimeException syntaxError(String msg) {
         throw Errors.createSyntaxError(msg == null ? "Cannot parse JSON" : msg);
     }
 
@@ -217,35 +265,57 @@ public class TruffleJSONParser {
         this.parseDepth--;
     }
 
-    protected ScriptArray parseJSONElementList(JSArrayObject arrayObject, JSRealm realm) {
+    protected ScriptArray parseJSONElementList(JSArrayObject arrayObject, JSRealm realm, JSONParseRecord parseRecord) {
         int index = 0;
         ScriptArray scriptArray = JSAbstractArray.arrayGetArrayType(arrayObject);
-        scriptArray = scriptArray.setElement(arrayObject, index, parseJSONValue(realm), false);
-        while (get() == ',') {
-            skipChar(',');
+        while (true) {
+            Object jsonValue = parseJSONValue(realm);
+            if (withSource) {
+                JSONParseRecord elementRecord = (JSONParseRecord) jsonValue;
+                jsonValue = elementRecord.value();
+                assert parseRecord.elements().size() == index;
+                parseRecord.elements().add(elementRecord);
+            }
+            scriptArray = scriptArray.setElement(arrayObject, index, jsonValue, false);
+
             skipWhitespace();
-            index++;
-            scriptArray = scriptArray.setElement(arrayObject, index, parseJSONValue(realm), false);
+            if (get() == ',') {
+                skipChar(',');
+                skipWhitespace();
+                index++;
+            } else {
+                break;
+            }
         }
         JSAbstractArray.arraySetArrayType(arrayObject, scriptArray);
         return scriptArray;
     }
 
-    protected TruffleString parseJSONString() {
+    protected Object parseJSONString() {
+        int startPos = pos;
+        TruffleString parsedString = getJSONString();
+        if (withSource) {
+            TruffleString source = Strings.lazySubstring(parseStr, startPos, pos - startPos);
+            return new JSONParseRecord(parsedString, source);
+        } else {
+            return parsedString;
+        }
+    }
+
+    protected TruffleString getJSONString() {
         if (!isStringQuote(get())) {
             if (isDigit(get())) {
-                unexpectedNumber();
+                throw unexpectedNumber();
             } else {
-                unexpectedToken();
+                throw unexpectedToken();
             }
         }
         skipChar('"');
         TruffleString str = parseJSONStringCharacters();
         if (!isStringQuote(get())) {
-            error("String quote expected");
+            throw error("String quote expected");
         }
         skipChar('"');
-        skipWhitespace();
         return str;
     }
 
@@ -264,7 +334,7 @@ public class TruffleJSONParser {
         char c = get();
         while (!isStringQuote(c)) {
             if (c < ' ') {
-                error("invalid string");
+                throw error("invalid string");
             } else if (c == '\\') {
                 if (!hasEscapes) {
                     firstEscape = pos;
@@ -276,7 +346,7 @@ public class TruffleJSONParser {
             c = get();
         }
         int sLength = pos - startPos;
-        TruffleString s = Strings.substring(context, parseStr, startPos, sLength);
+        TruffleString s = Strings.lazySubstring(parseStr, startPos, sLength);
         if (hasEscapes) {
             return unquoteJSON(s, sLength, firstEscape - startPos);
         } else {
@@ -290,7 +360,7 @@ public class TruffleJSONParser {
         int posBackslash = posFirstBackslash;
 
         int curPos = 0;
-        TruffleStringBuilder builder = Strings.builderCreate(sLength);
+        var builder = Strings.builderCreate(sLength);
         while (posBackslash >= 0) {
             Strings.builderAppend(builder, string, curPos, posBackslash);
             curPos = posBackslash;
@@ -325,8 +395,7 @@ public class TruffleJSONParser {
                     curPos += 4; // 6 chars for this escape, 2 are added below
                     break;
                 default:
-                    error("wrong escape sequence");
-                    break;
+                    throw error("wrong escape sequence");
             }
             curPos += 2; // valid for all escapes
             posBackslash = Strings.indexOf(string, '\\', curPos);
@@ -340,13 +409,12 @@ public class TruffleJSONParser {
     protected int hexDigitValue(char c) {
         int value = JSRuntime.valueInHex(c);
         if (value < 0) {
-            error("invalid string");
-            return -1;
+            throw error("invalid string");
         }
         return value;
     }
 
-    protected void unquoteJSONUnicode(TruffleString string, int posBackslash, TruffleStringBuilder builder) {
+    protected void unquoteJSONUnicode(TruffleString string, int posBackslash, TruffleStringBuilderUTF16 builder) {
         char c1 = Strings.charAt(string, posBackslash + 2);
         char c2 = Strings.charAt(string, posBackslash + 3);
         char c3 = Strings.charAt(string, posBackslash + 4);
@@ -355,14 +423,25 @@ public class TruffleJSONParser {
         Strings.builderAppend(builder, unencodedC);
     }
 
-    protected Number parseJSONNumber() {
+    protected Object parseJSONNumber() {
+        int startPos = pos;
+        Number parsedNumber = getJSONNumber();
+        if (withSource) {
+            TruffleString source = Strings.lazySubstring(parseStr, startPos, pos - startPos);
+            return new JSONParseRecord(parsedNumber, source);
+        } else {
+            return parsedNumber;
+        }
+    }
+
+    protected Number getJSONNumber() {
         int sign = 1;
         if (get() == '-') {
             skipChar();
             sign = -1;
         }
         if (!posValid()) {
-            error(MALFORMED_NUMBER);
+            throw error(MALFORMED_NUMBER);
         }
         final int startPos = pos;
         int fractionPos = -1;
@@ -371,7 +450,7 @@ public class TruffleJSONParser {
         while (JSRuntime.isAsciiDigit(c) || c == '.') {
             if (c == '.') {
                 if (fractionPos >= 0) {
-                    error(MALFORMED_NUMBER);
+                    throw error(MALFORMED_NUMBER);
                 }
                 fractionPos = pos;
             } else if (pos == startPos && c == '0') {
@@ -384,18 +463,18 @@ public class TruffleJSONParser {
             c = get(pos); // don't use cache here
         }
         if (pos == startPos) {
-            unexpectedToken();
+            throw unexpectedToken();
         } else if (firstPosIsZero) {
             // "0" should be parsable, but "08" not
             if ((startPos + 1) < len) {
                 c = get(startPos + 1);
                 if (c == 'x' || c == 'X' || JSRuntime.isAsciiDigit(c)) {
-                    error("octal and hexadecimal not allowed");
+                    throw error("octal and hexadecimal not allowed");
                 }
             }
         }
         if (fractionPos == startPos || fractionPos == (pos - 1)) {
-            error(MALFORMED_NUMBER);
+            throw error(MALFORMED_NUMBER);
         }
 
         boolean hasExponent = false;
@@ -403,9 +482,8 @@ public class TruffleJSONParser {
             hasExponent = true;
             skipExponent();
         }
-        final int endPos = pos;
-        skipWhitespace(); // after the number
 
+        final int endPos = pos;
         if (firstPosIsZero && (endPos - startPos == 1)) {
             if (sign == 1) {
                 return 0;
@@ -434,8 +512,7 @@ public class TruffleJSONParser {
         try {
             return Strings.parseDouble(valueStr) * sign;
         } catch (TruffleString.NumberFormatException e) {
-            error(MALFORMED_NUMBER);
-            throw CompilerDirectives.shouldNotReachHere();
+            throw error(MALFORMED_NUMBER);
         }
     }
 
@@ -448,7 +525,7 @@ public class TruffleJSONParser {
             skipChar('+');
         }
         if (!posValid()) {
-            error(MALFORMED_NUMBER);
+            throw error(MALFORMED_NUMBER);
         }
         cur = get();
         int startPos = pos;
@@ -460,7 +537,7 @@ public class TruffleJSONParser {
             cur = get(pos); // don't use cache here
         }
         if (pos == startPos) {
-            error("Expected number but found ident");
+            throw error("Expected number but found ident");
         }
     }
 
@@ -469,20 +546,42 @@ public class TruffleJSONParser {
     }
 
     protected boolean isNullLiteral(char c) {
-        return c == 'n' && isLiteral(NullLiteral, 1);
+        return c == 'n' && isLiteral(Strings.NULL, 1);
     }
 
     protected Object parseNullLiteral() {
+        int startPos = pos;
+        Object parsedNull = getNullLiteral();
+        if (withSource) {
+            TruffleString source = Strings.lazySubstring(parseStr, startPos, pos - startPos);
+            return new JSONParseRecord(parsedNull, source);
+        } else {
+            return parsedNull;
+        }
+    }
+
+    protected Object getNullLiteral() {
         assert isNullLiteral(get());
         skipString(Strings.NULL);
         return Null.instance;
     }
 
     protected boolean isBooleanLiteral(char c) {
-        return (c == 't' && isLiteral(BooleanTrueLiteral, 1)) || (c == 'f' && isLiteral(BooleanFalseLiteral, 1));
+        return (c == 't' && isLiteral(Strings.TRUE, 1)) || (c == 'f' && isLiteral(Strings.FALSE, 1));
     }
 
     protected Object parseBooleanLiteral() {
+        int startPos = pos;
+        boolean parsedBoolean = getBooleanLiteral();
+        if (withSource) {
+            TruffleString source = Strings.lazySubstring(parseStr, startPos, pos - startPos);
+            return new JSONParseRecord(parsedBoolean, source);
+        } else {
+            return parsedBoolean;
+        }
+    }
+
+    protected boolean getBooleanLiteral() {
         assert isBooleanLiteral(get());
         if (get() == 't') {
             skipString(Strings.TRUE);
@@ -490,15 +589,16 @@ public class TruffleJSONParser {
         } else if (get() == 'f') {
             skipString(Strings.FALSE);
             return false;
+        } else {
+            throw error("cannot parse JSONBooleanLiteral");
         }
-        return error("cannot parse JSONBooleanLiteral");
     }
 
     protected static boolean isWhitespace(char c) {
         return c == ' ' || c == '\n' || c == '\r' || c == '\t';
     }
 
-    protected Object error(String message) {
+    protected RuntimeException error(String message) {
         if (context.isOptionNashornCompatibilityMode()) {
             // use the Nashorn parser to get the proper error
             NashornJSONParser parser = new NashornJSONParser(parseStr, context);
@@ -515,19 +615,16 @@ public class TruffleJSONParser {
         }
     }
 
-    private Object unexpectedToken() {
-        error("Unexpected token " + get() + " in JSON");
-        return null;
+    private RuntimeException unexpectedToken() {
+        throw error("Unexpected token " + get() + " in JSON");
     }
 
-    private Object unexpectedString() {
-        error("Unexpected string in JSON");
-        return null;
+    private RuntimeException unexpectedString() {
+        throw error("Unexpected string in JSON");
     }
 
-    private Object unexpectedNumber() {
-        error("Unexpected number in JSON");
-        return null;
+    private RuntimeException unexpectedNumber() {
+        throw error("Unexpected number in JSON");
     }
 
     // ************************* Helper Functions ****************************************//
@@ -546,12 +643,11 @@ public class TruffleJSONParser {
         assert len >= pos + length;
         assert Strings.equals(Strings.lazySubstring(parseStr, pos, length), expected);
         pos += length;
-        skipWhitespace();
     }
 
     protected void expectChar(char expected) {
         if (get(pos) != expected) {
-            error(expected + " expected");
+            throw error(expected + " expected");
         }
         skipChar(expected);
     }
@@ -577,37 +673,15 @@ public class TruffleJSONParser {
         return pos < len;
     }
 
-    protected boolean isLiteral(char[] literal) {
-        return isLiteral(literal, 0);
-    }
-
-    protected boolean isLiteral(char[] literal, int startPos) {
-        if (len < pos + literal.length) {
+    protected boolean isLiteral(TruffleString literalStr, int literalPos) {
+        if (len < pos + Strings.length(literalStr)) {
             return false;
         }
-        for (int i = startPos; i < literal.length; i++) {
-            if (get(pos + i) != literal[i]) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    protected final class Member {
-        private final TruffleString key;
-        private final Object value;
-
-        public Member(TruffleString key, Object value) {
-            this.key = key;
-            this.value = value;
-        }
-
-        public TruffleString getKey() {
-            return key;
-        }
-
-        public Object getValue() {
-            return value;
-        }
+        int startPos = pos + literalPos;
+        return TruffleString.RegionEqualByteIndexNode.getUncached().execute(
+                        parseStr, startPos << 1,
+                        literalStr, literalPos << 1,
+                        literalStr.byteLength(TruffleString.Encoding.UTF_16) - (literalPos << 1),
+                        TruffleString.Encoding.UTF_16);
     }
 }

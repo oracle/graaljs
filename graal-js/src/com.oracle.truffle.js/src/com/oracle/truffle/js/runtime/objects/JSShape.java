@@ -71,7 +71,7 @@ public final class JSShape {
     public static final int SEALED_FLAG = 1 << 1;
     public static final int FROZEN_FLAG = 1 << 2;
     public static final int SEALED_FLAGS = NOT_EXTENSIBLE_FLAG | SEALED_FLAG;
-    public static final int FROZEN_FLAGS = NOT_EXTENSIBLE_FLAG | SEALED_FLAG | FROZEN_FLAG;
+    public static final int FROZEN_FLAGS = SEALED_FLAGS | FROZEN_FLAG;
 
     /**
      * If this flag is set, the object has extra properties that are not included in the

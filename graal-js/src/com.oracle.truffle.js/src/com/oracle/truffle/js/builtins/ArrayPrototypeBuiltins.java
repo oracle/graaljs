@@ -84,6 +84,7 @@ import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.FlattenIntoArrayNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayAtNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayConcatNodeGen;
@@ -1737,7 +1738,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return Strings.concat(stringConcatNode, a, b);
         }
 
-        private void append(TruffleStringBuilder sb, TruffleString s) {
+        private void append(TruffleStringBuilderUTF16 sb, TruffleString s) {
             if (appendStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 appendStringNode = insert(TruffleStringBuilder.AppendStringNode.create());
@@ -1745,7 +1746,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             stringBuilderProfile.append(appendStringNode, sb, s);
         }
 
-        private TruffleString builderToString(TruffleStringBuilder sb) {
+        private TruffleString builderToString(TruffleStringBuilderUTF16 sb) {
             if (builderToStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 builderToStringNode = insert(TruffleStringBuilder.ToStringNode.create());
@@ -1776,7 +1777,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private TruffleString joinLoop(Object thisJSObject, final long length, final TruffleString joinSeparator, final boolean appendSep) {
-            TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder();
+            var sb = stringBuilderProfile.newStringBuilder();
             long i = 0;
             while (i < length) {
                 if (appendSep && i != 0) {
@@ -1848,7 +1849,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createRangeErrorInvalidStringLength();
             }
             assert calculatedLength <= Integer.MAX_VALUE;
-            TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder((int) calculatedLength);
+            var sb = stringBuilderProfile.newStringBuilder((int) calculatedLength);
             long lastIndex = 0;
             for (int j = 0; j < converted.size(); j += 2) {
                 long index = (long) converted.get(j);
@@ -1912,7 +1913,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                     userArguments = JSArguments.EMPTY_ARGUMENTS_ARRAY;
                 }
                 long k = 0;
-                TruffleStringBuilder sb = stringBuilderProfile.newStringBuilder();
+                var sb = stringBuilderProfile.newStringBuilder();
                 while (k < len) {
                     if (k > 0) {
                         stringBuilderProfile.append(appendCharNode, sb, ',');

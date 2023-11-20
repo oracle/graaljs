@@ -84,7 +84,7 @@ public abstract class GroupByNode extends JavaScriptBaseNode {
                     @Cached IteratorValueNode iteratorValueNode,
                     @Cached("create(context)") IteratorCloseNode iteratorCloseNode,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached LongToIntOrDoubleNode toIntOrDoubleNode,
+                    @Cached(inline = true) LongToIntOrDoubleNode toIntOrDoubleNode,
                     @Cached(value = "maybeCreateToPropertyKeyNode(toPropertyKeyCoercion)", neverDefault = false) JSToPropertyKeyNode toPropertyKeyNode,
                     @Cached(value = "maybeCreateNormalizeKeyNode(toPropertyKeyCoercion)", neverDefault = false) JSCollectionsNormalizeNode normalizeKeyNode,
                     @Cached InlinedBranchProfile errorBranch) {

@@ -11455,5 +11455,257 @@
       "MACOS" : "SKIP"
     },
     "comment" : "Skipping on macOS because of transient spurious failures (GR-41067)."
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/date-time-format.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/date-toLocaleString.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/datetime-toLocaleString.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/duration-arithmetic-dst.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/hebrew-leap-months.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/indian-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/instant-toLocaleString.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/japanese-era.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/monthday-toLocaleString.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/time-toLocaleString.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/tzdb-string-parsing.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/yearmonth-toLocaleString.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/zoneddatetime-dst-corner-cases.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Duration/old/add.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Duration/old/compare-no-precision-loss.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Duration/old/limits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Duration/old/round.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Duration/old/subtract.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Duration/old/total.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Instant/old/limits.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Instant/old/toZonedDateTime.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Instant/old/toZonedDateTimeISO.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Regex/old/instant.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Regex/old/plaindate.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Regex/old/plaindatetime.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Regex/old/plainmonthday.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Regex/old/plainyearmonth.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/Regex/old/timezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/TimeZone/old/getInstantFor.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/TimeZone/old/getNextTransition.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/UserCalendar/old/calendar-extra-fields.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/UserCalendar/old/calendar-non-trivial-mergefields.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/UserCalendar/old/trivial-protocol-implementation.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/UserCalendar/old/trivial-subclass.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/UserTimezone/old/subminute-offset.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/UserTimezone/old/trivial-protocol.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/UserTimezone/old/trivial-subclass.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/add.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/compare.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/construction-and-properties.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/date-time-hours-overflow.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/dst-math.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/dst-properties.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/equals.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/order-of-operations.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/property-bags.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/reversibility-of-differences.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/round.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/since.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/string-parsing.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/toInstant.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/toPlainDate.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/toPlainMonthDay.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/toPlainYearMonth.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/toString.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/until.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/with.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/withCalendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/withPlainDate.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/withPlainTime.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Temporal/ZonedDateTime/old/withTimezone.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2023-11-17"
   } ]
 }

@@ -88,7 +88,21 @@ public abstract class JSNonProxy extends JSClass {
     @TruffleBoundary
     @Override
     public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
-        return DefinePropertyUtil.ordinaryDefineOwnProperty(thisObj, key, desc, doThrow);
+        return ordinaryDefineOwnProperty(thisObj, key, desc, doThrow);
+    }
+
+    /**
+     * This is a copy of OrdinaryDefineOwnProperty that avoids unnecessary virtual dispatch for
+     * [[GetOwnProperty]] and [[IsExtensible]]. For all non-Proxy objects, [[GetOwnProperty]] and
+     * [[IsExtensible]] must never have a side effect that changes the JSClass.
+     *
+     * @see DefinePropertyUtil#ordinaryDefineOwnProperty
+     */
+    private boolean ordinaryDefineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
+        PropertyDescriptor current = getOwnProperty(thisObj, key);
+        boolean extensible = isExtensible(thisObj);
+        assert thisObj.getJSClass() == this;
+        return DefinePropertyUtil.validateAndApplyPropertyDescriptor(thisObj, key, extensible, desc, current, doThrow);
     }
 
     /**
@@ -584,6 +598,11 @@ public abstract class JSNonProxy extends JSClass {
 
     @Override
     public final boolean isExtensible(JSDynamicObject thisObj) {
+        return ordinaryIsExtensible(thisObj);
+    }
+
+    public static boolean ordinaryIsExtensible(JSDynamicObject thisObj) {
+        assert thisObj.getJSClass().usesOrdinaryIsExtensible() : thisObj;
         return JSShape.isExtensible(thisObj.getShape());
     }
 
@@ -687,7 +706,7 @@ public abstract class JSNonProxy extends JSClass {
     }
 
     @Override
-    public boolean usesOrdinaryIsExtensible() {
+    public final boolean usesOrdinaryIsExtensible() {
         return true;
     }
 }

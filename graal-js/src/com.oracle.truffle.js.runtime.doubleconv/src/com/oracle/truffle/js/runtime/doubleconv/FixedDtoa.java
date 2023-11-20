@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -162,7 +162,7 @@ class FixedDtoa {
     static void fillDigits32FixedLength(int number, final int requested_length,
                                         final DtoaBuffer buffer) {
         for (int i = requested_length - 1; i >= 0; --i) {
-            buffer.chars[buffer.length + i] = (char) ('0' + Integer.remainderUnsigned(number, 10));
+            buffer.chars[buffer.length + i] = (byte) ('0' + Integer.remainderUnsigned(number, 10));
             number = Integer.divideUnsigned(number, 10);
         }
         buffer.length += requested_length;
@@ -175,14 +175,14 @@ class FixedDtoa {
         while (number != 0) {
             final int digit = Integer.remainderUnsigned(number, 10);
             number = Integer.divideUnsigned(number, 10);
-            buffer.chars[buffer.length + number_length] = (char) ('0' + digit);
+            buffer.chars[buffer.length + number_length] = (byte) ('0' + digit);
             number_length++;
         }
         // Exchange the digits.
         int i = buffer.length;
         int j = buffer.length + number_length - 1;
         while (i < j) {
-            final char tmp = buffer.chars[i];
+            final byte tmp = buffer.chars[i];
             buffer.chars[i] = buffer.chars[j];
             buffer.chars[j] = tmp;
             i++;
@@ -294,7 +294,7 @@ class FixedDtoa {
                 point--;
                 final int digit = (int) (fractionals >>> point);
                 assert (digit <= 9);
-                buffer.chars[buffer.length] = (char) ('0' + digit);
+                buffer.chars[buffer.length] = (byte) ('0' + digit);
                 buffer.length++;
                 fractionals -= (long) (digit) << point;
             }
@@ -317,7 +317,7 @@ class FixedDtoa {
                 point--;
                 final int digit = fractionals128.divModPowerOf2(point);
                 assert (digit <= 9);
-                buffer.chars[buffer.length] = (char) ('0' + digit);
+                buffer.chars[buffer.length] = (byte) ('0' + digit);
                 buffer.length++;
             }
             if (fractionals128.bitAt(point - 1) == 1) {

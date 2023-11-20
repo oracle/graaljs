@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
@@ -618,6 +619,11 @@ public abstract class JSObject extends JSDynamicObject {
 
     @TruffleBoundary
     public static boolean isExtensible(JSDynamicObject obj) {
+        if (obj instanceof JSNonProxyObject) {
+            // fast path: only need to check shape flag.
+            return JSNonProxy.ordinaryIsExtensible(obj);
+        }
+        // slow path for Proxy, JSAdapter, and nullish values.
         return JSObject.getJSClass(obj).isExtensible(obj);
     }
 

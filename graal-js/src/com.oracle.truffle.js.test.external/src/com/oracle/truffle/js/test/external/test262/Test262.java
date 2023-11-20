@@ -78,6 +78,7 @@ public class Test262 extends TestSuite {
                     "built-ins",
                     "language",
                     "intl402",
+                    "staging",
     };
     private static final String TESTS_CONFIG_FILE = "test262.json";
     private static final String FAILED_TESTS_FILE = "test262.failed";

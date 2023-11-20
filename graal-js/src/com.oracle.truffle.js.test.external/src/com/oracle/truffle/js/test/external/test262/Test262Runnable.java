@@ -226,6 +226,7 @@ public class Test262Runnable extends TestRunnable {
                     "intl-normative-optional",
                     "iterator-helpers",
                     "json-modules",
+                    "json-parse-with-source",
                     "json-superset",
                     "legacy-regexp",
                     "let",
@@ -272,6 +273,7 @@ public class Test262Runnable extends TestRunnable {
                     "array-grouping",
                     "arraybuffer-transfer",
                     "decorators",
+                    "json-parse-with-source",
                     "promise-with-resolvers",
     });
 

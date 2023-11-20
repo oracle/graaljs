@@ -64,6 +64,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilder;
+import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpCompileNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpExecES5NodeGen;
@@ -1097,7 +1098,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                                 TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode) || TRegexFlagsAccessor.unicodeSets(tRegexFlags, node, readUnicodeSets));
                 boolean sticky = stickyProfile.profile(node, TRegexFlagsAccessor.sticky(tRegexFlags, node, readSticky));
                 int length = Strings.length(s);
-                TruffleStringBuilder sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
+                var sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
                 int lastMatchEnd = 0;
                 int matchStart = -1;
                 int lastIndex = sticky ? (int) toLength.executeLong(parent.getLastIndex(rx)) : 0;
@@ -1233,7 +1234,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     results = new SimpleArrayList<>();
                 }
                 int length = Strings.length(s);
-                TruffleStringBuilder sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
+                var sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
                 int nextSourcePosition = 0;
                 int matchLength = -1;
                 while (true) {
@@ -1388,7 +1389,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Override
-        public void append(TruffleStringBuilder sb, TruffleString s) {
+        public void append(TruffleStringBuilderUTF16 sb, TruffleString s) {
             if (appendStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 appendStringNode = insert(TruffleStringBuilder.AppendStringNode.create());
@@ -1397,7 +1398,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Override
-        public void append(TruffleStringBuilder sb, TruffleString s, int fromIndex, int toIndex) {
+        public void append(TruffleStringBuilderUTF16 sb, TruffleString s, int fromIndex, int toIndex) {
             if (appendSubStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 appendSubStringNode = insert(TruffleStringBuilder.AppendSubstringByteIndexNode.create());
@@ -1405,7 +1406,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             stringBuilderProfile.append(appendSubStringNode, sb, s, fromIndex, toIndex);
         }
 
-        private TruffleString builderToString(TruffleStringBuilder sb) {
+        private TruffleString builderToString(TruffleStringBuilderUTF16 sb) {
             if (builderToStringNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 builderToStringNode = insert(TruffleStringBuilder.ToStringNode.create());
@@ -1429,9 +1430,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
     }
 
-    public static final class ReplaceStringConsumer implements ReplaceStringParser.Consumer<JSRegExpReplaceNode, TruffleStringBuilder> {
+    public static final class ReplaceStringConsumer implements ReplaceStringParser.Consumer<JSRegExpReplaceNode, TruffleStringBuilderUTF16> {
 
-        private final TruffleStringBuilder sb;
+        private final TruffleStringBuilderUTF16 sb;
         private final TruffleString input;
         private final TruffleString replaceStr;
         private final int startPos;
@@ -1439,7 +1440,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final JSDynamicObject result;
         private final JSDynamicObject namedCaptures;
 
-        private ReplaceStringConsumer(TruffleStringBuilder sb, TruffleString input, TruffleString replaceStr, int startPos, int endPos, JSDynamicObject result, JSDynamicObject namedCaptures) {
+        private ReplaceStringConsumer(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString replaceStr, int startPos, int endPos, JSDynamicObject result, JSDynamicObject namedCaptures) {
             this.sb = sb;
             this.input = input;
             this.replaceStr = replaceStr;
@@ -1486,18 +1487,18 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Override
-        public TruffleStringBuilder getResult() {
+        public TruffleStringBuilderUTF16 getResult() {
             return sb;
         }
     }
 
-    public static final class ReplaceStringConsumerTRegex implements ReplaceStringParser.Consumer<ReplaceStringConsumerTRegex.ParentNode, TruffleStringBuilder> {
+    public static final class ReplaceStringConsumerTRegex implements ReplaceStringParser.Consumer<ReplaceStringConsumerTRegex.ParentNode, TruffleStringBuilderUTF16> {
 
         public interface ParentNode {
 
-            void append(TruffleStringBuilder sb, TruffleString s);
+            void append(TruffleStringBuilderUTF16 sb, TruffleString s);
 
-            void append(TruffleStringBuilder sb, TruffleString s, int fromIndex, int toIndex);
+            void append(TruffleStringBuilderUTF16 sb, TruffleString s, int fromIndex, int toIndex);
 
             BranchProfile getInvalidGroupNumberProfile();
 
@@ -1506,7 +1507,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             InvokeGetGroupBoundariesMethodNode getGetEndNode();
         }
 
-        private final TruffleStringBuilder sb;
+        private final TruffleStringBuilderUTF16 sb;
         private final TruffleString input;
         private final TruffleString replaceStr;
         private final int startPos;
@@ -1515,7 +1516,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final Object tRegexCompiledRegex;
         private final int groupCount;
 
-        public ReplaceStringConsumerTRegex(TruffleStringBuilder sb, TruffleString input, TruffleString replaceStr, int startPos, int endPos, Object tRegexResult, Object tRegexCompiledRegex,
+        public ReplaceStringConsumerTRegex(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString replaceStr, int startPos, int endPos, Object tRegexResult, Object tRegexCompiledRegex,
                         int groupCount) {
             this.sb = sb;
             this.input = input;
@@ -1584,7 +1585,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Override
-        public TruffleStringBuilder getResult() {
+        public TruffleStringBuilderUTF16 getResult() {
             return sb;
         }
     }

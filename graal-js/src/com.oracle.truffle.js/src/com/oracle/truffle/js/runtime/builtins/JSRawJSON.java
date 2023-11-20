@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,24 +40,54 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.JSONBuiltins;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSAttributes;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 
-public final class JSON {
+/**
+ * A frozen ordinary object with an [[IsRawJSON]] internal slot, as created by JSON.rawJSON().
+ */
+public final class JSRawJSON extends JSNonProxy {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("JSON");
+    public static final JSRawJSON INSTANCE = new JSRawJSON();
 
-    private JSON() {
+    private JSRawJSON() {
     }
 
-    public static JSObject create(JSRealm realm) {
-        JSObject obj = JSOrdinary.createInit(realm);
-        JSObjectUtil.putToStringTag(obj, CLASS_NAME);
-        JSObjectUtil.putFunctionsFromContainer(realm, obj, JSONBuiltins.BUILTINS);
-        return obj;
+    public static final PropertyProxy RAW_JSON_PROXY = new PropertyProxy() {
+        @Override
+        public Object get(JSDynamicObject store) {
+            return ((JSRawJSONObject) store).getRawJSON();
+        }
+    };
+
+    public static JSRawJSONObject create(JSContext context, JSRealm realm, TruffleString value) {
+        JSObjectFactory factory = context.getRawJSONFactory();
+        var shape = factory.getShape(realm);
+        var newObj = new JSRawJSONObject(shape, value);
+        return factory.trackAllocation(newObj);
+    }
+
+    public static Shape makeInitialShape(JSContext context) {
+        Shape initialShape = JSShape.newBuilder(context, INSTANCE, Null.instance).//
+                        shapeFlags(JSShape.FROZEN_FLAGS).//
+                        addConstantProperty(JSObject.HIDDEN_PROTO, Null.instance, 0).//
+                        addConstantProperty(Strings.RAW_JSON, RAW_JSON_PROXY, JSProperty.PROXY | JSAttributes.notConfigurableEnumerableNotWritable()).//
+                        build();
+        return initialShape;
+    }
+
+    @Override
+    public TruffleString getClassName(JSDynamicObject object) {
+        return JSOrdinary.CLASS_NAME;
     }
 }

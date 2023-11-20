@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -222,7 +222,7 @@ class FastDtoa {
     //
     // Precondition: rest < ten_kappa.
     // Changed return type to int to let caller know they should increase kappa (return value 2)
-    static int roundWeedCounted(final char[] buffer,
+    static int roundWeedCounted(final byte[] buffer,
                                 final int length,
                                 final long rest,
                                 final long  ten_kappa,
@@ -397,7 +397,7 @@ class FastDtoa {
         while (kappa > 0) {
             final int digit = integrals / divisor;
             assert (digit <= 9);
-            buffer.append((char) ('0' + digit));
+            buffer.append('0' + digit);
             integrals %= divisor;
             kappa--;
             // Note that kappa now equals the exponent of the divisor and that the
@@ -433,7 +433,7 @@ class FastDtoa {
             // Integer division by one.
             final int digit = (int) (fractionals >>> -one.e());
             assert (digit <= 9);
-            buffer.append((char) ('0' + digit));
+            buffer.append('0' + digit);
             fractionals &= one.f() - 1;  // Modulo by one.
             kappa--;
             if (Long.compareUnsigned(fractionals, unsafe_interval.f()) < 0) {
@@ -505,7 +505,7 @@ class FastDtoa {
         while (kappa > 0) {
             final int digit = integrals / divisor;
             assert (digit <= 9);
-            buffer.append((char) ('0' + digit));
+            buffer.append('0' + digit);
             requested_digits--;
             integrals %= divisor;
             kappa--;
