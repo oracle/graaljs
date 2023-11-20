@@ -255,6 +255,10 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         JSTemporalRelativeDateRecord moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneWeek);
         relativeTo = moveResult.getRelativeTo();
         double oneWeekDays = moveResult.getDays();
+        if (oneWeekDays == 0) {
+            errorBranch.enter(node);
+            throw Errors.createRangeError("dateAdd of one week moved date by 0 days");
+        }
         while (Math.abs(days) >= Math.abs(oneWeekDays)) {
             weeks = weeks - sign;
             days = days - oneWeekDays;
@@ -290,6 +294,10 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         JSTemporalRelativeDateRecord moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneMonth);
         relativeTo = moveResult.getRelativeTo();
         double oneMonthDays = moveResult.getDays();
+        if (oneMonthDays == 0) {
+            errorBranch.enter(node);
+            throw Errors.createRangeError("dateAdd of one month moved date by 0 days");
+        }
         while (Math.abs(days) >= Math.abs(oneMonthDays)) {
             months = months + sign;
             days = days - oneMonthDays;
@@ -348,6 +356,10 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         JSTemporalRelativeDateRecord moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneYear);
 
         double oneYearDays = moveResult.getDays();
+        if (oneYearDays == 0) {
+            errorBranch.enter(node);
+            throw Errors.createRangeError("dateAdd of one year moved date by 0 days");
+        }
         double fractionalYears = years + (days / Math.abs(oneYearDays));
         years = TemporalUtil.roundNumberToIncrement(fractionalYears, increment, roundingMode);
         double remainder = fractionalYears - years;
