@@ -40,24 +40,5 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public final class JSTemporalRelativeDateRecord {
-    private final JSTemporalPlainDateObject relativeTo;
-    private final long days;
-
-    private JSTemporalRelativeDateRecord(JSTemporalPlainDateObject relativeTo, long days) {
-        this.relativeTo = relativeTo;
-        this.days = days;
-    }
-
-    public static JSTemporalRelativeDateRecord create(JSTemporalPlainDateObject relativeTo, long days) {
-        return new JSTemporalRelativeDateRecord(relativeTo, days);
-    }
-
-    public JSTemporalPlainDateObject getRelativeTo() {
-        return relativeTo;
-    }
-
-    public long getDays() {
-        return days;
-    }
+public record MoveRelativeDateResult(JSTemporalPlainDateObject relativeTo, long days) {
 }

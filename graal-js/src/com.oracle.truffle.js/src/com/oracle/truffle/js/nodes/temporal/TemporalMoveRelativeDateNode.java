@@ -50,14 +50,14 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.MoveRelativeDateResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of the Temporal moveRelativeDate operation.
+ * Implementation of the Temporal MoveRelativeDate operation.
  */
 public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
 
@@ -67,14 +67,14 @@ public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
     protected TemporalMoveRelativeDateNode() {
     }
 
-    public abstract JSTemporalRelativeDateRecord execute(JSDynamicObject calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration);
+    public abstract MoveRelativeDateResult execute(JSDynamicObject calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration);
 
     @Specialization
-    protected JSTemporalRelativeDateRecord moveRelativeDate(JSDynamicObject calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration,
+    protected MoveRelativeDateResult moveRelativeDate(JSDynamicObject calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration,
                     @Cached InlinedBranchProfile errorBranch) {
         JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration, errorBranch);
         long days = TemporalUtil.daysUntil(relativeTo, newDate);
-        return JSTemporalRelativeDateRecord.create(newDate, days);
+        return new MoveRelativeDateResult(newDate, days);
     }
 
     protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSTemporalPlainDateObject date, JSTemporalDurationObject duration, InlinedBranchProfile errorBranch) {
