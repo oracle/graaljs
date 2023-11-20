@@ -67,7 +67,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -146,12 +146,12 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             }
         } else {
             TruffleString string = toStringNode.executeString(value);
-            JSTemporalZonedDateTimeRecord resultZDT = TemporalUtil.parseTemporalRelativeToString(string);
+            ParseISODateTimeResult resultZDT = TemporalUtil.parseTemporalRelativeToString(string);
             result = resultZDT;
             calendar = toTemporalCalendarWithISODefaultNode.execute(result.getCalendar());
 
-            offset = resultZDT.getTimeZoneOffsetString();
-            TruffleString timeZoneName = resultZDT.getTimeZoneName();
+            offset = resultZDT.getTimeZoneResult().getOffsetString();
+            TruffleString timeZoneName = resultZDT.getTimeZoneResult().getName();
             if (timeZoneName != null) {
                 // If ParseText(! StringToCodePoints(timeZoneName), TimeZoneNumericUTCOffset)
                 // is not a List of errors
@@ -163,7 +163,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                 timeZone = TemporalUtil.createTemporalTimeZone(ctx, realm, timeZoneName);
             }
 
-            if (resultZDT.getTimeZoneZ()) {
+            if (resultZDT.getTimeZoneResult().isZ()) {
                 offsetBehaviour = TemporalUtil.OffsetBehaviour.EXACT;
             } else {
                 offsetBehaviour = TemporalUtil.OffsetBehaviour.WALL;

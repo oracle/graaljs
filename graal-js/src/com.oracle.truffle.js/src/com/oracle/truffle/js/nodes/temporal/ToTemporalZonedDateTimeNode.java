@@ -61,7 +61,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -128,9 +128,9 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         } else {
             TemporalUtil.toTemporalOverflow(options, getOptionNode);
             TruffleString string = toStringNode.executeString(item);
-            JSTemporalZonedDateTimeRecord resultZDT = TemporalUtil.parseTemporalZonedDateTimeString(string);
+            ParseISODateTimeResult resultZDT = TemporalUtil.parseTemporalZonedDateTimeString(string);
             result = resultZDT;
-            TruffleString timeZoneName = resultZDT.getTimeZoneName();
+            TruffleString timeZoneName = resultZDT.getTimeZoneResult().getName();
             assert timeZoneName != null;
             if (!TemporalUtil.canParseAsTimeZoneNumericUTCOffset(timeZoneName)) {
                 if (!TemporalUtil.isValidTimeZoneName(timeZoneName)) {
@@ -139,8 +139,8 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                 }
                 timeZoneName = TemporalUtil.canonicalizeTimeZoneName(timeZoneName);
             }
-            offsetString = resultZDT.getTimeZoneOffsetString();
-            if (resultZDT.getTimeZoneZ()) {
+            offsetString = resultZDT.getTimeZoneResult().getOffsetString();
+            if (resultZDT.getTimeZoneResult().isZ()) {
                 offsetBehaviour = OffsetBehaviour.EXACT;
             } else {
                 offsetBehaviour = OffsetBehaviour.WALL;

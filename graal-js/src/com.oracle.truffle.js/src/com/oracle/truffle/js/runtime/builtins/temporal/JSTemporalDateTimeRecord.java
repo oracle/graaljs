@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,10 +54,9 @@ public class JSTemporalDateTimeRecord {
     private final int nanosecond;
 
     private final TruffleString calendar;
-    private final boolean hasCalendar;
 
     protected JSTemporalDateTimeRecord(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
-                    TruffleString calendar, boolean hasCalendar) {
+                    TruffleString calendar) {
         this.year = year;
         this.month = month;
         this.day = day;
@@ -69,17 +68,16 @@ public class JSTemporalDateTimeRecord {
         this.nanosecond = nanosecond;
 
         this.calendar = calendar;
-        this.hasCalendar = hasCalendar;
     }
 
     public static JSTemporalDateTimeRecord create(int year, int month, int day, int hour, int minute, int second,
                     int millisecond, int microsecond, int nanosecond) {
-        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, null, false);
+        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, null);
     }
 
     public static JSTemporalDateTimeRecord createCalendar(int year, int month, int day, int hour, int minute, int second,
                     int millisecond, int microsecond, int nanosecond, TruffleString calendar) {
-        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, true);
+        return new JSTemporalDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
     }
 
     public int getYear() {
@@ -119,10 +117,10 @@ public class JSTemporalDateTimeRecord {
     }
 
     public TruffleString getCalendar() {
-        return hasCalendar ? calendar : null;
+        return calendar;
     }
 
     public boolean hasCalendar() {
-        return hasCalendar && calendar != null;
+        return calendar != null;
     }
 }

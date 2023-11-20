@@ -162,7 +162,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalYearMonthDayRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalYear;
@@ -582,26 +582,11 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static JSTemporalZonedDateTimeRecord parseTemporalRelativeToString(TruffleString isoString) {
+    public static ParseISODateTimeResult parseTemporalRelativeToString(TruffleString isoString) {
         if (!(new TemporalParser(isoString)).isTemporalDateTimeString()) {
             throw TemporalErrors.createRangeErrorInvalidRelativeToString();
         }
-        JSTemporalDateTimeRecord result = parseISODateTime(isoString, false, false);
-        boolean z = false;
-        TruffleString offsetString = null;
-        TruffleString timeZone = null;
-        if (!isoString.isEmpty()) {
-            try {
-                JSTemporalTimeZoneRecord timeZoneResult = parseTemporalTimeZoneString(isoString);
-                z = timeZoneResult.isZ();
-                offsetString = timeZoneResult.getOffsetString();
-                timeZone = timeZoneResult.getName();
-            } catch (Exception ex) {
-                // fall-through
-            }
-        } // else handled with defaults above
-        return JSTemporalZonedDateTimeRecord.create(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
-                        result.getMicrosecond(), result.getNanosecond(), result.getCalendar(), z, offsetString, timeZone);
+        return parseISODateTime(isoString, false, false);
     }
 
     @TruffleBoundary
@@ -629,12 +614,12 @@ public final class TemporalUtil {
         throw Errors.createRangeError("cannot parse MonthDay");
     }
 
-    private static JSTemporalDateTimeRecord parseISODateTime(TruffleString string) {
+    private static ParseISODateTimeResult parseISODateTime(TruffleString string) {
         return parseISODateTime(string, false, false);
     }
 
     @TruffleBoundary
-    private static JSTemporalDateTimeRecord parseISODateTime(TruffleString string, boolean failWithUTCDesignator, boolean timeExpected) {
+    private static ParseISODateTimeResult parseISODateTime(TruffleString string, boolean failWithUTCDesignator, boolean timeExpected) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseISODateTime();
         if (rec != null) {
             if (failWithUTCDesignator && rec.getZ()) {
@@ -648,7 +633,7 @@ public final class TemporalUtil {
         throw Errors.createRangeError("cannot parse the ISO date time string");
     }
 
-    private static JSTemporalDateTimeRecord parseISODateTimeIntl(TruffleString string, JSTemporalParserRecord rec) {
+    private static ParseISODateTimeResult parseISODateTimeIntl(TruffleString string, JSTemporalParserRecord rec) {
         TruffleString fraction = rec.getFraction();
         if (fraction == null) {
             fraction = ZEROS;
@@ -688,7 +673,8 @@ public final class TemporalUtil {
             throw TemporalErrors.createRangeErrorTimeOutsideRange();
         }
 
-        return JSTemporalDateTimeRecord.createCalendar(y, m, d, h, min, s, ms, mus, ns, rec.getCalendar());
+        JSTemporalTimeZoneRecord timeZoneResult = JSTemporalTimeZoneRecord.create(rec.getZ(), rec.getTimeZoneUTCOffsetName(), rec.getTimeZoneIdentifier());
+        return new ParseISODateTimeResult(y, m, d, h, min, s, ms, mus, ns, rec.getCalendar(), timeZoneResult);
     }
 
     public static void validateTemporalUnitRange(Unit largestUnit, Unit smallestUnit) {
@@ -2971,26 +2957,21 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static JSTemporalZonedDateTimeRecord parseTemporalZonedDateTimeString(TruffleString string) {
+    public static ParseISODateTimeResult parseTemporalZonedDateTimeString(TruffleString string) {
         if (!(new TemporalParser(string)).isTemporalZonedDateTimeString()) {
             throw Errors.createRangeError("cannot be parsed as TemporalZonedDateTimeString");
         }
-        JSTemporalDateTimeRecord result;
         try {
-            result = parseISODateTime(string);
+            return parseISODateTime(string);
         } catch (Exception ex) {
             throw Errors.createRangeError("cannot be parsed as TemporalZonedDateTimeString");
         }
-        JSTemporalTimeZoneRecord timeZoneResult = parseTemporalTimeZoneString(string);
-        return JSTemporalZonedDateTimeRecord.create(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(),
-                        result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), result.getCalendar(),
-                        timeZoneResult.isZ(), timeZoneResult.getOffsetString(), timeZoneResult.getName());
     }
 
     @TruffleBoundary
     public static BigInt parseTemporalInstant(TruffleString string) {
-        JSTemporalZonedDateTimeRecord result = parseTemporalInstantString(string);
-        TruffleString offsetString = result.getTimeZoneOffsetString();
+        ParseISODateTimeResult result = parseTemporalInstantString(string);
+        TruffleString offsetString = result.getTimeZoneResult().getOffsetString();
         assert (offsetString != null);
         BigInteger utc = getEpochFromISOParts(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(),
                         result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
@@ -3003,17 +2984,16 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    private static JSTemporalZonedDateTimeRecord parseTemporalInstantString(TruffleString string) {
+    private static ParseISODateTimeResult parseTemporalInstantString(TruffleString string) {
         try {
-            JSTemporalDateTimeRecord result = parseISODateTime(string);
+            ParseISODateTimeResult result = parseISODateTime(string);
             JSTemporalTimeZoneRecord timeZoneResult = parseTemporalTimeZoneString(string, true);
             TruffleString offsetString = timeZoneResult.getOffsetString();
             if (timeZoneResult.isZ()) {
                 offsetString = OFFSET_ZERO;
             }
             assert offsetString != null;
-            return JSTemporalZonedDateTimeRecord.create(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(),
-                            result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), null, false, offsetString, null);
+            return result.withTimeZoneResult(JSTemporalTimeZoneRecord.create(timeZoneResult.isZ(), offsetString, timeZoneResult.getName()));
         } catch (Exception ex) {
             throw Errors.createRangeError("Instant cannot be parsed");
         }

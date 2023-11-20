@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,35 +42,23 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.strings.TruffleString;
 
-public final class JSTemporalZonedDateTimeRecord extends JSTemporalDateTimeRecord {
-    private final TruffleString timeZoneOffsetString;
-    private final TruffleString timeZoneName;
-    private final boolean timeZoneZ;
+public class ParseISODateTimeResult extends JSTemporalDateTimeRecord {
 
-    private JSTemporalZonedDateTimeRecord(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
-                    TruffleString calendar, boolean hasCalendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
-        super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, hasCalendar);
-        this.timeZoneOffsetString = timeZoneOffsetString;
-        this.timeZoneName = timeZoneName;
-        this.timeZoneZ = timeZoneZ;
+    private final JSTemporalTimeZoneRecord timeZoneResult;
+
+    public ParseISODateTimeResult(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
+                    TruffleString calendar, JSTemporalTimeZoneRecord timeZoneResult) {
+        super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
+        this.timeZoneResult = timeZoneResult;
     }
 
-    public static JSTemporalZonedDateTimeRecord create(int year, int month, int day, int hour, int minute, int second,
-                    int millisecond, int microsecond, int nanosecond, TruffleString calendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
-        return new JSTemporalZonedDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond,
-                        calendar, calendar != null, timeZoneZ, timeZoneOffsetString, timeZoneName);
+    public JSTemporalTimeZoneRecord getTimeZoneResult() {
+        return timeZoneResult;
     }
 
-    public TruffleString getTimeZoneOffsetString() {
-        return timeZoneOffsetString;
-    }
-
-    public TruffleString getTimeZoneName() {
-        return timeZoneName;
-    }
-
-    public boolean getTimeZoneZ() {
-        return timeZoneZ;
+    public ParseISODateTimeResult withTimeZoneResult(JSTemporalTimeZoneRecord newTimeZoneResult) {
+        return new ParseISODateTimeResult(getYear(), getMonth(), getDay(), getHour(), getMinute(), getSecond(), getMillisecond(), getMicrosecond(), getNanosecond(), getCalendar(),
+                        newTimeZoneResult);
     }
 
 }
