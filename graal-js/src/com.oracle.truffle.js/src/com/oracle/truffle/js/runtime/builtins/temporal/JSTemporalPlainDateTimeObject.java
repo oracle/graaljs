@@ -40,6 +40,9 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import java.time.LocalDate;
+import java.time.LocalTime;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -48,11 +51,8 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
-import java.time.LocalDate;
-import java.time.LocalTime;
-
 @ExportLibrary(InteropLibrary.class)
-public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements TemporalMonth, TemporalYear, TemporalDay, TemporalCalendar {
+public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements TemporalCalendar {
 
     // from time
     private final int hours;
@@ -107,17 +107,14 @@ public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements T
         return nanoseconds;
     }
 
-    @Override
     public int getYear() {
         return year;
     }
 
-    @Override
     public int getMonth() {
         return month;
     }
 
-    @Override
     public int getDay() {
         return day;
     }
