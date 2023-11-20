@@ -401,7 +401,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
-            JSTemporalPlainDateObject other = toTemporalDate.execute(otherObj, Undefined.instance);
+            JSTemporalPlainDateObject other = toTemporalDate.execute(otherObj);
             if (!TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar(), toStringNode)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
@@ -602,7 +602,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected static boolean equals(JSTemporalPlainDateObject temporalDate, Object otherParam,
                         @Cached ToTemporalDateNode toTemporalDate,
                         @Cached JSToStringNode toStringNode) {
-            JSTemporalPlainDateObject other = toTemporalDate.execute(otherParam, Undefined.instance);
+            JSTemporalPlainDateObject other = toTemporalDate.execute(otherParam);
             if (temporalDate.getYear() != other.getYear()) {
                 return false;
             }

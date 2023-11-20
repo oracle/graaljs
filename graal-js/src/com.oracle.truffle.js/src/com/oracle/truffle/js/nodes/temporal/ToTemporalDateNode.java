@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -70,6 +71,10 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
 public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
 
     protected ToTemporalDateNode() {
+    }
+
+    public final JSTemporalPlainDateObject execute(Object value) {
+        return execute(value, Undefined.instance);
     }
 
     public abstract JSTemporalPlainDateObject execute(Object value, JSDynamicObject options);

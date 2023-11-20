@@ -1187,15 +1187,10 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static Object buildISOMonthCode(int month) {
+    public static TruffleString buildISOMonthCode(int month) {
         TruffleString numberPart = Strings.fromInt(month);
         assert 1 <= Strings.length(numberPart) && Strings.length(numberPart) <= 2;
         return Strings.concat(Strings.length(numberPart) >= 2 ? Strings.UC_M : Strings.UC_M0, numberPart);
-    }
-
-    public static TruffleString isoMonthCode(TemporalMonth date) {
-        long month = date.getMonth();
-        return buildISOMonthCode(month);
     }
 
     @TruffleBoundary
@@ -3443,12 +3438,6 @@ public final class TemporalUtil {
                             dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
         }
         return JSTemporalYearMonthDayRecord.create(referenceISOYear, result.getMonth(), result.getDay());
-    }
-
-    // 12.1.45
-    public static long isoDay(JSDynamicObject temporalObject) {
-        TemporalDay day = (TemporalDay) temporalObject;
-        return day.getDay();
     }
 
     public static JSTemporalDurationRecord createDurationRecord(double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds,

@@ -126,7 +126,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         if (hasRelativeTo.profile(this, relativeTo != Undefined.instance)) {
             if (TemporalUtil.isTemporalZonedDateTime(relativeTo)) {
                 zonedRelativeTo = relativeTo;
-                relativeTo = toTemporalDateNode.execute(relativeTo, Undefined.instance);
+                relativeTo = toTemporalDateNode.execute(relativeTo);
             } else {
                 TemporalUtil.requireTemporalDate(relativeTo, this, errorBranch);
             }

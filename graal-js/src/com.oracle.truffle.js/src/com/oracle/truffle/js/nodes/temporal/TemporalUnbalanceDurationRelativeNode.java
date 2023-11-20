@@ -112,7 +112,7 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
         JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, realm, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
         JSDynamicObject calendar = Undefined.instance;
         if (relativeToAvailable.profile(this, relativeTo != Undefined.instance)) {
-            JSTemporalPlainDateObject pdo = toTemporalDateNode.execute(relativeTo, Undefined.instance);
+            JSTemporalPlainDateObject pdo = toTemporalDateNode.execute(relativeTo);
             relativeTo = pdo;
             calendar = pdo.getCalendar();
         }

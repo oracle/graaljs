@@ -533,7 +533,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected final JSTemporalPlainDateTimeObject toPlainDateTime(JSTemporalPlainTimeObject time, Object temporalDateObj,
                         @Cached ToTemporalDateNode toTemporalDate,
                         @Cached InlinedBranchProfile errorBranch) {
-            JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateObj, Undefined.instance);
+            JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateObj);
 
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),
                             date.getYear(), date.getMonth(), date.getDay(),
@@ -569,7 +569,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorTemporalPlainDateExpected();
             }
-            JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateLike, Undefined.instance);
+            JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateLike);
             Object temporalTimeZoneLike = JSObject.get(item, TemporalConstants.TIME_ZONE);
             if (temporalTimeZoneLike == Undefined.instance || temporalTimeZoneLike == null) {
                 errorBranch.enter(this);
