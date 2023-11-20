@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
+import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
+
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -55,6 +57,8 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
@@ -139,13 +143,33 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             double shift2 = TemporalUtil.calculateOffsetShift(getContext(), realm, relativeTo,
                             two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
                             0, 0, 0, 0, 0, 0);
+
+            JSTemporalPlainDateObject plainRelativeTo;
+            boolean calendarUnitsPresent = one.getYears() != 0 || two.getYears() != 0 ||
+                            one.getMonths() != 0 || two.getMonths() != 0 ||
+                            one.getWeeks() != 0 || two.getWeeks() != 0;
+            if (relativeTo instanceof JSTemporalZonedDateTimeObject zonedRelativeTo && (calendarUnitsPresent || one.getDays() != 0 || two.getDays() != 0)) {
+                var after1 = TemporalUtil.addZonedDateTime(getContext(), realm,
+                                zonedRelativeTo.getNanoseconds(), zonedRelativeTo.getTimeZone(), zonedRelativeTo.getCalendar(),
+                                dtol(one.getYears()), dtol(one.getMonths()), dtol(one.getWeeks()), dtol(one.getDays()),
+                                dtol(one.getHours()), dtol(one.getMinutes()), dtol(one.getSeconds()),
+                                dtol(one.getMilliseconds()), dtol(one.getMicroseconds()), dtol(one.getNanoseconds()));
+                var after2 = TemporalUtil.addZonedDateTime(getContext(), realm,
+                                zonedRelativeTo.getNanoseconds(), zonedRelativeTo.getTimeZone(), zonedRelativeTo.getCalendar(),
+                                dtol(two.getYears()), dtol(two.getMonths()), dtol(two.getWeeks()), dtol(two.getDays()),
+                                dtol(two.getHours()), dtol(two.getMinutes()), dtol(two.getSeconds()),
+                                dtol(two.getMilliseconds()), dtol(two.getMicroseconds()), dtol(two.getNanoseconds()));
+                return after1.compareTo(after2);
+            } else if (relativeTo instanceof JSTemporalPlainDateObject plainDate) {
+                plainRelativeTo = plainDate;
+            } else {
+                plainRelativeTo = null;
+            }
             double days1;
             double days2;
-            if (one.getYears() != 0 || two.getYears() != 0 ||
-                            one.getMonths() != 0 || two.getMonths() != 0 ||
-                            one.getWeeks() != 0 || two.getWeeks() != 0) {
-                JSTemporalDurationRecord balanceResult1 = unbalanceDurationRelativeNode.execute(one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(), Unit.DAY, relativeTo);
-                JSTemporalDurationRecord balanceResult2 = unbalanceDurationRelativeNode.execute(two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(), Unit.DAY, relativeTo);
+            if (calendarUnitsPresent) {
+                JSTemporalDurationRecord balanceResult1 = unbalanceDurationRelativeNode.execute(one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(), Unit.DAY, plainRelativeTo);
+                JSTemporalDurationRecord balanceResult2 = unbalanceDurationRelativeNode.execute(two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(), Unit.DAY, plainRelativeTo);
                 days1 = balanceResult1.getDays();
                 days2 = balanceResult2.getDays();
             } else {

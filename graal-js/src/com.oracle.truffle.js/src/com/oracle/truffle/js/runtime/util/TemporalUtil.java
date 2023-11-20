@@ -164,9 +164,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalYearMonthDayRec
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalDay;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalMonth;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalYear;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -2381,10 +2378,10 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static long daysUntil(JSDynamicObject earlier, JSDynamicObject later) {
-        double epochDays1 = JSDate.makeDay(((TemporalYear) earlier).getYear(), ((TemporalMonth) earlier).getMonth() - 1, ((TemporalDay) earlier).getDay());
+    public static long daysUntil(JSTemporalPlainDateObject earlier, JSTemporalPlainDateObject later) {
+        double epochDays1 = JSDate.makeDay(earlier.getYear(), earlier.getMonth() - 1, earlier.getDay());
         assert Double.isFinite(epochDays1);
-        double epochDays2 = JSDate.makeDay(((TemporalYear) later).getYear(), ((TemporalMonth) later).getMonth() - 1, ((TemporalDay) later).getDay());
+        double epochDays2 = JSDate.makeDay(later.getYear(), later.getMonth() - 1, later.getDay());
         assert Double.isFinite(epochDays2);
         return dtol(epochDays2 - epochDays1);
     }
@@ -3130,14 +3127,16 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static BigInt addZonedDateTime(JSContext ctx, JSRealm realm, BigInt epochNanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar, long years, long months, long weeks, long days,
+    public static BigInt addZonedDateTime(JSContext ctx, JSRealm realm, BigInt epochNanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar,
+                    long years, long months, long weeks, long days,
                     long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
         return addZonedDateTime(ctx, realm, epochNanoseconds, timeZone, calendar, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, BigInteger.valueOf(nanoseconds),
                         Undefined.instance);
     }
 
     @TruffleBoundary
-    public static BigInt addZonedDateTime(JSContext ctx, JSRealm realm, BigInt epochNanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar, long years, long months, long weeks, long days,
+    public static BigInt addZonedDateTime(JSContext ctx, JSRealm realm, BigInt epochNanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar,
+                    long years, long months, long weeks, long days,
                     long hours, long minutes, long seconds, long milliseconds, long microseconds, BigInteger nanoseconds, JSDynamicObject options) {
         if (years == 0 && months == 0 && weeks == 0 && days == 0) {
             return addInstant(epochNanoseconds, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);

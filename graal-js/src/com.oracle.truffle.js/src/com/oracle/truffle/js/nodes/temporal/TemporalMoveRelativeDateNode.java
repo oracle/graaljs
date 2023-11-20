@@ -48,6 +48,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -66,17 +67,17 @@ public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
     protected TemporalMoveRelativeDateNode() {
     }
 
-    public abstract JSTemporalRelativeDateRecord execute(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration);
+    public abstract JSTemporalRelativeDateRecord execute(JSDynamicObject calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration);
 
     @Specialization
-    protected JSTemporalRelativeDateRecord moveRelativeDate(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration,
+    protected JSTemporalRelativeDateRecord moveRelativeDate(JSDynamicObject calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration,
                     @Cached InlinedBranchProfile errorBranch) {
         JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration, errorBranch);
         long days = TemporalUtil.daysUntil(relativeTo, newDate);
         return JSTemporalRelativeDateRecord.create(newDate, days);
     }
 
-    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, InlinedBranchProfile errorBranch) {
+    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSTemporalPlainDateObject date, JSTemporalDurationObject duration, InlinedBranchProfile errorBranch) {
         if (getMethodDateAddNode == null || callDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getMethodDateAddNode = insert(GetMethodNode.create(getLanguage().getJSContext(), TemporalConstants.DATE_ADD));
