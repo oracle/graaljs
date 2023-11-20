@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
@@ -66,7 +67,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -114,8 +114,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                             JSTemporalPlainTime.isJSTemporalPlainTime(itemObj) ||
                             JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(itemObj) ||
                             TemporalUtil.isTemporalZonedDateTime(itemObj))) {
-                assert itemObj instanceof TemporalCalendar; // basically, that's above line's check,
-                calendar = ((TemporalCalendar) itemObj).getCalendar();
+                calendar = ((JSTemporalCalendarHolder) itemObj).getCalendar();
                 calendarAbsent = false;
             } else {
                 Object calendarObj = getCalendar(itemObj);

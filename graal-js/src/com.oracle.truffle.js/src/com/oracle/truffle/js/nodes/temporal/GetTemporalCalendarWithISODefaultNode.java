@@ -46,7 +46,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -69,8 +69,8 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
                     @Cached InlinedConditionProfile isCalendarProfile,
                     @Cached InlinedConditionProfile isNullishProfile,
                     @Cached ToTemporalCalendarNode toTemporalCalendarNode) {
-        if (isCalendarProfile.profile(this, item instanceof TemporalCalendar)) {
-            return ((TemporalCalendar) item).getCalendar();
+        if (isCalendarProfile.profile(this, item instanceof JSTemporalCalendarHolder)) {
+            return ((JSTemporalCalendarHolder) item).getCalendar();
         } else {
             Object calendar = getCalendar(item);
             if (isNullishProfile.profile(this, calendar == Undefined.instance)) {

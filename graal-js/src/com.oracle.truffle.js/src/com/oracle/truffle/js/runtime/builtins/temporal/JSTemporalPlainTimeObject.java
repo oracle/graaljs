@@ -48,10 +48,9 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
-public class JSTemporalPlainTimeObject extends JSNonProxyObject implements TemporalCalendar {
+public final class JSTemporalPlainTimeObject extends JSTemporalCalendarHolder {
 
     // all values guaranteed to fit into int
     // https://tc39.es/proposal-temporal/#sec-temporal-isvalidtime
@@ -61,18 +60,16 @@ public class JSTemporalPlainTimeObject extends JSNonProxyObject implements Tempo
     private final int millisecond;
     private final int microsecond;
     private final int nanosecond;
-    private final JSDynamicObject calendar;
 
     protected JSTemporalPlainTimeObject(Shape shape, JSDynamicObject proto, int hour, int minute, int second, int millisecond,
                     int microsecond, int nanosecond, JSDynamicObject calendar) {
-        super(shape, proto);
+        super(shape, proto, calendar);
         this.hour = hour;
         this.minute = minute;
         this.second = second;
         this.millisecond = millisecond;
         this.microsecond = microsecond;
         this.nanosecond = nanosecond;
-        this.calendar = calendar;
     }
 
     public int getHour() {
@@ -97,11 +94,6 @@ public class JSTemporalPlainTimeObject extends JSNonProxyObject implements Tempo
 
     public int getNanosecond() {
         return nanosecond;
-    }
-
-    @Override
-    public JSDynamicObject getCalendar() {
-        return calendar;
     }
 
     @ExportMessage

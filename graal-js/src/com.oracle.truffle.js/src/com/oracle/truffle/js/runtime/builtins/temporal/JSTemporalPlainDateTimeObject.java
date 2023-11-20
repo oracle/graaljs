@@ -49,10 +49,9 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
-public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements TemporalCalendar {
+public final class JSTemporalPlainDateTimeObject extends JSTemporalCalendarHolder {
 
     // from time
     private final int hours;
@@ -65,11 +64,10 @@ public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements T
     private final int year;
     private final int month;
     private final int day;
-    private final JSDynamicObject calendar;
 
     protected JSTemporalPlainDateTimeObject(Shape shape, JSDynamicObject proto, int year, int month, int day, int hours, int minutes, int seconds, int milliseconds,
                     int microseconds, int nanoseconds, JSDynamicObject calendar) {
-        super(shape, proto);
+        super(shape, proto, calendar);
         this.hours = hours;
         this.minutes = minutes;
         this.seconds = seconds;
@@ -80,7 +78,6 @@ public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements T
         this.year = year;
         this.month = month;
         this.day = day;
-        this.calendar = calendar;
     }
 
     public int getHour() {
@@ -117,11 +114,6 @@ public class JSTemporalPlainDateTimeObject extends JSNonProxyObject implements T
 
     public int getDay() {
         return day;
-    }
-
-    @Override
-    public JSDynamicObject getCalendar() {
-        return calendar;
     }
 
     @ExportMessage

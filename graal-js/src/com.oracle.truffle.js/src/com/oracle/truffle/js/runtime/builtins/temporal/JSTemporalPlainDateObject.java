@@ -48,22 +48,19 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
-public class JSTemporalPlainDateObject extends JSNonProxyObject implements TemporalCalendar {
+public final class JSTemporalPlainDateObject extends JSTemporalCalendarHolder {
 
     private final int year;
     private final int month;
     private final int day;
-    private final JSDynamicObject calendar;
 
     public JSTemporalPlainDateObject(Shape shape, JSDynamicObject proto, int year, int month, int day, JSDynamicObject calendar) {
-        super(shape, proto);
+        super(shape, proto, calendar);
         this.year = year;
         this.month = month;
         this.day = day;
-        this.calendar = calendar;
     }
 
     public int getYear() {
@@ -76,11 +73,6 @@ public class JSTemporalPlainDateObject extends JSNonProxyObject implements Tempo
 
     public int getDay() {
         return day;
-    }
-
-    @Override
-    public JSDynamicObject getCalendar() {
-        return calendar;
     }
 
     @ExportMessage

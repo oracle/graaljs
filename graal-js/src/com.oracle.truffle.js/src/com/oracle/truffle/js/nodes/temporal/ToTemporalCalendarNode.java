@@ -53,7 +53,7 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -84,8 +84,8 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
         Object item = itemParam;
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, this, errorBranch);
-            if (isCalendarProfile.profile(this, item instanceof TemporalCalendar)) {
-                return ((TemporalCalendar) item).getCalendar();
+            if (isCalendarProfile.profile(this, item instanceof JSTemporalCalendarHolder)) {
+                return ((JSTemporalCalendarHolder) item).getCalendar();
             }
             if (hasCalendarProfile.profile(this, !JSObject.hasProperty(itemObj, CALENDAR))) {
                 return itemObj;
