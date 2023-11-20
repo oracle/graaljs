@@ -80,10 +80,8 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getMonthCodeNode;
     @Child private PropertyGetNode getYearNode;
     @Child private PropertyGetNode getCalendarNode;
-    protected final JSContext ctx;
 
-    protected ToTemporalMonthDayNode(JSContext context) {
-        this.ctx = context;
+    protected ToTemporalMonthDayNode() {
     }
 
     public abstract JSTemporalPlainMonthDayObject execute(Object item, JSDynamicObject optParam);
@@ -98,10 +96,11 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode,
                     @Cached TemporalGetOptionNode temporalGetOptionNode,
-                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                    @Cached("create(ctx)") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
-                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode) {
+                    @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                    @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
+                    @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
         int referenceISOYear = 1972;
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
@@ -155,7 +154,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
     private Object getCalendar(JSDynamicObject obj) {
         if (getCalendarNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getCalendarNode = insert(PropertyGetNode.create(CALENDAR, ctx));
+            getCalendarNode = insert(PropertyGetNode.create(CALENDAR, getLanguage().getJSContext()));
         }
         return getCalendarNode.getValue(obj);
     }

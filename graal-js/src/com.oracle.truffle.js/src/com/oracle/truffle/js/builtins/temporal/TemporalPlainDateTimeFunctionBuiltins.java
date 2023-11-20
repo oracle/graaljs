@@ -101,7 +101,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected JSTemporalPlainDateTimeObject from(Object item, Object optParam,
-                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime,
+                        @Cached ToTemporalDateTimeNode toTemporalDateTime,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -127,7 +127,7 @@ public class TemporalPlainDateTimeFunctionBuiltins extends JSBuiltinsContainer.S
 
         @Specialization
         protected int compare(Object obj1, Object obj2,
-                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
+                        @Cached ToTemporalDateTimeNode toTemporalDateTime) {
             JSTemporalPlainDateTimeObject one = toTemporalDateTime.execute(obj1, Undefined.instance);
             JSTemporalPlainDateTimeObject two = toTemporalDateTime.execute(obj2, Undefined.instance);
             return TemporalUtil.compareISODateTime(

@@ -206,7 +206,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
         @Specialization
         protected Object dateGetter(JSTemporalPlainYearMonthObject temporalYM,
-                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode) {
+                        @Cached TemporalCalendarGetterNode calendarGetterNode) {
             switch (property) {
                 case calendar:
                     return temporalYM.getCalendar();
@@ -297,8 +297,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @Specialization
         protected JSTemporalPlainDateObject toPlainDate(JSTemporalPlainYearMonthObject yearMonth, Object item,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
+                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                         @Cached InlinedBranchProfile errorBranch) {
             if (!JSRuntime.isObject(item)) {
                 errorBranch.enter(this);
@@ -356,7 +356,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @Specialization
         protected boolean equals(JSTemporalPlainYearMonthObject yearMonth, Object otherParam,
                         @Cached JSToStringNode toStringNode,
-                        @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode) {
+                        @Cached ToTemporalYearMonthNode toTemporalYearMonthNode) {
             JSTemporalPlainYearMonthObject other = toTemporalYearMonthNode.execute(otherParam, Undefined.instance);
             if (yearMonth.getMonth() != other.getMonth()) {
                 return false;
@@ -386,8 +386,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
         @Specialization
         protected JSTemporalPlainYearMonthObject with(JSTemporalPlainYearMonthObject ym, Object temporalYearMonthLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
+                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (!isObjectNode.executeBoolean(temporalYearMonthLike)) {
@@ -438,11 +438,11 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         JSTemporalPlainYearMonthObject ym, Object temporalDurationLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
-                        @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode,
+                        @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
+                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached TemporalCalendarGetterNode calendarGetterNode,
                         @Cached JSToIntegerThrowOnInfinityNode toIntNode,
-                        @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
+                        @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.execute(temporalDurationLike, TemporalUtil.listEmpty);
@@ -500,10 +500,10 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
-                        @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
+                        @Cached TemporalRoundDurationNode roundDurationNode,
+                        @Cached ToTemporalYearMonthNode toTemporalYearMonthNode,
+                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalPlainYearMonthObject other = toTemporalYearMonthNode.execute(otherParam, Undefined.instance);

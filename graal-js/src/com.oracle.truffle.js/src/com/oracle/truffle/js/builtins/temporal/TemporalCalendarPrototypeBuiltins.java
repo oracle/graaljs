@@ -464,9 +464,9 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object dateAdd(JSTemporalCalendarObject calendar, Object dateObj, Object durationObj, Object optionsParam,
-                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode,
+                        @Cached ToTemporalDurationNode toTemporalDurationNode,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached ToTemporalDateNode toTemporalDate,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -509,7 +509,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object dateUntil(JSTemporalCalendarObject calendar, Object oneObj, Object twoObj, Object optionsParam,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached ToTemporalDateNode toTemporalDate,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
@@ -543,7 +543,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected long year(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             if (JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike)) {
                 return ((JSTemporalPlainDateObject) temporalDateLike).getYear();
@@ -571,7 +571,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected long month(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             Object dateLike = temporalDateLike;
 
@@ -604,7 +604,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected TruffleString monthCode(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             Object dateLike = temporalDateLike;
             if (!isObject(dateLike) || (!JSTemporalPlainDate.isJSTemporalPlainDate(dateLike) && !JSTemporalPlainDateTime.isJSTemporalPlainDateTime(temporalDateLike) &&
@@ -630,7 +630,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected long day(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             JSDynamicObject tdl = Undefined.instance;
             if (!JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike) && !JSTemporalPlainDateTime.isJSTemporalPlainDateTime(temporalDateLike) &&
@@ -658,7 +658,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected long dayOfWeek(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateLike, Undefined.instance);
             return TemporalUtil.toISODayOfWeek(date.getYear(), date.getMonth(), date.getDay());
@@ -680,7 +680,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected long dayOfYear(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateLike, Undefined.instance);
             return TemporalUtil.toISODayOfYear(date.getYear(), date.getMonth(), date.getDay());
@@ -702,7 +702,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected long weekOfYear(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateLike, Undefined.instance);
             return TemporalUtil.toISOWeekOfYear(date.getYear(), date.getMonth(), date.getDay());
@@ -724,7 +724,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected long daysInWeek(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             toTemporalDate.execute(temporalDateLike, Undefined.instance);
             return 7;
@@ -746,7 +746,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected long daysInMonth(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             Object dateLike = temporalDateLike;
             if (!isObject(dateLike) || (!JSTemporalPlainDate.isJSTemporalPlainDate(dateLike) && !JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike))) {
@@ -773,7 +773,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected int daysInYear(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             int year = 0;
             if (JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike)) {
@@ -803,7 +803,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected long monthsInYear(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             if (!JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike) && !JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(temporalDateLike)) {
                 toTemporalDate.execute(temporalDateLike, Undefined.instance); // discard result
@@ -827,7 +827,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected boolean inLeapYear(JSTemporalCalendarObject calendar, Object temporalDateLike,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             assert calendar.getId().equals(ISO8601);
             int year = 0;
             if (JSTemporalPlainDate.isJSTemporalPlainDate(temporalDateLike)) {

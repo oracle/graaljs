@@ -92,7 +92,7 @@ public class TemporalTimeZoneFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSDynamicObject from(Object item,
-                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone) {
+                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone) {
             return toTemporalTimeZone.execute(item);
         }
     }

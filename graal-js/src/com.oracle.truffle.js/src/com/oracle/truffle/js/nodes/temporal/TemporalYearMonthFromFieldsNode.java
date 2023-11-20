@@ -43,11 +43,11 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -61,8 +61,8 @@ public abstract class TemporalYearMonthFromFieldsNode extends JavaScriptBaseNode
     @Child private GetMethodNode getMethodYearMonthFromFieldsNode;
     @Child private JSFunctionCallNode callYearMonthFromFieldsNode;
 
-    protected TemporalYearMonthFromFieldsNode(JSContext ctx) {
-        this.getMethodYearMonthFromFieldsNode = GetMethodNode.create(ctx, TemporalUtil.YEAR_MONTH_FROM_FIELDS);
+    protected TemporalYearMonthFromFieldsNode() {
+        this.getMethodYearMonthFromFieldsNode = GetMethodNode.create(JavaScriptLanguage.get(null).getJSContext(), TemporalUtil.YEAR_MONTH_FROM_FIELDS);
         this.callYearMonthFromFieldsNode = JSFunctionCallNode.createCall();
     }
 

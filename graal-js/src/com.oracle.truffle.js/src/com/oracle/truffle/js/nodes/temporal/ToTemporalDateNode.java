@@ -69,10 +69,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
-
-    protected ToTemporalDateNode(JSContext context) {
-        this.ctx = context;
+    protected ToTemporalDateNode() {
     }
 
     public abstract JSTemporalPlainDateObject execute(Object value, JSDynamicObject options);
@@ -87,10 +84,11 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode,
                     @Cached TemporalGetOptionNode getOptionNode,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
-                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached("create(ctx)") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
+                    @Cached GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
+                    @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                    @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
+        JSContext ctx = getLanguage().getJSContext();
         assert options != null;
         JSRealm realm = getRealm();
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(itemParam))) {

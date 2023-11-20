@@ -240,7 +240,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected final Object dateGetter(JSTemporalPlainDateObject temporalDT,
-                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode) {
+                        @Cached TemporalCalendarGetterNode calendarGetterNode) {
             switch (property) {
                 case calendar:
                     return temporalDT.getCalendar();
@@ -322,8 +322,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected final JSTemporalPlainDateObject with(JSTemporalPlainDateObject temporalDate, Object temporalDateLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
+                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (!isObject(temporalDateLike)) {
@@ -368,7 +368,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected final JSTemporalPlainDateObject withCalendar(JSTemporalPlainDateObject date, Object calendarParam,
-                        @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar,
+                        @Cached ToTemporalCalendarNode toTemporalCalendar,
                         @Cached InlinedBranchProfile errorBranch) {
             JSDynamicObject calendar = toTemporalCalendar.execute(calendarParam);
             return JSTemporalPlainDate.create(getContext(), getRealm(), date.getYear(), date.getMonth(), date.getDay(), calendar, this, errorBranch);
@@ -394,10 +394,10 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected JSTemporalDurationObject differenceTemporalPlainDate(JSTemporalPlainDateObject temporalDate, Object otherObj, Object optionsParam,
                         @Cached JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached ToTemporalDateNode toTemporalDate,
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
+                        @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -525,7 +525,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected final JSTemporalPlainDateTimeObject toPlainDateTime(JSTemporalPlainDateObject date, Object temporalTimeObj,
-                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
+                        @Cached ToTemporalTimeNode toTemporalTime,
                         @Cached InlinedBranchProfile errorBranch) {
             if (temporalTimeObj == Undefined.instance) {
                 return JSTemporalPlainDateTime.create(getContext(), getRealm(),
@@ -554,8 +554,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected final JSTemporalPlainYearMonthObject toPlainYearMonth(JSTemporalPlainDateObject date,
-                        @Cached("create(getContext())") TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode) {
+                        @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
+                        @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
             JSDynamicObject calendar = date.getCalendar();
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), date, fieldNames, TemporalUtil.listEmpty);
@@ -577,8 +577,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected final JSTemporalPlainMonthDayObject toPlainMonthDay(JSTemporalPlainDateObject date,
-                        @Cached("create(getContext())") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode) {
+                        @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
+                        @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
             JSDynamicObject calendar = date.getCalendar();
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDMC);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), date, fieldNames, TemporalUtil.listEmpty);
@@ -600,7 +600,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected static boolean equals(JSTemporalPlainDateObject temporalDate, Object otherParam,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached ToTemporalDateNode toTemporalDate,
                         @Cached JSToStringNode toStringNode) {
             JSTemporalPlainDateObject other = toTemporalDate.execute(otherParam, Undefined.instance);
             if (temporalDate.getYear() != other.getYear()) {
@@ -632,8 +632,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected final JSTemporalZonedDateTimeObject toZonedDateTime(JSTemporalPlainDateObject td, Object item,
                         @Cached InlinedConditionProfile timeZoneIsUndefined,
                         @Cached InlinedConditionProfile timeIsUndefined,
-                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
-                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalTimeNode toTemporalTime,
+                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
                         @Cached InlinedBranchProfile errorBranch) {
             JSTemporalTimeZoneObject timeZone;
             Object temporalTime;

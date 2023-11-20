@@ -48,7 +48,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalRelativeDateRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -61,12 +60,10 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
     @Child private GetMethodNode getMethodDateAddNode;
     @Child private JSFunctionCallNode callDateAddNode;
 
-    protected TemporalMoveRelativeDateNode(JSContext ctx) {
-        this.ctx = ctx;
+    protected TemporalMoveRelativeDateNode() {
     }
 
     public abstract JSTemporalRelativeDateRecord execute(JSDynamicObject calendar, JSDynamicObject relativeTo, JSDynamicObject duration);
@@ -80,12 +77,9 @@ public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
     }
 
     protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSDynamicObject date, JSDynamicObject duration, InlinedBranchProfile errorBranch) {
-        if (getMethodDateAddNode == null) {
+        if (getMethodDateAddNode == null || callDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getMethodDateAddNode = insert(GetMethodNode.create(ctx, TemporalConstants.DATE_ADD));
-        }
-        if (callDateAddNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
+            getMethodDateAddNode = insert(GetMethodNode.create(getLanguage().getJSContext(), TemporalConstants.DATE_ADD));
             callDateAddNode = insert(JSFunctionCallNode.createCall());
         }
         Object dateAddPrepared = getMethodDateAddNode.executeWithTarget(calendar);

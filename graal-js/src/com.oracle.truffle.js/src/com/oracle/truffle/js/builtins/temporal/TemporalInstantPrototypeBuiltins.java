@@ -256,7 +256,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode,
+                        @Cached ToTemporalInstantNode toTemporalInstantNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -352,7 +352,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected boolean equals(JSTemporalInstantObject instant, Object otherObj,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
+                        @Cached ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalInstantObject other = toTemporalInstantNode.execute(otherObj);
             return instant.getNanoseconds().compareTo(other.getNanoseconds()) == 0;
         }
@@ -372,7 +372,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected TruffleString toString(JSTemporalInstantObject instant, Object optionsParam,
-                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
@@ -438,8 +438,8 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSTemporalZonedDateTimeObject toZonedDateTime(JSTemporalInstantObject instant, Object item,
-                        @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar,
-                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalCalendarNode toTemporalCalendar,
+                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
                         @Cached InlinedBranchProfile errorBranch) {
             if (!isObject(item)) {
                 errorBranch.enter(this);
@@ -476,7 +476,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSTemporalZonedDateTimeObject toZonedDateTimeISO(JSTemporalInstantObject instant, Object itemParam,
-                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
                         @Cached InlinedBranchProfile errorBranch) {
             Object item = itemParam;
             if (isObject(item)) {

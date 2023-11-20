@@ -380,8 +380,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         public JSTemporalDurationObject differenceTemporalPlainTime(JSTemporalPlainTimeObject temporalTime, Object otherObj, Object optionsParam,
                         @Cached JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
-                        @Cached TruffleString.EqualNode equalNode, @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
+                        @Cached ToTemporalTimeNode toTemporalTime,
+                        @Cached TruffleString.EqualNode equalNode, @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -488,7 +488,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization(guards = "!isJSTemporalPlainTime(other)")
         protected boolean equalsGeneric(JSTemporalPlainTimeObject thisTime, Object other,
-                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
+                        @Cached ToTemporalTimeNode toTemporalTime) {
             JSTemporalPlainTimeObject otherTime = toTemporalTime.execute(other, null);
             return equalsIntl(thisTime, otherTime);
         }
@@ -531,7 +531,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected final JSTemporalPlainDateTimeObject toPlainDateTime(JSTemporalPlainTimeObject time, Object temporalDateObj,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached ToTemporalDateNode toTemporalDate,
                         @Cached InlinedBranchProfile errorBranch) {
             JSTemporalPlainDateObject date = toTemporalDate.execute(temporalDateObj, Undefined.instance);
 
@@ -556,8 +556,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected final JSTemporalZonedDateTimeObject toZonedDateTime(JSTemporalPlainTimeObject time, Object itemParam,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
-                        @Cached("create(getContext())") ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalDateNode toTemporalDate,
+                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
                         @Cached InlinedBranchProfile errorBranch) {
             if (!JSRuntime.isObject(itemParam)) {
                 throw Errors.createTypeErrorNotAnObject(itemParam);

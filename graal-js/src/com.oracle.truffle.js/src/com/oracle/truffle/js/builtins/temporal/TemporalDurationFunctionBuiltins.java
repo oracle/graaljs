@@ -102,7 +102,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSTemporalDurationObject from(Object item,
-                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode,
+                        @Cached ToTemporalDurationNode toTemporalDurationNode,
                         @Cached InlinedBranchProfile errorBranch) {
             if (isObject(item) && JSTemporalDuration.isJSTemporalDuration(item)) {
                 JSTemporalDurationObject duration = (JSTemporalDurationObject) item;
@@ -123,9 +123,9 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
-                        @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
-                        @Cached("create(getContext())") TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode,
-                        @Cached("create(getContext())") ToTemporalDurationNode toTemporalDurationNode,
+                        @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
+                        @Cached TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode,
+                        @Cached ToTemporalDurationNode toTemporalDurationNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalDurationObject one = toTemporalDurationNode.execute(oneParam);

@@ -52,6 +52,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -79,12 +80,10 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
     @Child EnumerableOwnPropertyNamesNode namesNode;
 
-    protected TemporalRoundDurationNode(JSContext ctx) {
-        this.ctx = ctx;
-        this.namesNode = EnumerableOwnPropertyNamesNode.createKeys(ctx);
+    protected TemporalRoundDurationNode() {
+        this.namesNode = EnumerableOwnPropertyNamesNode.createKeys(JavaScriptLanguage.get(null).getJSContext());
     }
 
     public abstract JSTemporalDurationRecord execute(double y, double m, double w, double d, double h, double min,
@@ -103,8 +102,8 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile monthBranch,
                     @Cached InlinedBranchProfile weekBranch,
                     @Cached InlinedBranchProfile dayOrLessBranch,
-                    @Cached("create(ctx)") TemporalMoveRelativeDateNode moveRelativeDateNode,
-                    @Cached("create(ctx)") ToTemporalDateNode toTemporalDateNode) {
+                    @Cached TemporalMoveRelativeDateNode moveRelativeDateNode,
+                    @Cached ToTemporalDateNode toTemporalDateNode) {
         double days = d;
         double hours = h;
         double minutes = min;
@@ -118,6 +117,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
             errorBranch.enter(this);
             throw TemporalErrors.createRangeErrorRelativeToNotUndefined(unit);
         }
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         JSDynamicObject zonedRelativeTo = Undefined.instance;
         JSDynamicObject calendar = Undefined.instance;
@@ -250,8 +250,10 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         double days = daysP;
         JSDynamicObject relativeTo = relativeToP;
 
+        JSContext ctx = getLanguage().getJSContext();
+        JSRealm realm = getRealm();
         double sign = (days >= 0) ? 1 : -1;
-        JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, getRealm(), 0, 0, sign, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
+        JSDynamicObject oneWeek = JSTemporalDuration.createTemporalDuration(ctx, realm, 0, 0, sign, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
         JSTemporalRelativeDateRecord moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneWeek);
         relativeTo = moveResult.getRelativeTo();
         double oneWeekDays = moveResult.getDays();
@@ -280,6 +282,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         double days = daysP;
         JSDynamicObject relativeTo = relativeToP;
 
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         JSDynamicObject yearsMonths = JSTemporalDuration.createTemporalDuration(ctx, realm, years, months, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
         Object dateAdd = JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);
@@ -327,6 +330,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         double days = daysP;
         JSDynamicObject relativeTo = relativeToP;
 
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         JSDynamicObject yearsDuration = JSTemporalDuration.createTemporalDuration(ctx, realm, years, 0, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
         Object dateAdd = JSObject.getMethod(calendar, TemporalConstants.DATE_ADD);

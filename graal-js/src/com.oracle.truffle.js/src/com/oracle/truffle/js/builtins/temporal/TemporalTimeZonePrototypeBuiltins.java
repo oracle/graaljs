@@ -206,7 +206,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected double getOffsetNanosecondsFor(JSTemporalTimeZoneObject timeZone, Object instantParam,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
+                        @Cached ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalInstantObject instant = toTemporalInstantNode.execute(instantParam);
             if (timeZone.getNanoseconds() != null) {
                 return timeZone.getNanoseconds().doubleValue();
@@ -229,7 +229,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected TruffleString getOffsetStringFor(JSTemporalTimeZoneObject timeZone, Object instantParam,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
+                        @Cached ToTemporalInstantNode toTemporalInstantNode) {
             JSDynamicObject instant = toTemporalInstantNode.execute(instantParam);
             return TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZone, instant);
         }
@@ -249,8 +249,8 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSTemporalPlainDateTimeObject getPlainDateTimeFor(JSTemporalTimeZoneObject timeZone, Object instantParam, Object calendarLike,
-                        @Cached("create(getContext())") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
+                        @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                        @Cached ToTemporalInstantNode toTemporalInstantNode) {
             JSDynamicObject instant = toTemporalInstantNode.execute(instantParam);
             JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(calendarLike);
             return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), getRealm(), timeZone, instant, calendar);
@@ -271,7 +271,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSTemporalInstantObject getInstantFor(JSTemporalTimeZoneObject timeZone, Object dateTimeParam, Object optionsParam,
-                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime,
+                        @Cached ToTemporalDateTimeNode toTemporalDateTime,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
@@ -298,7 +298,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @TruffleBoundary
         @Specialization
         protected JSDynamicObject getPossibleInstantsFor(JSTemporalTimeZoneObject timeZone, Object dateTimeParam,
-                        @Cached("create(getContext())") ToTemporalDateTimeNode toTemporalDateTime) {
+                        @Cached ToTemporalDateTimeNode toTemporalDateTime) {
             JSTemporalPlainDateTimeObject dateTime = toTemporalDateTime.execute(dateTimeParam, Undefined.instance);
             JSRealm realm = getRealm();
             if (timeZone.getNanoseconds() != null) {
@@ -337,7 +337,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object getTransition(JSTemporalTimeZoneObject timeZone, Object startingPointParam,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
+                        @Cached ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalInstantObject startingPoint = toTemporalInstantNode.execute(startingPointParam);
             if (timeZone.getNanoseconds() != null) {
                 return Null.instance;

@@ -76,10 +76,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.OffsetOption;
  */
 public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
-
-    protected ToTemporalZonedDateTimeNode(JSContext context) {
-        this.ctx = context;
+    protected ToTemporalZonedDateTimeNode() {
     }
 
     public abstract JSTemporalZonedDateTimeObject execute(Object value, JSDynamicObject options);
@@ -93,17 +90,18 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached JSToStringNode toStringNode,
                     @Cached TruffleString.EqualNode equalNode,
                     @Cached TemporalGetOptionNode getOptionNode,
-                    @Cached("create(ctx)") ToTemporalTimeZoneNode toTemporalTimeZone,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
-                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached("create(ctx)") TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
+                    @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
+                    @Cached GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
+                    @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                    @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
         assert options != null;
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;
         JSDynamicObject timeZone = null;
         JSDynamicObject calendar = null;
-        JSRealm realm = JSRealm.get(this);
+        JSContext ctx = getLanguage().getJSContext();
+        JSRealm realm = getRealm();
         OffsetBehaviour offsetBehaviour = OffsetBehaviour.OPTION;
         MatchBehaviour matchBehaviour = MatchBehaviour.MATCH_EXACTLY;
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {

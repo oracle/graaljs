@@ -53,6 +53,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -79,13 +80,12 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
     @Child private PropertyGetNode getRelativeToNode;
     @Child private PropertyGetNode getOffsetNode;
     @Child private PropertyGetNode getTimeZoneNode;
 
-    protected ToRelativeTemporalObjectNode(JSContext ctx) {
-        this.ctx = ctx;
+    protected ToRelativeTemporalObjectNode() {
+        JSContext ctx = JavaScriptLanguage.get(null).getJSContext();
         this.getRelativeToNode = PropertyGetNode.create(RELATIVE_TO, ctx);
         this.getOffsetNode = PropertyGetNode.create(OFFSET, ctx);
         this.getTimeZoneNode = PropertyGetNode.create(TIME_ZONE, ctx);
@@ -103,11 +103,11 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile timeZoneAvailable,
                     @Cached JSToStringNode toStringNode,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached("create(ctx)") TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
-                    @Cached("create(ctx)") ToTemporalTimeZoneNode toTemporalTimeZoneNode,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarWithISODefaultNode,
+                    @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                    @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
+                    @Cached ToTemporalTimeZoneNode toTemporalTimeZoneNode,
+                    @Cached GetTemporalCalendarWithISODefaultNode getTemporalCalendarWithISODefaultNode,
                     @Cached TemporalGetOptionNode getOptionNode) {
         Object value = getRelativeToNode.getValue(options);
         if (valueIsUndefined.profile(this, value == Undefined.instance)) {
@@ -119,6 +119,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
         Object offset;
         TemporalUtil.OffsetBehaviour offsetBehaviour = TemporalUtil.OffsetBehaviour.OPTION;
         TemporalUtil.MatchBehaviour matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_EXACTLY;
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         if (valueIsObject.profile(this, isObjectNode.executeBoolean(value))) {
             JSDynamicObject valueObj = (JSDynamicObject) value;

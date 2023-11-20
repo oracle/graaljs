@@ -102,7 +102,7 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected JSTemporalPlainDateObject from(Object item, Object optParam,
                         @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached ToTemporalDateNode toTemporalDate,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
@@ -125,7 +125,7 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected int compare(Object obj1, Object obj2,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
+                        @Cached ToTemporalDateNode toTemporalDate) {
             JSTemporalPlainDateObject one = toTemporalDate.execute(obj1, Undefined.instance);
             JSTemporalPlainDateObject two = toTemporalDate.execute(obj2, Undefined.instance);
             return TemporalUtil.compareISODate(

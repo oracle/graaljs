@@ -72,10 +72,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
  */
 public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
-
-    protected ToTemporalTimeNode(JSContext context) {
-        this.ctx = context;
+    protected ToTemporalTimeNode() {
     }
 
     public abstract JSTemporalPlainTimeObject execute(Object value, Overflow overflowParam);
@@ -89,9 +86,10 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
                     @Cached InlinedConditionProfile isPlainTimeProfile,
                     @Cached InlinedBranchProfile errorBranch,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode) {
+                    @Cached GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode) {
         Overflow overflow = overflowParam == null ? Overflow.CONSTRAIN : overflowParam;
         assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         JSTemporalDurationRecord result2 = null;
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {

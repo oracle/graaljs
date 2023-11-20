@@ -74,14 +74,12 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
     @Child private GetMethodNode getMethodDateAddNode;
     @Child private JSFunctionCallNode callDateAddNode;
     @Child private GetMethodNode getMethodDateUntilNode;
     @Child private JSFunctionCallNode callDateUntilNode;
 
-    protected TemporalUnbalanceDurationRelativeNode(JSContext ctx) {
-        this.ctx = ctx;
+    protected TemporalUnbalanceDurationRelativeNode() {
     }
 
     public abstract JSTemporalDurationRecord execute(double year, double month, double week, double day, TemporalUtil.Unit largestUnit, JSDynamicObject relTo);
@@ -94,8 +92,8 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
                     @Cached InlinedConditionProfile unitIsWeek,
                     @Cached InlinedConditionProfile unitIsMonth,
                     @Cached InlinedConditionProfile relativeToAvailable,
-                    @Cached("create(ctx)") ToTemporalDateNode toTemporalDateNode,
-                    @Cached("create(ctx)") TemporalMoveRelativeDateNode moveRelativeDateNode) {
+                    @Cached ToTemporalDateNode toTemporalDateNode,
+                    @Cached TemporalMoveRelativeDateNode moveRelativeDateNode) {
         long years = dtol(y);
         long months = dtol(m);
         long weeks = dtol(w);
@@ -107,6 +105,7 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
         }
         long sign = TemporalUtil.durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         assert sign != 0;
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         JSDynamicObject oneYear = JSTemporalDuration.createTemporalDuration(ctx, realm, sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
         JSDynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(ctx, realm, 0, sign, 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
@@ -199,6 +198,7 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
             errorBranch.enter(node);
             throw Errors.createRangeError("No calendar provided.");
         }
+        JSContext ctx = getLanguage().getJSContext();
         if (getMethodDateAddNode == null || getMethodDateUntilNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             getMethodDateAddNode = insert(GetMethodNode.create(ctx, TemporalConstants.DATE_ADD));

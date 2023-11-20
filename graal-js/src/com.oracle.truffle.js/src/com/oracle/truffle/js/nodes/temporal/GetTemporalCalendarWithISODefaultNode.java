@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -58,11 +57,9 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
     @Child protected PropertyGetNode getCalendarNode;
 
-    protected GetTemporalCalendarWithISODefaultNode(JSContext context) {
-        this.ctx = context;
+    protected GetTemporalCalendarWithISODefaultNode() {
     }
 
     public abstract JSDynamicObject execute(Object temporalTimeZoneLike);
@@ -71,13 +68,13 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
     protected JSDynamicObject getTemporalCalendarWithISODefault(Object item,
                     @Cached InlinedConditionProfile isCalendarProfile,
                     @Cached InlinedConditionProfile isNullishProfile,
-                    @Cached("create(ctx)") ToTemporalCalendarNode toTemporalCalendarNode) {
+                    @Cached ToTemporalCalendarNode toTemporalCalendarNode) {
         if (isCalendarProfile.profile(this, item instanceof TemporalCalendar)) {
             return ((TemporalCalendar) item).getCalendar();
         } else {
             Object calendar = getCalendar(item);
             if (isNullishProfile.profile(this, calendar == Undefined.instance)) {
-                return TemporalUtil.getISO8601Calendar(ctx, getRealm());
+                return TemporalUtil.getISO8601Calendar(getLanguage().getJSContext(), getRealm());
             } else {
                 return toTemporalCalendarNode.execute(calendar);
             }
@@ -87,7 +84,7 @@ public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBa
     private Object getCalendar(Object obj) {
         if (getCalendarNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getCalendarNode = insert(PropertyGetNode.create(TemporalConstants.CALENDAR, ctx));
+            getCalendarNode = insert(PropertyGetNode.create(TemporalConstants.CALENDAR, getLanguage().getJSContext()));
         }
         return getCalendarNode.getValue(obj);
     }

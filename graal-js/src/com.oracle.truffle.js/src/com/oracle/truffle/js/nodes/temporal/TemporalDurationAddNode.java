@@ -50,6 +50,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
@@ -77,15 +78,14 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
     @Child private GetMethodNode getMethodDateAddNode;
     @Child private JSFunctionCallNode callDateAddNode;
     @Child private GetMethodNode getMethodDateUntilNode;
     @Child private JSFunctionCallNode callDateUntilNode;
     @Child EnumerableOwnPropertyNamesNode namesNode;
 
-    protected TemporalDurationAddNode(JSContext ctx) {
-        this.ctx = ctx;
+    protected TemporalDurationAddNode() {
+        JSContext ctx = JavaScriptLanguage.get(null).getJSContext();
         this.getMethodDateAddNode = GetMethodNode.create(ctx, TemporalConstants.DATE_ADD);
         this.getMethodDateUntilNode = GetMethodNode.create(ctx, TemporalConstants.DATE_UNTIL);
         this.namesNode = EnumerableOwnPropertyNamesNode.createKeys(ctx);
@@ -111,6 +111,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
         TemporalUtil.Unit largestUnit1 = TemporalUtil.defaultTemporalLargestUnit(y1, mon1, w1, d1, h1, min1, s1, ms1, mus1);
         TemporalUtil.Unit largestUnit2 = TemporalUtil.defaultTemporalLargestUnit(y2, mon2, w2, d2, h2, min2, s2, ms2, mus2);
         TemporalUtil.Unit largestUnit = TemporalUtil.largerOfTwoTemporalUnits(largestUnit1, largestUnit2);
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         if (relativeTo == Undefined.instance) {
             relativeToUndefinedBranch.enter(this);

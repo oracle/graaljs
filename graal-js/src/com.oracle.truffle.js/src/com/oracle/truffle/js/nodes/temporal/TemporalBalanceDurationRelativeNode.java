@@ -74,14 +74,12 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
     @Child private JSFunctionCallNode callDateAddNode;
     @Child private GetMethodNode getMethodDateAddNode;
     @Child private JSFunctionCallNode callDateUntilNode;
     @Child private GetMethodNode getMethodDateUntilNode;
 
-    protected TemporalBalanceDurationRelativeNode(JSContext ctx) {
-        this.ctx = ctx;
+    protected TemporalBalanceDurationRelativeNode() {
     }
 
     public abstract JSTemporalDurationRecord execute(double year, double month, double week, double day, TemporalUtil.Unit largestUnit, JSDynamicObject relativeToParam);
@@ -93,8 +91,8 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
                     @Cached InlinedConditionProfile unitIsYear,
                     @Cached InlinedConditionProfile unitIsMonth,
                     @Cached InlinedConditionProfile unitIsDay,
-                    @Cached("create(ctx)") ToTemporalDateNode toTemporalDateNode,
-                    @Cached("create(ctx)") TemporalMoveRelativeDateNode moveRelativeDateNode) {
+                    @Cached ToTemporalDateNode toTemporalDateNode,
+                    @Cached TemporalMoveRelativeDateNode moveRelativeDateNode) {
         long years = dtol(y);
         long months = dtol(m);
         long weeks = dtol(w);
@@ -110,6 +108,7 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         }
         long sign = TemporalUtil.durationSign(years, months, weeks, days, 0, 0, 0, 0, 0, 0);
         assert sign != 0;
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         JSDynamicObject oneYear = JSTemporalDuration.createTemporalDuration(ctx, realm, sign, 0, 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
         JSDynamicObject oneMonth = JSTemporalDuration.createTemporalDuration(ctx, realm, 0, sign, 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
@@ -158,6 +157,7 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
         Object dateAdd = getDateAdd(calendar);
         JSDynamicObject newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, Undefined.instance, dateAdd, node, errorBranch);
 
+        JSContext ctx = getLanguage().getJSContext();
         Object dateUntil = getDateUntil(calendar);
         JSObject untilOptions = JSOrdinary.createWithNullPrototype(ctx);
         JSObjectUtil.putDataProperty(untilOptions, TemporalConstants.LARGEST_UNIT, MONTH);
@@ -237,7 +237,7 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
     private Object getDateAdd(JSDynamicObject obj) {
         if (getMethodDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getMethodDateAddNode = insert(GetMethodNode.create(ctx, TemporalConstants.DATE_ADD));
+            getMethodDateAddNode = insert(GetMethodNode.create(getLanguage().getJSContext(), TemporalConstants.DATE_ADD));
         }
         return getMethodDateAddNode.executeWithTarget(obj);
     }
@@ -245,7 +245,7 @@ public abstract class TemporalBalanceDurationRelativeNode extends JavaScriptBase
     private Object getDateUntil(JSDynamicObject obj) {
         if (getMethodDateUntilNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getMethodDateUntilNode = insert(GetMethodNode.create(ctx, TemporalConstants.DATE_UNTIL));
+            getMethodDateUntilNode = insert(GetMethodNode.create(getLanguage().getJSContext(), TemporalConstants.DATE_UNTIL));
         }
         return getMethodDateUntilNode.executeWithTarget(obj);
     }

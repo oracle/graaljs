@@ -52,7 +52,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -65,11 +64,9 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
 
-    private final JSContext context;
     @Child private PropertyGetNode getCalendarPropertyNode;
 
-    protected ToTemporalCalendarNode(JSContext context) {
-        this.context = context;
+    protected ToTemporalCalendarNode() {
     }
 
     public abstract JSDynamicObject execute(Object value);
@@ -106,13 +103,13 @@ public abstract class ToTemporalCalendarNode extends JavaScriptBaseNode {
                 throw TemporalErrors.createRangeErrorCalendarUnknown();
             }
         }
-        return JSTemporalCalendar.create(context, getRealm(), identifier);
+        return JSTemporalCalendar.create(getLanguage().getJSContext(), getRealm(), identifier);
     }
 
     private Object getCalendarProperty(JSDynamicObject obj) {
         if (getCalendarPropertyNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getCalendarPropertyNode = insert(PropertyGetNode.create(CALENDAR, context));
+            getCalendarPropertyNode = insert(PropertyGetNode.create(CALENDAR, getLanguage().getJSContext()));
         }
         return getCalendarPropertyNode.getValue(obj);
     }
