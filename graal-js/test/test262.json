@@ -8766,10 +8766,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/compare/leap-second.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/compare/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-12-12"
@@ -8889,10 +8885,6 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/duplicate-calendar-fields.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/from/leap-second.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/observable-get-overflow-argument-primitive.js",
     "status" : "FAIL",
@@ -9157,10 +9149,6 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/duplicate-calendar-fields.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/leap-second.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/order-of-operations.js",
     "status" : "FAIL",
@@ -9550,10 +9538,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/leap-second.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/nanoseconds-to-days-range-errors.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-01-17"
@@ -9941,10 +9925,6 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/duplicate-calendar-fields.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/leap-second.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/nanoseconds-to-days-range-errors.js",
     "status" : "FAIL",
@@ -11524,10 +11504,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
-    "filePath" : "staging/Temporal/Duration/old/add.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
     "filePath" : "staging/Temporal/Duration/old/compare-no-precision-loss.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
@@ -11537,10 +11513,6 @@
     "comment" : "new failures 2023-11-17"
   }, {
     "filePath" : "staging/Temporal/Duration/old/round.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/Duration/old/subtract.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
@@ -11620,19 +11592,7 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/add.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/compare.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
     "filePath" : "staging/Temporal/ZonedDateTime/old/construction-and-properties.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/date-time-hours-overflow.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
@@ -11641,14 +11601,6 @@
     "comment" : "new failures 2023-11-17"
   }, {
     "filePath" : "staging/Temporal/ZonedDateTime/old/dst-properties.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/equals.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
@@ -11705,10 +11657,6 @@
     "comment" : "new failures 2023-11-17"
   }, {
     "filePath" : "staging/Temporal/ZonedDateTime/old/withPlainDate.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/withPlainTime.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
