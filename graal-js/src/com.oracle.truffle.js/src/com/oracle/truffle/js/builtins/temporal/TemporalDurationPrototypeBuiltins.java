@@ -60,17 +60,15 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAbsNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAddNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationAddSubNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationNegatedNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationRoundNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationSubtractNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationTotalNodeGen;
@@ -187,9 +185,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case abs:
                 return JSTemporalDurationAbsNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case add:
-                return JSTemporalDurationAddNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalDurationAddSubNodeGen.create(context, builtin, TemporalUtil.ADD, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case subtract:
-                return JSTemporalDurationSubtractNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalDurationAddSubNodeGen.create(context, builtin, TemporalUtil.SUBTRACT, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case round:
                 return JSTemporalDurationRoundNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case total:
@@ -263,32 +261,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-    public abstract static class DurationOperation extends JSTemporalBuiltinOperation {
-        public DurationOperation(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        protected JSTemporalDurationObject addDurationToOrSubtractDurationFromDuration(int sign, JSTemporalDurationObject duration, Object other, Object options,
-                        TemporalDurationAddNode durationAddNode, ToRelativeTemporalObjectNode toRelativeTemporalObjectNode, ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
-                        Node node, InlinedBranchProfile errorBranch, InlinedConditionProfile optionUndefined) {
-            JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.execute(other, TemporalUtil.listEmpty);
-            JSDynamicObject normalizedOptions = getOptionsObject(options, node, errorBranch, optionUndefined);
-            JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(normalizedOptions);
-            JSTemporalDurationRecord result = durationAddNode.execute(duration.getYears(), duration.getMonths(),
-                            duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
-                            duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
-                            duration.getNanoseconds(),
-                            sign * otherDuration.getYears(), sign * otherDuration.getMonths(), sign * otherDuration.getWeeks(), sign * otherDuration.getDays(),
-                            sign * otherDuration.getHours(), sign * otherDuration.getMinutes(), sign * otherDuration.getSeconds(),
-                            sign * otherDuration.getMilliseconds(), sign * otherDuration.getMicroseconds(), sign * otherDuration.getNanoseconds(),
-                            relativeTo);
-            return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
-                            result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
-                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), node, errorBranch);
-        }
-    }
-
-// 7.3.15
     public abstract static class JSTemporalDurationWith extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationWith(JSContext context, JSBuiltin builtin) {
@@ -325,7 +297,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-// 7.3.16
     public abstract static class JSTemporalDurationNegated extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationNegated(JSContext context, JSBuiltin builtin) {
@@ -349,7 +320,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-// 7.3.17
     public abstract static class JSTemporalDurationAbs extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationAbs(JSContext context, JSBuiltin builtin) {
@@ -374,45 +344,36 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-    public abstract static class JSTemporalDurationAdd extends DurationOperation {
+    public abstract static class JSTemporalDurationAddSubNode extends JSTemporalBuiltinOperation {
 
-        protected JSTemporalDurationAdd(JSContext context, JSBuiltin builtin) {
+        private final int sign;
+
+        protected JSTemporalDurationAddSubNode(JSContext context, JSBuiltin builtin, int sign) {
             super(context, builtin);
+            this.sign = sign;
         }
 
         @Specialization
-        protected JSTemporalDurationObject add(JSTemporalDurationObject duration, Object other, Object options,
+        protected JSTemporalDurationObject addDurationToOrSubtractDurationFromDuration(JSTemporalDurationObject duration, Object other, Object options,
                         @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
                         @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
-            return addDurationToOrSubtractDurationFromDuration(TemporalUtil.ADD, duration, other, options,
-                            durationAddNode, toRelativeTemporalObjectNode, toLimitedTemporalDurationNode, this, errorBranch, optionUndefined);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSTemporalDuration(thisObj)")
-        protected static Object invalidReceiver(Object thisObj, Object other, Object options) {
-            throw TemporalErrors.createTypeErrorTemporalDurationExpected();
-        }
-    }
-
-    public abstract static class JSTemporalDurationSubtract extends DurationOperation {
-
-        protected JSTemporalDurationSubtract(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected JSTemporalDurationObject subtract(JSTemporalDurationObject duration, Object other, Object options,
-                        @Cached("create(getContext())") TemporalDurationAddNode durationAddNode,
-                        @Cached("create(getContext())") ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
-                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedConditionProfile optionUndefined) {
-            return addDurationToOrSubtractDurationFromDuration(TemporalUtil.SUBTRACT, duration, other, options,
-                            durationAddNode, toRelativeTemporalObjectNode, toLimitedTemporalDurationNode, this, errorBranch, optionUndefined);
+            JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.execute(other, TemporalUtil.listEmpty);
+            JSDynamicObject normalizedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
+            JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(normalizedOptions);
+            JSTemporalDurationRecord result = durationAddNode.execute(duration.getYears(), duration.getMonths(),
+                            duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
+                            duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
+                            duration.getNanoseconds(),
+                            sign * otherDuration.getYears(), sign * otherDuration.getMonths(), sign * otherDuration.getWeeks(), sign * otherDuration.getDays(),
+                            sign * otherDuration.getHours(), sign * otherDuration.getMinutes(), sign * otherDuration.getSeconds(),
+                            sign * otherDuration.getMilliseconds(), sign * otherDuration.getMicroseconds(), sign * otherDuration.getNanoseconds(),
+                            relativeTo);
+            return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
+                            result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
+                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -517,7 +478,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-    // 7.3.21
     public abstract static class JSTemporalDurationTotal extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationTotal(JSContext context, JSBuiltin builtin) {
@@ -593,7 +553,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-// 7.3.23 & 7.3.24
     public abstract static class JSTemporalDurationToLocaleString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationToLocaleString(JSContext context, JSBuiltin builtin) {
@@ -655,7 +614,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-// 7.3.26
     public abstract static class JSTemporalDurationValueOf extends JSTemporalBuiltinOperation {
 
         protected JSTemporalDurationValueOf(JSContext context, JSBuiltin builtin) {

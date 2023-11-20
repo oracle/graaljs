@@ -56,23 +56,20 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeAddNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeAddSubNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeGetISOFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeRoundNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeSinceNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeSubtractNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToPlainDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeToZonedDateTimeNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeUntilNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeUntilSinceNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeValueOfNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeWithNodeGen;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
@@ -181,15 +178,15 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             case nanosecond:
                 return JSTemporalPlainTimeGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
             case add:
-                return JSTemporalPlainTimeAddNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSTemporalPlainTimeAddSubNodeGen.create(context, builtin, TemporalUtil.ADD, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case subtract:
-                return JSTemporalPlainTimeSubtractNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSTemporalPlainTimeAddSubNodeGen.create(context, builtin, TemporalUtil.SUBTRACT, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case with:
                 return JSTemporalPlainTimeWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case until:
-                return JSTemporalPlainTimeUntilNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainTimeUntilSinceNodeGen.create(context, builtin, TemporalUtil.UNTIL, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case since:
-                return JSTemporalPlainTimeSinceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainTimeUntilSinceNodeGen.create(context, builtin, TemporalUtil.SINCE, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case round:
                 return JSTemporalPlainTimeRoundNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case equals:
@@ -247,14 +244,19 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
-    public abstract static class PlainTimeOperation extends JSTemporalBuiltinOperation {
-        public PlainTimeOperation(JSContext context, JSBuiltin builtin) {
+    public abstract static class JSTemporalPlainTimeAddSubNode extends JSTemporalBuiltinOperation {
+
+        private final int sign;
+
+        protected JSTemporalPlainTimeAddSubNode(JSContext context, JSBuiltin builtin, int sign) {
             super(context, builtin);
+            this.sign = sign;
         }
 
-        protected JSTemporalPlainTimeObject addDurationToOrSubtractDurationFromPlainTime(int sign, JSTemporalPlainTimeObject temporalTime, Object temporalDurationLike,
-                        ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
-                        Node node, InlinedBranchProfile errorBranch) {
+        @Specialization
+        public JSTemporalPlainTimeObject addDurationToOrSubtractDurationFromPlainTime(JSTemporalPlainTimeObject temporalTime, Object temporalDurationLike,
+                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.execute(temporalDurationLike, TemporalUtil.listEmpty);
 
             JSTemporalDurationRecord result = TemporalUtil.addTimeDouble(
@@ -262,58 +264,13 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
                             sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
                             sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds(),
-                            node, errorBranch);
+                            this, errorBranch);
             assert TemporalUtil.isValidTime(dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
                             dtoi(result.getNanoseconds()));
             return JSTemporalPlainTime.create(getContext(), getRealm(),
                             dtoi(result.getHours()), dtoi(result.getMinutes()), dtoi(result.getSeconds()), dtoi(result.getMilliseconds()), dtoi(result.getMicroseconds()),
                             dtoi(result.getNanoseconds()),
-                            node, errorBranch);
-        }
-
-        protected JSTemporalDurationObject differenceTemporalPlainTime(int sign, JSTemporalPlainTimeObject temporalTime, Object otherObj, Object optionsParam, JSToNumberNode toNumber,
-                        EnumerableOwnPropertyNamesNode namesNode, ToTemporalTimeNode toTemporalTime, TruffleString.EqualNode equalNode, TemporalRoundDurationNode roundDurationNode,
-                        TemporalGetOptionNode getOptionNode,
-                        Node node, InlinedBranchProfile errorBranch, InlinedConditionProfile optionUndefined) {
-            JSTemporalPlainTimeObject other = toTemporalTime.execute(otherObj, null);
-            JSDynamicObject options = getOptionsObject(optionsParam, node, errorBranch, optionUndefined);
-            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode, getOptionNode, node, errorBranch);
-            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode, getOptionNode, node, errorBranch);
-            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode, getOptionNode);
-            if (sign == TemporalUtil.SINCE) {
-                roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
-            }
-            Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
-            JSTemporalDurationRecord result = TemporalUtil.differenceTime(
-                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
-                            temporalTime.getNanosecond(),
-                            other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
-            JSTemporalDurationRecord result2 = roundDurationNode.execute(0, 0, 0, 0,
-                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
-                            result.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode, Undefined.instance);
-            JSRealm realm = getRealm();
-            JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), realm, namesNode,
-                            0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(),
-                            result2.getNanoseconds(), largestUnit);
-            return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
-                            sign * result3.getHours(), sign * result3.getMinutes(), sign * result3.getSeconds(), sign * result3.getMilliseconds(), sign * result3.getMicroseconds(),
-                            sign * result3.getNanoseconds(), node, errorBranch);
-        }
-    }
-
-    public abstract static class JSTemporalPlainTimeAdd extends PlainTimeOperation {
-
-        protected JSTemporalPlainTimeAdd(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public JSTemporalPlainTimeObject add(JSTemporalPlainTimeObject temporalTime, Object temporalDurationLike,
-                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
-                        @Cached InlinedBranchProfile errorBranch) {
-            return addDurationToOrSubtractDurationFromPlainTime(TemporalUtil.ADD, temporalTime, temporalDurationLike, toLimitedTemporalDurationNode, this, errorBranch);
+                            this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -323,27 +280,6 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
-    public abstract static class JSTemporalPlainTimeSubtract extends PlainTimeOperation {
-
-        protected JSTemporalPlainTimeSubtract(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public JSTemporalPlainTimeObject subtract(JSTemporalPlainTimeObject temporalTime, Object temporalDurationLike,
-                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
-                        @Cached InlinedBranchProfile errorBranch) {
-            return addDurationToOrSubtractDurationFromPlainTime(TemporalUtil.SUBTRACT, temporalTime, temporalDurationLike, toLimitedTemporalDurationNode, this, errorBranch);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSTemporalPlainTime(thisObj)")
-        protected static JSTemporalPlainTimeObject invalidReceiver(Object thisObj, Object temporalDurationLike) {
-            throw TemporalErrors.createTypeErrorTemporalPlainTimeExpected();
-        }
-    }
-
-    // 4.3.12
     public abstract static class JSTemporalPlainTimeWith extends JSTemporalBuiltinOperation {
 
         protected JSTemporalPlainTimeWith(JSContext context, JSBuiltin builtin) {
@@ -431,14 +367,17 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
-    public abstract static class JSTemporalPlainTimeUntil extends PlainTimeOperation {
+    public abstract static class JSTemporalPlainTimeUntilSinceNode extends JSTemporalBuiltinOperation {
 
-        protected JSTemporalPlainTimeUntil(JSContext context, JSBuiltin builtin) {
+        private final int sign;
+
+        protected JSTemporalPlainTimeUntilSinceNode(JSContext context, JSBuiltin builtin, int sign) {
             super(context, builtin);
+            this.sign = sign;
         }
 
         @Specialization
-        public JSTemporalDurationObject until(JSTemporalPlainTimeObject temporalTime, Object otherObj, Object optionsParam,
+        public JSTemporalDurationObject differenceTemporalPlainTime(JSTemporalPlainTimeObject temporalTime, Object otherObj, Object optionsParam,
                         @Cached JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
@@ -446,35 +385,31 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
-            return differenceTemporalPlainTime(TemporalUtil.UNTIL, temporalTime, otherObj, optionsParam,
-                            toNumber, namesNode, toTemporalTime, equalNode, roundDurationNode, getOptionNode, this, errorBranch, optionUndefined);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSTemporalPlainTime(thisObj)")
-        protected static JSTemporalDurationObject invalidReceiver(Object thisObj, Object otherObj, Object optionsParam) {
-            throw TemporalErrors.createTypeErrorTemporalPlainTimeExpected();
-        }
-    }
-
-    public abstract static class JSTemporalPlainTimeSince extends PlainTimeOperation {
-
-        protected JSTemporalPlainTimeSince(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        public JSTemporalDurationObject since(JSTemporalPlainTimeObject temporalTime, Object otherObj, Object optionsParam,
-                        @Cached JSToNumberNode toNumber,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
-                        @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
-                        @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedConditionProfile optionUndefined) {
-            return differenceTemporalPlainTime(TemporalUtil.SINCE, temporalTime, otherObj, optionsParam,
-                            toNumber, namesNode, toTemporalTime, equalNode, roundDurationNode, getOptionNode, this, errorBranch, optionUndefined);
+            JSTemporalPlainTimeObject other = toTemporalTime.execute(otherObj, null);
+            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
+            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listYMWD, NANOSECOND, equalNode, getOptionNode, this, errorBranch);
+            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode, getOptionNode, this, errorBranch);
+            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
+            RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode, getOptionNode);
+            if (sign == TemporalUtil.SINCE) {
+                roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
+            }
+            Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
+            long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(options, maximum, false, isObjectNode, toNumber);
+            JSTemporalDurationRecord result = TemporalUtil.differenceTime(
+                            temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
+                            temporalTime.getNanosecond(),
+                            other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
+            JSTemporalDurationRecord result2 = roundDurationNode.execute(0, 0, 0, 0,
+                            result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
+                            result.getNanoseconds(), roundingIncrement, smallestUnit, roundingMode, Undefined.instance);
+            JSRealm realm = getRealm();
+            JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), realm, namesNode,
+                            0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(),
+                            result2.getNanoseconds(), largestUnit);
+            return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
+                            sign * result3.getHours(), sign * result3.getMinutes(), sign * result3.getSeconds(), sign * result3.getMilliseconds(), sign * result3.getMicroseconds(),
+                            sign * result3.getNanoseconds(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")

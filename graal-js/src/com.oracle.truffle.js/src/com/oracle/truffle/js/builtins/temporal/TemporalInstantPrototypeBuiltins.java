@@ -56,11 +56,10 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantAddNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantAddSubNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantRoundNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantSubtractNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToZonedDateTimeISONodeGen;
@@ -158,9 +157,9 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 return JSTemporalInstantGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
 
             case add:
-                return JSTemporalInstantAddNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSTemporalInstantAddSubNodeGen.create(context, builtin, TemporalUtil.ADD, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case subtract:
-                return JSTemporalInstantSubtractNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSTemporalInstantAddSubNodeGen.create(context, builtin, TemporalUtil.SUBTRACT, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case until:
                 return JSTemporalInstantUntilSinceNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case since:
@@ -218,49 +217,22 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
     }
 
-    public abstract static class InstantOperation extends JSTemporalBuiltinOperation {
-        protected InstantOperation(JSContext context, JSBuiltin builtin) {
+    public abstract static class JSTemporalInstantAddSubNode extends JSTemporalBuiltinOperation {
+
+        private final int sign;
+
+        protected JSTemporalInstantAddSubNode(JSContext context, JSBuiltin builtin, int sign) {
             super(context, builtin);
+            this.sign = sign;
         }
 
-        protected JSTemporalInstantObject addDurationToOrSubtractDurationFromInstant(int sign, JSTemporalInstantObject instant, Object temporalDurationLike,
-                        ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
+        @Specialization
+        protected JSTemporalInstantObject addDurationToOrSubtractDurationFromInstant(JSTemporalInstantObject instant, Object temporalDurationLike,
+                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
             JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.execute(temporalDurationLike, TemporalUtil.listPluralYMWD);
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
                             sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
             return JSTemporalInstant.create(getContext(), getRealm(), ns);
-        }
-    }
-
-    public abstract static class JSTemporalInstantAdd extends InstantOperation {
-
-        protected JSTemporalInstantAdd(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected JSTemporalInstantObject add(JSTemporalInstantObject instant, Object temporalDurationLike,
-                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
-            return addDurationToOrSubtractDurationFromInstant(TemporalUtil.ADD, instant, temporalDurationLike, toLimitedTemporalDurationNode);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSTemporalInstant(thisObj)")
-        protected static Object invalidReceiver(Object thisObj, Object temporalDurationLike) {
-            throw TemporalErrors.createTypeErrorTemporalInstantExpected();
-        }
-    }
-
-    public abstract static class JSTemporalInstantSubtract extends InstantOperation {
-
-        protected JSTemporalInstantSubtract(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected JSTemporalInstantObject subtract(JSTemporalInstantObject instant, Object temporalDurationLike,
-                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode) {
-            return addDurationToOrSubtractDurationFromInstant(TemporalUtil.SUBTRACT, instant, temporalDurationLike, toLimitedTemporalDurationNode);
         }
 
         @SuppressWarnings("unused")

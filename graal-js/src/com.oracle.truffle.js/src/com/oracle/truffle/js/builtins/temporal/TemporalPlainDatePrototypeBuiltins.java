@@ -51,24 +51,21 @@ import java.util.List;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateAddNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateAddSubNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateGetISOFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateGetterNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateSinceNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateSubtractNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateToPlainDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateToPlainMonthDayNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateToPlainYearMonthNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateToStringNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateToZonedDateTimeNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateUntilNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateUntilSinceNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateValueOfNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateWithCalendarNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateWithNodeGen;
@@ -198,17 +195,17 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return JSTemporalPlainDateGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
 
             case add:
-                return JSTemporalPlainDateAddNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainDateAddSubNodeGen.create(context, builtin, TemporalUtil.ADD, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case subtract:
-                return JSTemporalPlainDateSubtractNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainDateAddSubNodeGen.create(context, builtin, TemporalUtil.SUBTRACT, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case with:
                 return JSTemporalPlainDateWithNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case withCalendar:
                 return JSTemporalPlainDateWithCalendarNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case until:
-                return JSTemporalPlainDateUntilNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainDateUntilSinceNodeGen.create(context, builtin, TemporalUtil.UNTIL, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case since:
-                return JSTemporalPlainDateSinceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalPlainDateUntilSinceNodeGen.create(context, builtin, TemporalUtil.SINCE, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case equals:
                 return JSTemporalPlainDateEqualsNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toPlainDateTime:
@@ -282,14 +279,17 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
     }
 
     // 4.3.10
-    public abstract static class JSTemporalPlainDateAdd extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalPlainDateAddSubNode extends JSTemporalBuiltinOperation {
 
-        protected JSTemporalPlainDateAdd(JSContext context, JSBuiltin builtin) {
+        private final int sign;
+
+        protected JSTemporalPlainDateAddSubNode(JSContext context, JSBuiltin builtin, int sign) {
             super(context, builtin);
+            this.sign = sign;
         }
 
         @Specialization
-        protected final JSTemporalPlainDateObject add(JSTemporalPlainDateObject date, Object temporalDurationLike, Object optParam,
+        protected final JSTemporalPlainDateObject addDate(JSTemporalPlainDateObject date, Object temporalDurationLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @Cached InlinedBranchProfile errorBranch,
@@ -301,40 +301,9 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
             JSTemporalDurationObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), realm,
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(),
+                            sign * duration.getYears(), sign * duration.getMonths(), sign * duration.getWeeks(), sign * balanceResult.getDays(),
                             0, 0, 0, 0, 0, 0, this, errorBranch);
             return TemporalUtil.calendarDateAdd(date.getCalendar(), date, balancedDuration, options, Undefined.instance);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSTemporalPlainDate(thisObj)")
-        protected static JSTemporalPlainDateObject invalidReceiver(Object thisObj, Object temporalDurationLike, Object optParam) {
-            throw TemporalErrors.createTypeErrorTemporalPlainDateExpected();
-        }
-    }
-
-    public abstract static class JSTemporalPlainDateSubtract extends JSTemporalBuiltinOperation {
-
-        protected JSTemporalPlainDateSubtract(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected final JSTemporalPlainDateObject subtract(JSTemporalPlainDateObject date, Object temporalDurationLike, Object optParam,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedConditionProfile optionUndefined) {
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.execute(temporalDurationLike, TemporalUtil.listEmpty);
-            JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
-            JSRealm realm = getRealm();
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), realm, namesNode,
-                            duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
-            JSTemporalDurationObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), realm,
-                            -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -balanceResult.getDays(),
-                            0, 0, 0, 0, 0, 0, this, errorBranch);
-            return TemporalUtil.calendarDateAdd(date.getCalendar(), date, balancedDuration, options);
         }
 
         @SuppressWarnings("unused")
@@ -412,26 +381,37 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
     }
 
-    public abstract static class PlainDateOperation extends JSTemporalBuiltinOperation {
-        public PlainDateOperation(JSContext context, JSBuiltin builtin) {
+    public abstract static class JSTemporalPlainDateUntilSinceNode extends JSTemporalBuiltinOperation {
+
+        private final int sign;
+
+        protected JSTemporalPlainDateUntilSinceNode(JSContext context, JSBuiltin builtin, int sign) {
             super(context, builtin);
+            this.sign = sign;
         }
 
-        protected JSTemporalDurationObject differenceTemporalPlainDate(int sign, JSTemporalPlainDateObject temporalDate, Object otherObj, Object optionsParam, JSToNumberNode toNumber,
-                        EnumerableOwnPropertyNamesNode namesNode, ToTemporalDateNode toTemporalDate, JSToStringNode toStringNode, TruffleString.EqualNode equalNode,
-                        TemporalRoundDurationNode roundDurationNode, TemporalGetOptionNode getOptionNode,
-                        Node node, InlinedBranchProfile errorBranch, InlinedConditionProfile optionUndefined) {
+        @Specialization
+        protected JSTemporalDurationObject differenceTemporalPlainDate(JSTemporalPlainDateObject temporalDate, Object otherObj, Object optionsParam,
+                        @Cached JSToNumberNode toNumber,
+                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
+                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached TruffleString.EqualNode equalNode,
+                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
+                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalPlainDateObject other = toTemporalDate.execute(otherObj, Undefined.instance);
             if (!TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar(), toStringNode)) {
-                errorBranch.enter(node);
+                errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
 
-            JSDynamicObject options = getOptionsObject(optionsParam, node, errorBranch, optionUndefined);
+            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             List<TruffleString> disallowedUnits = TemporalUtil.listTime;
-            Unit smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, DAY, equalNode, getOptionNode, node, errorBranch);
+            Unit smallestUnit = toSmallestTemporalUnit(options, disallowedUnits, DAY, equalNode, getOptionNode, this, errorBranch);
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.DAY, smallestUnit);
-            Unit largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, defaultLargestUnit, equalNode, getOptionNode, node, errorBranch);
+            Unit largestUnit = toLargestTemporalUnit(options, disallowedUnits, AUTO, defaultLargestUnit, equalNode, getOptionNode, this, errorBranch);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
             if (sign == TemporalUtil.SINCE) {
@@ -446,59 +426,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                                 0, 0, (long) roundingIncrement, smallestUnit, roundingMode, temporalDate);
                 return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
                                 sign * result2.getYears(), sign * result2.getMonths(), sign * result2.getWeeks(), sign * result2.getDays(),
-                                0, 0, 0, 0, 0, 0, node, errorBranch);
+                                0, 0, 0, 0, 0, 0, this, errorBranch);
             }
             return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
                             sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(),
-                            0, 0, 0, 0, 0, 0, node, errorBranch);
-        }
-    }
-
-    public abstract static class JSTemporalPlainDateSince extends PlainDateOperation {
-        protected JSTemporalPlainDateSince(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected final JSTemporalDurationObject since(JSTemporalPlainDateObject temporalDate, Object otherObj, Object optionsParam,
-                        @Cached JSToNumberNode toNumber,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
-                        @Cached JSToStringNode toStringNode,
-                        @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
-                        @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedConditionProfile optionUndefined) {
-            return differenceTemporalPlainDate(TemporalUtil.SINCE, temporalDate, otherObj, optionsParam,
-                            toNumber, namesNode, toTemporalDate, toStringNode, equalNode, roundDurationNode, getOptionNode, this, errorBranch, optionUndefined);
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isJSTemporalPlainDate(thisObj)")
-        protected static JSTemporalDurationObject invalidReceiver(Object thisObj, Object otherObj, Object optionsParam) {
-            throw TemporalErrors.createTypeErrorTemporalPlainDateExpected();
-        }
-    }
-
-    public abstract static class JSTemporalPlainDateUntil extends PlainDateOperation {
-        protected JSTemporalPlainDateUntil(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected final JSTemporalDurationObject until(JSTemporalPlainDateObject temporalDate, Object otherObj, Object optionsParam,
-                        @Cached JSToNumberNode toNumber,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
-                        @Cached JSToStringNode toStringNode,
-                        @Cached TruffleString.EqualNode equalNode,
-                        @Cached("create(getContext())") TemporalRoundDurationNode roundDurationNode,
-                        @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedConditionProfile optionUndefined) {
-            return differenceTemporalPlainDate(TemporalUtil.UNTIL, temporalDate, otherObj, optionsParam,
-                            toNumber, namesNode, toTemporalDate, toStringNode, equalNode, roundDurationNode, getOptionNode, this, errorBranch, optionUndefined);
+                            0, 0, 0, 0, 0, 0, this, errorBranch);
         }
 
         @SuppressWarnings("unused")
