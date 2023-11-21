@@ -2026,10 +2026,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         protected Object toDesiredCase(Object thisObj, Object locale) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
-            if (thisStr == null || Strings.isEmpty(thisStr)) {
+            String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(locale);
+            if (Strings.isEmpty(thisStr)) {
                 return thisStr;
             }
-            String[] locales = toCanonicalizedLocaleListNode.executeLanguageTags(locale);
             return toXCase(Strings.toJavaString(thisStr), locales);
         }
 
