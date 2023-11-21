@@ -806,8 +806,8 @@ public final class TemporalUtil {
     }
 
     // 13.35
-    public static int constrainToRange(long value, int minimum, int maximum) {
-        return (int) (Math.min(Math.max(value, minimum), maximum));
+    public static int constrainToRange(int value, int minimum, int maximum) {
+        return Math.min(Math.max(value, minimum), maximum);
     }
 
     public static UnsignedRoundingMode getUnsignedRoundingMode(RoundingMode rm, boolean isNegative) {
