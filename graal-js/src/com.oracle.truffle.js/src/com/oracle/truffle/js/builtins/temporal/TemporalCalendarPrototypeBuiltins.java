@@ -106,9 +106,9 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
+import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -119,7 +119,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalYearMonthDayRecord;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -371,10 +370,10 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            JSTemporalDateTimeRecord result = TemporalUtil.isoDateFromFields((JSDynamicObject) fields, options, getContext(),
+            ISODateRecord result = TemporalUtil.isoDateFromFields((JSDynamicObject) fields, options, getContext(),
                             isObjectNode, getOptionNode, toIntOrInfinityNode, identicalNode);
 
-            return JSTemporalPlainDate.create(getContext(), getRealm(), result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch);
+            return JSTemporalPlainDate.create(getContext(), getRealm(), result.year(), result.month(), result.day(), calendar, this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -404,10 +403,10 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            JSTemporalYearMonthDayRecord result = TemporalUtil.isoYearMonthFromFields((JSDynamicObject) fields, options, getContext(),
+            ISODateRecord result = TemporalUtil.isoYearMonthFromFields((JSDynamicObject) fields, options, getContext(),
                             isObjectNode, getOptionNode, toIntOrInfinityNode, identicalNode);
             return JSTemporalPlainYearMonth.create(getContext(), getRealm(),
-                            result.getYear(), result.getMonth(), calendar, result.getDay(), this, errorBranch);
+                            result.year(), result.month(), calendar, result.day(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -437,10 +436,10 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            JSTemporalYearMonthDayRecord result = TemporalUtil.isoMonthDayFromFields((JSDynamicObject) fields, options, getContext(),
+            ISODateRecord result = TemporalUtil.isoMonthDayFromFields((JSDynamicObject) fields, options, getContext(),
                             isObjectNode, getOptionNode, toIntOrInfinityNode, identicalNode);
             return JSTemporalPlainMonthDay.create(getContext(), getRealm(),
-                            result.getMonth(), result.getDay(), calendar, result.getYear(), this, errorBranch);
+                            result.month(), result.day(), calendar, result.year(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -475,9 +474,9 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSRealm realm = getRealm();
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), realm, namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
-            JSTemporalDateTimeRecord result = TemporalUtil.addISODate(date.getYear(), date.getMonth(), date.getDay(),
+            ISODateRecord result = TemporalUtil.addISODate(date.getYear(), date.getMonth(), date.getDay(),
                             dtoiConstrain(duration.getYears()), dtoiConstrain(duration.getMonths()), dtoiConstrain(duration.getWeeks()), dtoiConstrain(balanceResult.getDays()), overflow);
-            return JSTemporalPlainDate.create(getContext(), realm, result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch);
+            return JSTemporalPlainDate.create(getContext(), realm, result.year(), result.month(), result.day(), calendar, this, errorBranch);
         }
 
         // in contrast to `dtoi`, set to Integer.MAX_VALUE/MIN_VALUE if outside range.

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,34 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public final class JSTemporalYearMonthDayRecord {
-    private final int year;
-    private final int month;
-    private final int day;
-
-    private JSTemporalYearMonthDayRecord(int year, int month, int day) {
-        this.year = year;
-        this.month = month;
-        this.day = day;
-    }
-
-    public static JSTemporalYearMonthDayRecord create(int year, int month, int day) {
-        return new JSTemporalYearMonthDayRecord(year, month, day);
-    }
-
-    public static JSTemporalYearMonthDayRecord create(int year, int month) {
-        return new JSTemporalYearMonthDayRecord(year, month, 0);
-    }
-
-    public int getYear() {
-        return year;
-    }
-
-    public int getMonth() {
-        return month;
-    }
-
-    public int getDay() {
-        return day;
-    }
+/**
+ * An ISO Date Record is used to represent a valid calendar date in the ISO 8601 calendar, although
+ * the year may be outside of the allowed range for Temporal. ISO Date Records are produced by the
+ * abstract operation CreateISODateRecord.
+ */
+public record ISODateRecord(
+                /** The year in the ISO 8601 calendar. An integer. */
+                int year,
+                /** The number of the month. An integer between 1 and 12, inclusive. */
+                int month,
+                /** The number of the day of the month. An integer between 1 and 31, inclusive. */
+                int day) {
 }

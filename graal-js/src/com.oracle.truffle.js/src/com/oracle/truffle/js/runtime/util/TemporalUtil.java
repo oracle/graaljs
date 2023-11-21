@@ -139,6 +139,7 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
+import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
@@ -159,7 +160,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalYearMonthDayRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.NanosecondsToDaysResult;
@@ -1010,7 +1010,10 @@ public final class TemporalUtil {
         return result;
     }
 
-    public static JSTemporalYearMonthDayRecord regulateISOYearMonth(int year, int month, Overflow overflow) {
+    public record ISOYearMonthRecord(int year, int month) {
+    }
+
+    public static ISOYearMonthRecord regulateISOYearMonth(int year, int month, Overflow overflow) {
         assert Overflow.CONSTRAIN == overflow || Overflow.REJECT == overflow;
 
         if (Overflow.CONSTRAIN == overflow) {
@@ -1021,16 +1024,16 @@ public final class TemporalUtil {
                 throw Errors.createRangeError("validation of year and month failed");
             }
         }
-        return JSTemporalYearMonthDayRecord.create(year, month);
+        return new ISOYearMonthRecord(year, month);
     }
 
     private static boolean isValidISOMonth(int month) {
         return (1 <= month) && (month <= 12);
     }
 
-    private static JSTemporalYearMonthDayRecord constrainISOYearMonth(int year, int month) {
+    private static ISOYearMonthRecord constrainISOYearMonth(int year, int month) {
         int monthPrepared = constrainToRange(month, 1, 12);
-        return JSTemporalYearMonthDayRecord.create(ltoi(year), monthPrepared);
+        return new ISOYearMonthRecord(ltoi(year), monthPrepared);
     }
 
     // 12.1.35
@@ -1109,7 +1112,7 @@ public final class TemporalUtil {
         return 28;
     }
 
-    public static JSTemporalDateTimeRecord balanceISOYearMonth(int year, int month) {
+    public static ISODateRecord balanceISOYearMonth(int year, int month) {
         if (year == Integer.MAX_VALUE || year == Integer.MIN_VALUE || month == Integer.MAX_VALUE || month == Integer.MIN_VALUE) {
             throw Errors.createRangeError("value out of range");
         }
@@ -1117,7 +1120,7 @@ public final class TemporalUtil {
         int yearPrepared = (int) (year + Math.floor((month - 1.0) / 12.0));
         int monthPrepared = (int) nonNegativeModulo(month - 1, 12) + 1;
 
-        return JSTemporalDateTimeRecord.create(yearPrepared, monthPrepared, 0, 0, 0, 0, 0, 0, 0);
+        return new ISODateRecord(yearPrepared, monthPrepared, 0);
     }
 
     @TruffleBoundary // one instead of three boundaries
@@ -1477,42 +1480,42 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static JSTemporalDateTimeRecord regulateISODate(int yearParam, int monthParam, int dayParam, Overflow overflow) {
+    public static ISODateRecord regulateISODate(int year, int monthParam, int dayParam, Overflow overflow) {
         assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
         int month = monthParam;
         int day = dayParam;
         if (overflow == Overflow.REJECT) {
-            if (!isValidISODate(yearParam, month, day)) {
+            if (!isValidISODate(year, month, day)) {
                 throw TemporalErrors.createRangeErrorDateOutsideRange();
             }
         } else {
             assert overflow == Overflow.CONSTRAIN;
             month = constrainToRange(month, 1, 12);
-            day = constrainToRange(day, 1, isoDaysInMonth(yearParam, month));
+            day = constrainToRange(day, 1, isoDaysInMonth(year, month));
         }
-        return JSTemporalDateTimeRecord.create(yearParam, month, day, 0, 0, 0, 0, 0, 0);
+        return new ISODateRecord(year, month, day);
     }
 
     @TruffleBoundary
-    public static JSTemporalDateTimeRecord balanceISODate(int yearParam, int monthParam, int dayParam) {
+    public static ISODateRecord balanceISODate(int yearParam, int monthParam, int dayParam) {
         double epochDays = JSDate.makeDay(yearParam, monthParam - 1, dayParam);
         assert Double.isFinite(epochDays);
         double ms = JSDate.makeDate(epochDays, 0);
-        return JSTemporalPlainDate.toRecord(JSDate.yearFromTime((long) ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
+        return new ISODateRecord(JSDate.yearFromTime((long) ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
     }
 
     @TruffleBoundary
     // AddISODate only called with int range values, or constrained immediately afterwards
-    public static JSTemporalDateTimeRecord addISODate(int year, int month, int day, int years, int months, int weeks, int daysP, Overflow overflow) {
+    public static ISODateRecord addISODate(int year, int month, int day, int years, int months, int weeks, int daysP, Overflow overflow) {
         assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
 
         int days = daysP;
-        JSTemporalDateTimeRecord intermediate = balanceISOYearMonth(add(year, years, overflow), add(month, months, overflow));
-        intermediate = regulateISODate(intermediate.getYear(), intermediate.getMonth(), day, overflow);
+        ISODateRecord intermediate = balanceISOYearMonth(add(year, years, overflow), add(month, months, overflow));
+        intermediate = regulateISODate(intermediate.year(), intermediate.month(), day, overflow);
         days = days + 7 * weeks;
-        int d = add(intermediate.getDay(), days, overflow);
-        intermediate = balanceISODate(intermediate.getYear(), intermediate.getMonth(), d);
-        return regulateISODate(intermediate.getYear(), intermediate.getMonth(), intermediate.getDay(), overflow);
+        int d = add(intermediate.day(), days, overflow);
+        intermediate = balanceISODate(intermediate.year(), intermediate.month(), d);
+        return regulateISODate(intermediate.year(), intermediate.month(), intermediate.day(), overflow);
     }
 
     // 3.5.15
@@ -1775,13 +1778,13 @@ public final class TemporalUtil {
         int timeSign = durationSign(0, 0, 0, timeDifference.getDays(), timeDifference.getHours(), timeDifference.getMinutes(), timeDifference.getSeconds(),
                         timeDifference.getMilliseconds(), timeDifference.getMicroseconds(), timeDifference.getNanoseconds());
         int dateSign = compareISODate(y2, mon2, d2, y1, mon1, d1);
-        JSTemporalDateTimeRecord balanceResult = balanceISODate(y1, mon1, d1 + dtoi(timeDifference.getDays()));
+        ISODateRecord balanceResult = balanceISODate(y1, mon1, d1 + dtoi(timeDifference.getDays()));
         if (timeSign == -dateSign) {
-            balanceResult = balanceISODate(balanceResult.getYear(), balanceResult.getMonth(), balanceResult.getDay() - timeSign);
+            balanceResult = balanceISODate(balanceResult.year(), balanceResult.month(), balanceResult.day() - timeSign);
             timeDifference = balanceDuration(ctx, realm, namesNode, -timeSign, timeDifference.getHours(),
                             timeDifference.getMinutes(), timeDifference.getSeconds(), timeDifference.getMilliseconds(), timeDifference.getMicroseconds(), timeDifference.getNanoseconds(), largestUnit);
         }
-        JSDynamicObject date1 = JSTemporalPlainDate.create(ctx, realm, balanceResult.getYear(), balanceResult.getMonth(), balanceResult.getDay(), calendar, null, InlinedBranchProfile.getUncached());
+        JSDynamicObject date1 = JSTemporalPlainDate.create(ctx, realm, balanceResult.year(), balanceResult.month(), balanceResult.day(), calendar, null, InlinedBranchProfile.getUncached());
         JSDynamicObject date2 = JSTemporalPlainDate.create(ctx, realm, y2, mon2, d2, calendar, null, InlinedBranchProfile.getUncached());
         Unit dateLargestUnit = largerOfTwoTemporalUnits(Unit.DAY, largestUnit);
         JSDynamicObject untilOptions = mergeLargestUnitOption(ctx, namesNode, options, dateLargestUnit);
@@ -2291,9 +2294,9 @@ public final class TemporalUtil {
             return new AddDaysToZonedDateTimeResult(instant.getNanoseconds(), instant, dateTime);
         }
 
-        JSTemporalDateTimeRecord addedDate = addISODate(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), 0, 0, 0, days, overflow);
+        ISODateRecord addedDate = addISODate(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), 0, 0, 0, days, overflow);
         JSTemporalPlainDateTimeObject dateTimeResult = JSTemporalPlainDateTime.create(ctx, realm,
-                        addedDate.getYear(), addedDate.getMonth(), addedDate.getDay(),
+                        addedDate.year(), addedDate.month(), addedDate.day(),
                         dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                         dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                         dateTime.getCalendar());
@@ -2556,8 +2559,8 @@ public final class TemporalUtil {
     public static JSTemporalDurationRecord roundISODateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
                     int nanosecond, double increment, Unit unit, RoundingMode roundingMode, Long dayLength) {
         TimeRecord rt = roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
-        JSTemporalDateTimeRecord br = balanceISODate(year, month, day + dtoi(rt.days()));
-        return JSTemporalDurationRecord.create(br.getYear(), br.getMonth(), br.getDay(),
+        ISODateRecord br = balanceISODate(year, month, day + dtoi(rt.days()));
+        return JSTemporalDurationRecord.create(br.year(), br.month(), br.day(),
                         rt.hour(), rt.minute(), rt.second(), rt.millisecond(), rt.microsecond(), rt.nanosecond());
     }
 
@@ -2634,8 +2637,8 @@ public final class TemporalUtil {
 
     public static JSTemporalDateTimeRecord balanceISODateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, long nanosecond) {
         TimeRecord bt = balanceTime(hour, minute, second, millisecond, microsecond, nanosecond);
-        JSTemporalDateTimeRecord bd = balanceISODate(year, month, day + (int) bt.days());
-        return JSTemporalDateTimeRecord.create(bd.getYear(), bd.getMonth(), bd.getDay(),
+        ISODateRecord bd = balanceISODate(year, month, day + (int) bt.days());
+        return JSTemporalDateTimeRecord.create(bd.year(), bd.month(), bd.day(),
                         bt.hour(), bt.minute(), bt.second(), bt.millisecond(), bt.microsecond(), bt.nanosecond());
     }
 
@@ -3065,11 +3068,11 @@ public final class TemporalUtil {
             TimeRecord earlierTime = addTimeDouble(
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                             0, 0, 0, 0, 0, -nanoseconds, null, InlinedBranchProfile.getUncached());
-            JSTemporalDateTimeRecord earlierDate = addISODate(
+            ISODateRecord earlierDate = addISODate(
                             dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                             0, 0, 0, dtoi(earlierTime.days()), Overflow.CONSTRAIN);
             JSTemporalPlainDateTimeObject earlierDateTime = JSTemporalPlainDateTime.create(ctx, realm,
-                            earlierDate.getYear(), earlierDate.getMonth(), earlierDate.getDay(),
+                            earlierDate.year(), earlierDate.month(), earlierDate.day(),
                             earlierTime.hour(), earlierTime.minute(), earlierTime.second(), earlierTime.millisecond(), earlierTime.microsecond(), earlierTime.nanosecond(),
                             dateTime.getCalendar(), null, InlinedBranchProfile.getUncached());
             List<JSTemporalInstantObject> possibleInstants2 = getPossibleInstantsFor(timeZone, earlierDateTime);
@@ -3082,11 +3085,11 @@ public final class TemporalUtil {
         TimeRecord laterTime = addTimeDouble(
                         dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(),
                         0, 0, 0, 0, 0, nanoseconds, null, InlinedBranchProfile.getUncached());
-        JSTemporalDateTimeRecord laterDate = addISODate(
+        ISODateRecord laterDate = addISODate(
                         dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                         0, 0, 0, dtoi(laterTime.days()), Overflow.CONSTRAIN);
         JSTemporalPlainDateTimeObject laterDateTime = JSTemporalPlainDateTime.create(ctx, realm,
-                        laterDate.getYear(), laterDate.getMonth(), laterDate.getDay(),
+                        laterDate.year(), laterDate.month(), laterDate.day(),
                         laterTime.hour(), laterTime.minute(), laterTime.second(), laterTime.millisecond(), laterTime.microsecond(), laterTime.nanosecond(),
                         dateTime.getCalendar(), null, InlinedBranchProfile.getUncached());
 
@@ -3397,8 +3400,7 @@ public final class TemporalUtil {
         return (long) numberPart2;
     }
 
-    // 12.1.39
-    public static JSTemporalDateTimeRecord isoDateFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
+    public static ISODateRecord isoDateFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
                     TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
@@ -3410,7 +3412,7 @@ public final class TemporalUtil {
                         dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
     }
 
-    public static JSTemporalYearMonthDayRecord isoYearMonthFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
+    public static ISODateRecord isoYearMonthFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
                     TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
@@ -3418,12 +3420,12 @@ public final class TemporalUtil {
         Object year = JSObject.get(preparedFields, YEAR);
         Object month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
 
-        JSTemporalYearMonthDayRecord result = regulateISOYearMonth(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))),
+        ISOYearMonthRecord result = regulateISOYearMonth(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))),
                         dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))), overflow);
-        return JSTemporalYearMonthDayRecord.create(result.getYear(), result.getMonth(), 1);
+        return new ISODateRecord(result.year(), result.month(), 1);
     }
 
-    public static JSTemporalYearMonthDayRecord isoMonthDayFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
+    public static ISODateRecord isoMonthDayFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
                     TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
         assert isObject.executeBoolean(fields);
         Overflow overflow = toTemporalOverflow(options, getOptionNode);
@@ -3437,7 +3439,7 @@ public final class TemporalUtil {
         month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
         Object day = JSObject.get(preparedFields, DAY);
         int referenceISOYear = 1972;
-        JSTemporalDateTimeRecord result = null;
+        ISODateRecord result;
         if (monthCode == Undefined.instance) {
             result = regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
                             dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
@@ -3445,7 +3447,7 @@ public final class TemporalUtil {
             result = regulateISODate(referenceISOYear, dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
                             dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
         }
-        return JSTemporalYearMonthDayRecord.create(referenceISOYear, result.getMonth(), result.getDay());
+        return new ISODateRecord(referenceISOYear, result.month(), result.day());
     }
 
     public static JSTemporalDurationRecord createDurationRecord(double years, double months, double weeks, double days, double hours, double minutes, double seconds, double milliseconds,
