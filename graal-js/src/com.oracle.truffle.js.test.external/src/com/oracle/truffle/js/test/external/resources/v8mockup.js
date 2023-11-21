@@ -1198,3 +1198,7 @@ globalThis['%IsInPlaceInternalizableString'] = function(str) {
 globalThis['%GetWeakCollectionSize'] = function(weakMapOrSet) {
     return v8IgnoreResult;
 }
+
+globalThis['%NoElementsProtector'] = function() {
+    return v8IgnoreResult;
+}
