@@ -57,7 +57,7 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 @ExportLibrary(InteropLibrary.class)
-public class JSTemporalInstantObject extends JSNonProxyObject {
+public final class JSTemporalInstantObject extends JSNonProxyObject {
 
     private final BigInt nanoseconds; // 8.4 A BigInt value
 
@@ -80,41 +80,39 @@ public class JSTemporalInstantObject extends JSNonProxyObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean isTimeZone() {
+    boolean isTimeZone() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
     @SuppressWarnings("static-method")
-    final ZoneId asTimeZone() {
+    ZoneId asTimeZone() {
         return ZoneId.of("UTC");
     }
 
-    @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean isDate() {
+    @ExportMessage
+    boolean isDate() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final LocalDate asDate() {
-        LocalDate ld = LocalDate.ofInstant(asInstant(), asTimeZone());
-        return ld;
+    LocalDate asDate() {
+        return LocalDate.ofInstant(asInstant(), asTimeZone());
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean isTime() {
+    boolean isTime() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final LocalTime asTime() {
-        LocalTime lt = LocalTime.ofInstant(asInstant(), asTimeZone());
-        return lt;
+    LocalTime asTime() {
+        return LocalTime.ofInstant(asInstant(), asTimeZone());
     }
 
 }

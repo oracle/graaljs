@@ -87,13 +87,13 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
     }
 
     @ExportMessage
-    final boolean isTimeZone() {
+    boolean isTimeZone() {
         return getZoneIdIntl() != null;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final ZoneId asTimeZone() throws UnsupportedMessageException {
+    ZoneId asTimeZone() throws UnsupportedMessageException {
         ZoneId tzObj = getZoneIdIntl();
         if (tzObj == null) {
             throw UnsupportedMessageException.create();
@@ -103,8 +103,7 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
 
     @TruffleBoundary
     private ZoneId getZoneIdIntl() {
-        if (timeZone instanceof JSTemporalTimeZoneObject) {
-            JSTemporalTimeZoneObject tzObj = (JSTemporalTimeZoneObject) timeZone;
+        if (timeZone instanceof JSTemporalTimeZoneObject tzObj) {
             return tzObj.asTimeZone();
         }
         Object tzID = JSObject.get(timeZone, TemporalConstants.TIME_ZONE);
@@ -116,26 +115,24 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
     }
 
     @ExportMessage
-    final boolean isDate() {
+    boolean isDate() {
         return isTimeZone();
     }
 
     @ExportMessage
     @TruffleBoundary
-    final LocalDate asDate() throws UnsupportedMessageException {
-        LocalDate ld = LocalDate.ofInstant(toInstant(), asTimeZone());
-        return ld;
+    LocalDate asDate() throws UnsupportedMessageException {
+        return LocalDate.ofInstant(toInstant(), asTimeZone());
     }
 
     @ExportMessage
-    final boolean isTime() {
+    boolean isTime() {
         return isTimeZone();
     }
 
     @ExportMessage
     @TruffleBoundary
-    final LocalTime asTime() throws UnsupportedMessageException {
-        LocalTime lt = LocalTime.ofInstant(toInstant(), asTimeZone());
-        return lt;
+    LocalTime asTime() throws UnsupportedMessageException {
+        return LocalTime.ofInstant(toInstant(), asTimeZone());
     }
 }

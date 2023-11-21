@@ -98,15 +98,14 @@ public final class JSTemporalPlainTimeObject extends JSTemporalCalendarHolder {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean isTime() {
+    boolean isTime() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final LocalTime asTime() {
+    LocalTime asTime() {
         int ns = millisecond * 1_000_000 + microsecond * 1_000 + nanosecond;
-        LocalTime lt = LocalTime.of(hour, minute, second, ns);
-        return lt;
+        return LocalTime.of(hour, minute, second, ns);
     }
 }

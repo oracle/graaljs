@@ -118,28 +118,26 @@ public final class JSTemporalPlainDateTimeObject extends JSTemporalCalendarHolde
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean isTime() {
+    boolean isTime() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final LocalTime asTime() {
+    LocalTime asTime() {
         int ns = milliseconds * 1_000_000 + microseconds * 1_000 + nanoseconds;
-        LocalTime lt = LocalTime.of(hours, minutes, seconds, ns);
-        return lt;
+        return LocalTime.of(hours, minutes, seconds, ns);
     }
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean isDate() {
+    boolean isDate() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final LocalDate asDate() {
-        LocalDate ld = LocalDate.of(year, month, day);
-        return ld;
+    LocalDate asDate() {
+        return LocalDate.of(year, month, day);
     }
 }

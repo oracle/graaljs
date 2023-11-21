@@ -77,14 +77,13 @@ public final class JSTemporalPlainDateObject extends JSTemporalCalendarHolder {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean isDate() {
+    boolean isDate() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final LocalDate asDate() {
-        LocalDate ld = LocalDate.of(year, month, day);
-        return ld;
+    LocalDate asDate() {
+        return LocalDate.of(year, month, day);
     }
 }
