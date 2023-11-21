@@ -35,111 +35,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "intl/enumeration/calendar-sorted.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/callendar-syntax-valid.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/collation-sorted.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/collation-syntax-valid.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/currency-sorted.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/currency-syntax-valid.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/numberingSystem-no-algorithm.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/numberingSystem-sorted.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/numberingSystem-syntax-valid.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/supported-values-of-invalid-key.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/supported-values-of-name.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/supported-values-of-property.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/supported-values-of-valid-key.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/timeZone-sorted.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
-    "filePath" : "intl/enumeration/unit-sorted.js",
-    "ecmaVersion" : {
-      "minVersion" : 15
-    },
-    "status" : "PASS",
-    "comment" : "Unflagged usage of Intl.supportedValuesOf"
-  }, {
     "filePath" : "intl/general/case-mapping.js",
     "status" : "FAIL"
   }, {
@@ -672,8 +567,11 @@
     "status" : "FAIL"
   }, {
     "filePath" : "mjsunit/es6/proxies-json.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "PASS",
+    "comment" : "Unflagged usage of JSON parse with source"
   }, {
     "filePath" : "mjsunit/es6/proxies-prototype-handler-stackoverflow.js",
     "status" : "PASS",
@@ -856,10 +754,6 @@
     "status" : "FAIL",
     "comment" : "test expects exact error message"
   }, {
-    "filePath" : "mjsunit/harmony/object-groupby-fast-path-assumptions-array-protector.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/harmony/private-accessors.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
@@ -933,12 +827,18 @@
     "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/harmony/string-iswellformed-external-uncached.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "PASS",
+    "comment" : "Uses String.prototype.isWellFormed()"
   }, {
     "filePath" : "mjsunit/harmony/string-iswellformed-flat-indirect.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "PASS",
+    "comment" : "Uses String.prototype.isWellFormed()"
   }, {
     "filePath" : "mjsunit/harmony/weakrefs/cleanup-on-detached-realm.js",
     "status" : "FAIL",
@@ -1022,10 +922,6 @@
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
   }, {
-    "filePath" : "mjsunit/ignition/string-concat-external-thin-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/invalid-lhs.js",
     "status" : "FAIL"
   }, {
@@ -1041,17 +937,9 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
   }, {
-    "filePath" : "mjsunit/json2.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/keyed-load-null-receiver.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-05-21)"
-  }, {
-    "filePath" : "mjsunit/large-external-string.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/large-object-literal-2.js",
     "status" : "PASS",
@@ -1339,10 +1227,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "mjsunit/regress/regress-1409058.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/regress/regress-1432470.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -1366,10 +1250,6 @@
     "filePath" : "mjsunit/regress/regress-148378.js",
     "status" : "SKIP",
     "comment" : "NOW: Fails consistently with NoClassDefFoundError. Uses infinite recursion, expects to run out of stack and catch the exception. BEFORE: spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-1757.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/regress/regress-233.js",
     "runInIsolation" : true,
@@ -1585,10 +1465,6 @@
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
     "filePath" : "mjsunit/regress/regress-821368.js",
-    "status" : "FAIL",
-    "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-842078.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
   }, {
@@ -3885,10 +3761,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "mjsunit/shared-memory/shared-external-string-megamorphic-ic.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/stack-overflow-arity-catch-noinline.js",
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests"
@@ -3915,22 +3787,6 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
-    "filePath" : "mjsunit/string-case.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/string-charcodeat-external.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/string-external-cached.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/string-externalize.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/string-oom-array-join.js",
     "status" : "SKIP",
     "runInIsolation" : true,
@@ -3947,14 +3803,6 @@
     "filePath" : "mjsunit/string-oom-replace-regexp-global-with-function.js",
     "runInIsolation" : true,
     "comment" : "Out of memory even when run together with other memory-intense tests"
-  }, {
-    "filePath" : "mjsunit/string-replace-with-empty.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/string-slices.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/switch.js",
     "status" : "FAIL",
