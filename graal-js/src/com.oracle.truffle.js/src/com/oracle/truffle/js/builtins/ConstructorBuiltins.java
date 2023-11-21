@@ -1692,7 +1692,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, newTargetCase);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly.execute(this, target)"}, limit = "1")
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, target)"})
         protected JSObject constructWeakRef(JSDynamicObject newTarget, Object target,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             JSRealm realm = getRealm();
@@ -1700,7 +1700,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return JSWeakRef.create(getContext(), realm, proto, target);
         }
 
-        @Specialization(guards = {"!canBeHeldWeakly.execute(this, target)"}, limit = "1")
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, target)"})
         protected static JSObject constructWeakRefNonObject(@SuppressWarnings("unused") JSDynamicObject newTarget, @SuppressWarnings("unused") Object target,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             throw Errors.createTypeError("WeakRef: invalid target");

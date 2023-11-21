@@ -817,8 +817,8 @@ public class NodeFactory {
         return GlobalPropertyNode.createPropertyNode(context, name);
     }
 
-    public JSTargetableNode createDeleteProperty(JavaScriptNode target, JavaScriptNode property, boolean strictMode, JSContext context) {
-        return DeletePropertyNode.create(target, property, strictMode, context);
+    public JSTargetableNode createDeleteProperty(JavaScriptNode target, JavaScriptNode property, boolean strictMode) {
+        return DeletePropertyNode.create(target, property, strictMode);
     }
 
     // ##### Function nodes

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -796,7 +796,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization(guards = "isJSArrayBufferView(thisObj)")
         protected JSDynamicObject reverse(JSDynamicObject thisObj,
-                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode) {
+                        @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode) {
             checkHasDetachedBuffer(thisObj);
             long len = getLength(thisObj);
             long middle = len / 2L;

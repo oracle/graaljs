@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,7 +71,7 @@ public abstract class JSArrayDeleteRangeNode extends JavaScriptBaseNode {
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "!cachedArrayType.isHolesType()"}, limit = "5")
     protected void denseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long start, long end,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
-                    @Cached("create(orThrow, context)") @Shared("deleteProperty") DeletePropertyNode deletePropertyNode) {
+                    @Cached("create(orThrow)") @Shared("deleteProperty") DeletePropertyNode deletePropertyNode) {
         for (long i = start; i < end; i++) {
             deletePropertyNode.executeEvaluated(array, i);
         }
@@ -80,7 +80,7 @@ public abstract class JSArrayDeleteRangeNode extends JavaScriptBaseNode {
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "cachedArrayType.isHolesType()"}, limit = "5")
     protected void sparseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long start, long end,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
-                    @Cached("create(orThrow, context)") @Shared("deleteProperty") DeletePropertyNode deletePropertyNode,
+                    @Cached("create(orThrow)") @Shared("deleteProperty") DeletePropertyNode deletePropertyNode,
                     @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode) {
         long pos = start;
         while (pos < end) {
@@ -91,7 +91,7 @@ public abstract class JSArrayDeleteRangeNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = {"denseArray", "sparseArray"})
     protected void doUncached(JSDynamicObject array, ScriptArray arrayType, long start, long end,
-                    @Cached("create(orThrow, context)") @Shared("deleteProperty") DeletePropertyNode deletePropertyNode,
+                    @Cached("create(orThrow)") @Shared("deleteProperty") DeletePropertyNode deletePropertyNode,
                     @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode) {
         if (arrayType.isHolesType()) {
             sparseArray(array, arrayType, start, end, arrayType, deletePropertyNode, nextElementIndexNode);

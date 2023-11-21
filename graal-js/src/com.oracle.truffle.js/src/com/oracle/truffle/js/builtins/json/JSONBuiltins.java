@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -276,7 +276,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         public JSONStringifyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.createWrapperPropertyNode = CreateDataPropertyNode.create(getContext(), Strings.EMPTY_STRING);
-            this.jsonStringifyStringNode = JSONStringifyStringNode.create(getContext());
+            this.jsonStringifyStringNode = JSONStringifyStringNode.create();
         }
 
         @Specialization(guards = {"!isString(value)", "isUndefined(replacer)"})

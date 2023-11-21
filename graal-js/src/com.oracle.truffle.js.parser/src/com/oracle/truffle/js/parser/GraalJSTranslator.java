@@ -2536,7 +2536,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (baseNode.isOptionalChain()) {
             target = filterOptionalChainTarget(target, baseNode.isOptional());
         }
-        JavaScriptNode delete = factory.createDeleteProperty(target, key, environment.isStrictMode(), context);
+        JavaScriptNode delete = factory.createDeleteProperty(target, key, environment.isStrictMode());
         tagExpression(delete, deleteNode);
         if (baseNode.isOptionalChain()) {
             delete = factory.createOptionalChain(delete);

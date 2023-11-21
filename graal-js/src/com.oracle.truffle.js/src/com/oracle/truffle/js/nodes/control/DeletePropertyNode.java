@@ -75,7 +75,6 @@ import com.oracle.truffle.js.nodes.instrumentation.JSTags.UnaryOperationTag;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
@@ -96,24 +95,22 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 @NodeInfo(shortName = "delete")
 public abstract class DeletePropertyNode extends JSTargetableNode {
     protected final boolean strict;
-    protected final JSContext context;
     @Child @Executed protected JavaScriptNode targetNode;
     @Child @Executed protected JavaScriptNode propertyNode;
 
-    protected DeletePropertyNode(boolean strict, JSContext context, JavaScriptNode targetNode, JavaScriptNode propertyNode) {
+    protected DeletePropertyNode(boolean strict, JavaScriptNode targetNode, JavaScriptNode propertyNode) {
         this.strict = strict;
-        this.context = context;
         this.targetNode = targetNode;
         this.propertyNode = propertyNode;
     }
 
     @NeverDefault
-    public static DeletePropertyNode create(boolean strict, JSContext context) {
-        return create(null, null, strict, context);
+    public static DeletePropertyNode create(boolean strict) {
+        return create(null, null, strict);
     }
 
-    public static DeletePropertyNode create(JavaScriptNode object, JavaScriptNode property, boolean strict, JSContext context) {
-        return DeletePropertyNodeGen.create(strict, context, object, property);
+    public static DeletePropertyNode create(JavaScriptNode object, JavaScriptNode property, boolean strict) {
+        return DeletePropertyNodeGen.create(strict, object, property);
     }
 
     @Override
@@ -137,7 +134,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
             JavaScriptNode target = cloneUninitialized(targetNode, materializedTags);
             transferSourceSectionAddExpressionTag(this, key);
             transferSourceSectionAddExpressionTag(this, target);
-            DeletePropertyNode node = DeletePropertyNode.create(target, key, strict, context);
+            DeletePropertyNode node = DeletePropertyNode.create(target, key, strict);
             transferSourceSectionAndTags(this, node);
             return node;
         } else {
@@ -273,7 +270,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)", "!interop.hasArrayElements(target)"})
     protected boolean member(Object target, TruffleString name,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+        if (getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
             try {
                 return JSInteropUtil.deleteHashEntry(target, name, interop, strict);
             } catch (UnknownKeyException e) {
@@ -312,7 +309,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         } else {
             propertyKey = toPropertyKeyNode.execute(key);
         }
-        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+        if (getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
             try {
                 return JSInteropUtil.deleteHashEntry(target, propertyKey, interop, strict);
             } catch (UnknownKeyException e) {
@@ -341,7 +338,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return create(cloneUninitialized(getTarget(), materializedTags), cloneUninitialized(propertyNode, materializedTags), strict, context);
+        return create(cloneUninitialized(getTarget(), materializedTags), cloneUninitialized(propertyNode, materializedTags), strict);
     }
 
     @Override

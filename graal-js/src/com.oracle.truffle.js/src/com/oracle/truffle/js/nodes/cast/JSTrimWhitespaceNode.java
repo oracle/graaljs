@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,7 +78,7 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
         return string;
     }
 
-    @Specialization(guards = {"stringLength(string) > 0", "!startsOrEndsWithWhitespace(readRawNode, string, isFastNonWhitespace, isFastWhitespace)"}, limit = "1")
+    @Specialization(guards = {"stringLength(string) > 0", "!startsOrEndsWithWhitespace(readRawNode, string, isFastNonWhitespace, isFastWhitespace)"})
     protected static TruffleString doStringNoWhitespace(TruffleString string,
                     @Cached @SuppressWarnings("unused") @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode,
                     @Cached @SuppressWarnings("unused") @Shared("isFastNonWhitespace") InlinedConditionProfile isFastNonWhitespace,
@@ -86,7 +86,7 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
         return string;
     }
 
-    @Specialization(guards = {"stringLength(string) > 0", "startsOrEndsWithWhitespace(readRawNode, string, isFastNonWhitespace, isFastWhitespace)"}, limit = "1")
+    @Specialization(guards = {"stringLength(string) > 0", "startsOrEndsWithWhitespace(readRawNode, string, isFastNonWhitespace, isFastWhitespace)"})
     protected final TruffleString doString(TruffleString string,
                     @Cached @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode,
                     @Cached @Shared("isFastNonWhitespace") InlinedConditionProfile isFastNonWhitespace,

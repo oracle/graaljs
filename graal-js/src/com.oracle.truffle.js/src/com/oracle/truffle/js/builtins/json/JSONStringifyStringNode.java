@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,6 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
@@ -79,7 +78,6 @@ import com.oracle.truffle.js.runtime.util.StringBuilderProfile;
 
 public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
-    private final JSContext context;
     @Child private PropertyGetNode getToJSONProperty;
     @Child private JSFunctionCallNode callToJSONFunction;
 
@@ -87,15 +85,14 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
     private final StringBuilderProfile stringBuilderProfile;
 
-    protected JSONStringifyStringNode(JSContext context) {
-        this.context = context;
-        this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
+    protected JSONStringifyStringNode() {
+        this.stringBuilderProfile = StringBuilderProfile.create(getJSContext().getStringLengthLimit());
     }
 
     public abstract Object execute(Object data, Object keyStr, JSObject holder);
 
-    public static JSONStringifyStringNode create(JSContext context) {
-        return JSONStringifyStringNodeGen.create(context);
+    public static JSONStringifyStringNode create() {
+        return JSONStringifyStringNodeGen.create();
     }
 
     @Specialization
@@ -299,7 +296,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         assert JSRuntime.isPropertyKey(key);
         if (getToJSONProperty == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getToJSONProperty = insert(PropertyGetNode.create(Strings.TO_JSON, context));
+            getToJSONProperty = insert(PropertyGetNode.create(Strings.TO_JSON, getJSContext()));
         }
         Object toJSON = getToJSONProperty.getValue(value);
         if (JSRuntime.isCallable(toJSON)) {
@@ -429,7 +426,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
         }
         // output will reach maximum length in at most in StringLengthLimit steps
         long length = JSRuntime.toLength(lenObject);
-        if (length > context.getStringLengthLimit()) {
+        if (length > stringBuilderProfile.getStringLengthLimit()) {
             throw Errors.createRangeErrorInvalidStringLength();
         }
         int len = (int) length;

@@ -202,7 +202,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return apply(target, thisArgument, argumentsList);
         }
 
-        @Specialization(guards = "isCallable.executeBoolean(target)", replaces = "applyFunction", limit = "1")
+        @Specialization(guards = "isCallable.executeBoolean(target)", replaces = "applyFunction")
         protected final Object applyCallable(Object target, Object thisArgument, Object argumentsList,
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
             return apply(target, thisArgument, argumentsList);
@@ -216,9 +216,9 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isCallable.executeBoolean(target)", limit = "1")
+        @Specialization(guards = "!isCallable.executeBoolean(target)")
         protected static Object error(Object target, Object thisArgument, Object argumentsList,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+                        @Cached @Shared("isCallable") IsCallableNode isCallable) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -298,7 +298,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         protected boolean delete(Object target, Object property,
                         @Cached IsObjectNode isObjectNode,
                         @Cached JSToPropertyKeyNode toPropertyKeyNode,
-                        @Cached("create(false, getContext())") DeletePropertyNode deletePropertyNode) {
+                        @Cached("create(false)") DeletePropertyNode deletePropertyNode) {
             if (isObjectNode.executeBoolean(target)) {
                 Object key = toPropertyKeyNode.execute(property);
                 return deletePropertyNode.executeEvaluated(target, key);

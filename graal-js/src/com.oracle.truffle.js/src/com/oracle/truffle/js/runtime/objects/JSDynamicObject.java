@@ -224,7 +224,8 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     public abstract List<Object> getOwnPropertyKeys(boolean strings, boolean symbols);
 
     /**
-     * If true, {@link #ownPropertyKeys} and {@link JSShape#getProperties} enumerate the same keys.
+     * If true, {@link #ownPropertyKeys} and {@link JSShape#getPropertyKeyList} enumerate the same
+     * keys.
      */
     @TruffleBoundary
     public abstract boolean hasOnlyShapeProperties();

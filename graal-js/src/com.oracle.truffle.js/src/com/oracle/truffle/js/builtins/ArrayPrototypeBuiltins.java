@@ -952,7 +952,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"longIsRepresentableAsInt(longLength)"})
         protected static void setIntLength(JSObject object, long longLength,
-                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode,
                         @Shared("setLengthProperty") @Cached("createSetLengthProperty()") PropertySetNode setLengthProperty) {
             int intLength = (int) longLength;
             deletePropertyNode.executeEvaluated(object, intLength);
@@ -961,7 +961,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(replaces = "setIntLength")
         protected void setLength(JSObject object, long longLength,
-                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, context)") DeletePropertyNode deletePropertyNode,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode,
                         @Shared("setLengthProperty") @Cached("createSetLengthProperty()") PropertySetNode setLengthProperty,
                         @Cached(inline = true) LongToIntOrDoubleNode indexToNumber) {
             Object boxedLength = indexToNumber.fromIndex(this, longLength);
@@ -1054,7 +1054,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return isArray && !hasHolesNode.executeBoolean(thisObj) && !isSealedNode.executeBoolean(thisObj);
         }
 
-        @Specialization(guards = {"isArrayWithoutHolesAndNotSealed(thisObj, isArrayNode, hasHolesNode, isSealedNode)"}, limit = "1")
+        @Specialization(guards = {"isArrayWithoutHolesAndNotSealed(thisObj, isArrayNode, hasHolesNode, isSealedNode)"})
         protected Object shiftWithoutHoles(JSDynamicObject thisObj,
                         @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
                         @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
@@ -1088,7 +1088,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
                         @Shared("hasHoles") @Cached("createHasHoles()") @SuppressWarnings("unused") TestArrayNode hasHolesNode,
                         @Shared("isSealed") @Cached("createIsSealed()") @SuppressWarnings("unused") TestArrayNode isSealedNode,
-                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode,
                         @Shared("lengthIsZero") @Cached InlinedConditionProfile lengthIsZero) {
             long len = getLength(thisObj);
             if (lengthIsZero.profile(this, len > 0)) {
@@ -1114,7 +1114,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         @Specialization(guards = {"isArrayNode.execute(thisObj)", "isSparseArray(thisObj)"}, limit = "1")
         protected Object shiftSparse(JSDynamicObject thisObj,
                         @Shared("isArray") @Cached("createIsArray()") @SuppressWarnings("unused") IsArrayNode isArrayNode,
-                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode,
                         @Shared("lengthIsZero") @Cached InlinedConditionProfile lengthIsZero,
                         @Cached("create(getContext())") JSArrayFirstElementIndexNode firstElementIndexNode,
                         @Cached("create(getContext())") JSArrayLastElementIndexNode lastElementIndexNode) {
@@ -1142,7 +1142,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = {"!isJSArray(thisObj)", "!isForeignObject(thisObj)"})
         protected Object shiftGeneric(Object thisObj,
-                        @Shared("deleteProperty") @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deleteNode,
+                        @Shared("deleteProperty") @Cached("create(THROW_ERROR)") DeletePropertyNode deleteNode,
                         @Shared("lengthIsZero") @Cached InlinedConditionProfile lengthIsZero) {
             Object thisJSObj = toObject(thisObj);
             long len = getLength(thisJSObj);
@@ -1238,7 +1238,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Specialization(guards = "!isFastPath(thisObjParam)")
         protected double unshiftHoles(Object thisObjParam, Object[] args,
-                        @Cached("create(THROW_ERROR, getContext())") DeletePropertyNode deletePropertyNode,
+                        @Cached("create(THROW_ERROR)") DeletePropertyNode deletePropertyNode,
                         @Cached("create(getContext())") JSArrayLastElementIndexNode lastElementIndexNode,
                         @Cached("create(getContext())") JSArrayFirstElementIndexNode firstElementIndexNode) {
             Object thisObj = toObject(thisObjParam);
@@ -1947,7 +1947,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public JSArraySpliceNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.deletePropertyNode = DeletePropertyNode.create(THROW_ERROR, context);
+            this.deletePropertyNode = DeletePropertyNode.create(THROW_ERROR);
         }
 
         @Specialization
@@ -2860,8 +2860,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private void delete(Object obj, Object i) {
             if (deletePropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                JSContext context = getContext();
-                deletePropertyNode = insert(DeletePropertyNode.create(true, context));
+                deletePropertyNode = insert(DeletePropertyNode.create(true));
             }
             deletePropertyNode.executeEvaluated(obj, i);
         }
@@ -3102,7 +3101,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         public JSArrayCopyWithinNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
-            this.deletePropertyNode = DeletePropertyNode.create(THROW_ERROR, context);
+            this.deletePropertyNode = DeletePropertyNode.create(THROW_ERROR);
         }
 
         @Specialization
@@ -3207,7 +3206,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private boolean deleteProperty(Object array, long index) {
             if (deletePropertyNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
-                deletePropertyNode = insert(DeletePropertyNode.create(true, getContext()));
+                deletePropertyNode = insert(DeletePropertyNode.create(true));
             }
             return deletePropertyNode.executeEvaluated(array, index);
         }
