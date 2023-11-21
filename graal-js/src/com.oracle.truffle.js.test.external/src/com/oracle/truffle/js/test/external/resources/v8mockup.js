@@ -82,6 +82,28 @@ var d8 = {
     }
 };
 
+// The following stuff should be enabled by --expose-externalize-string,
+// but it does not seem to hurt to have it enabled always
+
+var createExternalizableString = function(str) {
+    return str;
+};
+
+var externalizeString = function(str) {
+    if (str.length == 1 && str.codePointAt(0) < 256) {
+        throw new Error("string does not support externalization.");
+    }
+};
+
+function isOneByteString(str) {
+    return v8IgnoreResult;
+}
+
+let kExternalStringMinOneByteLength = 1;
+let kExternalStringMinTwoByteLength = 1;
+let kExternalStringMinOneByteCachedLength = 5;
+let kExternalStringMinTwoByteCachedLength = 3;
+
 // ---------------------- other mockup functions ---------------- //
 
 globalThis['%OptimizeFunctionOnNextCall'] = function(f) {
@@ -280,10 +302,6 @@ globalThis['%TryMigrateInstance'] = function(obj) {
 
 globalThis['%StringParseInt'] = function(str, rad) {
     return parseInt(str,rad);
-}
-
-function externalizeString(str) {
-    return str;
 }
 
 globalThis['%CallFunction'] = function() {
@@ -720,10 +738,6 @@ globalThis['%DebugToggleBlockCoverage'] = function() {}
 
 globalThis['%StringMaxLength'] = function() {
   return TestV8.stringMaxLength;
-}
-
-function isOneByteString() {
-    return v8IgnoreResult;
 }
 
 globalThis['%GetCallable'] = function() {
