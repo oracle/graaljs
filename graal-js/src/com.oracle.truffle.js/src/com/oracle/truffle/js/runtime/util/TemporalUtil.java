@@ -1471,14 +1471,6 @@ public final class TemporalUtil {
         return roundNumberToIncrement(ns, incrementNs, roundingMode);
     }
 
-    public static boolean validateISODate(int year, int month, int day) {
-        if (month < 1 || month > 12) {
-            return false;
-        }
-        long daysInMonth = isoDaysInMonth(year, month);
-        return 1 <= day && day <= daysInMonth;
-    }
-
     @TruffleBoundary
     public static ISODateRecord regulateISODate(int year, int monthParam, int dayParam, Overflow overflow) {
         assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;

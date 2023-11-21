@@ -127,7 +127,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     public static JSTemporalPlainDateObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
                     int year, int month, int day, JSDynamicObject calendar,
                     Node node, InlinedBranchProfile errorBranch) {
-        if (!TemporalUtil.validateISODate(year, month, day)) {
+        if (!TemporalUtil.isValidISODate(year, month, day)) {
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
