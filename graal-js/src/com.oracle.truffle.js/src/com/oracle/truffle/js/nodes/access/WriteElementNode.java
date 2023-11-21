@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -520,7 +520,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1")
+        @Specialization(guards = "isObjectNode.executeBoolean(target)")
         protected static void doJSObjectLongIndex(Object target, long index, Object value, Object receiver, WriteElementNode root,
                         @Cached @Shared IsJSDynamicObjectNode isObjectNode,
                         @Cached @Shared JSObjectWriteElementTypeCacheNode objectHandler) {
@@ -528,7 +528,7 @@ public class WriteElementNode extends JSTargetableNode {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", replaces = {"doJSObjectLongIndex"})
+        @Specialization(guards = "isObjectNode.executeBoolean(target)", replaces = {"doJSObjectLongIndex"})
         protected static void doJSObject(Object target, Object index, Object value, Object receiver, WriteElementNode root,
                         @Cached @Shared IsJSDynamicObjectNode isObjectNode,
                         @Cached @Shared JSObjectWriteElementTypeCacheNode objectHandler) {

@@ -148,7 +148,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         abstract Object execute(JSContext context, JSRealm callerRealm, Object value);
 
-        @Specialization(guards = "isCallable.executeBoolean(value)", limit = "1")
+        @Specialization(guards = "isCallable.executeBoolean(value)")
         protected final Object objectCallable(JSContext context, JSRealm callerRealm, Object value,
                         @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("create(context)") CopyFunctionNameAndLengthNode copyNameAndLengthNode) {

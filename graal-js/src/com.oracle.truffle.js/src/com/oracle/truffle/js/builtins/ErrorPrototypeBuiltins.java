@@ -140,7 +140,7 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }
 
-        @Specialization(guards = "isObjectNode.executeBoolean(errorObj)", limit = "1")
+        @Specialization(guards = "isObjectNode.executeBoolean(errorObj)")
         protected static Object toStringObject(Object errorObj,
                         @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
                         @Cached("create(NAME, false, getContext())") PropertyGetNode getNameNode,

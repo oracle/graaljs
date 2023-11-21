@@ -301,7 +301,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isObject.executeBoolean(callback)", "isCallable.executeBoolean(callback)"}, limit = "1")
+        @Specialization(guards = {"isObject.executeBoolean(callback)", "isCallable.executeBoolean(callback)"})
         protected Object dedentCallback(Object callback, @SuppressWarnings("unused") Object[] substitutions,
                         @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObject,
@@ -342,7 +342,7 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             return JSFunctionData.createCallOnly(context, new CallbackBody().getCallTarget(), 2, Strings.EMPTY_STRING);
         }
 
-        @Specialization(guards = {"isObject.executeBoolean(template)", "!isCallable.executeBoolean(template)"}, limit = "1")
+        @Specialization(guards = {"isObject.executeBoolean(template)", "!isCallable.executeBoolean(template)"})
         protected static Object dedentTemplate(Object template, Object[] substitutions,
                         @Bind("this") Node self,
                         @Bind("getContext()") JSContext context,

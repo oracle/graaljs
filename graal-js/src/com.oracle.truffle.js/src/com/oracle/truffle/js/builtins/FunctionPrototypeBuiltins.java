@@ -316,7 +316,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return boundFunction;
         }
 
-        @Specialization(guards = {"!isJSFunction(thisObj)", "isCallableNode.executeBoolean(thisObj)"}, limit = "1")
+        @Specialization(guards = {"!isJSFunction(thisObj)", "isCallableNode.executeBoolean(thisObj)"})
         protected final JSDynamicObject bindOther(Object thisObj, Object thisArg, Object[] args,
                         @SuppressWarnings("unused") @Cached @Shared IsCallableNode isCallableNode,
                         @Cached @Shared GetPrototypeNode getPrototypeNode,
@@ -395,7 +395,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isES2019OrLater()", "!isJSFunction(fnObj)", "isCallable.executeBoolean(fnObj)"}, limit = "1")
+        @Specialization(guards = {"isES2019OrLater()", "!isJSFunction(fnObj)", "isCallable.executeBoolean(fnObj)"})
         protected TruffleString toStringCallable(Object fnObj,
                         @Cached @Shared IsCallableNode isCallable,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
@@ -417,7 +417,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isES2019OrLater()", "!isCallable.executeBoolean(fnObj)"}, limit = "1")
+        @Specialization(guards = {"isES2019OrLater()", "!isCallable.executeBoolean(fnObj)"})
         protected TruffleString toStringNotCallable(Object fnObj,
                         @Cached @Shared IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(fnObj);

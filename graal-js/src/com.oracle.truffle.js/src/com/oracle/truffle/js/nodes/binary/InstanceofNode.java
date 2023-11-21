@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -287,7 +287,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return false;
         }
 
-        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSFunction(right)", "!isBoundFunction(right)"}, limit = "1")
+        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
         protected boolean doJSObject(JSDynamicObject left, JSDynamicObject right,
                         @Cached @Shared("isObjectNode") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached @Shared("getPrototype1Node") GetPrototypeNode getPrototype1Node,
@@ -327,7 +327,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return doJSObject4(left, ctorPrototype, getPrototype3Node, errorBranch);
         }
 
-        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSProxy(right)", "isCallableProxy(right)"}, limit = "1")
+        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSProxy(right)", "isCallableProxy(right)"})
         protected boolean doJSObjectProxy(JSDynamicObject left, JSDynamicObject right,
                         @Cached @Shared("isObjectNode") IsJSObjectNode isObjectNode,
                         @Cached @Shared("getPrototype1Node") GetPrototypeNode getPrototype1Node,
