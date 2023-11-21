@@ -1194,12 +1194,6 @@ public final class TemporalUtil {
         return Strings.concat(Strings.length(numberPart) >= 2 ? Strings.UC_M : Strings.UC_M0, numberPart);
     }
 
-    @TruffleBoundary
-    private static TruffleString buildISOMonthCode(long month) {
-        TruffleString monthCode = toZeroPaddedDecimalString(month, 2);
-        return Strings.concat(TemporalConstants.M, monthCode);
-    }
-
     public static JSTemporalTimeZoneObject createTemporalTimeZone(JSContext ctx, JSRealm realm, TruffleString identifier) {
         return createTemporalTimeZone(ctx, realm, ctx.getTemporalTimeZoneFactory().getPrototype(realm), identifier);
     }
@@ -1308,19 +1302,6 @@ public final class TemporalUtil {
                         date.getYear(), date.getMonth(), date.getDay(),
                         dtoi(timeResult2.getHours()), dtoi(timeResult2.getMinutes()), dtoi(timeResult2.getSeconds()),
                         dtoi(timeResult2.getMilliseconds()), dtoi(timeResult2.getMicroseconds()), dtoi(timeResult2.getNanoseconds()));
-    }
-
-    public static JSTemporalDurationRecord regulateTime(double hours, double minutes, double seconds, double milliseconds, double microseconds,
-                    double nanoseconds, Overflow overflow) {
-        assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
-        if (overflow == Overflow.CONSTRAIN) {
-            return constrainTime(dtoi(hours), dtoi(minutes), dtoi(seconds), dtoi(milliseconds), dtoi(microseconds), dtoi(nanoseconds));
-        } else {
-            if (!isValidTime(dtoi(hours), dtoi(minutes), dtoi(seconds), dtoi(milliseconds), dtoi(microseconds), dtoi(nanoseconds))) {
-                throw Errors.createRangeError("Given time outside the range.");
-            }
-            return JSTemporalDurationRecord.create(0, 0, 0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
-        }
     }
 
     public static JSTemporalDurationRecord regulateTime(int hours, int minutes, int seconds, int milliseconds, int microseconds,
@@ -1621,12 +1602,6 @@ public final class TemporalUtil {
             errorBranch.enter(node);
             throw Errors.createTypeError("rejecting calendar types");
         }
-    }
-
-    public static double remainder(double x, double y) {
-        double magnitude = x % y;
-        // assert Math.signum(y) == Math.signum(magnitude);
-        return magnitude;
     }
 
     public static double getPropertyFromRecord(JSTemporalDurationRecord d, UnitPlural unit) {
