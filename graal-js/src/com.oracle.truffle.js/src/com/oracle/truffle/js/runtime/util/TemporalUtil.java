@@ -1581,12 +1581,13 @@ public final class TemporalUtil {
     }
 
     public static RoundingMode negateTemporalRoundingMode(RoundingMode roundingMode) {
-        if (RoundingMode.CEIL == roundingMode) {
-            return RoundingMode.FLOOR;
-        } else if (RoundingMode.FLOOR == roundingMode) {
-            return RoundingMode.CEIL;
-        }
-        return roundingMode;
+        return switch (roundingMode) {
+            case CEIL -> RoundingMode.FLOOR;
+            case FLOOR -> RoundingMode.CEIL;
+            case HALF_FLOOR -> RoundingMode.HALF_CEIL;
+            case HALF_CEIL -> RoundingMode.HALF_FLOOR;
+            default -> roundingMode;
+        };
     }
 
     public static boolean calendarEquals(JSDynamicObject one, JSDynamicObject two, JSToStringNode toStringNode) {
