@@ -129,15 +129,19 @@ public final class TemporalConstants {
 
     public static final TruffleString FLOOR = Strings.constant("floor");
     public static final TruffleString CEIL = Strings.constant("ceil");
+    public static final TruffleString EXPAND = Strings.constant("expand");
     public static final TruffleString TRUNC = Strings.constant("trunc");
+    public static final TruffleString HALF_FLOOR = Strings.constant("halfFloor");
+    public static final TruffleString HALF_CEIL = Strings.constant("halfCeil");
     public static final TruffleString HALF_EXPAND = Strings.constant("halfExpand");
+    public static final TruffleString HALF_TRUNC = Strings.constant("halfTrunc");
+    public static final TruffleString HALF_EVEN = Strings.constant("halfEven");
     public static final TruffleString ROUNDING_MODE = Strings.constant("roundingMode");
     public static final TruffleString ROUNDING_INCREMENT = Strings.constant("roundingIncrement");
 
     public static final TruffleString MERGE_FIELDS = Strings.constant("mergeFields");
     public static final TruffleString RELATIVE_TO = Strings.constant("relativeTo");
     public static final TruffleString LARGEST_UNIT = Strings.constant("largestUnit");
-
 
     public static final TruffleString UTC = Strings.constant("UTC");
 

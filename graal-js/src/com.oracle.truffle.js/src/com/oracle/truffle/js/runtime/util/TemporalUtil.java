@@ -51,9 +51,14 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.DISAMBIGUATIO
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.EARLIER;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ERA_YEAR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.EXPAND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.FLOOR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.GREGORY;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_CEIL;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EVEN;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_FLOOR;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_TRUNC;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.IGNORE;
@@ -260,7 +265,7 @@ public final class TemporalUtil {
     public static final List<TruffleString> listConstrainReject = List.of(CONSTRAIN, REJECT);
     public static final List<TruffleString> listTimeZone = List.of(TIME_ZONE);
     public static final List<TruffleString> listTimeZoneOffset = List.of(TIME_ZONE, OFFSET);
-    public static final List<TruffleString> listRoundingMode = List.of(CEIL, FLOOR, TRUNC, HALF_EXPAND);
+    public static final List<TruffleString> listRoundingMode = List.of(CEIL, FLOOR, EXPAND, TRUNC, HALF_FLOOR, HALF_CEIL, HALF_EXPAND, HALF_TRUNC, HALF_EVEN);
     public static final List<TruffleString> listOffset = List.of(PREFER, USE, IGNORE, REJECT);
     public static final List<TruffleString> listDisambiguation = List.of(COMPATIBLE, EARLIER, LATER, REJECT);
 
@@ -3673,10 +3678,20 @@ public final class TemporalUtil {
             return RoundingMode.FLOOR;
         } else if (equalNode.execute(mode, CEIL, TruffleString.Encoding.UTF_16)) {
             return RoundingMode.CEIL;
-        } else if (equalNode.execute(mode, HALF_EXPAND, TruffleString.Encoding.UTF_16)) {
-            return RoundingMode.HALF_EXPAND;
+        } else if (equalNode.execute(mode, EXPAND, TruffleString.Encoding.UTF_16)) {
+            return RoundingMode.EXPAND;
         } else if (equalNode.execute(mode, TRUNC, TruffleString.Encoding.UTF_16)) {
             return RoundingMode.TRUNC;
+        } else if (equalNode.execute(mode, HALF_FLOOR, TruffleString.Encoding.UTF_16)) {
+            return RoundingMode.HALF_FLOOR;
+        } else if (equalNode.execute(mode, HALF_CEIL, TruffleString.Encoding.UTF_16)) {
+            return RoundingMode.HALF_CEIL;
+        } else if (equalNode.execute(mode, HALF_EXPAND, TruffleString.Encoding.UTF_16)) {
+            return RoundingMode.HALF_EXPAND;
+        } else if (equalNode.execute(mode, HALF_TRUNC, TruffleString.Encoding.UTF_16)) {
+            return RoundingMode.HALF_TRUNC;
+        } else if (equalNode.execute(mode, HALF_EVEN, TruffleString.Encoding.UTF_16)) {
+            return RoundingMode.HALF_EVEN;
         }
         throw Errors.createTypeError("unexpected roundingMode");
     }
