@@ -67,6 +67,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -98,6 +99,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
     @Specialization
     protected JSTemporalDurationRecord add(double y1, double mon1, double w1, double d1, double h1, double min1, double s1, double ms1, double mus1, double ns1,
                     double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, JSDynamicObject relativeTo,
+                    @Cached TemporalRoundDurationNode roundDurationNode,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedBranchProfile relativeToUndefinedBranch,
                     @Cached InlinedBranchProfile relativeToPlainDateBranch,
@@ -154,10 +156,9 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
                             dtol(y2), dtol(mon2), dtol(w2), dtol(d2), dtol(h2), dtol(min2), dtol(s2), dtol(ms2), dtol(mus2), dtol(ns2));
             if (largetUnitYMWDProfile.profile(this,
                             TemporalUtil.Unit.YEAR != largestUnit && TemporalUtil.Unit.MONTH != largestUnit && TemporalUtil.Unit.WEEK != largestUnit && TemporalUtil.Unit.DAY != largestUnit)) {
-                long diffNs = TemporalUtil.bitol(TemporalUtil.differenceInstant(zdt.getNanoseconds(), endNs, 1d, TemporalUtil.Unit.NANOSECOND, TemporalUtil.RoundingMode.HALF_EXPAND));
-                JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, realm, namesNode, 0, 0, 0, 0, 0, 0, diffNs, largestUnit);
-                return TemporalUtil.createDurationRecord(0, 0, 0, 0, result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
-                                result.getNanoseconds());
+                TimeDurationRecord result = TemporalUtil.differenceInstant(zdt.getNanoseconds(), endNs, 1d, TemporalUtil.Unit.NANOSECOND, largestUnit, TemporalUtil.RoundingMode.HALF_EXPAND,
+                                roundDurationNode);
+                return TemporalUtil.createDurationRecord(0, 0, 0, 0, result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(), result.nanoseconds());
             } else {
                 return TemporalUtil.differenceZonedDateTime(ctx, realm, namesNode, zdt.getNanoseconds(), endNs, timeZone, calendar, largestUnit);
             }

@@ -164,6 +164,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.NanosecondsToDaysResult;
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
+import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeRecord;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -2019,6 +2020,110 @@ public final class TemporalUtil {
         return JSTemporalDurationRecord.create(0, 0, d, h * sign, min * sign, s * sign, ms * sign, mus * sign, sign < 0 ? bitod(nsBi2.negate()) : bitod(nsBi2));
     }
 
+    private static TimeDurationRecord balanceTimeDuration(double days, double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds, Unit largestUnit) {
+        TimeDurationRecord result = balancePossiblyInfiniteTimeDuration(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, largestUnit);
+        if (result.isOverflow()) {
+            throw Errors.createRangeError("Time is infinite");
+        }
+        return result;
+    }
+
+    private static TimeDurationRecord balancePossiblyInfiniteTimeDuration(double days, double hours, double minutes, double seconds,
+                    double milliseconds, double microseconds, double nanoseconds, Unit largestUnit) {
+        BigInteger ns = totalDurationNanoseconds(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0).bigIntegerValue();
+        BigInteger d = BigInteger.ZERO;
+        BigInteger h = BigInteger.ZERO;
+        BigInteger min = BigInteger.ZERO;
+        BigInteger s = BigInteger.ZERO;
+        BigInteger ms = BigInteger.ZERO;
+        BigInteger us = BigInteger.ZERO;
+        double sign = ns.signum() < 0 ? -1 : 1;
+        ns = ns.abs();
+        switch (largestUnit) {
+            case YEAR, MONTH, WEEK, DAY -> {
+                var us_ns = ns.divideAndRemainder(BI_1000);
+                us = us_ns[0];
+                ns = us_ns[1];
+                var ms_us = us.divideAndRemainder(BI_1000);
+                ms = ms_us[0];
+                us = ms_us[1];
+                var s_ms = ms.divideAndRemainder(BI_1000);
+                s = s_ms[0];
+                ms = s_ms[1];
+                var min_s = s.divideAndRemainder(BI_60);
+                min = min_s[0];
+                s = min_s[1];
+                var h_min = min.divideAndRemainder(BI_60);
+                h = h_min[0];
+                min = h_min[1];
+                var d_h = h.divideAndRemainder(BI_24);
+                d = d_h[0];
+                h = d_h[1];
+            }
+            case HOUR -> {
+                var us_ns = ns.divideAndRemainder(BI_1000);
+                us = us_ns[0];
+                ns = us_ns[1];
+                var ms_us = us.divideAndRemainder(BI_1000);
+                ms = ms_us[0];
+                us = ms_us[1];
+                var s_ms = ms.divideAndRemainder(BI_1000);
+                s = s_ms[0];
+                ms = s_ms[1];
+                var min_s = s.divideAndRemainder(BI_60);
+                min = min_s[0];
+                s = min_s[1];
+                var h_min = min.divideAndRemainder(BI_60);
+                h = h_min[0];
+                min = h_min[1];
+            }
+            case MINUTE -> {
+                var us_ns = ns.divideAndRemainder(BI_1000);
+                us = us_ns[0];
+                ns = us_ns[1];
+                var ms_us = us.divideAndRemainder(BI_1000);
+                ms = ms_us[0];
+                us = ms_us[1];
+                var s_ms = ms.divideAndRemainder(BI_1000);
+                s = s_ms[0];
+                ms = s_ms[1];
+                var min_s = s.divideAndRemainder(BI_60);
+                min = min_s[0];
+                s = min_s[1];
+            }
+            case SECOND -> {
+                var us_ns = ns.divideAndRemainder(BI_1000);
+                us = us_ns[0];
+                ns = us_ns[1];
+                var ms_us = us.divideAndRemainder(BI_1000);
+                ms = ms_us[0];
+                us = ms_us[1];
+                var s_ms = ms.divideAndRemainder(BI_1000);
+                s = s_ms[0];
+                ms = s_ms[1];
+            }
+            case MILLISECOND -> {
+                var us_ns = ns.divideAndRemainder(BI_1000);
+                us = us_ns[0];
+                ns = us_ns[1];
+                var ms_us = us.divideAndRemainder(BI_1000);
+                ms = ms_us[0];
+                us = ms_us[1];
+            }
+            case MICROSECOND -> {
+                var us_ns = ns.divideAndRemainder(BI_1000);
+                us = us_ns[0];
+                ns = us_ns[1];
+            }
+            case NANOSECOND -> {
+            }
+            default -> throw Errors.shouldNotReachHereUnexpectedValue(largestUnit);
+        }
+        return new TimeDurationRecord(d.doubleValue() * sign,
+                        h.doubleValue() * sign, min.doubleValue() * sign, s.doubleValue() * sign,
+                        ms.doubleValue() * sign, us.doubleValue() * sign, ns.doubleValue() * sign);
+    }
+
     public static JSDynamicObject toDynamicObject(Object obj) {
         if (obj instanceof JSDynamicObject) {
             return (JSDynamicObject) obj;
@@ -2740,8 +2845,19 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static BigInteger differenceInstant(BigInt ns1, BigInt ns2, double roundingIncrement, Unit smallestUnit, RoundingMode roundingMode) {
-        return roundTemporalInstant(ns2.subtract(ns1), roundingIncrement, smallestUnit, roundingMode);
+    public static TimeDurationRecord differenceInstant(BigInt ns1, BigInt ns2, double roundingIncrement, Unit smallestUnit, Unit largestUnit, RoundingMode roundingMode,
+                    TemporalRoundDurationNode roundDuration) {
+        BigInteger difference = ns2.subtract(ns1).bigIntegerValue();
+        int nanoseconds = difference.remainder(BI_1000).intValue();
+        int microseconds = difference.divide(BI_1000).remainder(BI_1000).intValue();
+        int milliseconds = difference.divide(BI_10_POW_6).remainder(BI_1000).intValue();
+        long seconds = difference.divide(BI_10_POW_9).longValue();
+        if (smallestUnit == Unit.NANOSECOND && roundingIncrement == 1) {
+            return balanceTimeDuration(0, 0, 0, seconds, milliseconds, microseconds, nanoseconds, largestUnit);
+        }
+        var roundResult = roundDuration.execute(0, 0, 0, 0, 0, 0, seconds, milliseconds, microseconds, nanoseconds, roundingIncrement, smallestUnit, roundingMode, Undefined.instance);
+        return balanceTimeDuration(0, roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
+                        roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(), largestUnit);
     }
 
     @TruffleBoundary
