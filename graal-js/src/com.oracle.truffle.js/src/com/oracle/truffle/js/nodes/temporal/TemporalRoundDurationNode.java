@@ -44,8 +44,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
-import java.math.BigDecimal;
-
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -92,7 +90,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
 
     // @Cached parameters create unused variable in generated code, see GR-37931
     @Specialization
-    protected JSTemporalDurationRecord add(double years, double months, double weeks, double d, double h, double min,
+    protected JSTemporalDurationRecord round(double years, double months, double weeks, double d, double h, double min,
                     double sec, double milsec, double micsec, double nsec, double increment,
                     TemporalUtil.Unit unit, TemporalUtil.RoundingMode roundingMode, JSDynamicObject relTo,
                     @Cached InlinedBranchProfile errorBranch,
@@ -122,7 +120,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         JSTemporalPlainDateObject plainRelativeTo = null;
         JSTemporalZonedDateTimeObject zonedRelativeTo = null;
         JSDynamicObject calendar = Undefined.instance;
-        BigDecimal fractionalSeconds = BigDecimal.ZERO;
+        double fractionalSeconds = 0.0;
 
         if (hasRelativeTo.profile(this, relativeTo != Undefined.instance)) {
             if (relativeTo instanceof JSTemporalZonedDateTimeObject zonedDateTime) {
@@ -147,8 +145,9 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
             milliseconds = 0;
             microseconds = 0;
             nanoseconds = 0;
+            // fractionalSeconds is not used below.
         } else {
-            fractionalSeconds = TemporalUtil.roundDurationCalculateFractionalSeconds(seconds, microseconds, milliseconds, nanoseconds);
+            fractionalSeconds = TemporalUtil.roundDurationCalculateFractionalSeconds(seconds, microseconds, milliseconds, nanoseconds).doubleValue();
         }
         switch (unit) {
             case YEAR:
@@ -216,20 +215,18 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     private static JSTemporalDurationRecord getUnitMinute(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
-                    final double hours, final double minutesP, BigDecimal fractionalSeconds) {
+                    final double hours, final double minutesP, double fractionalSeconds) {
         double minutes = minutesP;
-        double secondsPart = TemporalUtil.roundDurationFractionalDecondsDiv60(fractionalSeconds);
-        double fractionalMinutes = secondsPart + minutes;
+        double fractionalMinutes = (fractionalSeconds / 60) + minutes;
         minutes = TemporalUtil.roundNumberToIncrement(fractionalMinutes, increment, roundingMode);
         double remainder = fractionalMinutes - minutes;
         return JSTemporalDurationRecord.createWeeksRemainder(years, months, weeks, days, hours, minutes, 0, 0, 0, 0, remainder);
     }
 
     private static JSTemporalDurationRecord getUnitHour(double increment, TemporalUtil.RoundingMode roundingMode, final double years, final double months, final double weeks, final double days,
-                    final double hoursP, final double minutes, BigDecimal fractionalSeconds) {
+                    final double hoursP, final double minutes, double fractionalSeconds) {
         double hours = hoursP;
-        double secondsPart = TemporalUtil.roundDurationFractionalDecondsDiv60(fractionalSeconds);
-        double fractionalHours = ((secondsPart + minutes) / 60.0) + hours;
+        double fractionalHours = (((fractionalSeconds / 60) + minutes) / 60) + hours;
         hours = TemporalUtil.roundNumberToIncrement(fractionalHours, increment, roundingMode);
         double remainder = fractionalHours - hours;
         return JSTemporalDurationRecord.createWeeksRemainder(years, months, weeks, days, hours, 0, 0, 0, 0, 0, remainder);
@@ -320,11 +317,10 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private static JSTemporalDurationRecord getUnitSecond(double increment, TemporalUtil.RoundingMode roundingMode, double years, double months, double weeks, double days, double hours,
-                    double minutes,
-                    BigDecimal fractionalSeconds) {
-        double seconds = TemporalUtil.bitod(TemporalUtil.roundNumberToIncrement(fractionalSeconds, new BigDecimal(increment), roundingMode));
-        double remainder = TemporalUtil.roundDurationFractionalSecondsSubtract(seconds, fractionalSeconds);
+    private static JSTemporalDurationRecord getUnitSecond(double increment, TemporalUtil.RoundingMode roundingMode, double years, double months, double weeks, double days,
+                    double hours, double minutes, double fractionalSeconds) {
+        double seconds = TemporalUtil.roundNumberToIncrement(fractionalSeconds, increment, roundingMode);
+        double remainder = fractionalSeconds - seconds;
         return JSTemporalDurationRecord.createWeeksRemainder(years, months, weeks, days, hours, minutes, seconds, 0, 0, 0, remainder);
     }
 

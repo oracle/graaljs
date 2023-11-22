@@ -2171,16 +2171,6 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static double roundDurationFractionalSecondsSubtract(double seconds, BigDecimal fractionalSeconds) {
-        return fractionalSeconds.subtract(BigDecimal.valueOf(seconds)).doubleValue();
-    }
-
-    @TruffleBoundary
-    public static double roundDurationFractionalDecondsDiv60(BigDecimal fractionalSeconds) {
-        return fractionalSeconds.divide(BigDecimal.valueOf(60), mc_20_floor).doubleValue();
-    }
-
-    @TruffleBoundary
     public static BigDecimal roundDurationCalculateFractionalSeconds(double seconds, double microseconds, double milliseconds, double nanoseconds) {
         BigDecimal part1 = BigDecimal.valueOf(nanoseconds).multiply(BD_10_POW_M_9);
         BigDecimal part2 = BigDecimal.valueOf(microseconds).multiply(BD_10_POW_M_6);
