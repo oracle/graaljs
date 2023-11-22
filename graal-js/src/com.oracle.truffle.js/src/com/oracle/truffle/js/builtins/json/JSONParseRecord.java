@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.builtins.json;
 
+import java.util.ArrayList;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -52,15 +53,15 @@ public record JSONParseRecord(
                 List<JSONParseRecord> elements,
                 EconomicMap<TruffleString, JSONParseRecord> entries) {
 
-    public JSONParseRecord(Object value, TruffleString source) {
-        this(value, source, List.of(), EconomicMap.emptyMap());
+    public static JSONParseRecord forLiteral(Object value, TruffleString source) {
+        return new JSONParseRecord(value, source, List.of(), EconomicMap.emptyMap());
     }
 
-    public JSONParseRecord(Object value, List<JSONParseRecord> elements) {
-        this(value, null, elements, EconomicMap.emptyMap());
+    public static JSONParseRecord forArray(Object value) {
+        return new JSONParseRecord(value, null, new ArrayList<>(), EconomicMap.emptyMap());
     }
 
-    public JSONParseRecord(Object value, EconomicMap<TruffleString, JSONParseRecord> entries) {
-        this(value, null, List.of(), entries);
+    public static JSONParseRecord forObject(Object value) {
+        return new JSONParseRecord(value, null, List.of(), EconomicMap.create());
     }
 }
