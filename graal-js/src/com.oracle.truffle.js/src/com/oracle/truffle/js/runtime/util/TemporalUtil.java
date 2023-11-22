@@ -810,8 +810,8 @@ public final class TemporalUtil {
         return Math.min(Math.max(value, minimum), maximum);
     }
 
-    public static UnsignedRoundingMode getUnsignedRoundingMode(RoundingMode rm, boolean isNegative) {
-        switch (rm) {
+    public static UnsignedRoundingMode getUnsignedRoundingMode(RoundingMode roundingMode, boolean isNegative) {
+        switch (roundingMode) {
             case CEIL:
                 return isNegative ? UnsignedRoundingMode.ZERO : UnsignedRoundingMode.INFINITY;
             case FLOOR:
@@ -830,15 +830,16 @@ public final class TemporalUtil {
                 return UnsignedRoundingMode.HALF_ZERO;
             case HALF_EVEN:
                 return UnsignedRoundingMode.HALF_EVEN;
+            default:
+                return UnsignedRoundingMode.EMPTY;
         }
-        return UnsignedRoundingMode.EMPTY;
     }
 
     public static double applyUnsignedRoundingMode(double x, double r1, double r2, UnsignedRoundingMode urm) {
         if (x == r1) {
             return r1;
         }
-        assert r1 < x && x < r2;
+        assert r1 <= x && x <= r2;
         assert urm != UnsignedRoundingMode.EMPTY;
         if (urm == UnsignedRoundingMode.ZERO) {
             return r1;
@@ -870,68 +871,89 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static BigInteger roundNumberToIncrement(BigDecimal x, BigDecimal increment, RoundingMode roundingMode) {
-        assert roundingMode == RoundingMode.CEIL || roundingMode == RoundingMode.FLOOR || roundingMode == RoundingMode.TRUNC || roundingMode == RoundingMode.HALF_EXPAND;
-
-        // algorithm from polyfill
-        BigDecimal[] divRes = x.divideAndRemainder(increment);
-        BigDecimal quotient = divRes[0];
-        BigDecimal remainder = divRes[1];
-        int sign = remainder.signum() < 0 ? -1 : 1;
-
-        if (roundingMode == RoundingMode.CEIL) {
-            if (sign > 0) {
-                quotient = quotient.add(BigDecimal.ONE);
-            }
-        } else if (roundingMode == RoundingMode.FLOOR) {
-            if (sign < 0) {
-                quotient = quotient.add(BigDecimal.valueOf(-1));
-            }
-        } else if (roundingMode == RoundingMode.TRUNC) {
-            // divMod already is truncation
-        } else {
-            assert roundingMode == RoundingMode.HALF_EXPAND;
-            if (remainder.multiply(BigDecimal.valueOf(2)).abs().compareTo(increment) >= 0) {
-                quotient = quotient.add(BigDecimal.valueOf(sign));
-            }
-        }
-        BigDecimal result = quotient.multiply(increment);
-        return result.toBigInteger();
-    }
-
-    @TruffleBoundary
     public static double roundNumberToIncrement(double x, double increment, RoundingMode roundingMode) {
-        assert roundingMode == RoundingMode.CEIL || roundingMode == RoundingMode.FLOOR || roundingMode == RoundingMode.TRUNC || roundingMode == RoundingMode.HALF_EXPAND;
+        assert JSRuntime.isIntegralNumber(increment) : increment;
 
         double quotient = x / increment;
-        double rounded = 0;
-
-        if (roundingMode == RoundingMode.CEIL) {
-            rounded = -Math.floor(-quotient);
-        } else if (roundingMode == RoundingMode.FLOOR) {
-            rounded = Math.floor(quotient);
-        } else if (roundingMode == RoundingMode.TRUNC) {
-            if (quotient > 0) {
-                rounded = Math.floor(quotient);
-            } else {
-                rounded = Math.ceil(quotient);
-            }
-        } else if (roundingMode == RoundingMode.HALF_EXPAND) {
-            rounded = roundHalfAwayFromZero(quotient);
+        boolean isNegative;
+        if (quotient < 0) {
+            isNegative = true;
+            quotient = -quotient;
+        } else {
+            isNegative = false;
         }
+        UnsignedRoundingMode unsignedRoundingMode = getUnsignedRoundingMode(roundingMode, isNegative);
+
+        // Let r1 be the largest integer such that r1 <= quotient.
+        double r1 = Math.floor(quotient);
+        // Let r2 be the smallest integer such that r2 > quotient.
+        double r2 = r1 + 1;
+
+        double rounded = applyUnsignedRoundingMode(quotient, r1, r2, unsignedRoundingMode);
+        if (isNegative) {
+            rounded = -rounded;
+        }
+
         return rounded * increment;
     }
 
     @TruffleBoundary
-    public static double roundHalfAwayFromZero(double x) {
-        if (x >= 0) {
-            return Math.round(x);
-        } else {
-            return -Math.round(-x); // further away from zero
-        }
+    public static BigInteger roundNumberToIncrementAsIfPositive(BigDecimal x, BigDecimal increment, RoundingMode roundingMode) {
+        return roundNumberToIncrementAsIfPositiveAsBigDecimal(x, increment, roundingMode).toBigInteger();
     }
 
-    // 13.43
+    private static BigDecimal roundNumberToIncrementAsIfPositiveAsBigDecimal(BigDecimal x, BigDecimal increment, RoundingMode roundingMode) {
+        BigDecimal[] divRes = x.divideAndRemainder(increment);
+        BigDecimal quotient = divRes[0];
+        BigDecimal remainder = divRes[1];
+        int sign = remainder.signum();
+        if (sign == 0) {
+            // already a multiple of increment, no rounding needed.
+            return x;
+        }
+
+        UnsignedRoundingMode unsignedRoundingMode = getUnsignedRoundingMode(roundingMode, false);
+        BigDecimal r1 = sign < 0 ? quotient.subtract(BigDecimal.ONE) : quotient;
+        BigDecimal r2 = sign >= 0 ? quotient.add(BigDecimal.ONE) : quotient;
+        int half = compareHalf(remainder, increment);
+
+        BigDecimal rounded = switch (unsignedRoundingMode) {
+            // ("floor", "trunc")
+            case ZERO -> r1;
+            // ("ceil", "expand")
+            case INFINITY -> r2;
+            // ("halfFloor", "halfTrunc")
+            case HALF_ZERO -> half <= 0 ? r1 : r2;
+            // ("halfCeil", "halfExpand")
+            case HALF_INFINITY -> half < 0 ? r1 : r2;
+            // ("halfEven")
+            case HALF_EVEN -> {
+                if (half < 0) {
+                    yield r1;
+                } else if (half > 0) {
+                    yield r2;
+                } else {
+                    yield isEven(r1) ? r1 : r2;
+                }
+            }
+            default -> throw Errors.shouldNotReachHereUnexpectedValue(unsignedRoundingMode);
+        };
+
+        return rounded.multiply(increment);
+    }
+
+    /**
+     * Returns the equivalent of comparing the decimal part of the quotient against 0.5, but
+     * calculated from the division's remainder and divisor.
+     */
+    private static int compareHalf(BigDecimal remainder, BigDecimal divisor) {
+        return remainder.multiply(BigDecimal.valueOf(2)).abs().compareTo(divisor.abs());
+    }
+
+    private static boolean isEven(BigDecimal value) {
+        return !value.toBigInteger().testBit(0);
+    }
+
     @TruffleBoundary
     public static TruffleString parseTemporalCalendarString(TruffleString string) {
         JSTemporalParserRecord rec = (new TemporalParser(string)).parseCalendarString();
@@ -1428,12 +1450,8 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static BigInteger roundTemporalInstant(BigInt ns, double increment, Unit unit, RoundingMode roundingMode) {
-        return roundTemporalInstant(new BigDecimal(ns.bigIntegerValue()), increment, unit, roundingMode);
-    }
-
-    @TruffleBoundary
-    public static BigInteger roundTemporalInstant(BigDecimal ns, double increment, Unit unit, RoundingMode roundingMode) {
+    public static BigInt roundTemporalInstant(BigInt ns, double increment, Unit unit, RoundingMode roundingMode) {
+        assert JSRuntime.isIntegralNumber(increment) : increment;
         BigDecimal incrementNs = BigDecimal.valueOf(increment);
         if (Unit.HOUR == unit) {
             incrementNs = incrementNs.multiply(BigDecimal.valueOf(3_600_000_000_000L));
@@ -1446,10 +1464,13 @@ public final class TemporalUtil {
         } else if (Unit.MICROSECOND == unit) {
             incrementNs = incrementNs.multiply(BigDecimal.valueOf(1_000L));
         } else {
-            assert Unit.NANOSECOND == unit;
-
+            assert Unit.NANOSECOND == unit : unit;
+            if (incrementNs.compareTo(BigDecimal.ONE) == 0) {
+                return ns;
+            }
         }
-        return roundNumberToIncrement(ns, incrementNs, roundingMode);
+        var x = new BigDecimal(ns.bigIntegerValue());
+        return BigInt.fromBigInteger(roundNumberToIncrementAsIfPositive(x, incrementNs, roundingMode));
     }
 
     @TruffleBoundary
@@ -2904,9 +2925,9 @@ public final class TemporalUtil {
         Unit unit = unitParam == Unit.EMPTY ? Unit.NANOSECOND : unitParam;
         RoundingMode roundingMode = roundingModeParam == RoundingMode.EMPTY ? RoundingMode.TRUNC : roundingModeParam;
 
-        BigInteger ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), (long) increment, unit, roundingMode);
+        BigInt ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), (long) increment, unit, roundingMode);
         JSDynamicObject timeZone = zonedDateTime.getTimeZone();
-        JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, realm, new BigInt(ns));
+        JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, realm, ns);
         JSTemporalCalendarObject isoCalendar = getISO8601Calendar(ctx, realm);
         JSTemporalPlainDateTimeObject temporalDateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZone, instant, isoCalendar);
         TruffleString dateTimeString = JSTemporalPlainDateTime.temporalDateTimeToString(temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(),
