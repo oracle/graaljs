@@ -283,6 +283,8 @@ public final class TemporalUtil {
     public static final BigInteger BI_10_POW_9 = new BigInteger("1000000000"); // 10 ^ 9
     public static final BigInteger BI_10_POW_6 = new BigInteger("1000000"); // 10 ^ 6
     public static final BigInteger BI_1000 = new BigInteger("1000");  // 10 ^ 3
+    public static final BigInteger BI_24 = BigInteger.valueOf(24);
+    public static final BigInteger BI_60 = BigInteger.valueOf(60);
 
     public static final BigDecimal BD_10 = new BigDecimal("10");
     public static final BigDecimal BD_60 = new BigDecimal("60");
@@ -2295,7 +2297,7 @@ public final class TemporalUtil {
             return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }
         JSTemporalZonedDateTimeObject relativeTo = (JSTemporalZonedDateTimeObject) relativeToParam;
-        long timeRemainderNs = dtol(totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0));
+        long timeRemainderNs = totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0).longValue();
         int direction = Long.signum(timeRemainderNs);
         BigInt dayStart = addZonedDateTime(ctx, realm,
                         relativeTo.getNanoseconds(), relativeTo.getTimeZone(), relativeTo.getCalendar(),
@@ -2316,19 +2318,22 @@ public final class TemporalUtil {
                         atd.getHours(), atd.getMinutes(), atd.getSeconds(), atd.getMilliseconds(), atd.getMicroseconds(), atd.getNanoseconds());
     }
 
+    private static BigInteger dtobi(double d) {
+        return new BigDecimal(d).toBigInteger();
+    }
+
     // 7.5.12
-    public static double totalDurationNanoseconds(double days, double hours, double minutes, double seconds, double milliseconds,
+    public static BigInt totalDurationNanoseconds(double days, double hours, double minutes, double seconds, double milliseconds,
                     double microseconds, double nanoseconds, double offsetShift) {
-        double ns = nanoseconds;
-        if (days != 0) {
-            ns -= offsetShift;
-        }
-        double h = hours + days * 24;
-        double min = minutes + h * 60;
-        double s = seconds + min * 60;
-        double ms = milliseconds + s * 1000;
-        double mus = microseconds + ms * 1000;
-        return ns + mus * 1000; // TODO loss in precision?
+        double nanosecondsOff = days == 0 ? nanoseconds : nanoseconds - offsetShift;
+        BigInteger d = dtobi(days).multiply(BI_24);
+        BigInteger h = dtobi(hours).add(d);
+        BigInteger min = dtobi(minutes).add(h.multiply(BI_60));
+        BigInteger s = dtobi(seconds).add(min.multiply(BI_60));
+        BigInteger ms = dtobi(milliseconds).add(s.multiply(BI_1000));
+        BigInteger us = dtobi(microseconds).add(ms.multiply(BI_1000));
+        BigInteger ns = dtobi(nanosecondsOff).add(us.multiply(BI_1000));
+        return BigInt.fromBigInteger(ns);
     }
 
     // used by balanceDuration. offsetShift == 0

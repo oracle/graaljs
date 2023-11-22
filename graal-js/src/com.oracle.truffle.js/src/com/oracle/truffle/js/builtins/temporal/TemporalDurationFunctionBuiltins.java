@@ -51,6 +51,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
+import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
@@ -176,21 +177,15 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
                 days1 = one.getDays();
                 days2 = two.getDays();
             }
-            double ns1 = TemporalUtil.totalDurationNanoseconds(days1,
+            BigInt ns1 = TemporalUtil.totalDurationNanoseconds(days1,
                             one.getHours(), one.getMinutes(), one.getSeconds(),
                             one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds(),
                             shift1);
-            double ns2 = TemporalUtil.totalDurationNanoseconds(days2,
+            BigInt ns2 = TemporalUtil.totalDurationNanoseconds(days2,
                             two.getHours(), two.getMinutes(), two.getSeconds(),
                             two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds(),
                             shift2);
-            if (ns1 > ns2) {
-                return 1;
-            }
-            if (ns1 < ns2) {
-                return -1;
-            }
-            return 0;
+            return ns1.compareTo(ns2);
         }
     }
 

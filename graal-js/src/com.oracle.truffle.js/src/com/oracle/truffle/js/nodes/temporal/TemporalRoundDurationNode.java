@@ -132,12 +132,12 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
             calendar = plainRelativeTo.getCalendar();
         }
         if (unitYMWD.profile(this, unit == TemporalUtil.Unit.YEAR || unit == TemporalUtil.Unit.MONTH || unit == TemporalUtil.Unit.WEEK || unit == TemporalUtil.Unit.DAY)) {
-            nanoseconds = TemporalUtil.totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
+            BigInt totalNs = TemporalUtil.totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
             JSDynamicObject intermediate = Undefined.instance;
             if (zonedRelativeTo != null) {
                 intermediate = TemporalUtil.moveRelativeZonedDateTime(ctx, realm, zonedRelativeTo, dtol(years), dtol(months), dtol(weeks), dtol(days));
             }
-            NanosecondsToDaysResult result = TemporalUtil.nanosecondsToDays(ctx, realm, namesNode, BigInt.valueOf(dtol(nanoseconds)), intermediate);
+            NanosecondsToDaysResult result = TemporalUtil.nanosecondsToDays(ctx, realm, namesNode, totalNs, intermediate);
             days = calculateDays(days, result);
             hours = 0;
             minutes = 0;
