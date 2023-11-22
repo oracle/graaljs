@@ -3022,10 +3022,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/compare/calendar-possibly-required.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/compare/constructor-in-calendar-fields.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -3033,10 +3029,6 @@
     "filePath" : "built-ins/Temporal/Duration/compare/duplicate-calendar-fields.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/compare/exhaustive.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-23"
   }, {
     "filePath" : "built-ins/Temporal/Duration/compare/instances-identical.js",
     "status" : "FAIL",
@@ -3550,10 +3542,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-12-12"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/toString/throws-when-rounded-duration-is-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/balance-negative-result.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -3810,17 +3798,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/round/rounding-direction.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/round/roundingincrement-non-integer.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-02-13"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/round/roundingmode-ceil.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/round/roundingmode-expand.js",
     "status" : "FAIL",
@@ -3886,10 +3866,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-12-12"
   }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/since/roundingmode-ceil.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/since/roundingmode-expand.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -3925,10 +3901,6 @@
     "filePath" : "built-ins/Temporal/Instant/prototype/toString/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-12-12"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/toString/rounding-direction.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/toString/roundingmode-expand.js",
     "status" : "FAIL",
@@ -4109,10 +4081,6 @@
     "filePath" : "built-ins/Temporal/Instant/prototype/until/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-12-12"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/until/roundingmode-ceil.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
   }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/until/roundingmode-expand.js",
     "status" : "FAIL",
@@ -9762,10 +9730,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-12-12"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/toString/rounding-direction.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/toString/roundingmode-expand.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -11461,10 +11425,6 @@
     "comment" : "new failures 2023-11-17"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/zoneddatetime-dst-corner-cases.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/Duration/old/compare-no-precision-loss.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
