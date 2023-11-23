@@ -59,7 +59,9 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -145,12 +147,6 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             var relativeTo = toRelativeTemporalObjectNode.execute(options);
             JSRealm realm = getRealm();
-            double shift1 = TemporalUtil.calculateOffsetShift(getContext(), realm, relativeTo,
-                            one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
-                            0, 0, 0, 0, 0, 0);
-            double shift2 = TemporalUtil.calculateOffsetShift(getContext(), realm, relativeTo,
-                            two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(),
-                            0, 0, 0, 0, 0, 0);
 
             JSTemporalPlainDateObject plainRelativeTo;
             boolean calendarUnitsPresent = one.getYears() != 0 || two.getYears() != 0 ||
@@ -167,16 +163,19 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             }
 
             if (relativeTo instanceof JSTemporalZonedDateTimeObject zonedRelativeTo && (calendarUnitsPresent || one.getDays() != 0 || two.getDays() != 0)) {
+                var timeZone = zonedRelativeTo.getTimeZone();
+                var instant = JSTemporalInstant.create(getContext(), realm, zonedRelativeTo.getNanoseconds());
+                JSTemporalPlainDateTimeObject precalculatedPlainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, calendar);
                 var after1 = TemporalUtil.addZonedDateTime(getContext(), realm,
-                                zonedRelativeTo.getNanoseconds(), zonedRelativeTo.getTimeZone(), zonedRelativeTo.getCalendar(),
+                                zonedRelativeTo.getNanoseconds(), timeZone, zonedRelativeTo.getCalendar(),
                                 dtol(one.getYears()), dtol(one.getMonths()), dtol(one.getWeeks()), dtol(one.getDays()),
                                 dtol(one.getHours()), dtol(one.getMinutes()), dtol(one.getSeconds()),
-                                dtol(one.getMilliseconds()), dtol(one.getMicroseconds()), dtol(one.getNanoseconds()));
+                                dtol(one.getMilliseconds()), dtol(one.getMicroseconds()), dtol(one.getNanoseconds()), precalculatedPlainDateTime);
                 var after2 = TemporalUtil.addZonedDateTime(getContext(), realm,
-                                zonedRelativeTo.getNanoseconds(), zonedRelativeTo.getTimeZone(), zonedRelativeTo.getCalendar(),
+                                zonedRelativeTo.getNanoseconds(), timeZone, zonedRelativeTo.getCalendar(),
                                 dtol(two.getYears()), dtol(two.getMonths()), dtol(two.getWeeks()), dtol(two.getDays()),
                                 dtol(two.getHours()), dtol(two.getMinutes()), dtol(two.getSeconds()),
-                                dtol(two.getMilliseconds()), dtol(two.getMicroseconds()), dtol(two.getNanoseconds()));
+                                dtol(two.getMilliseconds()), dtol(two.getMicroseconds()), dtol(two.getNanoseconds()), precalculatedPlainDateTime);
                 return after1.compareTo(after2);
             } else if (relativeTo instanceof JSTemporalPlainDateObject plainDate) {
                 plainRelativeTo = plainDate;
@@ -198,12 +197,10 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             }
             BigInt ns1 = TemporalUtil.totalDurationNanoseconds(days1,
                             one.getHours(), one.getMinutes(), one.getSeconds(),
-                            one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds(),
-                            shift1);
+                            one.getMilliseconds(), one.getMicroseconds(), one.getNanoseconds());
             BigInt ns2 = TemporalUtil.totalDurationNanoseconds(days2,
                             two.getHours(), two.getMinutes(), two.getSeconds(),
-                            two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds(),
-                            shift2);
+                            two.getMilliseconds(), two.getMicroseconds(), two.getNanoseconds());
             return ns1.compareTo(ns2);
         }
     }

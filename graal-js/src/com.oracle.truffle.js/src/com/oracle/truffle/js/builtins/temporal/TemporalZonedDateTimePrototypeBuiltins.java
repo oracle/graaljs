@@ -702,7 +702,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             sign * dtol(duration.getMonths()),
                             sign * dtol(duration.getWeeks()), sign * dtol(duration.getDays()), sign * dtol(duration.getHours()), sign * dtol(duration.getMinutes()), sign * dtol(duration.getSeconds()),
                             sign * dtol(duration.getMilliseconds()),
-                            sign * dtol(duration.getMicroseconds()), toBigInt.executeBigInt(sign * duration.getNanoseconds()).bigIntegerValue(), options);
+                            sign * dtol(duration.getMicroseconds()), toBigInt.executeBigInt(sign * duration.getNanoseconds()).bigIntegerValue(),
+                            null, options);
             return JSTemporalZonedDateTime.create(getContext(), realm, epochNanoseconds, timeZone, calendar);
         }
 
@@ -778,7 +779,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
             JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
             JSTemporalDurationRecord difference = TemporalUtil.differenceZonedDateTime(getContext(), realm, namesNode,
-                            zonedDateTime.getNanoseconds(), other.getNanoseconds(), timeZone, calendar, largestUnit, untilOptions);
+                            zonedDateTime.getNanoseconds(), other.getNanoseconds(), timeZone, calendar, largestUnit,
+                            precalculatedPlainDateTime, untilOptions);
             JSTemporalDurationRecord roundResult = roundDurationNode.execute(difference.getYears(), difference.getMonths(), difference.getWeeks(),
                             difference.getDays(),
                             difference.getHours(), difference.getMinutes(), difference.getSeconds(),
@@ -844,7 +846,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             tdt.getYear(), tdt.getMonth(), tdt.getDay(), 0, 0, 0, 0, 0, 0, isoCalendar, this, errorBranch);
             JSTemporalInstantObject instantStart = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), realm, timeZone, dtStart, Disambiguation.COMPATIBLE);
             BigInt startNs = instantStart.getNanoseconds();
-            BigInt endNs = TemporalUtil.addZonedDateTime(getContext(), realm, startNs, timeZone, zonedDateTime.getCalendar(), 0, 0, 0, 1, 0, 0, 0, 0, 0, 0);
+            BigInt endNs = TemporalUtil.addDaysToZonedDateTime(getContext(), realm, instantStart, dtStart, timeZone, 1).epochNanoseconds();
             BigInt dayLengthNs = endNs.subtract(startNs);
             if (dayLengthNs.compareValueTo(0) == 0) {
                 errorBranch.enter(this);

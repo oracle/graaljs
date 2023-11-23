@@ -141,10 +141,10 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         double fractionalSeconds = 0.0;
 
         if (unitYMWD.profile(this, unit == Unit.YEAR || unit == Unit.MONTH || unit == Unit.WEEK || unit == Unit.DAY)) {
-            BigInt totalNs = TemporalUtil.totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
+            BigInt totalNs = TemporalUtil.totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
             JSTemporalZonedDateTimeObject intermediate = null;
             if (zonedRelativeTo != null) {
-                intermediate = TemporalUtil.moveRelativeZonedDateTime(ctx, realm, zonedRelativeTo, dtol(years), dtol(months), dtol(weeks), dtol(days));
+                intermediate = TemporalUtil.moveRelativeZonedDateTime(ctx, realm, zonedRelativeTo, dtol(years), dtol(months), dtol(weeks), dtol(days), precalculatedPlainDateTime);
             }
             NanosecondsToDaysResult result = TemporalUtil.nanosecondsToDays(ctx, realm, namesNode, totalNs, intermediate);
             days = calculateDays(days, result);

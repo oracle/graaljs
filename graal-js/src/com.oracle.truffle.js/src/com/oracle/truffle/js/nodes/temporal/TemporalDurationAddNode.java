@@ -150,16 +150,16 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
             relativeToZonedDateTimeBranch.enter(this);
             JSDynamicObject timeZone = zonedRelativeTo.getTimeZone();
             BigInt intermediateNs = TemporalUtil.addZonedDateTime(ctx, realm, zonedRelativeTo.getNanoseconds(), timeZone, calendar,
-                            dtol(y1), dtol(mon1), dtol(w1), dtol(d1), dtol(h1), dtol(min1), dtol(s1), dtol(ms1), dtol(mus1), dtol(ns1));
+                            dtol(y1), dtol(mon1), dtol(w1), dtol(d1), dtol(h1), dtol(min1), dtol(s1), dtol(ms1), dtol(mus1), dtol(ns1), precalculatedPlainDateTime);
             BigInt endNs = TemporalUtil.addZonedDateTime(ctx, realm, intermediateNs, timeZone, calendar,
-                            dtol(y2), dtol(mon2), dtol(w2), dtol(d2), dtol(h2), dtol(min2), dtol(s2), dtol(ms2), dtol(mus2), dtol(ns2));
+                            dtol(y2), dtol(mon2), dtol(w2), dtol(d2), dtol(h2), dtol(min2), dtol(s2), dtol(ms2), dtol(mus2), dtol(ns2), precalculatedPlainDateTime);
             if (largetUnitYMWDProfile.profile(this,
                             TemporalUtil.Unit.YEAR != largestUnit && TemporalUtil.Unit.MONTH != largestUnit && TemporalUtil.Unit.WEEK != largestUnit && TemporalUtil.Unit.DAY != largestUnit)) {
                 TimeDurationRecord result = TemporalUtil.differenceInstant(zonedRelativeTo.getNanoseconds(), endNs, 1d,
                                 TemporalUtil.Unit.NANOSECOND, largestUnit, TemporalUtil.RoundingMode.HALF_EXPAND, roundDurationNode);
                 return TemporalUtil.createDurationRecord(0, 0, 0, 0, result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(), result.nanoseconds());
             } else {
-                return TemporalUtil.differenceZonedDateTime(ctx, realm, namesNode, zonedRelativeTo.getNanoseconds(), endNs, timeZone, calendar, largestUnit);
+                return TemporalUtil.differenceZonedDateTime(ctx, realm, namesNode, zonedRelativeTo.getNanoseconds(), endNs, timeZone, calendar, largestUnit, precalculatedPlainDateTime);
             }
         } else {
             throw Errors.shouldNotReachHereUnexpectedValue(relativeTo);

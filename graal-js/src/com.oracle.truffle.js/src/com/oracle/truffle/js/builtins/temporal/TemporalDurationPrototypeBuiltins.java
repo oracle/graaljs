@@ -635,7 +635,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSDynamicObject intermediate = Undefined.instance;
             if (zonedRelativeTo != null) {
                 intermediate = TemporalUtil.moveRelativeZonedDateTime(getContext(), realm, zonedRelativeTo,
-                                dtol(unbalanceResult.getYears()), dtol(unbalanceResult.getMonths()), dtol(unbalanceResult.getWeeks()), 0);
+                                dtol(unbalanceResult.getYears()), dtol(unbalanceResult.getMonths()), dtol(unbalanceResult.getWeeks()), 0, precalculatedPlainDateTime);
             }
             JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), realm, namesNode,
                             unbalanceResult.getDays(), duration.getHours(), duration.getMinutes(),

@@ -2021,7 +2021,7 @@ public final class TemporalUtil {
             JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) relativeTo;
             // conversion set to fail. addZonedDateTime creates PlainDateTime that would fail anyway
             BigInt endNs = addZonedDateTime(ctx, realm, zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar(), 0, 0, 0, dtol(days, true), dtol(hours, true), dtol(minutes, true),
-                            dtol(seconds, true), dtol(milliseconds, true), dtol(microseconds, true), nanoseconds, Undefined.instance);
+                            dtol(seconds, true), dtol(milliseconds, true), dtol(microseconds, true), nanoseconds, null, Undefined.instance);
             nsBi = endNs.subtract(zdt.getNanoseconds());
             zonedRelativeTo = (JSTemporalZonedDateTimeObject) relativeTo;
         } else {
@@ -2110,7 +2110,7 @@ public final class TemporalUtil {
 
     private static TimeDurationRecord balancePossiblyInfiniteTimeDuration(double days, double hours, double minutes, double seconds,
                     double milliseconds, double microseconds, double nanoseconds, Unit largestUnit) {
-        BigInt ns = totalDurationNanoseconds(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
+        BigInt ns = totalDurationNanoseconds(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         return balancePossiblyInfiniteTimeDuration(ns, largestUnit);
     }
 
@@ -2294,12 +2294,14 @@ public final class TemporalUtil {
     }
 
     public static JSTemporalDurationRecord differenceZonedDateTime(JSContext ctx, JSRealm realm, EnumerableOwnPropertyNamesNode namesNode,
-                    BigInt ns1, BigInt ns2, JSDynamicObject timeZone, JSDynamicObject calendar, Unit largestUnit) {
-        return differenceZonedDateTime(ctx, realm, namesNode, ns1, ns2, timeZone, calendar, largestUnit, Undefined.instance);
+                    BigInt ns1, BigInt ns2, JSDynamicObject timeZone, JSDynamicObject calendar, Unit largestUnit,
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime) {
+        return differenceZonedDateTime(ctx, realm, namesNode, ns1, ns2, timeZone, calendar, largestUnit, precalculatedPlainDateTime, Undefined.instance);
     }
 
     public static JSTemporalDurationRecord differenceZonedDateTime(JSContext ctx, JSRealm realm, EnumerableOwnPropertyNamesNode namesNode,
-                    BigInt ns1, BigInt ns2, JSDynamicObject timeZone, JSDynamicObject calendar, Unit largestUnit, JSDynamicObject options) {
+                    BigInt ns1, BigInt ns2, JSDynamicObject timeZone, JSDynamicObject calendar, Unit largestUnit,
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSDynamicObject options) {
         if (ns1.equals(ns2)) {
             return JSTemporalDurationRecord.createWeeks(0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
         }
@@ -2312,7 +2314,7 @@ public final class TemporalUtil {
                         endDateTime.getYear(), endDateTime.getMonth(), endDateTime.getDay(), endDateTime.getHour(), endDateTime.getMinute(), endDateTime.getSecond(),
                         endDateTime.getMillisecond(), endDateTime.getMicrosecond(), endDateTime.getNanosecond(), calendar, largestUnit, options);
         BigInt intermediateNs = addZonedDateTime(ctx, realm, ns1, timeZone, calendar, dtol(dateDifference.getYears()), dtol(dateDifference.getMonths()), dtol(dateDifference.getWeeks()), 0, 0, 0, 0, 0,
-                        0, 0);
+                        0, 0, precalculatedPlainDateTime);
         BigInt timeRemainderNs = ns2.subtract(intermediateNs);
         JSTemporalZonedDateTimeObject intermediate = JSTemporalZonedDateTime.create(ctx, realm, intermediateNs, timeZone, calendar);
         NanosecondsToDaysResult result = nanosecondsToDays(ctx, realm, namesNode, timeRemainderNs, intermediate);
@@ -2520,15 +2522,15 @@ public final class TemporalUtil {
         return new NanosecondsToDaysResult(BigInteger.valueOf(days), nanoseconds, dayLengthNs.abs());
     }
 
-    private record AddDaysToZonedDateTimeResult(BigInt epochNanoseconds, JSTemporalInstantObject instant, JSTemporalPlainDateTimeObject dateTime) {
+    public record AddDaysToZonedDateTimeResult(BigInt epochNanoseconds, JSTemporalInstantObject instant, JSTemporalPlainDateTimeObject dateTime) {
     }
 
-    private static AddDaysToZonedDateTimeResult addDaysToZonedDateTime(JSContext ctx, JSRealm realm,
+    public static AddDaysToZonedDateTimeResult addDaysToZonedDateTime(JSContext ctx, JSRealm realm,
                     JSTemporalInstantObject instant, JSTemporalPlainDateTimeObject dateTime, JSDynamicObject timeZone, int days) {
         return addDaysToZonedDateTime(ctx, realm, instant, dateTime, timeZone, days, Overflow.CONSTRAIN);
     }
 
-    private static AddDaysToZonedDateTimeResult addDaysToZonedDateTime(JSContext ctx, JSRealm realm,
+    public static AddDaysToZonedDateTimeResult addDaysToZonedDateTime(JSContext ctx, JSRealm realm,
                     JSTemporalInstantObject instant, JSTemporalPlainDateTimeObject dateTime, JSDynamicObject timeZone, int days, Overflow overflow) {
         if (days == 0) {
             return new AddDaysToZonedDateTimeResult(instant.getNanoseconds(), instant, dateTime);
@@ -2558,11 +2560,11 @@ public final class TemporalUtil {
                         (unit == Unit.NANOSECOND && increment == 1)) {
             return JSTemporalDurationRecord.createWeeks(years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }
-        long timeRemainderNs = totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0).longValue();
+        long timeRemainderNs = totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds).longValue();
         int direction = Long.signum(timeRemainderNs);
         BigInt dayStart = addZonedDateTime(ctx, realm,
                         zonedRelativeTo.getNanoseconds(), zonedRelativeTo.getTimeZone(), zonedRelativeTo.getCalendar(),
-                        dtol(years), dtol(months), dtol(weeks), dtol(days), 0, 0, 0, 0, 0, 0);
+                        dtol(years), dtol(months), dtol(weeks), dtol(days), 0, 0, 0, 0, 0, 0, precalculatedPlainDateTime);
         JSTemporalInstantObject dayStartInstant = JSTemporalInstant.create(ctx, realm, dayStart);
         JSTemporalPlainDateTimeObject dayStartDateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, realm, zonedRelativeTo.getTimeZone(), dayStartInstant, zonedRelativeTo.getCalendar());
         var dayEnd = addDaysToZonedDateTime(ctx, realm, dayStartInstant, dayStartDateTime, zonedRelativeTo.getTimeZone(), direction);
@@ -2584,17 +2586,16 @@ public final class TemporalUtil {
         return new BigDecimal(d).toBigInteger();
     }
 
-    // 7.5.12
+    @TruffleBoundary
     public static BigInt totalDurationNanoseconds(double days, double hours, double minutes, double seconds, double milliseconds,
-                    double microseconds, double nanoseconds, double offsetShift) {
-        double nanosecondsOff = days == 0 ? nanoseconds : nanoseconds - offsetShift;
+                    double microseconds, double nanoseconds) {
         BigInteger d = dtobi(days).multiply(BI_24);
         BigInteger h = dtobi(hours).add(d);
         BigInteger min = dtobi(minutes).add(h.multiply(BI_60));
         BigInteger s = dtobi(seconds).add(min.multiply(BI_60));
         BigInteger ms = dtobi(milliseconds).add(s.multiply(BI_1000));
         BigInteger us = dtobi(microseconds).add(ms.multiply(BI_1000));
-        BigInteger ns = dtobi(nanosecondsOff).add(us.multiply(BI_1000));
+        BigInteger ns = dtobi(nanoseconds).add(us.multiply(BI_1000));
         return BigInt.fromBigInteger(ns);
     }
 
@@ -2608,23 +2609,6 @@ public final class TemporalUtil {
         double ms = milliseconds + s * 1000;
         double mus = microseconds + ms * 1000;
         return nanoseconds.add(BigDecimal.valueOf(mus).toBigInteger().multiply(BI_1000));
-    }
-
-    // 7.5.11
-    @TruffleBoundary
-    public static double calculateOffsetShift(JSContext ctx, JSRealm realm, JSDynamicObject relativeTo, double y, double mon, double w, double d, double h, double min,
-                    double s, double ms, double mus, double ns) {
-        if (!(isTemporalZonedDateTime(relativeTo))) {
-            return 0;
-        }
-        JSTemporalZonedDateTimeObject relativeToZDT = (JSTemporalZonedDateTimeObject) relativeTo;
-        JSDynamicObject instant = JSTemporalInstant.create(ctx, realm, relativeToZDT.getNanoseconds());
-        long offsetBefore = getOffsetNanosecondsFor(relativeToZDT.getTimeZone(), instant);
-        BigInt after = addZonedDateTime(ctx, realm, relativeToZDT.getNanoseconds(), relativeToZDT.getTimeZone(), relativeToZDT.getCalendar(), dtol(y), dtol(mon), dtol(w), dtol(d), dtol(h), dtol(min),
-                        dtol(s), dtol(ms), dtol(mus), dtol(ns));
-        JSDynamicObject instantAfter = JSTemporalInstant.create(ctx, realm, after);
-        long offsetAfter = getOffsetNanosecondsFor(relativeToZDT.getTimeZone(), instantAfter);
-        return offsetAfter - offsetBefore;
     }
 
     @TruffleBoundary
@@ -3398,20 +3382,24 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static BigInt addZonedDateTime(JSContext ctx, JSRealm realm, BigInt epochNanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar,
                     long years, long months, long weeks, long days,
-                    long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds) {
+                    long hours, long minutes, long seconds, long milliseconds, long microseconds, long nanoseconds,
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime) {
         return addZonedDateTime(ctx, realm, epochNanoseconds, timeZone, calendar, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, BigInteger.valueOf(nanoseconds),
-                        Undefined.instance);
+                        precalculatedPlainDateTime, Undefined.instance);
     }
 
     @TruffleBoundary
     public static BigInt addZonedDateTime(JSContext ctx, JSRealm realm, BigInt epochNanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar,
                     long years, long months, long weeks, long days,
-                    long hours, long minutes, long seconds, long milliseconds, long microseconds, BigInteger nanoseconds, JSDynamicObject options) {
+                    long hours, long minutes, long seconds, long milliseconds, long microseconds, BigInteger nanoseconds,
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime, JSDynamicObject options) {
         if (years == 0 && months == 0 && weeks == 0 && days == 0) {
             return addInstant(epochNanoseconds, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         }
         JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, realm, epochNanoseconds);
-        JSTemporalPlainDateTimeObject temporalDateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZone, instant, calendar);
+        JSTemporalPlainDateTimeObject temporalDateTime = precalculatedPlainDateTime != null
+                        ? precalculatedPlainDateTime
+                        : builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZone, instant, calendar);
         JSTemporalPlainDateObject datePart = JSTemporalPlainDate.create(ctx, realm, temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(), calendar, null,
                         InlinedBranchProfile.getUncached());
         JSTemporalDurationObject dateDuration = JSTemporalDuration.createTemporalDuration(ctx, realm, years, months, weeks, days, 0, 0, 0, 0, 0, 0, null, null);
@@ -3423,8 +3411,9 @@ public final class TemporalUtil {
         return addInstant(intermediateInstant.getNanoseconds(), hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
-    public static JSTemporalZonedDateTimeObject moveRelativeZonedDateTime(JSContext ctx, JSRealm realm, JSTemporalZonedDateTimeObject zdt, long years, long months, long weeks, long days) {
-        BigInt intermediateNs = addZonedDateTime(ctx, realm, zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar(), years, months, weeks, days, 0, 0, 0, 0, 0, 0);
+    public static JSTemporalZonedDateTimeObject moveRelativeZonedDateTime(JSContext ctx, JSRealm realm, JSTemporalZonedDateTimeObject zdt, long years, long months, long weeks, long days,
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime) {
+        BigInt intermediateNs = addZonedDateTime(ctx, realm, zdt.getNanoseconds(), zdt.getTimeZone(), zdt.getCalendar(), years, months, weeks, days, 0, 0, 0, 0, 0, 0, precalculatedPlainDateTime);
         return JSTemporalZonedDateTime.create(ctx, realm, intermediateNs, zdt.getTimeZone(), zdt.getCalendar());
     }
 
