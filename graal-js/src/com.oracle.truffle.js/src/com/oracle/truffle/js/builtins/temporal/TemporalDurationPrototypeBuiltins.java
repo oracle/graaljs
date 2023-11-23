@@ -427,11 +427,11 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 smallestUnitPresent = false;
                 smallestUnit = Unit.NANOSECOND;
             }
-            Unit defaultLargestUnit = TemporalUtil.defaultTemporalLargestUnit(duration.getYears(),
+            Unit existingLargestUnit = TemporalUtil.defaultTemporalLargestUnit(duration.getYears(),
                             duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
                             duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds());
-            defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(defaultLargestUnit, smallestUnit);
+            Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(existingLargestUnit, smallestUnit);
             Unit largestUnit = toLargestTemporalUnit(roundTo, TemporalUtil.listEmpty, null, null, equalNode, getOptionNode, this, errorBranch);
             if (largestUnit == Unit.EMPTY) {
                 largestUnitPresent = false;
@@ -441,7 +441,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             if (!smallestUnitPresent && !largestUnitPresent) {
                 errorBranch.enter(this);
-                throw Errors.createRangeError("unit expected");
+                throw Errors.createRangeError("at least one of smallestUnit or largestUnit is required");
             }
             JSRealm realm = getRealm();
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
@@ -451,6 +451,22 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(roundTo);
             boolean roundingGranularityIsNoop = smallestUnit == Unit.NANOSECOND && roundingIncrement == 1;
             boolean calendarUnitsPresent = duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0;
+            boolean hoursToDaysConversionMayOccur = (duration.getDays() != 0 && relativeTo instanceof JSTemporalZonedDateTimeObject) ||
+                            Math.abs(duration.getHours()) >= 24;
+            if (roundingGranularityIsNoop && largestUnit == existingLargestUnit && !calendarUnitsPresent && !hoursToDaysConversionMayOccur &&
+                            Math.abs(duration.getMinutes()) < 60 && Math.abs(duration.getSeconds()) < 60 &&
+                            Math.abs(duration.getMilliseconds()) < 1000 && Math.abs(duration.getMicroseconds()) < 1000 && Math.abs(duration.getNanoseconds()) < 1000) {
+                /*
+                 * The above conditions mean that the operation will have no effect: the smallest
+                 * unit and rounding increment will leave the total duration unchanged, and it can
+                 * be determined without calling a calendar or time zone method that no balancing
+                 * will take place.
+                 */
+                return JSTemporalDuration.createTemporalDuration(getContext(), realm,
+                                duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(),
+                                duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                                duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), this, errorBranch);
+            }
             JSTemporalPlainDateObject plainRelativeTo = null;
             JSTemporalPlainDateTimeObject precalculatedPlainDateTime = null;
             boolean plainDateTimeOrRelativeToWillBeUsed = !roundingGranularityIsNoop ||
