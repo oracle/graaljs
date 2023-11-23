@@ -302,7 +302,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalPlainDateTimeObject dateTime = toTemporalDateTime.execute(dateTimeParam, Undefined.instance);
             JSRealm realm = getRealm();
             if (timeZone.getNanoseconds() != null) {
-                BigInteger epochNanoseconds = TemporalUtil.getEpochFromISOParts(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
+                BigInteger epochNanoseconds = TemporalUtil.getUTCEpochNanoseconds(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(),
                                 dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
                 Object instant = JSTemporalInstant.create(getContext(), realm, new BigInt(epochNanoseconds.subtract(timeZone.getNanoseconds().bigIntegerValue())));
                 List<Object> list = new ArrayList<>();

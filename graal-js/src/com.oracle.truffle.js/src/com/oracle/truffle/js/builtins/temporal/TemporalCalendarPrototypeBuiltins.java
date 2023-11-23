@@ -60,7 +60,6 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -119,6 +118,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -452,8 +452,6 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     // 12.4.7
     public abstract static class JSTemporalCalendarDateAdd extends JSTemporalBuiltinOperation {
 
-        protected final ConditionProfile needConstrain = ConditionProfile.create();
-
         protected JSTemporalCalendarDateAdd(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -461,7 +459,6 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected Object dateAdd(JSTemporalCalendarObject calendar, Object dateObj, Object durationObj, Object optionsParam,
                         @Cached ToTemporalDurationNode toTemporalDurationNode,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached ToTemporalDateNode toTemporalDate,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
@@ -472,21 +469,11 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
             JSRealm realm = getRealm();
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), realm, namesNode, duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+            TimeDurationRecord balanceResult = TemporalUtil.balanceTimeDuration(duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
             ISODateRecord result = TemporalUtil.addISODate(date.getYear(), date.getMonth(), date.getDay(),
-                            dtoiConstrain(duration.getYears()), dtoiConstrain(duration.getMonths()), dtoiConstrain(duration.getWeeks()), dtoiConstrain(balanceResult.getDays()), overflow);
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.days(), overflow);
             return JSTemporalPlainDate.create(getContext(), realm, result.year(), result.month(), result.day(), calendar, this, errorBranch);
-        }
-
-        // in contrast to `dtoi`, set to Integer.MAX_VALUE/MIN_VALUE if outside range.
-        // later operations either CONSTRAIN or REJECT anyway!
-        protected int dtoiConstrain(double d) {
-            if (needConstrain.profile(JSRuntime.doubleIsRepresentableAsInt(d))) {
-                return (int) d;
-            } else {
-                return d > 0 ? Integer.MAX_VALUE : Integer.MIN_VALUE;
-            }
         }
 
         @SuppressWarnings("unused")

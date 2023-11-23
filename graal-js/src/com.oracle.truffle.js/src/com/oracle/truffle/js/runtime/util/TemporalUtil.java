@@ -100,6 +100,8 @@ import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.math.MathContext;
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.Year;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -280,6 +282,7 @@ public final class TemporalUtil {
     private static final BigInteger isoTimeUpperBound = new BigInteger("8640000086400000000000");
     private static final BigInteger isoTimeLowerBound = isoTimeUpperBound.negate();
     private static final int isoTimeBoundYears = 270000;
+    private static final int ISO_DATE_MAX_UTC_OFFSET_DAYS = 100_000_000;
 
     // 8.64 * 10^13
     private static final BigInteger BI_8_64_13 = new BigInteger("86400000000000");
@@ -801,19 +804,22 @@ public final class TemporalUtil {
         return Strings.lazySubstring(str, 0, length);
     }
 
-    // 13.33
-    public static double nonNegativeModulo(double x, double y) {
-        double result = x % y;
-        if (result == -0) {
-            return 0;
-        }
+    public static int nonNegativeModulo(double x, int y) {
+        int result = (int) (x % y);
         if (result < 0) {
             result = result + y;
         }
         return result;
     }
 
-    // 13.35
+    public static int nonNegativeModulo(int x, int y) {
+        int result = x % y;
+        if (result < 0) {
+            result = result + y;
+        }
+        return result;
+    }
+
     public static int constrainToRange(int value, int minimum, int maximum) {
         return Math.min(Math.max(value, minimum), maximum);
     }
@@ -1146,11 +1152,19 @@ public final class TemporalUtil {
         if (year == Integer.MAX_VALUE || year == Integer.MIN_VALUE || month == Integer.MAX_VALUE || month == Integer.MIN_VALUE) {
             throw Errors.createRangeError("value out of range");
         }
-
         int yearPrepared = (int) (year + Math.floor((month - 1.0) / 12.0));
-        int monthPrepared = (int) nonNegativeModulo(month - 1, 12) + 1;
-
+        int monthPrepared = nonNegativeModulo(month - 1, 12) + 1;
         return new ISODateRecord(yearPrepared, monthPrepared, 0);
+    }
+
+    public static ISODateRecord balanceISOYearMonth(double year, double month) {
+        assert JSRuntime.isIntegralNumber(year) : year;
+        assert JSRuntime.isIntegralNumber(month) : month;
+        double yearPrepared = year + Math.floor((month - 1) / 12.0);
+        int monthPrepared = nonNegativeModulo(month - 1, 12) + 1;
+        // Cast to int is ok since BalanceISODate will anyway throw if the year is outside the
+        // supported range.
+        return new ISODateRecord((int) yearPrepared, monthPrepared, 0);
     }
 
     @TruffleBoundary // one instead of three boundaries
@@ -1265,40 +1279,51 @@ public final class TemporalUtil {
     public static boolean isoDateTimeWithinLimits(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) {
         if (-isoTimeBoundYears <= year && year <= isoTimeBoundYears) {
             // fastpath check
+            assert isoDateTimeWithinLimitsExact(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
             return true;
+        } else if (year >= Year.MIN_VALUE && year <= Year.MAX_VALUE) {
+            return isoDateTimeWithinLimitsExact(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
         } else {
-            return isoDateTimeWithinLimitsIntl(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
+            // way past the supported range, not supported by LocalDate.
+            return false;
         }
     }
 
     @TruffleBoundary
-    private static boolean isoDateTimeWithinLimitsIntl(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) {
-        BigInteger ns = getEpochFromISOParts(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
+    private static boolean isoDateTimeWithinLimitsExact(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) {
+        BigInteger ns = getUTCEpochNanoseconds(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
         return ns.compareTo(isoTimeLowerBound) > 0 && ns.compareTo(isoTimeUpperBound) < 0;
     }
 
-    @TruffleBoundary
-    public static BigInteger getEpochFromISOParts(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) {
-        assert isValidISODate(year, month, day);
+    /**
+     * The abstract operation GetUTCEpochNanoseconds.
+     *
+     * @param year an integer
+     * @param month an integer in the inclusive interval from 1 to 12
+     * @param day an integer in the inclusive interval from 1 to 31
+     * @param hour an integer in the inclusive interval from 0 to 23
+     * @param minute an integer in the inclusive interval from 0 to 59
+     * @param second an integer in the inclusive interval from 0 to 59
+     * @param millisecond an integer in the inclusive interval from 0 to 999
+     * @param microsecond an integer in the inclusive interval from 0 to 999
+     * @param nanosecond an integer in the inclusive interval from 0 to 999
+     * @return number of nanoseconds since the epoch that corresponds to the given ISO 8601 calendar
+     *         date and wall-clock time in UTC.
+     */
+    public static BigInteger getUTCEpochNanoseconds(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) {
+        assert isValidISODate(year, month, day) : List.of(year, month, day);
         assert isValidTime(hour, minute, second, millisecond, microsecond, nanosecond);
 
-        double date = JSDate.makeDay(year, month - 1, day);
-        double time = JSDate.makeTime(hour, minute, second, millisecond);
-        double ms = JSDate.makeDate(date, time);
-        if (Double.isNaN(ms)) {
-            throw TemporalErrors.createRangeErrorDateOutsideRange();
-        }
-        assert isFinite(ms);
+        // 1. Let date be MakeDay(year, month - 1, day).
+        long date = isoDateToEpochDays(year, month - 1, day);
+        // 2. Let time be MakeTime(hour, minute, second, millisecond).
+        long time = hour * JSDate.MS_PER_HOUR + minute * JSDate.MS_PER_MINUTE + second * JSDate.MS_PER_SECOND + millisecond;
+        // 3. Let ms be MakeDate(date, time).
+        BigInteger ms = BigInteger.valueOf(date).multiply(BigInteger.valueOf(JSDate.MS_PER_DAY)).add(BigInteger.valueOf(time));
 
-        BigInteger bi = BigInteger.valueOf((long) ms).multiply(BI_10_POW_6);
-        BigInteger bims = BigInteger.valueOf(microsecond).multiply(BI_1000);
-        BigInteger biresult = bi.add(bims).add(BigInteger.valueOf(nanosecond));
-
-        return biresult;
-    }
-
-    private static boolean isFinite(double d) {
-        return !(Double.isNaN(d) || Double.isInfinite(d));
+        // Let epochNanoseconds be ms * 1e6 + microsecond * 1e3 + nanosecond.
+        BigInteger epochNanoseconds = ms.multiply(BI_10_POW_6).add(BigInteger.valueOf(microsecond * 1000)).add(BigInteger.valueOf(nanosecond));
+        return epochNanoseconds;
     }
 
     public static Overflow toTemporalOverflow(JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
@@ -1481,7 +1506,6 @@ public final class TemporalUtil {
         return BigInt.fromBigInteger(roundNumberToIncrementAsIfPositive(x, incrementNs, roundingMode));
     }
 
-    @TruffleBoundary
     public static ISODateRecord regulateISODate(int year, int monthParam, int dayParam, Overflow overflow) {
         assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
         int month = monthParam;
@@ -1498,25 +1522,70 @@ public final class TemporalUtil {
         return new ISODateRecord(year, month, day);
     }
 
+    /**
+     * Corresponds to {@link JSDate#makeDay MakeDay}.
+     */
     @TruffleBoundary
-    public static ISODateRecord balanceISODate(int yearParam, int monthParam, int dayParam) {
-        double epochDays = JSDate.makeDay(yearParam, monthParam - 1, dayParam);
-        assert Double.isFinite(epochDays);
-        double ms = JSDate.makeDate(epochDays, 0);
-        return new ISODateRecord(JSDate.yearFromTime((long) ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
+    public static long isoDateToEpochDays(int year, int month, int date) {
+        // Year must be in the supported range for LocalDate.
+        assert year >= Year.MIN_VALUE && year <= Year.MAX_VALUE : year;
+        int resolvedYear = year + month / 12;
+        int resolvedMonth = month % 12;
+        if (resolvedMonth < 0) {
+            resolvedMonth += 12;
+        }
+
+        long t = LocalDate.of(resolvedYear, resolvedMonth + 1, 1).atStartOfDay().toInstant(ZoneOffset.UTC).toEpochMilli();
+        return Math.floorDiv(t, JSDate.MS_PER_DAY) + date - 1;
     }
 
     @TruffleBoundary
-    // AddISODate only called with int range values, or constrained immediately afterwards
+    public static ISODateRecord balanceISODate(int year, int month, int day) {
+        if (year < Year.MIN_VALUE || year > Year.MAX_VALUE || Math.abs(day) > ISO_DATE_MAX_UTC_OFFSET_DAYS) {
+            // This check is sometimes performed only after AddISODate in the spec.
+            // We do it earlier to avoid having to deal with non-finite epoch days.
+            // This is OK since all callers would throw a RangeError immediately after anyway.
+            throw Errors.createRangeError("Date outside of supported range");
+        }
+        long epochDays = isoDateToEpochDays(year, month - 1, day);
+        long ms = epochDays * JSDate.MS_PER_DAY;
+        return new ISODateRecord(JSDate.yearFromTime(ms), JSDate.monthFromTime(ms) + 1, JSDate.dateFromTime(ms));
+    }
+
+    @TruffleBoundary
+    public static ISODateRecord balanceISODate(double year, int month, double day) {
+        return balanceISODate((int) year, month, (int) day);
+    }
+
+    /**
+     * Add ISO date. Only called with int range values, or constrained immediately afterwards.
+     */
+    @TruffleBoundary
     public static ISODateRecord addISODate(int year, int month, int day, int years, int months, int weeks, int daysP, Overflow overflow) {
         assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
 
         int days = daysP;
-        ISODateRecord intermediate = balanceISOYearMonth(add(year, years, overflow), add(month, months, overflow));
-        intermediate = regulateISODate(intermediate.year(), intermediate.month(), day, overflow);
+        var intermediateYM = balanceISOYearMonth(year + years, month + months);
+        ISODateRecord intermediate = regulateISODate(intermediateYM.year(), intermediateYM.month(), day, overflow);
         days = days + 7 * weeks;
         int d = add(intermediate.day(), days, overflow);
         intermediate = balanceISODate(intermediate.year(), intermediate.month(), d);
+        return regulateISODate(intermediate.year(), intermediate.month(), intermediate.day(), overflow);
+    }
+
+    /**
+     * Add duration. Both the duration and the result can be outside the valid ISO Date range.
+     * However, we eager throw for values outside the supported range for simplicity.
+     */
+    @TruffleBoundary
+    public static ISODateRecord addISODate(int year, int month, int day, double years, double months, double weeks, double daysP, Overflow overflow) {
+        assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
+
+        double days = daysP;
+        var intermediateYM = balanceISOYearMonth(year + years, month + months);
+        ISODateRecord intermediate = regulateISODate(intermediateYM.year(), intermediateYM.month(), day, overflow);
+        days = days + 7 * weeks;
+        intermediate = balanceISODate(intermediate.year(), intermediate.month(), intermediate.day() + days);
         return regulateISODate(intermediate.year(), intermediate.month(), intermediate.day(), overflow);
     }
 
@@ -2670,17 +2739,17 @@ public final class TemporalUtil {
         long minutes = min;
         long hours = h;
         microseconds = microseconds + (long) Math.floor(nanoseconds / 1000.0);
-        nanoseconds = (long) nonNegativeModulo(nanoseconds, 1000);
+        nanoseconds = nonNegativeModulo(nanoseconds, 1000);
         milliseconds = milliseconds + (long) Math.floor(microseconds / 1000.0);
-        microseconds = (long) nonNegativeModulo(microseconds, 1000);
+        microseconds = nonNegativeModulo(microseconds, 1000);
         seconds = seconds + (long) Math.floor(milliseconds / 1000.0);
-        milliseconds = (long) nonNegativeModulo(milliseconds, 1000);
+        milliseconds = nonNegativeModulo(milliseconds, 1000);
         minutes = minutes + (long) Math.floor(seconds / 60.0);
-        seconds = (long) nonNegativeModulo(seconds, 60);
+        seconds = nonNegativeModulo(seconds, 60);
         hours = hours + (long) Math.floor(minutes / 60.0);
-        minutes = (long) nonNegativeModulo(minutes, 60);
+        minutes = nonNegativeModulo(minutes, 60);
         long days = (long) Math.floor(hours / 24.0);
-        hours = (long) nonNegativeModulo(hours, 24);
+        hours = nonNegativeModulo(hours, 24);
         return new TimeRecord(days, (int) hours, (int) minutes, (int) seconds, (int) milliseconds, (int) microseconds, (int) nanoseconds);
     }
 
@@ -3194,7 +3263,7 @@ public final class TemporalUtil {
         ParseISODateTimeResult result = parseTemporalInstantString(string);
         TruffleString offsetString = result.getTimeZoneResult().getOffsetString();
         assert (offsetString != null);
-        BigInteger utc = getEpochFromISOParts(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(),
+        BigInteger utc = getUTCEpochNanoseconds(result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(),
                         result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
         long offsetNanoseconds = parseTimeZoneOffsetString(offsetString);
         BigInt instant = new BigInt(utc.subtract(BigInteger.valueOf(offsetNanoseconds)));
@@ -3246,7 +3315,7 @@ public final class TemporalUtil {
         if (Disambiguation.REJECT == disambiguation) {
             throw Errors.createRangeError("disambiguation failed");
         }
-        BigInteger epochNanoseconds = getEpochFromISOParts(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
+        BigInteger epochNanoseconds = getUTCEpochNanoseconds(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(),
                         dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
         JSTemporalInstantObject dayBefore = JSTemporalInstant.create(ctx, realm, new BigInt(epochNanoseconds.subtract(BI_8_64_13)));
         JSTemporalInstantObject dayAfter = JSTemporalInstant.create(ctx, realm, new BigInt(epochNanoseconds.add(BI_8_64_13)));
@@ -3302,7 +3371,7 @@ public final class TemporalUtil {
             return instant.getNanoseconds();
         }
         if (offsetBehaviour == OffsetBehaviour.EXACT || OffsetOption.USE == offsetOption) {
-            BigInteger epochNanoseconds = getEpochFromISOParts(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
+            BigInteger epochNanoseconds = getUTCEpochNanoseconds(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond);
             return new BigInt(epochNanoseconds.subtract(BigInteger.valueOf((long) offsetNs)));
         }
         assert offsetBehaviour == OffsetBehaviour.OPTION;
