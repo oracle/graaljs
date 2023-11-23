@@ -41,51 +41,55 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.TruffleLanguage;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 @ImportStatic({JSConfig.class})
+@GenerateUncached
 public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
-    @Child private PropertyGetNode getNextMethodNode;
 
-    public GetIteratorDirectNode(JSContext context) {
-        getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
-    }
-
-    public abstract IteratorRecord execute(Object iteratedObject);
+    public abstract IteratorRecord execute(Object iterator);
 
     @Specialization
-    protected IteratorRecord get(JSObject obj) {
-        return getImpl(obj);
+    protected IteratorRecord get(JSObject obj,
+                    @Cached(value = "createGetNextNode()", uncached = "getNullNode()") @Shared PropertyGetNode getNextMethodNode) {
+        return getImpl(obj, getNextMethodNode);
     }
 
     @Specialization(guards = "isForeignObject(obj)")
     protected IteratorRecord get(Object obj,
+                    @Cached(value = "createGetNextNode()", uncached = "getNullNode()") @Shared PropertyGetNode getNextMethodNode,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         JSRealm realm = JSRealm.get(this);
         TruffleLanguage.Env env = realm.getEnv();
         // java.util.Iterator.next() does not have the needed semantics
         // => use next() method from the prototype
         if (env.isHostObject(obj) && interop.isIterator(obj)) {
-            Object nextMethod = getNextMethodNode.getValue(realm.getForeignIteratorPrototype());
+            JSDynamicObject prototype = realm.getForeignIteratorPrototype();
+            Object nextMethod = (getNextMethodNode == null) ? JSObject.get(prototype, Strings.NEXT) : getNextMethodNode.getValue(prototype);
             return IteratorRecord.create(obj, nextMethod, false);
         }
-        return getImpl(obj);
+        return getImpl(obj, getNextMethodNode);
     }
 
-    private IteratorRecord getImpl(Object obj) {
-        Object nextMethod = getNextMethodNode.getValue(obj);
+    private static IteratorRecord getImpl(Object obj, PropertyGetNode getNextMethodNode) {
+        Object nextMethod = (getNextMethodNode == null) ? JSRuntime.get(obj, Strings.NEXT) : getNextMethodNode.getValue(obj);
         return IteratorRecord.create(obj, nextMethod, false);
     }
 
@@ -94,7 +98,13 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
         throw Errors.createTypeErrorNotAnObject(obj, this);
     }
 
-    public static GetIteratorDirectNode create(JSContext context) {
-        return GetIteratorDirectNodeGen.create(context);
+    @NeverDefault
+    PropertyGetNode createGetNextNode() {
+        return PropertyGetNode.create(Strings.NEXT, getLanguage().getJSContext());
     }
+
+    public static GetIteratorDirectNode create() {
+        return GetIteratorDirectNodeGen.create();
+    }
+
 }
