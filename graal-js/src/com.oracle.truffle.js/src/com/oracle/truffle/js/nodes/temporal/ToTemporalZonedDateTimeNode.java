@@ -94,12 +94,13 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
                     @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
                     @Cached TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode) {
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
+                    @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
         assert options != null;
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;
-        JSDynamicObject timeZone = null;
-        JSDynamicObject calendar = null;
+        JSDynamicObject timeZone;
+        JSDynamicObject calendar;
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         OffsetBehaviour offsetBehaviour = OffsetBehaviour.OPTION;
@@ -153,8 +154,9 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         }
         TemporalUtil.Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode, equalNode);
         OffsetOption offset = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode, equalNode);
+        var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
         BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(),
-                        result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZone, disambiguation, offset,
+                        result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNanoseconds, timeZoneRec, disambiguation, offset,
                         matchBehaviour);
         return JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar);
     }

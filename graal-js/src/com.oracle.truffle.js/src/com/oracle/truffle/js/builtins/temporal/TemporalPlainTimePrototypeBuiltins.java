@@ -71,13 +71,13 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltin
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeUntilSinceNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeValueOfNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltinsFactory.JSTemporalPlainTimeWithNodeGen;
-import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToLimitedTemporalDurationNode;
@@ -378,7 +378,6 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         public JSTemporalDurationObject differenceTemporalPlainTime(JSTemporalPlainTimeObject temporalTime, Object otherObj, Object optionsParam,
                         @Cached JSToNumberNode toNumber,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached ToTemporalTimeNode toTemporalTime,
                         @Cached TruffleString.EqualNode equalNode, @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalGetOptionNode getOptionNode,
@@ -403,12 +402,12 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(),
                             result.nanoseconds(), roundingIncrement, smallestUnit, roundingMode);
             JSRealm realm = getRealm();
-            JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), realm, namesNode,
+            TimeDurationRecord result3 = TemporalUtil.balanceTimeDuration(
                             0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(),
                             result2.getNanoseconds(), largestUnit);
             return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
-                            sign * result3.getHours(), sign * result3.getMinutes(), sign * result3.getSeconds(), sign * result3.getMilliseconds(), sign * result3.getMicroseconds(),
-                            sign * result3.getNanoseconds(), this, errorBranch);
+                            sign * result3.hours(), sign * result3.minutes(), sign * result3.seconds(), sign * result3.milliseconds(), sign * result3.microseconds(),
+                            sign * result3.nanoseconds(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -557,7 +556,8 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected final JSTemporalZonedDateTimeObject toZonedDateTime(JSTemporalPlainTimeObject time, Object itemParam,
                         @Cached ToTemporalDateNode toTemporalDate,
                         @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
-                        @Cached InlinedBranchProfile errorBranch) {
+                        @Cached InlinedBranchProfile errorBranch,
+                        @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
             if (!JSRuntime.isObject(itemParam)) {
                 throw Errors.createTypeErrorNotAnObject(itemParam);
             }
@@ -575,12 +575,13 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw Errors.createTypeError("TimeZone expected");
             }
             JSDynamicObject timeZone = toTemporalTimeZone.execute(temporalTimeZoneLike);
+            var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
 
             JSTemporalPlainDateTimeObject temporalDateTime = JSTemporalPlainDateTime.create(getContext(), getRealm(),
                             date.getYear(), date.getMonth(), date.getDay(),
                             time.getHour(), time.getMinute(), time.getSecond(), time.getMillisecond(), time.getMicrosecond(),
                             time.getNanosecond(), date.getCalendar(), this, errorBranch);
-            JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), getRealm(), timeZone, temporalDateTime, Disambiguation.COMPATIBLE);
+            JSTemporalInstantObject instant = TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), getRealm(), timeZoneRec, temporalDateTime, Disambiguation.COMPATIBLE);
             return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, date.getCalendar());
         }
 

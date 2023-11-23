@@ -65,6 +65,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalTimeZonePrototypeBuiltins
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarWithISODefaultNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
@@ -229,9 +230,11 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected TruffleString getOffsetStringFor(JSTemporalTimeZoneObject timeZone, Object instantParam,
-                        @Cached ToTemporalInstantNode toTemporalInstantNode) {
+                        @Cached ToTemporalInstantNode toTemporalInstantNode,
+                        @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
             JSDynamicObject instant = toTemporalInstantNode.execute(instantParam);
-            return TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZone, instant);
+            var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(timeZone);
+            return TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZoneRec, instant);
         }
 
         @SuppressWarnings("unused")
@@ -250,10 +253,12 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected JSTemporalPlainDateTimeObject getPlainDateTimeFor(JSTemporalTimeZoneObject timeZone, Object instantParam, Object calendarLike,
                         @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                        @Cached ToTemporalInstantNode toTemporalInstantNode) {
-            JSDynamicObject instant = toTemporalInstantNode.execute(instantParam);
-            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(calendarLike);
-            return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), getRealm(), timeZone, instant, calendar);
+                        @Cached ToTemporalInstantNode toTemporalInstantNode,
+                        @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
+            JSTemporalInstantObject instant = toTemporalInstantNode.execute(instantParam);
+            var calendar = toTemporalCalendarWithISODefaultNode.execute(calendarLike);
+            var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(timeZone);
+            return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), getRealm(), timeZoneRec, instant, calendar);
         }
 
         @SuppressWarnings("unused")
@@ -275,11 +280,13 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedConditionProfile optionUndefined) {
+                        @Cached InlinedConditionProfile optionUndefined,
+                        @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
             JSTemporalPlainDateTimeObject dateTime = toTemporalDateTime.execute(dateTimeParam, Undefined.instance);
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode, equalNode);
-            return TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), getRealm(), timeZone, dateTime, disambiguation);
+            var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
+            return TemporalUtil.builtinTimeZoneGetInstantFor(getContext(), getRealm(), timeZoneRec, dateTime, disambiguation);
         }
 
         @SuppressWarnings("unused")

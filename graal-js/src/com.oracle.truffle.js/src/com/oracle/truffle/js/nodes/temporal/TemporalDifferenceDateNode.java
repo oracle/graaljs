@@ -49,10 +49,10 @@ import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -68,12 +68,12 @@ public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
     }
 
     public abstract JSTemporalDurationObject execute(
-                    JSDynamicObject calendar, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
-                    Unit largestUnit, JSObject untilOptions, Object dateUntil);
+                    CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
+                    Unit largestUnit, JSObject untilOptions);
 
     @Specialization
-    final JSTemporalDurationObject differenceDate(JSDynamicObject calendar, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
-                    Unit largestUnit, JSObject untilOptions, Object dateUntil,
+    final JSTemporalDurationObject differenceDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
+                    Unit largestUnit, JSObject untilOptions,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached("createCall()") JSFunctionCallNode callDateUntilNode) {
         JSContext ctx = getLanguage().getJSContext();
@@ -86,7 +86,7 @@ public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
             return JSTemporalDuration.createTemporalDuration(ctx, realm, 0, 0, 0, days, 0, 0, 0, 0, 0, 0, this, errorBranch);
         } else {
             // CalendarDateUntil(calenderRec, one, two, options)
-            Object addedDate = callDateUntilNode.executeCall(JSArguments.create(calendar, dateUntil, one, two, untilOptions));
+            Object addedDate = callDateUntilNode.executeCall(JSArguments.create(calendarRec.receiver(), calendarRec.dateUntil(), one, two, untilOptions));
             return TemporalUtil.requireTemporalDuration(addedDate);
         }
     }

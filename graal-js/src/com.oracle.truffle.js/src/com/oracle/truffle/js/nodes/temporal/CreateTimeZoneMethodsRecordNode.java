@@ -40,47 +40,43 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.MoveRelativeDateResult;
-import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of the Temporal MoveRelativeDate operation.
+ * Implementation of the CreateTimeZoneMethodsRecord operation.
  */
-public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
+public abstract class CreateTimeZoneMethodsRecordNode extends JavaScriptBaseNode {
 
-    @Child private JSFunctionCallNode callDateAddNode;
+    @Child private GetMethodNode getGetOffsetNanosecondsFor;
+    @Child private GetMethodNode getGetPossibleInstantsFor;
 
-    protected TemporalMoveRelativeDateNode() {
+    protected CreateTimeZoneMethodsRecordNode() {
+        JSContext ctx = JavaScriptLanguage.get(null).getJSContext();
+        this.getGetOffsetNanosecondsFor = GetMethodNode.create(ctx, TemporalUtil.GET_OFFSET_NANOSECONDS_FOR);
+        this.getGetPossibleInstantsFor = GetMethodNode.create(ctx, TemporalUtil.GET_POSSIBLE_INSTANTS_FOR);
     }
 
-    public abstract MoveRelativeDateResult execute(CalendarMethodsRecord calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration);
+    public final TimeZoneMethodsRecord executeFull(JSDynamicObject timeZone) {
+        return execute(timeZone, true, true);
+    }
+
+    public final TimeZoneMethodsRecord executeOnlyGetOffsetNanosecondsFor(JSDynamicObject timeZone) {
+        return execute(timeZone, true, false);
+    }
+
+    protected abstract TimeZoneMethodsRecord execute(JSDynamicObject timeZone, boolean getOffsetNanosecondsFor, boolean getPossibleInstantsFor);
 
     @Specialization
-    protected MoveRelativeDateResult moveRelativeDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration,
-                    @Cached InlinedBranchProfile errorBranch) {
-        JSTemporalPlainDateObject newDate = calendarDateAdd(calendarRec, relativeTo, duration, errorBranch);
-        long days = TemporalUtil.daysUntil(relativeTo, newDate);
-        return new MoveRelativeDateResult(newDate, days);
-    }
-
-    protected JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject date, JSTemporalDurationObject duration,
-                    InlinedBranchProfile errorBranch) {
-        if (callDateAddNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callDateAddNode = insert(JSFunctionCallNode.createCall());
-        }
-        Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendarRec.receiver(), calendarRec.dateAdd(), date, duration, Undefined.instance));
-        return TemporalUtil.requireTemporalDate(addedDate, this, errorBranch);
+    protected TimeZoneMethodsRecord toRelativeTemporalObject(JSDynamicObject timeZone, boolean getOffsetNanosecondsFor, boolean getPossibleInstantsFor) {
+        return new TimeZoneMethodsRecord(timeZone,
+                        getOffsetNanosecondsFor ? getGetOffsetNanosecondsFor.executeWithTarget(timeZone) : null,
+                        getPossibleInstantsFor ? getGetPossibleInstantsFor.executeWithTarget(timeZone) : null);
     }
 }

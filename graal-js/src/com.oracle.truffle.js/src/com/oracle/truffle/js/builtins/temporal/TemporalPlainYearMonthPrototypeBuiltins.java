@@ -90,6 +90,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -429,9 +430,14 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
         private final int operation;
 
+        @Child private GetMethodNode getMethodDateAddNode;
+        @Child private GetMethodNode getMethodDateUntilNode;
+
         protected JSTemporalPlainYearMonthAddSubNode(JSContext context, JSBuiltin builtin, int operation) {
             super(context, builtin);
             this.operation = operation;
+            this.getMethodDateAddNode = GetMethodNode.create(context, TemporalConstants.DATE_ADD);
+            this.getMethodDateUntilNode = GetMethodNode.create(context, TemporalConstants.DATE_UNTIL);
         }
 
         @Specialization
@@ -451,14 +457,19 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 duration = TemporalUtil.createNegatedTemporalDuration(duration);
             }
             JSRealm realm = getRealm();
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), realm, namesNode,
+            var balanceResult = TemporalUtil.balanceTimeDuration(
                             duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
                             duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY);
+            int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.days(), 0, 0, 0, 0, 0, 0);
+
+            var calendar = ym.getCalendar();
+            var calendarRec = CalendarMethodsRecord.forDateAddDateUntil(calendar,
+                            getMethodDateAddNode.executeWithTarget(calendar),
+                            getMethodDateUntilNode.executeWithTarget(calendar));
+
             JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
-            JSDynamicObject calendar = ym.getCalendar();
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), ym, fieldNames, TemporalUtil.listEmpty);
-            int sign = TemporalUtil.durationSign(duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0);
             int day = 0;
             if (sign < 0) {
                 Object dayFromCalendar = TemporalUtil.calendarDaysInMonth(calendarGetterNode, calendar, ym);
@@ -469,8 +480,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             TemporalUtil.createDataPropertyOrThrow(getContext(), fields, TemporalConstants.DAY, day);
             JSDynamicObject date = dateFromFieldsNode.execute(calendar, fields, Undefined.instance);
             JSDynamicObject durationToAdd = JSTemporalDuration.createTemporalDuration(getContext(), realm,
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.getDays(), 0, 0, 0, 0, 0, 0, this, errorBranch);
-            JSDynamicObject addedDate = TemporalUtil.calendarDateAdd(calendar, date, durationToAdd, options, Undefined.instance);
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), balanceResult.days(), 0, 0, 0, 0, 0, 0, this, errorBranch);
+            JSDynamicObject addedDate = TemporalUtil.calendarDateAdd(calendarRec, date, durationToAdd, options);
             JSDynamicObject addedDateFields = TemporalUtil.prepareTemporalFields(getContext(), addedDate, fieldNames, TemporalUtil.listEmpty);
             return yearMonthFromFieldsNode.execute(calendar, addedDateFields, options);
         }
@@ -538,15 +549,16 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
             var dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
             var dateUntil = getMethodDateUntilNode.executeWithTarget(calendar);
+            var calendarRec = CalendarMethodsRecord.forDateAddDateUntil(calendar, dateAdd, dateUntil);
 
             JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
-            JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(calendar, thisDate, otherDate, untilOptions, dateUntil);
+            JSTemporalDurationObject result = TemporalUtil.calendarDateUntil(calendarRec, thisDate, otherDate, untilOptions);
             JSRealm realm = getRealm();
             if (unitIsMonth.profile(this, Unit.MONTH == smallestUnit && roundingIncrement == 1)) {
                 return JSTemporalDuration.createTemporalDuration(getContext(), realm, sign * result.getYears(), sign * result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
             } else {
                 JSTemporalDurationRecord result2 = roundDurationNode.execute(result.getYears(), result.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, (long) roundingIncrement,
-                                smallestUnit, roundingMode, thisDate, calendar, dateAdd, dateUntil);
+                                smallestUnit, roundingMode, thisDate, calendarRec);
                 return JSTemporalDuration.createTemporalDuration(getContext(), realm, sign * result2.getYears(), sign * result2.getMonths(), 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
             }
         }

@@ -389,7 +389,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             BigInt ns = instant.getNanoseconds();
             BigInt roundedNs = TemporalUtil.roundTemporalInstant(ns, (long) precision.getIncrement(), precision.getUnit(), roundingMode);
             JSRealm realm = getRealm();
-            JSDynamicObject roundedInstant = JSTemporalInstant.create(getContext(), realm, roundedNs);
+            var roundedInstant = JSTemporalInstant.create(getContext(), realm, roundedNs);
             return TemporalUtil.temporalInstantToString(getContext(), realm, roundedInstant, timeZone, precision.getPrecision());
         }
 
