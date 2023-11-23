@@ -40,15 +40,22 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
+@ImportStatic({JSConfig.class})
 public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getNextMethodNode;
 
@@ -64,7 +71,16 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isForeignObject(obj)")
-    protected IteratorRecord get(Object obj) {
+    protected IteratorRecord get(Object obj,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
+        JSRealm realm = JSRealm.get(this);
+        TruffleLanguage.Env env = realm.getEnv();
+        // java.util.Iterator.next() does not have the needed semantics
+        // => use next() method from the prototype
+        if (env.isHostObject(obj) && interop.isIterator(obj)) {
+            Object nextMethod = getNextMethodNode.getValue(realm.getForeignIteratorPrototype());
+            return IteratorRecord.create(obj, nextMethod, false);
+        }
         return getImpl(obj);
     }
 
