@@ -133,7 +133,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
         }
         if (unitYMWD.profile(this, unit == TemporalUtil.Unit.YEAR || unit == TemporalUtil.Unit.MONTH || unit == TemporalUtil.Unit.WEEK || unit == TemporalUtil.Unit.DAY)) {
             BigInt totalNs = TemporalUtil.totalDurationNanoseconds(0, hours, minutes, seconds, milliseconds, microseconds, nanoseconds, 0);
-            JSDynamicObject intermediate = Undefined.instance;
+            JSTemporalZonedDateTimeObject intermediate = null;
             if (zonedRelativeTo != null) {
                 intermediate = TemporalUtil.moveRelativeZonedDateTime(ctx, realm, zonedRelativeTo, dtol(years), dtol(months), dtol(weeks), dtol(days));
             }
