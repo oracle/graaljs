@@ -61,11 +61,12 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -93,12 +94,16 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
     }
 
     public abstract JSTemporalDurationRecord execute(double y1, double mon1, double w1, double d1, double h1, double min1, double s1, double ms1, double mus1, double ns1,
-                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, JSDynamicObject relativeTo);
+                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2,
+                    JSTemporalCalendarHolder relativeTo, JSDynamicObject calendar, Object dateAdd, Object dateUntil,
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime);
 
     // @Cached parameters create unused variable in generated code, see GR-37931
     @Specialization
     protected JSTemporalDurationRecord add(double y1, double mon1, double w1, double d1, double h1, double min1, double s1, double ms1, double mus1, double ns1,
-                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2, JSDynamicObject relativeTo,
+                    double y2, double mon2, double w2, double d2, double h2, double min2, double s2, double ms2, double mus2, double ns2,
+                    JSTemporalCalendarHolder relativeTo, JSDynamicObject calendar, Object dateAdd, Object dateUntil,
+                    JSTemporalPlainDateTimeObject precalculatedPlainDateTime,
                     @Cached TemporalRoundDurationNode roundDurationNode,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedBranchProfile relativeToUndefinedBranch,
@@ -115,7 +120,7 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
         TemporalUtil.Unit largestUnit = TemporalUtil.largerOfTwoTemporalUnits(largestUnit1, largestUnit2);
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
-        if (relativeTo == Undefined.instance) {
+        if (relativeTo == null) {
             relativeToUndefinedBranch.enter(this);
             if (largestUnit == TemporalUtil.Unit.YEAR || largestUnit == TemporalUtil.Unit.MONTH || largestUnit == TemporalUtil.Unit.WEEK) {
                 errorBranch.enter(this);
@@ -124,44 +129,40 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, realm, namesNode, d1 + d2, h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit);
             return TemporalUtil.createDurationRecord(0, 0, 0, result.getDays(), result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(),
                             result.getNanoseconds());
-        } else if (JSTemporalPlainDate.isJSTemporalPlainDate(relativeTo)) {
+        } else if (relativeTo instanceof JSTemporalPlainDateObject plainRelativeTo) {
             relativeToPlainDateBranch.enter(this);
-            JSTemporalPlainDateObject date = (JSTemporalPlainDateObject) relativeTo;
-            JSDynamicObject calendar = date.getCalendar();
             JSDynamicObject dateDuration1 = JSTemporalDuration.createTemporalDuration(ctx, realm, y1, mon1, w1, d1, 0, 0, 0, 0, 0, 0, this, errorBranch);
             JSDynamicObject dateDuration2 = JSTemporalDuration.createTemporalDuration(ctx, realm, y2, mon2, w2, d2, 0, 0, 0, 0, 0, 0, this, errorBranch);
 
-            Object dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
-            JSDynamicObject intermediate = calendarDateAdd(calendar, date, dateDuration1, Undefined.instance, dateAdd, this, errorBranch);
+            JSDynamicObject intermediate = calendarDateAdd(calendar, plainRelativeTo, dateDuration1, Undefined.instance, dateAdd, this, errorBranch);
             JSDynamicObject end = calendarDateAdd(calendar, intermediate, dateDuration2, Undefined.instance, dateAdd, this, errorBranch);
 
             TemporalUtil.Unit dateLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(TemporalUtil.Unit.DAY, largestUnit);
 
             JSDynamicObject differenceOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSObjectUtil.putDataProperty(differenceOptions, LARGEST_UNIT, dateLargestUnit.toTruffleString());
-            JSTemporalDurationObject dateDifference = calendarDateUntil(calendar, date, end, differenceOptions, Undefined.instance);
+            JSTemporalDurationObject dateDifference = calendarDateUntil(calendar, plainRelativeTo, end, differenceOptions, dateUntil);
             JSTemporalDurationRecord result = TemporalUtil.balanceDuration(ctx, realm, namesNode, TemporalUtil.dtol(dateDifference.getDays()),
                             h1 + h2, min1 + min2, s1 + s2, ms1 + ms2, mus1 + mus2, ns1 + ns2, largestUnit);
             return TemporalUtil.createDurationRecord(dateDifference.getYears(), dateDifference.getMonths(), dateDifference.getWeeks(), result.getDays(),
                             result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds());
-        } else {
+        } else if (relativeTo instanceof JSTemporalZonedDateTimeObject zonedRelativeTo) {
             relativeToZonedDateTimeBranch.enter(this);
-            assert TemporalUtil.isTemporalZonedDateTime(relativeTo);
-            JSTemporalZonedDateTimeObject zdt = (JSTemporalZonedDateTimeObject) relativeTo;
-            JSDynamicObject timeZone = zdt.getTimeZone();
-            JSDynamicObject calendar = zdt.getCalendar();
-            BigInt intermediateNs = TemporalUtil.addZonedDateTime(ctx, realm, zdt.getNanoseconds(), timeZone, calendar,
+            JSDynamicObject timeZone = zonedRelativeTo.getTimeZone();
+            BigInt intermediateNs = TemporalUtil.addZonedDateTime(ctx, realm, zonedRelativeTo.getNanoseconds(), timeZone, calendar,
                             dtol(y1), dtol(mon1), dtol(w1), dtol(d1), dtol(h1), dtol(min1), dtol(s1), dtol(ms1), dtol(mus1), dtol(ns1));
             BigInt endNs = TemporalUtil.addZonedDateTime(ctx, realm, intermediateNs, timeZone, calendar,
                             dtol(y2), dtol(mon2), dtol(w2), dtol(d2), dtol(h2), dtol(min2), dtol(s2), dtol(ms2), dtol(mus2), dtol(ns2));
             if (largetUnitYMWDProfile.profile(this,
                             TemporalUtil.Unit.YEAR != largestUnit && TemporalUtil.Unit.MONTH != largestUnit && TemporalUtil.Unit.WEEK != largestUnit && TemporalUtil.Unit.DAY != largestUnit)) {
-                TimeDurationRecord result = TemporalUtil.differenceInstant(zdt.getNanoseconds(), endNs, 1d, TemporalUtil.Unit.NANOSECOND, largestUnit, TemporalUtil.RoundingMode.HALF_EXPAND,
-                                roundDurationNode);
+                TimeDurationRecord result = TemporalUtil.differenceInstant(zonedRelativeTo.getNanoseconds(), endNs, 1d,
+                                TemporalUtil.Unit.NANOSECOND, largestUnit, TemporalUtil.RoundingMode.HALF_EXPAND, roundDurationNode);
                 return TemporalUtil.createDurationRecord(0, 0, 0, 0, result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(), result.nanoseconds());
             } else {
-                return TemporalUtil.differenceZonedDateTime(ctx, realm, namesNode, zdt.getNanoseconds(), endNs, timeZone, calendar, largestUnit);
+                return TemporalUtil.differenceZonedDateTime(ctx, realm, namesNode, zonedRelativeTo.getNanoseconds(), endNs, timeZone, calendar, largestUnit);
             }
+        } else {
+            throw Errors.shouldNotReachHereUnexpectedValue(relativeTo);
         }
     }
 

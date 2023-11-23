@@ -45,7 +45,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
@@ -53,7 +52,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject
 import com.oracle.truffle.js.runtime.builtins.temporal.MoveRelativeDateResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -61,30 +59,27 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalMoveRelativeDateNode extends JavaScriptBaseNode {
 
-    @Child private GetMethodNode getMethodDateAddNode;
     @Child private JSFunctionCallNode callDateAddNode;
 
     protected TemporalMoveRelativeDateNode() {
     }
 
-    public abstract MoveRelativeDateResult execute(JSDynamicObject calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration);
+    public abstract MoveRelativeDateResult execute(JSDynamicObject calendar, Object dateAdd, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration);
 
     @Specialization
-    protected MoveRelativeDateResult moveRelativeDate(JSDynamicObject calendar, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration,
+    protected MoveRelativeDateResult moveRelativeDate(JSDynamicObject calendar, Object dateAdd, JSTemporalPlainDateObject relativeTo, JSTemporalDurationObject duration,
                     @Cached InlinedBranchProfile errorBranch) {
-        JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration, errorBranch);
+        JSTemporalPlainDateObject newDate = calendarDateAdd(calendar, relativeTo, duration, errorBranch, dateAdd);
         long days = TemporalUtil.daysUntil(relativeTo, newDate);
         return new MoveRelativeDateResult(newDate, days);
     }
 
-    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSTemporalPlainDateObject date, JSTemporalDurationObject duration, InlinedBranchProfile errorBranch) {
-        if (getMethodDateAddNode == null || callDateAddNode == null) {
+    protected JSTemporalPlainDateObject calendarDateAdd(JSDynamicObject calendar, JSTemporalPlainDateObject date, JSTemporalDurationObject duration, InlinedBranchProfile errorBranch, Object dateAdd) {
+        if (callDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getMethodDateAddNode = insert(GetMethodNode.create(getLanguage().getJSContext(), TemporalConstants.DATE_ADD));
             callDateAddNode = insert(JSFunctionCallNode.createCall());
         }
-        Object dateAddPrepared = getMethodDateAddNode.executeWithTarget(calendar);
-        Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, dateAddPrepared, date, duration, Undefined.instance));
+        Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, dateAdd, date, duration, Undefined.instance));
         return TemporalUtil.requireTemporalDate(addedDate, this, errorBranch);
     }
 }

@@ -82,6 +82,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBui
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeWithPlainTimeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeWithTimeZoneNodeGen;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -716,9 +717,14 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         private final int sign;
 
+        @Child private GetMethodNode getMethodDateAddNode;
+        @Child private GetMethodNode getMethodDateUntilNode;
+
         protected JSTemporalZonedDateTimeUntilSinceNode(JSContext context, JSBuiltin builtin, int sign) {
             super(context, builtin);
             this.sign = sign;
+            this.getMethodDateAddNode = GetMethodNode.create(context, TemporalConstants.DATE_ADD);
+            this.getMethodDateUntilNode = GetMethodNode.create(context, TemporalConstants.DATE_UNTIL);
         }
 
         @Specialization
@@ -734,7 +740,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalZonedDateTimeObject other = toTemporalZonedDateTime.execute(otherParam, Undefined.instance);
-            if (!TemporalUtil.calendarEquals(zonedDateTime.getCalendar(), other.getCalendar(), toStringNode)) {
+            var calendar = zonedDateTime.getCalendar();
+            if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toStringNode)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
@@ -754,21 +761,35 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                                 sign * result.hours(), sign * result.minutes(), sign * result.seconds(),
                                 sign * result.milliseconds(), sign * result.microseconds(), sign * result.nanoseconds(), this, errorBranch);
             }
-            if (!TemporalUtil.timeZoneEquals(zonedDateTime.getTimeZone(), other.getTimeZone(), toStringNode)) {
+            var timeZone = zonedDateTime.getTimeZone();
+            if (!TemporalUtil.timeZoneEquals(timeZone, other.getTimeZone(), toStringNode)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorIdenticalTimeZoneExpected();
             }
+
+            var dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
+            var dateUntil = getMethodDateUntilNode.executeWithTarget(calendar);
+
+            var instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
+            var precalculatedPlainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZone, instant, options);
+            var plainRelativeTo = JSTemporalPlainDate.create(getContext(), realm,
+                            precalculatedPlainDateTime.getYear(), precalculatedPlainDateTime.getMonth(), precalculatedPlainDateTime.getDay(),
+                            calendar, this, errorBranch);
+
             JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
             JSTemporalDurationRecord difference = TemporalUtil.differenceZonedDateTime(getContext(), realm, namesNode,
-                            zonedDateTime.getNanoseconds(), other.getNanoseconds(), zonedDateTime.getTimeZone(), zonedDateTime.getCalendar(), largestUnit, untilOptions);
+                            zonedDateTime.getNanoseconds(), other.getNanoseconds(), timeZone, calendar, largestUnit, untilOptions);
             JSTemporalDurationRecord roundResult = roundDurationNode.execute(difference.getYears(), difference.getMonths(), difference.getWeeks(),
                             difference.getDays(),
-                            difference.getHours(), difference.getMinutes(), difference.getSeconds(), difference.getMilliseconds(), difference.getMicroseconds(), difference.getNanoseconds(),
-                            (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
+                            difference.getHours(), difference.getMinutes(), difference.getSeconds(),
+                            difference.getMilliseconds(), difference.getMicroseconds(), difference.getNanoseconds(),
+                            (long) roundingIncrement, smallestUnit, roundingMode,
+                            plainRelativeTo, zonedDateTime, calendar, dateAdd, dateUntil, precalculatedPlainDateTime);
             JSTemporalDurationRecord result = TemporalUtil.adjustRoundedDurationDays(getContext(), realm, namesNode, durationAddNode, roundDurationNode,
                             roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(), roundResult.getDays(),
                             roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
-                            roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode, zonedDateTime);
+                            roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode,
+                            zonedDateTime, calendar, dateAdd, dateUntil, precalculatedPlainDateTime);
             return JSTemporalDuration.createTemporalDuration(getContext(), realm,
                             sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(),
                             sign * result.getHours(), sign * result.getMinutes(), sign * result.getSeconds(),

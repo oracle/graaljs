@@ -75,6 +75,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -354,9 +355,14 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         private final int sign;
 
+        @Child private GetMethodNode getMethodDateAddNode;
+        @Child private GetMethodNode getMethodDateUntilNode;
+
         protected JSTemporalDurationAddSubNode(JSContext context, JSBuiltin builtin, int sign) {
             super(context, builtin);
             this.sign = sign;
+            this.getMethodDateAddNode = GetMethodNode.create(context, TemporalConstants.DATE_ADD);
+            this.getMethodDateUntilNode = GetMethodNode.create(context, TemporalConstants.DATE_UNTIL);
         }
 
         @Specialization
@@ -368,7 +374,17 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.execute(other, TemporalUtil.listEmpty);
             JSDynamicObject normalizedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
-            JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(normalizedOptions);
+            var relativeTo = toRelativeTemporalObjectNode.execute(normalizedOptions);
+
+            JSDynamicObject calendar = null;
+            Object dateAdd = null;
+            Object dateUntil = null;
+            if (relativeTo != null) {
+                calendar = relativeTo.getCalendar();
+                dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
+                dateUntil = getMethodDateUntilNode.executeWithTarget(calendar);
+            }
+
             JSTemporalDurationRecord result = durationAddNode.execute(duration.getYears(), duration.getMonths(),
                             duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
                             duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
@@ -376,7 +392,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             sign * otherDuration.getYears(), sign * otherDuration.getMonths(), sign * otherDuration.getWeeks(), sign * otherDuration.getDays(),
                             sign * otherDuration.getHours(), sign * otherDuration.getMinutes(), sign * otherDuration.getSeconds(),
                             sign * otherDuration.getMilliseconds(), sign * otherDuration.getMicroseconds(), sign * otherDuration.getNanoseconds(),
-                            relativeTo);
+                            relativeTo, calendar, dateAdd, dateUntil, null);
             return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
                             result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
                             result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), this, errorBranch);
@@ -391,8 +407,13 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class JSTemporalDurationRound extends JSTemporalBuiltinOperation {
 
+        @Child private GetMethodNode getMethodDateAddNode;
+        @Child private GetMethodNode getMethodDateUntilNode;
+
         protected JSTemporalDurationRound(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.getMethodDateAddNode = GetMethodNode.create(context, TemporalConstants.DATE_ADD);
+            this.getMethodDateUntilNode = GetMethodNode.create(context, TemporalConstants.DATE_UNTIL);
         }
 
         @Specialization
@@ -402,7 +423,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalDurationAddNode durationAddNode,
                         @Cached InlinedConditionProfile roundToIsTString,
-                        @Cached InlinedConditionProfile realtiveToIsZonedDateTime,
+                        @Cached InlinedConditionProfile relativeToIsZonedDateTime,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode,
@@ -448,7 +469,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, false, isObjectNode, toNumber);
-            JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(roundTo);
+            var relativeTo = toRelativeTemporalObjectNode.execute(roundTo);
             boolean roundingGranularityIsNoop = smallestUnit == Unit.NANOSECOND && roundingIncrement == 1;
             boolean calendarUnitsPresent = duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0;
             boolean hoursToDaysConversionMayOccur = (duration.getDays() != 0 && relativeTo instanceof JSTemporalZonedDateTimeObject) ||
@@ -468,16 +489,20 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), this, errorBranch);
             }
             JSTemporalPlainDateObject plainRelativeTo = null;
+            JSTemporalZonedDateTimeObject zonedRelativeTo = null;
             JSTemporalPlainDateTimeObject precalculatedPlainDateTime = null;
+            JSDynamicObject calendar = null;
             boolean plainDateTimeOrRelativeToWillBeUsed = !roundingGranularityIsNoop ||
                             largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY ||
                             calendarUnitsPresent || duration.getDays() != 0;
-            if (relativeTo instanceof JSTemporalZonedDateTimeObject zonedRelativeTo && plainDateTimeOrRelativeToWillBeUsed) {
+            if (relativeTo instanceof JSTemporalZonedDateTimeObject zonedDateTime && plainDateTimeOrRelativeToWillBeUsed) {
                 /*
                  * Note: The above conditions mean that the corresponding Temporal.PlainDateTime or
                  * Temporal.PlainDate for zonedRelativeTo will be used in one of the operations
                  * below.
                  */
+                zonedRelativeTo = zonedDateTime;
+                calendar = zonedRelativeTo.getCalendar();
                 var instant = JSTemporalInstant.create(getContext(), realm, zonedRelativeTo.getNanoseconds());
                 precalculatedPlainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), getRealm(),
                                 zonedRelativeTo.getTimeZone(), instant, zonedRelativeTo.getCalendar());
@@ -486,24 +511,36 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 zonedRelativeTo.getCalendar(), this, errorBranch);
             } else if (relativeTo instanceof JSTemporalPlainDateObject plainDate) {
                 plainRelativeTo = plainDate;
+                calendar = plainRelativeTo.getCalendar();
             }
+
+            Object dateAdd = null;
+            Object dateUntil = null;
+            if (calendar != null) {
+                calendar = relativeTo.getCalendar();
+                dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
+                dateUntil = getMethodDateUntilNode.executeWithTarget(calendar);
+            }
+
             JSTemporalDurationRecord unbalanceResult = unbalanceDurationRelativeNode.execute(duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit,
-                            plainRelativeTo);
+                            plainRelativeTo, dateAdd, dateUntil);
             JSTemporalDurationRecord roundResult = roundDurationNode.execute(
                             unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(), unbalanceResult.getDays(),
                             duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
-                            roundingMode, relativeTo);
+                            roundingMode, plainRelativeTo, zonedRelativeTo, calendar, dateAdd, dateUntil, precalculatedPlainDateTime);
             TimeDurationRecord balanceResult;
-            if (realtiveToIsZonedDateTime.profile(this, relativeTo instanceof JSTemporalZonedDateTimeObject)) {
+            if (relativeToIsZonedDateTime.profile(this, zonedRelativeTo != null)) {
                 JSTemporalDurationRecord adjustResult = TemporalUtil.adjustRoundedDurationDays(getContext(), realm, namesNode, durationAddNode, roundDurationNode,
                                 roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(), roundResult.getDays(),
                                 roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
                                 roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(),
-                                (long) roundingIncrement, smallestUnit, roundingMode, relativeTo);
+                                (long) roundingIncrement, smallestUnit, roundingMode,
+                                zonedRelativeTo, calendar, dateAdd, dateUntil,
+                                precalculatedPlainDateTime);
                 balanceResult = TemporalUtil.balanceTimeDurationRelative(adjustResult.getDays(), adjustResult.getHours(), adjustResult.getMinutes(), adjustResult.getSeconds(),
                                 adjustResult.getMilliseconds(), adjustResult.getMicroseconds(), adjustResult.getNanoseconds(), largestUnit,
-                                (JSTemporalZonedDateTimeObject) relativeTo, precalculatedPlainDateTime, getContext(), realm, namesNode);
+                                zonedRelativeTo, precalculatedPlainDateTime, getContext(), realm, namesNode);
             } else {
                 balanceResult = TemporalUtil.balanceTimeDuration(roundResult.getDays(), roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
                                 roundResult.getMilliseconds(), roundResult.getMicroseconds(), roundResult.getNanoseconds(), largestUnit);
@@ -526,8 +563,13 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class JSTemporalDurationTotal extends JSTemporalBuiltinOperation {
 
+        @Child private GetMethodNode getMethodDateAddNode;
+        @Child private GetMethodNode getMethodDateUntilNode;
+
         protected JSTemporalDurationTotal(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.getMethodDateAddNode = GetMethodNode.create(context, TemporalConstants.DATE_ADD);
+            this.getMethodDateUntilNode = GetMethodNode.create(context, TemporalConstants.DATE_UNTIL);
         }
 
         @Specialization
@@ -553,18 +595,22 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             } else {
                 totalOf = getOptionsObject(totalOfParam, this, errorBranch, optionUndefined);
             }
-            JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(totalOf);
+            var relativeTo = toRelativeTemporalObjectNode.execute(totalOf);
             Unit unit = toTemporalDurationTotalUnit(totalOf, equalNode, getOptionNode);
             JSTemporalPlainDateObject plainRelativeTo = null;
+            JSTemporalZonedDateTimeObject zonedRelativeTo = null;
             JSTemporalPlainDateTimeObject precalculatedPlainDateTime = null;
             boolean plainDateTimeOrRelativeToWillBeUsed = unit == Unit.YEAR || unit == Unit.MONTH || unit == Unit.WEEK || unit == Unit.DAY ||
                             duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0;
-            if (relativeTo instanceof JSTemporalZonedDateTimeObject zonedRelativeTo && plainDateTimeOrRelativeToWillBeUsed) {
+            JSDynamicObject calendar = null;
+            if (relativeTo instanceof JSTemporalZonedDateTimeObject zonedDateTime && plainDateTimeOrRelativeToWillBeUsed) {
                 /*
                  * Note: The above conditions mean that the corresponding Temporal.PlainDateTime or
                  * Temporal.PlainDate for zonedRelativeTo will be used in one of the operations
                  * below.
                  */
+                zonedRelativeTo = zonedDateTime;
+                calendar = zonedRelativeTo.getCalendar();
                 var instant = JSTemporalInstant.create(getContext(), realm, zonedRelativeTo.getNanoseconds());
                 precalculatedPlainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), getRealm(),
                                 zonedRelativeTo.getTimeZone(), instant, zonedRelativeTo.getCalendar());
@@ -573,11 +619,21 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 zonedRelativeTo.getCalendar(), this, errorBranch);
             } else if (relativeTo instanceof JSTemporalPlainDateObject plainDate) {
                 plainRelativeTo = plainDate;
+                calendar = plainRelativeTo.getCalendar();
             }
+
+            Object dateAdd = null;
+            Object dateUntil = null;
+            if (calendar != null) {
+                calendar = relativeTo.getCalendar();
+                dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
+                dateUntil = getMethodDateUntilNode.executeWithTarget(calendar);
+            }
+
             JSTemporalDurationRecord unbalanceResult = unbalanceDurationRelativeNode.execute(
-                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, plainRelativeTo);
+                            duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, plainRelativeTo, dateAdd, dateUntil);
             JSDynamicObject intermediate = Undefined.instance;
-            if (relativeTo instanceof JSTemporalZonedDateTimeObject zonedRelativeTo) {
+            if (zonedRelativeTo != null) {
                 intermediate = TemporalUtil.moveRelativeZonedDateTime(getContext(), realm, zonedRelativeTo,
                                 dtol(unbalanceResult.getYears()), dtol(unbalanceResult.getMonths()), dtol(unbalanceResult.getWeeks()), 0);
             }
@@ -587,7 +643,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             unit, intermediate);
             JSTemporalDurationRecord roundResult = roundDurationNode.execute(unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(),
                             balanceResult.getDays(), balanceResult.getHours(), balanceResult.getMinutes(), balanceResult.getSeconds(), balanceResult.getMilliseconds(), balanceResult.getMicroseconds(),
-                            balanceResult.getNanoseconds(), 1, unit, RoundingMode.TRUNC, relativeTo);
+                            balanceResult.getNanoseconds(), 1, unit, RoundingMode.TRUNC,
+                            plainRelativeTo, zonedRelativeTo, calendar, dateAdd, dateUntil, precalculatedPlainDateTime);
             double whole = 0;
             if (unit == Unit.YEAR) {
                 whole = roundResult.getYears();
@@ -668,7 +725,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
             JSTemporalDurationRecord result = roundDurationNode.execute(dur.getYears(), dur.getMonths(), dur.getWeeks(), dur.getDays(),
                             dur.getHours(), dur.getMinutes(), dur.getSeconds(), dur.getMilliseconds(), dur.getMicroseconds(),
-                            dur.getNanoseconds(), (long) precision.getIncrement(), precision.getUnit(), roundingMode, Undefined.instance);
+                            dur.getNanoseconds(), (long) precision.getIncrement(), precision.getUnit(), roundingMode);
             return JSTemporalDuration.temporalDurationToString(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
                             result.getHours(), result.getMinutes(), result.getSeconds(),
                             result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),

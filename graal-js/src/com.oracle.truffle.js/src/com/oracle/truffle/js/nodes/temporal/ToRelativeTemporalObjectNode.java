@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
@@ -70,6 +71,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -91,14 +93,15 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
         this.getTimeZoneNode = PropertyGetNode.create(TIME_ZONE, ctx);
     }
 
-    public abstract JSDynamicObject execute(JSDynamicObject options);
+    public abstract JSTemporalCalendarHolder execute(JSDynamicObject options);
 
     @Specialization
-    protected JSDynamicObject toRelativeTemporalObject(JSDynamicObject options,
+    protected JSTemporalCalendarHolder toRelativeTemporalObject(JSDynamicObject options,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile valueIsObject,
                     @Cached InlinedConditionProfile valueIsUndefined,
-                    @Cached InlinedConditionProfile valueIsPlainDate,
+                    @Cached InlinedBranchProfile valueIsPlainDate,
+                    @Cached InlinedBranchProfile valueIsZonedDateTime,
                     @Cached InlinedConditionProfile valueIsPlainDateTime,
                     @Cached InlinedConditionProfile timeZoneAvailable,
                     @Cached JSToStringNode toStringNode,
@@ -111,7 +114,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     @Cached TemporalGetOptionNode getOptionNode) {
         Object value = getRelativeToNode.getValue(options);
         if (valueIsUndefined.profile(this, value == Undefined.instance)) {
-            return Undefined.instance;
+            return null;
         }
         JSTemporalDateTimeRecord result;
         JSDynamicObject timeZone = Undefined.instance;
@@ -121,11 +124,15 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
         TemporalUtil.MatchBehaviour matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_EXACTLY;
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
-        if (valueIsObject.profile(this, isObjectNode.executeBoolean(value))) {
-            JSDynamicObject valueObj = (JSDynamicObject) value;
-            if (valueIsPlainDate.profile(this, valueObj instanceof JSTemporalPlainDateObject || valueObj instanceof JSTemporalZonedDateTimeObject)) {
-                return valueObj;
-            }
+        if (value instanceof JSTemporalPlainDateObject plainDate) {
+            valueIsPlainDate.enter(this);
+            return plainDate;
+        } else if (value instanceof JSTemporalZonedDateTimeObject zonedDateTime) {
+            valueIsZonedDateTime.enter(this);
+            return zonedDateTime;
+        }
+        if (valueIsObject.profile(this, isObjectNode.executeBoolean(value) && value instanceof JSObject)) {
+            JSObject valueObj = (JSObject) value;
             if (valueIsPlainDateTime.profile(this, valueObj instanceof JSTemporalPlainDateTimeObject)) {
                 JSTemporalPlainDateTimeObject pd = (JSTemporalPlainDateTimeObject) valueObj;
                 return JSTemporalPlainDate.create(ctx, realm, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar(), this, errorBranch);

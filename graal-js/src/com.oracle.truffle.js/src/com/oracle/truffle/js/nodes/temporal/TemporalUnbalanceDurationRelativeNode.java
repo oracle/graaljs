@@ -51,7 +51,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
@@ -66,7 +65,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.MoveRelativeDateResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -74,21 +72,19 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBaseNode {
 
-    @Child private GetMethodNode getMethodDateAddNode;
     @Child private JSFunctionCallNode callDateAddNode;
-    @Child private GetMethodNode getMethodDateUntilNode;
     @Child private JSFunctionCallNode callDateUntilNode;
 
     protected TemporalUnbalanceDurationRelativeNode() {
     }
 
     public abstract JSTemporalDurationRecord execute(double year, double month, double week, double day, TemporalUtil.Unit largestUnit,
-                    JSTemporalPlainDateObject plainRelativeTo);
+                    JSTemporalPlainDateObject plainRelativeTo, Object dateAdd, Object dateUntil);
 
     // TODO still using (some) long arithmetics here, should use double?
     @Specialization
     protected JSTemporalDurationRecord unbalanceDurationRelative(double y, double m, double w, double d, TemporalUtil.Unit largestUnit,
-                    JSTemporalPlainDateObject plainRelativeTo,
+                    JSTemporalPlainDateObject plainRelativeTo, Object dateAdd, Object dateUntil,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile unitIsYear,
                     @Cached InlinedConditionProfile unitIsWeek,
@@ -115,17 +111,17 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
             calendar = plainRelativeTo.getCalendar();
         }
         if (unitIsMonth.profile(this, TemporalUtil.Unit.MONTH == largestUnit)) {
-            return unitIsMonth(years, months, weeks, days, plainRelativeTo, sign, oneYear, calendar, this, errorBranch);
+            return unitIsMonth(years, months, weeks, days, plainRelativeTo, sign, oneYear, calendar, dateAdd, dateUntil, this, errorBranch);
         } else if (unitIsWeek.profile(this, TemporalUtil.Unit.WEEK == largestUnit)) {
-            return unitIsWeek(years, months, weeks, days, plainRelativeTo, sign, oneYear, oneMonth, calendar, this, errorBranch, moveRelativeDateNode);
+            return unitIsWeek(years, months, weeks, days, plainRelativeTo, sign, oneYear, oneMonth, calendar, dateAdd, this, errorBranch, moveRelativeDateNode);
         } else {
-            return unitIsDay(years, months, weeks, days, plainRelativeTo, sign, oneYear, oneMonth, oneWeek, calendar, this, errorBranch, moveRelativeDateNode);
+            return unitIsDay(years, months, weeks, days, plainRelativeTo, sign, oneYear, oneMonth, oneWeek, calendar, dateAdd, this, errorBranch, moveRelativeDateNode);
         }
     }
 
     private static JSTemporalDurationRecord unitIsDay(long yearsP, long monthsP, long weeksP, long daysP, JSTemporalPlainDateObject relativeToP, long sign,
                     JSTemporalDurationObject oneYear, JSTemporalDurationObject oneMonth, JSTemporalDurationObject oneWeek,
-                    JSDynamicObject calendar, Node node, InlinedBranchProfile errorBranch, TemporalMoveRelativeDateNode moveRelativeDateNode) {
+                    JSDynamicObject calendar, Object dateAdd, Node node, InlinedBranchProfile errorBranch, TemporalMoveRelativeDateNode moveRelativeDateNode) {
         long years = yearsP;
         long months = monthsP;
         long weeks = weeksP;
@@ -137,21 +133,21 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
                 throw Errors.createRangeError("Calendar should not be undefined.");
             }
             while (Math.abs(years) > 0) {
-                MoveRelativeDateResult moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneYear);
+                MoveRelativeDateResult moveResult = moveRelativeDateNode.execute(calendar, dateAdd, relativeTo, oneYear);
                 relativeTo = moveResult.relativeTo();
                 long oneYearDays = moveResult.days();
                 years = years - sign;
                 days = days + oneYearDays;
             }
             while (Math.abs(months) > 0) {
-                MoveRelativeDateResult moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneMonth);
+                MoveRelativeDateResult moveResult = moveRelativeDateNode.execute(calendar, dateAdd, relativeTo, oneMonth);
                 relativeTo = moveResult.relativeTo();
                 long oneMonthDays = moveResult.days();
                 months = months - sign;
                 days = days + oneMonthDays;
             }
             while (Math.abs(weeks) > 0) {
-                MoveRelativeDateResult moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneWeek);
+                MoveRelativeDateResult moveResult = moveRelativeDateNode.execute(calendar, dateAdd, relativeTo, oneWeek);
                 relativeTo = moveResult.relativeTo();
                 long oneWeekDays = moveResult.days();
                 weeks = weeks - sign;
@@ -163,7 +159,7 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
 
     private static JSTemporalDurationRecord unitIsWeek(long yearsP, long monthsP, long weeks, long daysP, JSTemporalPlainDateObject relativeToP, long sign,
                     JSTemporalDurationObject oneYear, JSTemporalDurationObject oneMonth,
-                    JSDynamicObject calendar, Node node, InlinedBranchProfile errorBranch, TemporalMoveRelativeDateNode moveRelativeDateNode) {
+                    JSDynamicObject calendar, Object dateAdd, Node node, InlinedBranchProfile errorBranch, TemporalMoveRelativeDateNode moveRelativeDateNode) {
         long years = yearsP;
         long months = monthsP;
         long days = daysP;
@@ -173,14 +169,14 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
             throw Errors.createRangeError("Calendar should not be undefined.");
         }
         while (Math.abs(years) > 0) {
-            MoveRelativeDateResult moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneYear);
+            MoveRelativeDateResult moveResult = moveRelativeDateNode.execute(calendar, dateAdd, relativeTo, oneYear);
             relativeTo = moveResult.relativeTo();
             long oneYearDays = moveResult.days();
             years = years - sign;
             days = days + oneYearDays;
         }
         while (Math.abs(months) > 0) {
-            MoveRelativeDateResult moveResult = moveRelativeDateNode.execute(calendar, relativeTo, oneMonth);
+            MoveRelativeDateResult moveResult = moveRelativeDateNode.execute(calendar, dateAdd, relativeTo, oneMonth);
             relativeTo = moveResult.relativeTo();
             long oneMonthDays = moveResult.days();
             months = months - sign;
@@ -190,7 +186,7 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
     }
 
     private JSTemporalDurationRecord unitIsMonth(long yearsP, long monthsP, long weeks, long days, JSTemporalPlainDateObject relativeToP, long sign, JSDynamicObject oneYear,
-                    JSDynamicObject calendar, Node node, InlinedBranchProfile errorBranch) {
+                    JSDynamicObject calendar, Object dateAdd, Object dateUntil, Node node, InlinedBranchProfile errorBranch) {
         long years = yearsP;
         long months = monthsP;
         JSTemporalPlainDateObject relativeTo = relativeToP;
@@ -199,14 +195,6 @@ public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBa
             throw Errors.createRangeError("No calendar provided.");
         }
         JSContext ctx = getLanguage().getJSContext();
-        if (getMethodDateAddNode == null || getMethodDateUntilNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getMethodDateAddNode = insert(GetMethodNode.create(ctx, TemporalConstants.DATE_ADD));
-            getMethodDateUntilNode = insert(GetMethodNode.create(ctx, TemporalConstants.DATE_UNTIL));
-        }
-        Object dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
-        Object dateUntil = getMethodDateUntilNode.executeWithTarget(calendar);
-
         while (Math.abs(years) > 0) {
             JSDynamicObject addOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSTemporalPlainDateObject newRelativeTo = calendarDateAdd(calendar, relativeTo, oneYear, addOptions, dateAdd, node, errorBranch);

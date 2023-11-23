@@ -401,7 +401,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                             other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
             JSTemporalDurationRecord result2 = roundDurationNode.execute(0, 0, 0, 0,
                             result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(),
-                            result.nanoseconds(), roundingIncrement, smallestUnit, roundingMode, Undefined.instance);
+                            result.nanoseconds(), roundingIncrement, smallestUnit, roundingMode);
             JSRealm realm = getRealm();
             JSTemporalDurationRecord result3 = TemporalUtil.balanceDuration(getContext(), realm, namesNode,
                             0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(),

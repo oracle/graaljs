@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
@@ -122,8 +124,13 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
 
     public abstract static class JSTemporalDurationCompare extends JSTemporalBuiltinOperation {
 
+        @Child private GetMethodNode getMethodDateAddNode;
+        @Child private GetMethodNode getMethodDateUntilNode;
+
         protected JSTemporalDurationCompare(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.getMethodDateAddNode = GetMethodNode.create(context, TemporalConstants.DATE_ADD);
+            this.getMethodDateUntilNode = GetMethodNode.create(context, TemporalConstants.DATE_UNTIL);
         }
 
         @Specialization
@@ -136,7 +143,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalDurationObject one = toTemporalDurationNode.execute(oneParam);
             JSTemporalDurationObject two = toTemporalDurationNode.execute(twoParam);
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            JSDynamicObject relativeTo = toRelativeTemporalObjectNode.execute(options);
+            var relativeTo = toRelativeTemporalObjectNode.execute(options);
             JSRealm realm = getRealm();
             double shift1 = TemporalUtil.calculateOffsetShift(getContext(), realm, relativeTo,
                             one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(),
@@ -149,6 +156,16 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             boolean calendarUnitsPresent = one.getYears() != 0 || two.getYears() != 0 ||
                             one.getMonths() != 0 || two.getMonths() != 0 ||
                             one.getWeeks() != 0 || two.getWeeks() != 0;
+
+            JSDynamicObject calendar = null;
+            Object dateAdd = null;
+            Object dateUntil = null;
+            if (relativeTo != null) {
+                calendar = relativeTo.getCalendar();
+                dateAdd = getMethodDateAddNode.executeWithTarget(calendar);
+                dateUntil = getMethodDateUntilNode.executeWithTarget(calendar);
+            }
+
             if (relativeTo instanceof JSTemporalZonedDateTimeObject zonedRelativeTo && (calendarUnitsPresent || one.getDays() != 0 || two.getDays() != 0)) {
                 var after1 = TemporalUtil.addZonedDateTime(getContext(), realm,
                                 zonedRelativeTo.getNanoseconds(), zonedRelativeTo.getTimeZone(), zonedRelativeTo.getCalendar(),
@@ -169,8 +186,10 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             double days1;
             double days2;
             if (calendarUnitsPresent) {
-                JSTemporalDurationRecord balanceResult1 = unbalanceDurationRelativeNode.execute(one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(), Unit.DAY, plainRelativeTo);
-                JSTemporalDurationRecord balanceResult2 = unbalanceDurationRelativeNode.execute(two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(), Unit.DAY, plainRelativeTo);
+                JSTemporalDurationRecord balanceResult1 = unbalanceDurationRelativeNode.execute(one.getYears(), one.getMonths(), one.getWeeks(), one.getDays(), Unit.DAY, plainRelativeTo,
+                                dateAdd, dateUntil);
+                JSTemporalDurationRecord balanceResult2 = unbalanceDurationRelativeNode.execute(two.getYears(), two.getMonths(), two.getWeeks(), two.getDays(), Unit.DAY, plainRelativeTo,
+                                dateAdd, dateUntil);
                 days1 = balanceResult1.getDays();
                 days2 = balanceResult2.getDays();
             } else {
