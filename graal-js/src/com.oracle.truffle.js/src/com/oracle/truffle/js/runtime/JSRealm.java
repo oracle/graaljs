@@ -108,6 +108,7 @@ import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.commonjs.NpmCompatibleESModuleLoader;
 import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltins;
+import com.oracle.truffle.js.builtins.foreign.ForeignIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.json.JSON;
 import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -494,6 +495,7 @@ public class JSRealm {
 
     /** Foreign object prototypes. */
     private final JSDynamicObject foreignIterablePrototype;
+    private final JSDynamicObject foreignIteratorPrototype;
 
     /**
      * Local time zone ID. Initialized lazily. May be reinitialized by {@link #setLocalTimeZone}.
@@ -1010,6 +1012,7 @@ public class JSRealm {
         }
 
         this.foreignIterablePrototype = createForeignIterablePrototype();
+        this.foreignIteratorPrototype = createForeignIteratorPrototype();
 
         if (context.isOptionTemporal()) {
             ctor = JSTemporalPlainTime.createConstructor(this);
@@ -2377,6 +2380,12 @@ public class JSRealm {
         return prototype;
     }
 
+    private JSDynamicObject createForeignIteratorPrototype() {
+        JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(this, this.iteratorPrototype);
+        JSObjectUtil.putFunctionsFromContainer(this, prototype, ForeignIteratorPrototypeBuiltins.BUILTINS);
+        return prototype;
+    }
+
     public JSDynamicObject getArrayProtoValuesIterator() {
         return arrayProtoValuesIterator;
     }
@@ -3133,6 +3142,10 @@ public class JSRealm {
 
     public JSDynamicObject getForeignIterablePrototype() {
         return foreignIterablePrototype;
+    }
+
+    public JSDynamicObject getForeignIteratorPrototype() {
+        return foreignIteratorPrototype;
     }
 
     public JSWebAssemblyMemoryGrowCallback getWebAssemblyMemoryGrowCallback() {

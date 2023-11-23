@@ -322,6 +322,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotIterator(Object value, Node originatingNode) {
+        return Errors.createTypeError(JSRuntime.safeToString(value) + " is not iterator", originatingNode);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorPropertyDescriptorNotAnObject(Object value, Node originatingNode) {
         return Errors.createTypeError("Property description must be an object: " + JSRuntime.safeToString(value), originatingNode);
     }
