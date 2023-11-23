@@ -56,7 +56,6 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
@@ -95,8 +94,7 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
                     @Cached(value = "createIteratorMethodNode()", uncached = "uncachedIteratorMethodNode()", inline = false) GetMethodNode getIteratorMethodNode,
                     @Cached(inline = false) IsCallableNode isCallableNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()", inline = false) JSFunctionCallNode iteratorCallNode,
-                    @Cached(inline = false) IsObjectNode isObjectNode,
-                    @Cached(value = "createNextMethodNode()", uncached = "uncachedNextMethodNode()", inline = false) PropertyGetNode getNextMethodNode,
+                    @Cached(inline = false) GetIteratorDirectNode getIteratorDirectNode,
                     @Cached InlinedBranchProfile errorBranch) {
         Object method;
         if (methodOpt != Undefined.instance) {
@@ -109,7 +107,7 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
             }
         }
 
-        return getIterator(items, method, isCallableNode, iteratorCallNode, isObjectNode, getNextMethodNode, errorBranch, node);
+        return getIterator(items, method, isCallableNode, iteratorCallNode, getIteratorDirectNode, errorBranch, node);
     }
 
     @InliningCutoff
@@ -127,34 +125,21 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
     public static IteratorRecord getIterator(Object iteratedObject, Object method,
                     IsCallableNode isCallableNode,
                     JSFunctionCallNode methodCallNode,
-                    IsObjectNode isObjectNode,
-                    PropertyGetNode getNextMethodNode,
+                    GetIteratorDirectNode getIteratorDirectNode,
                     InlinedBranchProfile errorBranch,
                     Node node) {
         if (!isCallableNode.executeBoolean(method)) {
             errorBranch.enter(node);
             throw Errors.createTypeErrorNotIterable(iteratedObject, node);
         }
-        return getIterator(iteratedObject, method, methodCallNode, isObjectNode, getNextMethodNode, node);
+        return getIterator(iteratedObject, method, methodCallNode, getIteratorDirectNode);
     }
 
     public static IteratorRecord getIterator(Object iteratedObject, Object method,
                     JSFunctionCallNode methodCallNode,
-                    IsObjectNode isObjectNode,
-                    PropertyGetNode getNextMethodNode,
-                    Node node) {
+                    GetIteratorDirectNode getIteratorDirectNode) {
         Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
-        if (isObjectNode.executeBoolean(iterator)) {
-            Object nextMethod;
-            if (getNextMethodNode == null) {
-                nextMethod = JSRuntime.get(iterator, Strings.NEXT);
-            } else {
-                nextMethod = getNextMethodNode.getValue(iterator);
-            }
-            return IteratorRecord.create(iterator, nextMethod, false);
-        } else {
-            throw Errors.createTypeErrorNotAnObject(iterator, node);
-        }
+        return getIteratorDirectNode.execute(iterator);
     }
 
     @NeverDefault
@@ -166,12 +151,4 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
         return null;
     }
 
-    @NeverDefault
-    PropertyGetNode createNextMethodNode() {
-        return PropertyGetNode.create(Strings.NEXT, getLanguage().getJSContext());
-    }
-
-    static PropertyGetNode uncachedNextMethodNode() {
-        return null;
-    }
 }

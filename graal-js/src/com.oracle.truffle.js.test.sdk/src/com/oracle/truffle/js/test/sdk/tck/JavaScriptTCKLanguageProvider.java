@@ -297,7 +297,7 @@ public class JavaScriptTCKLanguageProvider implements LanguageProvider {
         // for of
         res.add(createStatement(context, "for-of", "for (let v of {1});",
                         TypeDescriptor.NULL,
-                        TypeDescriptor.union(TypeDescriptor.STRING, TypeDescriptor.ARRAY, TypeDescriptor.ITERABLE, TypeDescriptor.HASH)));
+                        TypeDescriptor.union(TypeDescriptor.STRING, TypeDescriptor.ARRAY, TypeDescriptor.ITERABLE, TypeDescriptor.ITERATOR, TypeDescriptor.HASH)));
 
         // with
         res.add(createStatement(context, "with", "with({1}) undefined",

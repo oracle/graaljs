@@ -185,7 +185,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         protected IteratorMethodNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getIteratorDirectNode = GetIteratorDirectNode.create(context);
+            this.getIteratorDirectNode = GetIteratorDirectNode.create();
         }
 
         protected final IteratorRecord getIteratorDirect(Object thisObj) {
