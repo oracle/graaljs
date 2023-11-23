@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -13,24 +13,24 @@
 
 load("../assert.js");
 
-let createForeignObjectWithNextMethod = () => java.util.List.of({ value: 2 }, { value: 6 }, { value: 4 }, { done: true}).iterator();
+let createJavaIterator = () => java.util.List.of(2, 6, 4).iterator();
 let foreignIterable = java.util.List.of(41, 42, 43);
 
-assertSameContent([2,4], Iterator.prototype.filter.call(createForeignObjectWithNextMethod(), x => x < 5).toArray());
-assertSameContent([4,36,16], Iterator.prototype.map.call(createForeignObjectWithNextMethod(), x => x*x).toArray());
-assertSame(12, Iterator.prototype.reduce.call(createForeignObjectWithNextMethod(), (sum,x) => sum+x, 0));
-assertSame(true, Iterator.prototype.every.call(createForeignObjectWithNextMethod(), x => x > 0));
-assertSame(false, Iterator.prototype.every.call(createForeignObjectWithNextMethod(), x => x < 5));
-assertSame(6, Iterator.prototype.find.call(createForeignObjectWithNextMethod(), x => x > 5));
-assertSame(undefined, Iterator.prototype.find.call(createForeignObjectWithNextMethod(), x => x < 0));
-assertSame(true, Iterator.prototype.some.call(createForeignObjectWithNextMethod(), x => x > 5));
-assertSame(false, Iterator.prototype.some.call(createForeignObjectWithNextMethod(), x => x < 0));
-assertSameContent([2,6], Iterator.prototype.take.call(createForeignObjectWithNextMethod(), 2).toArray());
-assertSameContent([6,4], Iterator.prototype.drop.call(createForeignObjectWithNextMethod(), 1).toArray());
-assertSameContent([2,4,6,36,4,16], Iterator.prototype.flatMap.call(createForeignObjectWithNextMethod(), x => [x, x*x]).toArray());
+assertSameContent([2,4], createJavaIterator().filter(x => x < 5).toArray());
+assertSameContent([4,36,16], createJavaIterator().map(x => x*x).toArray());
+assertSame(12, createJavaIterator().reduce((sum,x) => sum+x, 0));
+assertSame(true, createJavaIterator().every(x => x > 0));
+assertSame(false, createJavaIterator().every(x => x < 5));
+assertSame(6, createJavaIterator().find(x => x > 5));
+assertSame(undefined, createJavaIterator().find(x => x < 0));
+assertSame(true, createJavaIterator().some(x => x > 5));
+assertSame(false, createJavaIterator().some(x => x < 0));
+assertSameContent([2,6], createJavaIterator().take(2).toArray());
+assertSameContent([6,4], createJavaIterator().drop(1).toArray());
+assertSameContent([2,4,6,36,4,16], createJavaIterator().flatMap(x => [x, x*x]).toArray());
 
 let forEachResult = [];
-Iterator.prototype.forEach.call(createForeignObjectWithNextMethod(), x => forEachResult.push(x));
+createJavaIterator().forEach(x => forEachResult.push(x));
 assertSameContent([2,6,4], forEachResult);
 
 assertSameContent([41], Iterator.from(foreignIterable).take(1).toArray());
