@@ -2204,10 +2204,6 @@ public final class TemporalUtil {
         }
     }
 
-    public static boolean doubleIsInteger(double l) {
-        return Math.rint(l) == l;
-    }
-
     public static JSTemporalDurationRecord differenceZonedDateTime(JSContext ctx, JSRealm realm, EnumerableOwnPropertyNamesNode namesNode,
                     BigInt ns1, BigInt ns2, TimeZoneMethodsRecord timeZone, CalendarMethodsRecord calendar, Unit largestUnit,
                     JSTemporalPlainDateTimeObject precalculatedPlainDateTime) {

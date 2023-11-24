@@ -41,8 +41,9 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.doubleIsInteger;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
+
+import java.util.stream.DoubleStream;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -60,6 +61,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
@@ -115,10 +117,9 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile relativeToPlainDateBranch,
                     @Cached InlinedBranchProfile relativeToZonedDateTimeBranch,
                     @Cached InlinedConditionProfile largetUnitYMWDProfile) {
-        assert doubleIsInteger(y1) && doubleIsInteger(mon1) && doubleIsInteger(w1) && doubleIsInteger(d1);
-        assert doubleIsInteger(h1) && doubleIsInteger(min1) && doubleIsInteger(s1) && doubleIsInteger(ms1) && doubleIsInteger(mus1) && doubleIsInteger(ns1);
-        assert doubleIsInteger(y2) && doubleIsInteger(mon2) && doubleIsInteger(w2) && doubleIsInteger(d2);
-        assert doubleIsInteger(h2) && doubleIsInteger(min2) && doubleIsInteger(s2) && doubleIsInteger(ms2) && doubleIsInteger(mus2) && doubleIsInteger(ns2);
+        assert DoubleStream.of(
+                        y1, mon1, w1, d1, h1, min1, s1, ms1, mus1, ns1,
+                        y2, mon2, w2, d2, h2, min2, s2, ms2, mus2, ns2).allMatch(JSRuntime::isIntegralNumber);
 
         TemporalUtil.Unit largestUnit1 = TemporalUtil.defaultTemporalLargestUnit(y1, mon1, w1, d1, h1, min1, s1, ms1, mus1);
         TemporalUtil.Unit largestUnit2 = TemporalUtil.defaultTemporalLargestUnit(y2, mon2, w2, d2, h2, min2, s2, ms2, mus2);
