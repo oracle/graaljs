@@ -305,20 +305,15 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-    public abstract static class JSTemporalDurationNegated extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalDurationNegated extends JSBuiltinNode {
 
         protected JSTemporalDurationNegated(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSTemporalDurationObject negated(JSTemporalDurationObject duration,
-                        @Cached InlinedBranchProfile errorBranch) {
-            return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
-                            -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -duration.getDays(),
-                            -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(), -duration.getMilliseconds(),
-                            -duration.getMicroseconds(), -duration.getNanoseconds(),
-                            this, errorBranch);
+        protected JSTemporalDurationObject negated(JSTemporalDurationObject duration) {
+            return JSTemporalDuration.createNegatedTemporalDuration(getContext(), getRealm(), duration);
         }
 
         @SuppressWarnings("unused")
@@ -328,7 +323,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
     }
 
-    public abstract static class JSTemporalDurationAbs extends JSTemporalBuiltinOperation {
+    public abstract static class JSTemporalDurationAbs extends JSBuiltinNode {
 
         protected JSTemporalDurationAbs(JSContext context, JSBuiltin builtin) {
             super(context, builtin);

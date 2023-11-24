@@ -76,6 +76,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalAddDateNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
@@ -83,9 +84,9 @@ import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalMonthDayFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalYearMonthFromFieldsNode;
-import com.oracle.truffle.js.nodes.temporal.ToLimitedTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -296,23 +297,22 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         protected final JSTemporalPlainDateObject addDate(JSTemporalPlainDateObject date, Object temporalDurationLike, Object optParam,
-                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
+                        @Cached ToTemporalDurationNode toTemporalDurationNode,
+                        @Cached TemporalAddDateNode addDateNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
-            JSTemporalDurationRecord duration = toLimitedTemporalDurationNode.execute(temporalDurationLike, TemporalUtil.listEmpty);
+            JSTemporalDurationObject duration = toTemporalDurationNode.execute(temporalDurationLike);
             JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
             JSRealm realm = getRealm();
+
+            if (sign < 0) {
+                duration = JSTemporalDuration.createNegatedTemporalDuration(getContext(), realm, duration);
+            }
 
             var calendar = date.getCalendar();
             CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateAdd(calendar, getMethodDateAddNode.executeWithTarget(calendar));
 
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), realm,
-                            duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
-                            duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), Unit.DAY, calendarRec, null);
-            JSTemporalDurationObject balancedDuration = JSTemporalDuration.createTemporalDuration(getContext(), realm,
-                            sign * duration.getYears(), sign * duration.getMonths(), sign * duration.getWeeks(), sign * balanceResult.getDays(),
-                            0, 0, 0, 0, 0, 0, this, errorBranch);
-            return TemporalUtil.calendarDateAdd(calendarRec, date, balancedDuration, options);
+            return addDateNode.execute(calendarRec, date, duration, options);
         }
 
         @SuppressWarnings("unused")
