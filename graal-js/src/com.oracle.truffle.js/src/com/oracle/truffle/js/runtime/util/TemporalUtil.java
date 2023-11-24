@@ -2114,7 +2114,7 @@ public final class TemporalUtil {
         return result;
     }
 
-    private static TimeDurationRecord balancePossiblyInfiniteTimeDuration(double days, double hours, double minutes, double seconds,
+    public static TimeDurationRecord balancePossiblyInfiniteTimeDuration(double days, double hours, double minutes, double seconds,
                     double milliseconds, double microseconds, double nanoseconds, Unit largestUnit) {
         BigInt ns = totalDurationNanoseconds(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         return balancePossiblyInfiniteTimeDuration(ns, largestUnit);

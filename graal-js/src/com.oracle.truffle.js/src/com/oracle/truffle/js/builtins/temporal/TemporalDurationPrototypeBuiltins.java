@@ -558,7 +558,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected double total(JSTemporalDurationObject duration, Object totalOfParam,
-                        @Cached JSNumberToBigIntNode toBigIntNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached TemporalRoundDurationNode roundDurationNode,
@@ -605,19 +604,30 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             JSTemporalDurationRecord unbalanceResult = unbalanceDurationRelativeNode.execute(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, plainRelativeTo, calendarRec);
-            JSDynamicObject intermediate = Undefined.instance;
+            TimeDurationRecord balanceResult;
             if (zonedRelativeTo != null) {
-                intermediate = TemporalUtil.moveRelativeZonedDateTime(getContext(), realm, zonedRelativeTo, calendarRec, timeZoneRec,
+                JSTemporalZonedDateTimeObject intermediate = TemporalUtil.moveRelativeZonedDateTime(getContext(), realm, zonedRelativeTo, calendarRec, timeZoneRec,
                                 dtol(unbalanceResult.getYears()), dtol(unbalanceResult.getMonths()), dtol(unbalanceResult.getWeeks()), 0, precalculatedPlainDateTime);
+                balanceResult = TemporalUtil.balancePossiblyInfiniteTimeDurationRelative(unbalanceResult.getDays(),
+                                duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                                duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(),
+                                unit, intermediate, timeZoneRec, null, getContext(), realm);
+            } else {
+                balanceResult = TemporalUtil.balancePossiblyInfiniteTimeDuration(unbalanceResult.getDays(),
+                                duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                                duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds(), unit);
+
             }
-            JSTemporalDurationRecord balanceResult = TemporalUtil.balanceDuration(getContext(), realm,
-                            unbalanceResult.getDays(), duration.getHours(), duration.getMinutes(),
-                            duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(), toBigIntNode.executeBigInt(duration.getNanoseconds()).bigIntegerValue(),
-                            unit, intermediate, calendarRec, timeZoneRec);
-            JSTemporalDurationRecord roundResult = roundDurationNode.execute(unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(),
-                            balanceResult.getDays(), balanceResult.getHours(), balanceResult.getMinutes(), balanceResult.getSeconds(), balanceResult.getMilliseconds(), balanceResult.getMicroseconds(),
-                            balanceResult.getNanoseconds(), 1, unit, RoundingMode.TRUNC,
+            if (balanceResult.isOverflow()) {
+                return balanceResult.getOverflow();
+            }
+            JSTemporalDurationRecord roundResult = roundDurationNode.execute(
+                            unbalanceResult.getYears(), unbalanceResult.getMonths(), unbalanceResult.getWeeks(),
+                            balanceResult.days(), balanceResult.hours(), balanceResult.minutes(), balanceResult.seconds(),
+                            balanceResult.milliseconds(), balanceResult.microseconds(), balanceResult.nanoseconds(),
+                            1, unit, RoundingMode.TRUNC,
                             plainRelativeTo, zonedRelativeTo, calendarRec, timeZoneRec, precalculatedPlainDateTime);
+
             double whole = 0;
             if (unit == Unit.YEAR) {
                 whole = roundResult.getYears();
