@@ -228,8 +228,14 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSTemporalInstantObject addDurationToOrSubtractDurationFromInstant(JSTemporalInstantObject instant, Object temporalDurationLike,
-                        @Cached ToTemporalDurationNode toTemporalDurationNode) {
+                        @Cached ToTemporalDurationNode toTemporalDurationNode,
+                        @Cached InlinedBranchProfile errorBranch) {
             JSTemporalDurationObject duration = toTemporalDurationNode.execute(temporalDurationLike);
+            if (duration.getDays() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0 || duration.getYears() != 0) {
+                errorBranch.enter(this);
+                throw Errors.createRangeError("Temporal.Instant does not support adding or subtracting a Duration with non-zero days, months, weeks, or years.");
+            }
+
             BigInt ns = TemporalUtil.addInstant(instant.getNanoseconds(), sign * duration.getHours(), sign * duration.getMinutes(), sign * duration.getSeconds(),
                             sign * duration.getMilliseconds(), sign * duration.getMicroseconds(), sign * duration.getNanoseconds());
             return JSTemporalInstant.create(getContext(), getRealm(), ns);
