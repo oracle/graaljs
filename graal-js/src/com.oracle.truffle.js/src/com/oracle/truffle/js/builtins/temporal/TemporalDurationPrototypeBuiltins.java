@@ -86,8 +86,8 @@ import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDurationRelativeNode;
-import com.oracle.truffle.js.nodes.temporal.ToLimitedTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -363,12 +363,12 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSTemporalDurationObject addDurationToOrSubtractDurationFromDuration(JSTemporalDurationObject duration, Object other, Object options,
+                        @Cached ToTemporalDurationNode toTemporalDurationNode,
                         @Cached TemporalDurationAddNode durationAddNode,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
-                        @Cached ToLimitedTemporalDurationNode toLimitedTemporalDurationNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
-            JSTemporalDurationRecord otherDuration = toLimitedTemporalDurationNode.execute(other, TemporalUtil.listEmpty);
+            JSTemporalDurationObject otherDuration = toTemporalDurationNode.execute(other);
             JSDynamicObject normalizedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
             var relativeToRec = toRelativeTemporalObjectNode.execute(normalizedOptions);
 
