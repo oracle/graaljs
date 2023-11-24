@@ -2868,6 +2868,7 @@ public final class TemporalUtil {
     public static JSTemporalPlainDateTimeObject builtinTimeZoneGetPlainDateTimeFor(JSContext ctx, JSRealm realm,
                     JSTemporalInstantObject instant, JSDynamicObject calendar, long precalculatedOffsetNanoseconds) {
         long offsetNanoseconds = precalculatedOffsetNanoseconds;
+        // checked in GetOffsetNanosecondsFor
         assert Math.abs(offsetNanoseconds) < NS_PER_DAY : offsetNanoseconds;
         JSTemporalDateTimeRecord result = getISOPartsFromEpoch(instant.getNanoseconds());
         JSTemporalDateTimeRecord result2 = balanceISODateTime(result.getYear(), result.getMonth(),
@@ -2916,11 +2917,14 @@ public final class TemporalUtil {
         if (!JSRuntime.isNumber(offsetNanoseconds)) {
             throw Errors.createTypeError("Number expected");
         }
-        Double nanos = ((Number) offsetNanoseconds).doubleValue();
-        if (!JSRuntime.isInteger(nanos) || Math.abs(nanos) > 86400.0 * 1_000_000_000d) {
+        if (offsetNanoseconds instanceof Integer intValue) {
+            return intValue;
+        }
+        double nanos = ((Number) offsetNanoseconds).doubleValue();
+        if (!JSRuntime.isInteger(nanos) || Math.abs(nanos) >= NS_PER_DAY) {
             throw Errors.createRangeError("out-of-range Number");
         }
-        return nanos.longValue();
+        return (long) nanos;
     }
 
     public static JSTemporalZonedDateTimeObject systemZonedDateTime(Object temporalTimeZoneLike, Object calendarLike,
