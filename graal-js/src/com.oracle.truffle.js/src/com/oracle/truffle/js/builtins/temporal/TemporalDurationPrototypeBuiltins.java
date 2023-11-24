@@ -531,7 +531,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             DateDurationRecord result = balanceDateDurationRelativeNode.execute(
                             roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(),
-                            balanceResult.days(), largestUnit, smallestUnit, plainRelativeTo);
+                            balanceResult.days(), largestUnit, smallestUnit, plainRelativeTo, calendarRec);
             return JSTemporalDuration.createTemporalDuration(getContext(), realm,
                             result.years(), result.months(), result.weeks(), result.days(),
                             balanceResult.hours(), balanceResult.minutes(), balanceResult.seconds(),
