@@ -2578,10 +2578,10 @@ public final class TemporalUtil {
                         0, 0, 0, 0, 0, direction, 0, 0, 0, 0, 0, 0,
                         zonedRelativeTo, calendarRec, timeZoneRec, precalculatedPlainDateTime);
         JSTemporalDurationRecord atd = roundDurationNode.execute(0, 0, 0, 0, 0, 0, 0, 0, 0, oneDayLess, increment, unit, roundingMode);
-        atd = balanceDuration(ctx, realm, 0, atd.getHours(), atd.getMinutes(), atd.getSeconds(), atd.getMilliseconds(), atd.getMicroseconds(), atd.getNanoseconds(), Unit.HOUR,
-                        calendarRec, timeZoneRec);
+        var btd = balanceTimeDuration(0, atd.getHours(), atd.getMinutes(), atd.getSeconds(),
+                        atd.getMilliseconds(), atd.getMicroseconds(), atd.getNanoseconds(), Unit.HOUR);
         return JSTemporalDurationRecord.createWeeks(add.getYears(), add.getMonths(), add.getWeeks(), add.getDays(),
-                        atd.getHours(), atd.getMinutes(), atd.getSeconds(), atd.getMilliseconds(), atd.getMicroseconds(), atd.getNanoseconds());
+                        btd.hours(), btd.minutes(), btd.seconds(), btd.milliseconds(), btd.microseconds(), btd.nanoseconds());
     }
 
     private static BigInteger dtobi(double d) {
