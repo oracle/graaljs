@@ -7545,6 +7545,8 @@ public class Parser extends AbstractParser {
             TokenType t = Token.descType(currentToken);
             if (t == COMMENT) {
                 continue;
+            } else if (t == EOL) {
+                return false;
             } else {
                 return isPropertyName(currentToken) || t == MUL || (allowPrivate && t == TokenType.PRIVATE_IDENT);
             }
