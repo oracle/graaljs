@@ -1701,33 +1701,6 @@ public final class TemporalUtil {
         }
     }
 
-    public static double getPropertyFromRecord(JSTemporalDurationRecord d, UnitPlural unit) {
-        switch (unit) {
-            case YEARS:
-                return d.getYears();
-            case MONTHS:
-                return d.getMonths();
-            case WEEKS:
-                return d.getWeeks();
-            case DAYS:
-                return d.getDays();
-            case HOURS:
-                return d.getHours();
-            case MINUTES:
-                return d.getMinutes();
-            case SECONDS:
-                return d.getSeconds();
-            case MILLISECONDS:
-                return d.getMilliseconds();
-            case MICROSECONDS:
-                return d.getMicroseconds();
-            case NANOSECONDS:
-                return d.getNanoseconds();
-        }
-        CompilerDirectives.transferToInterpreter();
-        throw Errors.createTypeError("unknown property");
-    }
-
     public static JSDynamicObject calendarMergeFields(JSContext ctx, JSRealm realm, JSDynamicObject calendar, JSDynamicObject fields,
                     JSDynamicObject additionalFields, EnumerableOwnPropertyNamesNode namesNode, Node node, InlinedBranchProfile errorBranch) {
         Object mergeFields = JSObject.getMethod(calendar, TemporalConstants.MERGE_FIELDS);
@@ -2505,18 +2478,6 @@ public final class TemporalUtil {
         BigInteger us = dtobi(microseconds).add(ms.multiply(BI_1000));
         BigInteger ns = dtobi(nanoseconds).add(us.multiply(BI_1000));
         return BigInt.fromBigInteger(ns);
-    }
-
-    // used by balanceDuration. offsetShift == 0
-    @TruffleBoundary
-    public static BigInteger totalDurationNanoseconds(double days, double hours, double minutes, double seconds, double milliseconds,
-                    double microseconds, BigInteger nanoseconds) {
-        double h = hours + days * 24;
-        double min = minutes + h * 60;
-        double s = seconds + min * 60;
-        double ms = milliseconds + s * 1000;
-        double mus = microseconds + ms * 1000;
-        return nanoseconds.add(BigDecimal.valueOf(mus).toBigInteger().multiply(BI_1000));
     }
 
     @TruffleBoundary
@@ -3693,12 +3654,6 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static long bitol(BigInteger bi) {
-        long value = bi.longValueExact(); // throws!
-        return value;
-    }
-
-    @TruffleBoundary
     public static long bigIntToLong(BigInt val) {
         return val.longValueExact(); // throws
     }
@@ -3715,10 +3670,6 @@ public final class TemporalUtil {
                 return Integer.MAX_VALUE;
             }
         }
-    }
-
-    public static JSTemporalDurationRecord createNegatedTemporalDuration(JSTemporalDurationRecord d) {
-        return d.copyNegated();
     }
 
     public static Unit toUnit(TruffleString unit, TruffleString.EqualNode equalNode) {
