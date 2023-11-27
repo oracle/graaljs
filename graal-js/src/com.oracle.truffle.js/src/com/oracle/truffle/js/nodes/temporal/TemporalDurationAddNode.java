@@ -45,20 +45,15 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 
 import java.util.stream.DoubleStream;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -73,11 +68,9 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -85,16 +78,10 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
 
-    @Child private GetMethodNode getMethodDateAddNode;
-    @Child private JSFunctionCallNode callDateAddNode;
-    @Child private GetMethodNode getMethodDateUntilNode;
-    @Child private JSFunctionCallNode callDateUntilNode;
     @Child EnumerableOwnPropertyNamesNode namesNode;
 
     protected TemporalDurationAddNode() {
         JSContext ctx = JavaScriptLanguage.get(null).getJSContext();
-        this.getMethodDateAddNode = GetMethodNode.create(ctx, TemporalConstants.DATE_ADD);
-        this.getMethodDateUntilNode = GetMethodNode.create(ctx, TemporalConstants.DATE_UNTIL);
         this.namesNode = EnumerableOwnPropertyNamesNode.createKeys(ctx);
     }
 
@@ -168,28 +155,5 @@ public abstract class TemporalDurationAddNode extends JavaScriptBaseNode {
         } else {
             throw Errors.shouldNotReachHereUnexpectedValue(relativeTo);
         }
-    }
-
-    protected JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options, Node node,
-                    InlinedBranchProfile errorBranch) {
-        if (callDateAddNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callDateAddNode = insert(JSFunctionCallNode.createCall());
-        }
-        Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendarRec.receiver(), calendarRec.dateAdd(), date, duration, options));
-        return TemporalUtil.requireTemporalDate(addedDate, node, errorBranch);
-    }
-
-    protected JSTemporalDurationObject calendarDateUntil(CalendarMethodsRecord calendarRec, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options) {
-        Object dateUntilPrepared = calendarRec.dateUntil();
-        if (dateUntilPrepared == Undefined.instance) {
-            dateUntilPrepared = getMethodDateUntilNode.executeWithTarget(calendarRec.receiver());
-        }
-        if (callDateUntilNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            callDateUntilNode = insert(JSFunctionCallNode.createCall());
-        }
-        Object addedDate = callDateUntilNode.executeCall(JSArguments.create(calendarRec.receiver(), dateUntilPrepared, date, duration, options));
-        return TemporalUtil.requireTemporalDuration(addedDate);
     }
 }
