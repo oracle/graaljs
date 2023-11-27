@@ -1997,12 +1997,14 @@ public final class TemporalUtil {
         return result;
     }
 
+    @TruffleBoundary
     public static TimeDurationRecord balancePossiblyInfiniteTimeDuration(double days, double hours, double minutes, double seconds,
                     double milliseconds, double microseconds, double nanoseconds, Unit largestUnit) {
         BigInt ns = totalDurationNanoseconds(days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
         return balancePossiblyInfiniteTimeDuration(ns, largestUnit);
     }
 
+    @TruffleBoundary
     private static TimeDurationRecord balancePossiblyInfiniteTimeDuration(BigInt nanoseconds, Unit largestUnit) {
         BigInteger ns = nanoseconds.bigIntegerValue();
         BigInteger d = BigInteger.ZERO;
@@ -2110,6 +2112,7 @@ public final class TemporalUtil {
         return result;
     }
 
+    @TruffleBoundary
     public static TimeDurationRecord balancePossiblyInfiniteTimeDurationRelative(double days, double hours, double minutes, double seconds,
                     double milliseconds, double microseconds, double nanoseconds, Unit largestUnit,
                     JSTemporalZonedDateTimeObject zonedRelativeTo, TimeZoneMethodsRecord timeZoneRec, JSTemporalPlainDateTimeObject precalculatedPlainDateTimeOpt,
@@ -2334,11 +2337,11 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static BigDecimal roundDurationCalculateFractionalSeconds(double seconds, double microseconds, double milliseconds, double nanoseconds) {
+    public static double roundDurationCalculateFractionalSeconds(double seconds, double microseconds, double milliseconds, double nanoseconds) {
         BigDecimal part1 = BigDecimal.valueOf(nanoseconds).multiply(BD_10_POW_M_9);
         BigDecimal part2 = BigDecimal.valueOf(microseconds).multiply(BD_10_POW_M_6);
         BigDecimal part3 = BigDecimal.valueOf(milliseconds).multiply(BD_10_POW_M_3);
-        return part1.add(part2).add(part3).add(BigDecimal.valueOf(seconds));
+        return part1.add(part2).add(part3).add(BigDecimal.valueOf(seconds)).doubleValue();
     }
 
     public static NanosecondsToDaysResult nanosecondsToDays(JSContext ctx, JSRealm realm, BigInt nanoseconds, JSTemporalZonedDateTimeObject zonedRelativeTo,
