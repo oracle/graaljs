@@ -2015,79 +2015,79 @@ public final class TemporalUtil {
         ns = ns.abs();
         switch (largestUnit) {
             case YEAR, MONTH, WEEK, DAY -> {
-                var us_ns = ns.divideAndRemainder(BI_1000);
-                us = us_ns[0];
-                ns = us_ns[1];
-                var ms_us = us.divideAndRemainder(BI_1000);
-                ms = ms_us[0];
-                us = ms_us[1];
-                var s_ms = ms.divideAndRemainder(BI_1000);
-                s = s_ms[0];
-                ms = s_ms[1];
-                var min_s = s.divideAndRemainder(BI_60);
-                min = min_s[0];
-                s = min_s[1];
-                var h_min = min.divideAndRemainder(BI_60);
-                h = h_min[0];
-                min = h_min[1];
-                var d_h = h.divideAndRemainder(BI_24);
-                d = d_h[0];
-                h = d_h[1];
+                var qr = ns.divideAndRemainder(BI_1000);
+                us = qr[0];
+                ns = qr[1];
+                qr = us.divideAndRemainder(BI_1000);
+                ms = qr[0];
+                us = qr[1];
+                qr = ms.divideAndRemainder(BI_1000);
+                s = qr[0];
+                ms = qr[1];
+                qr = s.divideAndRemainder(BI_60);
+                min = qr[0];
+                s = qr[1];
+                qr = min.divideAndRemainder(BI_60);
+                h = qr[0];
+                min = qr[1];
+                qr = h.divideAndRemainder(BI_24);
+                d = qr[0];
+                h = qr[1];
             }
             case HOUR -> {
-                var us_ns = ns.divideAndRemainder(BI_1000);
-                us = us_ns[0];
-                ns = us_ns[1];
-                var ms_us = us.divideAndRemainder(BI_1000);
-                ms = ms_us[0];
-                us = ms_us[1];
-                var s_ms = ms.divideAndRemainder(BI_1000);
-                s = s_ms[0];
-                ms = s_ms[1];
-                var min_s = s.divideAndRemainder(BI_60);
-                min = min_s[0];
-                s = min_s[1];
-                var h_min = min.divideAndRemainder(BI_60);
-                h = h_min[0];
-                min = h_min[1];
+                var qr = ns.divideAndRemainder(BI_1000);
+                us = qr[0];
+                ns = qr[1];
+                qr = us.divideAndRemainder(BI_1000);
+                ms = qr[0];
+                us = qr[1];
+                qr = ms.divideAndRemainder(BI_1000);
+                s = qr[0];
+                ms = qr[1];
+                qr = s.divideAndRemainder(BI_60);
+                min = qr[0];
+                s = qr[1];
+                qr = min.divideAndRemainder(BI_60);
+                h = qr[0];
+                min = qr[1];
             }
             case MINUTE -> {
-                var us_ns = ns.divideAndRemainder(BI_1000);
-                us = us_ns[0];
-                ns = us_ns[1];
-                var ms_us = us.divideAndRemainder(BI_1000);
-                ms = ms_us[0];
-                us = ms_us[1];
-                var s_ms = ms.divideAndRemainder(BI_1000);
-                s = s_ms[0];
-                ms = s_ms[1];
-                var min_s = s.divideAndRemainder(BI_60);
-                min = min_s[0];
-                s = min_s[1];
+                var qr = ns.divideAndRemainder(BI_1000);
+                us = qr[0];
+                ns = qr[1];
+                qr = us.divideAndRemainder(BI_1000);
+                ms = qr[0];
+                us = qr[1];
+                qr = ms.divideAndRemainder(BI_1000);
+                s = qr[0];
+                ms = qr[1];
+                qr = s.divideAndRemainder(BI_60);
+                min = qr[0];
+                s = qr[1];
             }
             case SECOND -> {
-                var us_ns = ns.divideAndRemainder(BI_1000);
-                us = us_ns[0];
-                ns = us_ns[1];
-                var ms_us = us.divideAndRemainder(BI_1000);
-                ms = ms_us[0];
-                us = ms_us[1];
-                var s_ms = ms.divideAndRemainder(BI_1000);
-                s = s_ms[0];
-                ms = s_ms[1];
+                var qr = ns.divideAndRemainder(BI_1000);
+                us = qr[0];
+                ns = qr[1];
+                qr = us.divideAndRemainder(BI_1000);
+                ms = qr[0];
+                us = qr[1];
+                qr = ms.divideAndRemainder(BI_1000);
+                s = qr[0];
+                ms = qr[1];
             }
             case MILLISECOND -> {
-                var us_ns = ns.divideAndRemainder(BI_1000);
-                us = us_ns[0];
-                ns = us_ns[1];
-                var ms_us = us.divideAndRemainder(BI_1000);
-                ms = ms_us[0];
-                us = ms_us[1];
+                var qr = ns.divideAndRemainder(BI_1000);
+                us = qr[0];
+                ns = qr[1];
+                qr = us.divideAndRemainder(BI_1000);
+                ms = qr[0];
+                us = qr[1];
             }
             case MICROSECOND -> {
-                var us_ns = ns.divideAndRemainder(BI_1000);
-                us = us_ns[0];
-                ns = us_ns[1];
+                var qr = ns.divideAndRemainder(BI_1000);
+                us = qr[0];
+                ns = qr[1];
             }
             case NANOSECOND -> {
             }
