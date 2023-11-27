@@ -287,19 +287,19 @@ public final class TemporalUtil {
     private static final int ISO_DATE_MAX_UTC_OFFSET_DAYS = 100_000_000;
 
     // 8.64 * 10^13
-    private static final BigInteger BI_8_64_13 = new BigInteger("86400000000000");
+    private static final BigInteger BI_8_64_13 = BigInteger.valueOf(86400000000000L);
 
-    public static final BigInteger BI_36_10_POW_11 = new BigInteger("3600000000000");
-    public static final BigInteger BI_6_10_POW_10 = new BigInteger("60000000000");
-    public static final BigInteger BI_10_POW_9 = new BigInteger("1000000000"); // 10 ^ 9
-    public static final BigInteger BI_10_POW_6 = new BigInteger("1000000"); // 10 ^ 6
-    public static final BigInteger BI_1000 = new BigInteger("1000");  // 10 ^ 3
+    public static final BigInteger BI_36_10_POW_11 = BigInteger.valueOf(3600000000000L);
+    public static final BigInteger BI_6_10_POW_10 = BigInteger.valueOf(60000000000L);
+    public static final BigInteger BI_10_POW_9 = BigInteger.valueOf(1000000000); // 10 ^ 9
+    public static final BigInteger BI_10_POW_6 = BigInteger.valueOf(1000000); // 10 ^ 6
+    public static final BigInteger BI_1000 = BigInteger.valueOf(1000);  // 10 ^ 3
     public static final BigInteger BI_24 = BigInteger.valueOf(24);
     public static final BigInteger BI_60 = BigInteger.valueOf(60);
 
-    public static final BigDecimal BD_10 = new BigDecimal("10");
-    public static final BigDecimal BD_60 = new BigDecimal("60");
-    public static final BigDecimal BD_1000 = new BigDecimal("1000");
+    public static final BigDecimal BD_10 = BigDecimal.valueOf(10);
+    public static final BigDecimal BD_60 = BigDecimal.valueOf(60);
+    public static final BigDecimal BD_1000 = BigDecimal.valueOf(1000);
     public static final BigDecimal BD_10_POW_M_3 = new BigDecimal("0.001");
     public static final BigDecimal BD_10_POW_M_6 = new BigDecimal("0.000001");
     public static final BigDecimal BD_10_POW_M_9 = new BigDecimal("0.000000001");
