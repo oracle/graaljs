@@ -27,6 +27,10 @@
     "filePath" : "intl/break-iterator/zh-break.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "intl/date-format/resolved-options.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 74.1 update"
+  }, {
     "filePath" : "intl/default_locale.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2019-01-15)"
@@ -620,6 +624,10 @@
     "filePath" : "mjsunit/es6/unicode-regexp-ignore-case-noi18n.js",
     "status" : "FAIL",
     "comment" : "This test is set to fail in v8 as well, unless v8_enable_i18n_support is set to false."
+  }, {
+    "filePath" : "mjsunit/es6/unicode-regexp-ignore-case.js",
+    "status" : "FAIL",
+    "comment" : "ICU4J 74.1 update"
   }, {
     "filePath" : "mjsunit/es7/exponentiation-operator.js",
     "status" : "SKIP",
