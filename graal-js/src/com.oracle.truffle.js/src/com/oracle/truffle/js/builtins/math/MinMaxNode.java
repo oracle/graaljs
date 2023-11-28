@@ -50,10 +50,11 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToDoubleNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
 
 @GenerateCached(false)
-public abstract class MinMaxNode extends MathOperation {
+public abstract class MinMaxNode extends JSBuiltinNode {
 
     public MinMaxNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
@@ -78,8 +79,8 @@ public abstract class MinMaxNode extends MathOperation {
     protected final Object do2(Object[] args,
                     @Cached @Shared InlinedBranchProfile isIntBranch,
                     @Cached @Shared JSNumberToDoubleNode numberToDouble,
+                    @Cached @Shared JSToNumberNode toNumber0Node,
                     @Cached @Shared JSToNumberNode toNumber1Node,
-                    @Cached @Shared JSToNumberNode toNumber2Node,
                     @Cached @Shared InlinedConditionProfile leftSmaller,
                     @Cached @Shared InlinedConditionProfile rightSmaller,
                     @Cached @Shared InlinedConditionProfile bothEqual,
@@ -90,12 +91,13 @@ public abstract class MinMaxNode extends MathOperation {
             isIntBranch.enter(this);
             return minOrMaxInt(i0, i1);
         }
-        Number n0 = toNumber1Node.executeNumber(a0);
-        Number n1 = toNumber2Node.executeNumber(a1);
+        Number n0 = toNumber0Node.executeNumber(a0);
+        Number n1 = toNumber1Node.executeNumber(a1);
         if (n0 instanceof Integer i0 && n1 instanceof Integer i1) {
             isIntBranch.enter(this);
             return minOrMaxInt(i0, i1);
         } else {
+            // Implicit branch profile
             double d0 = numberToDouble.execute(this, n0);
             double d1 = numberToDouble.execute(this, n1);
             return minOrMaxDouble(d0, d1,
@@ -128,6 +130,7 @@ public abstract class MinMaxNode extends MathOperation {
             isIntBranch.enter(this);
             return minOrMaxInt(minOrMaxInt(i0, i1), i2);
         } else {
+            // Implicit branch profile
             double d0 = numberToDouble.execute(this, n0);
             double d1 = numberToDouble.execute(this, n1);
             double d2 = numberToDouble.execute(this, n2);
@@ -139,19 +142,45 @@ public abstract class MinMaxNode extends MathOperation {
     }
 
     @Specialization(guards = "args.length >= 4")
-    protected double do4OrMore(Object[] args,
+    protected Object do4OrMore(Object[] args,
+                    @Cached @Shared InlinedBranchProfile isIntBranch,
+                    @Cached @Shared JSToNumberNode toNumber0Node,
+                    @Cached @Shared JSToNumberNode toNumber1Node,
+                    @Cached @Shared JSToNumberNode toNumber2Node,
+                    @Cached @Shared JSNumberToDoubleNode numberToDouble,
                     @Cached @Shared InlinedConditionProfile leftSmaller,
                     @Cached @Shared InlinedConditionProfile rightSmaller,
                     @Cached @Shared InlinedConditionProfile bothEqual,
                     @Cached @Shared InlinedConditionProfile negativeZero) {
         Object a0 = args[0];
-        double result = toDouble(a0);
-        for (int i = 1; i < args.length; i++) {
+        Object n0 = toNumber0Node.execute(a0);
+        double dresult;
+        int i = 1;
+        whileInt: if (n0 instanceof Integer i0) {
+            isIntBranch.enter(this);
+            int iresult = i0;
+            for (; i < args.length; i++) {
+                Object ai = args[i];
+                Object ni = toNumber1Node.execute(ai);
+                if (ni instanceof Integer ii) {
+                    iresult = minOrMaxInt(iresult, ii);
+                } else {
+                    dresult = iresult;
+                    break whileInt;
+                }
+            }
+            return iresult;
+        } else {
+            // Implicit branch profile
+            dresult = numberToDouble.execute(this, n0);
+        }
+        for (; i < args.length; i++) {
             Object ai = args[i];
-            double next = toDouble(ai);
-            result = minOrMaxDouble(result, next,
+            Object ni = toNumber2Node.executeNumber(ai);
+            double di = numberToDouble.execute(this, ni);
+            dresult = minOrMaxDouble(dresult, di,
                             this, leftSmaller, rightSmaller, bothEqual, negativeZero);
         }
-        return result;
+        return dresult;
     }
 }
