@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,52 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins.math;
+package com.oracle.truffle.js.nodes.cast;
 
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
-public abstract class MaxNode extends MinMaxNode {
+/**
+ * Convert result of {@link JSToNumberNode ToNumber} to a double value. Only the internal JS Number
+ * types (i.e. Integer, Double, and SafeInteger) are supported here.
+ *
+ * @see JSRuntime#isNumber(Object)
+ */
+@GenerateInline
+@GenerateCached(false)
+public abstract class JSNumberToDoubleNode extends JavaScriptBaseNode {
 
-    public MaxNode(JSContext context, JSBuiltin builtin) {
-        super(context, builtin);
+    public abstract double execute(Node node, Object value);
+
+    @Specialization
+    protected static double doInt(int value) {
+        return value;
     }
 
-    @Override
-    protected final double minOrMaxDouble(double a, double b,
-                    Node node,
-                    InlinedConditionProfile leftSmaller,
-                    InlinedConditionProfile rightSmaller,
-                    InlinedConditionProfile bothEqual,
-                    InlinedConditionProfile negativeZero) {
-        if (leftSmaller.profile(node, a > b)) {
-            return a;
-        } else if (rightSmaller.profile(node, b > a)) {
-            return b;
-        } else {
-            if (bothEqual.profile(node, a == b)) {
-                if (negativeZero.profile(node, JSRuntime.isNegativeZero(a))) {
-                    return b;
-                } else {
-                    return a;
-                }
-            } else {
-                return Double.NaN;
-            }
-        }
-    }
-
-    @Override
-    protected int minOrMaxInt(int a, int b) {
-        return Math.max(a, b);
-    }
-
-    @Specialization(guards = "args.length == 0")
-    protected static double do0(@SuppressWarnings("unused") Object[] args) {
-        return Double.NEGATIVE_INFINITY;
+    @Specialization
+    protected static double doDouble(double value) {
+        return value;
     }
 }

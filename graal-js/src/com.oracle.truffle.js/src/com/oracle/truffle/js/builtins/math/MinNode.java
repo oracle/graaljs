@@ -40,25 +40,21 @@
  */
 package com.oracle.truffle.js.builtins.math;
 
-import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 
-public abstract class MinNode extends MathOperation {
+public abstract class MinNode extends MinMaxNode {
 
     public MinNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
     }
 
-    private static double minDoubleDouble(double a, double b,
+    @Override
+    protected final double minOrMaxDouble(double a, double b,
                     Node node,
                     InlinedConditionProfile leftSmaller,
                     InlinedConditionProfile rightSmaller,
@@ -81,90 +77,13 @@ public abstract class MinNode extends MathOperation {
         }
     }
 
-    protected static boolean caseIntInt(Object[] args) {
-        assert args.length == 2;
-        return args[0] instanceof Integer && args[1] instanceof Integer;
+    @Override
+    protected int minOrMaxInt(int a, int b) {
+        return Math.min(a, b);
     }
 
     @Specialization(guards = "args.length == 0")
-    protected static double min0Param(@SuppressWarnings("unused") Object[] args) {
+    protected static double do0(@SuppressWarnings("unused") Object[] args) {
         return Double.POSITIVE_INFINITY;
-    }
-
-    @Specialization(guards = "args.length == 1")
-    protected double min1Param(Object[] args) {
-        return toDouble(args[0]);
-    }
-
-    @Specialization(guards = {"args.length == 2", "caseIntInt(args)"})
-    protected int min2ParamInt(Object[] args,
-                    @Cached @Shared("minProfile") InlinedConditionProfile minProfile) {
-        int i1 = (int) args[0];
-        int i2 = (int) args[1];
-        return min(i1, i2, this, minProfile);
-    }
-
-    @Specialization(guards = {"args.length == 2", "!caseIntInt(args)"})
-    protected static Object min2Param(Object[] args,
-                    @Bind("this") Node node,
-                    @Cached @Exclusive InlinedConditionProfile isIntBranch,
-                    @Cached @Shared("minProfile") InlinedConditionProfile minProfile,
-                    @Cached JSToNumberNode toNumber1Node,
-                    @Cached JSToNumberNode toNumber2Node,
-                    @Cached @Shared("leftSmaller") InlinedConditionProfile leftSmaller,
-                    @Cached @Shared("rightSmaller") InlinedConditionProfile rightSmaller,
-                    @Cached @Shared("bothEqual") InlinedConditionProfile bothEqual,
-                    @Cached @Shared("negativeZero") InlinedConditionProfile negativeZero) {
-        Number n1 = toNumber1Node.executeNumber(args[0]);
-        Number n2 = toNumber2Node.executeNumber(args[1]);
-        if (isIntBranch.profile(node, n1 instanceof Integer && n2 instanceof Integer)) {
-            return min(((Integer) n1).intValue(), ((Integer) n2).intValue(), node, minProfile);
-        } else {
-            double d1 = JSRuntime.doubleValue(n1);
-            double d2 = JSRuntime.doubleValue(n2);
-            return minDoubleDouble(d1, d2,
-                            node, leftSmaller, rightSmaller, bothEqual, negativeZero);
-        }
-    }
-
-    protected static boolean caseIntIntInt(Object[] args) {
-        assert args.length == 3;
-        return args[0] instanceof Integer && args[1] instanceof Integer && args[2] instanceof Integer;
-    }
-
-    @Specialization(guards = {"args.length == 3", "caseIntIntInt(args)"})
-    protected int min3ParamInt(Object[] args) {
-        return Math.min(Math.min((int) args[0], (int) args[1]), (int) args[2]);
-    }
-
-    @Specialization(guards = {"args.length == 3", "!caseIntIntInt(args)"})
-    protected double min3ParamOther(Object[] args,
-                    @Cached @Shared("leftSmaller") InlinedConditionProfile leftSmaller,
-                    @Cached @Shared("rightSmaller") InlinedConditionProfile rightSmaller,
-                    @Cached @Shared("bothEqual") InlinedConditionProfile bothEqual,
-                    @Cached @Shared("negativeZero") InlinedConditionProfile negativeZero) {
-        double smallest = minDoubleDouble(toDouble(args[0]), toDouble(args[1]),
-                        this, leftSmaller, rightSmaller, bothEqual, negativeZero);
-        return minDoubleDouble(smallest, toDouble(args[2]),
-                        this, leftSmaller, rightSmaller, bothEqual, negativeZero);
-    }
-
-    @Specialization(guards = "args.length >= 4")
-    protected double minGeneric(Object[] args,
-                    @Cached @Shared("leftSmaller") InlinedConditionProfile leftSmaller,
-                    @Cached @Shared("rightSmaller") InlinedConditionProfile rightSmaller,
-                    @Cached @Shared("bothEqual") InlinedConditionProfile bothEqual,
-                    @Cached @Shared("negativeZero") InlinedConditionProfile negativeZero) {
-        double smallest = minDoubleDouble(toDouble(args[0]), toDouble(args[1]),
-                        this, leftSmaller, rightSmaller, bothEqual, negativeZero);
-        for (int i = 2; i < args.length; i++) {
-            smallest = minDoubleDouble(smallest, toDouble(args[i]),
-                            this, leftSmaller, rightSmaller, bothEqual, negativeZero);
-        }
-        return smallest;
-    }
-
-    private static int min(int a, int b, Node node, InlinedConditionProfile minProfile) {
-        return minProfile.profile(node, a <= b) ? a : b;
     }
 }
