@@ -158,7 +158,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
             nanoseconds = 0;
             fractionalSeconds = 0; // fractionalSeconds is not used below.
         } else {
-            fractionalSeconds = TemporalUtil.roundDurationCalculateFractionalSeconds(seconds, microseconds, milliseconds, nanoseconds);
+            fractionalSeconds = TemporalUtil.roundDurationCalculateFractionalSeconds(seconds, milliseconds, microseconds, nanoseconds);
         }
         switch (unit) {
             case YEAR:

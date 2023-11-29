@@ -2337,7 +2337,8 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static double roundDurationCalculateFractionalSeconds(double seconds, double microseconds, double milliseconds, double nanoseconds) {
+    public static double roundDurationCalculateFractionalSeconds(double seconds, double milliseconds, double microseconds, double nanoseconds) {
+        assert JSRuntime.isIntegralNumber(seconds) && JSRuntime.isIntegralNumber(milliseconds) && JSRuntime.isIntegralNumber(microseconds) && JSRuntime.isIntegralNumber(nanoseconds);
         BigDecimal part1 = BigDecimal.valueOf(nanoseconds).multiply(BD_10_POW_M_9);
         BigDecimal part2 = BigDecimal.valueOf(microseconds).multiply(BD_10_POW_M_6);
         BigDecimal part3 = BigDecimal.valueOf(milliseconds).multiply(BD_10_POW_M_3);
