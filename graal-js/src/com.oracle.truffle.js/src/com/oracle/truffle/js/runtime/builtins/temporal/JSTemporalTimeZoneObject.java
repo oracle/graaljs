@@ -54,7 +54,7 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 @ExportLibrary(InteropLibrary.class)
-public class JSTemporalTimeZoneObject extends JSNonProxyObject {
+public final class JSTemporalTimeZoneObject extends JSNonProxyObject {
 
     private final BigInt offsetNanoseconds;
     private final TruffleString identifier;
@@ -76,13 +76,13 @@ public class JSTemporalTimeZoneObject extends JSNonProxyObject {
 
     @ExportMessage
     @SuppressWarnings("static-method")
-    final boolean isTimeZone() {
+    boolean isTimeZone() {
         return true;
     }
 
     @ExportMessage
     @TruffleBoundary
-    final ZoneId asTimeZone() {
+    ZoneId asTimeZone() {
         return ZoneId.of(identifier.toJavaStringUncached());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,34 +40,38 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-public final class JSTemporalYearMonthDayRecord {
-    private final int year;
-    private final int month;
-    private final int day;
+/**
+ * CreateTimeDurationRecord result.
+ */
+public record TimeDurationRecord(
+                double days,
+                double hours,
+                double minutes,
+                double seconds,
+                double milliseconds,
+                double microseconds,
+                double nanoseconds) {
 
-    private JSTemporalYearMonthDayRecord(int year, int month, int day) {
-        this.year = year;
-        this.month = month;
-        this.day = day;
+    public double getOverflow() {
+        if (Double.isInfinite(days)) {
+            return days;
+        } else if (Double.isInfinite(hours)) {
+            return hours;
+        } else if (Double.isInfinite(minutes)) {
+            return minutes;
+        } else if (Double.isInfinite(seconds)) {
+            return seconds;
+        } else if (Double.isInfinite(milliseconds)) {
+            return milliseconds;
+        } else if (Double.isInfinite(microseconds)) {
+            return microseconds;
+        } else if (Double.isInfinite(nanoseconds)) {
+            return nanoseconds;
+        }
+        return 0.0;
     }
 
-    public static JSTemporalYearMonthDayRecord create(int year, int month, int day) {
-        return new JSTemporalYearMonthDayRecord(year, month, day);
-    }
-
-    public static JSTemporalYearMonthDayRecord create(int year, int month) {
-        return new JSTemporalYearMonthDayRecord(year, month, 0);
-    }
-
-    public int getYear() {
-        return year;
-    }
-
-    public int getMonth() {
-        return month;
-    }
-
-    public int getDay() {
-        return day;
+    public boolean isOverflow() {
+        return Double.isInfinite(getOverflow());
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,26 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import java.math.BigInteger;
 
-public final class JSTemporalRelativeDateRecord {
-    private final JSDynamicObject relativeTo;
-    private final long days;
-
-    private JSTemporalRelativeDateRecord(JSDynamicObject relativeTo, long days) {
-        this.relativeTo = relativeTo;
-        this.days = days;
-    }
-
-    public static JSTemporalRelativeDateRecord create(JSDynamicObject relativeTo, long days) {
-        return new JSTemporalRelativeDateRecord(relativeTo, days);
-    }
-
-    public JSDynamicObject getRelativeTo() {
-        return relativeTo;
-    }
-
-    public long getDays() {
-        return days;
-    }
+public record NanosecondsToDaysResult(BigInteger days, BigInteger nanoseconds, BigInteger dayLength) {
 }

@@ -52,7 +52,6 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -61,14 +60,12 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
 
-    private final JSContext ctx;
     @Child private GetMethodNode getMethodNode;
     @Child private JSFunctionCallNode callNode;
     @Child private JSToIntegerThrowOnInfinityNode toIntegerThrowOnInfinityNode;
     @Child private JSToStringNode toStringNode;
 
-    protected TemporalCalendarGetterNode(JSContext ctx) {
-        this.ctx = ctx;
+    protected TemporalCalendarGetterNode() {
         this.callNode = JSFunctionCallNode.createCall();
     }
 
@@ -106,7 +103,7 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
     private Object getMethod(JSDynamicObject calendar, TruffleString name) {
         if (getMethodNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.getMethodNode = insert(GetMethodNode.create(ctx, name));
+            this.getMethodNode = insert(GetMethodNode.create(getLanguage().getJSContext(), name));
         }
         assert getMethodNode.getKey().equals(name);
         return getMethodNode.executeWithTarget(calendar);

@@ -81,7 +81,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoMonth, int isoDay, JSDynamicObject calendar, int referenceISOYear,
                     Node node, InlinedBranchProfile errorBranch) {
-        if (!TemporalUtil.validateISODate(referenceISOYear, isoMonth, isoDay)) {
+        if (!TemporalUtil.isValidISODate(referenceISOYear, isoMonth, isoDay)) {
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorMonthDayOutsideRange();
         }

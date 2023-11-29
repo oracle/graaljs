@@ -124,6 +124,14 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return factory.trackAllocation(newObj);
     }
 
+    public static JSTemporalDurationObject createNegatedTemporalDuration(JSContext context, JSRealm realm, JSTemporalDurationObject duration) {
+        var proto = INSTANCE.getIntrinsicDefaultProto(realm);
+        return createIntl(context, realm, proto,
+                        -duration.getYears(), -duration.getMonths(), -duration.getWeeks(), -duration.getDays(),
+                        -duration.getHours(), -duration.getMinutes(), -duration.getSeconds(),
+                        -duration.getMilliseconds(), -duration.getMicroseconds(), -duration.getNanoseconds());
+    }
+
     private static double nnz(double d) {
         if (JSRuntime.isNegativeZero(d)) {
             return 0;

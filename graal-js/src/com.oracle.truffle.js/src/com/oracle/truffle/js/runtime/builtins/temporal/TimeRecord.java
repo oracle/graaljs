@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,72 +40,24 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import java.time.LocalTime;
-
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.library.ExportLibrary;
-import com.oracle.truffle.api.library.ExportMessage;
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-
-@ExportLibrary(InteropLibrary.class)
-public final class JSTemporalPlainTimeObject extends JSTemporalCalendarHolder {
-
-    // all values guaranteed to fit into int
-    // https://tc39.es/proposal-temporal/#sec-temporal-isvalidtime
-    private final int hour;
-    private final int minute;
-    private final int second;
-    private final int millisecond;
-    private final int microsecond;
-    private final int nanosecond;
-
-    protected JSTemporalPlainTimeObject(Shape shape, JSDynamicObject proto, int hour, int minute, int second, int millisecond,
-                    int microsecond, int nanosecond, JSDynamicObject calendar) {
-        super(shape, proto, calendar);
-        this.hour = hour;
-        this.minute = minute;
-        this.second = second;
-        this.millisecond = millisecond;
-        this.microsecond = microsecond;
-        this.nanosecond = nanosecond;
-    }
-
-    public int getHour() {
-        return hour;
-    }
-
-    public int getMinute() {
-        return minute;
-    }
-
-    public int getSecond() {
-        return second;
-    }
-
-    public int getMillisecond() {
-        return millisecond;
-    }
-
-    public int getMicrosecond() {
-        return microsecond;
-    }
-
-    public int getNanosecond() {
-        return nanosecond;
-    }
-
-    @ExportMessage
-    @SuppressWarnings("static-method")
-    boolean isTime() {
-        return true;
-    }
-
-    @ExportMessage
-    @TruffleBoundary
-    LocalTime asTime() {
-        int ns = millisecond * 1_000_000 + microsecond * 1_000 + nanosecond;
-        return LocalTime.of(hour, minute, second, ns);
-    }
+/**
+ * A Time Record is used to represent a valid clock time, together with a number of overflow days
+ * such as might occur in BalanceTime. For any Time Record t, IsValidTime(t.[[Hour]], t.[[Minute]],
+ * t.[[Second]], t.[[Millisecond]], t.[[Microsecond]], t.[[Nanosecond]]) must return true.
+ */
+public record TimeRecord(
+                /** A number of overflow days. An integer >= 0. */
+                double days,
+                /** The number of the hour. An integer in the inclusive range 0 to 23. */
+                int hour,
+                /** The number of the minute. An integer in the inclusive range 0 to 59. */
+                int minute,
+                /** The number of the second. An integer in the inclusive range 0 to 59. */
+                int second,
+                /** The number of the millisecond. An integer in the inclusive range 0 to 999. */
+                int millisecond,
+                /** The number of the microsecond. An integer in the inclusive range 0 to 999. */
+                int microsecond,
+                /** The number of the nanosecond. An integer in the inclusive range 0 to 999. */
+                int nanosecond) {
 }

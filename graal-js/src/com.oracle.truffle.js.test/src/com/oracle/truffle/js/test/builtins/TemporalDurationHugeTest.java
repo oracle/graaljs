@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
+import org.hamcrest.CoreMatchers;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -146,8 +147,8 @@ public class TemporalDurationHugeTest extends JSTest {
             ctx.eval(ID, code);
             Assert.fail("exception expected");
         } catch (PolyglotException ex) {
-            Assert.assertTrue(ex.getMessage().contains("RangeError"));
-            Assert.assertTrue(ex.getMessage().contains("out of range"));
+            Assert.assertThat(ex.getMessage(), CoreMatchers.startsWith("RangeError"));
+            Assert.assertThat(ex.getMessage(), CoreMatchers.containsString("outside of supported range"));
         }
     }
 
@@ -162,8 +163,8 @@ public class TemporalDurationHugeTest extends JSTest {
             ctx.eval(ID, code);
             Assert.fail("exception expected");
         } catch (PolyglotException ex) {
-            Assert.assertTrue(ex.getMessage().contains("RangeError"));
-            Assert.assertTrue(ex.getMessage().contains("out of range"));
+            Assert.assertThat(ex.getMessage(), CoreMatchers.startsWith("RangeError"));
+            Assert.assertThat(ex.getMessage(), CoreMatchers.containsString("outside of supported range"));
         }
     }
 

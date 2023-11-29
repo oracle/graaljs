@@ -43,11 +43,11 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
@@ -61,8 +61,8 @@ public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseN
     @Child protected PropertyGetNode getDateFromFieldsNode;
     @Child protected JSFunctionCallNode callNode;
 
-    protected TemporalCalendarDateFromFieldsNode(JSContext ctx) {
-        this.getDateFromFieldsNode = PropertyGetNode.create(TemporalConstants.DATE_FROM_FIELDS, false, ctx);
+    protected TemporalCalendarDateFromFieldsNode() {
+        this.getDateFromFieldsNode = PropertyGetNode.create(TemporalConstants.DATE_FROM_FIELDS, false, JavaScriptLanguage.get(null).getJSContext());
         this.callNode = JSFunctionCallNode.createCall();
     }
 

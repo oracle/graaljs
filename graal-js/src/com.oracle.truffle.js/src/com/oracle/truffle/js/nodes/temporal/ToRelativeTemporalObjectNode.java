@@ -53,7 +53,9 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -61,57 +63,93 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
+import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of the toRelativeTemporalObject operation.
+ * Implementation of the ToRelativeTemporalObject operation.
  */
 public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
     @Child private PropertyGetNode getRelativeToNode;
     @Child private PropertyGetNode getOffsetNode;
     @Child private PropertyGetNode getTimeZoneNode;
+    @Child private GetMethodNode getGetOffsetNanosecondsFor;
+    @Child private GetMethodNode getGetPossibleInstantsFor;
 
-    protected ToRelativeTemporalObjectNode(JSContext ctx) {
-        this.ctx = ctx;
+    protected ToRelativeTemporalObjectNode() {
+        JSContext ctx = JavaScriptLanguage.get(null).getJSContext();
         this.getRelativeToNode = PropertyGetNode.create(RELATIVE_TO, ctx);
         this.getOffsetNode = PropertyGetNode.create(OFFSET, ctx);
         this.getTimeZoneNode = PropertyGetNode.create(TIME_ZONE, ctx);
+        this.getGetOffsetNanosecondsFor = GetMethodNode.create(ctx, TemporalUtil.GET_OFFSET_NANOSECONDS_FOR);
+        this.getGetPossibleInstantsFor = GetMethodNode.create(ctx, TemporalUtil.GET_POSSIBLE_INSTANTS_FOR);
     }
 
-    public abstract JSDynamicObject execute(JSDynamicObject options);
+    public record Result(
+                    JSTemporalPlainDateObject plainRelativeTo,
+                    JSTemporalZonedDateTimeObject zonedRelativeTo,
+                    TimeZoneMethodsRecord timeZoneRec,
+                    JSDynamicObject calendar) {
+
+        public JSTemporalCalendarHolder relativeTo() {
+            return plainRelativeTo != null ? plainRelativeTo : zonedRelativeTo;
+        }
+
+        public CalendarMethodsRecord createCalendarMethodsRecord(GetMethodNode dateAddNode) {
+            if (calendar == null) {
+                return null;
+            }
+            Object dateAdd = dateAddNode.executeWithTarget(calendar);
+            return CalendarMethodsRecord.forDateAdd(calendar, dateAdd);
+        }
+
+        public CalendarMethodsRecord createCalendarMethodsRecord(GetMethodNode dateAddNode, GetMethodNode dateUntilNode) {
+            if (calendar == null) {
+                return null;
+            }
+            Object dateAdd = dateAddNode.executeWithTarget(calendar);
+            Object dateUntil = dateUntilNode.executeWithTarget(calendar);
+            return CalendarMethodsRecord.forDateAddDateUntil(calendar, dateAdd, dateUntil);
+        }
+    }
+
+    public abstract Result execute(JSDynamicObject options);
 
     @Specialization
-    protected JSDynamicObject toRelativeTemporalObject(JSDynamicObject options,
+    protected Result toRelativeTemporalObject(JSDynamicObject options,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile valueIsObject,
                     @Cached InlinedConditionProfile valueIsUndefined,
-                    @Cached InlinedConditionProfile valueIsPlainDate,
+                    @Cached InlinedBranchProfile valueIsPlainDate,
+                    @Cached InlinedBranchProfile valueIsZonedDateTime,
                     @Cached InlinedConditionProfile valueIsPlainDateTime,
                     @Cached InlinedConditionProfile timeZoneAvailable,
                     @Cached JSToStringNode toStringNode,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode,
-                    @Cached("create(ctx)") TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
-                    @Cached("create(ctx)") ToTemporalTimeZoneNode toTemporalTimeZoneNode,
-                    @Cached("create(ctx)") GetTemporalCalendarWithISODefaultNode getTemporalCalendarWithISODefaultNode,
+                    @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                    @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                    @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
+                    @Cached ToTemporalTimeZoneNode toTemporalTimeZoneNode,
+                    @Cached GetTemporalCalendarWithISODefaultNode getTemporalCalendarWithISODefaultNode,
                     @Cached TemporalGetOptionNode getOptionNode) {
         Object value = getRelativeToNode.getValue(options);
         if (valueIsUndefined.profile(this, value == Undefined.instance)) {
-            return Undefined.instance;
+            return none();
         }
         JSTemporalDateTimeRecord result;
         JSDynamicObject timeZone = Undefined.instance;
@@ -119,15 +157,20 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
         Object offset;
         TemporalUtil.OffsetBehaviour offsetBehaviour = TemporalUtil.OffsetBehaviour.OPTION;
         TemporalUtil.MatchBehaviour matchBehaviour = TemporalUtil.MatchBehaviour.MATCH_EXACTLY;
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
-        if (valueIsObject.profile(this, isObjectNode.executeBoolean(value))) {
-            JSDynamicObject valueObj = (JSDynamicObject) value;
-            if (valueIsPlainDate.profile(this, valueObj instanceof JSTemporalPlainDateObject || valueObj instanceof JSTemporalZonedDateTimeObject)) {
-                return valueObj;
-            }
+        if (value instanceof JSTemporalPlainDateObject plainDate) {
+            valueIsPlainDate.enter(this);
+            return plainDate(plainDate);
+        } else if (value instanceof JSTemporalZonedDateTimeObject zonedDateTime) {
+            valueIsZonedDateTime.enter(this);
+            return zonedDateTime(zonedDateTime, createTimeZoneMethodsRecord(zonedDateTime.getTimeZone()));
+        }
+        if (valueIsObject.profile(this, isObjectNode.executeBoolean(value) && value instanceof JSObject)) {
+            JSObject valueObj = (JSObject) value;
             if (valueIsPlainDateTime.profile(this, valueObj instanceof JSTemporalPlainDateTimeObject)) {
                 JSTemporalPlainDateTimeObject pd = (JSTemporalPlainDateTimeObject) valueObj;
-                return JSTemporalPlainDate.create(ctx, realm, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar(), this, errorBranch);
+                return plainDate(JSTemporalPlainDate.create(ctx, realm, pd.getYear(), pd.getMonth(), pd.getDay(), pd.getCalendar(), this, errorBranch));
             }
             calendar = getTemporalCalendarWithISODefaultNode.execute(valueObj);
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDHMMMMMNSY);
@@ -146,12 +189,12 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             }
         } else {
             TruffleString string = toStringNode.executeString(value);
-            JSTemporalZonedDateTimeRecord resultZDT = TemporalUtil.parseTemporalRelativeToString(string);
+            ParseISODateTimeResult resultZDT = TemporalUtil.parseTemporalRelativeToString(string);
             result = resultZDT;
             calendar = toTemporalCalendarWithISODefaultNode.execute(result.getCalendar());
 
-            offset = resultZDT.getTimeZoneOffsetString();
-            TruffleString timeZoneName = resultZDT.getTimeZoneName();
+            offset = resultZDT.getTimeZoneResult().getOffsetString();
+            TruffleString timeZoneName = resultZDT.getTimeZoneResult().getName();
             if (timeZoneName != null) {
                 // If ParseText(! StringToCodePoints(timeZoneName), TimeZoneNumericUTCOffset)
                 // is not a List of errors
@@ -163,7 +206,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                 timeZone = TemporalUtil.createTemporalTimeZone(ctx, realm, timeZoneName);
             }
 
-            if (resultZDT.getTimeZoneZ()) {
+            if (resultZDT.getTimeZoneResult().isZ()) {
                 offsetBehaviour = TemporalUtil.OffsetBehaviour.EXACT;
             } else {
                 offsetBehaviour = TemporalUtil.OffsetBehaviour.WALL;
@@ -172,6 +215,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
         }
         assert timeZone != null;
         if (timeZoneAvailable.profile(this, timeZone != Undefined.instance)) {
+            var timeZoneRec = createTimeZoneMethodsRecord(timeZone);
             Object offsetNs = 0;
             if (offsetBehaviour == TemporalUtil.OffsetBehaviour.OPTION) {
                 offsetNs = TemporalUtil.parseTimeZoneOffsetString(toStringNode.executeString(offset));
@@ -180,10 +224,28 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             }
             BigInt epochNanoseconds = TemporalUtil.interpretISODateTimeOffset(ctx, realm,
                             result.getYear(), result.getMonth(), result.getDay(), result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(),
-                            result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZone, TemporalUtil.Disambiguation.COMPATIBLE, TemporalUtil.OffsetOption.REJECT,
+                            result.getMicrosecond(), result.getNanosecond(), offsetBehaviour, offsetNs, timeZoneRec, TemporalUtil.Disambiguation.COMPATIBLE, TemporalUtil.OffsetOption.REJECT,
                             matchBehaviour);
-            return JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar);
+            return zonedDateTime(JSTemporalZonedDateTime.create(ctx, realm, epochNanoseconds, timeZone, calendar), timeZoneRec);
         }
-        return JSTemporalPlainDate.create(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch);
+        return plainDate(JSTemporalPlainDate.create(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch));
+    }
+
+    private static Result none() {
+        return new Result(null, null, null, null);
+    }
+
+    private static Result plainDate(JSTemporalPlainDateObject plainDate) {
+        return new Result(plainDate, null, null, plainDate.getCalendar());
+    }
+
+    private static Result zonedDateTime(JSTemporalZonedDateTimeObject zonedDateTime, TimeZoneMethodsRecord timeZoneRec) {
+        return new Result(null, zonedDateTime, timeZoneRec, zonedDateTime.getCalendar());
+    }
+
+    private TimeZoneMethodsRecord createTimeZoneMethodsRecord(JSDynamicObject timeZone) {
+        return new TimeZoneMethodsRecord(timeZone,
+                        getGetOffsetNanosecondsFor.executeWithTarget(timeZone),
+                        getGetPossibleInstantsFor.executeWithTarget(timeZone));
     }
 }

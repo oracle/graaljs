@@ -59,6 +59,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
@@ -66,7 +67,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDay;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
-import com.oracle.truffle.js.runtime.builtins.temporal.TemporalCalendar;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -80,10 +80,8 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
     @Child private PropertyGetNode getMonthCodeNode;
     @Child private PropertyGetNode getYearNode;
     @Child private PropertyGetNode getCalendarNode;
-    protected final JSContext ctx;
 
-    protected ToTemporalMonthDayNode(JSContext context) {
-        this.ctx = context;
+    protected ToTemporalMonthDayNode() {
     }
 
     public abstract JSTemporalPlainMonthDayObject execute(Object item, JSDynamicObject optParam);
@@ -98,10 +96,11 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                     @Cached IsObjectNode isObjectNode,
                     @Cached JSToStringNode toStringNode,
                     @Cached TemporalGetOptionNode temporalGetOptionNode,
-                    @Cached("create(ctx)") ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
-                    @Cached("create(ctx)") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
-                    @Cached("create(ctx)") TemporalCalendarFieldsNode calendarFieldsNode) {
+                    @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                    @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
+                    @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
         int referenceISOYear = 1972;
+        JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
@@ -115,8 +114,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                             JSTemporalPlainTime.isJSTemporalPlainTime(itemObj) ||
                             JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(itemObj) ||
                             TemporalUtil.isTemporalZonedDateTime(itemObj))) {
-                assert itemObj instanceof TemporalCalendar; // basically, that's above line's check,
-                calendar = ((TemporalCalendar) itemObj).getCalendar();
+                calendar = ((JSTemporalCalendarHolder) itemObj).getCalendar();
                 calendarAbsent = false;
             } else {
                 Object calendarObj = getCalendar(itemObj);
@@ -155,7 +153,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
     private Object getCalendar(JSDynamicObject obj) {
         if (getCalendarNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            getCalendarNode = insert(PropertyGetNode.create(CALENDAR, ctx));
+            getCalendarNode = insert(PropertyGetNode.create(CALENDAR, getLanguage().getJSContext()));
         }
         return getCalendarNode.getValue(obj);
     }

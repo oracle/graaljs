@@ -40,48 +40,43 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of the Temporal yearMonthFromFields() operation.
+ * Implementation of the CreateTimeZoneMethodsRecord operation.
  */
-public abstract class TemporalYearMonthFromFieldsNode extends JavaScriptBaseNode {
+public abstract class CreateTimeZoneMethodsRecordNode extends JavaScriptBaseNode {
 
-    @Child private GetMethodNode getMethodYearMonthFromFieldsNode;
-    @Child private JSFunctionCallNode callYearMonthFromFieldsNode;
+    @Child private GetMethodNode getGetOffsetNanosecondsFor;
+    @Child private GetMethodNode getGetPossibleInstantsFor;
 
-    protected TemporalYearMonthFromFieldsNode() {
-        this.getMethodYearMonthFromFieldsNode = GetMethodNode.create(JavaScriptLanguage.get(null).getJSContext(), TemporalUtil.YEAR_MONTH_FROM_FIELDS);
-        this.callYearMonthFromFieldsNode = JSFunctionCallNode.createCall();
+    protected CreateTimeZoneMethodsRecordNode() {
+        JSContext ctx = JavaScriptLanguage.get(null).getJSContext();
+        this.getGetOffsetNanosecondsFor = GetMethodNode.create(ctx, TemporalUtil.GET_OFFSET_NANOSECONDS_FOR);
+        this.getGetPossibleInstantsFor = GetMethodNode.create(ctx, TemporalUtil.GET_POSSIBLE_INSTANTS_FOR);
     }
 
-    public abstract JSTemporalPlainYearMonthObject execute(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options);
+    public final TimeZoneMethodsRecord executeFull(JSDynamicObject timeZone) {
+        return execute(timeZone, true, true);
+    }
+
+    public final TimeZoneMethodsRecord executeOnlyGetOffsetNanosecondsFor(JSDynamicObject timeZone) {
+        return execute(timeZone, true, false);
+    }
+
+    protected abstract TimeZoneMethodsRecord execute(JSDynamicObject timeZone, boolean getOffsetNanosecondsFor, boolean getPossibleInstantsFor);
 
     @Specialization
-    protected JSTemporalPlainYearMonthObject yearMonthFromFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options,
-                    @Cached InlinedBranchProfile errorBranch) {
-        assert options != null;
-        Object fn = getMethodYearMonthFromFieldsNode.executeWithTarget(calendar);
-        Object yearMonth = callYearMonthFromFieldsNode.executeCall(JSArguments.create(calendar, fn, fields, options));
-        return requireTemporalYearMonth(yearMonth, errorBranch);
-    }
-
-    private JSTemporalPlainYearMonthObject requireTemporalYearMonth(Object obj, InlinedBranchProfile errorBranch) {
-        if (!(obj instanceof JSTemporalPlainYearMonthObject)) {
-            errorBranch.enter(this);
-            throw TemporalErrors.createTypeErrorTemporalPlainYearMonthExpected();
-        }
-        return (JSTemporalPlainYearMonthObject) obj;
+    protected TimeZoneMethodsRecord toRelativeTemporalObject(JSDynamicObject timeZone, boolean getOffsetNanosecondsFor, boolean getPossibleInstantsFor) {
+        return new TimeZoneMethodsRecord(timeZone,
+                        getOffsetNanosecondsFor ? getGetOffsetNanosecondsFor.executeWithTarget(timeZone) : null,
+                        getPossibleInstantsFor ? getGetPossibleInstantsFor.executeWithTarget(timeZone) : null);
     }
 }

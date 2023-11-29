@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,37 +40,34 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
-public final class JSTemporalZonedDateTimeRecord extends JSTemporalDateTimeRecord {
-    private final TruffleString timeZoneOffsetString;
-    private final TruffleString timeZoneName;
-    private final boolean timeZoneZ;
+/**
+ * Time Zone Methods Record.
+ *
+ * Field values may be null in case they have not been read, and therefore must not be used.
+ * Conversely, fields that have been read must not be null. The receiver must never be null.
+ */
+public record TimeZoneMethodsRecord(
+                /**
+                 * A String or Object. The time zone object, or a string indicating a built-in time
+                 * zone.
+                 */
+                JSDynamicObject receiver,
+                /**
+                 * A function object or undefined. The time zone's getOffsetNanosecondsFor method.
+                 * For a built-in time zone this is always
+                 * %Temporal.TimeZone.prototype.getOffsetNanosecondsFor%.
+                 */
+                Object getOffsetNanosecondsFor,
+                /**
+                 * A function object or undefined. The time zone's getPossibleInstantsFor method.
+                 * For a built-in time zone this is always
+                 * %Temporal.TimeZone.prototype.getPossibleInstantsFor%.
+                 */
+                Object getPossibleInstantsFor) {
 
-    private JSTemporalZonedDateTimeRecord(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
-                    TruffleString calendar, boolean hasCalendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
-        super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar, hasCalendar);
-        this.timeZoneOffsetString = timeZoneOffsetString;
-        this.timeZoneName = timeZoneName;
-        this.timeZoneZ = timeZoneZ;
+    public TimeZoneMethodsRecord(JSDynamicObject receiver, Object getOffsetNanosecondsFor) {
+        this(receiver, getOffsetNanosecondsFor, null);
     }
-
-    public static JSTemporalZonedDateTimeRecord create(int year, int month, int day, int hour, int minute, int second,
-                    int millisecond, int microsecond, int nanosecond, TruffleString calendar, boolean timeZoneZ, TruffleString timeZoneOffsetString, TruffleString timeZoneName) {
-        return new JSTemporalZonedDateTimeRecord(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond,
-                        calendar, calendar != null, timeZoneZ, timeZoneOffsetString, timeZoneName);
-    }
-
-    public TruffleString getTimeZoneOffsetString() {
-        return timeZoneOffsetString;
-    }
-
-    public TruffleString getTimeZoneName() {
-        return timeZoneName;
-    }
-
-    public boolean getTimeZoneZ() {
-        return timeZoneZ;
-    }
-
 }

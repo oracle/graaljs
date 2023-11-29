@@ -48,7 +48,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.BigInt;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstant;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
@@ -59,10 +58,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToTemporalInstantNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
-
-    protected ToTemporalInstantNode(JSContext context) {
-        this.ctx = context;
+    protected ToTemporalInstantNode() {
     }
 
     public abstract JSTemporalInstantObject execute(Object value);
@@ -77,11 +73,11 @@ public abstract class ToTemporalInstantNode extends JavaScriptBaseNode {
                 return (JSTemporalInstantObject) item;
             }
             if (TemporalUtil.isTemporalZonedDateTime(item)) {
-                return JSTemporalInstant.create(ctx, getRealm(), ((JSTemporalZonedDateTimeObject) item).getNanoseconds());
+                return JSTemporalInstant.create(getLanguage().getJSContext(), getRealm(), ((JSTemporalZonedDateTimeObject) item).getNanoseconds());
             }
         }
         TruffleString string = toStringNode.executeString(item);
         BigInt epochNanoseconds = TemporalUtil.parseTemporalInstant(string);
-        return JSTemporalInstant.create(ctx, getRealm(), epochNanoseconds);
+        return JSTemporalInstant.create(getLanguage().getJSContext(), getRealm(), epochNanoseconds);
     }
 }

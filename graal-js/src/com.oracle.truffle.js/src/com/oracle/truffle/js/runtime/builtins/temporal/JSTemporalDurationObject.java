@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
 @ExportLibrary(InteropLibrary.class)
-public class JSTemporalDurationObject extends JSNonProxyObject {
+public final class JSTemporalDurationObject extends JSNonProxyObject {
 
     private final double years;
     private final double months;
@@ -123,7 +123,7 @@ public class JSTemporalDurationObject extends JSNonProxyObject {
     }
 
     @ExportMessage
-    final boolean isDuration() {
+    boolean isDuration() {
         // note: java.time.Duration only considers DAYS, while JS Temporal also has W, M, Y.
         // due to vague DAYS support in Java, we disallow conversion when any of D, W, M, Y is != 0.
         return years == 0 && months == 0 && weeks == 0 && days == 0 && JSRuntime.doubleIsRepresentableAsLong(calcSeconds()) && JSRuntime.doubleIsRepresentableAsLong(calcNanoseconds());
@@ -131,14 +131,13 @@ public class JSTemporalDurationObject extends JSNonProxyObject {
 
     @ExportMessage
     @TruffleBoundary
-    final Duration asDuration() throws UnsupportedMessageException {
+    Duration asDuration() throws UnsupportedMessageException {
         if (!isDuration()) {
             throw UnsupportedMessageException.create();
         }
         double sec = calcSeconds();
         double nanos = calcNanoseconds();
-        Duration dur = Duration.ofSeconds((long) sec, (long) nanos);
-        return dur;
+        return Duration.ofSeconds((long) sec, (long) nanos);
     }
 
     private double calcNanoseconds() {

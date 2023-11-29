@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,33 +40,25 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import java.math.BigInteger;
+import com.oracle.truffle.api.strings.TruffleString;
 
-public final class JSTemporalNanosecondsDaysRecord {
-    private final BigInteger days;
-    private final BigInteger nanoseconds;
-    private final BigInteger dayLength;
+public class ParseISODateTimeResult extends JSTemporalDateTimeRecord {
 
-    private JSTemporalNanosecondsDaysRecord(BigInteger days, BigInteger nanoseconds, BigInteger dayLength) {
-        this.days = days;
-        this.nanoseconds = nanoseconds;
-        this.dayLength = dayLength;
+    private final JSTemporalTimeZoneRecord timeZoneResult;
+
+    public ParseISODateTimeResult(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
+                    TruffleString calendar, JSTemporalTimeZoneRecord timeZoneResult) {
+        super(year, month, day, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
+        this.timeZoneResult = timeZoneResult;
     }
 
-    public static JSTemporalNanosecondsDaysRecord create(BigInteger days, BigInteger nanoseconds, BigInteger dayLength) {
-        return new JSTemporalNanosecondsDaysRecord(days, nanoseconds, dayLength);
+    public JSTemporalTimeZoneRecord getTimeZoneResult() {
+        return timeZoneResult;
     }
 
-    public BigInteger getDays() {
-        return days;
-    }
-
-    public BigInteger getNanoseconds() {
-        return nanoseconds;
-    }
-
-    public BigInteger getDayLength() {
-        return dayLength;
+    public ParseISODateTimeResult withTimeZoneResult(JSTemporalTimeZoneRecord newTimeZoneResult) {
+        return new ParseISODateTimeResult(getYear(), getMonth(), getDay(), getHour(), getMinute(), getSecond(), getMillisecond(), getMicrosecond(), getNanosecond(), getCalendar(),
+                        newTimeZoneResult);
     }
 
 }

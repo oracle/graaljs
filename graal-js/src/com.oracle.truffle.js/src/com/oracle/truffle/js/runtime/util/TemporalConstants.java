@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,6 @@ public final class TemporalConstants {
     public static final TruffleString OFFSET = Strings.constant("offset");
     public static final TruffleString ERA = Strings.constant("era");
     public static final TruffleString ERA_YEAR = Strings.constant("eraYear");
-    public static final TruffleString OFFSET_NANOSECONDS = Strings.constant("offsetNanoseconds");
 
     public static final TruffleString FIELDS = Strings.constant("fields");
     public static final TruffleString CALENDAR = Strings.constant("calendar");
@@ -80,7 +79,6 @@ public final class TemporalConstants {
     public static final TruffleString DAYS_IN_MONTH = Strings.constant("daysInMonth");
     public static final TruffleString DAYS_IN_WEEK = Strings.constant("daysInWeek");
     public static final TruffleString MONTHS_IN_YEAR = Strings.constant("monthsInYear");
-    public static final TruffleString HOURS_IN_DAY = Strings.constant("hoursInDay");
     public static final TruffleString IN_LEAP_YEAR = Strings.constant("inLeapYear");
 
     public static final TruffleString DAY_OF_WEEK = Strings.constant("dayOfWeek");
@@ -88,8 +86,6 @@ public final class TemporalConstants {
     public static final TruffleString WEEK_OF_YEAR = Strings.constant("weekOfYear");
 
     public static final TruffleString DATE_FROM_FIELDS = Strings.constant("dateFromFields");
-    public static final TruffleString REFERENCE_ISO_DAY = Strings.constant("referenceIsoDay");
-    public static final TruffleString REFERENCE_ISO_YEAR = Strings.constant("referenceIsoYear");
 
     public static final TruffleString ISO_DAY = Strings.constant("isoDay");
     public static final TruffleString ISO_HOUR = Strings.constant("isoHour");
@@ -117,15 +113,11 @@ public final class TemporalConstants {
     public static final TruffleString COMPATIBLE = Strings.constant("compatible");
 
     public static final TruffleString TIME_ZONE = Strings.constant("timeZone");
-    public static final TruffleString TIME_ZONE_OFFSET = Strings.constant("timeZoneOffset");
-    public static final TruffleString TIME_ZONE_IANA_NAME = Strings.constant("timeZoneIANAName");
     public static final TruffleString TIME_ZONE_NAME = Strings.constant("timeZoneName");
 
     public static final TruffleString DATE_UNTIL = Strings.constant("dateUntil");
     public static final TruffleString DATE_ADD = Strings.constant("dateAdd");
 
-    public static final TruffleString PRECISION = Strings.constant("Precision");
-    public static final TruffleString INCREMENT = Strings.constant("Increment");
     public static final TruffleString UNIT = Strings.constant("unit");
     public static final TruffleString SMALLEST_UNIT = Strings.constant("smallestUnit");
 
@@ -137,23 +129,19 @@ public final class TemporalConstants {
 
     public static final TruffleString FLOOR = Strings.constant("floor");
     public static final TruffleString CEIL = Strings.constant("ceil");
+    public static final TruffleString EXPAND = Strings.constant("expand");
     public static final TruffleString TRUNC = Strings.constant("trunc");
+    public static final TruffleString HALF_FLOOR = Strings.constant("halfFloor");
+    public static final TruffleString HALF_CEIL = Strings.constant("halfCeil");
     public static final TruffleString HALF_EXPAND = Strings.constant("halfExpand");
+    public static final TruffleString HALF_TRUNC = Strings.constant("halfTrunc");
+    public static final TruffleString HALF_EVEN = Strings.constant("halfEven");
     public static final TruffleString ROUNDING_MODE = Strings.constant("roundingMode");
     public static final TruffleString ROUNDING_INCREMENT = Strings.constant("roundingIncrement");
-
-    public static final TruffleString SIGN = Strings.constant("sign");
-    public static final TruffleString BLANK = Strings.constant("blank");
-    public static final TruffleString ID = Strings.constant("id");
 
     public static final TruffleString MERGE_FIELDS = Strings.constant("mergeFields");
     public static final TruffleString RELATIVE_TO = Strings.constant("relativeTo");
     public static final TruffleString LARGEST_UNIT = Strings.constant("largestUnit");
-
-    public static final TruffleString EPOCH_SECONDS = Strings.constant("epochSeconds");
-    public static final TruffleString EPOCH_MILLISECONDS = Strings.constant("epochMilliseconds");
-    public static final TruffleString EPOCH_MICROSECONDS = Strings.constant("epochMicroseconds");
-    public static final TruffleString EPOCH_NANOSECONDS = Strings.constant("epochNanoseconds");
 
     public static final TruffleString UTC = Strings.constant("UTC");
 
@@ -174,6 +162,5 @@ public final class TemporalConstants {
 
     public static final TruffleString MINUS_000000 = Strings.constant("-000000");
     public static final TruffleString UNICODE_MINUS_SIGN_000000 = Strings.constant(TemporalUtil.UNICODE_MINUS_SIGN + "000000");
-    public static final TruffleString M = Strings.constant("M");
 
 }

@@ -91,11 +91,6 @@ public final class TemporalErrors {
     }
 
     @TruffleBoundary
-    public static JSException createRangeErrorDisallowedField(TruffleString property) {
-        return Errors.createRangeError(String.format("Property %s is a disallowed field and not 0.", property));
-    }
-
-    @TruffleBoundary
     public static JSException createRangeErrorOptionsNotContained(List<?> values, Object value) {
         return Errors.createRangeError(String.format("Given options value: %s is not contained in values: %s", value, values));
     }
@@ -178,16 +173,6 @@ public final class TemporalErrors {
     @TruffleBoundary
     public static JSException createRangeErrorCalendarNotSupported() {
         return Errors.createRangeError("Given calendar id not supported.");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorTemporalYearNotPresent() {
-        return Errors.createTypeError("Year not present.");
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorTemporalDayNotPresent() {
-        return Errors.createTypeError("Day not present.");
     }
 
     @TruffleBoundary

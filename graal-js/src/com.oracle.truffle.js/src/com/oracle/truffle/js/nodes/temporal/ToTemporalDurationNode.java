@@ -48,7 +48,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -59,10 +58,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
  */
 public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
-
-    protected ToTemporalDurationNode(JSContext context) {
-        this.ctx = context;
+    protected ToTemporalDurationNode() {
     }
 
     public abstract JSTemporalDurationObject execute(Object item);
@@ -84,7 +80,7 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
             TruffleString string = toStringNode.executeString(item);
             result = JSTemporalDuration.parseTemporalDurationString(string);
         }
-        return JSTemporalDuration.createTemporalDuration(ctx, getRealm(),
+        return JSTemporalDuration.createTemporalDuration(getLanguage().getJSContext(), getRealm(),
                         result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
                         result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), this, errorBranch);
     }

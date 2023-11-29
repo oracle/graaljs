@@ -40,57 +40,54 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import java.util.List;
-
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
-import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalErrors;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 /**
- * Implementation of ToLimitedTemporalDuration() operation.
+ * Implementation of the Temporal DifferenceDate operation.
  */
-public abstract class ToLimitedTemporalDurationNode extends JavaScriptBaseNode {
+@ImportStatic(TemporalConstants.class)
+public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
 
-    protected ToLimitedTemporalDurationNode() {
+    protected TemporalDifferenceDateNode() {
     }
 
-    public abstract JSTemporalDurationRecord execute(Object temporalDurationLike, List<TruffleString> disallowedFields);
+    public abstract JSTemporalDurationObject execute(
+                    CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
+                    Unit largestUnit, JSObject untilOptions);
 
     @Specialization
-    protected JSTemporalDurationRecord toLimitedTemporalDuration(Object temporalDurationLike, List<TruffleString> disallowedFields,
-                    @Cached IsObjectNode isObjectNode,
-                    @Cached JSToStringNode toStringNode,
-                    @Cached InlinedConditionProfile isObjectProfile,
-                    @Cached InlinedConditionProfile hasDisallowedFields,
-                    @Cached InlinedBranchProfile errorBranch) {
-        JSTemporalDurationRecord d;
-        if (isObjectProfile.profile(this, !isObjectNode.executeBoolean(temporalDurationLike))) {
-            TruffleString str = toStringNode.executeString(temporalDurationLike);
-            d = JSTemporalDuration.parseTemporalDurationString(str);
-        } else {
-            d = JSTemporalDuration.toTemporalDurationRecord((JSDynamicObject) temporalDurationLike);
-        }
+    final JSTemporalDurationObject differenceDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
+                    Unit largestUnit, JSObject untilOptions,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached("createCall()") JSFunctionCallNode callDateUntilNode) {
+        JSContext ctx = getLanguage().getJSContext();
+        JSRealm realm = getRealm();
 
-        if (hasDisallowedFields.profile(this, disallowedFields != TemporalUtil.listEmpty)) {
-            for (TemporalUtil.UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
-                double value = TemporalUtil.getPropertyFromRecord(d, unit);
-                if (value != 0 && Boundaries.listContains(disallowedFields, unit.toTruffleString())) {
-                    errorBranch.enter(this);
-                    throw TemporalErrors.createRangeErrorDisallowedField(unit.toTruffleString());
-                }
-            }
+        if (one.getYear() == two.getYear() && one.getMonth() == two.getMonth() && one.getDay() == two.getDay()) {
+            return JSTemporalDuration.createTemporalDuration(ctx, realm, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
+        } else if (largestUnit == Unit.DAY) {
+            double days = TemporalUtil.daysUntil(one, two);
+            return JSTemporalDuration.createTemporalDuration(ctx, realm, 0, 0, 0, days, 0, 0, 0, 0, 0, 0, this, errorBranch);
+        } else {
+            // CalendarDateUntil(calenderRec, one, two, options)
+            Object addedDate = callDateUntilNode.executeCall(JSArguments.create(calendarRec.receiver(), calendarRec.dateUntil(), one, two, untilOptions));
+            return TemporalUtil.requireTemporalDuration(addedDate);
         }
-        return d;
     }
 }

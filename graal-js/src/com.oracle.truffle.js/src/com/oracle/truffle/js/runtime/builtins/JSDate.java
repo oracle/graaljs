@@ -80,9 +80,9 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     private static final int HOURS_PER_DAY = 24;
     private static final int MINUTES_PER_HOUR = 60;
     private static final int SECONDS_PER_MINUTE = 60;
-    private static final int MS_PER_SECOND = 1000;
+    public static final int MS_PER_SECOND = 1000;
     public static final int MS_PER_MINUTE = 60000;
-    private static final int MS_PER_HOUR = 3600000;
+    public static final int MS_PER_HOUR = 3600000;
     public static final int MS_PER_DAY = 3600000 * 24;
     public static final double MAX_DATE = 8.64E15;
     // slightly beyond MAX_DATE (+/- 273,790 years)
@@ -192,7 +192,7 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     }
 
     // 15.9.1.2
-    private static double day(double t) {
+    public static double day(double t) {
         return floor(t / MS_PER_DAY);
     }
 

@@ -127,7 +127,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     public static JSTemporalPlainDateObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
                     int year, int month, int day, JSDynamicObject calendar,
                     Node node, InlinedBranchProfile errorBranch) {
-        if (!TemporalUtil.validateISODate(year, month, day)) {
+        if (!TemporalUtil.isValidISODate(year, month, day)) {
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateTimeOutsideRange();
         }
@@ -153,11 +153,11 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             if (sign == 0) {
                 return toRecordWeeksPlural(0, 0, 0, 0);
             }
-            JSTemporalDateTimeRecord start = toRecord(y1, m1, d1);
-            JSTemporalDateTimeRecord end = toRecord(y2, m2, d2);
-            int years = end.getYear() - start.getYear();
-            JSTemporalDateTimeRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, Overflow.CONSTRAIN);
-            int midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
+            ISODateRecord start = new ISODateRecord(y1, m1, d1);
+            ISODateRecord end = new ISODateRecord(y2, m2, d2);
+            int years = end.year() - start.year();
+            ISODateRecord mid = TemporalUtil.addISODate(y1, m1, d1, years, 0, 0, 0, Overflow.CONSTRAIN);
+            int midSign = -TemporalUtil.compareISODate(mid.year(), mid.month(), mid.day(), y2, m2, d2);
             if (midSign == 0) {
                 if (largestUnit == Unit.YEAR) {
                     return toRecordWeeksPlural(years, 0, 0, 0);
@@ -165,13 +165,13 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                     return toRecordWeeksPlural(0, years * 12, 0, 0); // sic!
                 }
             }
-            int months = end.getMonth() - start.getMonth();
+            int months = end.month() - start.month();
             if (midSign != sign) {
                 years = years - sign;
                 months = months + (sign * 12);
             }
             mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, Overflow.CONSTRAIN);
-            midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
+            midSign = -TemporalUtil.compareISODate(mid.year(), mid.month(), mid.day(), y2, m2, d2);
             if (midSign == 0) {
                 if (largestUnit == Unit.YEAR) {
                     return toRecordPlural(years, months, 0);
@@ -186,15 +186,15 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
                     months = 11 * sign;
                 }
                 mid = TemporalUtil.addISODate(y1, m1, d1, years, months, 0, 0, Overflow.CONSTRAIN);
-                midSign = -TemporalUtil.compareISODate(mid.getYear(), mid.getMonth(), mid.getDay(), y2, m2, d2);
+                midSign = -TemporalUtil.compareISODate(mid.year(), mid.month(), mid.day(), y2, m2, d2);
             }
             int days = 0;
-            if (mid.getMonth() == end.getMonth() && mid.getYear() == end.getYear()) {
-                days = end.getDay() - mid.getDay();
+            if (mid.month() == end.month() && mid.year() == end.year()) {
+                days = end.day() - mid.day();
             } else if (sign < 0) {
-                days = -mid.getDay() - (TemporalUtil.isoDaysInMonth(end.getYear(), end.getMonth()) - end.getDay());
+                days = -mid.day() - (TemporalUtil.isoDaysInMonth(end.year(), end.month()) - end.day());
             } else {
-                days = end.getDay() + (TemporalUtil.isoDaysInMonth(mid.getYear(), mid.getMonth()) - mid.getDay());
+                days = end.day() + (TemporalUtil.isoDaysInMonth(mid.year(), mid.month()) - mid.day());
             }
             if (largestUnit == Unit.MONTH) {
                 months = months + (years * 12);
@@ -223,10 +223,6 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
 
     private static JSTemporalDurationRecord toRecordWeeksPlural(long year, long month, long weeks, long day) {
         return JSTemporalDurationRecord.createWeeks(year, month, weeks, day, 0, 0, 0, 0, 0, 0);
-    }
-
-    public static JSTemporalDateTimeRecord toRecord(int year, int month, int day) {
-        return JSTemporalDateTimeRecord.create(year, month, day, 0, 0, 0, 0, 0, 0);
     }
 
     @TruffleBoundary

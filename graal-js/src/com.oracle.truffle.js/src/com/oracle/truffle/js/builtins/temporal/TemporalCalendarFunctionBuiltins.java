@@ -92,7 +92,7 @@ public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSDynamicObject from(Object item,
-                        @Cached("create(getContext())") ToTemporalCalendarNode toTemporalCalendar) {
+                        @Cached ToTemporalCalendarNode toTemporalCalendar) {
             return toTemporalCalendar.execute(item);
         }
 

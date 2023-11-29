@@ -166,7 +166,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected Object monthDayGetter(JSTemporalPlainMonthDayObject plainMD,
-                        @Cached("create(getContext())") TemporalCalendarGetterNode calendarGetterNode) {
+                        @Cached TemporalCalendarGetterNode calendarGetterNode) {
             switch (property) {
                 case day:
                     return TemporalUtil.calendarDay(calendarGetterNode, plainMD.getCalendar(), plainMD);
@@ -247,8 +247,8 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected JSTemporalPlainDateObject toPlainDate(JSTemporalPlainMonthDayObject monthDay, Object item,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
+                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                         @Cached InlinedBranchProfile errorBranch) {
             if (!isObject(item)) {
                 errorBranch.enter(this);
@@ -306,8 +306,8 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected JSTemporalPlainMonthDayObject with(JSTemporalPlainMonthDayObject md, Object temporalMonthDayLike, Object optParam,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
-                        @Cached("create(getContext())") TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
-                        @Cached("create(getContext())") TemporalCalendarFieldsNode calendarFieldsNode,
+                        @Cached TemporalMonthDayFromFieldsNode monthDayFromFieldsNode,
+                        @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (!isObject(temporalMonthDayLike)) {
@@ -353,7 +353,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected boolean equals(JSTemporalPlainMonthDayObject md, Object otherParam,
                         @Cached JSToStringNode toStringNode,
-                        @Cached("create(getContext())") ToTemporalMonthDayNode toTemporalMonthDayNode) {
+                        @Cached ToTemporalMonthDayNode toTemporalMonthDayNode) {
             JSTemporalPlainMonthDayObject other = toTemporalMonthDayNode.execute(otherParam, Undefined.instance);
             if (md.getMonth() != other.getMonth()) {
                 return false;

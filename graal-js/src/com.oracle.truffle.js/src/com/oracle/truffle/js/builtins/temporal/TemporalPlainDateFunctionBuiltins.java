@@ -55,7 +55,6 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalPlainDateFunctionBuiltins.TemporalPlainDateFunction> {
@@ -102,12 +101,11 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected JSTemporalPlainDateObject from(Object item, Object optParam,
                         @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate,
+                        @Cached ToTemporalDateNode toTemporalDate,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
-            if (isObject(item) && JSTemporalPlainDate.isJSTemporalPlainDate(item)) {
-                JSTemporalPlainDateObject dtItem = (JSTemporalPlainDateObject) item;
+            if (item instanceof JSTemporalPlainDateObject dtItem) {
                 TemporalUtil.toTemporalOverflow(options, getOptionNode);
                 return JSTemporalPlainDate.create(getContext(), getRealm(),
                                 dtItem.getYear(), dtItem.getMonth(), dtItem.getDay(), dtItem.getCalendar(), this, errorBranch);
@@ -125,9 +123,9 @@ public class TemporalPlainDateFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected int compare(Object obj1, Object obj2,
-                        @Cached("create(getContext())") ToTemporalDateNode toTemporalDate) {
-            JSTemporalPlainDateObject one = toTemporalDate.execute(obj1, Undefined.instance);
-            JSTemporalPlainDateObject two = toTemporalDate.execute(obj2, Undefined.instance);
+                        @Cached ToTemporalDateNode toTemporalDate) {
+            JSTemporalPlainDateObject one = toTemporalDate.execute(obj1);
+            JSTemporalPlainDateObject two = toTemporalDate.execute(obj2);
             return TemporalUtil.compareISODate(
                             one.getYear(), one.getMonth(), one.getDay(),
                             two.getYear(), two.getMonth(), two.getDay());

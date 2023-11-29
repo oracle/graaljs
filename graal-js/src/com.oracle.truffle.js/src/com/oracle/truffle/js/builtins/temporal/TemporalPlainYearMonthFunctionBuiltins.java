@@ -102,7 +102,7 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected JSTemporalPlainYearMonthObject from(Object item, Object optParam,
-                        @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode,
+                        @Cached ToTemporalYearMonthNode toTemporalYearMonthNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -125,7 +125,7 @@ public class TemporalPlainYearMonthFunctionBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected int compare(Object one, Object two,
-                        @Cached("create(getContext())") ToTemporalYearMonthNode toTemporalYearMonthNode) {
+                        @Cached ToTemporalYearMonthNode toTemporalYearMonthNode) {
             JSTemporalPlainYearMonthObject oneYM = toTemporalYearMonthNode.execute(one, Undefined.instance);
             JSTemporalPlainYearMonthObject twoYM = toTemporalYearMonthNode.execute(two, Undefined.instance);
             return TemporalUtil.compareISODate(oneYM.getYear(), oneYM.getMonth(), oneYM.getDay(), twoYM.getYear(), twoYM.getMonth(), twoYM.getDay());

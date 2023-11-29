@@ -46,7 +46,6 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -56,10 +55,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
  */
 public abstract class ToTemporalCalendarWithISODefaultNode extends JavaScriptBaseNode {
 
-    protected final JSContext ctx;
-
-    protected ToTemporalCalendarWithISODefaultNode(JSContext ctx) {
-        this.ctx = ctx;
+    protected ToTemporalCalendarWithISODefaultNode() {
     }
 
     public abstract JSDynamicObject execute(Object calendar);
@@ -67,9 +63,9 @@ public abstract class ToTemporalCalendarWithISODefaultNode extends JavaScriptBas
     @Specialization
     public JSDynamicObject toTemporalCalendarWithISODefault(Object calendar,
                     @Cached InlinedConditionProfile calendarAvailable,
-                    @Cached("create(ctx)") ToTemporalCalendarNode toTemporalCalendarNode) {
+                    @Cached ToTemporalCalendarNode toTemporalCalendarNode) {
         if (calendarAvailable.profile(this, calendar == null || calendar == Undefined.instance)) {
-            return JSTemporalCalendar.create(ctx, getRealm(), ISO8601);
+            return JSTemporalCalendar.create(getLanguage().getJSContext(), getRealm(), ISO8601);
         } else {
             return toTemporalCalendarNode.execute(calendar);
         }

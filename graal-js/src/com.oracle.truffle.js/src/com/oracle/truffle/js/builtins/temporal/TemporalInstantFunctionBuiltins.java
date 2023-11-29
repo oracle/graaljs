@@ -118,7 +118,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         protected JSTemporalInstantObject from(Object item,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
+                        @Cached ToTemporalInstantNode toTemporalInstantNode) {
             if (TemporalUtil.isTemporalInstant(item)) {
                 return JSTemporalInstant.create(getContext(), getRealm(), ((JSTemporalInstantObject) item).getNanoseconds());
             }
@@ -166,7 +166,7 @@ public class TemporalInstantFunctionBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization
         protected int compare(Object obj1, Object obj2,
-                        @Cached("create(getContext())") ToTemporalInstantNode toTemporalInstantNode) {
+                        @Cached ToTemporalInstantNode toTemporalInstantNode) {
             JSTemporalInstantObject one = toTemporalInstantNode.execute(obj1);
             JSTemporalInstantObject two = toTemporalInstantNode.execute(obj2);
             return TemporalUtil.compareEpochNanoseconds(one.getNanoseconds(), two.getNanoseconds());

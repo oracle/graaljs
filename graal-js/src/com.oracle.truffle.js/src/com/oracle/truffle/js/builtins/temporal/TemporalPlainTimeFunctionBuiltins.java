@@ -101,7 +101,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSTemporalPlainTimeObject from(Object item, Object options,
-                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime,
+                        @Cached ToTemporalTimeNode toTemporalTime,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
@@ -126,7 +126,7 @@ public class TemporalPlainTimeFunctionBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected int compare(Object obj1, Object obj2,
-                        @Cached("create(getContext())") ToTemporalTimeNode toTemporalTime) {
+                        @Cached ToTemporalTimeNode toTemporalTime) {
             JSTemporalPlainTimeObject time1 = toTemporalTime.execute(obj1, null);
             JSTemporalPlainTimeObject time2 = toTemporalTime.execute(obj2, null);
             return TemporalUtil.compareTemporalTime(

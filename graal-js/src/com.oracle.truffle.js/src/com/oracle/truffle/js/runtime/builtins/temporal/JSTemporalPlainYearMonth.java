@@ -85,7 +85,7 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
 
     public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
                     Node node, InlinedBranchProfile errorBranch) {
-        if (!TemporalUtil.validateISODate(isoYear, isoMonth, referenceISODay)) {
+        if (!TemporalUtil.isValidISODate(isoYear, isoMonth, referenceISODay)) {
             errorBranch.enter(node);
             throw TemporalErrors.createRangeErrorDateOutsideRange();
         }
