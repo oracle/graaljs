@@ -815,6 +815,15 @@ public final class TemporalUtil {
         return result;
     }
 
+    public static int nonNegativeModulo(long x, int y) {
+        assert y > 0 : y;
+        int result = (int) (x % y);
+        if (result < 0) {
+            result = result + y;
+        }
+        return result;
+    }
+
     public static int nonNegativeModulo(int x, int y) {
         assert y > 0 : y;
         int result = x % y;
@@ -2596,17 +2605,17 @@ public final class TemporalUtil {
         long seconds = sec;
         long minutes = min;
         long hours = h;
-        microseconds = microseconds + (long) Math.floor(nanoseconds / 1000.0);
+        microseconds = microseconds + Math.floorDiv(nanoseconds, 1000);
         nanoseconds = nonNegativeModulo(nanoseconds, 1000);
-        milliseconds = milliseconds + (long) Math.floor(microseconds / 1000.0);
+        milliseconds = milliseconds + Math.floorDiv(microseconds, 1000);
         microseconds = nonNegativeModulo(microseconds, 1000);
-        seconds = seconds + (long) Math.floor(milliseconds / 1000.0);
+        seconds = seconds + Math.floorDiv(milliseconds, 1000);
         milliseconds = nonNegativeModulo(milliseconds, 1000);
-        minutes = minutes + (long) Math.floor(seconds / 60.0);
+        minutes = minutes + Math.floorDiv(seconds, 60);
         seconds = nonNegativeModulo(seconds, 60);
-        hours = hours + (long) Math.floor(minutes / 60.0);
+        hours = hours + Math.floorDiv(minutes, 60);
         minutes = nonNegativeModulo(minutes, 60);
-        long days = (long) Math.floor(hours / 24.0);
+        long days = Math.floorDiv(hours, 24);
         hours = nonNegativeModulo(hours, 24);
         return new TimeRecord(days, (int) hours, (int) minutes, (int) seconds, (int) milliseconds, (int) microseconds, (int) nanoseconds);
     }
