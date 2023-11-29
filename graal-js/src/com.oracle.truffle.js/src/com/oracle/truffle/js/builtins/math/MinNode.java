@@ -41,11 +41,8 @@
 package com.oracle.truffle.js.builtins.math;
 
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
 public abstract class MinNode extends MinMaxNode {
 
@@ -54,27 +51,8 @@ public abstract class MinNode extends MinMaxNode {
     }
 
     @Override
-    protected final double minOrMaxDouble(double a, double b,
-                    Node node,
-                    InlinedConditionProfile leftSmaller,
-                    InlinedConditionProfile rightSmaller,
-                    InlinedConditionProfile bothEqual,
-                    InlinedConditionProfile negativeZero) {
-        if (leftSmaller.profile(node, a < b)) {
-            return a;
-        } else if (rightSmaller.profile(node, b < a)) {
-            return b;
-        } else {
-            if (bothEqual.profile(node, a == b)) {
-                if (negativeZero.profile(node, JSRuntime.isNegativeZero(b))) {
-                    return b;
-                } else {
-                    return a;
-                }
-            } else {
-                return Double.NaN;
-            }
-        }
+    protected final double minOrMaxDouble(double a, double b) {
+        return Math.min(a, b);
     }
 
     @Override

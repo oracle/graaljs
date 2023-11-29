@@ -44,11 +44,9 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToDoubleNode;
+import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -62,12 +60,7 @@ public abstract class MinMaxNode extends JSBuiltinNode {
 
     protected abstract int minOrMaxInt(int a, int b);
 
-    protected abstract double minOrMaxDouble(double a, double b,
-                    Node node,
-                    InlinedConditionProfile leftSmaller,
-                    InlinedConditionProfile rightSmaller,
-                    InlinedConditionProfile bothEqual,
-                    InlinedConditionProfile negativeZero);
+    protected abstract double minOrMaxDouble(double a, double b);
 
     @Specialization(guards = "args.length == 1")
     protected static Object do1(Object[] args,
@@ -80,11 +73,7 @@ public abstract class MinMaxNode extends JSBuiltinNode {
                     @Cached @Shared InlinedBranchProfile isIntBranch,
                     @Cached @Shared JSNumberToDoubleNode numberToDouble,
                     @Cached @Shared JSToNumberNode toNumber0Node,
-                    @Cached @Shared JSToNumberNode toNumber1Node,
-                    @Cached @Shared InlinedConditionProfile leftSmaller,
-                    @Cached @Shared InlinedConditionProfile rightSmaller,
-                    @Cached @Shared InlinedConditionProfile bothEqual,
-                    @Cached @Shared InlinedConditionProfile negativeZero) {
+                    @Cached @Shared JSToNumberNode toNumber1Node) {
         Object a0 = args[0];
         Object a1 = args[1];
         if (a0 instanceof Integer i0 && a1 instanceof Integer i1) {
@@ -100,8 +89,7 @@ public abstract class MinMaxNode extends JSBuiltinNode {
             // Implicit branch profile
             double d0 = numberToDouble.execute(this, n0);
             double d1 = numberToDouble.execute(this, n1);
-            return minOrMaxDouble(d0, d1,
-                            this, leftSmaller, rightSmaller, bothEqual, negativeZero);
+            return minOrMaxDouble(d0, d1);
         }
     }
 
@@ -111,11 +99,7 @@ public abstract class MinMaxNode extends JSBuiltinNode {
                     @Cached @Shared JSNumberToDoubleNode numberToDouble,
                     @Cached @Shared JSToNumberNode toNumber0Node,
                     @Cached @Shared JSToNumberNode toNumber1Node,
-                    @Cached @Shared JSToNumberNode toNumber2Node,
-                    @Cached @Shared InlinedConditionProfile leftSmaller,
-                    @Cached @Shared InlinedConditionProfile rightSmaller,
-                    @Cached @Shared InlinedConditionProfile bothEqual,
-                    @Cached @Shared InlinedConditionProfile negativeZero) {
+                    @Cached @Shared JSToNumberNode toNumber2Node) {
         Object a0 = args[0];
         Object a1 = args[1];
         Object a2 = args[2];
@@ -134,10 +118,8 @@ public abstract class MinMaxNode extends JSBuiltinNode {
             double d0 = numberToDouble.execute(this, n0);
             double d1 = numberToDouble.execute(this, n1);
             double d2 = numberToDouble.execute(this, n2);
-            double result = minOrMaxDouble(d0, d1,
-                            this, leftSmaller, rightSmaller, bothEqual, negativeZero);
-            return minOrMaxDouble(result, d2,
-                            this, leftSmaller, rightSmaller, bothEqual, negativeZero);
+            double result = minOrMaxDouble(d0, d1);
+            return minOrMaxDouble(result, d2);
         }
     }
 
@@ -147,11 +129,7 @@ public abstract class MinMaxNode extends JSBuiltinNode {
                     @Cached @Shared JSToNumberNode toNumber0Node,
                     @Cached @Shared JSToNumberNode toNumber1Node,
                     @Cached @Shared JSToNumberNode toNumber2Node,
-                    @Cached @Shared JSNumberToDoubleNode numberToDouble,
-                    @Cached @Shared InlinedConditionProfile leftSmaller,
-                    @Cached @Shared InlinedConditionProfile rightSmaller,
-                    @Cached @Shared InlinedConditionProfile bothEqual,
-                    @Cached @Shared InlinedConditionProfile negativeZero) {
+                    @Cached @Shared JSNumberToDoubleNode numberToDouble) {
         Object a0 = args[0];
         Object n0 = toNumber0Node.execute(a0);
         double dresult;
@@ -178,8 +156,7 @@ public abstract class MinMaxNode extends JSBuiltinNode {
             Object ai = args[i];
             Object ni = toNumber2Node.executeNumber(ai);
             double di = numberToDouble.execute(this, ni);
-            dresult = minOrMaxDouble(dresult, di,
-                            this, leftSmaller, rightSmaller, bothEqual, negativeZero);
+            dresult = minOrMaxDouble(dresult, di);
         }
         return dresult;
     }
