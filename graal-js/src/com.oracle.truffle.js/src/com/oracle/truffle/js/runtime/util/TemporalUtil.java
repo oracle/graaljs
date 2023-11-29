@@ -807,6 +807,7 @@ public final class TemporalUtil {
     }
 
     public static int nonNegativeModulo(double x, int y) {
+        assert y > 0 : y;
         int result = (int) (x % y);
         if (result < 0) {
             result = result + y;
@@ -815,6 +816,7 @@ public final class TemporalUtil {
     }
 
     public static int nonNegativeModulo(int x, int y) {
+        assert y > 0 : y;
         int result = x % y;
         if (result < 0) {
             result = result + y;
