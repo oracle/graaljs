@@ -9685,41 +9685,9 @@
     "status" : "FAIL",
     "comment" : "new failures 2013-06-28"
   }, {
-    "filePath" : "intl402/Locale/constructor-options-firstDayOfWeek-invalid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "intl402/Locale/constructor-options-firstDayOfWeek-valid.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
     "filePath" : "intl402/Locale/likely-subtags.js",
     "status" : "FAIL",
     "comment" : "ICU4J 74.1 update"
-  }, {
-    "filePath" : "intl402/Locale/prototype/firstDayOfWeek/name.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "intl402/Locale/prototype/firstDayOfWeek/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "intl402/Locale/prototype/firstDayOfWeek/valid-id.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "intl402/Locale/prototype/firstDayOfWeek/valid-options.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "intl402/Locale/prototype/getWeekInfo/firstDay-by-id.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "intl402/Locale/prototype/getWeekInfo/firstDay-by-option.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
   }, {
     "filePath" : "intl402/Locale/prototype/minimize/removing-likely-subtags-first-adds-likely-subtags.js",
     "status" : "FAIL",
