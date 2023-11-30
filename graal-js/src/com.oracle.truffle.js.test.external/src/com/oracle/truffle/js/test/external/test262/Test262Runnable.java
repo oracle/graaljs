@@ -222,6 +222,7 @@ public class Test262Runnable extends TestRunnable {
                     "hashbang",
                     "host-gc-required",
                     "import-assertions",
+                    "import-attributes",
                     "import.meta",
                     "intl-normative-optional",
                     "iterator-helpers",
@@ -247,6 +248,7 @@ public class Test262Runnable extends TestRunnable {
                     "regexp-unicode-property-escapes",
                     "regexp-v-flag",
                     "rest-parameters",
+                    "set-methods",
                     "string-trimming",
                     "super",
                     "symbols-as-weakmap-keys",
@@ -301,7 +303,7 @@ public class Test262Runnable extends TestRunnable {
         if (features.contains("error-cause")) {
             extraOptions.put(JSContextOptions.ERROR_CAUSE_NAME, "true");
         }
-        if (features.contains("import-assertions")) {
+        if (features.contains("import-attributes") || features.contains("import-assertions")) {
             extraOptions.put(JSContextOptions.IMPORT_ATTRIBUTES_NAME, "true");
         }
         if (features.contains("json-modules")) {
@@ -318,6 +320,9 @@ public class Test262Runnable extends TestRunnable {
         }
         if (features.contains("iterator-helpers")) {
             extraOptions.put(JSContextOptions.ITERATOR_HELPERS_NAME, "true");
+        }
+        if (features.contains("set-methods")) {
+            extraOptions.put(JSContextOptions.NEW_SET_METHODS_NAME, "true");
         }
 
         assert !asyncTest || !negative || negativeExpectedMessage.equals("SyntaxError") : "unsupported async negative test (does not expect an early SyntaxError): " + testFile.getFilePath();
