@@ -57,6 +57,7 @@ import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLoca
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCalendarAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCaseFirstAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleCollationAccessorNodeGen;
+import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleFirstDayOfWeekAccessorNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleGetCalendarsNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleGetCollationsNodeGen;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltinsFactory.JSLocaleGetHourCyclesNodeGen;
@@ -112,6 +113,7 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         calendar(0),
         caseFirst(0),
         collation(0),
+        firstDayOfWeek(0),
         hourCycle(0),
         numeric(0),
         numberingSystem(0),
@@ -169,6 +171,8 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSLocaleCaseFirstAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case collation:
                 return JSLocaleCollationAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case firstDayOfWeek:
+                return JSLocaleFirstDayOfWeekAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case hourCycle:
                 return JSLocaleHourCycleAccessorNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case numeric:
@@ -315,6 +319,25 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         public Object doLocale(JSLocaleObject localeObject) {
             return JSRuntime.nullToUndefined(Strings.fromJavaString(localeObject.getInternalState().getCollation()));
+        }
+
+        @Specialization(guards = "!isJSLocale(bummer)")
+        public Object doOther(@SuppressWarnings("unused") Object bummer) {
+            throw Errors.createTypeErrorLocaleExpected();
+        }
+
+    }
+
+    public abstract static class JSLocaleFirstDayOfWeekAccessor extends JSBuiltinNode {
+
+        public JSLocaleFirstDayOfWeekAccessor(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        public Object doLocale(JSLocaleObject localeObject) {
+            int fw = localeObject.getInternalState().getFirstDayOfWeek();
+            return (fw == -1) ? Undefined.instance : fw;
         }
 
         @Specialization(guards = "!isJSLocale(bummer)")
@@ -610,7 +633,13 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached InlinedBranchProfile growProfile) {
             Calendar.WeekData weekData = weekData(localeObject);
 
-            int firstDay = calendarToECMAScriptDay(weekData.firstDayOfWeek);
+            int fw = localeObject.getInternalState().getFirstDayOfWeek();
+            int firstDay;
+            if (fw == -1) {
+                firstDay = calendarToECMAScriptDay(weekData.firstDayOfWeek);
+            } else {
+                firstDay = fw;
+            }
             int minimalDays = weekData.minimalDaysInFirstWeek;
 
             SimpleArrayList<Integer> weekendList = new SimpleArrayList<>(7);

@@ -65,6 +65,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getRegionOption;
     @Child GetStringOptionNode getCalendarOption;
     @Child GetStringOptionNode getCollationOption;
+    @Child GetStringOptionNode getFirstDayOfWeekOption;
     @Child GetStringOptionNode getHourCycleOption;
     @Child GetStringOptionNode getCaseFirstOption;
     @Child GetBooleanOptionNode getNumericOption;
@@ -78,6 +79,8 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         this.getRegionOption = GetStringOptionNode.create(context, IntlUtil.KEY_REGION, null, null);
         this.getCalendarOption = GetStringOptionNode.create(context, IntlUtil.KEY_CALENDAR, null, null);
         this.getCollationOption = GetStringOptionNode.create(context, IntlUtil.KEY_COLLATION, null, null);
+        this.getFirstDayOfWeekOption = GetStringOptionNode.create(context, IntlUtil.KEY_FIRST_DAY_OF_WEEK,
+                        new String[]{IntlUtil.MON, IntlUtil.TUE, IntlUtil.WED, IntlUtil.THU, IntlUtil.FRI, IntlUtil.SAT, IntlUtil.SUN, "0", "1", "2", "3", "4", "5", "6", "7"}, null);
         this.getHourCycleOption = GetStringOptionNode.create(context, IntlUtil.KEY_HOUR_CYCLE, new String[]{IntlUtil.H11, IntlUtil.H12, IntlUtil.H23, IntlUtil.H24}, null);
         this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.KEY_CASE_FIRST, new String[]{IntlUtil.UPPER, IntlUtil.LOWER, IntlUtil.FALSE}, null);
         this.getNumericOption = GetBooleanOptionNode.create(context, IntlUtil.KEY_NUMERIC, null);
@@ -107,6 +110,10 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
             if (optCollation != null) {
                 IntlUtil.validateUnicodeLocaleIdentifierType(optCollation, errorBranch);
             }
+            String optFirstDayOfWeek = getFirstDayOfWeekOption.executeValue(options);
+            if (optFirstDayOfWeek != null) {
+                optFirstDayOfWeek = weekDayToString(optFirstDayOfWeek);
+            }
             String optHourCycle = getHourCycleOption.executeValue(options);
             String optCaseFirst = getCaseFirstOption.executeValue(options);
             Boolean optNumeric = getNumericOption.executeValue(options);
@@ -114,7 +121,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
             if (optNumberingSystem != null) {
                 IntlUtil.validateUnicodeLocaleIdentifierType(optNumberingSystem, errorBranch);
             }
-            Locale locale = applyUnicodeExtensionToTag(tag, optCalendar, optCollation, optHourCycle, optCaseFirst, optNumeric, optNumberingSystem);
+            Locale locale = applyUnicodeExtensionToTag(tag, optCalendar, optCollation, optFirstDayOfWeek, optHourCycle, optCaseFirst, optNumeric, optNumberingSystem);
             JSLocale.InternalState state = localeObject.getInternalState();
             JSLocale.setupInternalState(state, locale);
         } catch (MissingResourceException e) {
@@ -174,7 +181,7 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private static Locale applyUnicodeExtensionToTag(String tag, String optCalendar, String optCollation, String optHourCycle, String optCaseFirst, Boolean optNumeric,
+    private static Locale applyUnicodeExtensionToTag(String tag, String optCalendar, String optCollation, String optFirstDayOfWeek, String optHourCycle, String optCaseFirst, Boolean optNumeric,
                     String optNumberingSystem) {
         Locale.Builder builder = new Locale.Builder().setLanguageTag(tag);
         if (optCalendar != null) {
@@ -182,6 +189,9 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         }
         if (optCollation != null) {
             setUnicodeLocaleKeywordHelper(builder, "co", optCollation);
+        }
+        if (optFirstDayOfWeek != null) {
+            setUnicodeLocaleKeywordHelper(builder, "fw", optFirstDayOfWeek);
         }
         if (optHourCycle != null) {
             setUnicodeLocaleKeywordHelper(builder, "hc", optHourCycle);
@@ -200,6 +210,20 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
 
     private static void setUnicodeLocaleKeywordHelper(Locale.Builder builder, String key, String type) {
         builder.setUnicodeLocaleKeyword(key, "true".equals(type) ? "" : type);
+    }
+
+    private static String weekDayToString(String fw) {
+        return switch (fw) {
+            case "0" -> IntlUtil.SUN;
+            case "1" -> IntlUtil.MON;
+            case "2" -> IntlUtil.TUE;
+            case "3" -> IntlUtil.WED;
+            case "4" -> IntlUtil.THU;
+            case "5" -> IntlUtil.FRI;
+            case "6" -> IntlUtil.SAT;
+            case "7" -> IntlUtil.SUN;
+            default -> fw;
+        };
     }
 
 }
