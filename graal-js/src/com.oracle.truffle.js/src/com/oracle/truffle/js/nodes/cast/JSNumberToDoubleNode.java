@@ -38,30 +38,34 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins.json;
+package com.oracle.truffle.js.nodes.cast;
 
-import java.util.ArrayList;
-import java.util.List;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
-import org.graalvm.collections.EconomicMap;
+/**
+ * Convert result of {@link JSToNumberNode ToNumber} to a double value. Only the internal JS Number
+ * types (i.e. Integer, Double, and SafeInteger) are supported here.
+ *
+ * @see JSRuntime#isNumber(Object)
+ */
+@GenerateInline
+@GenerateCached(false)
+public abstract class JSNumberToDoubleNode extends JavaScriptBaseNode {
 
-import com.oracle.truffle.api.strings.TruffleString;
+    public abstract double execute(Node node, Object value);
 
-public record JSONParseRecord(
-                Object value,
-                TruffleString source,
-                List<JSONParseRecord> elements,
-                EconomicMap<TruffleString, JSONParseRecord> entries) {
-
-    public static JSONParseRecord forLiteral(Object value, TruffleString source) {
-        return new JSONParseRecord(value, source, List.of(), EconomicMap.emptyMap());
+    @Specialization
+    protected static double doInt(int value) {
+        return value;
     }
 
-    public static JSONParseRecord forArray(Object value) {
-        return new JSONParseRecord(value, null, new ArrayList<>(), EconomicMap.emptyMap());
-    }
-
-    public static JSONParseRecord forObject(Object value) {
-        return new JSONParseRecord(value, null, List.of(), EconomicMap.create());
+    @Specialization
+    protected static double doDouble(double value) {
+        return value;
     }
 }

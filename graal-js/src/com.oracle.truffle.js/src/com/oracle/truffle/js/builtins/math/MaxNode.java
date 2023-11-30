@@ -40,109 +40,28 @@
  */
 package com.oracle.truffle.js.builtins.math;
 
-import com.oracle.truffle.api.dsl.Bind;
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
-import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 
-public abstract class MaxNode extends MathOperation {
+public abstract class MaxNode extends MinMaxNode {
 
     public MaxNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
     }
 
-    private static double maxDoubleDouble(double a, double b,
-                    Node node,
-                    InlinedConditionProfile leftSmaller,
-                    InlinedConditionProfile rightSmaller,
-                    InlinedConditionProfile bothEqual,
-                    InlinedConditionProfile negativeZero) {
-        if (leftSmaller.profile(node, a > b)) {
-            return a;
-        } else if (rightSmaller.profile(node, b > a)) {
-            return b;
-        } else {
-            if (bothEqual.profile(node, a == b)) {
-                if (negativeZero.profile(node, JSRuntime.isNegativeZero(a))) {
-                    return b;
-                } else {
-                    return a;
-                }
-            } else {
-                return Double.NaN;
-            }
-        }
+    @Override
+    protected final double minOrMaxDouble(double a, double b) {
+        return Math.max(a, b);
     }
 
-    protected static boolean caseIntInt(Object[] args) {
-        assert args.length == 2;
-        return args[0] instanceof Integer && args[1] instanceof Integer;
+    @Override
+    protected int minOrMaxInt(int a, int b) {
+        return Math.max(a, b);
     }
 
     @Specialization(guards = "args.length == 0")
-    protected static double max0Param(@SuppressWarnings("unused") Object[] args) {
+    protected static double do0(@SuppressWarnings("unused") Object[] args) {
         return Double.NEGATIVE_INFINITY;
-    }
-
-    @Specialization(guards = "args.length == 1")
-    protected double max1Param(Object[] args) {
-        return toDouble(args[0]);
-    }
-
-    @Specialization(guards = {"args.length == 2", "caseIntInt(args)"})
-    protected int max2ParamInt(Object[] args,
-                    @Cached @Shared("maxProfile") InlinedConditionProfile maxProfile) {
-        int i1 = (int) args[0];
-        int i2 = (int) args[1];
-        return max(i1, i2, this, maxProfile);
-    }
-
-    @Specialization(guards = {"args.length == 2", "!caseIntInt(args)"})
-    protected static Object max2Param(Object[] args,
-                    @Bind("this") Node node,
-                    @Cached @Exclusive InlinedConditionProfile isIntBranch,
-                    @Cached @Shared("maxProfile") InlinedConditionProfile maxProfile,
-                    @Cached JSToNumberNode toNumber1Node,
-                    @Cached JSToNumberNode toNumber2Node,
-                    @Cached @Shared("leftSmaller") InlinedConditionProfile leftSmaller,
-                    @Cached @Shared("rightSmaller") InlinedConditionProfile rightSmaller,
-                    @Cached @Shared("bothEqual") InlinedConditionProfile bothEqual,
-                    @Cached @Shared("negativeZero") InlinedConditionProfile negativeZero) {
-        Number n1 = toNumber1Node.executeNumber(args[0]);
-        Number n2 = toNumber2Node.executeNumber(args[1]);
-        if (isIntBranch.profile(node, n1 instanceof Integer && n2 instanceof Integer)) {
-            return max(((Integer) n1).intValue(), ((Integer) n2).intValue(), node, maxProfile);
-        } else {
-            double d1 = JSRuntime.doubleValue(n1);
-            double d2 = JSRuntime.doubleValue(n2);
-            return maxDoubleDouble(d1, d2,
-                            node, leftSmaller, rightSmaller, bothEqual, negativeZero);
-        }
-    }
-
-    @Specialization(guards = "args.length >= 3")
-    protected double max(Object[] args,
-                    @Cached @Shared("leftSmaller") InlinedConditionProfile leftSmaller,
-                    @Cached @Shared("rightSmaller") InlinedConditionProfile rightSmaller,
-                    @Cached @Shared("bothEqual") InlinedConditionProfile bothEqual,
-                    @Cached @Shared("negativeZero") InlinedConditionProfile negativeZero) {
-        double largest = maxDoubleDouble(toDouble(args[0]), toDouble(args[1]),
-                        this, leftSmaller, rightSmaller, bothEqual, negativeZero);
-        for (int i = 2; i < args.length; i++) {
-            largest = maxDoubleDouble(largest, toDouble(args[i]),
-                            this, leftSmaller, rightSmaller, bothEqual, negativeZero);
-        }
-        return largest;
-    }
-
-    private static int max(int a, int b, Node node, InlinedConditionProfile maxProfile) {
-        return maxProfile.profile(node, a >= b) ? a : b;
     }
 }

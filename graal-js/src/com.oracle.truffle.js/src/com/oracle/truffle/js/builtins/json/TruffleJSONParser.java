@@ -40,10 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.json;
 
-import java.util.ArrayList;
-
-import org.graalvm.collections.EconomicMap;
-
 import com.oracle.js.parser.ParserException;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
@@ -172,7 +168,7 @@ public final class TruffleJSONParser {
         JSObject object = JSOrdinary.create(context, realm);
         JSONParseRecord parseRecord = null;
         if (withSource) {
-            parseRecord = new JSONParseRecord(object, EconomicMap.create());
+            parseRecord = JSONParseRecord.forObject(object);
         }
         if (get() != '}') {
             parseJSONMemberList(object, realm, parseRecord);
@@ -229,7 +225,7 @@ public final class TruffleJSONParser {
         JSArrayObject array = JSArray.createEmptyZeroLength(context, realm);
         JSONParseRecord parseRecord = null;
         if (withSource) {
-            parseRecord = new JSONParseRecord(array, new ArrayList<>());
+            parseRecord = JSONParseRecord.forArray(array);
         }
         if (get() != ']') {
             parseJSONElementList(array, realm, parseRecord);
@@ -295,8 +291,7 @@ public final class TruffleJSONParser {
         int startPos = pos;
         TruffleString parsedString = getJSONString();
         if (withSource) {
-            TruffleString source = Strings.lazySubstring(parseStr, startPos, pos - startPos);
-            return new JSONParseRecord(parsedString, source);
+            return parseRecordForLiteral(parsedString, startPos);
         } else {
             return parsedString;
         }
@@ -427,8 +422,7 @@ public final class TruffleJSONParser {
         int startPos = pos;
         Number parsedNumber = getJSONNumber();
         if (withSource) {
-            TruffleString source = Strings.lazySubstring(parseStr, startPos, pos - startPos);
-            return new JSONParseRecord(parsedNumber, source);
+            return parseRecordForLiteral(parsedNumber, startPos);
         } else {
             return parsedNumber;
         }
@@ -553,8 +547,7 @@ public final class TruffleJSONParser {
         int startPos = pos;
         Object parsedNull = getNullLiteral();
         if (withSource) {
-            TruffleString source = Strings.lazySubstring(parseStr, startPos, pos - startPos);
-            return new JSONParseRecord(parsedNull, source);
+            return parseRecordForLiteral(parsedNull, startPos);
         } else {
             return parsedNull;
         }
@@ -574,8 +567,7 @@ public final class TruffleJSONParser {
         int startPos = pos;
         boolean parsedBoolean = getBooleanLiteral();
         if (withSource) {
-            TruffleString source = Strings.lazySubstring(parseStr, startPos, pos - startPos);
-            return new JSONParseRecord(parsedBoolean, source);
+            return parseRecordForLiteral(parsedBoolean, startPos);
         } else {
             return parsedBoolean;
         }
@@ -683,5 +675,10 @@ public final class TruffleJSONParser {
                         literalStr, literalPos << 1,
                         literalStr.byteLength(TruffleString.Encoding.UTF_16) - (literalPos << 1),
                         TruffleString.Encoding.UTF_16);
+    }
+
+    private Object parseRecordForLiteral(Object parsedValue, int startPos) {
+        TruffleString source = Strings.lazySubstring(parseStr, startPos, pos - startPos);
+        return JSONParseRecord.forLiteral(parsedValue, source);
     }
 }
