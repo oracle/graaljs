@@ -2775,7 +2775,7 @@ public class JSRealm {
         long ns = nanos;
         long resolution = getContext().getTimerResolution();
         if (resolution > 0) {
-            return (ns / resolution) * resolution;
+            return Math.floorDiv(ns, resolution) * resolution;
         } else {
             // fuzzy time
             long fuzz = random.nextLong(NANOSECONDS_PER_MILLISECOND) + 1;
@@ -2791,7 +2791,7 @@ public class JSRealm {
     }
 
     public long currentTimeMillis() {
-        return nanoTimeWallClock() / NANOSECONDS_PER_MILLISECOND;
+        return Math.floorDiv(nanoTimeWallClock(), NANOSECONDS_PER_MILLISECOND);
     }
 
     public JSConsoleUtil getConsoleUtil() {
