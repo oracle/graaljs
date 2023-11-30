@@ -46,6 +46,7 @@ import java.io.OutputStream;
 import java.io.PrintWriter;
 import java.nio.charset.Charset;
 import java.time.DateTimeException;
+import java.time.Instant;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Date;
@@ -510,9 +511,9 @@ public class JSRealm {
     private DateFormat jsDateToStringFormat;
 
     public static final long NANOSECONDS_PER_MILLISECOND = 1000000;
+    public static final long NANOSECONDS_PER_SECOND = 1000 * NANOSECONDS_PER_MILLISECOND;
     private SplittableRandom random;
     private long nanoToZeroTimeOffset;
-    private long nanoToCurrentTimeOffset;
     private long lastFuzzyTime = Long.MIN_VALUE;
 
     private final Charset charset;
@@ -2756,7 +2757,8 @@ public class JSRealm {
      * Counted from the start of the application, as required by Node.js' `performance.now()`.
      */
     public long nanoTime() {
-        return nanoTime(nanoToZeroTimeOffset);
+        long ns = System.nanoTime() + nanoToZeroTimeOffset;
+        return updateResolution(ns);
     }
 
     /**
@@ -2764,11 +2766,13 @@ public class JSRealm {
      * clock time, to be in the same range as ECMAScript's `Date.now()`.
      */
     public long nanoTimeWallClock() {
-        return nanoTime(nanoToCurrentTimeOffset);
+        Instant instant = Instant.now();
+        long ns = instant.getEpochSecond() * NANOSECONDS_PER_SECOND + instant.getNano();
+        return updateResolution(ns);
     }
 
-    public long nanoTime(long offset) {
-        long ns = System.nanoTime() + offset;
+    private long updateResolution(long nanos) {
+        long ns = nanos;
         long resolution = getContext().getTimerResolution();
         if (resolution > 0) {
             return (ns / resolution) * resolution;
@@ -2787,7 +2791,7 @@ public class JSRealm {
     }
 
     public long currentTimeMillis() {
-        return nanoTime(nanoToCurrentTimeOffset) / NANOSECONDS_PER_MILLISECOND;
+        return nanoTimeWallClock() / NANOSECONDS_PER_MILLISECOND;
     }
 
     public JSConsoleUtil getConsoleUtil() {
@@ -2865,7 +2869,6 @@ public class JSRealm {
 
         random = new SplittableRandom();
         nanoToZeroTimeOffset = -System.nanoTime();
-        nanoToCurrentTimeOffset = System.currentTimeMillis() * NANOSECONDS_PER_MILLISECOND + nanoToZeroTimeOffset;
         lastFuzzyTime = Long.MIN_VALUE;
     }
 
