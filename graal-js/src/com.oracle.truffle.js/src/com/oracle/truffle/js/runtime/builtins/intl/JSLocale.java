@@ -118,6 +118,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         String calendar;
         String caseFirst;
         String collation;
+        int firstDayOfWeek;
         String hourCycle;
         boolean numeric;
         String numberingSystem;
@@ -147,6 +148,10 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
 
         public String getCollation() {
             return collation;
+        }
+
+        public int getFirstDayOfWeek() {
+            return firstDayOfWeek;
         }
 
         public String getHourCycle() {
@@ -212,6 +217,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         state.calendar = locale.getUnicodeLocaleType("ca");
         state.caseFirst = locale.getUnicodeLocaleType("kf");
         state.collation = locale.getUnicodeLocaleType("co");
+        state.firstDayOfWeek = IntlUtil.weekDayToNumber(locale.getUnicodeLocaleType("fw"));
         state.hourCycle = locale.getUnicodeLocaleType("hc");
         String kn = locale.getUnicodeLocaleType("kn");
         state.numeric = "true".equals(kn) || "".equals(kn);
