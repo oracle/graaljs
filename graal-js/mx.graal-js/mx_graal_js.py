@@ -220,7 +220,7 @@ def parse_js_args(args, runtime_jvm_args=None, useDoubleDash=False):
         if useDoubleDash and arg == '--':
             remainder += args[i:]
             break
-        if arg in ['-ea', '-dsa', '-esa', '-dsa', '-d64', '-server']:
+        if arg in ['-ea', '-da', '-esa', '-dsa', '-d64', '-server']:
             vm_args += [arg]
         elif any(arg.startswith(prefix) for prefix in ['-X', '-D', '-verbose', '-ea:', '-da:', '-javaagent:', '-agentlib:', '-agentpath:', '--add-modules=', '--upgrade-module-path=']):
             vm_args += [arg]
