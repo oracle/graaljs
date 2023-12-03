@@ -41,13 +41,13 @@
 package com.oracle.truffle.js.scriptengine.test;
 
 import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
 
 import javax.script.Bindings;
 import javax.script.ScriptContext;
 import javax.script.ScriptEngine;
 import javax.script.ScriptEngineManager;
 import javax.script.ScriptException;
+
 import org.junit.Test;
 
 public class GR49209 {
@@ -82,34 +82,28 @@ public class GR49209 {
     }
 
     @Test
-    public void testArray() {
+    public void testArray() throws ScriptException {
         ScriptEngine engine = getEngine(true);
-        // check that "as list" conversion does not apply to Java arrays
+        // Check that as Collection conversion applies to Java arrays.
         String code = """
                         var ObjectArray = Java.type('java.lang.Object[]');
                         var array = new ObjectArray(3);
                         java.util.Collections.unmodifiableCollection(array).size();
                         """;
-        try {
-            engine.eval(code);
-            fail("Object array converted to Collection unexpectedly");
-        } catch (ScriptException sex) {
-        }
+        Object result = engine.eval(code);
+        assertEquals(3, ((Number) result).intValue());
     }
 
     @Test
-    public void testJavaMapEntry() {
+    public void testJavaMapEntry() throws ScriptException {
         ScriptEngine engine = getEngine(true);
+        // Check that as Collection conversion applies to Map.Entry (that hasArrayElements()).
         String code = """
                         var entry = java.util.Map.of('key', 'value').entrySet().iterator().next();
                         java.util.Collections.unmodifiableCollection(entry).size();
                         """;
-        // check that "as list" conversion does not apply to Map.Entry (that hasArrayElements()).
-        try {
-            engine.eval(code);
-            fail("Map.Entry converted to Collection unexpectedly");
-        } catch (ScriptException sex) {
-        }
+        Object result = engine.eval(code);
+        assertEquals(2, ((Number) result).intValue());
     }
 
 }

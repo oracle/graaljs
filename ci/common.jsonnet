@@ -61,14 +61,17 @@ local common_json = import "../common.json";
     [name]: jdk_base + common_json.jdks[name] + { jdk_version:: parse_labsjdk_version(self), jdk_name:: "jdk-latest"}
     for name in ["oraclejdk-latest"] + variants("labsjdk-ce-latest") + variants("labsjdk-ee-latest")
   },
-  assert std.assertEqual(std.objectFields(common_json.jdks), std.objectFields(jdks_data)),
+  # We do not want to expose galahad-jdk
+  assert std.assertEqual([x for x in std.objectFields(common_json.jdks) if x != "galahad-jdk"], std.objectFields(jdks_data)),
   # Verify oraclejdk-latest and labsjdk-ee-latest versions match
   assert
     local _labsjdk = common_json.jdks["labsjdk-ee-latest"];
     local _oraclejdk = common_json.jdks["oraclejdk-latest"];
     local _ov = "ee-%s+%s" % [_oraclejdk.version, _oraclejdk.build_id];
     local _lv = _labsjdk.version;
-    assert std.startsWith(_lv, _ov) : "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
+    # Skip the check if we are not using a labsjdk. This can happen on JDK integration branches.
+    local no_labsjdk = _labsjdk.name != "labsjdk";
+    assert no_labsjdk || std.startsWith(_lv, _ov) : "update oraclejdk-latest to match labsjdk-ee-latest: %s+%s vs %s" % [_oraclejdk.version, _oraclejdk.build_id, _labsjdk.version];
     true,
 
   # The raw jdk data, the same as common_json.jdks + { jdk_version:: }
