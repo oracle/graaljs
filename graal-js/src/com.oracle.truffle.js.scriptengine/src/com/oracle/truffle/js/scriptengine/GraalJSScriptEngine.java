@@ -53,8 +53,6 @@ import java.nio.CharBuffer;
 import java.nio.charset.CharsetDecoder;
 import java.nio.charset.CharsetEncoder;
 import java.nio.charset.StandardCharsets;
-import java.util.Collection;
-import java.util.List;
 import java.util.function.Predicate;
 
 import javax.script.AbstractScriptEngine;
@@ -116,8 +114,6 @@ public final class GraalJSScriptEngine extends AbstractScriptEngine implements C
         b.targetTypeMapping(Double.class, Float.class, n -> true, n -> n.floatValue(), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(Double.class, Short.class, n -> true, n -> n.shortValue(), TargetMappingPrecedence.LOWEST);
         b.targetTypeMapping(Double.class, Byte.class, n -> true, n -> n.byteValue(), TargetMappingPrecedence.LOWEST);
-        // Allows to use arrays where java.util.Collection is expected
-        b.targetTypeMapping(Value.class, Collection.class, v -> v.hasArrayElements() && !v.isHostObject(), v -> v.as(List.class), TargetMappingPrecedence.LOW);
         return b.build();
     }
 

@@ -49,7 +49,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
-import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDurationRelativeNode;
+import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDateDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.runtime.BigInt;
@@ -140,7 +140,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
         @Specialization
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
-                        @Cached TemporalUnbalanceDurationRelativeNode unbalanceDurationRelativeNode,
+                        @Cached TemporalUnbalanceDateDurationRelativeNode unbalanceDurationRelativeNode,
                         @Cached ToTemporalDurationNode toTemporalDurationNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {

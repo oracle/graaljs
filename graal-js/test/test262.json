@@ -3210,10 +3210,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/dateuntil-field.js",
-    "status" : "FAIL",
-    "comment" : "TBD"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/duplicate-calendar-fields.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -3509,10 +3505,6 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/total/constructor-in-calendar-fields.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/dateuntil-field.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/duplicate-calendar-fields.js",
     "status" : "FAIL",
