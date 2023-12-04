@@ -68,12 +68,12 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
 /**
  * Implementation of the Temporal UnbalanceDateDurationRelative operation.
  */
-public abstract class TemporalUnbalanceDurationRelativeNode extends JavaScriptBaseNode {
+public abstract class TemporalUnbalanceDateDurationRelativeNode extends JavaScriptBaseNode {
 
     @Child private JSFunctionCallNode callDateAddNode;
     @Child private JSFunctionCallNode callDateUntilNode;
 
-    protected TemporalUnbalanceDurationRelativeNode() {
+    protected TemporalUnbalanceDateDurationRelativeNode() {
     }
 
     public abstract JSTemporalDurationRecord execute(double year, double month, double week, double day, TemporalUtil.Unit largestUnit,
