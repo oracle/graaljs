@@ -56,7 +56,7 @@ import com.oracle.truffle.js.test.JSTest;
 public class GR50324 {
 
     @Test
-    public void tesProxyIteratorNext() {
+    public void testProxyIteratorNext() {
         try (Context context = JSTest.newContextBuilder().build()) {
             List<String> list = List.of("foo", "bar", "baz");
             ProxyIterator proxyIter = ProxyIterator.from(list.iterator());
