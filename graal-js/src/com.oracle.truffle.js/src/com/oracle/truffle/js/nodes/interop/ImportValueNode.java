@@ -110,12 +110,7 @@ public abstract class ImportValueNode extends JavaScriptBaseNode {
         return value;
     }
 
-    @Specialization(guards = "isLongRepresentableAsInt32(value)")
-    static int fromLongToInt(long value) {
-        return (int) value;
-    }
-
-    @Specialization(guards = "!isLongRepresentableAsInt32(value)")
+    @Specialization
     static long fromLong(long value) {
         return value;
     }
