@@ -67,7 +67,7 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
-public abstract class JSArrayBufferObject extends JSNonProxyObject {
+public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
     public static final TruffleString CLASS_NAME = Strings.constant("ArrayBuffer");
     public static final Object PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
@@ -296,7 +296,7 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    public abstract static class DirectBase extends JSArrayBufferObject {
+    public abstract static sealed class DirectBase extends JSArrayBufferObject {
         ByteBuffer byteBuffer;
 
         protected DirectBase(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer) {
