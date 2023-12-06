@@ -41,57 +41,27 @@
 package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static org.junit.Assert.assertEquals;
-
-import java.util.List;
+import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
-import org.graalvm.polyglot.Value;
-import org.graalvm.polyglot.proxy.ProxyIterator;
 import org.junit.Test;
 
-import com.oracle.truffle.js.runtime.JSContextOptions;
 import com.oracle.truffle.js.test.JSTest;
 
-public class GR50324 {
+public class GitHub782 {
 
     @Test
-    public void testProxyIteratorNext() {
-        try (Context context = JSTest.newContextBuilder().build()) {
-            List<String> list = List.of("foo", "bar", "baz");
-            ProxyIterator proxyIter = ProxyIterator.from(list.iterator());
-            context.getBindings(ID).putMember("iter", proxyIter);
-
-            String script = "iter.next()";
-            checkIterResult(context.eval(ID, script), false, "foo");
-            checkIterResult(context.eval(ID, script), false, "bar");
-            checkIterResult(context.eval(ID, script), false, "baz");
-            checkIterResult(context.eval(ID, script), true, null);
+    public void testLong() {
+        try (Context context = JSTest.newContextBuilder().allowAllAccess(true).build()) {
+            context.eval(ID, "var isLong = Java.type('" + getClass().getName() + "').isLong;");
+            assertTrue(context.eval(ID, "isLong(java.lang.Long.MAX_VALUE)").asBoolean());
+            assertTrue(context.eval(ID, "isLong(java.lang.Long.valueOf(42))").asBoolean());
+            assertTrue(context.eval(ID, "isLong(java.lang.Long.MIN_VALUE)").asBoolean());
         }
     }
 
-    @Test
-    public void testProxyIteratorMap() {
-        try (Context context = JSTest.newContextBuilder().option(JSContextOptions.ITERATOR_HELPERS_NAME, "true").build()) {
-            List<String> list = List.of("foo", "bar", "baz");
-            ProxyIterator proxyIter = ProxyIterator.from(list.iterator());
-            context.getBindings(ID).putMember("iter", proxyIter);
-
-            context.eval(ID, "iter = iter.map(item => 'mapped ' + item)");
-
-            String script = "iter.next()";
-            checkIterResult(context.eval(ID, script), false, "mapped foo");
-            checkIterResult(context.eval(ID, script), false, "mapped bar");
-            checkIterResult(context.eval(ID, script), false, "mapped baz");
-            checkIterResult(context.eval(ID, script), true, null);
-        }
-    }
-
-    private static void checkIterResult(Value result, boolean expectedDone, String expectedValue) {
-        assertEquals(expectedDone, result.getMember("done").asBoolean());
-        if (!expectedDone) {
-            assertEquals(expectedValue, result.getMember("value").asString());
-        }
+    public static boolean isLong(Object arg) {
+        return arg instanceof Long;
     }
 
 }
