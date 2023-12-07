@@ -239,6 +239,11 @@ public final class Boundaries {
     }
 
     @TruffleBoundary(allowInlining = true)
+    public static void byteBufferGet(ByteBuffer src, int srcPos, byte[] dst, int dstPos, int length) {
+        src.get(srcPos, dst, dstPos, length);
+    }
+
+    @TruffleBoundary(allowInlining = true)
     public static void byteBufferPutArray(ByteBuffer dst, int dstPos, byte[] src, int srcPos, int srcLength) {
         dst.put(dstPos, src, srcPos, srcLength);
     }

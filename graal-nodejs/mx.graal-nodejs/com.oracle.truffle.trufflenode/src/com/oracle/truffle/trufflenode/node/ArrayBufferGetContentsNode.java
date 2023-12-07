@@ -52,6 +52,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
@@ -84,7 +85,7 @@ public abstract class ArrayBufferGetContentsNode extends JavaScriptBaseNode {
                 int remaining = bufferSize - i;
                 int copyLength = Math.min(copyBufferSize, remaining);
                 interop.readBuffer(buffer, i, copyBuffer, 0, copyLength);
-                byteBuffer.put(i, copyBuffer, 0, copyLength);
+                Boundaries.byteBufferPutArray(byteBuffer, i, copyBuffer, 0, copyLength);
             }
             LoopNode.reportLoopCount(this, bufferSize);
             return byteBuffer;
