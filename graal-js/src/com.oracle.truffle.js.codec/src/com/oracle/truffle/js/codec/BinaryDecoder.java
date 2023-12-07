@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.codec;
 
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.VarHandle;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -49,16 +51,27 @@ import com.oracle.truffle.api.strings.TruffleString;
 /**
  * Utility for decoding values from a ByteBuffer.
  */
-public class BinaryDecoder {
+public final class BinaryDecoder {
 
-    private ByteBuffer buffer;
+    private static final VarHandle INT32 = MethodHandles.byteBufferViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
+    private static final VarHandle INT64 = MethodHandles.byteBufferViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
+
+    private final ByteBuffer buffer;
+    private int pos;
+
+    public BinaryDecoder(ByteBuffer buffer, int position) {
+        this.buffer = buffer;
+        this.pos = position;
+    }
 
     public BinaryDecoder(ByteBuffer buffer) {
-        this.buffer = buffer.duplicate().order(ByteOrder.LITTLE_ENDIAN);
+        this(buffer, 0);
     }
 
     private int getU1() {
-        return Byte.toUnsignedInt(buffer.get());
+        int u1 = Byte.toUnsignedInt(buffer.get(pos));
+        pos += Byte.BYTES;
+        return u1;
     }
 
     /**
@@ -152,25 +165,15 @@ public class BinaryDecoder {
     }
 
     public long getInt64() {
-        long result = 0;
-        int shift = 0;
-        for (int i = 0; i < Long.BYTES; i++) {
-            long b = getU1();
-            result |= b << shift;
-            shift += 8;
-        }
-        return result;
+        long i64 = (long) INT64.get(buffer, pos);
+        pos += Long.BYTES;
+        return i64;
     }
 
     public int getInt32() {
-        int result = 0;
-        int shift = 0;
-        for (int i = 0; i < Integer.BYTES; i++) {
-            long b = getU1();
-            result |= b << shift;
-            shift += 8;
-        }
-        return result;
+        int i32 = (int) INT32.get(buffer, pos);
+        pos += Integer.BYTES;
+        return i32;
     }
 
     public boolean hasRemaining() {

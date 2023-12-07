@@ -301,8 +301,8 @@ public class JSNodeDecoder {
                         System.err.println("callex pos:" + position);
                     }
                     final Object[] arguments = getObjectArray(state);
-                    final ByteBuffer buffer = state.getBuffer().duplicate().position(position);
-                    NodeDecoder.DecoderState extracted = new NodeDecoder.DecoderState(new BinaryDecoder(buffer), arguments);
+                    final ByteBuffer buffer = state.getBuffer();
+                    NodeDecoder.DecoderState extracted = new NodeDecoder.DecoderState(new BinaryDecoder(buffer, position), arguments);
                     storeResult(state, decodeNode(extracted, nodeFactory, context, source));
                     break;
                 }
@@ -314,7 +314,7 @@ public class JSNodeDecoder {
                     }
                     JSFunctionData functionData = (JSFunctionData) state.getObject();
                     final Object[] arguments = getObjectArray(state);
-                    final ByteBuffer buffer = state.getBuffer().duplicate().position(position);
+                    final ByteBuffer buffer = state.getBuffer();
                     functionData.setLazyInit(new JSFunctionData.Initializer() {
                         @Override
                         public void initializeRoot(JSFunctionData fd) {
@@ -323,7 +323,7 @@ public class JSNodeDecoder {
                                     if (VERBOSE) {
                                         System.out.println("Decoding: " + fd.getName());
                                     }
-                                    NodeDecoder.DecoderState extracted = new NodeDecoder.DecoderState(new BinaryDecoder(buffer), arguments);
+                                    NodeDecoder.DecoderState extracted = new NodeDecoder.DecoderState(new BinaryDecoder(buffer, position), arguments);
                                     decodeNode(extracted, nodeFactory, context, source);
                                     fd.releaseLazyInit();
                                 }
