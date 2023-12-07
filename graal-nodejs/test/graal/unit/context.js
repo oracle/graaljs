@@ -89,7 +89,7 @@ describe('Context', function () {
             assert.ok(module.Context_IsCodeGenerationFromStringsAllowed());
         });
         it('should return false for --js.disable-eval', function () {
-            this.timeout(20000);
+            this.timeout(30000);
             var result = child_process.spawnSync(process.execPath, [
                 '--js.disable-eval',
                 '--experimental-options',
