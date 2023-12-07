@@ -60,6 +60,8 @@ import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 @ImportStatic(JSConfig.class)
 public abstract class ArrayBufferGetContentsNode extends JavaScriptBaseNode {
 
+    private static final int BULK_COPY_MAX_BUFFER_SIZE = 1024 * 1024; // 1 MB
+
     ArrayBufferGetContentsNode() {
     }
 
@@ -74,10 +76,15 @@ public abstract class ArrayBufferGetContentsNode extends JavaScriptBaseNode {
     protected ByteBuffer doInteropBuffer(Object buffer,
                     @CachedLibrary("buffer") InteropLibrary interop) {
         try {
-            int bufferSize = (int) interop.getBufferSize(buffer);
+            final int bufferSize = (int) interop.getBufferSize(buffer);
+            final int copyBufferSize = Math.min(bufferSize, BULK_COPY_MAX_BUFFER_SIZE);
             ByteBuffer byteBuffer = DirectByteBufferHelper.allocateDirect(bufferSize);
-            for (int i = 0; i < bufferSize; i++) {
-                byteBuffer.put(i, interop.readBufferByte(buffer, i));
+            byte[] copyBuffer = new byte[copyBufferSize];
+            for (int i = 0; i < bufferSize; i += copyBufferSize) {
+                int remaining = bufferSize - i;
+                int copyLength = Math.min(copyBufferSize, remaining);
+                interop.readBuffer(buffer, i, copyBuffer, 0, copyLength);
+                byteBuffer.put(i, copyBuffer, 0, copyLength);
             }
             LoopNode.reportLoopCount(this, bufferSize);
             return byteBuffer;
