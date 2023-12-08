@@ -89,12 +89,25 @@ public abstract class JSTest {
     }
 
     public static void assertThrows(Runnable test, Consumer<PolyglotException> exceptionVerifier) {
+        assertThrows(test, PolyglotException.class, exceptionVerifier);
+    }
+
+    public static <T extends Throwable> void assertThrows(Runnable test, Class<T> exceptionType, Consumer<T> exceptionVerifier) {
         try {
             test.run();
-            fail("should have thrown");
-        } catch (PolyglotException e) {
-            exceptionVerifier.accept(e);
+            fail("should have thrown " + exceptionType.getSimpleName());
+        } catch (Throwable e) {
+            if (exceptionType.isInstance(e)) {
+                exceptionVerifier.accept(exceptionType.cast(e));
+            } else {
+                throw e;
+            }
         }
+    }
+
+    public static <T extends Throwable> void assertThrows(Runnable test, Class<T> exceptionType) {
+        assertThrows(test, exceptionType, (T e) -> {
+        });
     }
 
     public static void assertThrows(Runnable test, JSErrorType expectedJSError) {
