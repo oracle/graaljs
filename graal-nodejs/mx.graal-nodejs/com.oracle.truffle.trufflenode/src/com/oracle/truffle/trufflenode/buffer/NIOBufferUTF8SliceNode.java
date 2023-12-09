@@ -173,10 +173,10 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
 
     @TruffleBoundary
     private static byte[] copySliceToByteArray(ByteBuffer sourceBuffer, int byteOffset, int start, int end, int length) {
-        assert start >= 0 && end >= 0 && length <= sourceBuffer.capacity() - byteOffset;
-        ByteBuffer data = sourceBuffer.duplicate().position(byteOffset + start).limit(byteOffset + end).slice();
-        assert data.remaining() == length;
-        return ByteBuffer.allocate(length).put(data).array();
+        assert start >= 0 && end >= 0 && length == end - start && length <= sourceBuffer.capacity() - byteOffset;
+        byte[] slicedData = new byte[length];
+        sourceBuffer.get(byteOffset + start, slicedData, 0, length);
+        return slicedData;
     }
 
     @SuppressWarnings("unused")

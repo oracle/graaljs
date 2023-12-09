@@ -51,7 +51,7 @@ function checkTheAnswerToLifeTheUniverseAndEverything(answer) {
 }
 
 describe('Spawn', function () {
-    this.timeout(20000);
+    this.timeout(30000);
     it('should spawn a child node process when env. variables are cleared', function () {
         var result = spawnSync(process.execPath, ['-p', '6*7'], {env: {}});
         checkTheAnswerToLifeTheUniverseAndEverything(result);

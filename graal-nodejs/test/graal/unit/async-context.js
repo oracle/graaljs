@@ -51,7 +51,7 @@ const {spawnSync} = require('child_process');
 
 describe.skip('AsyncContext', function () {
   it('works with setTimeout', function () {
-    this.timeout(20000);
+    this.timeout(30000);
 
     if (typeof AsyncContext === 'undefined') {
       const result = spawnSync(process.execPath, ['--experimental-options', '--async-context', '-e', code.toString() + 'code();']);

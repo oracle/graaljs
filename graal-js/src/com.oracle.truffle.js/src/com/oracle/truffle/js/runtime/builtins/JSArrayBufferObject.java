@@ -56,6 +56,7 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -67,7 +68,7 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
-public abstract class JSArrayBufferObject extends JSNonProxyObject {
+public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
     public static final TruffleString CLASS_NAME = Strings.constant("ArrayBuffer");
     public static final Object PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
@@ -165,8 +166,26 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         private void ensureNotDetached() throws IndexOutOfBoundsException {
             if (isDetached()) {
-                throw DetachedBufferIndexOutOfBoundsException.INSTANCE;
+                throw BufferIndexOutOfBoundsException.INSTANCE;
             }
+        }
+
+        @ExportMessage
+        void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                System.arraycopy(byteArray, checkFromIndexSize(Math.toIntExact(byteOffset), length, byteArray.length),
+                                destination, checkFromIndexSize(destinationOffset, length, destination.length), length);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, length);
+            }
+        }
+
+        private static int checkFromIndexSize(int fromIndex, int size, int length) {
+            if ((length | fromIndex | size) < 0 || size > length - fromIndex) {
+                throw BufferIndexOutOfBoundsException.INSTANCE;
+            }
+            return fromIndex;
         }
 
         @ExportMessage
@@ -296,7 +315,7 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     }
 
     @ExportLibrary(InteropLibrary.class)
-    public abstract static class DirectBase extends JSArrayBufferObject {
+    public abstract static sealed class DirectBase extends JSArrayBufferObject {
         ByteBuffer byteBuffer;
 
         protected DirectBase(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer) {
@@ -333,7 +352,17 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
 
         private void ensureNotDetached() {
             if (isDetached()) {
-                throw DetachedBufferIndexOutOfBoundsException.INSTANCE;
+                throw BufferIndexOutOfBoundsException.INSTANCE;
+            }
+        }
+
+        @ExportMessage
+        final void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length) throws InvalidBufferOffsetException {
+            try {
+                ensureNotDetached();
+                Boundaries.byteBufferGet(byteBuffer, Math.toIntExact(byteOffset), destination, destinationOffset, length);
+            } catch (IndexOutOfBoundsException | ArithmeticException e) {
+                throw InvalidBufferOffsetException.create(byteOffset, length);
             }
         }
 
@@ -568,6 +597,18 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
         }
 
         @ExportMessage
+        void readBuffer(long byteOffset, byte[] destination, int destinationOffset, int length,
+                        @Bind("$node") Node node,
+                        @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Cached.Shared("interop") InteropLibrary interop) throws UnsupportedMessageException, InvalidBufferOffsetException {
+            if (isDetached()) {
+                errorBranch.enter(node);
+                throw InvalidBufferOffsetException.create(byteOffset, length);
+            }
+            interop.readBuffer(interopBuffer, byteOffset, destination, destinationOffset, length);
+        }
+
+        @ExportMessage
         byte readBufferByte(long byteOffset,
                         @Bind("$node") Node node,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch,
@@ -734,10 +775,10 @@ public abstract class JSArrayBufferObject extends JSNonProxyObject {
     }
 
     @SuppressWarnings("serial")
-    static final class DetachedBufferIndexOutOfBoundsException extends IndexOutOfBoundsException {
-        private static final IndexOutOfBoundsException INSTANCE = new DetachedBufferIndexOutOfBoundsException();
+    static final class BufferIndexOutOfBoundsException extends IndexOutOfBoundsException {
+        private static final IndexOutOfBoundsException INSTANCE = new BufferIndexOutOfBoundsException();
 
-        private DetachedBufferIndexOutOfBoundsException() {
+        private BufferIndexOutOfBoundsException() {
         }
 
         @SuppressWarnings("sync-override")

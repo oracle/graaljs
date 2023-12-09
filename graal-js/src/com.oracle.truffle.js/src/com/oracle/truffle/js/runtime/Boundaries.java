@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -230,29 +230,22 @@ public final class Boundaries {
 
     @TruffleBoundary(allowInlining = true)
     public static void byteBufferPutSlice(ByteBuffer dst, int dstPos, ByteBuffer src, int srcPos, int srcLimit) {
-        ByteBuffer slice = byteBufferSlice(src, srcPos, srcLimit);
-        ByteBuffer dstDup = dst.duplicate();
-        dstDup.position(dstPos);
-        dstDup.put(slice);
+        dst.put(dstPos, src, srcPos, srcLimit - srcPos);
     }
 
     @TruffleBoundary(allowInlining = true)
     public static ByteBuffer byteBufferSlice(ByteBuffer buf, int pos, int limit) {
-        ByteBuffer dup = buf.duplicate();
-        dup.position(pos).limit(limit);
-        return dup.slice();
+        return buf.slice(pos, limit - pos);
     }
 
     @TruffleBoundary(allowInlining = true)
-    public static ByteBuffer byteBufferDuplicate(ByteBuffer buffer) {
-        return buffer.duplicate();
+    public static void byteBufferGet(ByteBuffer src, int srcPos, byte[] dst, int dstPos, int length) {
+        src.get(srcPos, dst, dstPos, length);
     }
 
     @TruffleBoundary(allowInlining = true)
     public static void byteBufferPutArray(ByteBuffer dst, int dstPos, byte[] src, int srcPos, int srcLength) {
-        ByteBuffer dstDup = dst.duplicate();
-        dstDup.position(dstPos);
-        dstDup.put(src, srcPos, srcLength);
+        dst.put(dstPos, src, srcPos, srcLength);
     }
 
     @TruffleBoundary

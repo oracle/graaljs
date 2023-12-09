@@ -42,6 +42,7 @@ package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
 import static com.oracle.truffle.js.test.JSTest.assertThrows;
+import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
@@ -185,19 +186,20 @@ public class InteropByteBufferTest {
 
     private static void testArrayBufferInteropCommon(boolean direct) {
         try (Context cx = JSTest.newContextBuilder().option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, Boolean.toString(direct)).build()) {
-            Value buffer = cx.eval("js", "" +
-                            "const ab = new ArrayBuffer(25);" +
-                            "let ia = new Int8Array(ab);" +
-                            "ia[0] = 41;" +
-                            "ia[1] = 42;" +
-                            "ia[2] = 43;" +
-                            "ia[3] = 44;" +
-                            "ia = new Int32Array(ab, 4, 2);" +
-                            "ia[0] = 45;" +
-                            "ia[1] = 46;" +
-                            "ia = new BigInt64Array(ab, 16, 1);" +
-                            "ia[0] = 2n ** 63n - 43n;" +
-                            "ab;");
+            Value buffer = cx.eval("js", """
+                            const ab = new ArrayBuffer(25);
+                            let ia = new Int8Array(ab);
+                            ia[0] = 41;
+                            ia[1] = 42;
+                            ia[2] = 43;
+                            ia[3] = 44;
+                            ia = new Int32Array(ab, 4, 2);
+                            ia[0] = 45;
+                            ia[1] = 46;
+                            ia = new BigInt64Array(ab, 16, 1);
+                            ia[0] = 2n ** 63n - 43n;
+                            ab;
+                            """);
             assertEquals(25, buffer.getBufferSize());
             assertEquals(buffer.readBufferByte(0), 41);
             assertEquals(buffer.readBufferByte(1), 42);
@@ -218,6 +220,16 @@ public class InteropByteBufferTest {
             assertTrue(buffer.isBufferWritable());
             buffer.writeBufferLong(ByteOrder.nativeOrder(), 16, Double.doubleToRawLongBits(Double.NEGATIVE_INFINITY));
             assertEquals(buffer.readBufferDouble(ByteOrder.nativeOrder(), 16), Double.NEGATIVE_INFINITY, 0.0);
+
+            byte[] dst = new byte[4];
+            buffer.readBuffer(0, dst, 0, 4);
+            assertArrayEquals(new byte[]{41, 42, 43, 44}, dst);
+            buffer.readBuffer(3, dst, 2, 2);
+            assertArrayEquals(new byte[]{41, 42, 44, (byte) (ByteOrder.nativeOrder() == ByteOrder.LITTLE_ENDIAN ? 45 : 0)}, dst);
+
+            assertThrows(() -> buffer.readBuffer(-1, new byte[4], 0, 0), IndexOutOfBoundsException.class);
+            assertThrows(() -> buffer.readBuffer(0, new byte[24], 0, 25), IndexOutOfBoundsException.class);
+            assertThrows(() -> buffer.readBuffer(1, new byte[25], 0, 25), IndexOutOfBoundsException.class);
         }
     }
 
@@ -233,15 +245,14 @@ public class InteropByteBufferTest {
         ByteBuffer buffer = direct ? ByteBuffer.allocateDirect(32) : ByteBuffer.allocate(32);
         try (Context context = JSTest.newContextBuilder().allowHostAccess(HostAccess.newBuilder().allowBufferAccess(true).build()).build()) {
             context.getBindings(ID).putMember("bb", buffer);
-            Value dataView = context.eval(ID, "" +
-                            "const ab = " + (viaArrayBuffer ? "new ArrayBuffer(bb)" : "bb") + ";" +
-                            "let dv = new DataView(ab);" +
-                            "dv;");
-            context.eval(ID, "" +
-                            "dv.setInt8(0, 41);" +
-                            "dv.setInt8(1, dv.getInt8(0) + 1);" +
-                            "dv.setUint8(2, dv.getUint8(1) + 1);" +
-                            "dv.setInt32(3, -44, true);");
+            Value arrayBuffer = context.eval(ID, "const ab = " + (viaArrayBuffer ? "new ArrayBuffer(bb)" : "bb") + "; ab;");
+            Value dataView = context.eval(ID, "let dv = new DataView(ab); dv;");
+            context.eval(ID, """
+                            dv.setInt8(0, 41);
+                            dv.setInt8(1, dv.getInt8(0) + 1);
+                            dv.setUint8(2, dv.getUint8(1) + 1);
+                            dv.setInt32(3, -44, true);
+                            """);
             assertEquals(41, buffer.get(0));
             assertEquals(42, buffer.get(1));
             assertEquals(43, buffer.get(2));
@@ -265,6 +276,16 @@ public class InteropByteBufferTest {
             context.eval(ID, "dv.setBigInt64(24, 1742123762643437888n, false);");
             assertEquals(4614256656552045848L, dataView.invokeMember("getBigInt64", 24, true).asLong());
             assertEquals(Math.PI, dataView.invokeMember("getFloat64", 24, true).asDouble(), 0.0);
+
+            byte[] dst = new byte[4];
+            arrayBuffer.readBuffer(0, dst, 0, 4);
+            assertArrayEquals(new byte[]{41, 42, 43, 44}, dst);
+            arrayBuffer.readBuffer(2, dst, 1, 3);
+            assertArrayEquals(new byte[]{41, 43, 44, -1}, dst);
+
+            assertThrows(() -> arrayBuffer.readBuffer(-1, new byte[4], 0, 0), IndexOutOfBoundsException.class);
+            assertThrows(() -> arrayBuffer.readBuffer(0, new byte[31], 0, 32), IndexOutOfBoundsException.class);
+            assertThrows(() -> arrayBuffer.readBuffer(1, new byte[33], 0, 32), IndexOutOfBoundsException.class);
         }
     }
 
@@ -287,11 +308,19 @@ public class InteropByteBufferTest {
         try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).allowExperimentalOptions(true).option("js.debug-builtin", "true").option("js.v8-compat", "true").build()) {
             ByteBuffer buffer = ByteBuffer.wrap(new byte[]{1, 2, 3});
             context.getBindings("js").putMember("buffer", buffer);
-            Value byteLength = context.eval(ID, "" +
-                            "var arrayBuffer = new ArrayBuffer(buffer);\n" +
-                            "Debug.typedArrayDetachBuffer(arrayBuffer);\n" +
-                            "arrayBuffer.byteLength;");
+            Value byteLength = context.eval(ID, """
+                            var arrayBuffer = new ArrayBuffer(buffer);
+                            Debug.typedArrayDetachBuffer(arrayBuffer);
+                            arrayBuffer.byteLength;
+                            """);
             assertEquals(0, byteLength.asInt());
+
+            Value arrayBuffer = context.getBindings(ID).getMember("arrayBuffer");
+            assertTrue(arrayBuffer.hasBufferElements());
+            assertThrows(() -> arrayBuffer.readBuffer(0, new byte[1], 0, 1), IndexOutOfBoundsException.class);
+
+            // even reading zero bytes is not allowed for detached buffers
+            assertThrows(() -> arrayBuffer.readBuffer(0, new byte[0], 0, 0), IndexOutOfBoundsException.class);
         }
     }
 

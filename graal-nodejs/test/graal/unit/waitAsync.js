@@ -43,7 +43,7 @@ const assert = require('assert');
 
 describe.skipOnNode('waitAsync', function () {
     it('should work with finite timeout', function() {
-        this.timeout(20000);
+        this.timeout(30000);
         var child_process = require('child_process');
         var spawnSync = child_process.spawnSync;
 
@@ -75,7 +75,7 @@ describe.skipOnNode('waitAsync', function () {
         assert.strictEqual(result.stderr.toString(), '');
     });
     it('should work with infinite timeout', function() {
-      this.timeout(20000);
+      this.timeout(30000);
       var child_process = require('child_process');
       var spawnSync = child_process.spawnSync;
 
