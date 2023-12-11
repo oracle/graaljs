@@ -782,30 +782,6 @@
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
-    "filePath" : "mjsunit/harmony/set-difference.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/harmony/set-intersection.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/harmony/set-is-disjoint-from.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/harmony/set-is-superset-of.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/harmony/set-symmetric-difference.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/harmony/set-union.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/harmony/shadowrealm-callsite-throw.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"

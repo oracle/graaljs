@@ -1823,50 +1823,6 @@
     "status" : "SKIP",
     "comment" : "Long-running generated Unicode tests."
   }, {
-    "filePath" : "built-ins/Set/prototype/union/add-not-called.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Set/prototype/union/allows-set-like-class.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Set/prototype/union/allows-set-like-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Set/prototype/union/array-throws.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Set/prototype/union/called-with-object.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Set/prototype/union/combines-Map.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Set/prototype/union/converts-negative-zero.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Set/prototype/union/set-like-array.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Set/prototype/union/set-like-class-mutation.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Set/prototype/union/set-like-class-order.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Set/prototype/union/size-is-a-number.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
@@ -10803,14 +10759,6 @@
     "filePath" : "staging/Intl402/Temporal/old/zoneddatetime-dst-corner-cases.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/set-methods/set-intersect-other-is-set-like.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "staging/set-methods/set-intersection-other-is-map.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-30"
   }, {
     "filePath" : "staging/Temporal/Duration/old/add.js",
     "status" : "FAIL",
