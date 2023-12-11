@@ -44,8 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.exception.AbstractTruffleException;
-import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.CreateSetIteratorNodeGen;
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetAddNodeGen;
@@ -64,10 +62,11 @@ import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.SetGetSizeNode
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetSetRecordNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -75,12 +74,13 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSSetIterator;
 import com.oracle.truffle.js.runtime.builtins.JSSetObject;
+import com.oracle.truffle.js.runtime.builtins.SetRecord;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -316,49 +316,12 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Child protected IteratorValueNode iteratorValueNode;
         @Child protected IteratorCloseNode iteratorCloseNode;
         @Child protected JSFunctionCallNode callFunctionNode;
-        @Child protected PropertyGetNode getAddNode;
-        @Child protected PropertyGetNode getRemoveNode;
-        @Child protected PropertyGetNode getHasNode;
-        @Child protected IsCallableNode isCallableNode;
-        protected final BranchProfile iteratorError = BranchProfile.create();
-        protected final BranchProfile adderError = BranchProfile.create();
 
         protected JSSetNewOperation(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             iteratorStepNode = IteratorStepNode.create();
             iteratorValueNode = IteratorValueNode.create();
             iteratorCloseNode = IteratorCloseNode.create(context);
-        }
-
-        protected Object addEntryFromIterable(Object target, Object iterable, Object adder,
-                        GetIteratorNode getIteratorNode) {
-            if (!isCallable(adder)) {
-                adderError.enter();
-                throw Errors.createTypeErrorCallableExpected();
-            }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
-            try {
-                while (true) {
-                    Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE) {
-                        return target;
-                    }
-                    Object nextValue = iteratorValueNode.execute(next);
-                    call(adder, target, nextValue);
-                }
-            } catch (AbstractTruffleException ex) {
-                iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
-                throw ex;
-            }
-        }
-
-        protected final void iteratorCloseAbrupt(Object iterator) {
-            if (iteratorCloseNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
-            }
-            iteratorCloseNode.executeAbrupt(iterator);
         }
 
         protected Object call(Object function, Object target, Object... userArguments) {
@@ -369,42 +332,6 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             return callFunctionNode.executeCall(JSArguments.create(target, function, userArguments));
         }
 
-        protected final Object getAddFunction(Object object) {
-            if (getAddNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getAddNode = insert(PropertyGetNode.create(Strings.ADD, false, getContext()));
-            }
-            return getAddNode.getValue(object);
-        }
-
-        protected final Object getRemoveFunction(Object object) {
-            if (getRemoveNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getRemoveNode = insert(PropertyGetNode.create(Strings.DELETE, false, getContext()));
-            }
-            return getRemoveNode.getValue(object);
-        }
-
-        protected final Object getHasFunction(Object object) {
-            if (getHasNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getHasNode = insert(PropertyGetNode.create(Strings.HAS, false, getContext()));
-            }
-            return getHasNode.getValue(object);
-        }
-
-        protected final Object constructSet(Object... arguments) {
-            Object ctr = getRealm().getSetConstructor();
-            return JSRuntime.construct(ctr, arguments);
-        }
-
-        protected final boolean isCallable(Object object) {
-            if (isCallableNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                isCallableNode = insert(IsCallableNode.create());
-            }
-            return isCallableNode.executeBoolean(object);
-        }
     }
 
     /**
@@ -417,17 +344,29 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization
-        protected JSDynamicObject union(JSSetObject set, Object iterable,
+        protected JSDynamicObject union(JSSetObject set, Object other,
+                        @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
                         @Cached(inline = true) GetIteratorNode getIteratorNode) {
-            JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
-            Object adder = getAddFunction(newSet);
-            addEntryFromIterable(newSet, iterable, adder, getIteratorNode);
-            return newSet;
+            SetRecord otherRec = getSetRecordNode.execute(other);
+            IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+            JSHashMap resultSetData = set.getMap().copy();
+            while (true) {
+                Object next = iteratorStepNode.execute(keysIter);
+                if (next == Boolean.FALSE) {
+                    break;
+                }
+                Object nextValue = normalize(iteratorValueNode.execute(next));
+                if (!resultSetData.has(nextValue)) {
+                    resultSetData.put(nextValue, PRESENT);
+                }
+            }
+            JSSetObject result = JSSet.create(getContext(), JSRealm.get(this), resultSetData);
+            return result;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected boolean notSet(Object thisObj, Object key) {
+        protected JSDynamicObject notSet(Object thisObj, Object other) {
             throw Errors.createTypeErrorSetExpected();
         }
     }
@@ -442,43 +381,48 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization
-        protected JSDynamicObject intersection(JSSetObject set, Object iterable,
+        protected JSDynamicObject intersection(JSSetObject set, Object other,
+                        @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode,
                         @Cached(inline = true) GetIteratorNode getIteratorNode,
-                        @Cached InlinedBranchProfile hasError) {
-            JSDynamicObject newSet = (JSDynamicObject) constructSet();
-            Object hasCheck = getHasFunction(set);
-            if (!isCallable(hasCheck)) {
-                hasError.enter(this);
-                throw Errors.createTypeErrorCallableExpected();
-            }
-            Object adder = getAddFunction(newSet);
-            if (!isCallable(adder)) {
-                adderError.enter();
-                throw Errors.createTypeErrorCallableExpected();
-            }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
-            try {
-                while (true) {
-                    Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE) {
-                        return newSet;
-                    }
-                    Object nextValue = iteratorValueNode.execute(next);
-                    Object has = call(hasCheck, set, nextValue);
-                    if (has == Boolean.TRUE) {
-                        call(adder, newSet, nextValue);
+                        @Cached InlinedBranchProfile thisSetSmallerProfile) {
+            SetRecord otherRec = getSetRecordNode.execute(other);
+            JSHashMap resultSetData = new JSHashMap();
+            JSHashMap thisSetData = set.getMap();
+            int thisSize = thisSetData.size();
+            if (thisSize <= otherRec.size()) {
+                thisSetSmallerProfile.enter(this);
+                JSHashMap.Cursor cursor = thisSetData.getEntries();
+                while (cursor.advance()) {
+                    Object e = cursor.getKey();
+                    Object inOtherObj = call(otherRec.has(), otherRec.set(), e);
+                    boolean inOther = toBooleanNode.executeBoolean(this, inOtherObj);
+                    if (inOther && !resultSetData.has(e)) {
+                        resultSetData.put(e, PRESENT);
                     }
                 }
-            } catch (AbstractTruffleException ex) {
-                iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
-                throw ex;
+            } else {
+                IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+                while (true) {
+                    Object next = iteratorStepNode.execute(keysIter);
+                    if (next == Boolean.FALSE) {
+                        break;
+                    }
+                    Object nextValue = normalize(iteratorValueNode.execute(next));
+                    boolean alreadyInResult = resultSetData.has(nextValue);
+                    boolean inThis = thisSetData.has(nextValue);
+                    if (!alreadyInResult && inThis) {
+                        resultSetData.put(nextValue, PRESENT);
+                    }
+                }
             }
+            JSSetObject result = JSSet.create(getContext(), JSRealm.get(this), resultSetData);
+            return result;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected boolean notSet(Object thisObj, Object key) {
+        protected JSDynamicObject notSet(Object thisObj, Object other) {
             throw Errors.createTypeErrorSetExpected();
         }
     }
@@ -493,35 +437,44 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization
-        protected JSDynamicObject difference(JSSetObject set, Object iterable,
+        protected JSDynamicObject difference(JSSetObject set, Object other,
+                        @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode,
                         @Cached(inline = true) GetIteratorNode getIteratorNode,
-                        @Cached InlinedBranchProfile removerError) {
-            JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
-            Object remover = getRemoveFunction(newSet);
-            if (!isCallable(remover)) {
-                removerError.enter(this);
-                throw Errors.createTypeErrorCallableExpected();
-            }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
-            try {
-                while (true) {
-                    Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE) {
-                        return newSet;
+                        @Cached InlinedBranchProfile thisSetSmallerProfile) {
+            SetRecord otherRec = getSetRecordNode.execute(other);
+            JSHashMap thisSetData = set.getMap();
+            JSHashMap resultSetData = thisSetData.copy();
+            int thisSize = thisSetData.size();
+            if (thisSize <= otherRec.size()) {
+                thisSetSmallerProfile.enter(this);
+                JSHashMap.Cursor cursor = thisSetData.getEntries();
+                while (cursor.advance()) {
+                    Object e = cursor.getKey();
+                    Object inOtherObj = call(otherRec.has(), otherRec.set(), e);
+                    boolean inOther = toBooleanNode.executeBoolean(this, inOtherObj);
+                    if (inOther) {
+                        resultSetData.remove(e);
                     }
-                    Object nextValue = iteratorValueNode.execute(next);
-                    call(remover, newSet, nextValue);
                 }
-            } catch (AbstractTruffleException ex) {
-                iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
-                throw ex;
+            } else {
+                IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+                while (true) {
+                    Object next = iteratorStepNode.execute(keysIter);
+                    if (next == Boolean.FALSE) {
+                        break;
+                    }
+                    Object nextValue = normalize(iteratorValueNode.execute(next));
+                    resultSetData.remove(nextValue);
+                }
             }
+            JSSetObject result = JSSet.create(getContext(), JSRealm.get(this), resultSetData);
+            return result;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected boolean notSet(Object thisObj, Object key) {
+        protected JSDynamicObject notSet(Object thisObj, Object other) {
             throw Errors.createTypeErrorSetExpected();
         }
     }
@@ -536,45 +489,37 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization
-        protected JSDynamicObject symmetricDifference(JSSetObject set, Object iterable,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode,
-                        @Cached InlinedBranchProfile removerError) {
-            JSDynamicObject newSet = (JSDynamicObject) constructSet(set);
-            Object remover = getRemoveFunction(newSet);
-            if (!isCallable(remover)) {
-                removerError.enter(this);
-                throw Errors.createTypeErrorCallableExpected();
-            }
-            Object adder = getAddFunction(newSet);
-
-            if (!isCallable(adder)) {
-                // unreachable due to constructor add
-                adderError.enter();
-                throw Errors.createTypeErrorCallableExpected();
-            }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
-            try {
-                while (true) {
-                    Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE) {
-                        return newSet;
+        protected JSDynamicObject symmetricDifference(JSSetObject set, Object other,
+                        @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode) {
+            SetRecord otherRec = getSetRecordNode.execute(other);
+            IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+            JSHashMap thisSetData = set.getMap();
+            JSHashMap resultSetData = thisSetData.copy();
+            while (true) {
+                Object next = iteratorStepNode.execute(keysIter);
+                if (next == Boolean.FALSE) {
+                    break;
+                }
+                Object nextValue = normalize(iteratorValueNode.execute(next));
+                boolean inResult = resultSetData.has(nextValue);
+                if (thisSetData.has(nextValue)) {
+                    if (inResult) {
+                        resultSetData.remove(nextValue);
                     }
-                    Object nextValue = iteratorValueNode.execute(next);
-                    Object removed = call(remover, newSet, nextValue);
-                    if (removed == Boolean.FALSE) {
-                        call(adder, newSet, nextValue);
+                } else {
+                    if (!inResult) {
+                        resultSetData.put(nextValue, PRESENT);
                     }
                 }
-            } catch (AbstractTruffleException ex) {
-                iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
-                throw ex;
             }
+            JSSetObject result = JSSet.create(getContext(), JSRealm.get(this), resultSetData);
+            return result;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected boolean notSet(Object thisObj, Object key) {
+        protected JSDynamicObject notSet(Object thisObj, Object other) {
             throw Errors.createTypeErrorSetExpected();
         }
     }
@@ -589,45 +534,29 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization
-        protected Boolean isSubsetOf(JSSetObject set, Object iterable,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode,
-                        @Cached InlinedBranchProfile needCreateNewBranch,
-                        @Cached InlinedBranchProfile isObjectError) {
-            IteratorRecord iteratorRecord = getIteratorNode.execute(this, set);
-            if (!JSRuntime.isObject(iterable)) {
-                isObjectError.enter(this);
-                throw Errors.createTypeErrorNotIterable(iterable, this);
+        protected boolean isSubsetOf(JSSetObject set, Object other,
+                        @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode) {
+            SetRecord otherRec = getSetRecordNode.execute(other);
+            JSHashMap thisSetData = set.getMap();
+            int thisSize = thisSetData.size();
+            if (thisSize > otherRec.size()) {
+                return false;
             }
-            JSDynamicObject otherSet = (JSDynamicObject) iterable;
-            Object hasCheck = getHasFunction(otherSet);
-            if (!isCallable(hasCheck)) {
-                needCreateNewBranch.enter(this);
-                otherSet = (JSDynamicObject) constructSet();
-                addEntryFromIterable(otherSet, iterable, getAddFunction(otherSet), getIteratorNode);
-                hasCheck = getHasFunction(otherSet);
-            }
-            try {
-                while (true) {
-                    Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE) {
-                        return Boolean.TRUE;
-                    }
-                    Object nextValue = iteratorValueNode.execute(next);
-                    Object has = call(hasCheck, otherSet, nextValue);
-                    if (has == Boolean.FALSE) {
-                        return Boolean.FALSE;
-                    }
+            JSHashMap.Cursor cursor = thisSetData.getEntries();
+            while (cursor.advance()) {
+                Object e = cursor.getKey();
+                boolean inOther = toBooleanNode.executeBoolean(this, call(otherRec.has(), otherRec.set(), e));
+                if (!inOther) {
+                    return false;
                 }
-            } catch (AbstractTruffleException ex) {
-                iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
-                throw ex;
             }
+            return true;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected boolean notSet(Object thisObj, Object key) {
+        protected boolean notSet(Object thisObj, Object other) {
             throw Errors.createTypeErrorSetExpected();
         }
     }
@@ -642,37 +571,33 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization
-        protected Boolean isSupersetOf(JSSetObject set, Object iterable,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode,
-                        @Cached InlinedBranchProfile notCallableError) {
-            Object hasCheck = getHasFunction(set);
-            if (!isCallable(hasCheck)) {
-                notCallableError.enter(this);
-                throw Errors.createTypeErrorCallableExpected();
+        protected boolean isSupersetOf(JSSetObject set, Object other,
+                        @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode) {
+            SetRecord otherRec = getSetRecordNode.execute(other);
+            JSHashMap thisSetData = set.getMap();
+            int thisSize = thisSetData.size();
+            if (thisSize < otherRec.size()) {
+                return false;
             }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
-            try {
-                while (true) {
-                    Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE) {
-                        return Boolean.TRUE;
-                    }
-                    Object nextValue = iteratorValueNode.execute(next);
-                    Object has = call(hasCheck, set, nextValue);
-                    if (has == Boolean.FALSE) {
-                        return Boolean.FALSE;
-                    }
+            IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+            while (true) {
+                Object next = iteratorStepNode.execute(keysIter);
+                if (next == Boolean.FALSE) {
+                    break;
                 }
-            } catch (AbstractTruffleException ex) {
-                iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
-                throw ex;
+                Object nextValue = normalize(iteratorValueNode.execute(next));
+                if (!thisSetData.has(nextValue)) {
+                    iteratorCloseNode.executeVoid(keysIter.getIterator());
+                    return false;
+                }
             }
+            return true;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected boolean notSet(Object thisObj, Object key) {
+        protected boolean notSet(Object thisObj, Object other) {
             throw Errors.createTypeErrorSetExpected();
         }
     }
@@ -687,37 +612,44 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @Specialization
-        protected Boolean isDisjointFrom(JSSetObject set, Object iterable,
+        protected boolean isDisjointFrom(JSSetObject set, Object other,
+                        @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
+                        @Cached(inline = true) JSToBooleanNode toBooleanNode,
                         @Cached(inline = true) GetIteratorNode getIteratorNode,
-                        @Cached InlinedBranchProfile notCallableError) {
-            Object hasCheck = getHasFunction(set);
-            if (!isCallable(hasCheck)) {
-                notCallableError.enter(this);
-                throw Errors.createTypeErrorCallableExpected();
-            }
-            IteratorRecord iteratorRecord = getIteratorNode.execute(this, iterable);
-            try {
-                while (true) {
-                    Object next = iteratorStepNode.execute(iteratorRecord);
-                    if (next == Boolean.FALSE) {
-                        return Boolean.TRUE;
-                    }
-                    Object nextValue = iteratorValueNode.execute(next);
-                    Object has = call(hasCheck, set, nextValue);
-                    if (has == Boolean.TRUE) {
-                        return Boolean.FALSE;
+                        @Cached InlinedBranchProfile thisSetSmallerProfile) {
+            SetRecord otherRec = getSetRecordNode.execute(other);
+            JSHashMap thisSetData = set.getMap();
+            int thisSize = thisSetData.size();
+            if (thisSize <= otherRec.size()) {
+                thisSetSmallerProfile.enter(this);
+                JSHashMap.Cursor cursor = thisSetData.getEntries();
+                while (cursor.advance()) {
+                    Object e = cursor.getKey();
+                    boolean inOther = toBooleanNode.executeBoolean(this, call(otherRec.has(), otherRec.set(), e));
+                    if (inOther) {
+                        return false;
                     }
                 }
-            } catch (AbstractTruffleException ex) {
-                iteratorError.enter();
-                iteratorCloseAbrupt(iteratorRecord.getIterator());
-                throw ex;
+            } else {
+                IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+                while (true) {
+                    Object next = iteratorStepNode.execute(keysIter);
+                    if (next == Boolean.FALSE) {
+                        break;
+                    }
+                    Object nextValue = normalize(iteratorValueNode.execute(next));
+                    if (thisSetData.has(nextValue)) {
+                        iteratorCloseNode.executeVoid(keysIter.getIterator());
+                        return false;
+                    }
+                }
             }
+            return true;
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = "!isJSSet(thisObj)")
-        protected boolean notSet(Object thisObj, Object key) {
+        protected boolean notSet(Object thisObj, Object other) {
             throw Errors.createTypeErrorSetExpected();
         }
     }

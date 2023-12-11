@@ -72,13 +72,21 @@ public final class JSSet extends JSNonProxy implements JSConstructorFactory.Defa
         return create(factory, realm, factory.getPrototype(realm));
     }
 
+    public static JSSetObject create(JSContext context, JSRealm realm, JSHashMap internalMap) {
+        JSObjectFactory factory = context.getSetFactory();
+        return create(factory, realm, factory.getPrototype(realm), internalMap);
+    }
+
     public static JSSetObject create(JSContext context, JSRealm realm, JSDynamicObject proto) {
         JSObjectFactory factory = context.getSetFactory();
         return create(factory, realm, proto);
     }
 
     private static JSSetObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto) {
-        JSHashMap internalMap = new JSHashMap();
+        return create(factory, realm, proto, new JSHashMap());
+    }
+
+    private static JSSetObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, JSHashMap internalMap) {
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSSetObject(shape, proto, internalMap), realm, proto);
         return factory.trackAllocation(newObj);
