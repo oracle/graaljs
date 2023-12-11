@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -172,19 +172,6 @@ public class NewSetMethodsTest {
     }
 
     @Test
-    public void testIntersectionAddNotCallable() {
-        try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.add = 17;" +
-                            "var result = set1.intersection(set2);",
-                            createSetString(1, 2, 3, 4), createSetString(3, 4, 5, 6));
-            context.eval(JavaScriptLanguage.ID, code);
-            Assert.fail("Non callable expected.");
-        } catch (PolyglotException ex) {
-            assertTrue(ex.getMessage().contains("TypeError: Callable expected"));
-        }
-    }
-
-    @Test
     public void testIntersectionIsNotSet() {
         try (Context context = getNewSetMethodsContext()) {
             String code = String.format("Set.prototype.intersection.call(0, [1, 2, 3]);",
@@ -233,19 +220,6 @@ public class NewSetMethodsTest {
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isBoolean());
             assertTrue(result.asBoolean());
-        }
-    }
-
-    @Test
-    public void testDifferenceDeleteNotCallable() {
-        try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.delete = 17;" +
-                            "set1.difference(set2);",
-                            createSetString(1, 2, 3, 4), createSetString(3, 4, 5, 6));
-            context.eval(JavaScriptLanguage.ID, code);
-            Assert.fail("Non callable expected.");
-        } catch (PolyglotException ex) {
-            assertTrue(ex.getMessage().contains("TypeError: Callable expected"));
         }
     }
 
@@ -302,41 +276,6 @@ public class NewSetMethodsTest {
     }
 
     @Test
-    public void testSymmetricDifferenceDeleteNotCallable() {
-        try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.delete = 17;" +
-                            "set1.symmetricDifference(set2);",
-                            createSetString(1, 2, 3, 4), createSetString(3, 4, 5, 6));
-            context.eval(JavaScriptLanguage.ID, code);
-            Assert.fail("Non callable expected.");
-        } catch (PolyglotException ex) {
-            assertTrue(ex.getMessage().contains("TypeError: Callable expected"));
-        }
-    }
-
-    @Test
-    public void testSymmetricDifferenceAddNotCallable() {
-        try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var set2 = %s; Set.prototype.add = 666;" +
-                            "set1.symmetricDifference(set2);",
-                            createSetString(1, 2, 3, 4), createSetString(3, 4, 5, 6));
-            context.eval(JavaScriptLanguage.ID, code);
-            Assert.fail("Non callable expected.");
-        } catch (PolyglotException ex) {
-            assertTrue(ex.getMessage().contains("TypeError:"));
-        }
-        try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var set2 = %s; delete(Set.prototype.add);" +
-                            "set1.symmetricDifference(set2);",
-                            createSetString(1, 2, 3, 4), createSetString(3, 4, 5, 6));
-            context.eval(JavaScriptLanguage.ID, code);
-            Assert.fail("Non callable expected.");
-        } catch (PolyglotException ex) {
-            assertTrue(ex.getMessage().contains("TypeError:"));
-        }
-    }
-
-    @Test
     public void testSymmetricDifferenceIsNotSet() {
         try (Context context = getNewSetMethodsContext()) {
             String code = String.format("Set.prototype.symmetricDifference.call(0, [1, 2, 3]);",
@@ -374,25 +313,26 @@ public class NewSetMethodsTest {
     @Test
     public void testIsSubsetOfNoIterable() {
         try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var x = 0; Array.prototype.has = 17;" +
+            String code = String.format("var set1 = %s; var x = 0;" +
                             "set1.isSubsetOf(x);",
                             createSetString(3, 5));
             context.eval(JavaScriptLanguage.ID, code);
-            Assert.fail("Should not be Iterable.");
+            Assert.fail("Should not be Set-like.");
         } catch (PolyglotException ex) {
-            assertTrue(ex.getMessage().contains("TypeError: 0 is not iterable"));
+            assertTrue(ex.getMessage().startsWith("TypeError:"));
         }
     }
 
     @Test
     public void testIsSubsetOfIterableHasNotCallable() {
         try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var arr = [3, 4, 5, 6]; Array.prototype.has = 17;" +
+            String code = String.format("var set1 = %s; var arr = [3, 4, 5, 6]; arr.size = arr.length; Array.prototype.has = 17;" +
                             "set1.isSubsetOf(arr);",
                             createSetString(3, 5));
-            Value result = context.eval(JavaScriptLanguage.ID, code);
-            assertTrue(result.isBoolean());
-            assertTrue(result.asBoolean());
+            context.eval(JavaScriptLanguage.ID, code);
+            Assert.fail("Non callable expected.");
+        } catch (PolyglotException ex) {
+            assertTrue(ex.getMessage().contains("TypeError: Callable expected"));
         }
     }
 
@@ -428,19 +368,6 @@ public class NewSetMethodsTest {
             Value result = context.eval(JavaScriptLanguage.ID, code);
             assertTrue(result.isBoolean());
             assertFalse(result.asBoolean());
-        }
-    }
-
-    @Test
-    public void testIsSupersetOfIterableHasNotCallable() {
-        try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var arr = [3, 6]; Set.prototype.has = 17;" +
-                            "set1.isSupersetOf(arr);",
-                            createSetString(3, 4, 5, 6));
-            context.eval(JavaScriptLanguage.ID, code);
-            Assert.fail("Non callable expected.");
-        } catch (PolyglotException ex) {
-            assertTrue(ex.getMessage().contains("TypeError: Callable expected"));
         }
     }
 
@@ -482,7 +409,7 @@ public class NewSetMethodsTest {
     @Test
     public void testIsDisjointFromHasNotCallable() {
         try (Context context = getNewSetMethodsContext()) {
-            String code = String.format("var set1 = %s; var arr = [3, 4]; Set.prototype.has = 17;" +
+            String code = String.format("var set1 = %s; var arr = [3, 4]; arr.size = arr.length; Set.prototype.has = 17;" +
                             "set1.isDisjointFrom(arr);",
                             createSetString(1, 2));
             context.eval(JavaScriptLanguage.ID, code);
