@@ -750,18 +750,6 @@
     "status" : "SKIP",
     "comment" : "non-standard do-expressions"
   }, {
-    "filePath" : "mjsunit/harmony/import-from-fetch-errored.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-15-top-level-await.mjs",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
-  }, {
-    "filePath" : "mjsunit/harmony/modules-import-15.mjs",
-    "status" : "FAIL",
-    "comment" : "test expects exact error message"
-  }, {
     "filePath" : "mjsunit/harmony/private-accessors.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
@@ -951,10 +939,6 @@
     "comment" : "Starts with a comment: This behavior is not spec compliant"
   }, {
     "filePath" : "mjsunit/maglev/regress-1448986.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/maglev/regress/regress-1405651.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
@@ -1401,10 +1385,6 @@
     },
     "runInIsolation" : true,
     "comment" : "test with (expected) stack overflows that might influence other tests, disabled on SVM (GR-21828)"
-  }, {
-    "filePath" : "mjsunit/regress/regress-740694.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-02-16"
   }, {
     "filePath" : "mjsunit/regress/regress-740784.js",
     "status" : "PASS",
