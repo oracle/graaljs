@@ -1200,8 +1200,11 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/regress/regress-14333.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "PASS",
+    "comment" : "Uses regexp unicode sets"
   }, {
     "filePath" : "mjsunit/regress/regress-1447326.js",
     "status" : "FAIL",
@@ -1668,8 +1671,11 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1416395.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "PASS",
+    "comment" : "Uses regexp unicode sets"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1417495.js",
     "status" : "PASS",
@@ -1687,8 +1693,11 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1437346.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "PASS",
+    "comment" : "Uses regexp unicode sets"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1440685.js",
     "status" : "FAIL",
@@ -1703,8 +1712,11 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1454482.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "PASS",
+    "comment" : "Uses regexp unicode sets"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1467028.js",
     "status" : "FAIL",
