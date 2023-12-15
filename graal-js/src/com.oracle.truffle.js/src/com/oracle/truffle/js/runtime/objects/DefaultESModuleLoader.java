@@ -57,7 +57,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.UserScriptException;
 
 public class DefaultESModuleLoader implements JSModuleLoader {
 
@@ -133,14 +132,13 @@ public class DefaultESModuleLoader implements JSModuleLoader {
         } catch (FileSystemException fsex) {
             String fileName = fsex.getFile();
             if (Objects.equals(fsex.getMessage(), fileName)) {
-                String message = "Error reading: " + fileName;
-                if (realm.getContext().isOptionV8CompatibilityMode()) {
-                    // d8 throws string. We don't want to follow this bad practice outside V8
-                    // compatibility mode.
-                    throw UserScriptException.create(Strings.fromJavaString(message));
+                String message;
+                if (realm.getContext().getLanguageOptions().testV8Mode()) {
+                    message = "d8: Error reading module from " + fileName;
                 } else {
-                    throw Errors.createError(message);
+                    message = "Error reading: " + fileName;
                 }
+                throw Errors.createError(message);
             } else {
                 // Use the original message when it doesn't seem useless
                 throw Errors.createErrorFromException(fsex);
