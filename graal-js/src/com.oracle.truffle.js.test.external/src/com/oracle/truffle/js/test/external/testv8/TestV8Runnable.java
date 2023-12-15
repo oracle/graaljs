@@ -109,6 +109,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--wasm-staging"
     });
     private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
+                    "--harmony",
                     "--harmony-array-grouping",
                     "--harmony-atomics-waitasync",
                     "--harmony-intl-locale-info-func",
