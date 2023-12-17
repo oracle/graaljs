@@ -3599,6 +3599,9 @@ namespace v8 {
         return reinterpret_cast<const GraalBackingStore*> (this)->Data();
     }
 
+    void BackingStore::EmptyDeleter(void* data, size_t length, void* deleter_data) {
+    }
+
     std::unique_ptr<BackingStore> BackingStore::Reallocate(Isolate* isolate, std::unique_ptr<BackingStore> backing_store, size_t byte_length) {
         std::unique_ptr<BackingStore> new_store = ArrayBuffer::NewBackingStore(isolate, byte_length);
         memcpy(new_store->Data(), backing_store->Data(), std::min(byte_length, backing_store->ByteLength()));
