@@ -93,4 +93,12 @@ EXPORT_TO_JS(NewBackingStoreSodium) {
     ArrayBuffer::NewBackingStore(isolate, 4294967173u); // -123 interpreted as unsigned
 }
 
+static char* foo = "foo";
+
+EXPORT_TO_JS(NewBackingStoreEmptyDeleter) {
+    std::unique_ptr<BackingStore> backing_store = ArrayBuffer::NewBackingStore(foo, 3, BackingStore::EmptyDeleter, nullptr);
+    Local<ArrayBuffer> array_buffer = ArrayBuffer::New(args.GetIsolate(), std::move(backing_store));
+    args.GetReturnValue().Set(array_buffer);
+}
+
 #undef SUITE

@@ -164,7 +164,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             if (this.equals(notify)) {
                 return JSConfig.ECMAScript2019;
             } else if (this.equals(waitAsync)) {
-                return JSConfig.StagingECMAScriptVersion;
+                return JSConfig.ECMAScript2024;
             }
             return JSConfig.ECMAScript2017;
         }

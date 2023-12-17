@@ -120,5 +120,13 @@ describe('ArrayBuffer', function () {
                 assert.ok(e instanceof RangeError);
             }
         });
+        it('should accept EmptyDeleter', function() {
+            var buffer = module.ArrayBuffer_NewBackingStoreEmptyDeleter();
+            assert.strictEqual(buffer.byteLength, 3);
+            var array = new Uint8Array(buffer);
+            assert.strictEqual(array[0], 'f'.codePointAt(0));
+            assert.strictEqual(array[1], 'o'.codePointAt(0));
+            assert.strictEqual(array[2], 'o'.codePointAt(0));
+        });
     });
 });
