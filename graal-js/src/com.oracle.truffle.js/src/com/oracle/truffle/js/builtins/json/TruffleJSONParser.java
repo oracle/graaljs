@@ -336,8 +336,10 @@ public final class TruffleJSONParser {
                 }
                 hasEscapes = true;
                 skipChar('\\');
+                pos++;
+            } else {
+                skipChar();
             }
-            skipChar();
             c = get();
         }
         int sLength = pos - startPos;
