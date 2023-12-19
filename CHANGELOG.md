@@ -12,6 +12,7 @@ See [release calendar](https://www.graalvm.org/release-calendar/) for release da
 * Implemented the [Well-Formed Unicode Strings](https://github.com/tc39/proposal-is-usv-string) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Implemented the [JSON.parse source text access](https://github.com/tc39/proposal-json-parse-with-source) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).
 * Updated Node.js to version 18.18.2.
+* WebAssembly support in Node.js has been enabled by default. It can be disabled using the experimental option `--js.webassembly=false`.
 * `--js.import-assertions` option has been replaced by `--js.import-attributes` option because [the corresponding proposal](https://github.com/tc39/proposal-import-attributes) has migrated from the usage of assertions to the usage of attributes.
 
 ## Version 23.1.0
