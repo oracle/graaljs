@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,7 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
         }
 
         MaterializedTargetableReadElementNode(ReadElementNode from) {
-            this(new EchoTargetValueNode(), from.getElement(), from.getContext());
+            this(new EchoTargetValueNode(from), from.getElement(), from.getContext());
         }
 
         @Override
@@ -151,7 +151,7 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
         }
 
         MaterializedTargetablePropertyNode(PropertyNode target) {
-            this(target.getContext(), new EchoTargetValueNode(), target.getPropertyKey(), target.isOwnProperty(), target.isMethod());
+            this(target.getContext(), new EchoTargetValueNode(target), target.getPropertyKey(), target.isOwnProperty(), target.isMethod());
         }
 
         @Override
@@ -195,9 +195,19 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
      *
      */
     public static class EchoTargetValueNode extends JSTargetableNode {
+        private final String targetExpression;
+
+        EchoTargetValueNode(JSTargetableNode from) {
+            JavaScriptNode target = (from == null) ? null : from.getTarget();
+            this.targetExpression = (target == null) ? null : target.expressionToString();
+        }
+
+        private EchoTargetValueNode(String targetExpression) {
+            this.targetExpression = targetExpression;
+        }
 
         public static JSTargetableNode create() {
-            return new EchoTargetValueNode();
+            return new EchoTargetValueNode((String) null);
         }
 
         @Override
@@ -208,6 +218,11 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
         @Override
         public Object execute(VirtualFrame frame) {
             throw Errors.shouldNotReachHere("Must use executeWithTarget()");
+        }
+
+        @Override
+        public String expressionToString() {
+            return targetExpression;
         }
 
         @Override
@@ -222,7 +237,7 @@ public abstract class JSMaterializedInvokeTargetableNode extends JSTargetableNod
 
         @Override
         protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return new EchoTargetValueNode();
+            return new EchoTargetValueNode(targetExpression);
         }
     }
 
