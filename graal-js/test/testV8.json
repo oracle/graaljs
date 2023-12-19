@@ -1722,13 +1722,6 @@
     "status" : "PASS",
     "comment" : "Uses regexp unicode sets"
   }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1417495.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "INSTRUMENT" : "FAIL"
-    },
-    "comment" : "new failures 2023-10-09"
-  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1421198.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
