@@ -152,12 +152,12 @@ local cicommon = import '../ci/common.jsonnet';
   local testingBuilds = generateBuilds([
     graalNodeJs          + build            + defaultGateTags          + {dynamicimports+:: ['/wasm']}                             + {name: 'default'} +
       promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.linux_aarch64, common.jdklatest + common.darwin_aarch64, common.jdklatest + common.windows_amd64]) +
-      promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
+      promoteToTarget(common.postMerge, [common.jdklatest + common.darwin_amd64]),
 
     graalNodeJs + vm_env + build            + gateVmSmokeTest                                                                 + ce + {name: 'graalvm-ce'} +
       promoteToTarget(common.gate, [ci.mainGatePlatform]) +
       promoteToTarget(common.gate, [common.jdklatest + common.darwin_aarch64, common.jdklatest + common.windows_amd64]) +
-      promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
+      promoteToTarget(common.postMerge, [common.jdklatest + common.darwin_amd64]),
     graalNodeJs + vm_env + build            + gateVmSmokeTest                                                                 + ee + {name: 'graalvm-ee'} +
       promoteToTarget(common.gate, [ci.mainGatePlatform]),
 

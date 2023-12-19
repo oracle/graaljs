@@ -74,10 +74,10 @@ targets +
 
   darwin_amd64:: common.darwin_amd64 + self.darwin_common + {
     environment+: {
-      // for compatibility with macOS High Sierra
-      MACOSX_DEPLOYMENT_TARGET: '10.13',
+      // for compatibility with macOS BigSur
+      MACOSX_DEPLOYMENT_TARGET: '11.0',
     },
-    capabilities+: ['darwin_mojave'],
+    capabilities+: ['darwin_bigsur'],
   },
 
   darwin_aarch64:: common.darwin_aarch64 + self.darwin_common + {
