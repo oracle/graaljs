@@ -40,12 +40,11 @@
  */
 package com.oracle.truffle.trufflenode;
 
+import java.io.OutputStream;
 import java.net.URL;
 import java.net.URLClassLoader;
 import java.nio.file.Path;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -119,20 +118,22 @@ public final class Options {
         private static final String INSPECT = "inspect";
         private static final String INSPECT_SUSPEND = "inspect.Suspend";
         private static final String INSPECT_WAIT_ATTACHED = "inspect.WaitAttached";
+        private static final String WASM_LANGUAGE_ID = "wasm";
 
         private Context.Builder contextBuilder;
         private boolean exposeGC;
         private boolean polyglot;
         private boolean unsafeWasmMemory;
         private boolean auxEngineCacheMode;
+        private boolean wasmEnabled;
 
-        private static final Set<String> AUX_CACHE_OPTIONS = new HashSet<>(Arrays.asList("engine.Cache",
+        private static final Set<String> AUX_CACHE_OPTIONS = Set.of("engine.Cache",
                         "engine.CacheLoad",
-                        "engine.CacheStore"));
+                        "engine.CacheStore");
 
         // Options that should not be passed to polyglot engine (they are processed
         // elsewhere or can be ignored without almost any harm).
-        private static final Set<String> IGNORED_OPTIONS = new HashSet<>(Arrays.asList(new String[]{
+        private static final Set<String> IGNORED_OPTIONS = Set.of(new String[]{
                         "debug-code",
                         "es-staging",
                         "experimental-modules",
@@ -158,7 +159,7 @@ public final class Options {
                         "nouse-idle-notification",
                         "stack-size",
                         "use-idle-notification"
-        }));
+        });
 
         @Override
         public Object[] apply(String[] args) {
@@ -189,7 +190,7 @@ public final class Options {
             polyglotOptions.put("js.string-length-limit", Integer.toString((1 << 29) - 24)); // v8::String::kMaxLength
 
             List<String> unprocessedArguments = new ArrayList<>();
-            boolean optWebAssembly = false;
+            Boolean optWebAssembly = null;
             Boolean optUnsafeWasmMemory = null;
             for (String arg : arguments) {
                 String key = "";
@@ -298,10 +299,18 @@ public final class Options {
                 }
                 unprocessedArguments.add(arg);
             }
-            if (optWebAssembly) {
-                if (optUnsafeWasmMemory == null && polyglot && isLanguageAvailable("wasm")) {
-                    optUnsafeWasmMemory = Boolean.TRUE;
-                    polyglotOptions.put("wasm.UseUnsafeMemory", "true");
+            if (optWebAssembly != Boolean.FALSE) {
+                // WebAssembly is enabled by default, if available.
+                if (isWasmAvailable()) {
+                    wasmEnabled = true;
+                    if (optWebAssembly == null) {
+                        optWebAssembly = Boolean.TRUE;
+                        polyglotOptions.put("js.webassembly", "true");
+                    }
+                    if (optWebAssembly && optUnsafeWasmMemory == null) {
+                        optUnsafeWasmMemory = Boolean.TRUE;
+                        polyglotOptions.put("wasm.UseUnsafeMemory", "true");
+                    }
                 }
                 if (optUnsafeWasmMemory == Boolean.TRUE) {
                     unsafeWasmMemory = true;
@@ -339,14 +348,15 @@ public final class Options {
             System.out.println();
             System.out.println("Usage: node [options] [ -e script | script.js ] [arguments]\n");
             System.out.println("Basic Options:");
-            printOption("-v, --version",         "print version");
-            printOption("-e, --eval script",     "evaluate script");
-            printOption("-p, --print",           "evaluate script and print result");
+            printOption("-v, --version",         "print Node.js version");
+            printOption("-e, --eval=...",        "evaluate script");
+            printOption("-p, --print [...]",     "evaluate script and print result");
             printOption("-c, --check",           "syntax check script without executing");
             printOption("-i, --interactive",     "always enter the REPL even if stdin does not appear to be a terminal");
-            printOption("-r, --require",         "module to preload (option can be repeated)");
+            printOption("-r, --require=...",     "CommonJS module to preload (option can be repeated)");
             printOption("--inspect[=port]",      "activate inspector on port (overrides options of Chrome Inspector)");
             printOption("--inspect-brk[=port]",  "activate inspector on port and break at start of user script (overrides options of Chrome Inspector)");
+            // @formatter:on
         }
 
         private static void printOption(String option, String description) {
@@ -362,11 +372,26 @@ public final class Options {
 
         @Override
         protected String[] getDefaultLanguages() {
-            return polyglot ? new String[0] : super.getDefaultLanguages();
+            if (polyglot) {
+                return new String[0];
+            } else if (wasmEnabled) {
+                assert isWasmAvailable() : "wasm not available";
+                return new String[]{getLanguageId(), WASM_LANGUAGE_ID};
+            } else {
+                return super.getDefaultLanguages();
+            }
         }
 
-         static boolean isLanguageAvailable(String languageId) {
-            try (Engine tempEngine = Engine.newBuilder().useSystemProperties(false).build()) {
+        private static boolean isWasmAvailable() {
+            return isLanguageAvailable(WASM_LANGUAGE_ID);
+        }
+
+        private static boolean isLanguageAvailable(String languageId) {
+            try (Engine tempEngine = Engine.newBuilder().useSystemProperties(false).//
+                            out(OutputStream.nullOutputStream()).//
+                            err(OutputStream.nullOutputStream()).//
+                            option("engine.WarnInterpreterOnly", "false").//
+                            build()) {
                 return tempEngine.getLanguages().containsKey(languageId);
             }
         }
