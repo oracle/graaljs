@@ -71,9 +71,6 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                 npm(['--scripts-prepend-node-path=auto', 'test'] + commonArgs + testArgs, cwd=unitTestDir)
                 if mx.suite('wasm', fatalIfMissing=False):
                     npm(['--scripts-prepend-node-path=auto', 'run', 'testwasm'] + commonArgs + testArgs, cwd=unitTestDir)
-                    # test that WebAssembly can be enabled using env. variables
-                    _setEnvVar('NODE_OPTIONS', '--polyglot')
-                    _setEnvVar('NODE_POLYGLOT_OPTIONS', '--js.webassembly --experimental-options')
                     node(commonArgs + ['-e', 'console.log(WebAssembly)'])
                     # check that fetch API is available when WebAssembly is available
                     node(commonArgs + ['-e', 'FormData'])
@@ -88,8 +85,17 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                     ]
                     for test in wasm_tests:
                         node(commonArgs + [join(_suite.dir, 'test', 'parallel', test)])
-                    _setEnvVar('NODE_OPTIONS', '')
+
+                    # test that WebAssembly can be disabled using env. variables
+                    _setEnvVar('NODE_POLYGLOT_OPTIONS', '--js.webassembly=false --experimental-options')
+                    out = mx.OutputCapture()
+                    node(commonArgs + ['-p', 'try { WebAssembly; } catch (e) { e.toString(); }'], out=out)
+                    assert out.data.strip() == "ReferenceError: WebAssembly is not defined", out.data
                     _setEnvVar('NODE_POLYGLOT_OPTIONS', '')
+                else:
+                    out = mx.OutputCapture()
+                    node(commonArgs + ['-p', 'try { WebAssembly; } catch (e) { e.toString(); }'], out=out)
+                    assert out.data.strip() == "ReferenceError: WebAssembly is not defined", out.data
 
                 mx_gate.make_test_report(jsonResultsFile, task=t.title)
             finally:
