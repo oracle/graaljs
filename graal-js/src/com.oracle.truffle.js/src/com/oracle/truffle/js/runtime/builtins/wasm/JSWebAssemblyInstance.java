@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -200,6 +200,8 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         int returnLength = resultTypes.length;
         boolean anyReturnTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxClose + 1) >= 0;
         boolean anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
+        boolean anyReturnTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxClose + 1) >= 0;
+        boolean anyArgTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxOpen + 1, idxClose) >= 0;
 
         CallTarget callTarget = new JavaScriptRootNode(context.getLanguage(), null, null) {
             @Child ToWebAssemblyValueNode toWebAssemblyValueNode = ToWebAssemblyValueNodeGen.create();
@@ -211,7 +213,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
             @Override
             public Object execute(VirtualFrame frame) {
-                if (!context.getLanguageOptions().wasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
+                if ((!context.getLanguageOptions().wasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) || (anyReturnTypeIsV128 || anyArgTypeIsV128)) {
                     errorBranch.enter();
                     throw Errors.createTypeError("wasm function signature contains illegal type");
                 }
@@ -319,6 +321,9 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                         }
                         if (!isI64 && isBigInt) {
                             throw Errors.createLinkError("BigInt can only be stored in valtype i64");
+                        }
+                        if (JSWebAssemblyValueTypes.isV128(valueType)) {
+                            throw Errors.createLinkError("Values of valtype v128 cannot be imported from JS");
                         }
                         Object webAssemblyValue = ToWebAssemblyValueNodeGen.getUncached().execute(value, valueType);
                         try {

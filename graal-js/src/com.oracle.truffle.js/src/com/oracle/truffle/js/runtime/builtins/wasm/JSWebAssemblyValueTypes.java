@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ public final class JSWebAssemblyValueTypes {
     public static final TruffleString I64 = Strings.I_64;
     public static final TruffleString F32 = Strings.F_32;
     public static final TruffleString F64 = Strings.F_64;
+    public static final TruffleString V128 = Strings.V_128;
     public static final TruffleString ANYFUNC = Strings.ANYFUNC;
     public static final TruffleString EXTERNREF = Strings.EXTERNREF;
 
@@ -75,6 +76,10 @@ public final class JSWebAssemblyValueTypes {
         return Strings.equals(F64, type);
     }
 
+    public static boolean isV128(TruffleString type) {
+        return Strings.equals(V128, type);
+    }
+
     public static boolean isAnyfunc(TruffleString type) {
         return Strings.equals(ANYFUNC, type);
     }
@@ -84,7 +89,7 @@ public final class JSWebAssemblyValueTypes {
     }
 
     public static boolean isValueType(TruffleString type) {
-        return isI32(type) || isI64(type) || isF32(type) || isF64(type) || isAnyfunc(type) || isExternref(type);
+        return isI32(type) || isI64(type) || isF32(type) || isF64(type) || isV128(type) || isAnyfunc(type) || isExternref(type);
     }
 
     public static boolean isReferenceType(TruffleString type) {

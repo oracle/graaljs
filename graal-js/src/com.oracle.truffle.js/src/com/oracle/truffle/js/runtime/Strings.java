@@ -405,6 +405,7 @@ public final class Strings {
     public static final TruffleString I_32 = constant("i32");
     public static final TruffleString F_32 = constant("f32");
     public static final TruffleString F_64 = constant("f64");
+    public static final TruffleString V_128 = constant("v128");
 
     /* JSProxy */
     public static final TruffleString PROXY = constant("proxy");

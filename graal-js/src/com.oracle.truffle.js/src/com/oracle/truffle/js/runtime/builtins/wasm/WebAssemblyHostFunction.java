@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,6 +75,8 @@ public class WebAssemblyHostFunction implements TruffleObject {
     private final TruffleString[] resultTypes;
     private final boolean anyReturnTypeIsI64;
     private final boolean anyArgTypeIsI64;
+    private final boolean anyReturnTypeIsV128;
+    private final boolean anyArgTypeIsV128;
 
     public WebAssemblyHostFunction(JSContext context, Object fn, TruffleString typeInfo) {
         assert JSRuntime.isCallable(fn);
@@ -88,6 +90,8 @@ public class WebAssemblyHostFunction implements TruffleObject {
         this.resultTypes = !Strings.isEmpty(returnTypes) ? Strings.split(context, returnTypes, Strings.SPACE) : new TruffleString[0];
         this.anyReturnTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxClose + 1) >= 0;
         this.anyArgTypeIsI64 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.I64, idxOpen + 1, idxClose) >= 0;
+        this.anyReturnTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxClose + 1) >= 0;
+        this.anyArgTypeIsV128 = Strings.indexOf(typeInfo, JSWebAssemblyValueTypes.V128, idxOpen + 1, idxClose) >= 0;
     }
 
     @ExportMessage
@@ -106,7 +110,7 @@ public class WebAssemblyHostFunction implements TruffleObject {
                     @Cached IterableToListNode iterableToListNode,
                     @CachedLibrary("this") InteropLibrary self) {
         JSContext context = JavaScriptLanguage.get(self).getJSContext();
-        if (!context.getLanguageOptions().wasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) {
+        if ((!context.getLanguageOptions().wasmBigInt() && (anyReturnTypeIsI64 || anyArgTypeIsI64)) || anyReturnTypeIsV128 || anyArgTypeIsV128) {
             errorBranch.enter(node);
             throw Errors.createTypeError("wasm function signature contains illegal type");
         }

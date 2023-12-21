@@ -3337,6 +3337,9 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             if (!JSWebAssemblyValueTypes.isValueType(valueType)) {
                 throw Errors.createTypeError("WebAssembly.Global(): Descriptor property 'value' must be a WebAssembly type (i32, i64, f32, f64, anyfunc, externref)", this);
             }
+            if (JSWebAssemblyValueTypes.isV128(valueType)) {
+                throw Errors.createLinkError("WebAssembly.Global(): Descriptor property 'value' must not be v128", this);
+            }
             final JSRealm realm = getRealm();
             Object webAssemblyValue;
             // According to the spec only missing values should produce a default value.
