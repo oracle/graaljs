@@ -138,7 +138,7 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary globalReadLib) {
             if (JSWebAssemblyValueTypes.isV128(object.getValueType())) {
                 errorBranch.enter(this);
-                throw Errors.createTypeError(getBuiltin().getFullName() + ": cannot read value type v128", this);
+                v128TypeError();
             }
             Object wasmGlobal = object.getWASMGlobal();
             Object globalRead = getRealm().getWASMGlobalRead();
@@ -153,6 +153,11 @@ public class WebAssemblyGlobalPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Fallback
         protected Object doIncompatibleReceiver(@SuppressWarnings("unused") Object thisObj) {
             throw Errors.createTypeError(getBuiltin().getFullName() + ": Receiver is not a WebAssembly.Global", this);
+        }
+
+        @TruffleBoundary
+        private void v128TypeError() {
+            throw Errors.createTypeError(getBuiltin().getFullName() + ": cannot read value type v128", this);
         }
     }
 
