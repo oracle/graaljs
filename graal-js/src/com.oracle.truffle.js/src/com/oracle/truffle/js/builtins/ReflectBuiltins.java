@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,6 @@ import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -69,11 +68,13 @@ import com.oracle.truffle.js.builtins.ReflectBuiltinsFactory.ReflectSetPrototype
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.access.FromPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
+import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -290,47 +291,23 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
     @ImportStatic({JSConfig.class})
     public abstract static class ReflectDeletePropertyNode extends ReflectOperation {
 
-        @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
-
         public ReflectDeletePropertyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected boolean doObject(JSObject target, Object propertyKey,
-                        @Cached JSClassProfile classProfile) {
-            Object key = toPropertyKeyNode.execute(propertyKey);
-            return JSObject.delete(target, key, false, classProfile);
-        }
-
-        @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
-        protected boolean doForeignObject(Object target, Object propertyKey,
-                        @CachedLibrary("target") InteropLibrary interop,
-                        @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
-            Object key = toPropertyKeyNode.execute(propertyKey);
-            if (interop.hasMembers(target)) {
-                if (key instanceof TruffleString) {
-                    String memberName = Strings.toJavaString(toJavaStringNode, (TruffleString) key);
-                    if (interop.isMemberRemovable(target, memberName)) {
-                        try {
-                            InteropLibrary.getUncached().removeMember(target, memberName);
-                        } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                            throw Errors.createTypeErrorInteropException(target, e, "removeMember", memberName, null);
-                        }
-                        return true;
-                    }
-                }
-                return false;
+        protected boolean delete(Object target, Object property,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached("createNonStrict(getContext())") DeletePropertyNode deletePropertyNode) {
+            if (isObjectNode.executeBoolean(target)) {
+                Object key = toPropertyKeyNode.execute(property);
+                return deletePropertyNode.executeEvaluated(target, key);
             } else {
                 throw Errors.createTypeErrorCalledOnNonObject();
             }
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSObject(target)", "!isForeignObject(target)"})
-        protected boolean doNonObject(Object target, Object propertyKey) {
-            throw Errors.createTypeErrorCalledOnNonObject();
-        }
     }
 
     @ImportStatic({JSConfig.class})
