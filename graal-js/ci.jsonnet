@@ -131,7 +131,7 @@ local ci = import '../ci.jsonnet';
       promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.linux_aarch64, common.jdklatest + common.windows_amd64]),
     graalJs + gateTags('default')                                                                    + ee + {name: 'default-ee'} +
       promoteToTarget(common.gate, [common.jdklatest + common.linux_amd64, common.jdklatest + common.darwin_aarch64]) +
-      promoteToTarget(common.postMerge, [common.jdk21 + common.darwin_amd64]),
+      promoteToTarget(common.postMerge, [common.jdklatest + common.darwin_amd64]),
 
     graalJs + gateTags('noic')                                                                            + {name: 'noic'} + gateOnMain,
     graalJs + gateTags('directbytebuffer')                                                                + {name: 'directbytebuffer'} + gateOnMain,
