@@ -77,7 +77,6 @@ targets +
       // for compatibility with macOS BigSur
       MACOSX_DEPLOYMENT_TARGET: '11.0',
     },
-    capabilities+: ['darwin_bigsur'],
   },
 
   darwin_aarch64:: common.darwin_aarch64 + self.darwin_common + {
