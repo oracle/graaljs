@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -255,18 +255,18 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
             highFrequencyKeys[position] = insert(PropertyGetNode.create(key, context));
         }
 
-        public Object executeFastGet(Object key, Object target, TruffleString.EqualNode equalsNode) {
+        public Object executeFastGet(Object key, Object target, Object receiver, TruffleString.EqualNode equalsNode) {
             if (CompilerDirectives.inInterpreter()) {
                 interpreterSample(key);
             }
-            return readFromCaches(key, target, equalsNode);
+            return readFromCaches(key, target, receiver, equalsNode);
         }
 
         @ExplodeLoop(kind = FULL_UNROLL_UNTIL_RETURN)
-        private Object readFromCaches(Object key, Object target, TruffleString.EqualNode equalsNode) {
+        private Object readFromCaches(Object key, Object target, Object receiver, TruffleString.EqualNode equalsNode) {
             for (PropertyGetNode highFrequencyKey : highFrequencyKeys) {
                 if (highFrequencyKey != null && JSRuntime.propertyKeyEquals(equalsNode, highFrequencyKey.getKey(), key)) {
-                    return highFrequencyKey.getValueOrDefault(target, null);
+                    return highFrequencyKey.getValueOrDefault(target, receiver, null);
                 }
             }
             return null;
