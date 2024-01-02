@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
@@ -64,9 +65,11 @@ import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
@@ -269,17 +272,80 @@ public final class JSInteropUtil {
     }
 
     @TruffleBoundary
-    public static boolean remove(Object obj, Object key) {
-        if (key instanceof TruffleString) {
+    public static boolean delete(JSContext context, Object target, Object propertyKey, boolean strict) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        if (interop.hasArrayElements(target) && JSRuntime.isArrayIndex(propertyKey)) {
+            return deleteArrayElement(target, JSRuntime.parseArrayIndexIsIndexRaw(propertyKey), interop, strict);
+        }
+        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
             try {
-                InteropLibrary.getUncached().removeMember(obj, Strings.toJavaString((TruffleString) key));
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, "removeMember", key, null);
+                return deleteHashEntry(target, propertyKey, interop, strict);
+            } catch (UnknownKeyException ukex) {
+                // fall through: still need to try members
             }
-            return true;
+        }
+        if (interop.hasMembers(target)) {
+            if (Strings.isTString(propertyKey)) {
+                return deleteMember(target, (TruffleString) propertyKey, interop, strict);
+            } else {
+                assert propertyKey instanceof Symbol;
+                return true;
+            }
         } else {
+            return true;
+        }
+    }
+
+    public static boolean deleteArrayElement(Object target, long index, InteropLibrary interop, boolean strict) {
+        assert interop.hasArrayElements(target);
+        long length;
+        try {
+            length = interop.getArraySize(target);
+        } catch (UnsupportedMessageException e) {
+            return true;
+        }
+        // Foreign arrays cannot have holes, so we do not support deleting elements.
+        // Therefore, we treat them like Typed Arrays: array elements are not configurable
+        // and cannot be deleted but deleting out of bounds is always successful.
+        if (index >= 0 && index < length) {
+            if (strict) {
+                throw Errors.createTypeErrorNotConfigurableProperty(Strings.fromLong(index));
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public static boolean deleteHashEntry(Object target, Object key, InteropLibrary interop, boolean strict) throws UnknownKeyException {
+        assert interop.hasHashEntries(target);
+        try {
+            interop.removeHashEntry(target, key);
+            return true;
+        } catch (UnsupportedMessageException e) {
+            if (strict) {
+                throw Errors.createTypeErrorInteropException(target, e, "removeHashEntry", null);
+            }
             return false;
         }
+    }
+
+    public static boolean deleteMember(Object target, TruffleString name, InteropLibrary interop, boolean strict) {
+        assert interop.hasMembers(target);
+        String javaName = Strings.toJavaString(name);
+        if (interop.isMemberExisting(target, javaName)) {
+            try {
+                interop.removeMember(target, javaName);
+                return true;
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                if (strict) {
+                    throw Errors.createTypeErrorCannotDeletePropertyOf(name, target);
+                }
+                return false;
+            }
+        }
+        return true;
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -394,11 +394,12 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
 
         Object deleteFn = getTrapFromObject(handler, DELETE_PROPERTY);
+        JSContext context = JSObject.getJSContext(thisObj);
         if (deleteFn == Undefined.instance) {
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.delete((JSDynamicObject) target, key, isStrict);
             } else {
-                return JSInteropUtil.remove(target, key);
+                return JSInteropUtil.delete(context, target, key, isStrict);
             }
         }
         Object trapResult = JSRuntime.call(deleteFn, handler, new Object[]{target, key});
@@ -419,7 +420,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         if (targetDesc.hasConfigurable() && !targetDesc.getConfigurable()) {
             throw Errors.createTypeErrorConfigurableExpected();
         }
-        JSContext context = JSObject.getJSContext(thisObj);
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2020) {
             boolean extensibleTarget = JSObject.isExtensible((JSDynamicObject) target);
             if (!extensibleTarget) {
