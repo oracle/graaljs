@@ -70,6 +70,7 @@ import com.oracle.truffle.js.nodes.access.FromPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.access.IsExtensibleNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.JSGetOwnPropertyNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.ToPropertyDescriptorNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNodeGen;
@@ -80,7 +81,6 @@ import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
-import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -313,50 +313,24 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
     @ImportStatic({JSConfig.class})
     public abstract static class ReflectGetNode extends ReflectOperation {
 
-        @Child private JSToPropertyKeyNode toPropertyKeyNode = JSToPropertyKeyNode.create();
-
         public ReflectGetNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected Object doObject(JSObject target, Object propertyKey, Object[] optionalArgs,
-                        @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
-            Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
-            Object key = toPropertyKeyNode.execute(propertyKey);
-            return JSRuntime.nullToUndefined(classProfile.getJSClass(target).getHelper(target, receiver, key, this));
-        }
-
-        @InliningCutoff
-        @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
-        protected Object doForeignObject(Object target, Object propertyKey, Object[] optionalArgs,
-                        @CachedLibrary("target") InteropLibrary interop,
-                        @Cached ImportValueNode importValue,
-                        @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                        @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
-            Object key = toPropertyKeyNode.execute(propertyKey);
-            if (interop.hasMembers(target)) {
-                Object result = JSInteropUtil.readMemberOrDefault(target, key, null, interop, importValue, this);
-                if (result == null) {
-                    if (getContext().getLanguageOptions().hasForeignObjectPrototype()) {
-                        JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
-                        Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
-                        return JSRuntime.nullToUndefined(classProfile.getJSClass(prototype).getHelper(prototype, receiver, key, this));
-                    } else {
-                        result = Undefined.instance;
-                    }
-                }
-                return result;
+        protected Object get(Object target, Object propertyKey, Object[] optionalArgs,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached JSToPropertyKeyNode toPropertyKeyNode,
+                        @Cached("create(getContext())") ReadElementNode readElementNode) {
+            if (isObjectNode.executeBoolean(target)) {
+                Object key = toPropertyKeyNode.execute(propertyKey);
+                Object receiver = JSRuntime.getArg(optionalArgs, 0, target);
+                return readElementNode.executeWithTargetAndIndex(target, key, receiver);
             } else {
                 throw Errors.createTypeErrorCalledOnNonObject();
             }
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!isJSObject(target)", "!isForeignObject(target)"})
-        protected Object doNonObject(Object target, Object propertyKey, Object[] optionalArgs) {
-            throw Errors.createTypeErrorCalledOnNonObject();
-        }
     }
 
     public abstract static class ReflectGetOwnPropertyDescriptorNode extends ReflectOperation {
