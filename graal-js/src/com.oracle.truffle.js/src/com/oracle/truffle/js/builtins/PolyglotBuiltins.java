@@ -240,7 +240,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             } catch (SecurityException e) {
                 throw Errors.createErrorFromException(e);
             }
-            JSInteropUtil.writeMember(polyglotBindings, identifier, value, interop, exportValue, this);
+            JSInteropUtil.writeMember(polyglotBindings, identifier, value, interop, exportValue, true, this);
             return value;
         }
 

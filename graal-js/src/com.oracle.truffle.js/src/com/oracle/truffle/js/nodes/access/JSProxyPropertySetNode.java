@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -54,10 +53,8 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
@@ -71,21 +68,20 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
 @NodeInfo(cost = NodeCost.NONE)
 public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
-
+    private final JSContext context;
     private final boolean isStrict;
 
     @Child private JSFunctionCallNode call;
     @Child private JSToBooleanNode toBoolean;
     @Child protected GetMethodNode trapGet;
     @Child private JSToPropertyKeyNode toPropertyKeyNode;
-    @Child private InteropLibrary interopNode;
-    @Child private ExportValueNode exportValueNode;
 
     protected JSProxyPropertySetNode(JSContext context, boolean isStrict) {
+        this.context = context;
+        this.isStrict = isStrict;
         this.call = JSFunctionCallNode.createCall();
         this.trapGet = GetMethodNode.create(context, JSProxy.SET);
         this.toBoolean = JSToBooleanNode.create();
-        this.isStrict = isStrict;
     }
 
     public abstract boolean executeWithReceiverAndValue(Object proxy, Object receiver, Object value, Object key);
@@ -124,8 +120,7 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.setWithReceiver((JSDynamicObject) target, propertyKey, value, receiver, isStrict, targetClassProfile, this);
             } else {
-                truffleWrite(target, propertyKey, value);
-                return true;
+                return JSInteropUtil.set(context, target, propertyKey, value, isStrict);
             }
         }
         Object trapResult = call.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, value, receiver));
@@ -142,17 +137,6 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
             return true;
         }
         return JSProxy.checkProxySetTrapInvariants(proxy, propertyKey, value);
-    }
-
-    private void truffleWrite(Object obj, Object key, Object value) {
-        InteropLibrary interop = interopNode;
-        ExportValueNode exportValue = exportValueNode;
-        if (interop == null || exportValue == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-            exportValueNode = exportValue = insert(ExportValueNode.create());
-        }
-        JSInteropUtil.writeMember(obj, key, value, interop, exportValue, this);
     }
 
     Object toPropertyKey(Object key) {

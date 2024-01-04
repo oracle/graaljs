@@ -79,7 +79,6 @@ import com.oracle.truffle.js.nodes.control.DeletePropertyNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
@@ -495,13 +494,11 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
-        protected Object doForeignObject(Object target, Object propertyKey, Object value, @SuppressWarnings("unused") Object[] optionalArgs,
-                        @CachedLibrary("target") InteropLibrary interop,
-                        @Cached ExportValueNode exportValue) {
-            Object key = toPropertyKeyNode.execute(propertyKey);
-            if (interop.hasMembers(target)) {
-                JSInteropUtil.writeMember(target, key, value, interop, exportValue, this);
-                return true;
+        protected boolean doForeignObject(Object target, Object propertyKey, Object value, @SuppressWarnings("unused") Object[] optionalArgs,
+                        @Cached IsObjectNode isObjectNode) {
+            if (isObjectNode.executeBoolean(target)) {
+                Object key = toPropertyKeyNode.execute(propertyKey);
+                return JSInteropUtil.set(getContext(), target, key, value, false);
             } else {
                 throw Errors.createTypeErrorCalledOnNonObject();
             }
@@ -509,7 +506,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSObject(target)", "!isForeignObject(target)"})
-        protected Object doNonObject(Object target, Object propertyKey, Object value, Object[] optionalArgs) {
+        protected boolean doNonObject(Object target, Object propertyKey, Object value, Object[] optionalArgs) {
             throw Errors.createTypeErrorCalledOnNonObject();
         }
     }

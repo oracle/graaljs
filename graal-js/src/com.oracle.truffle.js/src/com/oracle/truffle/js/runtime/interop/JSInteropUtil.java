@@ -212,18 +212,68 @@ public final class JSInteropUtil {
         }
     }
 
-    public static void writeMember(Object obj, Object member, Object value) {
-        writeMember(obj, member, value, InteropLibrary.getUncached(), ExportValueNode.getUncached(), null);
+    @TruffleBoundary
+    public static boolean set(JSContext context, Object target, Object propertyKey, Object value, boolean strict) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        ExportValueNode exportValue = ExportValueNode.getUncached();
+        boolean hasArrayElements = interop.hasArrayElements(target);
+        if (hasArrayElements && JSRuntime.isArrayIndex(propertyKey)) {
+            return writeArrayElement(target, JSRuntime.parseArrayIndexIsIndexRaw(propertyKey), value, interop, exportValue, strict);
+        }
+        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+            return writeHashEntry(target, propertyKey, value, interop, exportValue, strict);
+        }
+        if (propertyKey instanceof Symbol) {
+            return false;
+        }
+        TruffleString stringKey = (TruffleString) propertyKey;
+        if (hasArrayElements && Strings.equals(JSAbstractArray.LENGTH, stringKey)) {
+            return setArraySize(target, value, strict, interop, null, null);
+        }
+        return writeMember(target, propertyKey, value, interop, exportValue, strict, null);
     }
 
-    public static void writeMember(Object obj, Object member, Object value, InteropLibrary interop, ExportValueNode exportValue, Node originatingNode) {
+    private static boolean writeArrayElement(Object obj, long index, Object value, InteropLibrary interop, ExportValueNode exportValue, boolean strict) {
+        try {
+            interop.writeArrayElement(obj, index, exportValue.execute(value));
+            return true;
+        } catch (InvalidArrayIndexException | UnsupportedTypeException | UnsupportedMessageException e) {
+            if (strict) {
+                throw Errors.createTypeErrorInteropException(obj, e, "writeArrayElement", null);
+            }
+            return false;
+        }
+    }
+
+    private static boolean writeHashEntry(Object obj, Object propertyKey, Object value, InteropLibrary interop, ExportValueNode exportValue, boolean strict) {
+        try {
+            interop.writeHashEntry(obj, propertyKey, exportValue.execute(value));
+            return true;
+        } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
+            if (strict) {
+                throw Errors.createTypeErrorInteropException(obj, e, "writeHashEntry", null);
+            }
+            return false;
+        }
+    }
+
+    public static boolean writeMember(Object obj, Object member, Object value) {
+        return writeMember(obj, member, value, InteropLibrary.getUncached(), ExportValueNode.getUncached(), false, null);
+    }
+
+    public static boolean writeMember(Object obj, Object member, Object value, InteropLibrary interop, ExportValueNode exportValue, boolean strict, Node originatingNode) {
         if (!Strings.isTString(member)) {
-            return;
+            return false;
         }
         try {
             interop.writeMember(obj, Strings.toJavaString((TruffleString) member), exportValue.execute(value));
+            return true;
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "writeMember", member, originatingNode);
+            if (strict) {
+                throw Errors.createTypeErrorInteropException(obj, e, "writeMember", member, originatingNode);
+            }
+            return false;
         }
     }
 

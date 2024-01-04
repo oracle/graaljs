@@ -277,8 +277,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 JSDynamicObject jsobj = (JSDynamicObject) target;
                 return JSObject.getJSClass(jsobj).set(jsobj, key, value, receiver, isStrict, encapsulatingNode);
             } else {
-                JSInteropUtil.writeMember(target, key, value);
-                return true;
+                JSContext context = JavaScriptLanguage.get(encapsulatingNode).getJSContext();
+                return JSInteropUtil.set(context, target, key, value, isStrict);
             }
         }
 
