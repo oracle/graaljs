@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,6 +82,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.JSShape;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 
@@ -519,6 +520,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
                 protoShapes[i] = depthShape;
                 getPrototypeNodes[i] = GetPrototypeNode.create();
             }
+
+            traversePrototypeChainShapeCheckCount.inc();
         }
 
         @ExplodeLoop
@@ -592,6 +595,8 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             super(shape);
             this.protoShape = JSObject.getPrototype(thisObj).getShape();
             this.getPrototypeNode = GetPrototypeNode.create();
+
+            traversePrototypeShapeCheckCount.inc();
         }
 
         @Override
@@ -977,14 +982,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         T specialized = null;
 
         JSDynamicObject store = null;
-        if (JSDynamicObject.isJSDynamicObject(thisObj)) {
+        if (JSObject.isJSObject(thisObj)) {
             if ((!JSAdapter.isJSAdapter(thisObj) && !JSProxy.isJSProxy(thisObj)) || key instanceof HiddenKey) {
                 store = (JSDynamicObject) thisObj;
             }
         } else if (JSRuntime.isForeignObject(thisObj)) {
             assert !JSDynamicObject.isJSDynamicObject(thisObj);
             specialized = createTruffleObjectPropertyNode();
-        } else {
+        } else if (!JSRuntime.isNullOrUndefined(thisObj)) {
             store = wrapPrimitive(thisObj);
         }
 
@@ -1035,10 +1040,17 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
 
             store = (JSDynamicObject) JSRuntime.toJavaNull(JSObject.getPrototype(store));
-            if (store != null) {
-                depth++;
-            }
+            depth++;
         }
+
+        // <depth>: number of prototypes to check to validate the property access.
+        // If isOwnProperty(), or <thisObj> is a proxy or nullish value, depth is always 0.
+        // If the property is present, <depth> points to the object that has the property:
+        // e.g. depth == 1 for obj0:{a} -> proto1:{b} -> proto2:{c} -> null, with key "b".
+        // If there's a proxy in the prototype chain, we always stop counting there:
+        // e.g. depth == 1 for obj0 -> proxy1 -> proto2 -> null.
+        // If the property is absent, <depth> includes the final null prototype:
+        // e.g. depth == 3 for obj0 -> proto1 -> proto2 -> null.
 
         if (specialized == null) {
             specialized = createUndefinedPropertyNode(thisObj, thisObj, depth, value);
@@ -1239,8 +1251,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
     protected final AbstractShapeCheckNode createShapeCheckNode(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal, boolean isDefine) {
         if (depth == 0) {
             return createShapeCheckNodeDepth0(shape, thisObj, isConstantObjectFinal, isDefine);
-        } else if (depth == 1) {
-            return createShapeCheckNodeDepth1(shape, thisObj, depth, isConstantObjectFinal);
         } else {
             return createShapeCheckNodeDeeper(shape, thisObj, depth, isConstantObjectFinal);
         }
@@ -1257,39 +1267,69 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    private AbstractShapeCheckNode createShapeCheckNodeDepth1(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
-        assert depth == 1;
-        if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
-            return isConstantObjectFinal
-                            ? ConstantObjectPrototypeChainShapeCheckNode.create(shape, thisObj, key, depth, getContext())
-                            : PrototypeShapeCheckNode.create(shape, thisObj, key, depth, getContext());
+    private AbstractShapeCheckNode createShapeCheckNodeDeeper(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
+        assert depth >= 1;
+        JSDynamicObject protoAtDepth = getPrototypeAtDepth(thisObj, depth);
+        boolean allPrototypesInShape = prototypesInShape(thisObj, 0, depth);
+        if (JSConfig.SkipPrototypeShapeCheck && allPrototypesInShape && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
+            if (isConstantObjectFinal) {
+                return ConstantObjectPrototypeChainShapeCheckNode.create(shape, thisObj, key, depth, getContext());
+            } else if (depth == 1) {
+                return PrototypeShapeCheckNode.create(shape, thisObj, key, depth, getContext());
+            } else {
+                return PrototypeChainShapeCheckNode.create(shape, thisObj, key, depth, getContext());
+            }
         } else {
-            traversePrototypeShapeCheckCount.inc();
+            /*
+             * If we're checking that a property is absent, we must check all the way down including
+             * the final null prototype, so as to not miss any prototype change.
+             *
+             * However, the last prototype link to null is typically from either Object.prototype
+             * (an immutable prototype exotic object) or another object with a constant-prototype
+             * shape, in which case we can skip the final prototype == null check, since setting a
+             * different prototype is either not allowed or would result in a shape change, and
+             * we're already checking the shape of that last prototype object anyway.
+             */
+            int checkedDepth = depth;
+            if (protoAtDepth == Null.instance && (allPrototypesInShape || prototypesInShape(thisObj, depth - 1, depth))) {
+                checkedDepth--;
+            }
+            return createTraversePrototypeShapeCheck(shape, thisObj, checkedDepth);
+        }
+    }
+
+    private static AbstractShapeCheckNode createTraversePrototypeShapeCheck(Shape shape, JSDynamicObject thisObj, int depth) {
+        if (depth == 0) {
+            return new ShapeCheckNode(shape);
+        } else if (depth == 1) {
             return new TraversePrototypeShapeCheckNode(shape, thisObj);
         }
+        return new TraversePrototypeChainShapeCheckNode(shape, thisObj, depth);
     }
 
-    private AbstractShapeCheckNode createShapeCheckNodeDeeper(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
-        assert depth > 1;
-        if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(thisObj, depth) && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
-            return isConstantObjectFinal
-                            ? ConstantObjectPrototypeChainShapeCheckNode.create(shape, thisObj, key, depth, getContext())
-                            : PrototypeChainShapeCheckNode.create(shape, thisObj, key, depth, getContext());
-        } else {
-            traversePrototypeChainShapeCheckCount.inc();
-            return new TraversePrototypeChainShapeCheckNode(shape, thisObj, depth);
-        }
-    }
-
-    protected static boolean prototypesInShape(JSDynamicObject thisObj, int depth) {
+    protected static boolean prototypesInShape(JSDynamicObject thisObj, int start, int end) {
         JSDynamicObject depthObject = thisObj;
-        for (int i = 0; i < depth; i++) {
-            if (!JSShape.isPrototypeInShape(depthObject.getShape())) {
+        for (int i = 0; i < end; i++) {
+            assert depthObject != Null.instance && !JSProxy.isJSProxy(depthObject) : depthObject;
+            if (i >= start && !JSShape.isPrototypeInShape(depthObject.getShape())) {
                 return false;
+            }
+            if (i + 1 >= end) {
+                // no need to get the prototype if we're about to exit the loop
+                break;
             }
             depthObject = JSObject.getPrototype(depthObject);
         }
         return true;
+    }
+
+    protected static JSDynamicObject getPrototypeAtDepth(JSDynamicObject thisObj, int depth) {
+        JSDynamicObject depthObject = thisObj;
+        for (int i = 0; i < depth; i++) {
+            assert depthObject != Null.instance && !JSProxy.isJSProxy(depthObject) : depthObject;
+            depthObject = JSObject.getPrototype(depthObject);
+        }
+        return depthObject;
     }
 
     protected final boolean propertyAssumptionsValid(JSDynamicObject thisObj, int depth, boolean checkDepth0) {
@@ -1302,12 +1342,13 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             return false;
         }
         for (int i = 0; i < depth; i++) {
+            assert depthObject != Null.instance;
             if ((depth != 0 || checkDepth0) && !JSShape.getPrototypeAssumption(depthShape).isValid()) {
                 return false;
             }
             depthObject = JSObject.getPrototype(depthObject);
             depthShape = depthObject.getShape();
-            if (!JSShape.getPropertyAssumption(depthShape, key, true).isValid()) {
+            if (depthObject != Null.instance && !JSShape.getPropertyAssumption(depthShape, key, true).isValid()) {
                 return false;
             }
         }
@@ -1321,10 +1362,16 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         } else {
             assert JSRuntime.isJSPrimitive(thisObj) || thisObj instanceof Long;
             JSDynamicObject wrapped = wrapPrimitive(thisObj);
-            if (JSConfig.SkipPrototypeShapeCheck && prototypesInShape(wrapped, depth) && propertyAssumptionsValid(wrapped, depth, false)) {
+            JSDynamicObject protoAtDepth = getPrototypeAtDepth(wrapped, depth);
+            boolean allPrototypesInShape = prototypesInShape(wrapped, 0, depth);
+            if (JSConfig.SkipPrototypeShapeCheck && allPrototypesInShape && propertyAssumptionsValid(wrapped, depth, false)) {
                 return ValuePrototypeChainCheckNode.create(valueClass, wrapped.getShape(), wrapped, key, depth, context);
             } else {
-                return new TraverseValuePrototypeChainCheckNode(valueClass, wrapped.getShape(), wrapped, depth, JSObject.getJSClass(wrapped));
+                int checkedDepth = depth;
+                if (protoAtDepth == Null.instance && (allPrototypesInShape || prototypesInShape(wrapped, depth - 1, depth))) {
+                    checkedDepth--;
+                }
+                return new TraverseValuePrototypeChainCheckNode(valueClass, wrapped.getShape(), wrapped, checkedDepth, JSObject.getJSClass(wrapped));
             }
         }
     }
