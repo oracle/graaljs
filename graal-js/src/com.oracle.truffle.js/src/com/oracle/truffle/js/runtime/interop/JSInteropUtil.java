@@ -62,6 +62,7 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
@@ -74,6 +75,8 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -133,35 +136,80 @@ public final class JSInteropUtil {
         return true;
     }
 
-    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue) {
-        return readMemberOrDefault(obj, member, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached(), null);
+    @TruffleBoundary
+    public static Object getOrDefault(JSContext context, Object target, Object propertyKey, Object receiver, Object defaultValue) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        ImportValueNode importValue = ImportValueNode.getUncached();
+        boolean hasArrayElements = interop.hasArrayElements(target);
+        if (hasArrayElements && JSRuntime.isArrayIndex(propertyKey)) {
+            return readArrayElementOrDefault(target, JSRuntime.parseArrayIndexIsIndexRaw(propertyKey), defaultValue, interop, importValue);
+        }
+        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+            try {
+                return readHashEntryOrDefault(target, propertyKey, defaultValue, interop, importValue);
+            } catch (UnknownKeyException ukex) {
+                // fall through: still need to try members
+            }
+        }
+        if (propertyKey instanceof Symbol) {
+            return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, interop);
+        }
+        TruffleString exportedKeyStr = (TruffleString) propertyKey;
+        if (hasArrayElements && Strings.equals(JSAbstractArray.LENGTH, exportedKeyStr)) {
+            return getArraySize(target, interop, null);
+        }
+        if (interop.hasMembers(target)) {
+            Object result = readMemberOrDefault(target, propertyKey, null, interop, importValue);
+            if (result != null) {
+                return result;
+            }
+        }
+        return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, interop);
     }
 
-    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue, Node originatingNode) {
+    private static Object maybeReadFromPrototype(JSContext context, Object truffleObject, Object key, Object receiver, Object defaultValue, InteropLibrary interop) {
+        if (context.getLanguageOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(truffleObject, interop)) {
+            JSDynamicObject prototype = ForeignObjectPrototypeNode.getUncached().execute(truffleObject);
+            return JSObject.getOrDefault(prototype, key, receiver, defaultValue);
+        } else {
+            return defaultValue;
+        }
+    }
+
+    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue) {
+        return readMemberOrDefault(obj, member, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached());
+    }
+
+    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue) {
         if (!Strings.isTString(member)) {
             return defaultValue;
         }
         try {
             return importValue.executeWithTarget(interop.readMember(obj, Strings.toJavaString((TruffleString) member)));
-        } catch (UnknownIdentifierException e) {
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return defaultValue;
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readMember", member, originatingNode);
         }
     }
 
-    public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue, InteropLibrary interop, ImportValueNode importValue, Node originatingNode) {
+    public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue, InteropLibrary interop, ImportValueNode importValue) {
         try {
             return importValue.executeWithTarget(interop.readArrayElement(obj, index));
-        } catch (InvalidArrayIndexException e) {
+        } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
             return defaultValue;
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", index, originatingNode);
         }
     }
 
     public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue) {
-        return readArrayElementOrDefault(obj, index, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached(), null);
+        return readArrayElementOrDefault(obj, index, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached());
+    }
+
+    private static Object readHashEntryOrDefault(Object obj, Object propertyKey, Object defaultValue, InteropLibrary interop, ImportValueNode importValue) throws UnknownKeyException {
+        try {
+            return importValue.executeWithTarget(interop.readHashValue(obj, propertyKey));
+        } catch (UnsupportedMessageException e) {
+            return defaultValue;
+        }
     }
 
     public static void writeMember(Object obj, Object member, Object value) {

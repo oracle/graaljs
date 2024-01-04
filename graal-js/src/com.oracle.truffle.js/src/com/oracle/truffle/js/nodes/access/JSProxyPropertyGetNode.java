@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -113,11 +112,7 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.getOrDefault((JSDynamicObject) target, propertyKey, receiver, defaultValue, targetClassProfile, this);
             } else {
-                Object result = JSInteropUtil.readMemberOrDefault(target, propertyKey, null);
-                if (result == null) {
-                    result = maybeGetFromPrototype(target, propertyKey, receiver, defaultValue, targetClassProfile);
-                }
-                return result;
+                return JSInteropUtil.getOrDefault(getLanguage().getJSContext(), target, propertyKey, receiver, defaultValue);
             }
         }
         Object trapResult = callNode.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, receiver));
@@ -125,20 +120,6 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
             checkInvariants(propertyKey, target, trapResult, errorBranch);
         }
         return trapResult;
-    }
-
-    @InliningCutoff
-    private Object maybeGetFromPrototype(Object target, Object propertyKey, Object receiver, Object defaultValue, JSClassProfile protoClassProfile) {
-        assert JSRuntime.isPropertyKey(propertyKey);
-        if (getLanguage().getJSContext().getLanguageOptions().hasForeignObjectPrototype()) {
-            if (foreignObjectPrototypeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
-            }
-            JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
-            return JSObject.getOrDefault(prototype, propertyKey, receiver, defaultValue, protoClassProfile, this);
-        }
-        return defaultValue;
     }
 
     private void checkInvariants(Object propertyKey, Object proxyTarget, Object trapResult,
