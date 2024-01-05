@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -154,10 +154,10 @@ public class ReflectInteropTest {
 
         Value reflectDelete = context.eval(ID, "Reflect.deleteProperty");
         assertTrue(reflectDelete.execute(proxyObject, "p1").asBoolean());
-        assertFalse(reflectDelete.execute(proxyObject, "p1").asBoolean());
+        assertTrue(reflectDelete.execute(proxyObject, "p1").asBoolean());
         assertEquals(2, map.size());
         assertTrue(map.containsKey("p2"));
         assertTrue(map.containsKey("p3"));
-        assertFalse(reflectDelete.execute(proxyObject, 42).asBoolean());
+        assertTrue(reflectDelete.execute(proxyObject, 42).asBoolean());
     }
 }

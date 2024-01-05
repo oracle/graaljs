@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2764,7 +2764,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
             Object[] array = new Object[len];
             for (int index = 0; index < len; index++) {
-                array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
+                array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue);
             }
             return array;
         }
@@ -3449,7 +3449,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 importValueNode = insert(ImportValueNode.create());
             }
-            Object val = JSInteropUtil.readArrayElementOrDefault(srcObj, fromIndex, Undefined.instance, arrays, importValueNode, this);
+            Object val = JSInteropUtil.readArrayElementOrDefault(srcObj, fromIndex, Undefined.instance, arrays, importValueNode);
             writeOwn(destObj, toIndex, val);
         }
     }

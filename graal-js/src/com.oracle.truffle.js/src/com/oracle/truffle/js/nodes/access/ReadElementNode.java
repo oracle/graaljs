@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1455,7 +1455,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @Specialization
-        protected Object doForeignObject(Object target, Object index, @SuppressWarnings("unused") Object receiver, Object defaultValue, ReadElementNode root,
+        protected Object doForeignObject(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
                         @Cached InlinedExactClassProfile classProfile,
                         @Cached InlinedBranchProfile errorBranch) {
             Object truffleObject = classProfile.profile(this, target);
@@ -1463,14 +1463,14 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorCannotGetProperty(root.getContext(), JSRuntime.safeToString(index), target, false, this);
             }
-            Object foreignResult = getImpl(truffleObject, index, defaultValue, root, errorBranch);
+            Object foreignResult = getImpl(truffleObject, index, receiver, defaultValue, root, errorBranch);
             if (foreignResult == defaultValue) {
                 return foreignResult;
             }
             return importValueNode.executeWithTarget(foreignResult);
         }
 
-        private Object getImpl(Object truffleObject, Object key, Object defaultValue, ReadElementNode root,
+        private Object getImpl(Object truffleObject, Object key, Object receiver, Object defaultValue, ReadElementNode root,
                         @Cached InlinedBranchProfile errorBranch) {
             Object propertyKey;
             boolean hasArrayElements = interop.hasArrayElements(truffleObject);
@@ -1499,7 +1499,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 }
             }
             if (propertyKey instanceof Symbol) {
-                return maybeReadFromPrototype(truffleObject, propertyKey, root.context);
+                return maybeReadFromPrototype(truffleObject, propertyKey, receiver, root.context);
             }
             TruffleString exportedKeyStr = (TruffleString) propertyKey;
             if (hasArrayElements && Strings.equals(JSAbstractArray.LENGTH, exportedKeyStr)) {
@@ -1518,7 +1518,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                 } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     optimistic = false;
-                    return maybeReadFromPrototype(truffleObject, exportedKeyStr, root.context);
+                    return maybeReadFromPrototype(truffleObject, exportedKeyStr, receiver, root.context);
                 }
             } else {
                 if (interop.isMemberReadable(truffleObject, stringKey)) {
@@ -1528,7 +1528,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         return defaultValue;
                     }
                 } else {
-                    return maybeReadFromPrototype(truffleObject, exportedKeyStr, root.context);
+                    return maybeReadFromPrototype(truffleObject, exportedKeyStr, receiver, root.context);
                 }
             }
         }
@@ -1578,7 +1578,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @InliningCutoff
-        private Object maybeReadFromPrototype(Object truffleObject, Object key, JSContext context) {
+        private Object maybeReadFromPrototype(Object truffleObject, Object key, Object receiver, JSContext context) {
             assert JSRuntime.isPropertyKey(key);
             if (context.getLanguageOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(truffleObject, interop)) {
                 if (readFromPrototypeNode == null || foreignObjectPrototypeNode == null) {
@@ -1587,7 +1587,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                     this.foreignObjectPrototypeNode = insert(ForeignObjectPrototypeNode.create());
                 }
                 JSDynamicObject prototype = foreignObjectPrototypeNode.execute(truffleObject);
-                return readFromPrototypeNode.execute(prototype, key, truffleObject, Undefined.instance);
+                return readFromPrototypeNode.execute(prototype, key, receiver, Undefined.instance);
             } else {
                 return Undefined.instance;
             }

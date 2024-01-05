@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -177,9 +177,9 @@ public abstract class ForEachIndexCallNode extends JavaScriptBaseNode {
             toJSTypeNode = insert(ImportValueNode.create());
         }
         if (isForeignArray) {
-            return JSInteropUtil.readArrayElementOrDefault(target, index, Undefined.instance, getInterop(), toJSTypeNode, this);
+            return JSInteropUtil.readArrayElementOrDefault(target, index, Undefined.instance, getInterop(), toJSTypeNode);
         } else {
-            return JSInteropUtil.readMemberOrDefault(target, Strings.fromLong(index), Undefined.instance, getInterop(), toJSTypeNode, this);
+            return JSInteropUtil.readMemberOrDefault(target, Strings.fromLong(index), Undefined.instance, getInterop(), toJSTypeNode);
         }
     }
 

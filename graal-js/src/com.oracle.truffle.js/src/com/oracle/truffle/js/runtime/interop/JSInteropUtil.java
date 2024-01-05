@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,6 +54,7 @@ import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
 import com.oracle.truffle.api.interop.UnknownIdentifierException;
+import com.oracle.truffle.api.interop.UnknownKeyException;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.interop.UnsupportedTypeException;
 import com.oracle.truffle.api.nodes.Node;
@@ -61,16 +62,21 @@ import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
+import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -130,49 +136,144 @@ public final class JSInteropUtil {
         return true;
     }
 
-    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue) {
-        return readMemberOrDefault(obj, member, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached(), null);
+    @TruffleBoundary
+    public static Object getOrDefault(JSContext context, Object target, Object propertyKey, Object receiver, Object defaultValue) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        ImportValueNode importValue = ImportValueNode.getUncached();
+        boolean hasArrayElements = interop.hasArrayElements(target);
+        if (hasArrayElements && JSRuntime.isArrayIndex(propertyKey)) {
+            return readArrayElementOrDefault(target, JSRuntime.parseArrayIndexIsIndexRaw(propertyKey), defaultValue, interop, importValue);
+        }
+        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+            try {
+                return readHashEntryOrDefault(target, propertyKey, defaultValue, interop, importValue);
+            } catch (UnknownKeyException ukex) {
+                // fall through: still need to try members
+            }
+        }
+        if (propertyKey instanceof Symbol) {
+            return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, interop);
+        }
+        TruffleString exportedKeyStr = (TruffleString) propertyKey;
+        if (hasArrayElements && Strings.equals(JSAbstractArray.LENGTH, exportedKeyStr)) {
+            return getArraySize(target, interop, null);
+        }
+        if (interop.hasMembers(target)) {
+            Object result = readMemberOrDefault(target, propertyKey, null, interop, importValue);
+            if (result != null) {
+                return result;
+            }
+        }
+        return maybeReadFromPrototype(context, target, propertyKey, receiver, defaultValue, interop);
     }
 
-    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue, Node originatingNode) {
+    private static Object maybeReadFromPrototype(JSContext context, Object truffleObject, Object key, Object receiver, Object defaultValue, InteropLibrary interop) {
+        if (context.getLanguageOptions().hasForeignObjectPrototype() || key instanceof Symbol || JSInteropUtil.isBoxedPrimitive(truffleObject, interop)) {
+            JSDynamicObject prototype = ForeignObjectPrototypeNode.getUncached().execute(truffleObject);
+            return JSObject.getOrDefault(prototype, key, receiver, defaultValue);
+        } else {
+            return defaultValue;
+        }
+    }
+
+    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue) {
+        return readMemberOrDefault(obj, member, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached());
+    }
+
+    public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue) {
         if (!Strings.isTString(member)) {
             return defaultValue;
         }
         try {
             return importValue.executeWithTarget(interop.readMember(obj, Strings.toJavaString((TruffleString) member)));
-        } catch (UnknownIdentifierException e) {
+        } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return defaultValue;
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readMember", member, originatingNode);
         }
     }
 
-    public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue, InteropLibrary interop, ImportValueNode importValue, Node originatingNode) {
+    public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue, InteropLibrary interop, ImportValueNode importValue) {
         try {
             return importValue.executeWithTarget(interop.readArrayElement(obj, index));
-        } catch (InvalidArrayIndexException e) {
+        } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
             return defaultValue;
-        } catch (UnsupportedMessageException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "readArrayElement", index, originatingNode);
         }
     }
 
     public static Object readArrayElementOrDefault(Object obj, long index, Object defaultValue) {
-        return readArrayElementOrDefault(obj, index, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached(), null);
+        return readArrayElementOrDefault(obj, index, defaultValue, InteropLibrary.getUncached(), ImportValueNode.getUncached());
     }
 
-    public static void writeMember(Object obj, Object member, Object value) {
-        writeMember(obj, member, value, InteropLibrary.getUncached(), ExportValueNode.getUncached(), null);
+    private static Object readHashEntryOrDefault(Object obj, Object propertyKey, Object defaultValue, InteropLibrary interop, ImportValueNode importValue) throws UnknownKeyException {
+        try {
+            return importValue.executeWithTarget(interop.readHashValue(obj, propertyKey));
+        } catch (UnsupportedMessageException e) {
+            return defaultValue;
+        }
     }
 
-    public static void writeMember(Object obj, Object member, Object value, InteropLibrary interop, ExportValueNode exportValue, Node originatingNode) {
+    @TruffleBoundary
+    public static boolean set(JSContext context, Object target, Object propertyKey, Object value, boolean strict) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        ExportValueNode exportValue = ExportValueNode.getUncached();
+        boolean hasArrayElements = interop.hasArrayElements(target);
+        if (hasArrayElements && JSRuntime.isArrayIndex(propertyKey)) {
+            return writeArrayElement(target, JSRuntime.parseArrayIndexIsIndexRaw(propertyKey), value, interop, exportValue, strict);
+        }
+        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
+            return writeHashEntry(target, propertyKey, value, interop, exportValue, strict);
+        }
+        if (propertyKey instanceof Symbol) {
+            return false;
+        }
+        TruffleString stringKey = (TruffleString) propertyKey;
+        if (hasArrayElements && Strings.equals(JSAbstractArray.LENGTH, stringKey)) {
+            return setArraySize(target, value, strict, interop, null, null);
+        }
+        return writeMember(target, propertyKey, value, interop, exportValue, strict, null);
+    }
+
+    private static boolean writeArrayElement(Object obj, long index, Object value, InteropLibrary interop, ExportValueNode exportValue, boolean strict) {
+        try {
+            interop.writeArrayElement(obj, index, exportValue.execute(value));
+            return true;
+        } catch (InvalidArrayIndexException | UnsupportedTypeException | UnsupportedMessageException e) {
+            if (strict) {
+                throw Errors.createTypeErrorInteropException(obj, e, "writeArrayElement", null);
+            }
+            return false;
+        }
+    }
+
+    private static boolean writeHashEntry(Object obj, Object propertyKey, Object value, InteropLibrary interop, ExportValueNode exportValue, boolean strict) {
+        try {
+            interop.writeHashEntry(obj, propertyKey, exportValue.execute(value));
+            return true;
+        } catch (UnknownKeyException | UnsupportedMessageException | UnsupportedTypeException e) {
+            if (strict) {
+                throw Errors.createTypeErrorInteropException(obj, e, "writeHashEntry", null);
+            }
+            return false;
+        }
+    }
+
+    public static boolean writeMember(Object obj, Object member, Object value) {
+        return writeMember(obj, member, value, InteropLibrary.getUncached(), ExportValueNode.getUncached(), false, null);
+    }
+
+    public static boolean writeMember(Object obj, Object member, Object value, InteropLibrary interop, ExportValueNode exportValue, boolean strict, Node originatingNode) {
         if (!Strings.isTString(member)) {
-            return;
+            return false;
         }
         try {
             interop.writeMember(obj, Strings.toJavaString((TruffleString) member), exportValue.execute(value));
+            return true;
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
-            throw Errors.createTypeErrorInteropException(obj, e, "writeMember", member, originatingNode);
+            if (strict) {
+                throw Errors.createTypeErrorInteropException(obj, e, "writeMember", member, originatingNode);
+            }
+            return false;
         }
     }
 
@@ -269,17 +370,80 @@ public final class JSInteropUtil {
     }
 
     @TruffleBoundary
-    public static boolean remove(Object obj, Object key) {
-        if (key instanceof TruffleString) {
+    public static boolean delete(JSContext context, Object target, Object propertyKey, boolean strict) {
+        assert JSRuntime.isPropertyKey(propertyKey);
+        InteropLibrary interop = InteropLibrary.getUncached();
+        if (interop.hasArrayElements(target) && JSRuntime.isArrayIndex(propertyKey)) {
+            return deleteArrayElement(target, JSRuntime.parseArrayIndexIsIndexRaw(propertyKey), interop, strict);
+        }
+        if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
             try {
-                InteropLibrary.getUncached().removeMember(obj, Strings.toJavaString((TruffleString) key));
-            } catch (UnsupportedMessageException | UnknownIdentifierException e) {
-                throw Errors.createTypeErrorInteropException(obj, e, "removeMember", key, null);
+                return deleteHashEntry(target, propertyKey, interop, strict);
+            } catch (UnknownKeyException ukex) {
+                // fall through: still need to try members
             }
-            return true;
+        }
+        if (interop.hasMembers(target)) {
+            if (Strings.isTString(propertyKey)) {
+                return deleteMember(target, (TruffleString) propertyKey, interop, strict);
+            } else {
+                assert propertyKey instanceof Symbol;
+                return true;
+            }
         } else {
+            return true;
+        }
+    }
+
+    public static boolean deleteArrayElement(Object target, long index, InteropLibrary interop, boolean strict) {
+        assert interop.hasArrayElements(target);
+        long length;
+        try {
+            length = interop.getArraySize(target);
+        } catch (UnsupportedMessageException e) {
+            return true;
+        }
+        // Foreign arrays cannot have holes, so we do not support deleting elements.
+        // Therefore, we treat them like Typed Arrays: array elements are not configurable
+        // and cannot be deleted but deleting out of bounds is always successful.
+        if (index >= 0 && index < length) {
+            if (strict) {
+                throw Errors.createTypeErrorNotConfigurableProperty(Strings.fromLong(index));
+            }
+            return false;
+        } else {
+            return true;
+        }
+    }
+
+    public static boolean deleteHashEntry(Object target, Object key, InteropLibrary interop, boolean strict) throws UnknownKeyException {
+        assert interop.hasHashEntries(target);
+        try {
+            interop.removeHashEntry(target, key);
+            return true;
+        } catch (UnsupportedMessageException e) {
+            if (strict) {
+                throw Errors.createTypeErrorInteropException(target, e, "removeHashEntry", null);
+            }
             return false;
         }
+    }
+
+    public static boolean deleteMember(Object target, TruffleString name, InteropLibrary interop, boolean strict) {
+        assert interop.hasMembers(target);
+        String javaName = Strings.toJavaString(name);
+        if (interop.isMemberExisting(target, javaName)) {
+            try {
+                interop.removeMember(target, javaName);
+                return true;
+            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
+                if (strict) {
+                    throw Errors.createTypeErrorCannotDeletePropertyOf(name, target);
+                }
+                return false;
+            }
+        }
+        return true;
     }
 
     @TruffleBoundary

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -240,7 +240,7 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
             } catch (SecurityException e) {
                 throw Errors.createErrorFromException(e);
             }
-            JSInteropUtil.writeMember(polyglotBindings, identifier, value, interop, exportValue, this);
+            JSInteropUtil.writeMember(polyglotBindings, identifier, value, interop, exportValue, true, this);
             return value;
         }
 
@@ -421,21 +421,21 @@ public final class PolyglotBuiltins extends JSBuiltinsContainer.SwitchEnum<Polyg
         protected Object member(TruffleObject obj, TruffleString name,
                         @Shared("importValue") @Cached ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            return JSInteropUtil.readMemberOrDefault(obj, name, Null.instance, interop, foreignConvert, this);
+            return JSInteropUtil.readMemberOrDefault(obj, name, Null.instance, interop, foreignConvert);
         }
 
         @Specialization
         protected Object arrayElementInt(TruffleObject obj, int index,
                         @Shared("importValue") @Cached ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            return JSInteropUtil.readArrayElementOrDefault(obj, index, Null.instance, interop, foreignConvert, this);
+            return JSInteropUtil.readArrayElementOrDefault(obj, index, Null.instance, interop, foreignConvert);
         }
 
         @Specialization(guards = "isNumber(index)", replaces = "arrayElementInt")
         protected Object arrayElement(TruffleObject obj, Number index,
                         @Shared("importValue") @Cached ImportValueNode foreignConvert,
                         @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            return JSInteropUtil.readArrayElementOrDefault(obj, JSRuntime.longValue(index), Null.instance, interop, foreignConvert, this);
+            return JSInteropUtil.readArrayElementOrDefault(obj, JSRuntime.longValue(index), Null.instance, interop, foreignConvert);
         }
 
         @SuppressWarnings("unused")

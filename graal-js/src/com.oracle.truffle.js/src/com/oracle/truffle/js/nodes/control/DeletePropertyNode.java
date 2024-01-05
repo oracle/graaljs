@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,9 +56,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnknownIdentifierException;
 import com.oracle.truffle.api.interop.UnknownKeyException;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -83,6 +81,7 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSString;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
@@ -272,28 +271,13 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
             try {
-                interop.removeHashEntry(target, name);
-                return true;
+                return JSInteropUtil.deleteHashEntry(target, name, interop, strict);
             } catch (UnknownKeyException e) {
                 // fall through: still need to try members
-            } catch (UnsupportedMessageException e) {
-                if (strict) {
-                    throw Errors.createTypeErrorInteropException(target, e, "delete", this);
-                }
-                return false;
             }
         }
-        String javaName = Strings.toJavaString(name);
-        if (interop.isMemberExisting(target, javaName)) {
-            try {
-                interop.removeMember(target, javaName);
-                return true;
-            } catch (UnknownIdentifierException | UnsupportedMessageException e) {
-                if (strict) {
-                    throw Errors.createTypeErrorCannotDeletePropertyOf(name, target);
-                }
-                return false;
-            }
+        if (interop.hasMembers(target)) {
+            return JSInteropUtil.deleteMember(target, name, interop, strict);
         }
         return true;
     }
@@ -302,41 +286,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
     @Specialization(guards = {"isForeignObject(target)", "interop.hasArrayElements(target)"})
     protected boolean arrayElementInt(Object target, int index,
                     @Shared("interop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-        return arrayElementLong(target, index, interop);
-    }
-
-    private boolean arrayElementLong(Object target, long index, InteropLibrary interop) {
-        long length;
-        try {
-            length = interop.getArraySize(target);
-        } catch (UnsupportedMessageException e) {
-            return true;
-        }
-        // Foreign arrays cannot have holes, so we do not support deleting elements.
-        // Therefore, we treat them like Typed Arrays: array elements are not configurable
-        // and cannot be deleted but deleting out of bounds is always successful.
-        if (index >= 0 && index < length) {
-            if (strict) {
-                throw Errors.createTypeErrorNotConfigurableProperty(Strings.fromLong(index));
-            }
-            return false;
-        } else {
-            return true;
-        }
-    }
-
-    private boolean hashEntry(Object target, Object key, InteropLibrary interop) {
-        try {
-            interop.removeHashEntry(target, key);
-            return true;
-        } catch (UnknownKeyException e) {
-            return true;
-        } catch (UnsupportedMessageException e) {
-            if (strict) {
-                throw Errors.createTypeErrorInteropException(target, e, "delete", this);
-            }
-            return false;
-        }
+        return JSInteropUtil.deleteArrayElement(target, index, interop, strict);
     }
 
     @SuppressWarnings("unused")
@@ -350,7 +300,7 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         if (interop.hasArrayElements(target)) {
             Object indexOrPropertyKey = toArrayIndexNode.execute(key);
             if (indexOrPropertyKey instanceof Long) {
-                return arrayElementLong(target, (long) indexOrPropertyKey, interop);
+                return JSInteropUtil.deleteArrayElement(target, (long) indexOrPropertyKey, interop, strict);
             } else {
                 propertyKey = indexOrPropertyKey;
                 assert JSRuntime.isPropertyKey(propertyKey);
@@ -359,11 +309,15 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
             propertyKey = toPropertyKeyNode.execute(key);
         }
         if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(target)) {
-            return hashEntry(target, propertyKey, interop);
+            try {
+                return JSInteropUtil.deleteHashEntry(target, propertyKey, interop, strict);
+            } catch (UnknownKeyException e) {
+                // fall through: still need to try members
+            }
         }
         if (interop.hasMembers(target)) {
             if (Strings.isTString(propertyKey)) {
-                return member(target, (TruffleString) propertyKey, interop);
+                return JSInteropUtil.deleteMember(target, (TruffleString) propertyKey, interop, strict);
             } else {
                 assert propertyKey instanceof Symbol;
                 return true;

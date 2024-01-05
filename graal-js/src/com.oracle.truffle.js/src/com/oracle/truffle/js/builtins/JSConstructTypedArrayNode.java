@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -423,7 +423,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         if (fromArray) {
             assert length <= Integer.MAX_VALUE;
             for (int k = 0; k < length; k++) {
-                Object kValue = JSInteropUtil.readArrayElementOrDefault(object, k, 0, interop, importValue, this);
+                Object kValue = JSInteropUtil.readArrayElementOrDefault(object, k, 0, interop, importValue);
                 writeOwnNode.executeWithTargetAndIndexAndValue(obj, k, kValue);
             }
         }
