@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.access;
 
 import java.io.PrintStream;
+import java.util.Arrays;
 import java.util.Locale;
 import java.util.concurrent.locks.Lock;
 
@@ -338,9 +339,13 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             ass[pos++] = shape.getValidAssumption();
             JSDynamicObject finalProto = JSObject.getPrototype(thisObj);
             Shape protoShape = finalProto.getShape();
-            ass[pos++] = protoShape.getValidAssumption();
-            ass[pos++] = JSShape.getPropertyAssumption(protoShape, key, true);
-            assert pos == ass.length;
+            if (finalProto != Null.instance) {
+                ass[pos++] = protoShape.getValidAssumption();
+                ass[pos++] = JSShape.getPropertyAssumption(protoShape, key, true);
+            }
+            if (pos != ass.length) {
+                ass = Arrays.copyOfRange(ass, 0, pos);
+            }
             return new PrototypeShapeCheckNode(shape, ass, finalProto, context);
         }
 
@@ -368,15 +373,19 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             JSDynamicObject depthProto = thisObj;
             for (int i = 0; i < depth; i++) {
                 Assumption stablePrototypeAssumption = i == 0 ? null : JSShape.getPrototypeAssumption(depthShape);
-                depthProto = JSObject.getPrototype(depthProto);
-                depthShape = depthProto.getShape();
-                ass[pos++] = depthShape.getValidAssumption();
-                ass[pos++] = JSShape.getPropertyAssumption(depthShape, key, true);
                 if (stablePrototypeAssumption != null) {
                     ass[pos++] = stablePrototypeAssumption;
                 }
+                depthProto = JSObject.getPrototype(depthProto);
+                depthShape = depthProto.getShape();
+                if (depthProto != Null.instance) {
+                    ass[pos++] = depthShape.getValidAssumption();
+                    ass[pos++] = JSShape.getPropertyAssumption(depthShape, key, true);
+                }
             }
-            assert pos == ass.length;
+            if (pos != ass.length) {
+                ass = Arrays.copyOfRange(ass, 0, pos);
+            }
             return new PrototypeChainShapeCheckNode(shape, ass, depthProto, context);
         }
 
@@ -457,13 +466,17 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             JSDynamicObject depthProto = thisObj;
             for (int i = 0; i < depth; i++) {
                 Assumption stablePrototypeAssumption = JSShape.getPrototypeAssumption(depthShape);
+                ass[pos++] = stablePrototypeAssumption;
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
-                ass[pos++] = depthShape.getValidAssumption();
-                ass[pos++] = JSShape.getPropertyAssumption(depthShape, key, true);
-                ass[pos++] = stablePrototypeAssumption;
+                if (depthProto != Null.instance) {
+                    ass[pos++] = depthShape.getValidAssumption();
+                    ass[pos++] = JSShape.getPropertyAssumption(depthShape, key, true);
+                }
             }
-            assert pos == ass.length;
+            if (pos != ass.length) {
+                ass = Arrays.copyOfRange(ass, 0, pos);
+            }
             return new ConstantObjectPrototypeChainShapeCheckNode(shape, ass, depthProto, context);
         }
 
@@ -653,15 +666,19 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             JSDynamicObject depthProto = thisObj;
             for (int i = 0; i < depth; i++) {
                 Assumption stablePrototypeAssumption = i == 0 ? null : JSShape.getPrototypeAssumption(depthShape);
-                depthProto = JSObject.getPrototype(depthProto);
-                depthShape = depthProto.getShape();
-                ass[pos++] = depthShape.getValidAssumption();
-                ass[pos++] = JSShape.getPropertyAssumption(depthShape, key, true);
                 if (stablePrototypeAssumption != null) {
                     ass[pos++] = stablePrototypeAssumption;
                 }
+                depthProto = JSObject.getPrototype(depthProto);
+                depthShape = depthProto.getShape();
+                if (depthProto != Null.instance) {
+                    ass[pos++] = depthShape.getValidAssumption();
+                    ass[pos++] = JSShape.getPropertyAssumption(depthShape, key, true);
+                }
             }
-            assert pos == ass.length;
+            if (pos != ass.length) {
+                ass = Arrays.copyOfRange(ass, 0, pos);
+            }
             return new ValuePrototypeChainCheckNode(valueClass, shape, ass, depthProto, context);
         }
 
