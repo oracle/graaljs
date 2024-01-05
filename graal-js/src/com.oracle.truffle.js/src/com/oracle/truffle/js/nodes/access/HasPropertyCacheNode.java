@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -334,15 +334,15 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
      * @param property The particular entry of the property being accessed.
      */
     @Override
-    protected HasCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, Object value, HasCacheNode currentHead) {
+    protected HasCacheNode createCachedPropertyNode(Property property, Object thisObj, JSDynamicObject proto, int depth, Object value, HasCacheNode currentHead) {
         assert !isOwnProperty() || depth == 0;
         ReceiverCheckNode check;
         if (JSDynamicObject.isJSDynamicObject(thisObj)) {
             JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
-            check = createShapeCheckNode(cacheShape, thisJSObj, depth, false, false);
+            check = createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false);
         } else {
-            check = createPrimitiveReceiverCheck(thisObj, depth);
+            check = createPrimitiveReceiverCheck(thisObj, proto, depth);
         }
         if (hasOwnProperty && JSProperty.isModuleNamespaceExport(property)) {
             return new ModuleNamespaceHasOwnPropertyNode(check, property);
@@ -351,8 +351,8 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     }
 
     @Override
-    protected HasCacheNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, Object value) {
-        HasCacheNode specialized = createJavaPropertyNodeMaybe(thisObj, depth);
+    protected HasCacheNode createUndefinedPropertyNode(Object thisObj, Object store, JSDynamicObject proto, int depth, Object value) {
+        HasCacheNode specialized = createJavaPropertyNodeMaybe(thisObj, proto, depth);
         if (specialized != null) {
             return specialized;
         }
@@ -360,11 +360,11 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
             if (JSAdapter.isJSAdapter(store)) {
-                return new JSAdapterHasPropertyCacheNode(key, createJSClassCheck(thisObj, depth));
+                return new JSAdapterHasPropertyCacheNode(key, createJSClassCheck(thisObj, proto, depth));
             } else if (JSProxy.isJSProxy(store)) {
-                return new JSProxyDispatcherPropertyHasNode(context, key, createJSClassCheck(thisObj, depth), isOwnProperty());
+                return new JSProxyDispatcherPropertyHasNode(context, key, createJSClassCheck(thisObj, proto, depth), isOwnProperty());
             } else {
-                return new AbsentHasPropertyCacheNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false));
+                return new AbsentHasPropertyCacheNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false));
             }
         } else {
             return new AbsentHasPropertyCacheNode(new InstanceofCheckNode(thisObj.getClass()));
@@ -372,11 +372,11 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
     }
 
     @Override
-    protected HasCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth) {
+    protected HasCacheNode createJavaPropertyNodeMaybe(Object thisObj, JSDynamicObject proto, int depth) {
         if (JavaPackage.isJavaPackage(thisObj)) {
-            return new PresentHasPropertyCacheNode(createJSClassCheck(thisObj, depth));
+            return new PresentHasPropertyCacheNode(createJSClassCheck(thisObj, proto, depth));
         } else if (JavaImporter.isJavaImporter(thisObj)) {
-            return new UnspecializedHasPropertyCacheNode(createJSClassCheck(thisObj, depth));
+            return new UnspecializedHasPropertyCacheNode(createJSClassCheck(thisObj, proto, depth));
         }
         return null;
     }

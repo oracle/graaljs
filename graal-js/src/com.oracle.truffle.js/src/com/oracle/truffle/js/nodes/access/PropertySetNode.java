@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1027,17 +1027,17 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
      * @param property The particular entry of the property being accessed.
      */
     @Override
-    protected SetCacheNode createCachedPropertyNode(Property property, Object thisObj, int depth, Object value, SetCacheNode currentHead) {
+    protected SetCacheNode createCachedPropertyNode(Property property, Object thisObj, JSDynamicObject proto, int depth, Object value, SetCacheNode currentHead) {
         if (JSDynamicObject.isJSDynamicObject(thisObj)) {
-            return createCachedPropertyNodeJSObject(property, (JSDynamicObject) thisObj, depth, value);
+            return createCachedPropertyNodeJSObject(property, (JSDynamicObject) thisObj, proto, depth, value);
         } else {
-            return createCachedPropertyNodeNotJSObject(property, thisObj, depth);
+            return createCachedPropertyNodeNotJSObject(property, thisObj, proto, depth);
         }
     }
 
-    private SetCacheNode createCachedPropertyNodeJSObject(Property property, JSDynamicObject thisObj, int depth, Object value) {
+    private SetCacheNode createCachedPropertyNodeJSObject(Property property, JSDynamicObject thisObj, JSDynamicObject proto, int depth, Object value) {
         Shape cacheShape = thisObj.getShape();
-        AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisObj, depth, false, false);
+        AbstractShapeCheckNode shapeCheck = createShapeCheckNode(cacheShape, thisObj, proto, depth, false, false);
 
         // isOwnProperty() means CreateDataProperty, i.e., we must redefine
         // the property when the current flags do not match data property and
@@ -1047,14 +1047,14 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         }
 
         if (JSProperty.isData(property)) {
-            return createCachedDataPropertyNodeJSObject(thisObj, depth, value, shapeCheck, property);
+            return createCachedDataPropertyNodeJSObject(thisObj, proto, depth, value, shapeCheck, property);
         } else {
             assert JSProperty.isAccessor(property);
             return new AccessorPropertySetNode(property, shapeCheck, isStrict());
         }
     }
 
-    private SetCacheNode createCachedDataPropertyNodeJSObject(JSDynamicObject thisObj, int depth, Object value, AbstractShapeCheckNode shapeCheck, Property property) {
+    private SetCacheNode createCachedDataPropertyNodeJSObject(JSDynamicObject thisObj, JSDynamicObject proto, int depth, Object value, AbstractShapeCheckNode shapeCheck, Property property) {
         assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isConstant() && property.getLocation().getConstantValue() == Dead.instance()) : "const assignment";
         if (!JSProperty.isWritable(property) || JSProperty.isModuleNamespaceExport(property)) {
             return new ReadOnlyPropertySetNode(shapeCheck, isStrict());
@@ -1065,7 +1065,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             // define a new own property, shadowing an existing prototype property
             // NB: must have a guarding test that the inherited property is writable
             assert JSProperty.isWritable(property);
-            return createUndefinedPropertyNode(thisObj, thisObj, depth, value);
+            return createUndefinedPropertyNode(thisObj, thisObj, proto, depth, value);
         } else if (JSProperty.isProxy(property)) {
             if (isArrayLengthProperty(property) && JSArray.isJSFastArray(thisObj)) {
                 return new ArrayLengthPropertySetNode(property, shapeCheck, isStrict());
@@ -1114,8 +1114,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         return new DataPropertyPutWithoutFlagsNode(key, shapeCheck);
     }
 
-    private SetCacheNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, int depth) {
-        ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth);
+    private SetCacheNode createCachedPropertyNodeNotJSObject(Property property, Object thisObj, JSDynamicObject proto, int depth) {
+        ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, proto, depth);
 
         if (JSProperty.isData(property)) {
             return new ReadOnlyPropertySetNode(receiverCheck, isStrict());
@@ -1126,8 +1126,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     @Override
-    protected SetCacheNode createUndefinedPropertyNode(Object thisObj, Object store, int depth, Object value) {
-        SetCacheNode specialized = createJavaPropertyNodeMaybe(thisObj, depth);
+    protected SetCacheNode createUndefinedPropertyNode(Object thisObj, Object store, JSDynamicObject proto, int depth, Object value) {
+        SetCacheNode specialized = createJavaPropertyNodeMaybe(thisObj, proto, depth);
         if (specialized != null) {
             return specialized;
         }
@@ -1135,24 +1135,24 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             JSDynamicObject thisJSObj = (JSDynamicObject) thisObj;
             Shape cacheShape = thisJSObj.getShape();
             if (JSAdapter.isJSAdapter(store)) {
-                return new JSAdapterPropertySetNode(createJSClassCheck(thisObj, depth));
+                return new JSAdapterPropertySetNode(createJSClassCheck(thisObj, proto, depth));
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
-                return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, depth), isStrict());
+                return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, proto, depth), isStrict());
             } else if (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString) && JSRuntime.canonicalNumericIndexString((TruffleString) key) != Undefined.instance) {
                 assert !JSArrayBufferView.isValidIntegerIndex((JSDynamicObject) store, (Number) JSRuntime.canonicalNumericIndexString((TruffleString) key));
-                return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false), false);
+                return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false), false);
             } else if (!JSRuntime.isObject(thisJSObj)) {
-                return new TypeErrorPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, true));
+                return new TypeErrorPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, true));
             } else if (superProperty) {
                 // define the property on the receiver; currently not handled, rewrite to generic
                 return createGenericPropertyNode();
             } else if (JSShape.isExtensible(cacheShape) || key instanceof HiddenKey) {
-                return createDefineNewPropertyNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, true));
+                return createDefineNewPropertyNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, true));
             } else {
-                return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, depth, false, false), isStrict());
+                return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false), isStrict());
             }
         } else if (JSProxy.isJSProxy(store)) {
-            ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, depth);
+            ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, proto, depth);
             return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
         } else {
             boolean doThrow = isStrict();
@@ -1165,7 +1165,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     }
 
     @Override
-    protected SetCacheNode createJavaPropertyNodeMaybe(Object thisObj, int depth) {
+    protected SetCacheNode createJavaPropertyNodeMaybe(Object thisObj, JSDynamicObject proto, int depth) {
         return null;
     }
 
