@@ -192,7 +192,14 @@ public final class JSShape {
         return getSharedData(shape).getContext();
     }
 
+    public static boolean isObjectPrototype(Shape shape) {
+        return getJSClassNoCast(shape) == JSObjectPrototype.INSTANCE;
+    }
+
     public static Assumption getPrototypeAssumption(Shape shape) {
+        if (isObjectPrototype(shape)) {
+            return Assumption.ALWAYS_VALID;
+        }
         return getSharedData(shape).getPrototypeAssumption();
     }
 
