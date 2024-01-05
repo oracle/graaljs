@@ -893,11 +893,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected abstract T createGenericPropertyNode();
 
-    protected abstract T createCachedPropertyNode(Property entry, Object thisObj, int depth, Object value, T currentHead);
+    protected abstract T createCachedPropertyNode(Property entry, Object thisObj, JSDynamicObject proto, int depth, Object value, T currentHead);
 
-    protected abstract T createUndefinedPropertyNode(Object thisObj, Object store, int depth, Object value);
+    protected abstract T createUndefinedPropertyNode(Object thisObj, Object store, JSDynamicObject proto, int depth, Object value);
 
-    protected abstract T createJavaPropertyNodeMaybe(Object thisObj, int depth);
+    protected abstract T createJavaPropertyNodeMaybe(Object thisObj, JSDynamicObject proto, int depth);
 
     protected abstract T createTruffleObjectPropertyNode();
 
@@ -1027,13 +1027,13 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             }
 
             if (property != null) {
-                specialized = createCachedPropertyNode(property, thisObj, depth, value, currentHead);
+                specialized = createCachedPropertyNode(property, thisObj, store, depth, value, currentHead);
                 if (specialized == null) {
                     return null;
                 }
                 break;
             } else if (alwaysUseStore(store, key)) {
-                specialized = createUndefinedPropertyNode(thisObj, store, depth, value);
+                specialized = createUndefinedPropertyNode(thisObj, store, store, depth, value);
                 break;
             } else if (isOwnProperty()) {
                 break;
@@ -1053,7 +1053,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         // e.g. depth == 3 for obj0 -> proto1 -> proto2 -> null.
 
         if (specialized == null) {
-            specialized = createUndefinedPropertyNode(thisObj, thisObj, depth, value);
+            specialized = createUndefinedPropertyNode(thisObj, thisObj, Null.instance, depth, value);
         }
 
         if (cachedCount >= context.getPropertyCacheLimit() || specialized.isGeneric()) {
@@ -1248,11 +1248,11 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return JSObject.isJSObject(wrapper) ? ((JSObject) wrapper) : null;
     }
 
-    protected final AbstractShapeCheckNode createShapeCheckNode(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal, boolean isDefine) {
+    protected final AbstractShapeCheckNode createShapeCheckNode(Shape shape, JSDynamicObject thisObj, JSDynamicObject proto, int depth, boolean isConstantObjectFinal, boolean isDefine) {
         if (depth == 0) {
             return createShapeCheckNodeDepth0(shape, thisObj, isConstantObjectFinal, isDefine);
         } else {
-            return createShapeCheckNodeDeeper(shape, thisObj, depth, isConstantObjectFinal);
+            return createShapeCheckNodeDeeper(shape, thisObj, proto, depth, isConstantObjectFinal);
         }
     }
 
@@ -1267,9 +1267,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    private AbstractShapeCheckNode createShapeCheckNodeDeeper(Shape shape, JSDynamicObject thisObj, int depth, boolean isConstantObjectFinal) {
+    private AbstractShapeCheckNode createShapeCheckNodeDeeper(Shape shape, JSDynamicObject thisObj, JSDynamicObject protoAtDepth, int depth, boolean isConstantObjectFinal) {
         assert depth >= 1;
-        JSDynamicObject protoAtDepth = getPrototypeAtDepth(thisObj, depth);
+        assert protoAtDepth == getPrototypeAtDepth(thisObj, depth);
         boolean allPrototypesInShape = prototypesInShape(thisObj, 0, depth);
         if (JSConfig.SkipPrototypeShapeCheck && allPrototypesInShape && propertyAssumptionsValid(thisObj, depth, isConstantObjectFinal)) {
             if (isConstantObjectFinal) {
@@ -1355,14 +1355,14 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         return true;
     }
 
-    protected final ReceiverCheckNode createPrimitiveReceiverCheck(Object thisObj, int depth) {
+    protected final ReceiverCheckNode createPrimitiveReceiverCheck(Object thisObj, JSDynamicObject protoAtDepth, int depth) {
         Class<?> valueClass = thisObj.getClass();
         if (depth == 0) {
             return new InstanceofCheckNode(valueClass);
         } else {
             assert JSRuntime.isJSPrimitive(thisObj) || thisObj instanceof Long;
             JSDynamicObject wrapped = wrapPrimitive(thisObj);
-            JSDynamicObject protoAtDepth = getPrototypeAtDepth(wrapped, depth);
+            assert protoAtDepth == getPrototypeAtDepth(wrapped, depth);
             boolean allPrototypesInShape = prototypesInShape(wrapped, 0, depth);
             if (JSConfig.SkipPrototypeShapeCheck && allPrototypesInShape && propertyAssumptionsValid(wrapped, depth, false)) {
                 return ValuePrototypeChainCheckNode.create(valueClass, wrapped.getShape(), wrapped, key, depth, context);
@@ -1376,12 +1376,12 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
         }
     }
 
-    protected final ReceiverCheckNode createJSClassCheck(Object thisObj, int depth) {
+    protected final ReceiverCheckNode createJSClassCheck(Object thisObj, JSDynamicObject proto, int depth) {
         JSDynamicObject jsobject = (JSDynamicObject) thisObj;
         if (depth == 0) {
             return new InstanceofCheckNode(jsobject.getClass());
         } else {
-            return createShapeCheckNode(jsobject.getShape(), jsobject, depth, false, false);
+            return createShapeCheckNode(jsobject.getShape(), jsobject, proto, depth, false, false);
         }
     }
 
