@@ -373,7 +373,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             JSDynamicObject depthProto = thisObj;
             for (int i = 0; i < depth; i++) {
                 Assumption stablePrototypeAssumption = i == 0 ? null : JSShape.getPrototypeAssumption(depthShape);
-                if (stablePrototypeAssumption != null) {
+                if (stablePrototypeAssumption != null && stablePrototypeAssumption != Assumption.ALWAYS_VALID) {
                     ass[pos++] = stablePrototypeAssumption;
                 }
                 depthProto = JSObject.getPrototype(depthProto);
@@ -466,7 +466,9 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             JSDynamicObject depthProto = thisObj;
             for (int i = 0; i < depth; i++) {
                 Assumption stablePrototypeAssumption = JSShape.getPrototypeAssumption(depthShape);
-                ass[pos++] = stablePrototypeAssumption;
+                if (stablePrototypeAssumption != Assumption.ALWAYS_VALID) {
+                    ass[pos++] = stablePrototypeAssumption;
+                }
                 depthProto = JSObject.getPrototype(depthProto);
                 depthShape = depthProto.getShape();
                 if (depthProto != Null.instance) {
@@ -666,7 +668,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
             JSDynamicObject depthProto = thisObj;
             for (int i = 0; i < depth; i++) {
                 Assumption stablePrototypeAssumption = i == 0 ? null : JSShape.getPrototypeAssumption(depthShape);
-                if (stablePrototypeAssumption != null) {
+                if (stablePrototypeAssumption != null && stablePrototypeAssumption != Assumption.ALWAYS_VALID) {
                     ass[pos++] = stablePrototypeAssumption;
                 }
                 depthProto = JSObject.getPrototype(depthProto);
