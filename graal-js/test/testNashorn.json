@@ -482,13 +482,6 @@
     "filePath" : "basic/JDK-8133119.js",
     "status" : "FAIL"
   }, {
-    "filePath" : "basic/JDK-8134569.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "SHARED_ENGINE" : "FAIL"
-    },
-    "comment" : "Currently failing in shared-engine mode (GR-44414)"
-  }, {
     "filePath" : "basic/JDK-8134609.js",
     "status" : "FAIL"
   }, {
