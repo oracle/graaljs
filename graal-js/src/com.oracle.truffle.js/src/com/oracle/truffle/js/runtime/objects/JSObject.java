@@ -645,16 +645,6 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
         return JSObject.getJSClass(obj).getClassName(obj);
     }
 
-    @TruffleBoundary
-    public static boolean isFrozen(JSDynamicObject obj) {
-        return testIntegrityLevel(obj, true);
-    }
-
-    @TruffleBoundary
-    public static boolean isSealed(JSDynamicObject obj) {
-        return testIntegrityLevel(obj, false);
-    }
-
     @NeverDefault
     public static ScriptArray getArray(JSDynamicObject obj) {
         assert hasArray(obj);
@@ -676,11 +666,6 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
 
     public static JSContext getJSContext(JSDynamicObject obj) {
         return JSShape.getJSContext(obj.getShape());
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public static boolean testIntegrityLevel(JSDynamicObject obj, boolean frozen) {
-        return JSObject.getJSClass(obj).testIntegrityLevel(obj, frozen);
     }
 
     @TruffleBoundary

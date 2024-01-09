@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -135,13 +135,16 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.PropertyProxy;
@@ -151,7 +154,7 @@ import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
- * Contains builtins for {@linkplain JSDynamicObject} function (constructor).
+ * Contains builtins for {@code Object} function (constructor).
  */
 public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<ObjectFunctionBuiltins.ObjectFunction> {
     public static final JSBuiltinsContainer BUILTINS = new ObjectFunctionBuiltins();
@@ -737,52 +740,104 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     /**
-     * Implementing isFrozen, isSealed via testIntegrityLevel().
-     *
+     * Implements {@code Object.isFrozen} and {@code Object.isSealed} (a.k.a. TestIntegrityLevel).
      */
+    @ImportStatic({CompilerDirectives.class, JSShape.class})
     public abstract static class ObjectTestIntegrityLevelNode extends ObjectOperation {
         private final boolean frozen;
-        private final ConditionProfile isObject = ConditionProfile.create();
 
         public ObjectTestIntegrityLevelNode(JSContext context, JSBuiltin builtin, boolean frozen) {
             super(context, builtin);
             this.frozen = frozen;
         }
 
+        @Specialization(guards = "usesOrdinaryGetOwnProperty(thisObj.getShape())")
+        protected final boolean doJSObjectFast(JSObject thisObj) {
+            return JSNonProxy.testIntegrityLevelFast(thisObj, frozen);
+        }
+
         @Specialization
-        protected boolean testIntegrityLevel(Object thisObj) {
-            if (isObject.profile(JSRuntime.isObject(thisObj))) {
-                return JSObject.testIntegrityLevel((JSDynamicObject) thisObj, frozen);
-            } else {
-                if (getContext().getEcmaScriptVersion() < 6) {
-                    throw createTypeErrorCalledOnNonObject(thisObj);
-                }
-                return true;
+        protected final boolean doJSArray(JSArrayObject thisObj) {
+            return thisObj.testIntegrityLevel(frozen);
+        }
+
+        @Specialization
+        protected final boolean doJSTypedArray(JSTypedArrayObject thisObj) {
+            return thisObj.testIntegrityLevel(frozen);
+        }
+
+        @Specialization(guards = {"isExact(thisObj, cachedClass)"}, limit = "5")
+        protected final boolean doJSObjectCached(JSObject thisObj,
+                        @Cached("thisObj.getClass()") Class<? extends JSObject> cachedClass) {
+            return doJSObject(cachedClass.cast(thisObj));
+        }
+
+        @Specialization(replaces = "doJSObjectCached")
+        protected final boolean doJSObject(JSObject thisObj) {
+            return thisObj.testIntegrityLevel(frozen);
+        }
+
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected final boolean doNotJSObject(Object thisObj) {
+            if (getContext().getEcmaScriptVersion() < 6) {
+                throw createTypeErrorCalledOnNonObject(thisObj);
             }
+            return true;
         }
     }
 
     /**
-     * SetIntegrityLevel, implements freeze() and seal().
-     *
+     * Implements {@code Object.freeze} and {@code Object.seal} (a.k.a. SetIntegrityLevel).
      */
+    @ImportStatic({CompilerDirectives.class, JSShape.class})
     public abstract static class ObjectSetIntegrityLevelNode extends ObjectOperation {
         private final boolean freeze;
-        private final ConditionProfile isObject = ConditionProfile.create();
 
         public ObjectSetIntegrityLevelNode(JSContext context, JSBuiltin builtin, boolean freeze) {
             super(context, builtin);
             this.freeze = freeze;
         }
 
+        @Specialization(guards = "usesOrdinaryGetOwnProperty(thisObj.getShape())")
+        protected final Object doJSObjectFast(JSObject thisObj) {
+            if (!JSNonProxy.testIntegrityLevelFast(thisObj, freeze)) {
+                JSNonProxy.setIntegrityLevelFast(thisObj, freeze);
+            }
+            return thisObj;
+        }
+
         @Specialization
-        protected Object setIntegrityLevel(Object thisObj) {
-            if (isObject.profile(JSRuntime.isObject(thisObj))) {
-                JSObject.setIntegrityLevel((JSDynamicObject) thisObj, freeze, true);
-            } else {
-                if (getContext().getEcmaScriptVersion() < 6) {
-                    throw createTypeErrorCalledOnNonObject(thisObj);
-                }
+        protected final Object doJSArray(JSArrayObject thisObj) {
+            if (!thisObj.testIntegrityLevel(freeze)) {
+                thisObj.setIntegrityLevel(freeze, true);
+            }
+            return thisObj;
+        }
+
+        @Specialization
+        protected final Object doJSTypedArray(JSTypedArrayObject thisObj) {
+            if (!thisObj.testIntegrityLevel(freeze)) {
+                thisObj.setIntegrityLevel(freeze, true);
+            }
+            return thisObj;
+        }
+
+        @Specialization(guards = {"isExact(thisObj, cachedClass)"}, limit = "5")
+        protected final Object doJSObjectCached(JSObject thisObj,
+                        @Cached("thisObj.getClass()") Class<? extends JSObject> cachedClass) {
+            return doJSObject(cachedClass.cast(thisObj));
+        }
+
+        @Specialization(replaces = "doJSObjectCached")
+        protected final Object doJSObject(JSObject thisObj) {
+            thisObj.setIntegrityLevel(freeze, true);
+            return thisObj;
+        }
+
+        @Specialization(guards = "!isJSObject(thisObj)")
+        protected final Object doNotJSObject(Object thisObj) {
+            if (getContext().getEcmaScriptVersion() < 6) {
+                throw createTypeErrorCalledOnNonObject(thisObj);
             }
             return thisObj;
         }
