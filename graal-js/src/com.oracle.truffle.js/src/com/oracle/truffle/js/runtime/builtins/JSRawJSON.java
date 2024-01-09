@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,8 +78,7 @@ public final class JSRawJSON extends JSNonProxy {
     }
 
     public static Shape makeInitialShape(JSContext context) {
-        Shape initialShape = JSShape.newBuilder(context, INSTANCE, Null.instance).//
-                        shapeFlags(JSShape.FROZEN_FLAGS).//
+        Shape initialShape = JSShape.newBuilder(context, INSTANCE, Null.instance, JSShape.FROZEN_FLAGS).//
                         addConstantProperty(JSObject.HIDDEN_PROTO, Null.instance, 0).//
                         addConstantProperty(Strings.RAW_JSON, RAW_JSON_PROXY, JSProperty.PROXY | JSAttributes.notConfigurableEnumerableNotWritable()).//
                         build();
