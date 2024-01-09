@@ -102,7 +102,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
         return getJSSharedData(this).getContext();
     }
 
-    public JSClass getJSClass() {
+    public final JSClass getJSClass() {
         return (JSClass) getDynamicType(this);
     }
 
