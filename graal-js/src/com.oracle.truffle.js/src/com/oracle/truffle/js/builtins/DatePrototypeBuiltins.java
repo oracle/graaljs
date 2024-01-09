@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,16 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDateNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateGetDayNodeGen;
@@ -80,6 +86,7 @@ import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStrin
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateToTimeStringNodeGen;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltinsFactory.JSDateValueOfNodeGen;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
@@ -900,9 +907,6 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
     public abstract static class JSDateToPrimitiveNode extends JSBuiltinNode {
 
-        @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveHintNumber;
-        @Child private OrdinaryToPrimitiveNode ordinaryToPrimitiveHintString;
-
         public JSDateToPrimitiveNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
@@ -910,24 +914,42 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Specialization
         protected final Object toPrimitive(Object obj, Object hint,
                         @Cached IsObjectNode isObjectNode,
-                        @Cached InlinedConditionProfile isHintNumber,
-                        @Cached InlinedConditionProfile isHintStringOrDefault) {
-            if (!isObjectNode.executeBoolean(obj)) {
+                        @Cached DateToPrimitiveHelperNode dateToPrimitiveHelper,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (isObjectNode.executeBoolean(obj)) {
+                return dateToPrimitiveHelper.execute(this, obj, hint);
+            } else {
+                errorBranch.enter(this);
                 throw Errors.createTypeErrorNotAnObject(obj);
             }
-            if (isHintNumber.profile(this, Strings.HINT_NUMBER.equals(hint))) {
-                if (ordinaryToPrimitiveHintNumber == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ordinaryToPrimitiveHintNumber = insert(OrdinaryToPrimitiveNode.createHintNumber());
-                }
+        }
+
+        @GenerateInline
+        @GenerateCached(false)
+        @ImportStatic(Strings.class)
+        abstract static class DateToPrimitiveHelperNode extends JavaScriptBaseNode {
+
+            abstract Object execute(Node node, Object obj, Object hint);
+
+            @SuppressWarnings("unused")
+            @Specialization(guards = {"equals(strEqual, HINT_NUMBER, hint)"})
+            static Object toPrimitiveHintNumber(Object obj, TruffleString hint,
+                            @Cached @Shared TruffleString.EqualNode strEqual,
+                            @Cached("createHintNumber()") OrdinaryToPrimitiveNode ordinaryToPrimitiveHintNumber) {
                 return ordinaryToPrimitiveHintNumber.execute(obj);
-            } else if (isHintStringOrDefault.profile(this, Strings.HINT_STRING.equals(hint) || Strings.HINT_DEFAULT.equals(hint))) {
-                if (ordinaryToPrimitiveHintString == null) {
-                    CompilerDirectives.transferToInterpreterAndInvalidate();
-                    ordinaryToPrimitiveHintString = insert(OrdinaryToPrimitiveNode.createHintString());
-                }
+            }
+
+            @SuppressWarnings("unused")
+            @Specialization(guards = {"equals(strEqual, HINT_STRING, hint) || equals(strEqual, HINT_DEFAULT, hint)"})
+            static Object toPrimitiveHintStringOrDefault(Object obj, TruffleString hint,
+                            @Cached @Shared TruffleString.EqualNode strEqual,
+                            @Cached("createHintString()") OrdinaryToPrimitiveNode ordinaryToPrimitiveHintString) {
                 return ordinaryToPrimitiveHintString.execute(obj);
-            } else {
+            }
+
+            @Fallback
+            static Object invalidHint(@SuppressWarnings("unused") Object obj, Object hint) {
+                assert !(Strings.HINT_STRING.equals(hint) || Strings.HINT_NUMBER.equals(hint) || Strings.HINT_DEFAULT.equals(hint)) : hint;
                 throw Errors.createTypeError("invalid hint");
             }
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,6 +82,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
+import com.oracle.truffle.js.runtime.builtins.JSGlobal;
+import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -91,7 +93,7 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 /**
  * 11.4.1 The delete Operator ({@code delete object[property]}).
  */
-@ImportStatic(JSConfig.class)
+@ImportStatic({JSConfig.class, JSGlobal.class})
 @NodeInfo(shortName = "delete")
 public abstract class DeletePropertyNode extends JSTargetableNode {
     protected final boolean strict;
@@ -194,8 +196,15 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         }
     }
 
+    @Specialization
+    protected final boolean doJSGlobalObject(JSGlobalObject targetObject, Object key,
+                    @Shared("toPropertyKey") @Cached JSToPropertyKeyNode toPropertyKeyNode,
+                    @CachedLibrary(limit = "InteropLibraryLimit") DynamicObjectLibrary dynamicObjectLib) {
+        return doJSOrdinaryObject(targetObject, key, toPropertyKeyNode, dynamicObjectLib);
+    }
+
     @SuppressWarnings("truffle-static-method")
-    @Specialization(guards = {"!isJSOrdinaryObject(targetObject)"})
+    @Specialization(guards = {"!isJSOrdinaryObject(targetObject)", "!isJSGlobalObject(targetObject)"})
     protected final boolean doJSObject(JSDynamicObject targetObject, Object key,
                     @Bind("this") Node node,
                     @Cached("createIsFastArray()") IsArrayNode isArrayNode,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -121,14 +122,17 @@ public abstract class OrdinaryToPrimitiveNode extends JavaScriptBaseNode {
         }
     }
 
+    @NeverDefault
     public static OrdinaryToPrimitiveNode createHintString() {
         return create(Hint.String);
     }
 
+    @NeverDefault
     public static OrdinaryToPrimitiveNode createHintNumber() {
         return create(Hint.Number);
     }
 
+    @NeverDefault
     public static OrdinaryToPrimitiveNode create(Hint hint) {
         return OrdinaryToPrimitiveNodeGen.create(hint);
     }
