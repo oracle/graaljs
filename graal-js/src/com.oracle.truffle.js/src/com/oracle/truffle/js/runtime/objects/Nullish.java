@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -124,10 +124,6 @@ public final class Nullish extends JSDynamicObject {
         return false;
     }
 
-    static JSException typeError() {
-        return Errors.createTypeError("not an object");
-    }
-
     @TruffleBoundary
     static JSException cannotDoPropertyOf(String doWhat, Object index, Object thisObj) {
         return Errors.createTypeErrorFormat("Cannot %s property \"%s\" of %s", doWhat, index, JSRuntime.safeToString(thisObj));
@@ -162,12 +158,12 @@ public final class Nullish extends JSDynamicObject {
 
     @Override
     public boolean hasOwnProperty(Object propName) {
-        throw typeError();
+        throw Errors.createTypeErrorNotAnObject(this);
     }
 
     @Override
     public boolean hasOwnProperty(long propIdx) {
-        throw typeError();
+        throw Errors.createTypeErrorNotAnObject(this);
     }
 
     @Override
@@ -219,12 +215,12 @@ public final class Nullish extends JSDynamicObject {
 
     @Override
     public boolean preventExtensions(boolean doThrow) {
-        throw typeError();
+        throw Errors.createTypeErrorNotAnObject(this);
     }
 
     @Override
     public boolean isExtensible() {
-        throw typeError();
+        throw Errors.createTypeErrorNotAnObject(this);
     }
 
     @Override
@@ -244,7 +240,7 @@ public final class Nullish extends JSDynamicObject {
 
     @Override
     public PropertyDescriptor getOwnProperty(Object propertyKey) {
-        throw typeError();
+        throw Errors.createTypeErrorNotAnObject(this);
     }
 
     @TruffleBoundary
