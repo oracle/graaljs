@@ -193,4 +193,9 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
         JSObject.setArray(this, strategy);
         return;
     }
+
+    @Override
+    public boolean testIntegrityLevel(boolean frozen) {
+        return super.testIntegrityLevelArray(frozen);
+    }
 }

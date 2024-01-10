@@ -176,9 +176,4 @@ public abstract class JSClassObject extends JSObject {
         return getJSClass().setIntegrityLevel(this, freeze, doThrow);
     }
 
-    @Override
-    public boolean testIntegrityLevel(boolean frozen) {
-        return getJSClass().testIntegrityLevel(this, frozen);
-    }
-
 }

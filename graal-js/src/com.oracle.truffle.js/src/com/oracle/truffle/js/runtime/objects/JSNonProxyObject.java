@@ -49,6 +49,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 
 /**
  * Basic non-proxy JS object.
@@ -89,6 +90,14 @@ public abstract class JSNonProxyObject extends JSClassObject {
     @Override
     public final boolean isExtensible() {
         return JSNonProxy.ordinaryIsExtensible(this);
+    }
+
+    @Override
+    public boolean testIntegrityLevel(boolean frozen) {
+        if (JSShape.usesOrdinaryGetOwnProperty(getShape())) {
+            return JSNonProxy.testIntegrityLevelFast(this, frozen);
+        }
+        return super.testIntegrityLevel(frozen);
     }
 
 }
