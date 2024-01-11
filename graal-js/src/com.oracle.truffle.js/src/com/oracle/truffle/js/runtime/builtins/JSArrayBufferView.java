@@ -502,6 +502,7 @@ public final class JSArrayBufferView extends JSNonProxy {
         if (freeze && typedArrayGetLength(thisObj) > 0) {
             throw Errors.createTypeErrorCannotRedefineTypedArrayElement();
         }
+        super.setIntegrityLevelFast(thisObj, freeze);
         return true;
     }
 
