@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -181,7 +181,7 @@ public final class JSSlowArray extends JSAbstractArray {
     @TruffleBoundary
     @Override
     public boolean setLength(JSDynamicObject thisObj, long length, boolean doThrow) {
-        if (testIntegrityLevel(thisObj, true)) {
+        if (thisObj.testIntegrityLevel(true)) {
             throw Errors.createTypeError("cannot set length of a frozen array");
         }
         long oldLen = getLength(thisObj);

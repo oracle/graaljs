@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 /**
@@ -103,9 +102,9 @@ public abstract class GetTemplateObjectNode extends JavaScriptNode {
     private JSArrayObject buildTemplateObject(VirtualFrame frame) {
         JSArrayObject template = cookedStrings.execute(frame);
         JSArrayObject rawObj = rawStrings.execute(frame);
-        JSObject.setIntegrityLevel(rawObj, true);
+        rawObj.setIntegrityLevel(true, true);
         JSObjectUtil.putDataProperty(template, Strings.RAW, rawObj, JSAttributes.notConfigurableNotEnumerableNotWritable());
-        JSObject.setIntegrityLevel(template, true);
+        template.setIntegrityLevel(true, true);
         return template;
     }
 

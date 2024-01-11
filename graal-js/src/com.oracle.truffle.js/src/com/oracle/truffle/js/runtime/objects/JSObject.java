@@ -668,14 +668,4 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
         return JSShape.getJSContext(obj.getShape());
     }
 
-    @TruffleBoundary
-    public static boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze) {
-        return setIntegrityLevel(obj, freeze, false);
-    }
-
-    @TruffleBoundary
-    public static boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze, boolean doThrow) {
-        return JSObject.getJSClass(obj).setIntegrityLevel(obj, freeze, doThrow);
-    }
-
 }
