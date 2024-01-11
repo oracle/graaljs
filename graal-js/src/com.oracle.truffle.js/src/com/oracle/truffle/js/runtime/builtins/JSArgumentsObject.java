@@ -182,9 +182,4 @@ public class JSArgumentsObject extends JSArrayBase {
                     @Shared("elementInfo") @Cached ArrayElementInfoNode elements) {
         return elements.executeBoolean(this, index, ArrayElementInfoNode.INSERTABLE);
     }
-
-    @Override
-    public final boolean testIntegrityLevel(boolean frozen) {
-        return super.testIntegrityLevelArray(frozen);
-    }
 }

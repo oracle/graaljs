@@ -104,7 +104,8 @@ public abstract class JSArrayBase extends JSNonProxyObject {
         this.arrayStorage = Objects.requireNonNull(array);
     }
 
-    protected final boolean testIntegrityLevelArray(boolean frozen) {
+    @Override
+    public final boolean testIntegrityLevel(boolean frozen) {
         DynamicArray array = (DynamicArray) getArrayType();
         boolean arrayIs = frozen ? array.isFrozen() : array.isSealed();
         return arrayIs && JSNonProxy.testIntegrityLevelFast(this, frozen);
