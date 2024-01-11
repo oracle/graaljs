@@ -101,25 +101,25 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
     @TruffleBoundary
     @Override
     public boolean testIntegrityLevel(boolean frozen) {
-        for (ExportResolution binding : getExports().getValues()) {
-            // Check for uninitialized binding (throws ReferenceError)
-            JSModuleNamespace.getBindingValue(binding);
-            if (frozen) {
-                return false;
-            }
-        }
-        return true;
+        return testIntegrityLevel(frozen, false);
     }
 
     @Override
     @TruffleBoundary
     public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+        return testIntegrityLevel(freeze, true);
+    }
+
+    private boolean testIntegrityLevel(boolean frozen, boolean doThrow) {
         for (ExportResolution binding : getExports().getValues()) {
             // Check for uninitialized binding (throws ReferenceError)
             JSModuleNamespace.getBindingValue(binding);
-            if (freeze) {
-                // ReferenceError if the first binding is uninitialized, TypeError otherwise
-                throw Errors.createTypeError("not allowed to freeze a namespace object");
+            if (frozen) {
+                if (doThrow) {
+                    // ReferenceError if the first binding is uninitialized, TypeError otherwise
+                    throw Errors.createTypeError("not allowed to freeze a namespace object");
+                }
+                return false;
             }
         }
         return true;
