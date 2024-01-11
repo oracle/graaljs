@@ -268,33 +268,6 @@ public final class JSModuleNamespace extends JSNonProxy {
         return obj instanceof JSModuleNamespaceObject;
     }
 
-    @Override
-    @TruffleBoundary
-    public boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze, boolean doThrow) {
-        for (ExportResolution binding : getExports(obj).getValues()) {
-            // Check for uninitialized binding (throws ReferenceError)
-            getBindingValue(binding);
-            if (freeze) {
-                // ReferenceError if the first binding is uninitialized, TypeError otherwise
-                throw Errors.createTypeError("not allowed to freeze a namespace object");
-            }
-        }
-        return true;
-    }
-
-    @TruffleBoundary
-    @Override
-    public boolean testIntegrityLevel(JSDynamicObject obj, boolean frozen) {
-        for (ExportResolution binding : getExports(obj).getValues()) {
-            // Check for uninitialized binding (throws ReferenceError)
-            getBindingValue(binding);
-            if (frozen) {
-                return false;
-            }
-        }
-        return true;
-    }
-
     @TruffleBoundary
     @Override
     public boolean set(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {

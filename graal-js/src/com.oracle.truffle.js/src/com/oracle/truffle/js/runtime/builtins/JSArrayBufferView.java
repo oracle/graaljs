@@ -496,24 +496,6 @@ public final class JSArrayBufferView extends JSNonProxy {
         return true;
     }
 
-    @Override
-    public boolean setIntegrityLevel(JSDynamicObject thisObj, boolean freeze, boolean doThrow) {
-        preventExtensions(thisObj, doThrow);
-        if (freeze && typedArrayGetLength(thisObj) > 0) {
-            throw Errors.createTypeErrorCannotRedefineTypedArrayElement();
-        }
-        super.setIntegrityLevelFast(thisObj, freeze);
-        return true;
-    }
-
-    @Override
-    public boolean testIntegrityLevel(JSDynamicObject thisObj, boolean frozen) {
-        if (frozen && typedArrayGetLength(thisObj) > 0) {
-            return false;
-        }
-        return super.testIntegrityLevelFast(thisObj, frozen);
-    }
-
     @TruffleBoundary
     @Override
     public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {

@@ -506,14 +506,6 @@ public abstract class JSNonProxy extends JSClass {
         return desc;
     }
 
-    @Override
-    public boolean setIntegrityLevel(JSDynamicObject thisObj, boolean freeze, boolean doThrow) {
-        if (usesOrdinaryGetOwnProperty()) {
-            return setIntegrityLevelFast(thisObj, freeze);
-        }
-        return super.setIntegrityLevel(thisObj, freeze, doThrow);
-    }
-
     @TruffleBoundary
     public static boolean setIntegrityLevelFast(JSDynamicObject thisObj, boolean freeze) {
         if (testIntegrityLevelFast(thisObj, freeze)) {
@@ -538,17 +530,6 @@ public abstract class JSNonProxy extends JSClass {
         boolean result = ordinaryPreventExtensions(thisObj, JSShape.SEALED_FLAG | (freeze ? JSShape.FROZEN_FLAG : 0));
         assert result && thisObj.testIntegrityLevel(freeze);
         return true;
-    }
-
-    /**
-     * ES2015 7.3.15 TestIntegrityLevel(O, level).
-     */
-    @Override
-    public boolean testIntegrityLevel(JSDynamicObject obj, boolean frozen) {
-        if (usesOrdinaryGetOwnProperty()) {
-            return testIntegrityLevelFast(obj, frozen);
-        }
-        return super.testIntegrityLevel(obj, frozen);
     }
 
     public static boolean testIntegrityLevelFast(JSDynamicObject obj, boolean frozen) {
