@@ -326,31 +326,43 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
         if (!preventExtensions(doThrow)) {
             return false;
         }
+
+        /**
+         * Extra class for lazy constants to break the following class initialization cycle:
+         * JSDynamicObject -> PropertyDescriptor -> Undefined -> Nullish -> JSDynamicObject.
+         */
+        final class Desc {
+            static final PropertyDescriptor NOT_CONFIGURABLE;
+            static final PropertyDescriptor NOT_CONFIGURABLE_NOT_WRITABLE;
+
+            static {
+                NOT_CONFIGURABLE = PropertyDescriptor.createEmpty();
+                NOT_CONFIGURABLE.setConfigurable(false);
+
+                NOT_CONFIGURABLE_NOT_WRITABLE = PropertyDescriptor.createEmpty();
+                NOT_CONFIGURABLE_NOT_WRITABLE.setConfigurable(false);
+                NOT_CONFIGURABLE_NOT_WRITABLE.setWritable(false);
+            }
+        }
+
         Iterable<Object> keys = ownPropertyKeys();
         if (freeze) {
             // FREEZE
-            PropertyDescriptor accDesc = PropertyDescriptor.createEmpty();
-            accDesc.setConfigurable(false);
-            PropertyDescriptor dataDesc = PropertyDescriptor.createEmpty();
-            dataDesc.setConfigurable(false);
-            dataDesc.setWritable(false);
-
             for (Object key : keys) {
                 PropertyDescriptor currentDesc = getOwnProperty(key);
                 if (currentDesc != null) {
-                    PropertyDescriptor newDesc = null;
+                    PropertyDescriptor desc;
                     if (currentDesc.isAccessorDescriptor()) {
-                        newDesc = accDesc;
+                        desc = Desc.NOT_CONFIGURABLE;
                     } else {
-                        newDesc = dataDesc;
+                        desc = Desc.NOT_CONFIGURABLE_NOT_WRITABLE;
                     }
-                    defineOwnProperty(key, newDesc, true);
+                    defineOwnProperty(key, desc, true);
                 }
             }
         } else {
             // SEAL
-            PropertyDescriptor desc = PropertyDescriptor.createEmpty();
-            desc.setConfigurable(false);
+            PropertyDescriptor desc = Desc.NOT_CONFIGURABLE;
             for (Object key : keys) {
                 defineOwnProperty(key, desc, true);
             }
