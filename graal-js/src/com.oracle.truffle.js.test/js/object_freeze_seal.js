@@ -38,3 +38,79 @@ assertFalse(Object.isExtensible(o2));
 assertTrue(Object.isSealed(o2));
 assertTrue(Object.isFrozen(o2));
 assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(o2, "1337")), `{"value":1337,"writable":false,"enumerable":true,"configurable":false}`);
+
+// Test Object.seal/freeze of typed array.
+
+var ta = new Int8Array(0);
+
+assertTrue(Object.isExtensible(ta));
+assertFalse(Object.isSealed(ta));
+assertFalse(Object.isFrozen(ta));
+
+Object.seal(ta);
+assertFalse(Object.isExtensible(ta));
+assertTrue(Object.isSealed(ta));
+assertTrue(Object.isFrozen(ta));
+
+Object.freeze(ta);
+assertFalse(Object.isExtensible(ta));
+assertTrue(Object.isSealed(ta));
+assertTrue(Object.isFrozen(ta));
+
+var ta = new Int8Array(0);
+ta.x = 42;
+
+assertTrue(Object.isExtensible(ta));
+assertFalse(Object.isSealed(ta));
+assertFalse(Object.isFrozen(ta));
+
+Object.seal(ta);
+assertFalse(Object.isExtensible(ta));
+assertTrue(Object.isSealed(ta));
+assertFalse(Object.isFrozen(ta));
+assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "x")), `{"value":42,"writable":true,"enumerable":true,"configurable":false}`);
+
+Object.freeze(ta);
+assertFalse(Object.isExtensible(ta));
+assertTrue(Object.isSealed(ta));
+assertTrue(Object.isFrozen(ta));
+assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "x")), `{"value":42,"writable":false,"enumerable":true,"configurable":false}`);
+
+var ta = new Int8Array(1);
+
+assertTrue(Object.isExtensible(ta));
+assertFalse(Object.isSealed(ta));
+assertFalse(Object.isFrozen(ta));
+
+Object.seal(ta);
+assertFalse(Object.isExtensible(ta));
+assertTrue(Object.isSealed(ta));
+assertFalse(Object.isFrozen(ta));
+assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "0")), `{"value":0,"writable":true,"enumerable":true,"configurable":true}`);
+
+try { Object.freeze(ta); } catch {}
+assertFalse(Object.isExtensible(ta));
+assertTrue(Object.isSealed(ta));
+assertFalse(Object.isFrozen(ta));
+assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "0")), `{"value":0,"writable":true,"enumerable":true,"configurable":true}`);
+
+var ta = new Int8Array(1);
+ta.x = 42;
+
+assertTrue(Object.isExtensible(ta));
+assertFalse(Object.isSealed(ta));
+assertFalse(Object.isFrozen(ta));
+
+Object.seal(ta);
+assertFalse(Object.isExtensible(ta));
+assertTrue(Object.isSealed(ta));
+assertFalse(Object.isFrozen(ta));
+assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "0")), `{"value":0,"writable":true,"enumerable":true,"configurable":true}`);
+assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "x")), `{"value":42,"writable":true,"enumerable":true,"configurable":false}`);
+
+try { Object.freeze(ta); } catch {}
+assertFalse(Object.isExtensible(ta));
+assertTrue(Object.isSealed(ta));
+assertFalse(Object.isFrozen(ta));
+assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "0")), `{"value":0,"writable":true,"enumerable":true,"configurable":true}`);
+assertEqual(JSON.stringify(Object.getOwnPropertyDescriptor(ta, "x")), `{"value":42,"writable":true,"enumerable":true,"configurable":false}`);
