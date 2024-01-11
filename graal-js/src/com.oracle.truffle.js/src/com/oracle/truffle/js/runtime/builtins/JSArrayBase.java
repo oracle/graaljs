@@ -42,6 +42,7 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
@@ -107,5 +108,14 @@ public abstract class JSArrayBase extends JSNonProxyObject {
         DynamicArray array = (DynamicArray) getArrayType();
         boolean arrayIs = frozen ? array.isFrozen() : array.isSealed();
         return arrayIs && JSNonProxy.testIntegrityLevelFast(this, frozen);
+    }
+
+    @TruffleBoundary
+    @Override
+    public final boolean preventExtensions(boolean doThrow) {
+        boolean result = super.preventExtensions(doThrow);
+        setArrayType(getArrayType().preventExtensions());
+        assert !isExtensible();
+        return result;
     }
 }

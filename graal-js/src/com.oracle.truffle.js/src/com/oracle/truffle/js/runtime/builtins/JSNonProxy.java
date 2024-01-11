@@ -535,7 +535,7 @@ public abstract class JSNonProxy extends JSClass {
             }
         }
         assert testSealedProperties(thisObj) && (!freeze || testFrozenProperties(thisObj));
-        boolean result = preventExtensionsImpl(thisObj, JSShape.SEALED_FLAG | (freeze ? JSShape.FROZEN_FLAG : 0));
+        boolean result = ordinaryPreventExtensions(thisObj, JSShape.SEALED_FLAG | (freeze ? JSShape.FROZEN_FLAG : 0));
         assert result && testIntegrityLevel(thisObj, freeze);
         return true;
     }
@@ -563,10 +563,10 @@ public abstract class JSNonProxy extends JSClass {
     @TruffleBoundary
     @Override
     public boolean preventExtensions(JSDynamicObject thisObj, boolean doThrow) {
-        return preventExtensionsImpl(thisObj, 0);
+        return ordinaryPreventExtensions(thisObj, 0);
     }
 
-    protected final boolean preventExtensionsImpl(JSDynamicObject thisObj, int extraFlags) {
+    public static boolean ordinaryPreventExtensions(JSDynamicObject thisObj, int extraFlags) {
         int objectFlags = JSDynamicObject.getObjectFlags(thisObj);
         if ((objectFlags & JSShape.NOT_EXTENSIBLE_FLAG) != 0 && ((objectFlags & extraFlags) == extraFlags)) {
             return true;
@@ -583,7 +583,7 @@ public abstract class JSNonProxy extends JSClass {
         if (newFlags != objectFlags) {
             JSDynamicObject.setObjectFlags(thisObj, newFlags);
         }
-        assert !isExtensible(thisObj);
+        assert !thisObj.isExtensible();
         return true;
     }
 

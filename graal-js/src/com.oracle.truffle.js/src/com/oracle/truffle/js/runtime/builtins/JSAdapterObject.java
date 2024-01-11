@@ -83,4 +83,9 @@ public final class JSAdapterObject extends JSClassObject {
     public boolean isExtensible() {
         return JSAdapter.INSTANCE.isExtensible(this);
     }
+
+    @Override
+    public boolean preventExtensions(boolean doThrow) {
+        return JSAdapter.INSTANCE.preventExtensions(this, doThrow);
+    }
 }

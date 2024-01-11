@@ -93,11 +93,15 @@ public abstract class JSNonProxyObject extends JSClassObject {
     }
 
     @Override
+    public boolean preventExtensions(boolean doThrow) {
+        return JSNonProxy.ordinaryPreventExtensions(this, 0);
+    }
+
+    @Override
     public boolean testIntegrityLevel(boolean frozen) {
         if (JSShape.usesOrdinaryGetOwnProperty(getShape())) {
             return JSNonProxy.testIntegrityLevelFast(this, frozen);
         }
         return super.testIntegrityLevel(frozen);
     }
-
 }

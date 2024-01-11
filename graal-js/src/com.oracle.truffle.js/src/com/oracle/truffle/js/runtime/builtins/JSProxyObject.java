@@ -151,6 +151,11 @@ public final class JSProxyObject extends JSClassObject {
         return JSProxy.INSTANCE.isExtensible(this);
     }
 
+    @Override
+    public boolean preventExtensions(boolean doThrow) {
+        return JSProxy.INSTANCE.preventExtensions(this, doThrow);
+    }
+
     @ExportLibrary(InteropLibrary.class)
     public static final class RevokedTarget implements TruffleObject {
         private final boolean isCallable;

@@ -72,11 +72,6 @@ public abstract class JSClassObject extends JSObject {
     }
 
     @Override
-    public boolean preventExtensions(boolean doThrow) {
-        return getJSClass().preventExtensions(this, doThrow);
-    }
-
-    @Override
     public PropertyDescriptor getOwnProperty(Object propertyKey) {
         return getJSClass().getOwnProperty(this, propertyKey);
     }
