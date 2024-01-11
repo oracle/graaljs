@@ -515,7 +515,7 @@ public abstract class JSNonProxy extends JSClass {
     }
 
     @TruffleBoundary
-    protected final boolean setIntegrityLevelFast(JSDynamicObject thisObj, boolean freeze) {
+    public static boolean setIntegrityLevelFast(JSDynamicObject thisObj, boolean freeze) {
         if (testIntegrityLevelFast(thisObj, freeze)) {
             return true;
         }
@@ -536,7 +536,7 @@ public abstract class JSNonProxy extends JSClass {
         }
         assert testSealedProperties(thisObj) && (!freeze || testFrozenProperties(thisObj));
         boolean result = ordinaryPreventExtensions(thisObj, JSShape.SEALED_FLAG | (freeze ? JSShape.FROZEN_FLAG : 0));
-        assert result && testIntegrityLevel(thisObj, freeze);
+        assert result && thisObj.testIntegrityLevel(freeze);
         return true;
     }
 

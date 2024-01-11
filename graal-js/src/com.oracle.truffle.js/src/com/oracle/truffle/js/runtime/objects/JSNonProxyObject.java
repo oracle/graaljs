@@ -104,4 +104,12 @@ public abstract class JSNonProxyObject extends JSClassObject {
         }
         return super.testIntegrityLevel(frozen);
     }
+
+    @Override
+    public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+        if (JSShape.usesOrdinaryGetOwnProperty(getShape())) {
+            return JSNonProxy.setIntegrityLevelFast(this, freeze);
+        }
+        return super.setIntegrityLevel(freeze, doThrow);
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -500,7 +500,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     public boolean setIntegrityLevel(JSDynamicObject thisObj, boolean freeze, boolean doThrow) {
         preventExtensions(thisObj, doThrow);
         if (freeze && typedArrayGetLength(thisObj) > 0) {
-            throwCannotRedefine();
+            throw Errors.createTypeErrorCannotRedefineTypedArrayElement();
         }
         return true;
     }
@@ -511,10 +511,6 @@ public final class JSArrayBufferView extends JSNonProxy {
             return false;
         }
         return super.testIntegrityLevelFast(thisObj, frozen);
-    }
-
-    private static void throwCannotRedefine() {
-        throw Errors.createTypeError("Cannot redefine a property of an object with external array elements");
     }
 
     @TruffleBoundary

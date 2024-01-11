@@ -224,6 +224,16 @@ public final class Nullish extends JSDynamicObject {
     }
 
     @Override
+    public boolean testIntegrityLevel(boolean frozen) {
+        throw Errors.createTypeErrorNotAnObject(this);
+    }
+
+    @Override
+    public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+        throw Errors.createTypeErrorNotAnObject(this);
+    }
+
+    @Override
     public boolean hasOnlyShapeProperties() {
         return false;
     }

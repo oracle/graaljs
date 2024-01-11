@@ -45,6 +45,7 @@ import org.graalvm.collections.UnmodifiableEconomicMap;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -105,6 +106,20 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
             JSModuleNamespace.getBindingValue(binding);
             if (frozen) {
                 return false;
+            }
+        }
+        return true;
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+        for (ExportResolution binding : getExports().getValues()) {
+            // Check for uninitialized binding (throws ReferenceError)
+            JSModuleNamespace.getBindingValue(binding);
+            if (freeze) {
+                // ReferenceError if the first binding is uninitialized, TypeError otherwise
+                throw Errors.createTypeError("not allowed to freeze a namespace object");
             }
         }
         return true;

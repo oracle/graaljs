@@ -166,9 +166,4 @@ public abstract class JSClassObject extends JSObject {
         return getJSClass().getBuiltinToStringTag(this);
     }
 
-    @Override
-    public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
-        return getJSClass().setIntegrityLevel(this, freeze, doThrow);
-    }
-
 }

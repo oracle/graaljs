@@ -114,8 +114,21 @@ public abstract class JSArrayBase extends JSNonProxyObject {
     @Override
     public final boolean preventExtensions(boolean doThrow) {
         boolean result = super.preventExtensions(doThrow);
-        setArrayType(getArrayType().preventExtensions());
+        DynamicArray arr = (DynamicArray) getArrayType();
+        setArrayType(arr.preventExtensions());
         assert !isExtensible();
         return result;
+    }
+
+    @TruffleBoundary
+    @Override
+    public final boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+        if (testIntegrityLevel(freeze)) {
+            return true;
+        }
+
+        DynamicArray arr = (DynamicArray) getArrayType();
+        setArrayType(freeze ? arr.freeze() : arr.seal());
+        return JSNonProxy.setIntegrityLevelFast(this, freeze);
     }
 }

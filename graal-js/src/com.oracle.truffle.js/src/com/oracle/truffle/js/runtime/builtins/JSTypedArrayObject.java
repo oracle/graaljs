@@ -172,4 +172,13 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
         }
         return JSNonProxy.testIntegrityLevelFast(this, frozen);
     }
+
+    @Override
+    public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+        preventExtensions(doThrow);
+        if (freeze && getArraySize() > 0) {
+            throw Errors.createTypeErrorCannotRedefineTypedArrayElement();
+        }
+        return true;
+    }
 }
