@@ -463,16 +463,20 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
     }
 
-    public abstract static class ReflectPreventExtensionsNode extends ReflectOperation {
+    public abstract static class ReflectPreventExtensionsNode extends JSBuiltinNode {
 
         public ReflectPreventExtensionsNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected boolean reflectPreventExtensions(Object target) {
-            ensureJSObject(target);
-            return JSObject.preventExtensions((JSDynamicObject) target);
+        protected static boolean reflectPreventExtensions(JSObject target) {
+            return target.preventExtensions(false);
+        }
+
+        @Specialization(guards = "!isJSObject(target)")
+        protected boolean doNonObject(@SuppressWarnings("unused") Object target) {
+            throw Errors.createTypeErrorCalledOnNonObject();
         }
     }
 

@@ -606,16 +606,6 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue();
     }
 
-    @TruffleBoundary
-    public static boolean preventExtensions(JSDynamicObject obj) {
-        return preventExtensions(obj, false);
-    }
-
-    @TruffleBoundary
-    public static boolean preventExtensions(JSDynamicObject obj, boolean doThrow) {
-        return JSObject.getJSClass(obj).preventExtensions(obj, doThrow);
-    }
-
     public static boolean isExtensible(JSDynamicObject obj) {
         if (obj instanceof JSNonProxyObject nonProxyObject) {
             // fast path: only need to check shape flag.

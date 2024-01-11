@@ -725,8 +725,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected JSObject preventExtensionsObject(JSObject thisObj) {
-            JSObject.preventExtensions(thisObj, true);
+        protected static JSObject preventExtensionsObject(JSObject thisObj) {
+            thisObj.preventExtensions(true);
             return thisObj;
         }
 

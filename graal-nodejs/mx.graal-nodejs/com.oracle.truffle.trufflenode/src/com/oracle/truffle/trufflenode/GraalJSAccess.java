@@ -2470,7 +2470,7 @@ public final class GraalJSAccess {
         if (holder != null) {
             JSObjectUtil.putHiddenProperty(function, HOLDER_KEY, holder);
         }
-        JSObject.preventExtensions(function);
+        function.preventExtensions(true);
         return function;
     }
 
