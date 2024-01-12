@@ -125,6 +125,14 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public boolean isGetter() {
             return EnumSet.of(buffer, byteLength, byteOffset).contains(this);
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (EnumSet.of(getFloat16, setFloat16).contains(this)) {
+                return JSConfig.StagingECMAScriptVersion;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override

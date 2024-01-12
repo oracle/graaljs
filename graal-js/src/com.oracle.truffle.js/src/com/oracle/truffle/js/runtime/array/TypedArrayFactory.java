@@ -40,8 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -304,21 +303,8 @@ public enum TypedArrayFactory implements PrototypeSupplier {
         return this == TypedArrayFactory.BigInt64Array || this == TypedArrayFactory.BigUint64Array;
     }
 
-    static final TypedArrayFactory[] FACTORIES = TypedArrayFactory.values();
-    private static TypedArrayFactory[] FACTORIES_NO_BIGINT;
-
-    public static TypedArrayFactory[] getNoBigIntFactories() {
-        if (FACTORIES_NO_BIGINT == null) {
-            TypedArrayFactory[] allFactories = TypedArrayFactory.values();
-            List<TypedArrayFactory> noBigIntFactories = new ArrayList<>(allFactories.length);
-            for (TypedArrayFactory factory : allFactories) {
-                if (!factory.isBigInt()) {
-                    noBigIntFactories.add(factory);
-                }
-            }
-            FACTORIES_NO_BIGINT = noBigIntFactories.toArray(new TypedArrayFactory[0]);
-        }
-        return FACTORIES_NO_BIGINT;
-    }
+    static final TypedArrayFactory[] FACTORIES_ALL = TypedArrayFactory.values();
+    static final TypedArrayFactory[] FACTORIES_DEFAULT = Arrays.copyOf(FACTORIES_ALL, Float16Array.ordinal());
+    static final TypedArrayFactory[] FACTORIES_NO_BIGINT = Arrays.copyOf(FACTORIES_ALL, BigInt64Array.ordinal());
 
 }

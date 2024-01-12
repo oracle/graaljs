@@ -56,6 +56,7 @@ import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -266,14 +267,16 @@ public abstract class TypedArray extends ScriptArray {
     public abstract void setBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, Object value, InteropLibrary interop);
 
     public static TypedArrayFactory[] factories() {
-        return TypedArrayFactory.FACTORIES;
+        return TypedArrayFactory.FACTORIES_ALL;
     }
 
     public static TypedArrayFactory[] factories(JSContext context) {
-        if (context.getLanguageOptions().bigInt()) {
-            return TypedArrayFactory.FACTORIES;
+        if (!context.getLanguageOptions().bigInt()) {
+            return TypedArrayFactory.FACTORIES_NO_BIGINT;
+        } else if (context.getEcmaScriptVersion() == JSConfig.StagingECMAScriptVersion) {
+            return TypedArrayFactory.FACTORIES_ALL;
         } else {
-            return TypedArrayFactory.getNoBigIntFactories();
+            return TypedArrayFactory.FACTORIES_DEFAULT;
         }
     }
 

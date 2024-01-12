@@ -44,6 +44,7 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSMath;
@@ -115,6 +116,9 @@ public class MathBuiltins extends JSBuiltinsContainer.SwitchEnum<MathBuiltins.Ma
         public int getECMAScriptVersion() {
             if (EnumSet.range(imul, fround).contains(this)) {
                 return 6;
+            }
+            if (f16round == this) {
+                return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
