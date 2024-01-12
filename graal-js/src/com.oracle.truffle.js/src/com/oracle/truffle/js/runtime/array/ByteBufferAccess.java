@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,6 +63,8 @@ public abstract class ByteBufferAccess {
 
     public abstract int getInt32(ByteBuffer buffer, int index);
 
+    public abstract short getFloat16(ByteBuffer buffer, int index);
+
     public abstract float getFloat(ByteBuffer buffer, int index);
 
     public abstract double getDouble(ByteBuffer buffer, int index);
@@ -77,6 +79,8 @@ public abstract class ByteBufferAccess {
     public abstract void putInt16(ByteBuffer buffer, int index, int value);
 
     public abstract void putInt32(ByteBuffer buffer, int index, int value);
+
+    public abstract void putFloat16(ByteBuffer buffer, int index, short value);
 
     public abstract void putFloat(ByteBuffer buffer, int index, float value);
 

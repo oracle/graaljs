@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray.BigInt64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigUint64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectBigInt64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectBigUint64Array;
+import com.oracle.truffle.js.runtime.array.TypedArray.DirectFloat16Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectFloat32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectFloat64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectInt16Array;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray.DirectUint16Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectUint32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectUint8Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectUint8ClampedArray;
+import com.oracle.truffle.js.runtime.array.TypedArray.Float16Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Float32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Float64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Int16Array;
@@ -66,6 +68,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray.Int32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Int8Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.InteropBigInt64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.InteropBigUint64Array;
+import com.oracle.truffle.js.runtime.array.TypedArray.InteropFloat16Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.InteropFloat32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.InteropFloat64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.InteropInt16Array;
@@ -212,6 +215,18 @@ public enum TypedArrayFactory implements PrototypeSupplier {
                 return new DirectBigUint64Array(this, offset);
             } else {
                 return new BigUint64Array(this, offset);
+            }
+        }
+    },
+    Float16Array(TypedArray.FLOAT16_BYTES_PER_ELEMENT) {
+        @Override
+        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+            if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
+                return new InteropFloat16Array(this, offset);
+            } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
+                return new DirectFloat16Array(this, offset);
+            } else {
+                return new Float16Array(this, offset);
             }
         }
     };

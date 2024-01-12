@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,7 @@ final class NativeVarHandleByteBufferAccess extends ByteBufferAccess {
     private static final VarHandle INT16 = MethodHandles.byteBufferViewVarHandle(short[].class, ByteOrder.nativeOrder());
     private static final VarHandle INT32 = MethodHandles.byteBufferViewVarHandle(int[].class, ByteOrder.nativeOrder());
     private static final VarHandle INT64 = MethodHandles.byteBufferViewVarHandle(long[].class, ByteOrder.nativeOrder());
+    private static final VarHandle FLOAT16 = MethodHandles.byteBufferViewVarHandle(short[].class, ByteOrder.nativeOrder());
     private static final VarHandle FLOAT = MethodHandles.byteBufferViewVarHandle(float[].class, ByteOrder.nativeOrder());
     private static final VarHandle DOUBLE = MethodHandles.byteBufferViewVarHandle(double[].class, ByteOrder.nativeOrder());
 
@@ -87,6 +88,11 @@ final class NativeVarHandleByteBufferAccess extends ByteBufferAccess {
     @Override
     public long getInt64(ByteBuffer buffer, int index) {
         return (long) INT64.get(buffer, index);
+    }
+
+    @Override
+    public short getFloat16(ByteBuffer buffer, int index) {
+        return (short) FLOAT16.get(buffer, index);
     }
 
     @Override
@@ -112,6 +118,11 @@ final class NativeVarHandleByteBufferAccess extends ByteBufferAccess {
     @Override
     public void putInt64(ByteBuffer buffer, int index, long value) {
         INT64.set(buffer, index, value);
+    }
+
+    @Override
+    public void putFloat16(ByteBuffer buffer, int index, short value) {
+        FLOAT16.set(buffer, index, value);
     }
 
     @Override
@@ -139,6 +150,7 @@ final class LittleEndianVarHandleByteBufferAccess extends ByteBufferAccess {
     private static final VarHandle INT16 = MethodHandles.byteBufferViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
     private static final VarHandle INT32 = MethodHandles.byteBufferViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
     private static final VarHandle INT64 = MethodHandles.byteBufferViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
+    private static final VarHandle FLOAT16 = MethodHandles.byteBufferViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
     private static final VarHandle FLOAT = MethodHandles.byteBufferViewVarHandle(float[].class, ByteOrder.LITTLE_ENDIAN);
     private static final VarHandle DOUBLE = MethodHandles.byteBufferViewVarHandle(double[].class, ByteOrder.LITTLE_ENDIAN);
 
@@ -160,6 +172,11 @@ final class LittleEndianVarHandleByteBufferAccess extends ByteBufferAccess {
     @Override
     public long getInt64(ByteBuffer buffer, int index) {
         return (long) INT64.get(buffer, index);
+    }
+
+    @Override
+    public short getFloat16(ByteBuffer buffer, int index) {
+        return (short) FLOAT16.get(buffer, index);
     }
 
     @Override
@@ -185,6 +202,11 @@ final class LittleEndianVarHandleByteBufferAccess extends ByteBufferAccess {
     @Override
     public void putInt64(ByteBuffer buffer, int index, long value) {
         INT64.set(buffer, index, value);
+    }
+
+    @Override
+    public void putFloat16(ByteBuffer buffer, int index, short value) {
+        FLOAT16.set(buffer, index, value);
     }
 
     @Override
@@ -212,6 +234,7 @@ final class BigEndianVarHandleByteBufferAccess extends ByteBufferAccess {
     private static final VarHandle INT16 = MethodHandles.byteBufferViewVarHandle(short[].class, ByteOrder.BIG_ENDIAN);
     private static final VarHandle INT32 = MethodHandles.byteBufferViewVarHandle(int[].class, ByteOrder.BIG_ENDIAN);
     private static final VarHandle INT64 = MethodHandles.byteBufferViewVarHandle(long[].class, ByteOrder.BIG_ENDIAN);
+    private static final VarHandle FLOAT16 = MethodHandles.byteBufferViewVarHandle(short[].class, ByteOrder.BIG_ENDIAN);
     private static final VarHandle FLOAT = MethodHandles.byteBufferViewVarHandle(float[].class, ByteOrder.BIG_ENDIAN);
     private static final VarHandle DOUBLE = MethodHandles.byteBufferViewVarHandle(double[].class, ByteOrder.BIG_ENDIAN);
 
@@ -233,6 +256,11 @@ final class BigEndianVarHandleByteBufferAccess extends ByteBufferAccess {
     @Override
     public long getInt64(ByteBuffer buffer, int index) {
         return (long) INT64.get(buffer, index);
+    }
+
+    @Override
+    public short getFloat16(ByteBuffer buffer, int index) {
+        return (short) FLOAT16.get(buffer, index);
     }
 
     @Override
@@ -258,6 +286,11 @@ final class BigEndianVarHandleByteBufferAccess extends ByteBufferAccess {
     @Override
     public void putInt64(ByteBuffer buffer, int index, long value) {
         INT64.set(buffer, index, value);
+    }
+
+    @Override
+    public void putFloat16(ByteBuffer buffer, int index, short value) {
+        FLOAT16.set(buffer, index, value);
     }
 
     @Override
