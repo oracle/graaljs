@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,9 +42,11 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.Objects;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ArrayAllocationSite;
+import com.oracle.truffle.js.runtime.array.DynamicArray;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -100,5 +102,34 @@ public abstract class JSArrayBase extends JSNonProxyObject {
 
     public final void setArray(Object array) {
         this.arrayStorage = Objects.requireNonNull(array);
+    }
+
+    @Override
+    public final boolean testIntegrityLevel(boolean frozen) {
+        DynamicArray array = (DynamicArray) getArrayType();
+        boolean arrayIs = frozen ? array.isFrozen() : array.isSealed();
+        return arrayIs && JSNonProxy.testIntegrityLevelFast(this, frozen);
+    }
+
+    @TruffleBoundary
+    @Override
+    public final boolean preventExtensions(boolean doThrow) {
+        boolean result = super.preventExtensions(doThrow);
+        DynamicArray arr = (DynamicArray) getArrayType();
+        setArrayType(arr.preventExtensions());
+        assert !isExtensible();
+        return result;
+    }
+
+    @TruffleBoundary
+    @Override
+    public final boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+        if (testIntegrityLevel(freeze)) {
+            return true;
+        }
+
+        DynamicArray arr = (DynamicArray) getArrayType();
+        setArrayType(freeze ? arr.freeze() : arr.seal());
+        return JSNonProxy.setIntegrityLevelFast(this, freeze);
     }
 }

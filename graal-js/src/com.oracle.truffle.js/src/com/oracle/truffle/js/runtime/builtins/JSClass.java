@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -306,91 +306,6 @@ public abstract class JSClass {
 
     public static boolean isInstance(JSDynamicObject object, JSClass jsclass) {
         return object.getShape().getDynamicType() == jsclass;
-    }
-
-    /**
-     * ES2015 7.3.15 TestIntegrityLevel(O, level).
-     */
-    @TruffleBoundary
-    public boolean testIntegrityLevel(JSDynamicObject obj, boolean frozen) {
-        return testIntegrityLevelDefault(obj, frozen);
-    }
-
-    @TruffleBoundary
-    protected final boolean testIntegrityLevelDefault(JSDynamicObject obj, boolean frozen) {
-        assert JSRuntime.isObject(obj);
-        boolean status = isExtensible(obj);
-        if (status) {
-            return false;
-        }
-        for (Object key : JSObject.ownPropertyKeys(obj)) {
-            PropertyDescriptor desc = JSObject.getOwnProperty(obj, key);
-            if (desc != null) {
-                if (desc.getConfigurable()) {
-                    return false;
-                }
-                if (frozen && desc.isDataDescriptor() && desc.getWritable()) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    /**
-     * This class is used to break the class initialization cycle JSClass -> PropertyDescriptor ->
-     * Undefined -> Null -> NullClass -> AbstractJSClass -> JSClass.
-     */
-    private static final class FreezeHolder {
-        private static final PropertyDescriptor FREEZE_ACC_DESC;
-        private static final PropertyDescriptor FREEZE_DATA_DESC;
-
-        static {
-            FREEZE_ACC_DESC = PropertyDescriptor.createEmpty();
-            FREEZE_ACC_DESC.setConfigurable(false);
-
-            FREEZE_DATA_DESC = PropertyDescriptor.createEmpty();
-            FREEZE_DATA_DESC.setConfigurable(false);
-            FREEZE_DATA_DESC.setWritable(false);
-        }
-    }
-
-    /**
-     * ES2015 7.3.14 SetIntegrityLevel(O, level).
-     */
-    @TruffleBoundary
-    public boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze, boolean doThrow) {
-        return setIntegrityLevelDefault(obj, freeze, doThrow);
-    }
-
-    @TruffleBoundary
-    private boolean setIntegrityLevelDefault(JSDynamicObject obj, boolean freeze, boolean doThrow) {
-        assert JSRuntime.isObject(obj);
-        if (!preventExtensions(obj, doThrow)) {
-            return false;
-        }
-        Iterable<Object> keys = JSObject.ownPropertyKeys(obj);
-        if (freeze) {
-            // FREEZE
-            for (Object key : keys) {
-                PropertyDescriptor currentDesc = JSObject.getOwnProperty(obj, key);
-                if (currentDesc != null) {
-                    PropertyDescriptor newDesc = null;
-                    if (currentDesc.isAccessorDescriptor()) {
-                        newDesc = FreezeHolder.FREEZE_ACC_DESC;
-                    } else {
-                        newDesc = FreezeHolder.FREEZE_DATA_DESC;
-                    }
-                    JSRuntime.definePropertyOrThrow(obj, key, newDesc);
-                }
-            }
-        } else {
-            // SEAL
-            for (Object key : keys) {
-                JSRuntime.definePropertyOrThrow(obj, key, FreezeHolder.FREEZE_ACC_DESC);
-            }
-        }
-        return true;
     }
 
     @SuppressWarnings("unused")

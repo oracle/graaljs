@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
+import java.nio.ByteBuffer;
+
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.runtime.Errors;
@@ -51,8 +53,6 @@ import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
-
-import java.nio.ByteBuffer;
 
 public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
     private final Object wasmMemory;
@@ -77,7 +77,7 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
                 InteropLibrary lib = InteropLibrary.getUncached();
                 ByteBuffer buffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(wasmMemory, lib, realm);
                 bufferObject = JSSharedArrayBuffer.createSharedArrayBuffer(context, realm, buffer);
-                boolean status = setIntegrityLevel(bufferObject, true);
+                boolean status = bufferObject.setIntegrityLevel(true, false);
                 if (!status) {
                     throw Errors.createTypeError("Failed to set integrity level of buffer object");
                 }

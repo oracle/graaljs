@@ -530,8 +530,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
         Object target = getTarget(thisObj);
         Object preventExtensionsFn = getTrapFromObject(handler, PREVENT_EXTENSIONS);
         if (preventExtensionsFn == Undefined.instance) {
-            if (JSDynamicObject.isJSDynamicObject(target)) {
-                return JSObject.preventExtensions((JSDynamicObject) target, doThrow);
+            if (target instanceof JSDynamicObject targetJSObj) {
+                return targetJSObj.preventExtensions(doThrow);
             } else {
                 return true; // unsupported foreign object
             }

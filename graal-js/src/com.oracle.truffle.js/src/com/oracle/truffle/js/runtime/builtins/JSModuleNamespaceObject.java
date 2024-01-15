@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,8 +42,10 @@ package com.oracle.truffle.js.runtime.builtins;
 
 import org.graalvm.collections.UnmodifiableEconomicMap;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -94,5 +96,32 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
     @Override
     public boolean setPrototypeOf(JSDynamicObject newPrototype) {
         return newPrototype == Null.instance;
+    }
+
+    @TruffleBoundary
+    @Override
+    public boolean testIntegrityLevel(boolean frozen) {
+        return testIntegrityLevel(frozen, false);
+    }
+
+    @Override
+    @TruffleBoundary
+    public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+        return testIntegrityLevel(freeze, true);
+    }
+
+    private boolean testIntegrityLevel(boolean frozen, boolean doThrow) {
+        for (ExportResolution binding : getExports().getValues()) {
+            // Check for uninitialized binding (throws ReferenceError)
+            JSModuleNamespace.getBindingValue(binding);
+            if (frozen) {
+                if (doThrow) {
+                    // ReferenceError if the first binding is uninitialized, TypeError otherwise
+                    throw Errors.createTypeError("not allowed to freeze a namespace object");
+                }
+                return false;
+            }
+        }
+        return true;
     }
 }

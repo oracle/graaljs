@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,11 +86,6 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
     public static JSArrayObject createEmpty(Shape shape, JSDynamicObject proto, ScriptArray arrayType) {
         assert arrayType instanceof AbstractConstantEmptyArray || arrayType instanceof ConstantObjectArray || arrayType instanceof AbstractObjectArray;
         return new JSArrayObject(shape, proto, arrayType, ScriptArray.EMPTY_OBJECT_ARRAY, null, 0, 0, 0, 0, 0);
-    }
-
-    @Override
-    public JSAbstractArray getJSClass() {
-        return (JSAbstractArray) super.getJSClass();
     }
 
     @Override

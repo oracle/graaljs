@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -506,16 +506,8 @@ public abstract class JSNonProxy extends JSClass {
         return desc;
     }
 
-    @Override
-    public boolean setIntegrityLevel(JSDynamicObject thisObj, boolean freeze, boolean doThrow) {
-        if (usesOrdinaryGetOwnProperty()) {
-            return setIntegrityLevelFast(thisObj, freeze);
-        }
-        return super.setIntegrityLevel(thisObj, freeze, doThrow);
-    }
-
     @TruffleBoundary
-    protected final boolean setIntegrityLevelFast(JSDynamicObject thisObj, boolean freeze) {
+    public static boolean setIntegrityLevelFast(JSDynamicObject thisObj, boolean freeze) {
         if (testIntegrityLevelFast(thisObj, freeze)) {
             return true;
         }
@@ -535,24 +527,12 @@ public abstract class JSNonProxy extends JSClass {
             }
         }
         assert testSealedProperties(thisObj) && (!freeze || testFrozenProperties(thisObj));
-        boolean result = preventExtensionsImpl(thisObj, JSShape.SEALED_FLAG | (freeze ? JSShape.FROZEN_FLAG : 0));
-        assert result && testIntegrityLevel(thisObj, freeze);
+        boolean result = ordinaryPreventExtensions(thisObj, JSShape.SEALED_FLAG | (freeze ? JSShape.FROZEN_FLAG : 0));
+        assert result && thisObj.testIntegrityLevel(freeze);
         return true;
     }
 
-    /**
-     * ES2015 7.3.15 TestIntegrityLevel(O, level).
-     */
-    @Override
-    public boolean testIntegrityLevel(JSDynamicObject obj, boolean frozen) {
-        if (usesOrdinaryGetOwnProperty()) {
-            return testIntegrityLevelFast(obj, frozen);
-        }
-        return super.testIntegrityLevel(obj, frozen);
-    }
-
-    @TruffleBoundary
-    protected static boolean testIntegrityLevelFast(JSDynamicObject obj, boolean frozen) {
+    public static boolean testIntegrityLevelFast(JSDynamicObject obj, boolean frozen) {
         int objectFlags = JSDynamicObject.getObjectFlags(obj);
         if (frozen) {
             return (objectFlags & JSShape.FROZEN_FLAG) != 0;
@@ -564,10 +544,10 @@ public abstract class JSNonProxy extends JSClass {
     @TruffleBoundary
     @Override
     public boolean preventExtensions(JSDynamicObject thisObj, boolean doThrow) {
-        return preventExtensionsImpl(thisObj, 0);
+        return ordinaryPreventExtensions(thisObj, 0);
     }
 
-    protected final boolean preventExtensionsImpl(JSDynamicObject thisObj, int extraFlags) {
+    public static boolean ordinaryPreventExtensions(JSDynamicObject thisObj, int extraFlags) {
         int objectFlags = JSDynamicObject.getObjectFlags(thisObj);
         if ((objectFlags & JSShape.NOT_EXTENSIBLE_FLAG) != 0 && ((objectFlags & extraFlags) == extraFlags)) {
             return true;
@@ -584,7 +564,7 @@ public abstract class JSNonProxy extends JSClass {
         if (newFlags != objectFlags) {
             JSDynamicObject.setObjectFlags(thisObj, newFlags);
         }
-        assert !isExtensible(thisObj);
+        assert !thisObj.isExtensible();
         return true;
     }
 

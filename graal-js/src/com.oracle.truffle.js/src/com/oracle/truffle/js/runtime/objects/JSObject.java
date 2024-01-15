@@ -82,7 +82,6 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
-import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
 import com.oracle.truffle.js.runtime.builtins.JSObjectPrototype;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
@@ -607,24 +606,18 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
         throw Errors.createTypeErrorCannotConvertToPrimitiveValue();
     }
 
-    @TruffleBoundary
-    public static boolean preventExtensions(JSDynamicObject obj) {
-        return preventExtensions(obj, false);
-    }
-
-    @TruffleBoundary
-    public static boolean preventExtensions(JSDynamicObject obj, boolean doThrow) {
-        return JSObject.getJSClass(obj).preventExtensions(obj, doThrow);
-    }
-
-    @TruffleBoundary
     public static boolean isExtensible(JSDynamicObject obj) {
-        if (obj instanceof JSNonProxyObject) {
+        if (obj instanceof JSNonProxyObject nonProxyObject) {
             // fast path: only need to check shape flag.
-            return JSNonProxy.ordinaryIsExtensible(obj);
+            return nonProxyObject.isExtensible();
         }
         // slow path for Proxy, JSAdapter, and nullish values.
-        return JSObject.getJSClass(obj).isExtensible(obj);
+        return isExtensibleSlow(obj);
+    }
+
+    @TruffleBoundary
+    private static boolean isExtensibleSlow(JSDynamicObject obj) {
+        return obj.isExtensible();
     }
 
     public static boolean isExtensible(JSDynamicObject obj, JSClassProfile classProfile) {
@@ -640,16 +633,6 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
     @TruffleBoundary
     public static TruffleString getClassName(JSDynamicObject obj) {
         return JSObject.getJSClass(obj).getClassName(obj);
-    }
-
-    @TruffleBoundary
-    public static boolean isFrozen(JSDynamicObject obj) {
-        return testIntegrityLevel(obj, true);
-    }
-
-    @TruffleBoundary
-    public static boolean isSealed(JSDynamicObject obj) {
-        return testIntegrityLevel(obj, false);
     }
 
     @NeverDefault
@@ -673,21 +656,6 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
 
     public static JSContext getJSContext(JSDynamicObject obj) {
         return JSShape.getJSContext(obj.getShape());
-    }
-
-    @TruffleBoundary(transferToInterpreterOnException = false)
-    public static boolean testIntegrityLevel(JSDynamicObject obj, boolean frozen) {
-        return JSObject.getJSClass(obj).testIntegrityLevel(obj, frozen);
-    }
-
-    @TruffleBoundary
-    public static boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze) {
-        return setIntegrityLevel(obj, freeze, false);
-    }
-
-    @TruffleBoundary
-    public static boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze, boolean doThrow) {
-        return JSObject.getJSClass(obj).setIntegrityLevel(obj, freeze, doThrow);
     }
 
 }

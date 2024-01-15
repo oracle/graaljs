@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,19 +40,18 @@
  */
 package com.oracle.truffle.js.nodes.access;
 
-import com.oracle.truffle.api.dsl.Bind;
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 
@@ -60,7 +59,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
  * Implements abstract operation IsExtensible.
  */
 @GenerateUncached
-@ImportStatic({JSShape.class})
+@ImportStatic({JSShape.class, CompilerDirectives.class})
 public abstract class IsExtensibleNode extends JavaScriptBaseNode {
 
     protected IsExtensibleNode() {
@@ -68,28 +67,40 @@ public abstract class IsExtensibleNode extends JavaScriptBaseNode {
 
     public abstract boolean executeBoolean(JSDynamicObject obj);
 
-    @SuppressWarnings("unused")
     @Specialization(guards = {"getJSClass(cachedShape).usesOrdinaryIsExtensible()", "cachedShape.check(object)"}, limit = "1")
-    protected static boolean doCachedShape(JSDynamicObject object,
-                    @Cached("object.getShape()") Shape cachedShape,
+    protected static boolean doCachedShape(@SuppressWarnings("unused") JSDynamicObject object,
+                    @Cached("object.getShape()") @SuppressWarnings("unused") Shape cachedShape,
                     @Cached(value = "isExtensible(cachedShape)") boolean result) {
         return result;
     }
 
-    @SuppressWarnings("unused")
-    @Specialization(guards = {"cachedJSClass.usesOrdinaryIsExtensible()", "cachedJSClass.isInstance(object)"}, limit = "1", replaces = "doCachedShape")
-    protected static boolean doCachedJSClass(JSDynamicObject object,
-                    @Bind("this") Node node,
-                    @Cached("getJSClass(object.getShape())") JSClass cachedJSClass,
-                    @Cached @Shared("resultProfile") InlinedConditionProfile resultProfile) {
-        return resultProfile.profile(node, JSShape.isExtensible(object.getShape()));
+    static Class<? extends JSNonProxyObject> getClassIfJSNonProxyObject(Object object) {
+        if (object instanceof JSNonProxyObject nonProxyObject) {
+            return nonProxyObject.getClass();
+        } else {
+            return null;
+        }
     }
 
-    @Specialization(replaces = {"doCachedJSClass"})
-    protected static boolean doUncached(JSDynamicObject object,
-                    @Bind("this") Node node,
-                    @Cached @Shared("resultProfile") InlinedConditionProfile resultProfile) {
-        return resultProfile.profile(node, JSObject.isExtensible(object));
+    @Specialization(guards = {"cachedJSClass != null", "isExact(object, cachedJSClass)"}, limit = "1", replaces = "doCachedShape")
+    protected static boolean doCachedJSNonProxyClass(JSDynamicObject object,
+                    @Cached("getClassIfJSNonProxyObject(object)") Class<? extends JSNonProxyObject> cachedJSClass) {
+        return CompilerDirectives.castExact(object, cachedJSClass).isExtensible();
+    }
+
+    @Specialization(replaces = "doCachedJSNonProxyClass")
+    protected static boolean doJSNonProxy(JSNonProxyObject object) {
+        return object.isExtensible();
+    }
+
+    @Specialization
+    protected static boolean doJSProxy(JSProxyObject object) {
+        return object.isExtensible();
+    }
+
+    @Fallback
+    protected static boolean doOther(JSDynamicObject object) {
+        return JSObject.isExtensible(object);
     }
 
     @NeverDefault

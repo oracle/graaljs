@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -98,7 +98,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.SimpleArrayList;
@@ -453,8 +452,8 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
             JSArrayObject rawArr = JSArray.createConstant(context, realm, dedentedList);
             JSArrayObject cookedArr = JSArray.createConstant(context, realm, cookStrings(dedentedList, createCodePointIterator, errorBranch));
             JSRuntime.definePropertyOrThrow(cookedArr, Strings.RAW, PropertyDescriptor.createData(rawArr, false, false, false));
-            JSObject.setIntegrityLevel(rawArr, true);
-            JSObject.setIntegrityLevel(cookedArr, true);
+            rawArr.setIntegrityLevel(true, true);
+            cookedArr.setIntegrityLevel(true, true);
             Boundaries.mapPut(dedentMap, rawInput, cookedArr);
 
             return cookedArr;

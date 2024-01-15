@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -692,24 +692,6 @@ public abstract class JSAbstractArray extends JSNonProxy {
         }
         assert JSSlowArray.isJSSlowArray(thisObj);
         return thisObj;
-    }
-
-    @Override
-    public boolean testIntegrityLevel(JSDynamicObject thisObj, boolean frozen) {
-        ScriptArray array = arrayGetArrayType(thisObj);
-        boolean arrayIs = frozen ? array.isFrozen() : array.isSealed();
-        return arrayIs && super.testIntegrityLevelFast(thisObj, frozen);
-    }
-
-    @Override
-    public boolean setIntegrityLevel(JSDynamicObject thisObj, boolean freeze, boolean doThrow) {
-        if (testIntegrityLevel(thisObj, freeze)) {
-            return true;
-        }
-
-        ScriptArray arr = arrayGetArrayType(thisObj);
-        arraySetArrayType(thisObj, freeze ? arr.freeze() : arr.seal());
-        return super.setIntegrityLevelFast(thisObj, freeze);
     }
 
     @TruffleBoundary

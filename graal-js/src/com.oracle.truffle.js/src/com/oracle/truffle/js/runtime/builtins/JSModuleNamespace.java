@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -122,7 +122,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     }
 
     public static Shape makeInitialShape(JSContext context) {
-        Shape initialShape = JSShape.newBuilder(context, INSTANCE, Null.instance).shapeFlags(JSShape.NOT_EXTENSIBLE_FLAG).build();
+        Shape initialShape = JSShape.newBuilder(context, INSTANCE, Null.instance, JSShape.NOT_EXTENSIBLE_FLAG).build();
 
         /*
          * The initial value of the @@toStringTag property is the String value "Module".
@@ -266,33 +266,6 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     public static boolean isJSModuleNamespace(Object obj) {
         return obj instanceof JSModuleNamespaceObject;
-    }
-
-    @Override
-    @TruffleBoundary
-    public boolean setIntegrityLevel(JSDynamicObject obj, boolean freeze, boolean doThrow) {
-        for (ExportResolution binding : getExports(obj).getValues()) {
-            // Check for uninitialized binding (throws ReferenceError)
-            getBindingValue(binding);
-            if (freeze) {
-                // ReferenceError if the first binding is uninitialized, TypeError otherwise
-                throw Errors.createTypeError("not allowed to freeze a namespace object");
-            }
-        }
-        return true;
-    }
-
-    @TruffleBoundary
-    @Override
-    public boolean testIntegrityLevel(JSDynamicObject obj, boolean frozen) {
-        for (ExportResolution binding : getExports(obj).getValues()) {
-            // Check for uninitialized binding (throws ReferenceError)
-            getBindingValue(binding);
-            if (frozen) {
-                return false;
-            }
-        }
-        return true;
     }
 
     @TruffleBoundary

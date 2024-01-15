@@ -93,6 +93,11 @@ public final class JSShape {
      */
     public static final int NO_ELEMENTS_ASSUMPTION_FLAGS = ARRAY_PROTOTYPE_FLAG | OBJECT_PROTOTYPE_FLAG;
 
+    /**
+     * Marks objects, [[GetOwnProperty]] of which is not implemented using OrdinaryGetOwnProperty.
+     */
+    public static final int UNORDINARY_GETOWNPROPERTY_FLAG = 1 << 6;
+
     private JSShape() {
     }
 
@@ -271,23 +276,31 @@ public final class JSShape {
     }
 
     public static Shape.Builder newBuilder(JSContext context, JSClass jsclass, JSDynamicObject proto) {
+        return newBuilder(context, jsclass, proto, 0);
+    }
+
+    public static Shape.Builder newBuilder(JSContext context, JSClass jsclass, JSDynamicObject proto, int shapeFlags) {
         assert !context.isMultiContext() || (proto == null || proto == Null.instance);
         return Shape.newBuilder().//
                         layout(getLayout(jsclass)).//
                         dynamicType(jsclass).//
                         sharedData(JSShape.makeJSSharedData(context, proto)).//
-                        shapeFlags(getDefaultShapeFlags(jsclass)).//
+                        shapeFlags(shapeFlags | getDefaultShapeFlags(jsclass)).//
                         allowImplicitCastIntToDouble(true).//
                         propertyAssumptions(JSConfig.PropertyAssumption && !context.isMultiContext());
     }
 
     public static int getDefaultShapeFlags(JSClass jsclass) {
+        int flags = 0;
         if (jsclass == JSDictionary.INSTANCE) {
-            return EXTERNAL_PROPERTIES_FLAG;
+            flags |= EXTERNAL_PROPERTIES_FLAG;
         } else if (jsclass == JSObjectPrototype.INSTANCE) {
-            return OBJECT_PROTOTYPE_FLAG;
+            flags |= OBJECT_PROTOTYPE_FLAG;
         }
-        return 0;
+        if (!jsclass.usesOrdinaryGetOwnProperty()) {
+            flags |= UNORDINARY_GETOWNPROPERTY_FLAG;
+        }
+        return flags;
     }
 
     /**
@@ -296,5 +309,12 @@ public final class JSShape {
      */
     public static boolean hasExternalProperties(int shapeFlags) {
         return (shapeFlags & EXTERNAL_PROPERTIES_FLAG) != 0;
+    }
+
+    /**
+     * Returns true if the object's [[GetOwnProperty]] is implemented using OrdinaryGetOwnProperty.
+     */
+    public static boolean usesOrdinaryGetOwnProperty(Shape shape) {
+        return (shape.getFlags() & UNORDINARY_GETOWNPROPERTY_FLAG) == 0;
     }
 }

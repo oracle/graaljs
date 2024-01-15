@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 
 /**
  * Basic non-proxy JS object.
@@ -86,4 +87,29 @@ public abstract class JSNonProxyObject extends JSClassObject {
         return null;
     }
 
+    @Override
+    public final boolean isExtensible() {
+        return JSNonProxy.ordinaryIsExtensible(this);
+    }
+
+    @Override
+    public boolean preventExtensions(boolean doThrow) {
+        return JSNonProxy.ordinaryPreventExtensions(this, 0);
+    }
+
+    @Override
+    public boolean testIntegrityLevel(boolean frozen) {
+        if (JSShape.usesOrdinaryGetOwnProperty(getShape())) {
+            return JSNonProxy.testIntegrityLevelFast(this, frozen);
+        }
+        return super.testIntegrityLevel(frozen);
+    }
+
+    @Override
+    public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
+        if (JSShape.usesOrdinaryGetOwnProperty(getShape())) {
+            return JSNonProxy.setIntegrityLevelFast(this, freeze);
+        }
+        return super.setIntegrityLevel(freeze, doThrow);
+    }
 }

@@ -102,48 +102,48 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
         return getJSSharedData(this).getContext();
     }
 
-    public JSClass getJSClass() {
+    public final JSClass getJSClass() {
         return (JSClass) getDynamicType(this);
     }
 
     /**
-     * 9.1.1 [[GetPrototypeOf]] ().
+     * [[GetPrototypeOf]] ().
      */
     @TruffleBoundary
     public abstract JSDynamicObject getPrototypeOf();
 
     /**
-     * 9.1.2 [[SetPrototypeOf]] (V).
+     * [[SetPrototypeOf]] (V).
      */
     @TruffleBoundary
     public abstract boolean setPrototypeOf(JSDynamicObject newPrototype);
 
     /**
-     * 9.1.3 [[IsExtensible]] ().
+     * [IsExtensible]] ().
      */
     @TruffleBoundary
     public abstract boolean isExtensible();
 
     /**
-     * 9.1.4 [[PreventExtensions]] ().
+     * [[PreventExtensions]] ().
      */
     @TruffleBoundary
     public abstract boolean preventExtensions(boolean doThrow);
 
     /**
-     * 9.1.5 [[GetOwnProperty]] (P).
+     * [[GetOwnProperty]] (P).
      */
     @TruffleBoundary
     public abstract PropertyDescriptor getOwnProperty(Object propertyKey);
 
     /**
-     * 9.1.6 [[DefineOwnProperty]] (P, Desc).
+     * [[DefineOwnProperty]] (P, Desc).
      */
     @TruffleBoundary
     public abstract boolean defineOwnProperty(Object key, PropertyDescriptor value, boolean doThrow);
 
     /**
-     * 9.1.7 [[HasProperty]] (P).
+     * [[HasProperty]] (P).
      */
     @TruffleBoundary
     public abstract boolean hasProperty(Object key);
@@ -158,7 +158,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     public abstract boolean hasOwnProperty(long index);
 
     /**
-     * 9.1.8 [[Get]] (P, Receiver).
+     * [[Get]] (P, Receiver).
      *
      * TODO: rename to {@code get} once {@link JSDynamicObject#get(Object)} is removed.
      */
@@ -187,7 +187,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     public abstract Object getMethodHelper(Object receiver, Object key, Node encapsulatingNode);
 
     /**
-     * 9.1.9 [[Set]] (P, V, Receiver).
+     * [[Set]] (P, V, Receiver).
      */
     @TruffleBoundary
     public abstract boolean set(Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode);
@@ -196,7 +196,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     public abstract boolean set(long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode);
 
     /**
-     * 9.1.10 [[Delete]] (P).
+     * [[Delete]] (P).
      */
     @TruffleBoundary
     public abstract boolean delete(Object key, boolean isStrict);
@@ -205,7 +205,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     public abstract boolean delete(long propIdx, boolean isStrict);
 
     /**
-     * 9.1.12 [[OwnPropertyKeys]]().
+     * [[OwnPropertyKeys]]().
      *
      * Provides all <em>own</em> properties of this object with a <em>String</em> or <em>Symbol</em>
      * key. Represents the [[OwnPropertyKeys]] internal method.
@@ -294,7 +294,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     public abstract TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth);
 
     /**
-     * ES2015 7.3.15 TestIntegrityLevel(O, level).
+     * TestIntegrityLevel(O, level).
      */
     @TruffleBoundary
     public boolean testIntegrityLevel(boolean frozen) {
@@ -318,7 +318,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     }
 
     /**
-     * ES2015 7.3.14 SetIntegrityLevel(O, level).
+     * SetIntegrityLevel(O, level).
      */
     @TruffleBoundary
     public boolean setIntegrityLevel(boolean freeze, boolean doThrow) {
@@ -326,31 +326,43 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
         if (!preventExtensions(doThrow)) {
             return false;
         }
+
+        /**
+         * Extra class for lazy constants to break the following class initialization cycle:
+         * JSDynamicObject -> PropertyDescriptor -> Undefined -> Nullish -> JSDynamicObject.
+         */
+        final class Desc {
+            static final PropertyDescriptor NOT_CONFIGURABLE;
+            static final PropertyDescriptor NOT_CONFIGURABLE_NOT_WRITABLE;
+
+            static {
+                NOT_CONFIGURABLE = PropertyDescriptor.createEmpty();
+                NOT_CONFIGURABLE.setConfigurable(false);
+
+                NOT_CONFIGURABLE_NOT_WRITABLE = PropertyDescriptor.createEmpty();
+                NOT_CONFIGURABLE_NOT_WRITABLE.setConfigurable(false);
+                NOT_CONFIGURABLE_NOT_WRITABLE.setWritable(false);
+            }
+        }
+
         Iterable<Object> keys = ownPropertyKeys();
         if (freeze) {
             // FREEZE
-            PropertyDescriptor accDesc = PropertyDescriptor.createEmpty();
-            accDesc.setConfigurable(false);
-            PropertyDescriptor dataDesc = PropertyDescriptor.createEmpty();
-            dataDesc.setConfigurable(false);
-            dataDesc.setWritable(false);
-
             for (Object key : keys) {
                 PropertyDescriptor currentDesc = getOwnProperty(key);
                 if (currentDesc != null) {
-                    PropertyDescriptor newDesc = null;
+                    PropertyDescriptor desc;
                     if (currentDesc.isAccessorDescriptor()) {
-                        newDesc = accDesc;
+                        desc = Desc.NOT_CONFIGURABLE;
                     } else {
-                        newDesc = dataDesc;
+                        desc = Desc.NOT_CONFIGURABLE_NOT_WRITABLE;
                     }
-                    defineOwnProperty(key, newDesc, true);
+                    defineOwnProperty(key, desc, true);
                 }
             }
         } else {
             // SEAL
-            PropertyDescriptor desc = PropertyDescriptor.createEmpty();
-            desc.setConfigurable(false);
+            PropertyDescriptor desc = Desc.NOT_CONFIGURABLE;
             for (Object key : keys) {
                 defineOwnProperty(key, desc, true);
             }

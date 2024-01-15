@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,6 @@ import java.util.WeakHashMap;
 import org.graalvm.collections.Pair;
 import org.graalvm.home.HomeFinder;
 import org.graalvm.options.OptionValues;
-
 import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
 import org.graalvm.shadowed.com.ibm.icu.text.SimpleDateFormat;
 import org.graalvm.shadowed.com.ibm.icu.text.TimeZoneFormat;
@@ -70,6 +69,7 @@ import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -1821,8 +1821,8 @@ public class JSRealm {
     private JSFunctionObject createThrowTypeErrorFunction(boolean restrictedProperty) {
         CompilerAsserts.neverPartOfCompilation();
         JSFunctionObject thrower = JSFunction.create(this, restrictedProperty ? context.throwTypeErrorRestrictedPropertyFunctionData : context.throwTypeErrorFunctionData);
-        JSObject.preventExtensions(thrower);
-        JSObject.setIntegrityLevel(thrower, true);
+        thrower.preventExtensions(true);
+        thrower.setIntegrityLevel(true, true);
         return thrower;
     }
 
