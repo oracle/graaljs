@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -527,7 +527,7 @@ public class Parser extends AbstractParser {
             scanFirstToken();
 
             program = program(scriptName, reparseFlags, parentScope, argumentNames);
-        } catch (final Exception e) {
+        } catch (ParserException e) {
             handleParseException(e);
 
             program = null;
@@ -560,7 +560,7 @@ public class Parser extends AbstractParser {
             scanFirstToken();
 
             return module(moduleName);
-        } catch (final Exception e) {
+        } catch (ParserException e) {
             handleParseException(e);
 
             return null;
@@ -609,7 +609,7 @@ public class Parser extends AbstractParser {
 
             assert lc.getCurrentScope() == null;
             formalParameterList(TokenType.EOF, false, false);
-        } catch (final Exception e) {
+        } catch (ParserException e) {
             handleParseException(e);
         }
     }
@@ -665,7 +665,7 @@ public class Parser extends AbstractParser {
                             functionLine,
                             functionBody);
             return functionNode;
-        } catch (final Exception e) {
+        } catch (ParserException e) {
             handleParseException(e);
             return null;
         }
@@ -1335,7 +1335,7 @@ public class Parser extends AbstractParser {
                             }
                         }
                     }
-                } catch (final Exception e) {
+                } catch (ParserException e) {
                     final int errorLine = line;
                     final long errorToken = token;
                     // recover parsing
@@ -7637,7 +7637,7 @@ public class Parser extends AbstractParser {
             scanFirstToken();
 
             return expression(false, false);
-        } catch (final Exception e) {
+        } catch (ParserException e) {
             handleParseException(e);
 
             return null;
