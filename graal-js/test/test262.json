@@ -6378,6 +6378,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/toPlainDate/default-overflow-behaviour.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-01-15"
+  }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/toPlainDate/duplicate-calendar-fields.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -7457,6 +7461,10 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/toPlainDate/copies-merge-fields-object.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-12-12"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/toPlainDate/default-overflow-behaviour.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-01-15"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/toPlainDate/duplicate-calendar-fields.js",
     "status" : "FAIL",
@@ -9590,12 +9598,68 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/TypedArray/prototype/fill/fill-values-conversion-operations.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Conversion values for Float16 are not provided by the test harness"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/map/return-new-typedarray-conversion-operation.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Conversion values for Float16 are not provided by the test harness"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/set/array-arg-src-tonumber-value-conversions.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Conversion values for Float16 are not provided by the test harness"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-diff-buffer-other-type-conversions-sab.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Conversion values for Float16 are not provided by the test harness"
+  }, {
+    "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-diff-buffer-other-type-conversions.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Conversion values for Float16 are not provided by the test harness"
+  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/ctors/object-arg/conversion-operation.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Conversion values for Float16 are not provided by the test harness"
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/DefineOwnProperty/conversion-operation.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Conversion values for Float16 are not provided by the test harness"
+  }, {
+    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/conversion-operation.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "STAGING" : "FAIL"
+    },
+    "comment" : "Conversion values for Float16 are not provided by the test harness"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
@@ -10732,6 +10796,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
+    "filePath" : "staging/Intl402/Temporal/old/islamic-calendars.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-01-15"
+  }, {
     "filePath" : "staging/Intl402/Temporal/old/japanese-era.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
@@ -10743,6 +10811,10 @@
     "filePath" : "staging/Intl402/Temporal/old/non-iso-calendars.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/Intl402/Temporal/old/persian-calendar.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-01-15"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/time-toLocaleString.js",
     "status" : "FAIL",
