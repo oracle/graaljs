@@ -33,8 +33,18 @@ function assertEqual(expected, actual) {
     }
 }
 
+function _isSame(a, b) {
+    if (a === b) {
+        // Consider +0 and -0
+        return (a !== 0) || (1 / a === 1 / b);
+    }
+
+    // Consider NaN
+    return (a !== a) && (b !== b);
+}
+
 function assertSame(expected, actual) {
-    if (expected !== actual) {
+    if (!_isSame(expected, actual)) {
         var error = 'Objects not same - '
                 + 'expected: [' + expected + '] vs. '
                 + 'actual: [' + actual +']';
