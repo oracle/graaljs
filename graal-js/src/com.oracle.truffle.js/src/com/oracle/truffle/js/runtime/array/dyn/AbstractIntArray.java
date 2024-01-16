@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -188,8 +188,9 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
     protected static boolean containsHoleValue(JSDynamicObject object) {
         int[] array = getArray(object);
         int usedLength = getUsedLength(object);
+        int arrayOffset = arrayGetArrayOffset(object);
         for (int i = 0; i < usedLength; i++) {
-            if (array[i] == HolesIntArray.HOLE_VALUE) {
+            if (array[arrayOffset + i] == HolesIntArray.HOLE_VALUE) {
                 return true;
             }
         }
