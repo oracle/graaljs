@@ -7636,7 +7636,26 @@ public class Parser extends AbstractParser {
             prepareLexer(0, source.getLength());
             scanFirstToken();
 
-            return expression(false, false);
+            final long functionToken = Token.toDesc(FUNCTION, 0, 0);
+            final int functionLine = line;
+            final Scope dummyFunctionScope = Scope.createFunctionBody(null);
+            final ParserContextFunctionNode dummyFunction = createParserContextFunctionNode(
+                            null,
+                            functionToken,
+                            FunctionNode.IS_ANONYMOUS,
+                            functionLine,
+                            List.of(),
+                            0,
+                            dummyFunctionScope);
+
+            lc.push(dummyFunction);
+            final ParserContextBlockNode body = newBlock(dummyFunctionScope);
+            try {
+                return expression(false, false);
+            } finally {
+                restoreBlock(body);
+                lc.pop(dummyFunction);
+            }
         } catch (ParserException e) {
             handleParseException(e);
 
