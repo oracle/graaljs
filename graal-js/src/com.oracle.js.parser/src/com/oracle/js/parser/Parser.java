@@ -670,22 +670,9 @@ public class Parser extends AbstractParser {
         }
     }
 
-    private void handleParseException(final Exception e) {
+    private void handleParseException(final ParserException e) {
         // Issue message.
-        if (e instanceof ParserException) {
-            errors.error((ParserException) e);
-        } else {
-            // Extract message from exception. The message will be in error
-            // message format.
-            String message = e.getMessage();
-
-            // If empty message.
-            if (message == null) {
-                message = e.toString();
-            }
-
-            errors.error(message);
-        }
+        errors.error(e);
 
         if (env.dumpOnError) {
             e.printStackTrace(env.getErr());
@@ -695,23 +682,10 @@ public class Parser extends AbstractParser {
     /**
      * Skip to a good parsing recovery point.
      */
-    private void recover(final Exception e) {
+    private void recover(final ParserException e) {
         if (e != null) {
             // Issue message.
-            if (e instanceof ParserException) {
-                errors.error((ParserException) e);
-            } else {
-                // Extract message from exception. The message will be in error
-                // message format.
-                String message = e.getMessage();
-
-                // If empty message.
-                if (message == null) {
-                    message = e.toString();
-                }
-
-                errors.error(message);
-            }
+            errors.error(e);
 
             if (env.dumpOnError) {
                 e.printStackTrace(env.getErr());
