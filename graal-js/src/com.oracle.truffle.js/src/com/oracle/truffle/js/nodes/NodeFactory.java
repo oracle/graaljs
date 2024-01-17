@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1076,8 +1076,8 @@ public class NodeFactory {
         return GetIteratorUnaryNode.create(iteratedObject);
     }
 
-    public JavaScriptNode createGetAsyncIterator(JSContext context, JavaScriptNode iteratedObject) {
-        return GetAsyncIteratorNode.create(context, iteratedObject);
+    public JavaScriptNode createGetAsyncIterator(JavaScriptNode iteratedObject) {
+        return GetAsyncIteratorNode.create(iteratedObject);
     }
 
     public JavaScriptNode createEnumerate(JSContext context, JavaScriptNode iteratedObject, boolean values) {
