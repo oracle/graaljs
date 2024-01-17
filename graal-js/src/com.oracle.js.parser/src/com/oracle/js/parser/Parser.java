@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -527,7 +527,7 @@ public class Parser extends AbstractParser {
             scanFirstToken();
 
             program = program(scriptName, reparseFlags, parentScope, argumentNames);
-        } catch (final Exception e) {
+        } catch (ParserException e) {
             handleParseException(e);
 
             program = null;
@@ -560,7 +560,7 @@ public class Parser extends AbstractParser {
             scanFirstToken();
 
             return module(moduleName);
-        } catch (final Exception e) {
+        } catch (ParserException e) {
             handleParseException(e);
 
             return null;
@@ -609,7 +609,7 @@ public class Parser extends AbstractParser {
 
             assert lc.getCurrentScope() == null;
             formalParameterList(TokenType.EOF, false, false);
-        } catch (final Exception e) {
+        } catch (ParserException e) {
             handleParseException(e);
         }
     }
@@ -665,28 +665,15 @@ public class Parser extends AbstractParser {
                             functionLine,
                             functionBody);
             return functionNode;
-        } catch (final Exception e) {
+        } catch (ParserException e) {
             handleParseException(e);
             return null;
         }
     }
 
-    private void handleParseException(final Exception e) {
+    private void handleParseException(final ParserException e) {
         // Issue message.
-        if (e instanceof ParserException) {
-            errors.error((ParserException) e);
-        } else {
-            // Extract message from exception. The message will be in error
-            // message format.
-            String message = e.getMessage();
-
-            // If empty message.
-            if (message == null) {
-                message = e.toString();
-            }
-
-            errors.error(message);
-        }
+        errors.error(e);
 
         if (env.dumpOnError) {
             e.printStackTrace(env.getErr());
@@ -696,23 +683,10 @@ public class Parser extends AbstractParser {
     /**
      * Skip to a good parsing recovery point.
      */
-    private void recover(final Exception e) {
+    private void recover(final ParserException e) {
         if (e != null) {
             // Issue message.
-            if (e instanceof ParserException) {
-                errors.error((ParserException) e);
-            } else {
-                // Extract message from exception. The message will be in error
-                // message format.
-                String message = e.getMessage();
-
-                // If empty message.
-                if (message == null) {
-                    message = e.toString();
-                }
-
-                errors.error(message);
-            }
+            errors.error(e);
 
             if (env.dumpOnError) {
                 e.printStackTrace(env.getErr());
@@ -1335,7 +1309,7 @@ public class Parser extends AbstractParser {
                             }
                         }
                     }
-                } catch (final Exception e) {
+                } catch (ParserException e) {
                     final int errorLine = line;
                     final long errorToken = token;
                     // recover parsing
@@ -7636,8 +7610,27 @@ public class Parser extends AbstractParser {
             prepareLexer(0, source.getLength());
             scanFirstToken();
 
-            return expression(false, false);
-        } catch (final Exception e) {
+            final long functionToken = Token.toDesc(FUNCTION, 0, 0);
+            final int functionLine = line;
+            final Scope dummyFunctionScope = Scope.createFunctionBody(null);
+            final ParserContextFunctionNode dummyFunction = createParserContextFunctionNode(
+                            null,
+                            functionToken,
+                            FunctionNode.IS_ANONYMOUS,
+                            functionLine,
+                            List.of(),
+                            0,
+                            dummyFunctionScope);
+
+            lc.push(dummyFunction);
+            final ParserContextBlockNode body = newBlock(dummyFunctionScope);
+            try {
+                return expression(false, false);
+            } finally {
+                restoreBlock(body);
+                lc.pop(dummyFunction);
+            }
+        } catch (ParserException e) {
             handleParseException(e);
 
             return null;
