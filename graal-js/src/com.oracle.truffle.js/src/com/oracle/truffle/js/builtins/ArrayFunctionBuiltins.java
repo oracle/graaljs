@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,6 @@ import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
-import com.oracle.truffle.js.nodes.array.ArrayCreateNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -139,7 +138,6 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
     }
 
     public abstract static class JSArrayFunctionOperation extends JSArrayOperation {
-        @Child private ArrayCreateNode arrayCreateNode;
         @Child protected IsConstructorNode isConstructor = IsConstructorNode.create();
 
         public JSArrayFunctionOperation(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
@@ -157,11 +155,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                         return getArraySpeciesConstructorNode().construct(thisObj);
                     }
                 } else {
-                    if (arrayCreateNode == null) {
-                        CompilerDirectives.transferToInterpreterAndInvalidate();
-                        arrayCreateNode = insert(ArrayCreateNode.create(getContext()));
-                    }
-                    return arrayCreateNode.execute(len);
+                    return arrayCreate(len);
                 }
             }
         }
