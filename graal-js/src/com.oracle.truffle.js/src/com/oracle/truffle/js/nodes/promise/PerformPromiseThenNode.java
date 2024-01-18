@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,6 +72,10 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
     @NeverDefault
     public static PerformPromiseThenNode create(JSContext context) {
         return PerformPromiseThenNodeGen.create(context);
+    }
+
+    public final JSDynamicObject execute(JSPromiseObject promise, Object onFulfilled, Object onRejected) {
+        return execute(promise, onFulfilled, onRejected, null);
     }
 
     public abstract JSDynamicObject execute(JSPromiseObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability);

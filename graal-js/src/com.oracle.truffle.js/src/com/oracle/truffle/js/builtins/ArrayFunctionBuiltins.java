@@ -43,34 +43,65 @@ package com.oracle.truffle.js.builtins;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.VirtualFrame;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayFromAsyncNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayFromNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayOfNodeGen;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSIsArrayNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
+import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode;
+import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.AsyncIteratorArgs;
+import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.AsyncIteratorRootNode;
+import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.CreateAsyncFromSyncIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
+import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
+import com.oracle.truffle.js.nodes.access.PropertySetNode;
+import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.array.JSSetLengthNode;
+import com.oracle.truffle.js.nodes.control.TryCatchNode;
+import com.oracle.truffle.js.nodes.control.YieldException;
+import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.promise.NewPromiseCapabilityNode;
+import com.oracle.truffle.js.nodes.promise.PerformPromiseThenNode;
+import com.oracle.truffle.js.nodes.promise.PromiseResolveNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSContext.BuiltinFunctionKey;
+import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -89,7 +120,9 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         // ES6
         of(0),
-        from(1);
+        from(1),
+
+        fromAsync(1);
 
         private final int length;
 
@@ -106,6 +139,8 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         public int getECMAScriptVersion() {
             if (EnumSet.of(of, from).contains(this)) {
                 return 6;
+            } else if (this == fromAsync) {
+                return JSConfig.StagingECMAScriptVersion;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
@@ -120,6 +155,8 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 return JSArrayOfNodeGen.create(context, builtin, false, args().withThis().varArgs().createArgumentNodes(context));
             case from:
                 return JSArrayFromNodeGen.create(context, builtin, false, args().withThis().fixedArgs(3).createArgumentNodes(context));
+            case fromAsync:
+                return JSArrayFromAsyncNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
         }
         return null;
     }
@@ -323,6 +360,409 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 setLength(obj, len);
             }
             return obj;
+        }
+    }
+
+    @ImportStatic(Symbol.class)
+    public abstract static class JSArrayFromAsyncNode extends JSArrayFunctionOperation {
+        @Child private PropertySetNode setArgs;
+        @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+
+        public JSArrayFromAsyncNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, false);
+            this.setArgs = PropertySetNode.createSetHidden(AsyncIteratorAwaitNode.ARGS_ID, context);
+        }
+
+        private JSFunctionObject createFunctionWithArgs(AsyncIteratorArgs args, JSFunctionData functionData) {
+            JSFunctionObject function = JSFunction.create(getRealm(), functionData);
+            setArgs.setValue(function, args);
+            return function;
+        }
+
+        @Specialization
+        protected final Object arrayFromAsync(Object thisObj, Object asyncItems, Object mapFn, Object thisArg,
+                        @Bind("this") Node node,
+                        @Cached("create(getContext())") NewPromiseCapabilityNode newPromiseCapability,
+                        @Cached("create(getContext(), SYMBOL_ASYNC_ITERATOR)") GetMethodNode getAsyncIteratorMethodNode,
+                        @Cached("create(getContext(), SYMBOL_ITERATOR)") GetMethodNode getIteratorMethodNode,
+                        @Cached("create(getContext())") JSGetLengthNode getLengthNode,
+                        @Cached CreateAsyncFromSyncIteratorNode createAsyncFromSyncIterator,
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached InternalCallNode internalCallNode,
+                        @Cached("createCall()") JSFunctionCallNode callRejectNode,
+                        @Cached InlinedConditionProfile isAsyncIterator) {
+            var promiseCapability = newPromiseCapability.executeDefault();
+            try {
+                final boolean mapping;
+                if (mapFn == Undefined.instance) {
+                    mapping = false;
+                } else {
+                    checkCallbackIsFunction(mapFn);
+                    mapping = true;
+                }
+                IteratorRecord asyncIteratorRecord;
+                Object usingAsyncIterator = getAsyncIteratorMethodNode.executeWithTarget(asyncItems);
+                if (isAsyncIterator.profile(node, usingAsyncIterator != Undefined.instance)) {
+                    asyncIteratorRecord = getIteratorNode.execute(node, asyncItems, usingAsyncIterator);
+                } else {
+                    Object usingSyncIterator = getIteratorMethodNode.executeWithTarget(asyncItems);
+                    if (usingSyncIterator != Undefined.instance) {
+                        IteratorRecord syncIteratorRecord = getIteratorNode.execute(node, asyncItems, usingSyncIterator);
+                        asyncIteratorRecord = createAsyncFromSyncIterator.execute(node, syncIteratorRecord);
+                    } else {
+                        asyncIteratorRecord = null;
+                    }
+                }
+
+                Object result;
+                JSFunctionObject closure;
+                if (asyncIteratorRecord != null) {
+                    result = constructOrArray(thisObj, 0, false);
+                    var args = new ArrayFromAsyncIteratorArgs(promiseCapability, asyncIteratorRecord, result, mapping, mapFn, thisArg);
+                    closure = createFunctionWithArgs(args, getContext().getOrCreateBuiltinFunctionData(
+                                    BuiltinFunctionKey.ArrayFromAsyncIteratorResumption, ArrayFromAsyncIteratorResumptionRootNode::createFunctionImpl));
+                } else {
+                    /*
+                     * Note: asyncItems is neither an AsyncIterable nor an Iterable so assume it is
+                     * an array-like object.
+                     */
+                    Object arrayLike = toObject(asyncItems);
+                    long len = getLengthNode.executeLong(arrayLike);
+                    result = constructOrArray(thisObj, len, true);
+                    var args = new ArrayFromAsyncArrayLikeArgs(promiseCapability, len, arrayLike, result, mapping, mapFn, thisArg);
+                    closure = createFunctionWithArgs(args, getContext().getOrCreateBuiltinFunctionData(
+                                    BuiltinFunctionKey.ArrayFromAsyncArrayLikeResumption, ArrayFromAsyncArrayLikeResumptionRootNode::createFunctionImpl));
+                }
+
+                internalCallNode.execute(JSFunction.getCallTarget(closure), JSArguments.createOneArg(Undefined.instance, closure, Undefined.instance));
+            } catch (AbstractTruffleException ex) {
+                Object error = getErrorObject(ex);
+                callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), error));
+            }
+            return promiseCapability.getPromise();
+        }
+
+        private Object getErrorObject(AbstractTruffleException ex) {
+            if (getErrorObjectNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(getContext()));
+            }
+            return getErrorObjectNode.execute(ex);
+        }
+
+        abstract static sealed class ArrayFromAsyncArgs extends AsyncIteratorAwaitNode.AsyncIteratorWithCounterArgs {
+            final PromiseCapabilityRecord promiseCapability;
+            final Object result;
+            final boolean mapping;
+            final Object mapFn;
+            final Object thisArg;
+
+            /**
+             * Resumption point.
+             */
+            int state;
+
+            ArrayFromAsyncArgs(PromiseCapabilityRecord promiseCapability, IteratorRecord iterated, Object result, boolean mapping, Object mapFn, Object thisArg) {
+                super(iterated);
+                this.promiseCapability = promiseCapability;
+                this.result = result;
+                this.mapping = mapping;
+                this.mapFn = mapFn;
+                this.thisArg = thisArg;
+            }
+        }
+
+        static final class ArrayFromAsyncIteratorArgs extends ArrayFromAsyncArgs {
+
+            ArrayFromAsyncIteratorArgs(PromiseCapabilityRecord promiseCapability, IteratorRecord iterated, Object result, boolean mapping, Object mapFn, Object thisArg) {
+                super(promiseCapability, iterated, result, mapping, mapFn, thisArg);
+            }
+        }
+
+        static final class ArrayFromAsyncArrayLikeArgs extends ArrayFromAsyncArgs {
+            final long len;
+            final Object arrayLike;
+
+            ArrayFromAsyncArrayLikeArgs(PromiseCapabilityRecord promiseCapability, long len, Object arrayLike, Object result, boolean mapping, Object mapFn, Object thisArg) {
+                super(promiseCapability, null, result, mapping, mapFn, thisArg);
+                this.len = len;
+                this.arrayLike = arrayLike;
+            }
+        }
+
+        protected abstract static class ArrayFromAsyncResumptionRootNode<T extends ArrayFromAsyncArgs> extends AsyncIteratorAwaitNode.AsyncIteratorRootNode<T> {
+            @Child private PromiseResolveNode promiseResolveNode;
+            @Child private PerformPromiseThenNode performPromiseThenNode;
+            @Child private PropertySetNode setArgs;
+            @Child private JSSetLengthNode setLengthNode;
+            @Child private WriteElementNode writeOwnElementNode;
+            @Child private JSFunctionCallNode callMapFnNode;
+            @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
+
+            protected static final int STATE_START = 0;
+            protected static final int STATE_AWAIT_NEXT_RESULT = 1;
+            protected static final int STATE_AWAIT_MAPPED_VALUE = 2;
+
+            public ArrayFromAsyncResumptionRootNode(JSContext context) {
+                super(context);
+
+                this.promiseResolveNode = PromiseResolveNode.create(context);
+                this.performPromiseThenNode = PerformPromiseThenNode.create(context);
+                this.setArgs = PropertySetNode.createSetHidden(AsyncIteratorAwaitNode.ARGS_ID, context);
+                this.setLengthNode = JSSetLengthNode.create(context, THROW_ERROR);
+                this.writeOwnElementNode = WriteElementNode.create(context, THROW_ERROR, true);
+            }
+
+            protected final JSFunctionObject createFunctionWithArgs(AsyncIteratorArgs args, JSFunctionData functionData) {
+                JSFunctionObject function = JSFunction.create(getRealm(), functionData);
+                setArgs.setValue(function, args);
+                return function;
+            }
+
+            protected final Object suspendAwait(VirtualFrame frame, T args, Object promiseOrValue, int nextState, long k) {
+                var promise = promiseResolveNode.executeDefault(promiseOrValue);
+
+                // Save state and suspend built-in async function.
+                assert getArgs(frame) == args;
+                args.state = nextState;
+                args.counter = k;
+
+                /*
+                 * Once the awaited promise is fulfilled (f.) or rejected (r.), either (f.) resume
+                 * at the suspended Await point, or (r.) run the abrupt completion handler closing
+                 * the async iterator (if any) and rejecting the promise returned by Array.fromAsync
+                 * with the Await error, respectively.
+                 */
+                var resumeAwait = JSFrameUtil.getFunctionObject(frame);
+                var rejectAwait = createIfAbruptHandler(args);
+
+                performPromiseThenNode.execute(promise, resumeAwait, rejectAwait);
+                throw YieldException.AWAIT_NULL; // value is ignored
+            }
+
+            protected abstract JSFunctionObject createIfAbruptHandler(T args);
+
+            protected final Object resumeAwait(VirtualFrame frame, T args, int expectedState) {
+                // We have been restored at this point. Argument 0 is the awaited value.
+                assert getArgs(frame) == args && args.state == expectedState;
+                Object awaitedValue = JSArguments.getUserArgument(frame.getArguments(), 0);
+                args.state = STATE_START;
+                return awaitedValue;
+            }
+
+            protected final void setLength(Object thisObject, long length) {
+                setLengthNode.execute(thisObject, indexToJS(length));
+            }
+
+            protected final void createDataPropertyOrThrow(Object result, long k, Object mappedValue) {
+                writeOwnElementNode.executeWithTargetAndIndexAndValue(result, k, mappedValue);
+            }
+
+            protected final Object callMapFn(Object mapFn, Object thisArg, Object kValue, long k) {
+                if (callMapFnNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    callMapFnNode = insert(JSFunctionCallNode.createCall());
+                }
+                return callMapFnNode.executeCall(JSArguments.create(thisArg, mapFn, kValue, indexToJS(k)));
+            }
+
+            protected final Object getErrorObject(AbstractTruffleException ex) {
+                if (getErrorObjectNode == null) {
+                    CompilerDirectives.transferToInterpreterAndInvalidate();
+                    getErrorObjectNode = insert(TryCatchNode.GetErrorObjectNode.create(context));
+                }
+                return getErrorObjectNode.execute(ex);
+            }
+        }
+
+        protected static final class ArrayFromAsyncIteratorResumptionRootNode extends ArrayFromAsyncResumptionRootNode<ArrayFromAsyncIteratorArgs> {
+
+            @Child private JSFunctionCallNode callNextMethodNode;
+            @Child private IteratorValueNode iteratorValueNode;
+            @Child private AsyncIteratorCloseNode asyncIteratorCloseNode;
+            @Child private IsObjectNode isObjectNode;
+            @Child private IteratorCompleteNode iteratorCompleteNode;
+
+            ArrayFromAsyncIteratorResumptionRootNode(JSContext context) {
+                super(context);
+                this.callNextMethodNode = JSFunctionCallNode.createCall();
+                this.iteratorValueNode = IteratorValueNode.create();
+                this.asyncIteratorCloseNode = AsyncIteratorCloseNode.create(context);
+                this.isObjectNode = IsObjectNode.create();
+                this.iteratorCompleteNode = IteratorCompleteNode.create();
+            }
+
+            private Object checkIterResult(Object value) {
+                if (!isObjectNode.executeBoolean(value)) {
+                    throw Errors.createTypeErrorIterResultNotAnObject(value, this);
+                }
+                return value;
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                var args = getArgs(frame);
+
+                var promiseCapability = args.promiseCapability;
+                IteratorRecord iteratorRecord = args.iterated;
+                Object result = args.result;
+                boolean mapping = args.mapping;
+                long k = args.counter;
+                returnNow: try {
+                    for (int state = args.state; k < JSRuntime.MAX_SAFE_INTEGER_LONG; ++k, state = STATE_START) {
+                        Object mappedValue;
+                        if (state < STATE_AWAIT_MAPPED_VALUE) {
+                            Object nextResult;
+                            if (state == STATE_START) {
+                                nextResult = callNextMethodNode.executeCall(JSArguments.createZeroArg(iteratorRecord.getIterator(), iteratorRecord.getNextMethod()));
+                                nextResult = suspendAwait(frame, args, nextResult, STATE_AWAIT_NEXT_RESULT, k);
+                            } else {
+                                nextResult = resumeAwait(frame, args, STATE_AWAIT_NEXT_RESULT);
+                                checkIterResult(nextResult);
+                                if (iteratorCompleteNode.execute(nextResult)) {
+                                    setLength(result, k);
+                                    callResolve(promiseCapability, result);
+                                    break returnNow;
+                                }
+                            }
+                            Object nextValue = iteratorValueNode.execute(nextResult);
+                            if (mapping) {
+                                mappedValue = callMapFn(args.mapFn, args.thisArg, nextValue, k);
+                                mappedValue = suspendAwait(frame, args, mappedValue, STATE_AWAIT_MAPPED_VALUE, k);
+                            } else {
+                                mappedValue = nextValue;
+                            }
+                        } else {
+                            mappedValue = resumeAwait(frame, args, STATE_AWAIT_MAPPED_VALUE);
+                        }
+                        createDataPropertyOrThrow(result, k, mappedValue);
+                    }
+                    assert k >= JSRuntime.MAX_SAFE_INTEGER_LONG : k;
+                    throw Errors.createTypeErrorIndexTooLarge();
+                } catch (YieldException e) {
+                    assert e.isAwait() && args.state != STATE_START;
+                } catch (AbstractTruffleException e) {
+                    Object error = getErrorObject(e);
+                    asyncIteratorCloseNode.executeAbruptReject(iteratorRecord.getIterator(), error, promiseCapability);
+                }
+                return promiseCapability.getPromise();
+            }
+
+            @Override
+            protected JSFunctionObject createIfAbruptHandler(ArrayFromAsyncIteratorArgs args) {
+                return createFunctionWithArgs(args, context.getOrCreateBuiltinFunctionData(
+                                BuiltinFunctionKey.ArrayFromAsyncAwaitIfAbruptClose, ArrayFromAsyncIteratorResumptionRootNode::createIfAbruptCloseImpl));
+            }
+
+            static JSFunctionData createFunctionImpl(JSContext context) {
+                return JSFunctionData.createCallOnly(context, new ArrayFromAsyncIteratorResumptionRootNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
+            }
+
+            static JSFunctionData createIfAbruptCloseImpl(JSContext context) {
+                return JSFunctionData.createCallOnly(context, new IfAbruptCloseNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
+            }
+
+            private static class IfAbruptCloseNode extends AsyncIteratorRootNode<ArrayFromAsyncIteratorArgs> {
+                @Child private AsyncIteratorCloseNode closeNode;
+
+                IfAbruptCloseNode(JSContext context) {
+                    super(context);
+                    this.closeNode = AsyncIteratorCloseNode.create(context);
+                }
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    var args = getArgs(frame);
+                    var promiseCapability = args.promiseCapability;
+                    Object error = valueNode.execute(frame);
+                    closeNode.executeAbruptReject(args.iterated.getIterator(), error, promiseCapability);
+                    return promiseCapability.getPromise();
+                }
+            }
+        }
+
+        protected static final class ArrayFromAsyncArrayLikeResumptionRootNode extends ArrayFromAsyncResumptionRootNode<ArrayFromAsyncArrayLikeArgs> {
+
+            @Child private ReadElementNode getNode;
+
+            ArrayFromAsyncArrayLikeResumptionRootNode(JSContext context) {
+                super(context);
+                this.getNode = ReadElementNode.create(context);
+            }
+
+            @Override
+            public Object execute(VirtualFrame frame) {
+                var args = getArgs(frame);
+
+                var promiseCapability = args.promiseCapability;
+                Object result = args.result;
+                boolean mapping = args.mapping;
+                long len = args.len;
+                long k = args.counter;
+                try {
+                    for (int state = args.state; k < len; ++k, state = STATE_START) {
+                        Object mappedValue;
+                        if (state < STATE_AWAIT_MAPPED_VALUE) {
+                            Object kValue;
+                            if (state == STATE_START) {
+                                kValue = getNode.executeWithTargetAndIndex(args.arrayLike, k);
+                                kValue = suspendAwait(frame, args, kValue, STATE_AWAIT_NEXT_RESULT, k);
+                            } else {
+                                assert state == STATE_AWAIT_NEXT_RESULT;
+                                kValue = resumeAwait(frame, args, STATE_AWAIT_NEXT_RESULT);
+                            }
+                            if (mapping) {
+                                mappedValue = callMapFn(args.mapFn, args.thisArg, kValue, k);
+                                mappedValue = suspendAwait(frame, args, mappedValue, STATE_AWAIT_MAPPED_VALUE, k);
+                            } else {
+                                mappedValue = kValue;
+                            }
+                        } else {
+                            assert state == STATE_AWAIT_MAPPED_VALUE;
+                            mappedValue = resumeAwait(frame, args, STATE_AWAIT_MAPPED_VALUE);
+                        }
+                        createDataPropertyOrThrow(result, k, mappedValue);
+                    }
+                    setLength(result, len);
+                    callResolve(promiseCapability, result);
+                } catch (YieldException e) {
+                    assert e.isAwait() && args.state != STATE_START;
+                } catch (AbstractTruffleException e) {
+                    Object error = getErrorObject(e);
+                    callReject(promiseCapability, error);
+                }
+                return promiseCapability.getPromise();
+            }
+
+            @Override
+            protected JSFunctionObject createIfAbruptHandler(ArrayFromAsyncArrayLikeArgs args) {
+                return createFunctionWithArgs(args, context.getOrCreateBuiltinFunctionData(
+                                BuiltinFunctionKey.ArrayFromAsyncAwaitIfAbruptReturn, ArrayFromAsyncArrayLikeResumptionRootNode::createIfAbruptReturnImpl));
+            }
+
+            static JSFunctionData createFunctionImpl(JSContext context) {
+                return JSFunctionData.createCallOnly(context, new ArrayFromAsyncArrayLikeResumptionRootNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
+            }
+
+            static JSFunctionData createIfAbruptReturnImpl(JSContext context) {
+                return JSFunctionData.createCallOnly(context, new IfAbruptReturnNode(context).getCallTarget(), 1, Strings.EMPTY_STRING);
+            }
+
+            private static class IfAbruptReturnNode extends AsyncIteratorRootNode<ArrayFromAsyncArrayLikeArgs> {
+
+                IfAbruptReturnNode(JSContext context) {
+                    super(context);
+                }
+
+                @Override
+                public Object execute(VirtualFrame frame) {
+                    var args = getArgs(frame);
+                    var promiseCapability = args.promiseCapability;
+                    Object error = valueNode.execute(frame);
+                    callReject(promiseCapability, error);
+                    return promiseCapability.getPromise();
+                }
+            }
         }
     }
 }

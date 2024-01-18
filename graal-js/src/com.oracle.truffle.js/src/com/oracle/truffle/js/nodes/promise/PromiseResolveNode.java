@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -79,5 +79,9 @@ public class PromiseResolveNode extends JavaScriptBaseNode {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability.execute(constructor);
         callResolve.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getResolve(), value));
         return promiseCapability.getPromise();
+    }
+
+    public JSPromiseObject executeDefault(Object value) {
+        return (JSPromiseObject) execute(getRealm().getPromiseConstructor(), value);
     }
 }
