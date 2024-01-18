@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,6 +59,10 @@ public abstract class ByteArrayAccess {
 
     public abstract int getInt32(byte[] buffer, int byteIndex);
 
+    public final short getFloat16(byte[] buffer, int byteIndex) {
+        return (short) getInt16(buffer, byteIndex);
+    }
+
     public abstract float getFloat(byte[] buffer, int byteIndex);
 
     public abstract double getDouble(byte[] buffer, int byteIndex);
@@ -73,6 +77,10 @@ public abstract class ByteArrayAccess {
     public abstract void putInt16(byte[] buffer, int byteIndex, int value);
 
     public abstract void putInt32(byte[] buffer, int byteIndex, int value);
+
+    public final void putFloat16(byte[] buffer, int byteIndex, short value) {
+        putInt16(buffer, byteIndex, value);
+    }
 
     public abstract void putFloat(byte[] buffer, int byteIndex, float value);
 

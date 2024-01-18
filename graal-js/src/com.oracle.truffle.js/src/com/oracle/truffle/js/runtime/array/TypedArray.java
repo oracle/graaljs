@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,6 +56,7 @@ import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -79,6 +80,7 @@ public abstract class TypedArray extends ScriptArray {
         Uint32,
         BigInt64,
         BigUint64,
+        Float16,
         Float32,
         Float64
     }
@@ -265,14 +267,16 @@ public abstract class TypedArray extends ScriptArray {
     public abstract void setBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, Object value, InteropLibrary interop);
 
     public static TypedArrayFactory[] factories() {
-        return TypedArrayFactory.FACTORIES;
+        return TypedArrayFactory.FACTORIES_ALL;
     }
 
     public static TypedArrayFactory[] factories(JSContext context) {
-        if (context.getLanguageOptions().bigInt()) {
-            return TypedArrayFactory.FACTORIES;
+        if (!context.getLanguageOptions().bigInt()) {
+            return TypedArrayFactory.FACTORIES_NO_BIGINT;
+        } else if (context.getEcmaScriptVersion() == JSConfig.StagingECMAScriptVersion) {
+            return TypedArrayFactory.FACTORIES_ALL;
         } else {
-            return TypedArrayFactory.getNoBigIntFactories();
+            return TypedArrayFactory.FACTORIES_DEFAULT;
         }
     }
 
@@ -1552,6 +1556,121 @@ public abstract class TypedArray extends ScriptArray {
         public abstract double getDoubleImpl(JSArrayBufferObject buffer, int offset, int index, InteropLibrary interop);
 
         public abstract void setDoubleImpl(JSArrayBufferObject buffer, int offset, int index, double value, InteropLibrary interop);
+    }
+
+    static final int FLOAT16_BYTES_PER_ELEMENT = 2;
+
+    public static final class Float16Array extends TypedFloatArray {
+        Float16Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset, BUFFER_TYPE_ARRAY);
+        }
+
+        @Override
+        public double getDoubleImpl(JSArrayBufferObject buffer, int offset, int index, InteropLibrary interop) {
+            return Float.float16ToFloat(ByteArrayAccess.nativeOrder().getFloat16(getByteArray(buffer), offset + index * FLOAT16_BYTES_PER_ELEMENT));
+        }
+
+        @Override
+        public void setDoubleImpl(JSArrayBufferObject buffer, int offset, int index, double value, InteropLibrary interop) {
+            ByteArrayAccess.nativeOrder().putFloat16(getByteArray(buffer), offset + index * FLOAT16_BYTES_PER_ELEMENT, Float.floatToFloat16((float) value));
+        }
+
+        @Override
+        public Number getBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, InteropLibrary interop) {
+            return (double) Float.float16ToFloat(ByteArrayAccess.forOrder(littleEndian).getFloat16(getByteArray(buffer), index));
+        }
+
+        @Override
+        public void setBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
+            ByteArrayAccess.forOrder(littleEndian).putFloat16(getByteArray(buffer), index, Float.floatToFloat16(JSRuntime.floatValue((Number) value)));
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Float16;
+        }
+    }
+
+    public static final class DirectFloat16Array extends TypedFloatArray {
+        DirectFloat16Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset, BUFFER_TYPE_DIRECT);
+        }
+
+        @Override
+        public double getDoubleImpl(JSArrayBufferObject buffer, int offset, int index, InteropLibrary interop) {
+            return Float.float16ToFloat(ByteBufferAccess.nativeOrder().getFloat16(getDirectByteBuffer(buffer), offset + index * FLOAT16_BYTES_PER_ELEMENT));
+        }
+
+        @Override
+        public void setDoubleImpl(JSArrayBufferObject buffer, int offset, int index, double value, InteropLibrary interop) {
+            ByteBufferAccess.nativeOrder().putFloat16(getDirectByteBuffer(buffer), offset + index * FLOAT16_BYTES_PER_ELEMENT, Float.floatToFloat16((float) value));
+        }
+
+        @Override
+        public Number getBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, InteropLibrary interop) {
+            return (double) Float.float16ToFloat(ByteBufferAccess.forOrder(littleEndian).getFloat16(getDirectByteBuffer(buffer), index));
+        }
+
+        @Override
+        public void setBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
+            ByteBufferAccess.forOrder(littleEndian).putFloat16(getDirectByteBuffer(buffer), index, Float.floatToFloat16(JSRuntime.floatValue((Number) value)));
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Float16;
+        }
+    }
+
+    public static final class InteropFloat16Array extends TypedFloatArray {
+        InteropFloat16Array(TypedArrayFactory factory, boolean offset) {
+            super(factory, offset, BUFFER_TYPE_INTEROP);
+        }
+
+        @Override
+        public double getDoubleImpl(JSArrayBufferObject buffer, int offset, int index, InteropLibrary interop) {
+            return readBufferFloat16(buffer, offset + index * FLOAT16_BYTES_PER_ELEMENT, ByteOrder.nativeOrder(), interop);
+        }
+
+        @Override
+        public void setDoubleImpl(JSArrayBufferObject buffer, int offset, int index, double value, InteropLibrary interop) {
+            writeBufferFloat16(buffer, offset + index * FLOAT16_BYTES_PER_ELEMENT, (float) value, ByteOrder.nativeOrder(), interop);
+        }
+
+        @Override
+        public Number getBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, InteropLibrary interop) {
+            return (double) readBufferFloat16(buffer, index, littleEndian ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN, interop);
+        }
+
+        @Override
+        public void setBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
+            writeBufferFloat16(buffer, index, JSRuntime.floatValue((Number) value), littleEndian ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN, interop);
+        }
+
+        static float readBufferFloat16(Object buffer, int byteIndex, ByteOrder order, InteropLibrary interop) {
+            try {
+                return Float.float16ToFloat(interop.readBufferShort(buffer, order, byteIndex));
+            } catch (UnsupportedMessageException e) {
+                throw unsupportedBufferAccess(buffer, e);
+            } catch (InvalidBufferOffsetException e) {
+                throw Errors.createRangeErrorInvalidBufferOffset();
+            }
+        }
+
+        static void writeBufferFloat16(Object buffer, int byteIndex, float value, ByteOrder order, InteropLibrary interop) {
+            try {
+                interop.writeBufferShort(buffer, order, byteIndex, Float.floatToFloat16(value));
+            } catch (UnsupportedMessageException e) {
+                throw Errors.createTypeErrorReadOnlyBuffer();
+            } catch (InvalidBufferOffsetException e) {
+                throw Errors.createRangeErrorInvalidBufferOffset();
+            }
+        }
+
+        @Override
+        public ElementType getElementType() {
+            return ElementType.Float16;
+        }
     }
 
     static final int FLOAT32_BYTES_PER_ELEMENT = 4;

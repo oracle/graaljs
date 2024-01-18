@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,6 +84,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
     public enum DataViewPrototype implements BuiltinEnum<DataViewPrototype> {
         getBigInt64(1),
         getBigUint64(1),
+        getFloat16(1),
         getFloat32(1),
         getFloat64(1),
         getInt8(1),
@@ -94,6 +95,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         getUint32(1),
         setBigInt64(2),
         setBigUint64(2),
+        setFloat16(2),
         setFloat32(2),
         setFloat64(2),
         setInt8(2),
@@ -123,6 +125,14 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public boolean isGetter() {
             return EnumSet.of(buffer, byteLength, byteOffset).contains(this);
         }
+
+        @Override
+        public int getECMAScriptVersion() {
+            if (EnumSet.of(getFloat16, setFloat16).contains(this)) {
+                return JSConfig.StagingECMAScriptVersion;
+            }
+            return BuiltinEnum.super.getECMAScriptVersion();
+        }
     }
 
     @Override
@@ -130,6 +140,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         switch (builtinEnum) {
             case getBigInt64:
             case getBigUint64:
+            case getFloat16:
             case getFloat32:
             case getFloat64:
             case getInt16:
@@ -141,6 +152,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 return DataViewGetNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case setBigInt64:
             case setBigUint64:
+            case setFloat16:
             case setFloat32:
             case setFloat64:
             case setInt16:

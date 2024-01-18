@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -3000,6 +3000,8 @@ public final class JSRuntime {
             case BigInt64:
             case BigUint64:
                 return BigInt.valueOf(bufferAccess.getInt64(buffer, index));
+            case Float16:
+                return (double) Float.float16ToFloat(bufferAccess.getFloat16(buffer, index));
             case Float32:
                 return (double) bufferAccess.getFloat(buffer, index);
             case Float64:
@@ -3038,6 +3040,9 @@ public final class JSRuntime {
             case BigInt64:
             case BigUint64:
                 bufferAccess.putInt64(buffer, index, toBigInt(value).longValue());
+                break;
+            case Float16:
+                bufferAccess.putFloat16(buffer, index, Float.floatToFloat16(floatValue((Number) value)));
                 break;
             case Float32:
                 bufferAccess.putFloat(buffer, index, floatValue((Number) value));

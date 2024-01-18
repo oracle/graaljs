@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.array;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -50,6 +49,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray.BigInt64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.BigUint64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectBigInt64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectBigUint64Array;
+import com.oracle.truffle.js.runtime.array.TypedArray.DirectFloat16Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectFloat32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectFloat64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectInt16Array;
@@ -59,6 +59,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray.DirectUint16Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectUint32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectUint8Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.DirectUint8ClampedArray;
+import com.oracle.truffle.js.runtime.array.TypedArray.Float16Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Float32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Float64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Int16Array;
@@ -66,6 +67,7 @@ import com.oracle.truffle.js.runtime.array.TypedArray.Int32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.Int8Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.InteropBigInt64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.InteropBigUint64Array;
+import com.oracle.truffle.js.runtime.array.TypedArray.InteropFloat16Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.InteropFloat32Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.InteropFloat64Array;
 import com.oracle.truffle.js.runtime.array.TypedArray.InteropInt16Array;
@@ -214,6 +216,18 @@ public enum TypedArrayFactory implements PrototypeSupplier {
                 return new BigUint64Array(this, offset);
             }
         }
+    },
+    Float16Array(TypedArray.FLOAT16_BYTES_PER_ELEMENT) {
+        @Override
+        TypedArray instantiateArrayType(byte bufferType, boolean offset) {
+            if (bufferType == TypedArray.BUFFER_TYPE_INTEROP) {
+                return new InteropFloat16Array(this, offset);
+            } else if (bufferType == TypedArray.BUFFER_TYPE_DIRECT) {
+                return new DirectFloat16Array(this, offset);
+            } else {
+                return new Float16Array(this, offset);
+            }
+        }
     };
 
     private final int bytesPerElement;
@@ -289,21 +303,8 @@ public enum TypedArrayFactory implements PrototypeSupplier {
         return this == TypedArrayFactory.BigInt64Array || this == TypedArrayFactory.BigUint64Array;
     }
 
-    static final TypedArrayFactory[] FACTORIES = TypedArrayFactory.values();
-    private static TypedArrayFactory[] FACTORIES_NO_BIGINT;
-
-    public static TypedArrayFactory[] getNoBigIntFactories() {
-        if (FACTORIES_NO_BIGINT == null) {
-            TypedArrayFactory[] allFactories = TypedArrayFactory.values();
-            List<TypedArrayFactory> noBigIntFactories = new ArrayList<>(allFactories.length);
-            for (TypedArrayFactory factory : allFactories) {
-                if (!factory.isBigInt()) {
-                    noBigIntFactories.add(factory);
-                }
-            }
-            FACTORIES_NO_BIGINT = noBigIntFactories.toArray(new TypedArrayFactory[0]);
-        }
-        return FACTORIES_NO_BIGINT;
-    }
+    static final TypedArrayFactory[] FACTORIES_ALL = TypedArrayFactory.values();
+    static final TypedArrayFactory[] FACTORIES_DEFAULT = Arrays.copyOf(FACTORIES_ALL, Float16Array.ordinal());
+    static final TypedArrayFactory[] FACTORIES_NO_BIGINT = Arrays.copyOf(FACTORIES_ALL, BigInt64Array.ordinal());
 
 }

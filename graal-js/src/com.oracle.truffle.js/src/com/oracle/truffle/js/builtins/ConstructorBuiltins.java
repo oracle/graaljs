@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -344,6 +344,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         Uint16Array(3),
         Int32Array(3),
         Uint32Array(3),
+        Float16Array(3),
         Float32Array(3),
         Float64Array(3),
         BigInt64Array(3),
@@ -574,6 +575,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             case Uint16Array:
             case Int32Array:
             case Uint32Array:
+            case Float16Array:
             case Float32Array:
             case Float64Array:
             case BigInt64Array:
