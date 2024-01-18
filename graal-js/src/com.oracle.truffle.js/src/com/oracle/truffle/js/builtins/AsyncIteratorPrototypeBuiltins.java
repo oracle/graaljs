@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -212,8 +212,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Override
             public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
-                JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty((JSDynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, THIS_ID), PROMISE_ID);
-                return new AsyncStackTraceInfo(promise, null);
+                if (JSObjectUtil.getHiddenProperty(handlerFunction, THIS_ID) instanceof JSDynamicObject thisObj) {
+                    JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty(thisObj, PROMISE_ID);
+                    return new AsyncStackTraceInfo(promise, null);
+                }
+                return new AsyncStackTraceInfo();
             }
 
             protected final Object indexToJS(long index) {
