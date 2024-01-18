@@ -181,7 +181,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Child protected JavaScriptNode valueNode;
             @Child private PropertyGetNode getArgsNode;
             @Child private PropertyGetNode getThisNode;
-            @Child protected JSFunctionCallNode callNode;
+            @Child private JSFunctionCallNode callNode;
             @Child private LongToIntOrDoubleNode indexToNumber = LongToIntOrDoubleNode.create();
 
             protected final JSContext context;
@@ -222,6 +222,18 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             protected final Object indexToJS(long index) {
                 return indexToNumber.fromIndex(null, index);
             }
+
+            protected final void callResolve(PromiseCapabilityRecord promiseCapability, Object resultValue) {
+                callResolveOrReject(promiseCapability.getPromise(), promiseCapability.getResolve(), resultValue);
+            }
+
+            protected final void callReject(PromiseCapabilityRecord promiseCapability, Object resultValue) {
+                callResolveOrReject(promiseCapability.getPromise(), promiseCapability.getReject(), resultValue);
+            }
+
+            private void callResolveOrReject(JSDynamicObject promise, Object resolveOrReject, Object resultValue) {
+                callNode.executeCall(JSArguments.createOneArg(promise, resolveOrReject, resultValue));
+            }
         }
 
         private static class AsyncIteratorIfAbruptCloseNode extends AsyncIteratorRootNode<AsyncIteratorArgs> {
@@ -251,7 +263,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             public Object execute(VirtualFrame frame) {
                 PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
                 Object rejection = valueNode.execute(frame);
-                callNode.executeCall(JSArguments.createOneArg(capabilityRecord.getPromise(), capabilityRecord.getReject(), rejection));
+                callReject(capabilityRecord, rejection);
                 return capabilityRecord.getPromise();
             }
         }
@@ -329,11 +341,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                         return resultValue;
                     }
                     promiseCapability = newPromiseCapabilityNode.executeDefault();
-                    callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), resultValue));
+                    callResolve(promiseCapability, resultValue);
                 } catch (AbstractTruffleException e) {
                     resultValue = getErrorObject(e);
                     promiseCapability = newPromiseCapabilityNode.executeDefault();
-                    callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getReject(), resultValue));
+                    callReject(promiseCapability, resultValue);
                 }
                 return promiseCapability.getPromise();
             }
@@ -731,6 +743,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child protected GetMethodNode getReturnNode;
         @Child protected AsyncIteratorAwaitNode<AsyncIteratorArgs> awaitReturnResult;
         @Child protected IsJSObjectNode isObjectNode;
+        @Child private JSFunctionCallNode callReturnNode;
 
         protected AsyncIteratorUnwrapYieldResumptionRootNode(JSContext context, boolean closeResumption) {
             super(context);
@@ -755,7 +768,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     Object iterator = args.iterated.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
-                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        Object returnResult = callReturn(iterator, returnMethod);
                         return awaitReturnResult.executeThis(returnResult, args, generator);
                     }
                 } else {
@@ -765,6 +778,14 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 }
             }
             return Undefined.instance;
+        }
+
+        protected final Object callReturn(Object iterator, Object returnMethod) {
+            if (callReturnNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callReturnNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callReturnNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
         }
 
         /**
@@ -813,7 +834,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     Object iterator = args.innerIterator.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
-                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        Object returnResult = callReturn(iterator, returnMethod);
                         return awaitInnerIteratorReturnResult.executeThis(returnResult, args, generator);
                     } else {
                         args.innerIterator = null;
@@ -821,7 +842,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     iterator = args.iterated.getIterator();
                     returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
-                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        Object returnResult = callReturn(iterator, returnMethod);
                         return awaitReturnResult.executeThis(returnResult, args, generator);
                     }
                 } else {
@@ -833,7 +854,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     Object iterator = args.iterated.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
-                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        Object returnResult = callReturn(iterator, returnMethod);
                         return awaitReturnResult.executeThis(returnResult, args, generator);
                     }
                 }
