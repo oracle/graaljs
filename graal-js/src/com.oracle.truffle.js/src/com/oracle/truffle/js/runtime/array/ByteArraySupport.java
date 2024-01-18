@@ -65,7 +65,6 @@ final class VarHandleNativeOrderByteArrayAccess extends ByteArrayAccess {
     private static final VarHandle INT16 = MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.nativeOrder());
     private static final VarHandle INT32 = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.nativeOrder());
     private static final VarHandle INT64 = MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.nativeOrder());
-    private static final VarHandle FLOAT16 = MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.nativeOrder());
     private static final VarHandle FLOAT = MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.nativeOrder());
     private static final VarHandle DOUBLE = MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.nativeOrder());
 
@@ -87,11 +86,6 @@ final class VarHandleNativeOrderByteArrayAccess extends ByteArrayAccess {
     }
 
     @Override
-    public short getFloat16(byte[] buffer, int byteIndex) {
-        return (short) FLOAT16.get(buffer, byteIndex);
-    }
-
-    @Override
     public float getFloat(byte[] buffer, int byteIndex) {
         return (float) FLOAT.get(buffer, byteIndex);
     }
@@ -117,11 +111,6 @@ final class VarHandleNativeOrderByteArrayAccess extends ByteArrayAccess {
     }
 
     @Override
-    public void putFloat16(byte[] buffer, int byteIndex, short value) {
-        FLOAT16.set(buffer, byteIndex, value);
-    }
-
-    @Override
     public void putFloat(byte[] buffer, int byteIndex, float value) {
         FLOAT.set(buffer, byteIndex, value);
     }
@@ -136,7 +125,6 @@ final class VarHandleLittleEndianByteArrayAccess extends ByteArrayAccess {
     private static final VarHandle INT16 = MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
     private static final VarHandle INT32 = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.LITTLE_ENDIAN);
     private static final VarHandle INT64 = MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.LITTLE_ENDIAN);
-    private static final VarHandle FLOAT16 = MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.LITTLE_ENDIAN);
     private static final VarHandle FLOAT = MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.LITTLE_ENDIAN);
     private static final VarHandle DOUBLE = MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.LITTLE_ENDIAN);
 
@@ -158,11 +146,6 @@ final class VarHandleLittleEndianByteArrayAccess extends ByteArrayAccess {
     }
 
     @Override
-    public short getFloat16(byte[] buffer, int byteIndex) {
-        return (short) FLOAT16.get(buffer, byteIndex);
-    }
-
-    @Override
     public float getFloat(byte[] buffer, int byteIndex) {
         return (float) FLOAT.get(buffer, byteIndex);
     }
@@ -188,11 +171,6 @@ final class VarHandleLittleEndianByteArrayAccess extends ByteArrayAccess {
     }
 
     @Override
-    public void putFloat16(byte[] buffer, int byteIndex, short value) {
-        FLOAT16.set(buffer, byteIndex, value);
-    }
-
-    @Override
     public void putFloat(byte[] buffer, int byteIndex, float value) {
         FLOAT.set(buffer, byteIndex, value);
     }
@@ -207,7 +185,6 @@ final class VarHandleBigEndianByteArrayAccess extends ByteArrayAccess {
     private static final VarHandle INT16 = MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.BIG_ENDIAN);
     private static final VarHandle INT32 = MethodHandles.byteArrayViewVarHandle(int[].class, ByteOrder.BIG_ENDIAN);
     private static final VarHandle INT64 = MethodHandles.byteArrayViewVarHandle(long[].class, ByteOrder.BIG_ENDIAN);
-    private static final VarHandle FLOAT16 = MethodHandles.byteArrayViewVarHandle(short[].class, ByteOrder.BIG_ENDIAN);
     private static final VarHandle FLOAT = MethodHandles.byteArrayViewVarHandle(float[].class, ByteOrder.BIG_ENDIAN);
     private static final VarHandle DOUBLE = MethodHandles.byteArrayViewVarHandle(double[].class, ByteOrder.BIG_ENDIAN);
 
@@ -229,11 +206,6 @@ final class VarHandleBigEndianByteArrayAccess extends ByteArrayAccess {
     }
 
     @Override
-    public short getFloat16(byte[] buffer, int byteIndex) {
-        return (short) FLOAT16.get(buffer, byteIndex);
-    }
-
-    @Override
     public float getFloat(byte[] buffer, int byteIndex) {
         return (float) FLOAT.get(buffer, byteIndex);
     }
@@ -256,11 +228,6 @@ final class VarHandleBigEndianByteArrayAccess extends ByteArrayAccess {
     @Override
     public void putInt64(byte[] buffer, int byteIndex, long value) {
         INT64.set(buffer, byteIndex, value);
-    }
-
-    @Override
-    public void putFloat16(byte[] buffer, int byteIndex, short value) {
-        FLOAT16.set(buffer, byteIndex, value);
     }
 
     @Override

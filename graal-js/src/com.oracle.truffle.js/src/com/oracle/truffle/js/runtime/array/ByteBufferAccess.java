@@ -63,7 +63,9 @@ public abstract class ByteBufferAccess {
 
     public abstract int getInt32(ByteBuffer buffer, int index);
 
-    public abstract short getFloat16(ByteBuffer buffer, int index);
+    public final short getFloat16(ByteBuffer buffer, int index) {
+        return (short) getInt16(buffer, index);
+    }
 
     public abstract float getFloat(ByteBuffer buffer, int index);
 
@@ -80,7 +82,9 @@ public abstract class ByteBufferAccess {
 
     public abstract void putInt32(ByteBuffer buffer, int index, int value);
 
-    public abstract void putFloat16(ByteBuffer buffer, int index, short value);
+    public final void putFloat16(ByteBuffer buffer, int index, short value) {
+        putInt16(buffer, index, value);
+    }
 
     public abstract void putFloat(ByteBuffer buffer, int index, float value);
 

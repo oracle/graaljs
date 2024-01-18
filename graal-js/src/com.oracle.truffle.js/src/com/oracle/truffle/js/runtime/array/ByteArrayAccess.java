@@ -59,7 +59,9 @@ public abstract class ByteArrayAccess {
 
     public abstract int getInt32(byte[] buffer, int byteIndex);
 
-    public abstract short getFloat16(byte[] buffer, int byteIndex);
+    public final short getFloat16(byte[] buffer, int byteIndex) {
+        return (short) getInt16(buffer, byteIndex);
+    }
 
     public abstract float getFloat(byte[] buffer, int byteIndex);
 
@@ -76,7 +78,9 @@ public abstract class ByteArrayAccess {
 
     public abstract void putInt32(byte[] buffer, int byteIndex, int value);
 
-    public abstract void putFloat16(byte[] buffer, int byteIndex, short value);
+    public final void putFloat16(byte[] buffer, int byteIndex, short value) {
+        putInt16(buffer, byteIndex, value);
+    }
 
     public abstract void putFloat(byte[] buffer, int byteIndex, float value);
 
@@ -119,11 +123,6 @@ final class TruffleByteArrayAccess extends ByteArrayAccess {
     }
 
     @Override
-    public short getFloat16(byte[] buffer, int byteIndex) {
-        return support.getShort(buffer, byteIndex);
-    }
-
-    @Override
     public float getFloat(byte[] buffer, int byteIndex) {
         return support.getFloat(buffer, byteIndex);
     }
@@ -151,11 +150,6 @@ final class TruffleByteArrayAccess extends ByteArrayAccess {
     @Override
     public void putInt64(byte[] buffer, int byteIndex, long value) {
         support.putLong(buffer, byteIndex, value);
-    }
-
-    @Override
-    public void putFloat16(byte[] buffer, int byteIndex, short value) {
-        support.putShort(buffer, byteIndex, value);
     }
 
     @Override
