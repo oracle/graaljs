@@ -59,7 +59,6 @@ import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSArrayOfNode
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltinsFactory.JSIsArrayNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
 import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode;
-import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.AsyncIteratorArgs;
 import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.AsyncIteratorRootNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.CreateAsyncFromSyncIteratorNode;
@@ -373,7 +372,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             this.setArgs = PropertySetNode.createSetHidden(AsyncIteratorAwaitNode.ARGS_ID, context);
         }
 
-        private JSFunctionObject createFunctionWithArgs(AsyncIteratorArgs args, JSFunctionData functionData) {
+        private JSFunctionObject createFunctionWithArgs(ArrayFromAsyncArgs args, JSFunctionData functionData) {
             JSFunctionObject function = JSFunction.create(getRealm(), functionData);
             setArgs.setValue(function, args);
             return function;
@@ -450,20 +449,22 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             return getErrorObjectNode.execute(ex);
         }
 
-        abstract static sealed class ArrayFromAsyncArgs extends AsyncIteratorAwaitNode.AsyncIteratorWithCounterArgs {
+        abstract static sealed class ArrayFromAsyncArgs {
+            /** Array.fromAsync result promise. */
             final PromiseCapabilityRecord promiseCapability;
+            /** Result array or array-like. */
             final Object result;
+
             final boolean mapping;
             final Object mapFn;
             final Object thisArg;
 
-            /**
-             * Resumption point.
-             */
+            /** Resumption point. */
             int state;
+            /** Current result array index. */
+            long resultIndex;
 
-            ArrayFromAsyncArgs(PromiseCapabilityRecord promiseCapability, IteratorRecord iterated, Object result, boolean mapping, Object mapFn, Object thisArg) {
-                super(iterated);
+            ArrayFromAsyncArgs(PromiseCapabilityRecord promiseCapability, Object result, boolean mapping, Object mapFn, Object thisArg) {
                 this.promiseCapability = promiseCapability;
                 this.result = result;
                 this.mapping = mapping;
@@ -473,9 +474,11 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         static final class ArrayFromAsyncIteratorArgs extends ArrayFromAsyncArgs {
+            final IteratorRecord iterator;
 
-            ArrayFromAsyncIteratorArgs(PromiseCapabilityRecord promiseCapability, IteratorRecord iterated, Object result, boolean mapping, Object mapFn, Object thisArg) {
-                super(promiseCapability, iterated, result, mapping, mapFn, thisArg);
+            ArrayFromAsyncIteratorArgs(PromiseCapabilityRecord promiseCapability, IteratorRecord iterator, Object result, boolean mapping, Object mapFn, Object thisArg) {
+                super(promiseCapability, result, mapping, mapFn, thisArg);
+                this.iterator = iterator;
             }
         }
 
@@ -484,7 +487,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             final Object arrayLike;
 
             ArrayFromAsyncArrayLikeArgs(PromiseCapabilityRecord promiseCapability, long len, Object arrayLike, Object result, boolean mapping, Object mapFn, Object thisArg) {
-                super(promiseCapability, null, result, mapping, mapFn, thisArg);
+                super(promiseCapability, result, mapping, mapFn, thisArg);
                 this.len = len;
                 this.arrayLike = arrayLike;
             }
@@ -513,7 +516,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 this.writeOwnElementNode = WriteElementNode.create(context, THROW_ERROR, true);
             }
 
-            protected final JSFunctionObject createFunctionWithArgs(AsyncIteratorArgs args, JSFunctionData functionData) {
+            protected final JSFunctionObject createFunctionWithArgs(T args, JSFunctionData functionData) {
                 JSFunctionObject function = JSFunction.create(getRealm(), functionData);
                 setArgs.setValue(function, args);
                 return function;
@@ -525,7 +528,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 // Save state and suspend built-in async function.
                 assert getArgs(frame) == args;
                 args.state = nextState;
-                args.counter = k;
+                args.resultIndex = k;
 
                 /*
                  * Once the awaited promise is fulfilled (f.) or rejected (r.), either (f.) resume
@@ -604,10 +607,10 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 var args = getArgs(frame);
 
                 var promiseCapability = args.promiseCapability;
-                IteratorRecord iteratorRecord = args.iterated;
+                IteratorRecord iteratorRecord = args.iterator;
                 Object result = args.result;
                 boolean mapping = args.mapping;
-                long k = args.counter;
+                long k = args.resultIndex;
                 returnNow: try {
                     for (int state = args.state; k < JSRuntime.MAX_SAFE_INTEGER_LONG; ++k, state = STATE_START) {
                         Object mappedValue;
@@ -675,7 +678,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                     var args = getArgs(frame);
                     var promiseCapability = args.promiseCapability;
                     Object error = valueNode.execute(frame);
-                    closeNode.executeAbruptReject(args.iterated.getIterator(), error, promiseCapability);
+                    closeNode.executeAbruptReject(args.iterator.getIterator(), error, promiseCapability);
                     return promiseCapability.getPromise();
                 }
             }
@@ -698,7 +701,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 Object result = args.result;
                 boolean mapping = args.mapping;
                 long len = args.len;
-                long k = args.counter;
+                long k = args.resultIndex;
                 try {
                     for (int state = args.state; k < len; ++k, state = STATE_START) {
                         Object mappedValue;
