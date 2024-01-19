@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,13 +74,12 @@ public final class JSIterator extends JSNonProxy implements JSConstructorFactory
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSObject iteratorPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
 
-        JSObjectUtil.putConstructorProperty(iteratorPrototype, ctor);
+        JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(realm), JSAttributes.getDefaultNotEnumerable());
         JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS);
+        JSObjectUtil.putAccessorsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.BUILTINS);
         if (realm.getContext().getLanguageOptions().asyncIteratorHelpers()) {
             JSObjectUtil.putFunctionsFromContainer(realm, iteratorPrototype, IteratorPrototypeBuiltins.ASYNC_BUILTINS);
         }
-        JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_ITERATOR, createIteratorPrototypeSymbolIteratorFunction(realm), JSAttributes.getDefaultNotEnumerable());
-        JSObjectUtil.putDataProperty(iteratorPrototype, Symbol.SYMBOL_TO_STRING_TAG, CLASS_NAME, JSAttributes.getDefaultNotEnumerable());
 
         return iteratorPrototype;
     }
