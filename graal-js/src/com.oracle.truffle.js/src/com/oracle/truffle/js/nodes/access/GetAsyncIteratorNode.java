@@ -79,7 +79,7 @@ public abstract class GetAsyncIteratorNode extends JavaScriptNode {
     @Specialization
     protected final IteratorRecord doGetIterator(Object iteratedObject,
                     @Cached(inline = true) GetIteratorNode getIteratorNode,
-                    @Cached("create(getLanguage().getJSContext(), SYMBOL_ASYNC_ITERATOR)") GetMethodNode getAsyncIteratorMethodNode,
+                    @Cached("create(getJSContext(), SYMBOL_ASYNC_ITERATOR)") GetMethodNode getAsyncIteratorMethodNode,
                     @Cached CreateAsyncFromSyncIteratorNode createAsyncFromSyncIteratorNode,
                     @Cached InlinedConditionProfile asyncToSync) {
         Object usingAsyncIterator = getAsyncIteratorMethodNode.executeWithTarget(iteratedObject);
