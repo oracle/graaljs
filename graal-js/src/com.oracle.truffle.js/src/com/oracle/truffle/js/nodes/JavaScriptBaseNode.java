@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,8 @@ import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSLanguageOptions;
 import com.oracle.truffle.js.runtime.JSRealm;
 
 @TypeSystemReference(JSTypes.class)
@@ -83,10 +85,19 @@ public abstract class JavaScriptBaseNode extends Node {
         return JavaScriptLanguage.get(this);
     }
 
+    @Idempotent
+    protected final JSContext getJSContext() {
+        return getLanguage().getJSContext();
+    }
+
+    @Idempotent
+    protected final JSLanguageOptions getLanguageOptions() {
+        return getJSContext().getLanguageOptions();
+    }
+
     protected final boolean hasOverloadedOperators(Object obj) {
-        assert !JSGuards.hasOverloadedOperators(obj) || getLanguage().getJSContext().getLanguageOptions().operatorOverloading();
-        return (CompilerDirectives.inInterpreter() || getLanguage().getJSContext().getLanguageOptions().operatorOverloading()) &&
-                        JSGuards.hasOverloadedOperators(obj);
+        assert !JSGuards.hasOverloadedOperators(obj) || getLanguageOptions().operatorOverloading();
+        return (CompilerDirectives.inInterpreter() || getLanguageOptions().operatorOverloading()) && JSGuards.hasOverloadedOperators(obj);
     }
 
 }
