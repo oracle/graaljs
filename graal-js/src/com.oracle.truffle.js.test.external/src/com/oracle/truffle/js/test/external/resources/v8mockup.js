@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -61,6 +61,18 @@ var isTurboFanned = function() {
 var isBaseline = function () { //used by mjsunit/baseline/* tests
     return v8IgnoreResult;
 }
+var topFrameIsInterpreted = function() {
+    return v8IgnoreResult;
+}
+var topFrameIsBaseline = function() {
+    return v8IgnoreResult;
+}
+var topFrameIsMaglevved = function() {
+    return v8IgnoreResult;
+}
+var topFrameIsTurboFanned = function() {
+    return v8IgnoreResult;
+}
 
 // ---------------------- d8 global object ---------------------- //
 
@@ -90,7 +102,7 @@ var createExternalizableString = function(str) {
 };
 
 var externalizeString = function(str) {
-    if (str.length == 1 && str.codePointAt(0) < 256) {
+    if (str.length === 1 && str.codePointAt(0) < 256) {
         throw new Error("string does not support externalization.");
     }
 };
@@ -107,7 +119,9 @@ let kExternalStringMinTwoByteCachedLength = 3;
 // ---------------------- other mockup functions ---------------- //
 
 globalThis['%OptimizeFunctionOnNextCall'] = function(f) {
-    Object.defineProperty(f, '_optimized', { value: true });
+    if (typeof f === 'function') {
+        Object.defineProperty(f, '_optimized', { value: true });
+    }
     return undefined;
 }
 
@@ -441,19 +455,19 @@ globalThis['%TwoByteSeqStringSetChar'] = function() {
 }
 
 globalThis['%IsRegExp'] = function(obj) {
-    return Object.prototype.toString.call(obj) == "[object RegExp]";
+    return Object.prototype.toString.call(obj) === "[object RegExp]";
 }
 
 globalThis['%IsArray'] = function(obj) {
-    return Object.prototype.toString.call(obj) == "[object Array]";
+    return Object.prototype.toString.call(obj) === "[object Array]";
 }
 
 globalThis['%IsFunction'] = function(obj) {
-    return Object.prototype.toString.call(obj) == "[object Function]";
+    return Object.prototype.toString.call(obj) === "[object Function]";
 }
 
 globalThis['%IsSpecObject'] = function(obj) {
-    return Object.prototype.toString.call(obj) == "[object Date]";
+    return Object.prototype.toString.call(obj) === "[object Date]";
 }
 
 globalThis['%FunctionGetScript'] = function(scr) {
@@ -513,7 +527,7 @@ globalThis['%DebugGetLoadedScripts'] = function() {
 }
 
 globalThis['%IsSmi'] = function(value){
-    return typeof(value) === "number" && Math.floor(value) === value && !globalThis['%IsMinusZero'](value) && TestV8.class(value) === "java.lang.Integer" && value != 2147483648;
+    return typeof(value) === "number" && Math.floor(value) === value && !globalThis['%IsMinusZero'](value) && TestV8.class(value) === "java.lang.Integer" && value !== 2147483648;
 }
 
 globalThis['%FunctionGetInferredName'] = function(a) {
@@ -1200,5 +1214,23 @@ globalThis['%GetWeakCollectionSize'] = function(weakMapOrSet) {
 }
 
 globalThis['%NoElementsProtector'] = function() {
+    return v8IgnoreResult;
+}
+
+globalThis['%SetBatterySaverMode'] = function(value) {
+    return v8IgnoreResult;
+}
+
+globalThis['%NotifyIsolateBackground'] = function() {
+}
+
+globalThis['%NotifyIsolateForeground'] = function() {
+}
+
+globalThis['%IsEfficiencyModeEnabled'] = function() {
+    return v8IgnoreResult;
+}
+
+globalThis['%GetFunctionForCurrentFrame'] = function() {
     return v8IgnoreResult;
 }
