@@ -151,6 +151,22 @@
     },
     "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
   }, {
+    "filePath" : "built-ins/Iterator/prototype/constructor/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: deletes the tested property accidentally"
+  }, {
+    "filePath" : "built-ins/Iterator/prototype/constructor/weird-setter.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: missing argument in assert.throws() calls"
+  }, {
+    "filePath" : "built-ins/Iterator/prototype/Symbol.toStringTag/prop-desc.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: deletes the tested property accidentally"
+  }, {
+    "filePath" : "built-ins/Iterator/prototype/Symbol.toStringTag/weird-setter.js",
+    "status" : "FAIL",
+    "comment" : "Incorrect test: missing argument in assert.throws() calls"
+  }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
     "comment" : "Long running test"
