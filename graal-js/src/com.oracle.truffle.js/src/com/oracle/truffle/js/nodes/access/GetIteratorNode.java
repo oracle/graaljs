@@ -48,13 +48,8 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -88,10 +83,7 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
     @Specialization
     protected static IteratorRecord doGetIterator(Node node, Object items,
                     @Cached(value = "createIteratorMethodNode()", uncached = "uncachedIteratorMethodNode()", inline = false) GetMethodNode getIteratorMethodNode,
-                    @Cached(inline = false) IsCallableNode isCallableNode,
-                    @Cached(value = "createCall()", uncached = "getUncachedCall()", inline = false) JSFunctionCallNode iteratorCallNode,
-                    @Cached(inline = false) GetIteratorDirectNode getIteratorDirectNode,
-                    @Cached InlinedBranchProfile errorBranch) {
+                    @Cached GetIteratorFromMethodNode getIteratorFromMethodNode) {
         Object method;
         if (getIteratorMethodNode == null) {
             method = getIteratorMethodUncached(items);
@@ -99,7 +91,7 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
             method = getIteratorMethodNode.executeWithTarget(items);
         }
 
-        return getIterator(items, method, isCallableNode, iteratorCallNode, getIteratorDirectNode, errorBranch, node);
+        return getIteratorFromMethodNode.execute(node, items, method);
     }
 
     @InliningCutoff
@@ -112,26 +104,6 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
             target = ForeignObjectPrototypeNode.getUncached().execute(obj);
         }
         return JSObject.getOrDefault(target, Symbol.SYMBOL_ITERATOR, obj, Undefined.instance);
-    }
-
-    public static IteratorRecord getIterator(Object iteratedObject, Object method,
-                    IsCallableNode isCallableNode,
-                    JSFunctionCallNode methodCallNode,
-                    GetIteratorDirectNode getIteratorDirectNode,
-                    InlinedBranchProfile errorBranch,
-                    Node node) {
-        if (!isCallableNode.executeBoolean(method)) {
-            errorBranch.enter(node);
-            throw Errors.createTypeErrorNotIterable(iteratedObject, node);
-        }
-        return getIterator(iteratedObject, method, methodCallNode, getIteratorDirectNode);
-    }
-
-    public static IteratorRecord getIterator(Object iteratedObject, Object method,
-                    JSFunctionCallNode methodCallNode,
-                    GetIteratorDirectNode getIteratorDirectNode) {
-        Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
-        return getIteratorDirectNode.execute(iterator);
     }
 
     @NeverDefault
