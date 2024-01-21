@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -2178,7 +2178,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
 
     private JavaScriptNode desugarForAwaitOf(ForNode forNode, JavaScriptNode modify, JumpTargetCloseable<ContinueTarget> jumpTarget) {
         assert forNode.isForAwaitOf();
-        JavaScriptNode getIterator = factory.createGetAsyncIterator(context, modify);
+        JavaScriptNode getIterator = factory.createGetAsyncIterator(modify);
         VarRef iteratorVar = environment.createTempVar();
         JavaScriptNode iteratorInit = iteratorVar.createWriteNode(getIterator);
         VarRef nextResultVar = environment.createTempVar();

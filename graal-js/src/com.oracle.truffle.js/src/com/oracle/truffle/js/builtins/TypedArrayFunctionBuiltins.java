@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins.JSArrayFromNode;
 import com.oracle.truffle.js.builtins.ArrayFunctionBuiltins.JSArrayFunctionOperation;
 import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltinsFactory.TypedArrayFromNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayFunctionBuiltinsFactory.TypedArrayOfNodeGen;
+import com.oracle.truffle.js.nodes.access.GetIteratorFromMethodNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -129,8 +130,9 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
         @Override
         @Specialization(guards = "isConstructor.executeBoolean(thisObj)")
         protected Object arrayFrom(Object thisObj, Object source, Object mapFn, Object thisArg,
+                        @Cached GetIteratorFromMethodNode getIteratorFromMethod,
                         @Cached InlinedBranchProfile growBranch) {
-            return arrayFromCommon(thisObj, source, mapFn, thisArg, false, growBranch);
+            return arrayFromCommon(thisObj, source, mapFn, thisArg, false, getIteratorFromMethod, growBranch);
         }
 
         @Fallback
@@ -140,10 +142,11 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Override
-        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping, InlinedBranchProfile growProfile) {
+        protected JSDynamicObject arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping,
+                        GetIteratorFromMethodNode getIteratorFromMethod, InlinedBranchProfile growProfile) {
             SimpleArrayList<Object> values = new SimpleArrayList<>();
 
-            IteratorRecord iteratorRecord = getIterator(items, usingIterator);
+            IteratorRecord iteratorRecord = getIteratorFromMethod.execute(this, items, usingIterator);
             while (true) {
                 Object next = iteratorStep(iteratorRecord);
                 if (next == Boolean.FALSE) {

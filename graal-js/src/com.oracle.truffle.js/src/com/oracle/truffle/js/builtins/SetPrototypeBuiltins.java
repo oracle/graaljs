@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,7 @@ import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.JSSetUnionNode
 import com.oracle.truffle.js.builtins.SetPrototypeBuiltinsFactory.SetGetSizeNodeGen;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNodeGen;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorFromMethodNode;
 import com.oracle.truffle.js.nodes.access.GetSetRecordNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
@@ -346,9 +346,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization
         protected JSDynamicObject union(JSSetObject set, Object other,
                         @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode) {
+                        @Cached GetIteratorFromMethodNode getIteratorFromMethodNode) {
             SetRecord otherRec = getSetRecordNode.execute(other);
-            IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+            IteratorRecord keysIter = getIteratorFromMethodNode.execute(this, otherRec.set(), otherRec.keys());
             JSHashMap resultSetData = set.getMap().copy();
             while (true) {
                 Object next = iteratorStepNode.execute(keysIter);
@@ -384,7 +384,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected JSDynamicObject intersection(JSSetObject set, Object other,
                         @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
                         @Cached(inline = true) JSToBooleanNode toBooleanNode,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                         @Cached InlinedBranchProfile thisSetSmallerProfile) {
             SetRecord otherRec = getSetRecordNode.execute(other);
             JSHashMap resultSetData = new JSHashMap();
@@ -402,7 +402,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     }
                 }
             } else {
-                IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+                IteratorRecord keysIter = getIteratorFromMethodNode.execute(this, otherRec.set(), otherRec.keys());
                 while (true) {
                     Object next = iteratorStepNode.execute(keysIter);
                     if (next == Boolean.FALSE) {
@@ -440,7 +440,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected JSDynamicObject difference(JSSetObject set, Object other,
                         @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
                         @Cached(inline = true) JSToBooleanNode toBooleanNode,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                         @Cached InlinedBranchProfile thisSetSmallerProfile) {
             SetRecord otherRec = getSetRecordNode.execute(other);
             JSHashMap thisSetData = set.getMap();
@@ -458,7 +458,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     }
                 }
             } else {
-                IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+                IteratorRecord keysIter = getIteratorFromMethodNode.execute(this, otherRec.set(), otherRec.keys());
                 while (true) {
                     Object next = iteratorStepNode.execute(keysIter);
                     if (next == Boolean.FALSE) {
@@ -491,9 +491,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization
         protected JSDynamicObject symmetricDifference(JSSetObject set, Object other,
                         @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode) {
+                        @Cached GetIteratorFromMethodNode getIteratorFromMethodNode) {
             SetRecord otherRec = getSetRecordNode.execute(other);
-            IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+            IteratorRecord keysIter = getIteratorFromMethodNode.execute(this, otherRec.set(), otherRec.keys());
             JSHashMap thisSetData = set.getMap();
             JSHashMap resultSetData = thisSetData.copy();
             while (true) {
@@ -573,14 +573,14 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         @Specialization
         protected boolean isSupersetOf(JSSetObject set, Object other,
                         @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode) {
+                        @Cached GetIteratorFromMethodNode getIteratorFromMethodNode) {
             SetRecord otherRec = getSetRecordNode.execute(other);
             JSHashMap thisSetData = set.getMap();
             int thisSize = thisSetData.size();
             if (thisSize < otherRec.size()) {
                 return false;
             }
-            IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+            IteratorRecord keysIter = getIteratorFromMethodNode.execute(this, otherRec.set(), otherRec.keys());
             while (true) {
                 Object next = iteratorStepNode.execute(keysIter);
                 if (next == Boolean.FALSE) {
@@ -615,7 +615,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         protected boolean isDisjointFrom(JSSetObject set, Object other,
                         @Cached("create(getContext())") GetSetRecordNode getSetRecordNode,
                         @Cached(inline = true) JSToBooleanNode toBooleanNode,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                         @Cached InlinedBranchProfile thisSetSmallerProfile) {
             SetRecord otherRec = getSetRecordNode.execute(other);
             JSHashMap thisSetData = set.getMap();
@@ -631,7 +631,7 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
                     }
                 }
             } else {
-                IteratorRecord keysIter = getIteratorNode.execute(this, otherRec.set(), otherRec.keys());
+                IteratorRecord keysIter = getIteratorFromMethodNode.execute(this, otherRec.set(), otherRec.keys());
                 while (true) {
                     Object next = iteratorStepNode.execute(keysIter);
                     if (next == Boolean.FALSE) {

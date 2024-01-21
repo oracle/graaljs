@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,13 +48,8 @@ import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
-import com.oracle.truffle.js.nodes.unary.IsCallableNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
@@ -74,11 +69,7 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
     protected GetIteratorNode() {
     }
 
-    public final IteratorRecord execute(Node node, Object iteratedObject) {
-        return execute(node, iteratedObject, Undefined.instance);
-    }
-
-    public abstract IteratorRecord execute(Node node, Object iteratedObject, Object method);
+    public abstract IteratorRecord execute(Node node, Object iteratedObject);
 
     @NeverDefault
     public static GetIteratorNode create() {
@@ -90,24 +81,17 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
     }
 
     @Specialization
-    protected static IteratorRecord doGetIterator(Node node, Object items, Object methodOpt,
+    protected static IteratorRecord doGetIterator(Node node, Object items,
                     @Cached(value = "createIteratorMethodNode()", uncached = "uncachedIteratorMethodNode()", inline = false) GetMethodNode getIteratorMethodNode,
-                    @Cached(inline = false) IsCallableNode isCallableNode,
-                    @Cached(value = "createCall()", uncached = "getUncachedCall()", inline = false) JSFunctionCallNode iteratorCallNode,
-                    @Cached(inline = false) GetIteratorDirectNode getIteratorDirectNode,
-                    @Cached InlinedBranchProfile errorBranch) {
+                    @Cached GetIteratorFromMethodNode getIteratorFromMethodNode) {
         Object method;
-        if (methodOpt != Undefined.instance) {
-            method = methodOpt;
+        if (getIteratorMethodNode == null) {
+            method = getIteratorMethodUncached(items);
         } else {
-            if (getIteratorMethodNode == null) {
-                method = getIteratorMethodUncached(items);
-            } else {
-                method = getIteratorMethodNode.executeWithTarget(items);
-            }
+            method = getIteratorMethodNode.executeWithTarget(items);
         }
 
-        return getIterator(items, method, isCallableNode, iteratorCallNode, getIteratorDirectNode, errorBranch, node);
+        return getIteratorFromMethodNode.execute(node, items, method);
     }
 
     @InliningCutoff
@@ -122,29 +106,9 @@ public abstract class GetIteratorNode extends JavaScriptBaseNode {
         return JSObject.getOrDefault(target, Symbol.SYMBOL_ITERATOR, obj, Undefined.instance);
     }
 
-    public static IteratorRecord getIterator(Object iteratedObject, Object method,
-                    IsCallableNode isCallableNode,
-                    JSFunctionCallNode methodCallNode,
-                    GetIteratorDirectNode getIteratorDirectNode,
-                    InlinedBranchProfile errorBranch,
-                    Node node) {
-        if (!isCallableNode.executeBoolean(method)) {
-            errorBranch.enter(node);
-            throw Errors.createTypeErrorNotIterable(iteratedObject, node);
-        }
-        return getIterator(iteratedObject, method, methodCallNode, getIteratorDirectNode);
-    }
-
-    public static IteratorRecord getIterator(Object iteratedObject, Object method,
-                    JSFunctionCallNode methodCallNode,
-                    GetIteratorDirectNode getIteratorDirectNode) {
-        Object iterator = methodCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
-        return getIteratorDirectNode.execute(iterator);
-    }
-
     @NeverDefault
     GetMethodNode createIteratorMethodNode() {
-        return GetMethodNode.create(getLanguage().getJSContext(), Symbol.SYMBOL_ITERATOR);
+        return GetMethodNode.create(getJSContext(), Symbol.SYMBOL_ITERATOR);
     }
 
     static GetMethodNode uncachedIteratorMethodNode() {

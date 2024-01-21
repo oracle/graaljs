@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,45 +41,33 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSAsyncFromSyncIteratorObject;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 
 /**
- * ES6 7.4.3 IteratorComplete(iterResult).
+ * CreateAsyncFromSyncIterator ( syncIteratorRecord ).
  */
-@GenerateUncached
-public abstract class IteratorCompleteNode extends JavaScriptBaseNode {
+@GenerateInline
+@GenerateCached(false)
+@ImportStatic({Strings.class})
+public abstract class CreateAsyncFromSyncIteratorNode extends JavaScriptBaseNode {
 
-    protected IteratorCompleteNode() {
-    }
-
-    public abstract boolean execute(Object iterResult);
+    public abstract IteratorRecord execute(Node node, IteratorRecord syncIteratorRecord);
 
     @Specialization
-    protected boolean iteratorComplete(Object iterResult,
-                    @Cached(value = "createGetDoneNode()", uncached = "getNullNode()") PropertyGetNode getDoneNode,
-                    @Cached(inline = true) JSToBooleanNode toBooleanNode) {
-        Object done = (getDoneNode != null) ? getDoneNode.getValue(iterResult) : JSRuntime.get(iterResult, Strings.DONE);
-        return toBooleanNode.executeBoolean(this, done);
+    protected final IteratorRecord createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord,
+                    @Cached("create(NEXT, getJSContext())") PropertyGetNode getNextMethodNode) {
+        JSObject asyncIterator = JSAsyncFromSyncIteratorObject.create(getJSContext(), getRealm(), syncIteratorRecord);
+        Object nextMethod = getNextMethodNode.getValue(asyncIterator);
+        return IteratorRecord.create(asyncIterator, nextMethod, false);
     }
 
-    @NeverDefault
-    public static IteratorCompleteNode create() {
-        return IteratorCompleteNodeGen.create();
-    }
-
-    @NeverDefault
-    public static IteratorCompleteNode getUncached() {
-        return IteratorCompleteNodeGen.getUncached();
-    }
-
-    @NeverDefault
-    PropertyGetNode createGetDoneNode() {
-        return PropertyGetNode.create(Strings.DONE, getJSContext());
-    }
 }

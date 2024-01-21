@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -115,6 +115,7 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
             Object returnMethod = getReturnNode.executeWithTarget(iterator);
             if (returnMethod != Undefined.instance) {
                 Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                // Await(innerResult.[[Value]])
                 JSPromiseObject promise = promiseResolve(innerResult);
                 JSFunctionObject finallyFunction = createCloseAbruptFunction(promise, error);
                 return performPromiseThenNode.execute(promise, finallyFunction, finallyFunction, newPromiseCapabilityNode.executeDefault());
@@ -123,6 +124,24 @@ public class AsyncIteratorCloseNode extends JavaScriptBaseNode {
             // re-throw outer exception, see AsyncIteratorClose
         }
         return error;
+    }
+
+    public final void executeAbruptReject(Object iterator, Object error, PromiseCapabilityRecord resultCapability) {
+        try {
+            Object returnMethod = getReturnNode.executeWithTarget(iterator);
+            if (returnMethod != Undefined.instance) {
+                Object innerResult = methodCallNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                // Await(innerResult.[[Value]]), then reject outer promise with the original error.
+                JSPromiseObject promise = promiseResolve(innerResult);
+                JSFunctionObject finallyFunction = createCloseAbruptFunction(promise, error);
+                var rejectOnly = PromiseCapabilityRecord.create(resultCapability.getPromise(), (JSDynamicObject) resultCapability.getReject(), (JSDynamicObject) resultCapability.getReject());
+                performPromiseThenNode.execute(promise, finallyFunction, finallyFunction, rejectOnly);
+                return;
+            }
+        } catch (AbstractTruffleException e) {
+            // reject with outer error, see AsyncIteratorClose
+        }
+        callNode.executeCall(JSArguments.createOneArg(resultCapability.getPromise(), resultCapability.getReject(), error));
     }
 
     private JSPromiseObject promiseResolve(Object promiseOrValue) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,45 +41,48 @@
 package com.oracle.truffle.js.nodes.access;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
-import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
-import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
+import com.oracle.truffle.js.nodes.unary.IsCallableNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
+import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 
 /**
- * ES6 7.4.3 IteratorComplete(iterResult).
+ * GetIteratorFromMethod ( obj, method ).
  */
+@GenerateInline
+@GenerateCached(false)
 @GenerateUncached
-public abstract class IteratorCompleteNode extends JavaScriptBaseNode {
+@ImportStatic(JSInteropUtil.class)
+public abstract class GetIteratorFromMethodNode extends JavaScriptBaseNode {
 
-    protected IteratorCompleteNode() {
+    protected GetIteratorFromMethodNode() {
     }
 
-    public abstract boolean execute(Object iterResult);
+    public abstract IteratorRecord execute(Node node, Object iteratedObject, Object method);
 
     @Specialization
-    protected boolean iteratorComplete(Object iterResult,
-                    @Cached(value = "createGetDoneNode()", uncached = "getNullNode()") PropertyGetNode getDoneNode,
-                    @Cached(inline = true) JSToBooleanNode toBooleanNode) {
-        Object done = (getDoneNode != null) ? getDoneNode.getValue(iterResult) : JSRuntime.get(iterResult, Strings.DONE);
-        return toBooleanNode.executeBoolean(this, done);
+    protected static IteratorRecord getIteratorFromMethod(Node node, Object iteratedObject, Object method,
+                    @Cached(inline = false) IsCallableNode isCallableNode,
+                    @Cached(value = "createCall()", uncached = "getUncachedCall()", inline = false) JSFunctionCallNode iteratorCallNode,
+                    @Cached(inline = true) GetIteratorDirectNode getIteratorDirectNode,
+                    @Cached InlinedBranchProfile errorBranch) {
+        if (!isCallableNode.executeBoolean(method)) {
+            errorBranch.enter(node);
+            throw Errors.createTypeErrorNotIterable(iteratedObject, node);
+        }
+        Object iterator = iteratorCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
+        // Note: If iterator is not an Object, GetIteratorDirect throws a TypeError.
+        return getIteratorDirectNode.execute(node, iterator);
     }
 
-    @NeverDefault
-    public static IteratorCompleteNode create() {
-        return IteratorCompleteNodeGen.create();
-    }
-
-    @NeverDefault
-    public static IteratorCompleteNode getUncached() {
-        return IteratorCompleteNodeGen.getUncached();
-    }
-
-    @NeverDefault
-    PropertyGetNode createGetDoneNode() {
-        return PropertyGetNode.create(Strings.DONE, getJSContext());
-    }
 }

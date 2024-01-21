@@ -730,6 +730,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorIndexTooLarge() {
+        return Errors.createTypeError("index is too large");
+    }
+
+    @TruffleBoundary
     public static JSException createRangeErrorInvalidBufferSize() {
         return Errors.createRangeError("Buffer too large");
     }

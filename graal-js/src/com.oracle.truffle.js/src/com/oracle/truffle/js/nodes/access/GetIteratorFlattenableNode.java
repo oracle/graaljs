@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,9 +53,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSAsyncFromSyncIteratorObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -89,6 +87,7 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
                     @Cached(value = "create(context, SYMBOL_ITERATOR)") GetMethodNode getIteratorMethodNode,
                     @Cached(value = "createCall()") JSFunctionCallNode iteratorCallNode,
                     @Cached(value = "create(NEXT, context)") PropertyGetNode getNextMethodNode,
+                    @Cached CreateAsyncFromSyncIteratorNode createAsyncFromSyncIteratorNode,
                     @Cached InlinedBranchProfile errorBranch) {
 
         if (!isObjectNode.executeBoolean(iteratedObject)) {
@@ -126,15 +125,9 @@ public abstract class GetIteratorFlattenableNode extends JavaScriptBaseNode {
         }
         IteratorRecord iteratorRecord = IteratorRecord.create(iterator, nextMethod, false);
         if (async && !alreadyAsync) {
-            return createAsyncFromSyncIterator(iteratorRecord, getNextMethodNode);
+            return createAsyncFromSyncIteratorNode.execute(this, iteratorRecord);
         } else {
             return iteratorRecord;
         }
-    }
-
-    private IteratorRecord createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord, PropertyGetNode getNextMethodNode) {
-        JSObject asyncIterator = JSAsyncFromSyncIteratorObject.create(context, getRealm(), syncIteratorRecord);
-        Object nextMethod = getNextMethodNode.getValue(asyncIterator);
-        return IteratorRecord.create(asyncIterator, nextMethod, false);
     }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,6 @@ import com.oracle.truffle.js.nodes.unary.JSUnaryNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
@@ -99,44 +98,40 @@ public abstract class JSToObjectNode extends JavaScriptBaseNode {
         return JSToObjectNodeGen.getUncached();
     }
 
-    protected final JSContext getContext() {
-        return getLanguage().getJSContext();
-    }
-
     @InliningCutoff
     @Specialization
     protected JSDynamicObject doBoolean(boolean value) {
-        return JSBoolean.create(getContext(), getRealm(), value);
+        return JSBoolean.create(getJSContext(), getRealm(), value);
     }
 
     @InliningCutoff
     @Specialization
     protected JSDynamicObject doString(TruffleString value) {
-        return JSString.create(getContext(), getRealm(), value);
+        return JSString.create(getJSContext(), getRealm(), value);
     }
 
     @InliningCutoff
     @Specialization
     protected JSDynamicObject doInt(int value) {
-        return JSNumber.create(getContext(), getRealm(), value);
+        return JSNumber.create(getJSContext(), getRealm(), value);
     }
 
     @InliningCutoff
     @Specialization
     protected JSDynamicObject doDouble(double value) {
-        return JSNumber.create(getContext(), getRealm(), value);
+        return JSNumber.create(getJSContext(), getRealm(), value);
     }
 
     @InliningCutoff
     @Specialization
     protected JSDynamicObject doBigInt(BigInt value) {
-        return JSBigInt.create(getContext(), getRealm(), value);
+        return JSBigInt.create(getJSContext(), getRealm(), value);
     }
 
     @InliningCutoff
     @Specialization
     protected JSDynamicObject doSymbol(Symbol value) {
-        return JSSymbol.create(getContext(), getRealm(), value);
+        return JSSymbol.create(getJSContext(), getRealm(), value);
     }
 
     @Specialization(guards = {"cachedClass != null", "isExact(object, cachedClass)"}, limit = "1")

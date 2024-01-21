@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,56 +44,51 @@ import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Executed;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
-import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.builtins.JSAsyncFromSyncIteratorObject;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * GetIterator(obj, hint = async).
  */
+@ImportStatic({Symbol.class})
 public abstract class GetAsyncIteratorNode extends JavaScriptNode {
     @Child @Executed protected JavaScriptNode objectNode;
-    @Child private GetMethodNode getAsyncIteratorMethodNode;
-    @Child private PropertyGetNode getNextMethodNode;
-    private final JSContext context;
 
-    protected GetAsyncIteratorNode(JSContext context, JavaScriptNode objectNode) {
+    protected GetAsyncIteratorNode(JavaScriptNode objectNode) {
         this.objectNode = objectNode;
-        this.context = context;
-        this.getAsyncIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ASYNC_ITERATOR);
-        this.getNextMethodNode = PropertyGetNode.create(Strings.NEXT, context);
     }
 
     @NeverDefault
-    public static GetAsyncIteratorNode create(JSContext context, JavaScriptNode iteratedObject) {
-        return GetAsyncIteratorNodeGen.create(context, iteratedObject);
+    public static GetAsyncIteratorNode create() {
+        return GetAsyncIteratorNodeGen.create(null);
+    }
+
+    @NeverDefault
+    public static GetAsyncIteratorNode create(JavaScriptNode iteratedObject) {
+        return GetAsyncIteratorNodeGen.create(iteratedObject);
     }
 
     @Specialization
     protected final IteratorRecord doGetIterator(Object iteratedObject,
                     @Cached(inline = true) GetIteratorNode getIteratorNode,
+                    @Cached(inline = true) GetIteratorFromMethodNode getIteratorFromMethodNode,
+                    @Cached("create(getJSContext(), SYMBOL_ASYNC_ITERATOR)") GetMethodNode getAsyncIteratorMethodNode,
+                    @Cached CreateAsyncFromSyncIteratorNode createAsyncFromSyncIteratorNode,
                     @Cached InlinedConditionProfile asyncToSync) {
-        Object method = getAsyncIteratorMethodNode.executeWithTarget(iteratedObject);
-        if (asyncToSync.profile(this, method == Undefined.instance)) {
+        Object usingAsyncIterator = getAsyncIteratorMethodNode.executeWithTarget(iteratedObject);
+        if (asyncToSync.profile(this, usingAsyncIterator == Undefined.instance)) {
             IteratorRecord syncIteratorRecord = getIteratorNode.execute(this, iteratedObject);
-            JSObject asyncIterator = createAsyncFromSyncIterator(syncIteratorRecord);
-            return IteratorRecord.create(asyncIterator, getNextMethodNode.getValue(asyncIterator), false);
+            return createAsyncFromSyncIteratorNode.execute(this, syncIteratorRecord);
         }
-        return getIteratorNode.execute(this, iteratedObject, method);
-    }
-
-    private JSObject createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord) {
-        return JSAsyncFromSyncIteratorObject.create(context, getRealm(), syncIteratorRecord);
+        return getIteratorFromMethodNode.execute(this, iteratedObject, usingAsyncIterator);
     }
 
     @Override
@@ -103,6 +98,6 @@ public abstract class GetAsyncIteratorNode extends JavaScriptNode {
 
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-        return GetAsyncIteratorNodeGen.create(context, cloneUninitialized(objectNode, materializedTags));
+        return GetAsyncIteratorNodeGen.create(cloneUninitialized(objectNode, materializedTags));
     }
 }

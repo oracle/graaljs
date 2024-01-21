@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -175,13 +175,13 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
     public static class AsyncIteratorAwaitNode<T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> extends JavaScriptBaseNode {
         public static final HiddenKey THIS_ID = new HiddenKey("awaitThis");
-        private static final HiddenKey ARGS_ID = new HiddenKey("awaitArgs");
+        public static final HiddenKey ARGS_ID = new HiddenKey("awaitArgs");
 
-        public abstract static class AsyncIteratorRootNode<T extends AsyncIteratorAwaitNode.AsyncIteratorArgs> extends JavaScriptRootNode implements AsyncHandlerRootNode {
+        public abstract static class AsyncIteratorRootNode<T> extends JavaScriptRootNode implements AsyncHandlerRootNode {
             @Child protected JavaScriptNode valueNode;
             @Child private PropertyGetNode getArgsNode;
             @Child private PropertyGetNode getThisNode;
-            @Child protected JSFunctionCallNode callNode;
+            @Child private JSFunctionCallNode callNode;
             @Child private LongToIntOrDoubleNode indexToNumber = LongToIntOrDoubleNode.create();
 
             protected final JSContext context;
@@ -212,12 +212,27 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Override
             public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction) {
                 assert JSFunction.isJSFunction(handlerFunction) && ((RootCallTarget) JSFunction.getFunctionData(handlerFunction).getCallTarget()).getRootNode() == this;
-                JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty((JSDynamicObject) JSObjectUtil.getHiddenProperty(handlerFunction, THIS_ID), PROMISE_ID);
-                return new AsyncStackTraceInfo(promise, null);
+                if (JSObjectUtil.getHiddenProperty(handlerFunction, THIS_ID) instanceof JSDynamicObject thisObj) {
+                    JSDynamicObject promise = (JSDynamicObject) JSObjectUtil.getHiddenProperty(thisObj, PROMISE_ID);
+                    return new AsyncStackTraceInfo(promise, null);
+                }
+                return new AsyncStackTraceInfo();
             }
 
             protected final Object indexToJS(long index) {
                 return indexToNumber.fromIndex(null, index);
+            }
+
+            protected final void callResolve(PromiseCapabilityRecord promiseCapability, Object resultValue) {
+                callResolveOrReject(promiseCapability.getPromise(), promiseCapability.getResolve(), resultValue);
+            }
+
+            protected final void callReject(PromiseCapabilityRecord promiseCapability, Object resultValue) {
+                callResolveOrReject(promiseCapability.getPromise(), promiseCapability.getReject(), resultValue);
+            }
+
+            private void callResolveOrReject(JSDynamicObject promise, Object resolveOrReject, Object resultValue) {
+                callNode.executeCall(JSArguments.createOneArg(promise, resolveOrReject, resultValue));
             }
         }
 
@@ -248,7 +263,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             public Object execute(VirtualFrame frame) {
                 PromiseCapabilityRecord capabilityRecord = newPromiseCapabilityNode.executeDefault();
                 Object rejection = valueNode.execute(frame);
-                callNode.executeCall(JSArguments.createOneArg(capabilityRecord.getPromise(), capabilityRecord.getReject(), rejection));
+                callReject(capabilityRecord, rejection);
                 return capabilityRecord.getPromise();
             }
         }
@@ -326,11 +341,11 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                         return resultValue;
                     }
                     promiseCapability = newPromiseCapabilityNode.executeDefault();
-                    callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getResolve(), resultValue));
+                    callResolve(promiseCapability, resultValue);
                 } catch (AbstractTruffleException e) {
                     resultValue = getErrorObject(e);
                     promiseCapability = newPromiseCapabilityNode.executeDefault();
-                    callNode.executeCall(JSArguments.createOneArg(promiseCapability.getPromise(), promiseCapability.getReject(), resultValue));
+                    callReject(promiseCapability, resultValue);
                 }
                 return promiseCapability.getPromise();
             }
@@ -728,6 +743,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
         @Child protected GetMethodNode getReturnNode;
         @Child protected AsyncIteratorAwaitNode<AsyncIteratorArgs> awaitReturnResult;
         @Child protected IsJSObjectNode isObjectNode;
+        @Child private JSFunctionCallNode callReturnNode;
 
         protected AsyncIteratorUnwrapYieldResumptionRootNode(JSContext context, boolean closeResumption) {
             super(context);
@@ -752,7 +768,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     Object iterator = args.iterated.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
-                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        Object returnResult = callReturn(iterator, returnMethod);
                         return awaitReturnResult.executeThis(returnResult, args, generator);
                     }
                 } else {
@@ -762,6 +778,14 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 }
             }
             return Undefined.instance;
+        }
+
+        protected final Object callReturn(Object iterator, Object returnMethod) {
+            if (callReturnNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                callReturnNode = insert(JSFunctionCallNode.createCall());
+            }
+            return callReturnNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
         }
 
         /**
@@ -810,7 +834,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     Object iterator = args.innerIterator.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
-                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        Object returnResult = callReturn(iterator, returnMethod);
                         return awaitInnerIteratorReturnResult.executeThis(returnResult, args, generator);
                     } else {
                         args.innerIterator = null;
@@ -818,7 +842,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     iterator = args.iterated.getIterator();
                     returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
-                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        Object returnResult = callReturn(iterator, returnMethod);
                         return awaitReturnResult.executeThis(returnResult, args, generator);
                     }
                 } else {
@@ -830,7 +854,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                     Object iterator = args.iterated.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
-                        Object returnResult = callNode.executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                        Object returnResult = callReturn(iterator, returnMethod);
                         return awaitReturnResult.executeThis(returnResult, args, generator);
                     }
                 }
@@ -894,7 +918,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
 
                 this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
                 this.awaitNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorMapWithValue, AsyncIteratorMapNode::createMapWithValueFunctionImpl, false);
             }
 
@@ -989,7 +1012,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
 
                 this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
                 this.awaitNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorFilterWithValue, AsyncIteratorFilterNode::createFilterWithValueFunctionImpl,
                                 false);
             }
@@ -1004,11 +1026,12 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
 
         protected static class AsyncIteratorFilterWithValueRootNode extends AsyncIteratorAwaitNode.AsyncIteratorGeneratorAwaitResumptionWithCloseRootNode<AsyncIteratorFilterArgs> {
             @Child private AsyncIteratorAwaitNode<AsyncIteratorFilterArgs> awaitNode;
+            @Child private JSFunctionCallNode callFiltererNode;
 
             public AsyncIteratorFilterWithValueRootNode(JSContext context) {
                 super(context);
 
-                this.callNode = JSFunctionCallNode.createCall();
+                this.callFiltererNode = JSFunctionCallNode.createCall();
                 this.awaitNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorFilterWithResult,
                                 AsyncIteratorFilterNode::createFilterWithResultFunctionImpl, true);
             }
@@ -1027,7 +1050,7 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 Object value = iteratorValueNode.execute(next);
                 Object result;
                 try {
-                    result = callNode.executeCall(JSArguments.create(Undefined.instance, args.filterer, value, indexToJS(args.counter)));
+                    result = callFiltererNode.executeCall(JSArguments.create(Undefined.instance, args.filterer, value, indexToJS(args.counter)));
                 } catch (AbstractTruffleException ex) {
                     return asyncIteratorCloseAbrupt(args.iterated, ex);
                 }
@@ -1140,7 +1163,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
 
                 this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
                 this.awaitNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorTakeWithValue, AsyncIteratorTakeNode::createTakeWithValueFunctionImpl, false);
                 this.awaitInnerResultNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorGeneratorReturn,
                                 AsyncIteratorAwaitNode::createGeneratorReturnFunctionImpl, false);
@@ -1290,7 +1312,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
 
                 this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
                 this.yieldNode = AsyncIteratorAwaitNode.createGeneratorYield(context);
                 this.awaitNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorDropWithValueLoop, AsyncIteratorDropNode::createDropWithValueLoopFunctionImpl,
                                 false);
@@ -1399,7 +1420,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
 
                 this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
                 this.awaitOuterNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMapWithValue,
                                 AsyncIteratorFlatMapNode::createFlatMapWithValueFunctionImpl, false);
                 this.awaitInnerNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMapInnerWithValue,
@@ -1466,7 +1486,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
 
                 this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
                 this.getIteratorFlattenableNode = GetIteratorFlattenableNode.create(true, true, context);
                 this.awaitInnerNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMapInnerWithValue,
                                 AsyncIteratorFlatMapNode::createFlatMapInnerWithValueFunctionImpl, true);
@@ -1492,7 +1511,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             public AsyncIteratorFlatMapInnerWithValueRootNode(JSContext context) {
                 super(context);
 
-                this.callNode = JSFunctionCallNode.createCall();
                 this.yieldNode = AsyncIteratorAwaitNode.createGeneratorYield(context);
                 this.awaitNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorFlatMap, AsyncIteratorFlatMapNode::createFlatMapFunctionImpl, false);
             }
@@ -1649,7 +1667,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
 
                 this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
                 this.awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorReduce, AsyncIteratorReduceNode::createReduceFunctionImpl, false);
             }
 
@@ -1916,7 +1933,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
 
                 this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
                 this.toBooleanNode = JSToBooleanNode.create();
                 this.awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorSome, AsyncIteratorSomeNode::createSomeFunctionImpl, false);
                 this.asyncIteratorCloseNode = AsyncIteratorCloseNode.create(context);
@@ -2021,7 +2037,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
 
                 this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
                 this.toBooleanNode = JSToBooleanNode.create();
                 this.awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorEvery, AsyncIteratorEveryNode::createEveryFunctionImpl, false);
                 this.asyncIteratorCloseNode = AsyncIteratorCloseNode.create(context);
@@ -2128,7 +2143,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 super(context);
 
                 this.iteratorNextNode = IteratorNextNode.create();
-                this.callNode = JSFunctionCallNode.createCall();
                 this.toBooleanNode = JSToBooleanNode.create();
                 this.asyncIteratorCloseNode = AsyncIteratorCloseNode.create(context);
                 this.awaitNode = AsyncIteratorAwaitNode.create(context, JSContext.BuiltinFunctionKey.AsyncIteratorFind, AsyncIteratorFindNode::createFindFunctionImpl, false);
