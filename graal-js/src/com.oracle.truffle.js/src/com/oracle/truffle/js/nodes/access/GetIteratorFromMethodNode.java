@@ -74,14 +74,15 @@ public abstract class GetIteratorFromMethodNode extends JavaScriptBaseNode {
     protected static IteratorRecord getIteratorFromMethod(Node node, Object iteratedObject, Object method,
                     @Cached(inline = false) IsCallableNode isCallableNode,
                     @Cached(value = "createCall()", uncached = "getUncachedCall()", inline = false) JSFunctionCallNode iteratorCallNode,
-                    @Cached(inline = false) GetIteratorDirectNode getIteratorDirectNode,
+                    @Cached(inline = true) GetIteratorDirectNode getIteratorDirectNode,
                     @Cached InlinedBranchProfile errorBranch) {
         if (!isCallableNode.executeBoolean(method)) {
             errorBranch.enter(node);
             throw Errors.createTypeErrorNotIterable(iteratedObject, node);
         }
         Object iterator = iteratorCallNode.executeCall(JSArguments.createZeroArg(iteratedObject, method));
-        return getIteratorDirectNode.execute(iterator);
+        // Note: If iterator is not an Object, GetIteratorDirect throws a TypeError.
+        return getIteratorDirectNode.execute(node, iterator);
     }
 
 }

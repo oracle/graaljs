@@ -44,12 +44,14 @@ import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -61,10 +63,15 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
 @ImportStatic({JSConfig.class})
+@GenerateInline
 @GenerateUncached
 public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
 
-    public abstract IteratorRecord execute(Object iterator);
+    public final IteratorRecord execute(Object iterator) {
+        return execute(null, iterator);
+    }
+
+    public abstract IteratorRecord execute(Node node, Object iterator);
 
     @Specialization
     protected IteratorRecord get(JSObject obj,
@@ -103,6 +110,7 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
         return PropertyGetNode.create(Strings.NEXT, getJSContext());
     }
 
+    @NeverDefault
     public static GetIteratorDirectNode create() {
         return GetIteratorDirectNodeGen.create();
     }
