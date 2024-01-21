@@ -62,7 +62,7 @@ import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIterat
 import com.oracle.truffle.js.builtins.AsyncIteratorPrototypeBuiltins.AsyncIteratorAwaitNode.AsyncIteratorRootNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.CreateAsyncFromSyncIteratorNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorFromMethodNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
@@ -224,7 +224,6 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private IteratorCloseNode iteratorCloseNode;
         @Child private IteratorValueNode getIteratorValueNode;
         @Child private IteratorStepNode iteratorStepNode;
-        @Child private GetIteratorNode getIteratorNode;
         @Child private GetMethodNode getIteratorMethodNode;
         @Child private JSGetLengthNode getSourceLengthNode;
         @Child private IsArrayNode isFastArrayNode;
@@ -244,14 +243,6 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
             }
             iteratorCloseNode.executeAbrupt(iterator);
-        }
-
-        protected IteratorRecord getIterator(Object object, Object usingIterator) {
-            if (getIteratorNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorNode = insert(GetIteratorNode.create());
-            }
-            return getIteratorNode.execute(null, object, usingIterator);
         }
 
         protected Object getIteratorValue(Object iteratorResult) {
@@ -288,11 +279,13 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Specialization
         protected Object arrayFrom(Object thisObj, Object items, Object mapFn, Object thisArg,
+                        @Cached GetIteratorFromMethodNode getIteratorFromMethod,
                         @Cached InlinedBranchProfile growProfile) {
-            return arrayFromCommon(thisObj, items, mapFn, thisArg, true, growProfile);
+            return arrayFromCommon(thisObj, items, mapFn, thisArg, true, getIteratorFromMethod, growProfile);
         }
 
-        protected Object arrayFromCommon(Object thisObj, Object items, Object mapFn, Object thisArg, boolean setLength, InlinedBranchProfile growProfile) {
+        protected Object arrayFromCommon(Object thisObj, Object items, Object mapFn, Object thisArg, boolean setLength,
+                        GetIteratorFromMethodNode getIteratorFromMethod, InlinedBranchProfile growProfile) {
             boolean mapping;
             if (mapFn == Undefined.instance) {
                 mapping = false;
@@ -302,7 +295,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
             Object usingIterator = getIteratorMethodNode.executeWithTarget(items);
             if (isIterable.profile(usingIterator != Undefined.instance)) {
-                return arrayFromIterable(thisObj, items, usingIterator, mapFn, thisArg, mapping, growProfile);
+                return arrayFromIterable(thisObj, items, usingIterator, mapFn, thisArg, mapping, getIteratorFromMethod, growProfile);
             } else {
                 // NOTE: source is not an Iterable so assume it is already an array-like object.
                 Object itemsObject = toObject(items);
@@ -311,10 +304,10 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         }
 
         protected Object arrayFromIterable(Object thisObj, Object items, Object usingIterator, Object mapFn, Object thisArg, boolean mapping,
-                        @SuppressWarnings("unused") InlinedBranchProfile growProfile) {
+                        GetIteratorFromMethodNode getIteratorFromMethod, @SuppressWarnings("unused") InlinedBranchProfile growProfile) {
             Object obj = constructOrArray(thisObj, 0, false);
 
-            IteratorRecord iteratorRecord = getIterator(items, usingIterator);
+            IteratorRecord iteratorRecord = getIteratorFromMethod.execute(this, items, usingIterator);
             return arrayFromIteratorRecord(obj, iteratorRecord, mapFn, thisArg, mapping);
         }
 
@@ -386,7 +379,7 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                         @Cached("create(getContext(), SYMBOL_ITERATOR)") GetMethodNode getIteratorMethodNode,
                         @Cached("create(getContext())") JSGetLengthNode getLengthNode,
                         @Cached CreateAsyncFromSyncIteratorNode createAsyncFromSyncIterator,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                         @Cached InternalCallNode internalCallNode,
                         @Cached("createCall()") JSFunctionCallNode callRejectNode,
                         @Cached InlinedConditionProfile isAsyncIterator) {
@@ -402,11 +395,11 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 IteratorRecord asyncIteratorRecord;
                 Object usingAsyncIterator = getAsyncIteratorMethodNode.executeWithTarget(asyncItems);
                 if (isAsyncIterator.profile(node, usingAsyncIterator != Undefined.instance)) {
-                    asyncIteratorRecord = getIteratorNode.execute(node, asyncItems, usingAsyncIterator);
+                    asyncIteratorRecord = getIteratorFromMethodNode.execute(node, asyncItems, usingAsyncIterator);
                 } else {
                     Object usingSyncIterator = getIteratorMethodNode.executeWithTarget(asyncItems);
                     if (usingSyncIterator != Undefined.instance) {
-                        IteratorRecord syncIteratorRecord = getIteratorNode.execute(node, asyncItems, usingSyncIterator);
+                        IteratorRecord syncIteratorRecord = getIteratorFromMethodNode.execute(node, asyncItems, usingSyncIterator);
                         asyncIteratorRecord = createAsyncFromSyncIterator.execute(node, syncIteratorRecord);
                     } else {
                         asyncIteratorRecord = null;

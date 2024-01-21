@@ -62,7 +62,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSConstructTypedArrayNodeGen.IntegerIndexedObjectCreateNodeGen;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.GetIteratorNode;
+import com.oracle.truffle.js.nodes.access.GetIteratorFromMethodNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeFromConstructorNode;
 import com.oracle.truffle.js.nodes.access.IterableToListNode;
@@ -354,7 +354,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                     @Cached @Exclusive InlinedConditionProfile isIterableProfile,
                     @Cached("createWriteOwn()") @Shared("writeOwn") WriteElementNode writeOwnNode,
-                    @Cached(inline = true) GetIteratorNode getIteratorNode,
+                    @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                     @Cached IterableToListNode iterableToListNode,
                     @Cached("createGetLength()") JSGetLengthNode getLengthNode,
                     @Cached("create(getContext())") ReadElementNode readNode) {
@@ -365,7 +365,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
         Object usingIterator = getIteratorMethodNode.executeWithTarget(object);
         if (isIterableProfile.profile(node, usingIterator != Undefined.instance)) {
-            SimpleArrayList<Object> values = iterableToListNode.execute(getIteratorNode.execute(node, object, usingIterator));
+            SimpleArrayList<Object> values = iterableToListNode.execute(getIteratorFromMethodNode.execute(node, object, usingIterator));
             int len = values.size();
             JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(len);
             TypedArray typedArray = factory.createArrayType(getContext().isOptionDirectByteBuffer(), false);
