@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,11 +46,11 @@ import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarFunctionBuiltinsFactory.JSTemporalCalendarFromNodeGen;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarObjectNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<TemporalCalendarFunctionBuiltins.TemporalCalendarFunction> {
 
@@ -91,9 +91,11 @@ public class TemporalCalendarFunctionBuiltins extends JSBuiltinsContainer.Switch
         }
 
         @Specialization
-        protected JSDynamicObject from(Object item,
-                        @Cached ToTemporalCalendarNode toTemporalCalendar) {
-            return toTemporalCalendar.execute(item);
+        protected Object from(Object calendarLike,
+                        @Cached ToTemporalCalendarSlotValueNode toSlotValue,
+                        @Cached ToTemporalCalendarObjectNode toCalendarObject) {
+            Object calendarSlotValue = toSlotValue.execute(calendarLike);
+            return toCalendarObject.execute(calendarSlotValue);
         }
 
     }
