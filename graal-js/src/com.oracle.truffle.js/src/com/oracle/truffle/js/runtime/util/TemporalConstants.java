@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -84,8 +84,11 @@ public final class TemporalConstants {
     public static final TruffleString DAY_OF_WEEK = Strings.constant("dayOfWeek");
     public static final TruffleString DAY_OF_YEAR = Strings.constant("dayOfYear");
     public static final TruffleString WEEK_OF_YEAR = Strings.constant("weekOfYear");
+    public static final TruffleString YEAR_OF_WEEK = Strings.constant("yearOfWeek");
 
     public static final TruffleString DATE_FROM_FIELDS = Strings.constant("dateFromFields");
+    public static final TruffleString MONTH_DAY_FROM_FIELDS = Strings.constant("monthDayFromFields");
+    public static final TruffleString YEAR_MONTH_FROM_FIELDS = Strings.constant("yearMonthFromFields");
 
     public static final TruffleString ISO_DAY = Strings.constant("isoDay");
     public static final TruffleString ISO_HOUR = Strings.constant("isoHour");
