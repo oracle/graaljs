@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1180,9 +1180,12 @@ public final class TemporalUtil {
         return new ISODateRecord((int) yearPrepared, monthPrepared, 0);
     }
 
-    @TruffleBoundary // one instead of three boundaries
+    private static final Set<String> AVAILABLE_CALENDARS = Set.of("iso8601", "gregory", "japanese");
+
+    @TruffleBoundary
     public static boolean isBuiltinCalendar(TruffleString id) {
-        return id.equals(ISO8601) || id.equals(GREGORY) || id.equals(JAPANESE);
+        String lowerCaseID = id.toJavaStringUncached().toLowerCase();
+        return AVAILABLE_CALENDARS.contains(lowerCaseID);
     }
 
     public static JSTemporalCalendarObject getISO8601Calendar(JSContext ctx, JSRealm realm) {
