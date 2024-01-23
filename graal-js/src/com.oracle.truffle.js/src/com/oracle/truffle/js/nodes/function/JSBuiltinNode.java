@@ -153,12 +153,12 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
 
     private static void verifyArgumentCount(JSBuiltinNode builtinNode) {
         assert !JSConfig.SubstrateVM;
-        int argumentNodeCount = 0;
+        long argumentNodeCount = 0;
         Class<? extends JSBuiltinNode> nodeclass = builtinNode.getClass();
         for (Class<?> superclass = nodeclass; superclass != null; superclass = superclass.getSuperclass()) {
             argumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(f -> f.getAnnotation(Child.class) != null && f.getName().startsWith(ARGUMENTS)).count();
         }
-        int providedArgumentNodeCount = 0;
+        long providedArgumentNodeCount = 0;
         for (Class<?> superclass = nodeclass; superclass != null; superclass = superclass.getSuperclass()) {
             providedArgumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(
                             f -> f.getAnnotation(Child.class) != null && f.getName().startsWith(ARGUMENTS)).filter(f -> {

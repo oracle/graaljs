@@ -510,7 +510,7 @@ public abstract class ScriptArray {
         long currentIndex = firstElementIndex(object);
         long start = currentIndex;
         long end = currentIndex;
-        int total = 0;
+        long total = 0;
         List<Long> rangeList = new ArrayList<>();
         while (currentIndex <= lastElementIndex(object)) {
             if (currentIndex == end) {
@@ -534,7 +534,8 @@ public abstract class ScriptArray {
             rangeList.add(start);
             rangeList.add(end);
         }
-        return makeMultiRangeList(total, toLongArray(rangeList));
+        assert total >= 0 && total <= Integer.MAX_VALUE : total;
+        return makeMultiRangeList((int) total, toLongArray(rangeList));
     }
 
     private static long[] toLongArray(List<Long> longList) {
