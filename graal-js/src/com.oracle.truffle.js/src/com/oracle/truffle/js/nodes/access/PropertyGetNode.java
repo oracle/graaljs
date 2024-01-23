@@ -204,10 +204,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         return getValueBoolean(obj, obj);
     }
 
-    public final long getValueLong(Object obj) throws UnexpectedResultException {
-        return getValueLong(obj, obj);
-    }
-
     public final Object getValueOrDefault(Object obj, Object defaultValue) {
         return getValueOrDefault(obj, obj, defaultValue);
     }
@@ -388,63 +384,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
     }
 
     @ExplodeLoop
-    protected long getValueLong(Object thisObj, Object receiver) throws UnexpectedResultException {
-        GetCacheNode c = cacheNode;
-        for (; c != null; c = c.next) {
-            if (c instanceof GenericPropertyGetNode) {
-                return ((GenericPropertyGetNode) c).getValueLong(thisObj, receiver, this, false);
-            }
-            boolean isSimpleShapeCheck = c.isSimpleShapeCheck();
-            ReceiverCheckNode receiverCheck = c.receiverCheck;
-            boolean guard;
-            Object castObj;
-            if (c.isConstantObjectSpecialization()) {
-                JSDynamicObject expectedObj = c.getExpectedObject();
-                if (thisObj != expectedObj) {
-                    if (expectedObj == null) {
-                        break;
-                    } else {
-                        continue;
-                    }
-                } else {
-                    guard = true;
-                    castObj = expectedObj;
-                    assert receiverCheck.accept(thisObj);
-                }
-            } else if (isSimpleShapeCheck) {
-                Shape shape = receiverCheck.getShape();
-                if (isDynamicObject(thisObj, shape)) {
-                    JSDynamicObject jsobj = castDynamicObject(thisObj, shape);
-                    guard = shape.check(jsobj);
-                    castObj = jsobj;
-                    if (!shape.getValidAssumption().isValid()) {
-                        break;
-                    }
-                } else {
-                    continue;
-                }
-            } else {
-                guard = receiverCheck.accept(thisObj);
-                castObj = thisObj;
-            }
-            if (guard) {
-                if ((!isSimpleShapeCheck && !receiverCheck.isValid())) {
-                    break;
-                }
-                return c.getValueLong(castObj, receiver, this, guard);
-            }
-        }
-        deoptimize(c);
-        return getValueLongAndSpecialize(thisObj, receiver);
-    }
-
-    @TruffleBoundary
-    private long getValueLongAndSpecialize(Object thisObj, Object receiver) throws UnexpectedResultException {
-        GetCacheNode c = specialize(thisObj);
-        return c.getValueLong(thisObj, receiver, this, false);
-    }
-
-    @ExplodeLoop
     protected Object getValueOrDefault(Object thisObj, Object receiver, Object defaultValue) {
         GetCacheNode c = cacheNode;
         for (; c != null; c = c.next) {
@@ -547,11 +486,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @InliningCutoff
         protected boolean getValueBoolean(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
             return JSTypesGen.expectBoolean(getValue(thisObj, receiver, Undefined.instance, root, guard));
-        }
-
-        @InliningCutoff
-        protected long getValueLong(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) throws UnexpectedResultException {
-            return JSTypesGen.expectLong(getValue(thisObj, receiver, Undefined.instance, root, guard));
         }
     }
 
@@ -836,55 +770,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return finalValue;
             } else {
                 return location.getBoolean(receiverCheck.getStore(thisObj), guard);
-            }
-        }
-    }
-
-    public static final class LongPropertyGetNode extends LinkedPropertyGetNode {
-
-        private final com.oracle.truffle.api.object.LongLocation location;
-
-        public LongPropertyGetNode(Property property, ReceiverCheckNode receiverCheck) {
-            super(receiverCheck);
-            assert JSProperty.isData(property);
-            this.location = (com.oracle.truffle.api.object.LongLocation) property.getLocation();
-        }
-
-        @Override
-        protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return getValueLong(thisObj, receiver, root, guard);
-        }
-
-        @Override
-        protected long getValueLong(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            return location.getLong(receiverCheck.getStore(thisObj), guard);
-        }
-    }
-
-    public static final class FinalLongPropertyGetNode extends AbstractFinalPropertyGetNode {
-
-        private final long finalValue;
-        private final com.oracle.truffle.api.object.LongLocation location;
-
-        public FinalLongPropertyGetNode(Property property, AbstractShapeCheckNode shapeCheck, long value, JSDynamicObject expectedObj) {
-            super(property, shapeCheck, expectedObj);
-            assert JSProperty.isData(property);
-            this.finalValue = value;
-            this.location = (com.oracle.truffle.api.object.LongLocation) property.getLocation();
-        }
-
-        @Override
-        protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            return getValueLong(thisObj, receiver, root, guard);
-        }
-
-        @Override
-        protected long getValueLong(Object thisObj, Object receiver, PropertyGetNode root, boolean guard) {
-            if (isValidFinalAssumption()) {
-                assert assertFinalValue(finalValue, thisObj, root);
-                return finalValue;
-            } else {
-                return location.getLong(receiverCheck.getStore(thisObj), guard);
             }
         }
     }
@@ -1962,8 +1847,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return new DoublePropertyGetNode(property, receiverCheck);
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
             return new BooleanPropertyGetNode(property, receiverCheck);
-        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.LongLocation) {
-            return new LongPropertyGetNode(property, receiverCheck);
         } else if (JSProperty.isModuleNamespaceExport(property)) {
             return new ModuleNamespacePropertyGetNode(property, receiverCheck);
         } else if (JSProperty.isProxy(property)) {
@@ -2007,9 +1890,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
                 boolean boolValue = (boolean) DynamicObjectLibrary.getUncached().getOrDefault(store, key, null);
                 return new FinalBooleanPropertyGetNode(property, finalShapeCheckNode, boolValue, constObjOrNull);
-            } else if (property.getLocation() instanceof com.oracle.truffle.api.object.LongLocation) {
-                long longValue = DynamicObjectLibrary.getUncached().getLongOrDefault(store, key, null);
-                return new FinalLongPropertyGetNode(property, finalShapeCheckNode, longValue, constObjOrNull);
             } else {
                 Object value = Objects.requireNonNull(DynamicObjectLibrary.getUncached().getOrDefault(store, key, null));
                 return new FinalObjectPropertyGetNode(property, finalShapeCheckNode, value, constObjOrNull);
@@ -2186,8 +2066,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             return new DoublePropertyGetNode(property, receiverCheck);
         } else if (property.getLocation() instanceof com.oracle.truffle.api.object.BooleanLocation) {
             return new BooleanPropertyGetNode(property, receiverCheck);
-        } else if (property.getLocation() instanceof com.oracle.truffle.api.object.LongLocation) {
-            return new LongPropertyGetNode(property, receiverCheck);
         } else {
             return new ObjectPropertyGetNode(property, receiverCheck);
         }
