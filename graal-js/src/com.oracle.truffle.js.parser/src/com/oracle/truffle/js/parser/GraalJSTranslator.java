@@ -2833,6 +2833,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return transformAssignmentImpl(assignmentExpression, lhsExpression, assignedValue, false, binaryOp, returnOldValue, convertLHSToNumeric);
     }
 
+    @SuppressWarnings("fallthrough")
     private JavaScriptNode transformAssignmentImpl(Expression assignmentExpression, Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment,
                     BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric) {
         JavaScriptNode assignedNode;
