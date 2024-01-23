@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,7 @@ public class LeftHandSideExpressions extends FineGrainedAccessTest {
 
     @Test
     public void member() {
-        evalWithTags("var a = {x:42}; a.x;", new Class[]{ReadPropertyTag.class, ReadElementTag.class});
+        evalWithTags("var a = {x:42}; a.x;", new Class<?>[]{ReadPropertyTag.class, ReadElementTag.class});
 
         enter(ReadPropertyTag.class, (e, g) -> {
             assertAttribute(e, KEY, "x");
@@ -64,7 +64,7 @@ public class LeftHandSideExpressions extends FineGrainedAccessTest {
 
     @Test
     public void memberElem() {
-        evalWithTags("var a = {x:42}; a['x'];", new Class[]{ReadPropertyTag.class, ReadElementTag.class});
+        evalWithTags("var a = {x:42}; a['x'];", new Class<?>[]{ReadPropertyTag.class, ReadElementTag.class});
 
         enter(ReadElementTag.class, (e, g) -> {
             enter(ReadPropertyTag.class, (e2, p) -> {

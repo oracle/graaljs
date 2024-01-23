@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -402,7 +402,7 @@ public abstract class FineGrainedAccessTest {
     }
 
     protected Source evalWithTag(String src, Class<? extends Tag> tag) {
-        return evalWithTags(src, new Class[]{tag});
+        return evalWithTags(src, new Class<?>[]{tag});
     }
 
     protected Source evalAllTags(String src) {
@@ -410,7 +410,7 @@ public abstract class FineGrainedAccessTest {
     }
 
     protected Source evalWithTags(String src, Class<?>[] filterTags) {
-        return evalWithTags(src, filterTags, new Class[]{StandardTags.ExpressionTag.class, JSTags.InputNodeTag.class});
+        return evalWithTags(src, filterTags, new Class<?>[]{StandardTags.ExpressionTag.class, JSTags.InputNodeTag.class});
     }
 
     protected Source eval(String src) {

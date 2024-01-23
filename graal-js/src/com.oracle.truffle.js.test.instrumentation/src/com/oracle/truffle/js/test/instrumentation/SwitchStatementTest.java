@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,11 +83,11 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                         "  default:" +
                         "}";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
                         ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e, r) -> {
             // first 'if' statement condition is false
@@ -120,11 +120,11 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                         "  default:" +
                         "}";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
                         ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e, r) -> {
             // first case condition is false
@@ -154,11 +154,11 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                         "    42;" +
                         "}";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
                         ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
             // first 'if' statement condition is false
@@ -191,11 +191,11 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                         "    42;" +
                         "}";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
                         ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
             // first case condition is false
@@ -254,10 +254,10 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                         "    ++x;" +
                         "};";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e, r) -> {
             // first 'case' a.x == b.x is false
@@ -284,10 +284,10 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                         "    42;" +
                         "}";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
     }
 
     @Test
@@ -303,10 +303,10 @@ public class SwitchStatementTest extends FineGrainedAccessTest {
                         "    42;" +
                         "}";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e, r) -> {
             // case 1 is false

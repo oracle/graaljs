@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -578,7 +578,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void github367Private() {
-        evalWithTags("class C { #x = function() {}; m() { this.#x(42); } }; new C().m()", new Class[]{ObjectAllocationTag.class, FunctionCallTag.class});
+        evalWithTags("class C { #x = function() {}; m() { this.#x(42); } }; new C().m()", new Class<?>[]{ObjectAllocationTag.class, FunctionCallTag.class});
 
         enter(FunctionCallTag.class, (e, mCall) -> {
             enter(ObjectAllocationTag.class, (n, newClassCall) -> {
@@ -596,7 +596,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void github367OptionalCall() {
-        evalWithTags("var f = function() { return 42; }; f?.();", new Class[]{FunctionCallTag.class});
+        evalWithTags("var f = function() { return 42; }; f?.();", new Class<?>[]{FunctionCallTag.class});
 
         enter(FunctionCallTag.class, (e, fCall) -> {
             fCall.input(assertGlobalObjectInput);
@@ -606,7 +606,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void github367OptionalProperty() {
-        evalWithTags("o = {}; o.f = function foo() { return 42; }; (o?.f)();", new Class[]{FunctionCallTag.class});
+        evalWithTags("o = {}; o.f = function foo() { return 42; }; (o?.f)();", new Class<?>[]{FunctionCallTag.class});
 
         enter(FunctionCallTag.class, (e, fCall) -> {
             fCall.input(assertJSObjectInput);
@@ -616,7 +616,7 @@ public class CallAccessTest extends FineGrainedAccessTest {
 
     @Test
     public void github367OptionalElement() {
-        evalWithTags("o = {}; o.f = function foo() { return 42; }; (o?.['f'])();", new Class[]{FunctionCallTag.class});
+        evalWithTags("o = {}; o.f = function foo() { return 42; }; (o?.['f'])();", new Class<?>[]{FunctionCallTag.class});
 
         enter(FunctionCallTag.class, (e, fCall) -> {
             fCall.input(assertJSObjectInput);
