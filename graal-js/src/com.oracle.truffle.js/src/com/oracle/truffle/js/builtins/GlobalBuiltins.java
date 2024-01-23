@@ -65,7 +65,6 @@ import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -917,9 +916,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "!isUndefined(radix0)")
         protected Object parseIntInt(int value, Object radix0,
-                        @Cached @Shared("toInt32") JSToInt32Node toInt32,
-                        @Cached @Shared("convertToRadixBranch") InlinedBranchProfile needsRadixConversion,
-                        @Cached @Shared("needsNaN") InlinedBranchProfile needsNaN) {
+                        @Cached @Shared JSToInt32Node toInt32,
+                        @Cached @Shared InlinedBranchProfile needsRadixConversion,
+                        @Cached @Shared InlinedBranchProfile needsNaN) {
             int radix = toInt32.executeInt(radix0);
             if (radix == 10 || radix == 0) {
                 return value;
@@ -955,9 +954,9 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
 
         @Specialization(guards = "hasRegularToString(value)")
         protected double parseIntDouble(double value, Object radix0,
-                        @Cached @Shared("toInt32") JSToInt32Node toInt32,
-                        @Cached @Shared("convertToRadixBranch") InlinedBranchProfile needsRadixConversion,
-                        @Cached @Shared("needsNaN") InlinedBranchProfile needsNaN) {
+                        @Cached @Shared JSToInt32Node toInt32,
+                        @Cached @Shared InlinedBranchProfile needsRadixConversion,
+                        @Cached @Shared InlinedBranchProfile needsNaN) {
             int radix = toInt32.executeInt(radix0);
             if (radix == 0) {
                 radix = 10;
@@ -974,9 +973,12 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
             }
         }
 
+        @SuppressWarnings("unused")
         @Specialization(guards = {"radix == 10", "stringLength(string) < 15"})
-        protected Object parseIntStringInt10(TruffleString string, @SuppressWarnings("unused") int radix,
-                        @Cached @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode) {
+        protected Object parseIntStringInt10(TruffleString string, int radix,
+                        @Cached @Shared TruffleString.ReadCharUTF16Node readRawNode,
+                        @Cached @Shared InlinedBranchProfile needsRadix16,
+                        @Cached @Shared InlinedBranchProfile needsDontFitLong) {
             assert isShortStringInt10(string, radix);
 
             int pos = 0;
@@ -1046,11 +1048,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         protected static Object parseIntGeneric(Object input, Object radix0,
                         @Bind("this") Node node,
                         @Cached JSToStringNode toStringNode,
-                        @Cached @Shared("toInt32") JSToInt32Node toInt32,
-                        @Cached @Shared("needsNaN") InlinedBranchProfile needsNaN,
-                        @Cached @Exclusive InlinedBranchProfile needsRadix16,
-                        @Cached @Exclusive InlinedBranchProfile needsDontFitLong,
-                        @Cached @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode,
+                        @Cached @Shared JSToInt32Node toInt32,
+                        @Cached @Shared InlinedBranchProfile needsNaN,
+                        @Cached @Shared InlinedBranchProfile needsRadix16,
+                        @Cached @Shared InlinedBranchProfile needsDontFitLong,
+                        @Cached @Shared TruffleString.ReadCharUTF16Node readRawNode,
                         @Cached TruffleString.SubstringByteIndexNode substringNode) {
             TruffleString inputStr = toStringNode.executeString(input);
 

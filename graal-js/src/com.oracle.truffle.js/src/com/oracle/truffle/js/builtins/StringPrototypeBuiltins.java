@@ -1358,7 +1358,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToStringNode toString3Node,
                         @Cached IsCallableNode isCallableNode,
-                        @Cached @Shared InlinedBranchProfile dollarProfile,
+                        @Cached @Exclusive InlinedBranchProfile dollarProfile,
                         @Cached InlinedConditionProfile isSpecialProfile,
                         @Cached InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
@@ -1494,9 +1494,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached IsCallableNode isCallableNode,
                         @Cached @Exclusive InlinedConditionProfile isRegExp,
                         @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode,
-                        @Cached @Shared TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
-                        @Cached @Shared InlinedConditionProfile isSearchValueEmpty,
-                        @Cached @Shared InlinedBranchProfile dollarProfile,
+                        @Cached @Exclusive TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
+                        @Cached @Exclusive InlinedConditionProfile isSearchValueEmpty,
+                        @Cached @Exclusive InlinedBranchProfile dollarProfile,
                         @Cached @Exclusive InlinedConditionProfile isSpecialProfile,
                         @Cached @Exclusive InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);

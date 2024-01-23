@@ -48,6 +48,7 @@ import java.util.List;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
@@ -281,14 +282,14 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         @Specialization(guards = {"!isString(value)", "isUndefined(replacer)"})
         protected Object stringifyNoReplacer(Object value, @SuppressWarnings("unused") Object replacer, Object space,
-                        @Cached @Shared GetGapNode getGapNode) {
-            return stringifyIntl(value, space, null, null, getGapNode);
+                        @Cached @Exclusive GetGapNode getGapNode) {
+            return stringifyIntl(value, space, null, null, this, getGapNode);
         }
 
         @Specialization(guards = "!isUndefined(replacer)")
         protected Object stringifyWithReplacer(Object value, Object replacer, Object space,
                         @Bind("this") Node node,
-                        @Cached @Shared GetGapNode getGapNode,
+                        @Cached @Exclusive GetGapNode getGapNode,
                         @Cached IsCallableNode isCallableNode,
                         @Cached("createIsArrayLike()") JSIsArrayNode isArrayNode,
                         @Cached ToReplacerListNode toReplacerListNode) {
@@ -299,7 +300,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             } else if (isArrayNode.execute(replacer)) {
                 replacerList = toReplacerListNode.execute(node, replacer);
             }
-            return stringifyIntl(value, space, replacerFn, replacerList, getGapNode);
+            return stringifyIntl(value, space, replacerFn, replacerList, node, getGapNode);
         }
 
         @SuppressWarnings("unused")
@@ -320,8 +321,8 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             return StringBuilderProfile.create(getContext().getStringLengthLimit());
         }
 
-        private Object stringifyIntl(Object value, Object space, Object replacerFnObj, List<Object> replacerList, GetGapNode getGapNode) {
-            final TruffleString gap = getGapNode.execute(this, space);
+        private Object stringifyIntl(Object value, Object space, Object replacerFnObj, List<Object> replacerList, Node node, GetGapNode getGapNode) {
+            final TruffleString gap = getGapNode.execute(node, space);
 
             JSObject wrapper = JSOrdinary.create(getContext(), getRealm());
             createWrapperPropertyNode.executeVoid(wrapper, value);
