@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,11 +65,10 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+@SuppressWarnings("serial")
 @ImportStatic({JSConfig.class})
 @ExportLibrary(InteropLibrary.class)
 public final class JSException extends GraalJSException {
-
-    private static final long serialVersionUID = -2139936643139844157L;
 
     private final JSErrorType type;
     private JSDynamicObject exceptionObj;
