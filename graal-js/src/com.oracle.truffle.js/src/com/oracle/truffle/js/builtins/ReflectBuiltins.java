@@ -497,7 +497,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return JSObject.setWithReceiver(target, key, value, receiver, false, jsclassProfile, this);
         }
 
-        @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
+        @Specialization(guards = {"isForeignObject(target)"})
         protected boolean doForeignObject(Object target, Object propertyKey, Object value, @SuppressWarnings("unused") Object[] optionalArgs,
                         @Cached IsObjectNode isObjectNode) {
             if (isObjectNode.executeBoolean(target)) {

@@ -286,6 +286,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
             return stringifyIntl(value, space, null, null, this, getGapNode);
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization(guards = "!isUndefined(replacer)")
         protected Object stringifyWithReplacer(Object value, Object replacer, Object space,
                         @Bind("this") Node node,
@@ -395,9 +396,9 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         @Specialization
         static List<Object> makeReplacerList(Object replacerObj,
-                        @Cached("create(getLanguage().getJSContext())") JSGetLengthNode getLengthNode,
-                        @Cached("create(getLanguage().getJSContext())") ReadElementNode getElementNode,
-                        @Cached JSToStringNode toStringNode) {
+                        @Cached(value = "create(getLanguage().getJSContext())", inline = false) JSGetLengthNode getLengthNode,
+                        @Cached(value = "create(getLanguage().getJSContext())", inline = false) ReadElementNode getElementNode,
+                        @Cached(inline = false) JSToStringNode toStringNode) {
             long len = getLengthNode.executeLong(replacerObj);
             List<Object> replacerList = new ArrayList<>();
             for (long k = 0; k < len; k++) {

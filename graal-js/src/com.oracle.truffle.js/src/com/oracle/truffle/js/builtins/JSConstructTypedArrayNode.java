@@ -261,7 +261,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSArrayBufferView(arrayBufferView)"})
     protected JSDynamicObject doArrayBufferView(JSDynamicObject newTarget, JSDynamicObject arrayBufferView, Object byteOffset0, Object length0,
-                    @Cached InlinedConditionProfile bulkCopyProfile) {
+                    @Cached @Exclusive InlinedConditionProfile bulkCopyProfile) {
         JSArrayBufferObject srcData = JSArrayBufferView.getArrayBuffer(arrayBufferView);
         checkDetachedBuffer(srcData);
 

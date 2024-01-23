@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
 import com.oracle.truffle.api.frame.VirtualFrame;
@@ -213,6 +214,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             this.propertyKey = propertyKey;
         }
 
+        @NeverDefault
         public static SetterThatIgnoresPrototypePropertiesNode create(JSContext context, Object propertyKey) {
             return IteratorPrototypeBuiltinsFactory.SetterThatIgnoresPrototypePropertiesNodeGen.create(context, propertyKey);
         }

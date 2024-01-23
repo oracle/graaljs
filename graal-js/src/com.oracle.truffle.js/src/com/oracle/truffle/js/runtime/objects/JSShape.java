@@ -305,6 +305,7 @@ public final class JSShape {
     /**
      * Returns true if the object's [[GetOwnProperty]] is implemented using OrdinaryGetOwnProperty.
      */
+    @Idempotent
     public static boolean usesOrdinaryGetOwnProperty(Shape shape) {
         return (shape.getFlags() & UNORDINARY_GETOWNPROPERTY_FLAG) == 0;
     }
