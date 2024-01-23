@@ -150,16 +150,16 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "prototypeClass != null", "prototypeClass.isInstance(prototype)"}, limit = "1")
     public JSDynamicObject createWithProtoCachedClass(@SuppressWarnings("unused") JSDynamicObject target, Object prototype,
-                    @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
+                    @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode,
                     @Cached(value = "getClassIfJSObject(prototype)") Class<?> prototypeClass,
-                    @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
+                    @Cached("getShapeWithoutProto()") @Shared Shape cachedShape) {
         return createWithProto(target, (JSObject) prototypeClass.cast(prototype), setProtoNode, cachedShape);
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()"})
     public JSDynamicObject createWithProto(@SuppressWarnings("unused") JSDynamicObject target, JSObject prototype,
-                    @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
-                    @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
+                    @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode,
+                    @Cached("getShapeWithoutProto()") @Shared Shape cachedShape) {
         JSRealm realm = getRealm();
         if (isAsyncGenerator) {
             return JSAsyncGenerator.create(context, realm, prototype);

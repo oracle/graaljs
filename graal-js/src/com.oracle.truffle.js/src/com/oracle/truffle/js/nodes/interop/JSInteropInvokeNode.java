@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,9 +68,9 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
                     @Cached(value = "name") TruffleString cachedName,
                     @Cached @SuppressWarnings("unused") TruffleString.EqualNode equalNode,
                     @Cached("createGetProperty(cachedName)") PropertyGetNode functionPropertyGetNode,
-                    @Shared("isCallable") @Cached IsCallableNode isCallableNode,
-                    @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Shared("importValue") @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @Shared @Cached IsCallableNode isCallableNode,
+                    @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
+                    @Shared @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
         Object function = functionPropertyGetNode.getValueOrDefault(receiver, null);
         if (function == null) {
             throw UnknownIdentifierException.create(cachedName.toJavaStringUncached());
@@ -85,9 +85,9 @@ public abstract class JSInteropInvokeNode extends JSInteropCallNode {
     @Specialization(replaces = "doCached")
     Object doUncached(JSDynamicObject receiver, TruffleString name, Object[] arguments,
                     @Cached(value = "create(getLanguage().getJSContext())", uncached = "getUncachedRead()") ReadElementNode readNode,
-                    @Shared("isCallable") @Cached IsCallableNode isCallableNode,
-                    @Shared("call") @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
-                    @Shared("importValue") @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
+                    @Shared @Cached IsCallableNode isCallableNode,
+                    @Shared @Cached(value = "createCall()", uncached = "getUncachedCall()") JSFunctionCallNode callNode,
+                    @Shared @Cached ImportValueNode importValueNode) throws UnknownIdentifierException, UnsupportedMessageException {
         Object function;
         if (readNode == null) {
             function = JSObject.getOrDefault(receiver, name, receiver, null);

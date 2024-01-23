@@ -177,7 +177,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSHeapArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached @Shared("lengthIsUndefined") InlinedConditionProfile lengthIsUndefined) {
+                    @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
         byte[] byteArray = JSArrayBuffer.getByteArray(arrayBuffer);
         int arrayBufferLength = byteArray.length;
@@ -186,7 +186,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
 
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSDirectArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doDirectArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached @Shared("lengthIsUndefined") InlinedConditionProfile lengthIsUndefined) {
+                    @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
         checkDetachedBuffer(arrayBuffer);
         ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
         int arrayBufferLength = byteBuffer.limit();
@@ -234,7 +234,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSSharedArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doSharedArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached @Shared("lengthIsUndefined") InlinedConditionProfile lengthIsUndefined) {
+                    @Cached @Shared InlinedConditionProfile lengthIsUndefined) {
         return doDirectArrayBuffer(newTarget, arrayBuffer, byteOffset0, length0, lengthIsUndefined);
     }
 
@@ -248,7 +248,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      */
     @Specialization(guards = {"!isUndefined(newTarget)", "isJSInteropArrayBuffer(arrayBuffer)"})
     protected JSDynamicObject doInteropArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset0, Object length0,
-                    @Cached @Shared("lengthIsUndefined") InlinedConditionProfile lengthIsUndefined,
+                    @Cached @Shared InlinedConditionProfile lengthIsUndefined,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         Object buffer = JSArrayBuffer.getInteropBuffer(arrayBuffer);
         long arrayBufferLength = getBufferSizeSafe(buffer, interop);
@@ -353,7 +353,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
                     @Bind("this") Node node,
                     @Cached("createGetIteratorMethod()") GetMethodNode getIteratorMethodNode,
                     @Cached @Exclusive InlinedConditionProfile isIterableProfile,
-                    @Cached("createWriteOwn()") @Shared("writeOwn") WriteElementNode writeOwnNode,
+                    @Cached("createWriteOwn()") @Shared WriteElementNode writeOwnNode,
                     @Cached GetIteratorFromMethodNode getIteratorFromMethodNode,
                     @Cached IterableToListNode iterableToListNode,
                     @Cached("createGetLength()") JSGetLengthNode getLengthNode,
@@ -396,7 +396,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
     protected JSDynamicObject doForeignObject(JSDynamicObject newTarget, Object object, Object byteOffset0, Object length0,
                     @Bind("this") Node node,
                     @CachedLibrary("object") InteropLibrary interop,
-                    @Cached("createWriteOwn()") @Shared("writeOwn") WriteElementNode writeOwnNode,
+                    @Cached("createWriteOwn()") @Shared WriteElementNode writeOwnNode,
                     @Cached ImportValueNode importValue,
                     @Cached @Exclusive InlinedConditionProfile lengthIsUndefined) {
         if (interop.hasBufferElements(object)) {

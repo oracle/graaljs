@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,7 +76,7 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
                     "cachedArrayType.firstElementIndex(array)==0"}, limit = "5")
     protected static Object[] fromDenseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
-                    @Cached("create(context)") @Shared("readElement") ReadElementNode readNode) {
+                    @Cached("create(context)") @Shared ReadElementNode readNode) {
         assert JSRuntime.longIsRepresentableAsInt(length);
         int iLen = (int) length;
 
@@ -92,8 +92,8 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
     protected static Object[] fromSparseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long length,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
                     @Bind("this") Node node,
-                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached @Shared("growBranch") InlinedBranchProfile growProfile) {
+                    @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared InlinedBranchProfile growProfile) {
         long pos = cachedArrayType.firstElementIndex(array);
         SimpleArrayList<Object> list = new SimpleArrayList<>();
         while (pos <= cachedArrayType.lastElementIndex(array)) {
@@ -106,9 +106,9 @@ public abstract class JSArrayToDenseObjectArrayNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = {"fromDenseArray", "fromSparseArray"})
     protected Object[] doUncached(JSDynamicObject array, ScriptArray arrayType, long length,
-                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached("create(context)") @Shared("readElement") ReadElementNode readNode,
-                    @Cached @Shared("growBranch") InlinedBranchProfile growProfile) {
+                    @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached("create(context)") @Shared ReadElementNode readNode,
+                    @Cached @Shared InlinedBranchProfile growProfile) {
         if (arrayType.isHolesType() || arrayType.hasHoles(array) || arrayType.firstElementIndex(array) != 0) {
             return fromSparseArray(array, arrayType, length, arrayType, this, nextElementIndexNode, growProfile);
         } else {

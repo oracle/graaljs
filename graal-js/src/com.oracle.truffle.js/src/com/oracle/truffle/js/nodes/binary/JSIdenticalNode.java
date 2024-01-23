@@ -227,14 +227,14 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Specialization(guards = {"isJSNull(a)", "!isNullOrUndefined(b)"})
     protected static boolean doNullA(@SuppressWarnings("unused") Object a, Object b,
-                    @Shared("isNullInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
         assert b != Undefined.instance;
         return nullInterop.isNull(b);
     }
 
     @Specialization(guards = {"!isNullOrUndefined(a)", "isJSNull(b)"})
     protected static boolean doNullB(Object a, @SuppressWarnings("unused") Object b,
-                    @Shared("isNullInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
         assert a != Undefined.instance;
         return nullInterop.isNull(a);
     }

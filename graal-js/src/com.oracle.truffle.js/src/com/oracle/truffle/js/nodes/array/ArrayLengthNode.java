@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -161,7 +161,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         protected void doCached(JSDynamicObject arrayObj, int length,
                         @Bind("this") Node node,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
-                        @Cached @Shared("setLengthProfile") ScriptArray.SetLengthProfileAccess setLengthProfile) {
+                        @Cached @Shared ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             if (arrayType.isSealed()) {
                 setLengthSealed(arrayObj, length, arrayType, node, setLengthProfile);
@@ -173,7 +173,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSDynamicObject arrayObj, int length,
                         @Cached InlinedConditionProfile sealedProfile,
-                        @Cached @Shared("setLengthProfile") ScriptArray.SetLengthProfileAccess setLengthProfile) {
+                        @Cached @Shared ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);
             if (sealedProfile.profile(this, arrayType.isSealed())) {
@@ -207,7 +207,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         protected void doCached(JSDynamicObject arrayObj, int length,
                         @Bind("this") Node node,
                         @Cached("getArrayType(arrayObj)") ScriptArray arrayType,
-                        @Cached @Shared("setLengthProfile") ScriptArray.SetLengthProfileAccess setLengthProfile) {
+                        @Cached @Shared ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             if (arrayType.isLengthNotWritable() || arrayType.isSealed()) {
                 deleteAndSetLength(arrayObj, length, arrayType, node, setLengthProfile);
@@ -219,7 +219,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
         @Specialization(replaces = "doCached")
         protected void doGeneric(JSDynamicObject arrayObj, int length,
                         @Cached InlinedConditionProfile mustDeleteProfile,
-                        @Cached @Shared("setLengthProfile") ScriptArray.SetLengthProfileAccess setLengthProfile) {
+                        @Cached @Shared ScriptArray.SetLengthProfileAccess setLengthProfile) {
             assert length >= 0;
             ScriptArray arrayType = getArrayType(arrayObj);
             if (mustDeleteProfile.profile(this, arrayType.isLengthNotWritable() || arrayType.isSealed())) {

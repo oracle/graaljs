@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -95,7 +95,7 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     Object doField(JSObject target, HiddenKey key,
                     @Bind("this") Node node,
                     @CachedLibrary("target") DynamicObjectLibrary access,
-                    @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         if (Properties.containsKey(access, target, key)) {
             return Properties.getOrDefault(access, target, key, Undefined.instance);
         } else {
@@ -117,7 +117,7 @@ public abstract class PrivateFieldGetNode extends JSTargetableNode implements Re
     @Specialization
     Object doAccessor(JSObject target, Accessor accessor,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         Object getter = accessor.getGetter();
         if (getter == Undefined.instance) {
             errorBranch.enter(this);

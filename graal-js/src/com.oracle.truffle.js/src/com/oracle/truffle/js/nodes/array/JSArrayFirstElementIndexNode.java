@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,16 +101,16 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
     public long doWithHolesCached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
                     @Bind("this") Node node,
-                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached @Shared("isZero") InlinedConditionProfile isZero) {
+                    @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared InlinedConditionProfile isZero) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
         return holesArrayImpl(object, length, cachedArrayType, node, nextElementIndexNode, isZero);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "doWithHolesCached")
     public long doWithHolesUncached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached @Shared("isZero") InlinedConditionProfile isZero,
+                    @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared InlinedConditionProfile isZero,
                     @Cached InlinedExactClassProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray array = arrayTypeProfile.profile(this, getArrayType(object));
@@ -145,7 +145,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)"})
     public long firstObjectViaEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared JSHasPropertyNode hasPropertyNode) {
         if (hasPropertyNode.executeBoolean(object, 0)) {
             return 0;
         }
@@ -154,7 +154,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)", "isSuitableForEnumBasedProcessing(object, length)"})
     public long firstObjectViaFullEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared JSHasPropertyNode hasPropertyNode) {
         if (hasPropertyNode.executeBoolean(object, 0)) {
             return 0;
         }
@@ -163,7 +163,7 @@ public abstract class JSArrayFirstElementIndexNode extends JSArrayElementIndexNo
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, length)"})
     public long doObject(Object object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared JSHasPropertyNode hasPropertyNode) {
         long index = 0;
         while (!hasPropertyNode.executeBoolean(object, index) && index <= (length - 1)) {
             index++;

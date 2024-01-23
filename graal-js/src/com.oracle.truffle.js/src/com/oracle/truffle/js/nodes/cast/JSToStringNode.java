@@ -148,8 +148,8 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     @InliningCutoff
     @Specialization(replaces = "doUndefined")
     protected TruffleString doJSObject(JSDynamicObject value,
-                    @Shared("toPrimitiveHintStringNode") @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode,
-                    @Shared("toStringNode") @Cached JSToStringNode toStringNode) {
+                    @Shared @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode,
+                    @Shared @Cached JSToStringNode toStringNode) {
         return (undefinedToEmpty && (value == Undefined.instance)) ? Strings.EMPTY_STRING : toStringNode.executeString(toPrimitiveHintStringNode.execute(value));
     }
 
@@ -166,9 +166,9 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
     @InliningCutoff
     @Specialization(guards = {"isForeignObject(object)"})
     protected TruffleString doTruffleObject(Object object,
-                    @Shared("toPrimitiveHintStringNode") @Cached("createHintString()") JSToPrimitiveNode toPrimitiveNode,
-                    @Shared("toStringNode") @Cached JSToStringNode toStringNode) {
-        return toStringNode.executeString(toPrimitiveNode.execute(object));
+                    @Shared @Cached("createHintString()") JSToPrimitiveNode toPrimitiveHintStringNode,
+                    @Shared @Cached JSToStringNode toStringNode) {
+        return toStringNode.executeString(toPrimitiveHintStringNode.execute(object));
     }
 
     public abstract static class JSToStringWrapperNode extends JSUnaryNode {

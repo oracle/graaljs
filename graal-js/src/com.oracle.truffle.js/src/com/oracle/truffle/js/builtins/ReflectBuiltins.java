@@ -204,7 +204,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization(guards = "isCallable.executeBoolean(target)", replaces = "applyFunction")
         protected final Object applyCallable(Object target, Object thisArgument, Object argumentsList,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable) {
             return apply(target, thisArgument, argumentsList);
         }
 
@@ -218,7 +218,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         @SuppressWarnings("unused")
         @Specialization(guards = "!isCallable.executeBoolean(target)")
         protected static Object error(Object target, Object thisArgument, Object argumentsList,
-                        @Cached @Shared("isCallable") IsCallableNode isCallable) {
+                        @Cached @Shared IsCallableNode isCallable) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -374,7 +374,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization
         protected Object doObject(JSObject target, Object propertyKey,
-                        @Shared("jsclassProf") @Cached JSClassProfile jsclassProfile) {
+                        @Shared @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.hasProperty(target, key, jsclassProfile);
         }
@@ -385,14 +385,14 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @CachedLibrary("target") InteropLibrary interop,
                         @Cached TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                        @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
+                        @Shared @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
                 if (key instanceof TruffleString) {
                     boolean result = interop.isMemberExisting(target, Strings.toJavaString(toJavaStringNode, (TruffleString) key));
                     if (!result && getContext().getLanguageOptions().hasForeignObjectPrototype()) {
                         JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
-                        result = JSObject.hasProperty(prototype, key, classProfile);
+                        result = JSObject.hasProperty(prototype, key, jsclassProfile);
                     }
                     return result;
                 } else {

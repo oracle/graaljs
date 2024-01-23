@@ -557,8 +557,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
     public static final class IsIdenticalOrUndefined {
         @Specialization
         public static TriState doException(GraalJSException receiver, GraalJSException other,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary thisLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("otherLib") InteropLibrary otherLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary thisLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary otherLib) {
             if (receiver == other) {
                 return TriState.TRUE;
             }
@@ -591,8 +591,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
         @Specialization(guards = {"!isGraalJSException(other)"}, replaces = {"doJSObject"})
         public static TriState doOther(GraalJSException receiver, Object other,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary thisLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("otherLib") InteropLibrary otherLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary thisLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary otherLib) {
             Object thisObj = receiver.getErrorObjectLazy();
             if (thisObj == null) {
                 // The error object cannot be identical since this is a lazily allocated Error.
@@ -616,8 +616,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
     @ExportMessage
     @TruffleBoundary
     public final int identityHashCode(
-                    @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary delegateLib) throws UnsupportedMessageException {
-        return delegateLib.identityHashCode(getErrorObject());
+                    @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary thisLib) throws UnsupportedMessageException {
+        return thisLib.identityHashCode(getErrorObject());
     }
 
     public static final class JSStackTraceElement {

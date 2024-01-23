@@ -249,9 +249,9 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
         protected boolean doForeignObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right,
-                        @Cached @Shared("foreignPrototypeNode") ForeignObjectPrototypeNode getForeignPrototypeNode,
-                        @Cached @Shared("invalidPrototypeBranch") InlinedBranchProfile invalidPrototypeBranch,
-                        @Cached("create(context)") @Shared("ordinaryHasInstance") OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
+                        @Cached @Shared ForeignObjectPrototypeNode getForeignPrototypeNode,
+                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch,
+                        @Cached("create(context)") @Shared OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
             if (context.isOptionForeignObjectPrototype()) {
                 return foreignObjectIntl(left, right, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
             } else {
@@ -276,9 +276,9 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSProxy(right)", "isCallableProxy(right)"})
         protected boolean doNotAnObjectProxyForeign(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right,
-                        @Cached @Shared("foreignPrototypeNode") ForeignObjectPrototypeNode getForeignPrototypeNode,
-                        @Cached @Shared("invalidPrototypeBranch") InlinedBranchProfile invalidPrototypeBranch,
-                        @Cached("create(context)") @Shared("ordinaryHasInstance") OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
+                        @Cached @Shared ForeignObjectPrototypeNode getForeignPrototypeNode,
+                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch,
+                        @Cached("create(context)") @Shared OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
             return doForeignObject(left, right, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
         }
 
@@ -289,16 +289,16 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
         protected boolean doJSObject(JSDynamicObject left, JSDynamicObject right,
-                        @Cached @Shared("isObjectNode") @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
-                        @Cached @Shared("getPrototype1Node") GetPrototypeNode getPrototype1Node,
-                        @Cached @Shared("getPrototype2Node") GetPrototypeNode getPrototype2Node,
-                        @Cached @Shared("getPrototype3Node") GetPrototypeNode getPrototype3Node,
-                        @Cached @Shared("firstTrue") InlinedBranchProfile firstTrue,
-                        @Cached @Shared("firstFalse") InlinedBranchProfile firstFalse,
-                        @Cached @Shared("need2Hops") InlinedBranchProfile need2Hops,
-                        @Cached @Shared("need3Hops") InlinedBranchProfile need3Hops,
-                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
-                        @Cached @Shared("invalidPrototypeBranch") InlinedBranchProfile invalidPrototypeBranch) {
+                        @Cached @Shared @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
+                        @Cached @Shared GetPrototypeNode getPrototype1Node,
+                        @Cached @Shared GetPrototypeNode getPrototype2Node,
+                        @Cached @Shared GetPrototypeNode getPrototype3Node,
+                        @Cached @Shared InlinedBranchProfile firstTrue,
+                        @Cached @Shared InlinedBranchProfile firstFalse,
+                        @Cached @Shared InlinedBranchProfile need2Hops,
+                        @Cached @Shared InlinedBranchProfile need3Hops,
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch) {
             JSDynamicObject ctorPrototype = getConstructorPrototype(right, invalidPrototypeBranch);
             if (lessThan4) {
                 JSDynamicObject proto = getPrototype1Node.execute(left);
@@ -329,16 +329,16 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSProxy(right)", "isCallableProxy(right)"})
         protected boolean doJSObjectProxy(JSDynamicObject left, JSDynamicObject right,
-                        @Cached @Shared("isObjectNode") IsJSObjectNode isObjectNode,
-                        @Cached @Shared("getPrototype1Node") GetPrototypeNode getPrototype1Node,
-                        @Cached @Shared("getPrototype2Node") GetPrototypeNode getPrototype2Node,
-                        @Cached @Shared("getPrototype3Node") GetPrototypeNode getPrototype3Node,
-                        @Cached @Shared("firstTrue") InlinedBranchProfile firstTrue,
-                        @Cached @Shared("firstFalse") InlinedBranchProfile firstFalse,
-                        @Cached @Shared("need2Hops") InlinedBranchProfile need2Hops,
-                        @Cached @Shared("need3Hops") InlinedBranchProfile need3Hops,
-                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
-                        @Cached @Shared("invalidPrototypeBranch") InlinedBranchProfile invalidPrototypeBranch) {
+                        @Cached @Shared IsJSObjectNode isObjectNode,
+                        @Cached @Shared GetPrototypeNode getPrototype1Node,
+                        @Cached @Shared GetPrototypeNode getPrototype2Node,
+                        @Cached @Shared GetPrototypeNode getPrototype3Node,
+                        @Cached @Shared InlinedBranchProfile firstTrue,
+                        @Cached @Shared InlinedBranchProfile firstFalse,
+                        @Cached @Shared InlinedBranchProfile need2Hops,
+                        @Cached @Shared InlinedBranchProfile need3Hops,
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch) {
             return doJSObject(left, right, isObjectNode, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops, errorBranch, invalidPrototypeBranch);
         }
 

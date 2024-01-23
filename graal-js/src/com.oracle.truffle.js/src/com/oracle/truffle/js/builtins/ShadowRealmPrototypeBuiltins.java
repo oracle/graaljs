@@ -150,7 +150,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization(guards = "isCallable.executeBoolean(value)")
         protected final Object objectCallable(JSContext context, JSRealm callerRealm, Object value,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("create(context)") CopyFunctionNameAndLengthNode copyNameAndLengthNode) {
             CompilerAsserts.partialEvaluationConstant(context);
             JSFunctionData wrappedFunctionCall = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.OrdinaryWrappedFunctionCall, ShadowRealmPrototypeBuiltins::createWrappedFunctionImpl);
@@ -165,14 +165,14 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization(guards = {"isObject.executeBoolean(value)", "!isCallable.executeBoolean(value)"})
         protected final Object objectNotCallable(@SuppressWarnings("unused") JSContext context, @SuppressWarnings("unused") JSRealm callerRealm, Object value,
-                        @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObject,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObject,
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(value, this);
         }
 
         @Specialization(guards = {"!isObject.executeBoolean(value)"})
         protected static Object primitive(@SuppressWarnings("unused") JSContext context, @SuppressWarnings("unused") JSRealm callerRealm, Object value,
-                        @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObject) {
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObject) {
             return value;
         }
 

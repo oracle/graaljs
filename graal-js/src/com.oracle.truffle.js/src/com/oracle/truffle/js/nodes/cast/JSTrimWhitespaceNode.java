@@ -80,17 +80,17 @@ public abstract class JSTrimWhitespaceNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"stringLength(string) > 0", "!startsOrEndsWithWhitespace(readRawNode, string, isFastNonWhitespace, isFastWhitespace)"})
     protected static TruffleString doStringNoWhitespace(TruffleString string,
-                    @Cached @SuppressWarnings("unused") @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode,
-                    @Cached @SuppressWarnings("unused") @Shared("isFastNonWhitespace") InlinedConditionProfile isFastNonWhitespace,
-                    @Cached @SuppressWarnings("unused") @Shared("isFastWhitespace") InlinedConditionProfile isFastWhitespace) {
+                    @Cached @SuppressWarnings("unused") @Shared TruffleString.ReadCharUTF16Node readRawNode,
+                    @Cached @SuppressWarnings("unused") @Shared InlinedConditionProfile isFastNonWhitespace,
+                    @Cached @SuppressWarnings("unused") @Shared InlinedConditionProfile isFastWhitespace) {
         return string;
     }
 
     @Specialization(guards = {"stringLength(string) > 0", "startsOrEndsWithWhitespace(readRawNode, string, isFastNonWhitespace, isFastWhitespace)"})
     protected final TruffleString doString(TruffleString string,
-                    @Cached @Shared("readChar") TruffleString.ReadCharUTF16Node readRawNode,
-                    @Cached @Shared("isFastNonWhitespace") InlinedConditionProfile isFastNonWhitespace,
-                    @Cached @Shared("isFastWhitespace") InlinedConditionProfile isFastWhitespace,
+                    @Cached @Shared TruffleString.ReadCharUTF16Node readRawNode,
+                    @Cached @Shared InlinedConditionProfile isFastNonWhitespace,
+                    @Cached @Shared InlinedConditionProfile isFastWhitespace,
                     @Cached TruffleString.SubstringByteIndexNode substringNode,
                     @Cached InlinedBranchProfile startsWithWhitespaceBranch,
                     @Cached InlinedBranchProfile endsWithWhitespaceBranch,

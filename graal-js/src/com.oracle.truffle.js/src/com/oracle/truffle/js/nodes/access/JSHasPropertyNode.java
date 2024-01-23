@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -142,7 +142,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
                     @Cached("getCacheableObjectType(object)") JSClass cachedObjectType,
                     @Cached("propertyName") TruffleString cachedName,
                     @Cached("getCachedPropertyGetter(object, propertyName)") HasPropertyCacheNode hasPropertyNode,
-                    @Cached @Shared("strEq") TruffleString.EqualNode equalNode) {
+                    @Cached @Shared TruffleString.EqualNode equalNode) {
         return hasPropertyNode.hasProperty(object);
     }
 
@@ -151,7 +151,7 @@ public abstract class JSHasPropertyNode extends JavaScriptBaseNode {
     public boolean arrayStringCached(JSDynamicObject object, TruffleString propertyName,
                     @Cached("propertyName") TruffleString cachedName,
                     @Cached("getCachedPropertyGetter(object, propertyName)") HasPropertyCacheNode hasPropertyNode,
-                    @Cached @Shared("strEq") TruffleString.EqualNode equalNode) {
+                    @Cached @Shared TruffleString.EqualNode equalNode) {
         return hasPropertyNode.hasProperty(object);
     }
 

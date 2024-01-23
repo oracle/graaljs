@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -136,7 +136,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     public final Object execute(Object[] args,
                     @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropExecuteNode callNode,
-                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+                    @Shared @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
         language.interopBoundaryEnter(realm);
         try {
@@ -156,7 +156,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     public final Object instantiate(Object[] args,
                     @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropInstantiateNode callNode,
-                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+                    @Shared @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
         language.interopBoundaryEnter(realm);
         try {

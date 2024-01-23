@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -154,8 +154,8 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
 
     @Specialization
     protected TruffleString doStringNumber(TruffleString a,
-                    @Cached("rightValueToString()") @Shared("rightString") TruffleString rightString,
-                    @Cached @Shared("concatStrings") JSConcatStringsNode createLazyString) {
+                    @Cached("rightValueToString()") @Shared TruffleString rightString,
+                    @Cached @Shared JSConcatStringsNode createLazyString) {
         return createLazyString.executeTString(a, rightString);
     }
 
@@ -176,8 +176,8 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
                     @Bind("this") Node node,
                     @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveA,
                     @Cached JSToNumberNode toNumberA,
-                    @Cached("rightValueToString()") @Shared("rightString") TruffleString rightString,
-                    @Cached @Shared("concatStrings") JSConcatStringsNode createLazyString,
+                    @Cached("rightValueToString()") @Shared TruffleString rightString,
+                    @Cached @Shared JSConcatStringsNode createLazyString,
                     @Cached InlinedConditionProfile profileA) {
 
         Object primitiveA = toPrimitiveA.execute(a);

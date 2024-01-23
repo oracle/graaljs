@@ -169,7 +169,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Specialization(guards = {"isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
         final JSObject doOrdinaryInstancePrototype(JSDynamicObject prototype,
-                        @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
+                        @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode) {
             JSObject object = JSOrdinary.createWithoutPrototype(context, prototype);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
@@ -177,7 +177,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Specialization(guards = {"isPromiseObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
         final JSObject doPromiseInstancePrototype(JSDynamicObject prototype,
-                        @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
+                        @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode) {
             JSObject object = JSPromise.createWithoutPrototype(context, prototype);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;

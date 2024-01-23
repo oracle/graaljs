@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,17 +90,17 @@ public final class JSMapObject extends JSNonProxyObject {
 
     @ExportMessage
     boolean isHashEntryReadable(Object key,
-                    @Cached @Shared("importKeyNode") ImportValueNode importKeyNode,
-                    @Cached @Shared("normalizeKeyNode") JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared ImportValueNode importKeyNode,
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
         return getMap().has(normalizedKey);
     }
 
     @ExportMessage
     Object readHashValue(Object key,
-                    @Cached @Shared("exportValueNode") ExportValueNode exportValueNode,
-                    @Cached @Shared("importKeyNode") ImportValueNode importKeyNode,
-                    @Cached @Shared("normalizeKeyNode") JSCollectionsNormalizeNode normalizeKeyNode) throws UnknownKeyException {
+                    @Cached @Shared ExportValueNode exportValueNode,
+                    @Cached @Shared ImportValueNode importKeyNode,
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) throws UnknownKeyException {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
         Object value = getMap().get(normalizedKey);
         if (value == null) {
@@ -111,9 +111,9 @@ public final class JSMapObject extends JSNonProxyObject {
 
     @ExportMessage
     Object readHashValueOrDefault(Object key, Object defaultValue,
-                    @Cached @Shared("exportValueNode") ExportValueNode exportValueNode,
-                    @Cached @Shared("importKeyNode") ImportValueNode importKeyNode,
-                    @Cached @Shared("normalizeKeyNode") JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared ExportValueNode exportValueNode,
+                    @Cached @Shared ImportValueNode importKeyNode,
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
         Object value = getMap().get(normalizedKey);
         if (value == null) {
@@ -125,8 +125,8 @@ public final class JSMapObject extends JSNonProxyObject {
     @ExportMessage
     @ExportMessage(name = "isHashEntryRemovable")
     boolean isHashEntryModifiable(Object key,
-                    @Cached @Shared("importKeyNode") ImportValueNode importKeyNode,
-                    @Cached @Shared("normalizeKeyNode") JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared ImportValueNode importKeyNode,
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
         return getMap().has(normalizedKey);
     }
@@ -139,17 +139,17 @@ public final class JSMapObject extends JSNonProxyObject {
 
     @ExportMessage
     void writeHashEntry(Object key, Object value,
-                    @Cached @Shared("importKeyNode") ImportValueNode importKeyNode,
+                    @Cached @Shared ImportValueNode importKeyNode,
                     @Cached @Exclusive ImportValueNode importValueNode,
-                    @Cached @Shared("normalizeKeyNode") JSCollectionsNormalizeNode normalizeKeyNode) {
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
         getMap().put(normalizedKey, importValueNode.executeWithTarget(value));
     }
 
     @ExportMessage
     void removeHashEntry(Object key,
-                    @Cached @Shared("importKeyNode") ImportValueNode importKeyNode,
-                    @Cached @Shared("normalizeKeyNode") JSCollectionsNormalizeNode normalizeKeyNode) throws UnknownKeyException {
+                    @Cached @Shared ImportValueNode importKeyNode,
+                    @Cached @Shared JSCollectionsNormalizeNode normalizeKeyNode) throws UnknownKeyException {
         Object normalizedKey = normalizeKeyNode.execute(importKeyNode.executeWithTarget(key));
         if (!getMap().remove(normalizedKey)) {
             throw UnknownKeyException.create(key);

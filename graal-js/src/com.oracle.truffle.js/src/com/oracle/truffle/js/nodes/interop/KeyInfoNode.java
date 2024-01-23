@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,10 +94,10 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
     static boolean cachedOwnProperty(JSDynamicObject target, @SuppressWarnings("unused") String key, int query,
                     @Bind("this") Node node,
                     @CachedLibrary("target") DynamicObjectLibrary objectLibrary,
-                    @Cached @Shared("fromJavaString") @SuppressWarnings("unused") TruffleString.FromJavaStringNode fromJavaStringNode,
+                    @Cached @Shared @SuppressWarnings("unused") TruffleString.FromJavaStringNode fromJavaStringNode,
                     @Bind("fromJavaString(fromJavaStringNode, key)") TruffleString tStringKey,
                     @Bind("objectLibrary.getProperty(target, tStringKey)") Property property,
-                    @Cached @Shared("isCallable") IsCallableNode isCallable,
+                    @Cached @Shared IsCallableNode isCallable,
                     @Cached InlinedBranchProfile proxyBranch,
                     @Cached InlinedBranchProfile moduleNamespaceBranch) {
         if (JSProperty.isAccessor(property)) {
@@ -152,9 +152,9 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
     @Specialization(replaces = "cachedOwnProperty")
     static boolean member(JSDynamicObject target, String key, int query,
                     @Cached GetPrototypeNode getPrototype,
-                    @Cached @Shared("isCallable") IsCallableNode isCallable,
+                    @Cached @Shared IsCallableNode isCallable,
                     @Cached IsExtensibleNode isExtensible,
-                    @Cached @Shared("fromJavaString") TruffleString.FromJavaStringNode fromJavaStringNode) {
+                    @Cached @Shared TruffleString.FromJavaStringNode fromJavaStringNode) {
         TruffleString tStringKey = Strings.fromJavaString(fromJavaStringNode, key);
         PropertyDescriptor desc = null;
         boolean isProxy = false;

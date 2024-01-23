@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,49 +94,49 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
 
     @ExportMessage
     public ExceptionType getExceptionType(
-                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionType(getException());
     }
 
     @ExportMessage
     public boolean isExceptionIncompleteSource(
-                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.isExceptionIncompleteSource(getException());
     }
 
     @ExportMessage
     public boolean hasExceptionMessage(
-                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
         return exceptions.hasExceptionMessage(getException());
     }
 
     @ExportMessage
     public Object getExceptionMessage(
-                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionMessage(getException());
     }
 
     @ExportMessage
     public boolean hasExceptionStackTrace(
-                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
         return exceptions.hasExceptionStackTrace(getException());
     }
 
     @ExportMessage
     public Object getExceptionStackTrace(
-                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionStackTrace(getException());
     }
 
     @ExportMessage
     public boolean hasExceptionCause(
-                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) {
         return exceptions.hasExceptionCause(getException());
     }
 
     @ExportMessage
     public Object getExceptionCause(
-                    @Shared("exceptions") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary exceptions) throws UnsupportedMessageException {
         return exceptions.getExceptionCause(getException());
     }
 

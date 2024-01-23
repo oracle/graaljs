@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -639,14 +639,14 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected boolean equalsOtherObj(JSTemporalPlainDateTimeObject thisDateTime, JSTemporalPlainDateTimeObject otherDateTime,
-                        @Shared("toString") @Cached JSToStringNode toStringNode) {
+                        @Shared @Cached JSToStringNode toStringNode) {
             return equalsIntl(thisDateTime, otherDateTime, toStringNode);
         }
 
         @Specialization(guards = "!isJSTemporalPlainDateTime(other)")
         protected boolean equalsGeneric(JSTemporalPlainDateTimeObject thisDateTime, Object other,
                         @Cached ToTemporalDateTimeNode toTemporalDateTime,
-                        @Shared("toString") @Cached JSToStringNode toStringNode) {
+                        @Shared @Cached JSToStringNode toStringNode) {
             JSTemporalPlainDateTimeObject otherDateTime = toTemporalDateTime.execute(other, Undefined.instance);
             return equalsIntl(thisDateTime, otherDateTime, toStringNode);
         }

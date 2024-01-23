@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -73,10 +73,10 @@ public abstract class FloorNode extends MathOperation {
 
     @Specialization
     protected final Object floorDouble(double d,
-                    @Cached @Shared("isZero") InlinedConditionProfile isZero,
-                    @Cached @Shared("fitsInt") InlinedConditionProfile fitsInt,
-                    @Cached @Shared("fitsSafeLong") InlinedConditionProfile fitsSafeLong,
-                    @Cached @Shared("smaller") InlinedConditionProfile smaller) {
+                    @Cached @Shared InlinedConditionProfile isZero,
+                    @Cached @Shared InlinedConditionProfile fitsInt,
+                    @Cached @Shared InlinedConditionProfile fitsSafeLong,
+                    @Cached @Shared InlinedConditionProfile smaller) {
         if (isZero.profile(this, d == 0.0)) {
             // floor(-0.0) => -0.0
             // floor(+0.0) => +0.0
@@ -95,10 +95,10 @@ public abstract class FloorNode extends MathOperation {
 
     @Specialization(replaces = "floorDouble")
     protected final Object floorToDouble(Object a,
-                    @Cached @Shared("isZero") InlinedConditionProfile isZero,
-                    @Cached @Shared("fitsInt") InlinedConditionProfile fitsInt,
-                    @Cached @Shared("fitsSafeLong") InlinedConditionProfile fitsSafeLong,
-                    @Cached @Shared("smaller") InlinedConditionProfile smaller) {
+                    @Cached @Shared InlinedConditionProfile isZero,
+                    @Cached @Shared InlinedConditionProfile fitsInt,
+                    @Cached @Shared InlinedConditionProfile fitsSafeLong,
+                    @Cached @Shared InlinedConditionProfile smaller) {
         double d = toDouble(a);
         return floorDouble(d, isZero, fitsInt, fitsSafeLong, smaller);
     }

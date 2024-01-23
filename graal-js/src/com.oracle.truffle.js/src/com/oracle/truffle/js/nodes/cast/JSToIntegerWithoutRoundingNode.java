@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,14 +121,14 @@ public abstract class JSToIntegerWithoutRoundingNode extends JavaScriptBaseNode 
 
     @Specialization
     protected double doString(TruffleString value,
-                    @Shared("recToIntOrInf") @Cached JSToIntegerWithoutRoundingNode toIntOrInf,
+                    @Shared @Cached JSToIntegerWithoutRoundingNode toIntOrInf,
                     @Cached JSStringToNumberNode stringToNumberNode) {
         return toIntOrInf.executeDouble(stringToNumberNode.execute(value));
     }
 
     @Specialization(guards = "isJSObject(value) || isForeignObject(value)")
     protected double doJSOrForeignObject(Object value,
-                    @Shared("recToIntOrInf") @Cached JSToIntegerWithoutRoundingNode toIntOrInf,
+                    @Shared @Cached JSToIntegerWithoutRoundingNode toIntOrInf,
                     @Cached JSToNumberNode toNumberNode) {
         return toIntOrInf.executeDouble(toNumberNode.executeNumber(value));
     }

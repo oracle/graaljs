@@ -303,9 +303,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected final JSDynamicObject bindJSFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args,
                         @Cached @Shared GetPrototypeNode getPrototypeNode,
                         @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
-                        @Cached @Shared("isConstructorProf") InlinedConditionProfile isConstructorProfile,
+                        @Cached @Shared InlinedConditionProfile isConstructorProfile,
                         @Cached @Exclusive InlinedConditionProfile isAsyncProfile,
-                        @Cached @Shared("setProtoProf") InlinedConditionProfile setProtoProfile) {
+                        @Cached @Shared InlinedConditionProfile setProtoProfile) {
             JSDynamicObject proto = getPrototypeNode.execute(thisFnObj);
 
             JSFunctionObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto,
@@ -324,8 +324,8 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached IsConstructorNode isConstructorNode,
                         @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
                         @Cached @Exclusive InlinedConditionProfile isProxyProfile,
-                        @Cached @Shared("isConstructorProf") InlinedConditionProfile isConstructorProfile,
-                        @Cached @Shared("setProtoProf") InlinedConditionProfile setProtoProfile) {
+                        @Cached @Shared InlinedConditionProfile isConstructorProfile,
+                        @Cached @Shared InlinedConditionProfile setProtoProfile) {
             JSRealm realm = JSRuntime.getFunctionRealm(thisObj, JSRealm.get(this));
             JSDynamicObject proto;
             if (isProxyProfile.profile(this, JSProxy.isJSProxy(thisObj))) {
@@ -470,7 +470,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Specialization(guards = "isCallable.executeBoolean(function)", replaces = "applyFunction")
         protected Object applyCallable(Object function, Object target, Object args,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable) {
             return apply(function, target, args);
         }
 
@@ -484,7 +484,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @SuppressWarnings("unused")
         @Specialization(guards = "!isCallable.executeBoolean(function)")
         protected Object error(Object function, Object target, Object args,
-                        @Cached @Shared("isCallable") IsCallableNode isCallable) {
+                        @Cached @Shared IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(function);
         }
 

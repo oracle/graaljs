@@ -94,7 +94,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isObjectNode.executeBoolean(obj)"})
     protected PropertyDescriptor doDefault(Object obj,
-                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                    @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
                     @Cached(inline = true) JSToBooleanNode toBooleanNode,
                     @Cached InlinedBranchProfile hasGetBranch,
                     @Cached InlinedBranchProfile hasSetBranch,
@@ -208,7 +208,7 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "!isObjectNode.executeBoolean(obj)")
     protected PropertyDescriptor doNonObject(Object obj,
-                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+                    @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode) {
         throw Errors.createTypeErrorPropertyDescriptorNotAnObject(obj, this);
     }
 }

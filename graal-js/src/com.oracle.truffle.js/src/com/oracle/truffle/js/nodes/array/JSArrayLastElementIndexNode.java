@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,16 +102,16 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
     public long doWithHolesCached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
                     @Bind("this") Node node,
-                    @Cached("create(context)") @Shared("prevElementIndex") JSArrayPreviousElementIndexNode previousElementIndexNode,
-                    @Cached @Shared("isMinusOne") InlinedConditionProfile isLengthMinusOne) {
+                    @Cached("create(context)") @Shared JSArrayPreviousElementIndexNode previousElementIndexNode,
+                    @Cached @Shared InlinedConditionProfile isLengthMinusOne) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
         return holesArrayImpl(object, length, cachedArrayType, node, previousElementIndexNode, isLengthMinusOne);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "doWithHolesCached")
     public long doWithHolesUncached(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create(context)") @Shared("prevElementIndex") JSArrayPreviousElementIndexNode previousElementIndexNode,
-                    @Cached @Shared("isMinusOne") InlinedConditionProfile isLengthMinusOne,
+                    @Cached("create(context)") @Shared JSArrayPreviousElementIndexNode previousElementIndexNode,
+                    @Cached @Shared InlinedConditionProfile isLengthMinusOne,
                     @Cached InlinedExactClassProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray arrayType = arrayTypeProfile.profile(this, getArrayType(object));
@@ -146,7 +146,7 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)"})
     public long doObjectViaEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared JSHasPropertyNode hasPropertyNode) {
         long lengthMinusOne = length - 1;
         if (hasPropertyNode.executeBoolean(object, lengthMinusOne)) {
             return lengthMinusOne;
@@ -157,7 +157,7 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)", "isSuitableForEnumBasedProcessing(object, length)"})
     public long doObjectViaFullEnumeration(JSDynamicObject object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared JSHasPropertyNode hasPropertyNode) {
         long lengthMinusOne = length - 1;
         if (hasPropertyNode.executeBoolean(object, lengthMinusOne)) {
             return lengthMinusOne;
@@ -168,7 +168,7 @@ public abstract class JSArrayLastElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, length)"})
     public long doObject(Object object, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared JSHasPropertyNode hasPropertyNode) {
         long index = length - 1;
         while (!hasPropertyNode.executeBoolean(object, index) && index > 0) {
             index--;

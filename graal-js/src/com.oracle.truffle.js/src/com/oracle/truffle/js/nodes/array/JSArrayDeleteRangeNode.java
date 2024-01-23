@@ -71,7 +71,7 @@ public abstract class JSArrayDeleteRangeNode extends JavaScriptBaseNode {
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "!cachedArrayType.isHolesType()"}, limit = "5")
     protected void denseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long start, long end,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
-                    @Cached("create(orThrow)") @Shared("deleteProperty") DeletePropertyNode deletePropertyNode) {
+                    @Cached("create(orThrow)") @Shared DeletePropertyNode deletePropertyNode) {
         for (long i = start; i < end; i++) {
             deletePropertyNode.executeEvaluated(array, i);
         }
@@ -80,8 +80,8 @@ public abstract class JSArrayDeleteRangeNode extends JavaScriptBaseNode {
     @Specialization(guards = {"cachedArrayType.isInstance(arrayType)", "cachedArrayType.isHolesType()"}, limit = "5")
     protected void sparseArray(JSDynamicObject array, @SuppressWarnings("unused") ScriptArray arrayType, long start, long end,
                     @Cached("arrayType") @SuppressWarnings("unused") ScriptArray cachedArrayType,
-                    @Cached("create(orThrow)") @Shared("deleteProperty") DeletePropertyNode deletePropertyNode,
-                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode) {
+                    @Cached("create(orThrow)") @Shared DeletePropertyNode deletePropertyNode,
+                    @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode) {
         long pos = start;
         while (pos < end) {
             deletePropertyNode.executeEvaluated(array, pos);
@@ -91,8 +91,8 @@ public abstract class JSArrayDeleteRangeNode extends JavaScriptBaseNode {
 
     @Specialization(replaces = {"denseArray", "sparseArray"})
     protected void doUncached(JSDynamicObject array, ScriptArray arrayType, long start, long end,
-                    @Cached("create(orThrow)") @Shared("deleteProperty") DeletePropertyNode deletePropertyNode,
-                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode) {
+                    @Cached("create(orThrow)") @Shared DeletePropertyNode deletePropertyNode,
+                    @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode) {
         if (arrayType.isHolesType()) {
             sparseArray(array, arrayType, start, end, arrayType, deletePropertyNode, nextElementIndexNode);
         } else {

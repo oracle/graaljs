@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -149,7 +149,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     protected Object doToOperandGeneric(Object left, Object right,
                     @Cached("create(getHint(), !isEquality())") JSToOperandNode toOperandLeftNode,
                     @Cached("create(getHint(), !isEquality())") JSToOperandNode toOperandRightNode,
-                    @Cached("create(getOverloadedOperatorName())") @Shared("dispatchBinaryOperator") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
+                    @Cached("create(getOverloadedOperatorName())") @Shared DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
         Object leftOperand;
         Object rightOperand;
 
@@ -170,7 +170,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
                     @Bind("this") Node node,
                     @Cached("create(getHint())") JSToOperandNode toOperandLeftNode,
                     @Cached("create(getHint())") JSToOperandNode toOperandRightNode,
-                    @Cached("create(getOverloadedOperatorName())") @Shared("dispatchBinaryOperator") DispatchBinaryOperatorNode dispatchBinaryOperatorNode,
+                    @Cached("create(getOverloadedOperatorName())") @Shared DispatchBinaryOperatorNode dispatchBinaryOperatorNode,
                     @Cached JSToStringNode toStringLeftNode,
                     @Cached JSToStringNode toStringRightNode,
                     @Cached InlinedConditionProfile leftStringProfile,
@@ -202,7 +202,7 @@ public abstract class JSOverloadedBinaryNode extends JavaScriptBaseNode {
     protected Object doToNumericOperand(Object left, Object right,
                     @Cached("create(true)") JSToNumericNode toNumericOperandLeftNode,
                     @Cached("create(true)") JSToNumericNode toNumericOperandRightNode,
-                    @Cached("create(getOverloadedOperatorName())") @Shared("dispatchBinaryOperator") DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
+                    @Cached("create(getOverloadedOperatorName())") @Shared DispatchBinaryOperatorNode dispatchBinaryOperatorNode) {
         Object leftOperand;
         Object rightOperand;
 

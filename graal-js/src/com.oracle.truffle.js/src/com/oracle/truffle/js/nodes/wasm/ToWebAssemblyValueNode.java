@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,7 +88,7 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isF32(type)")
     static float f32(Object value, @SuppressWarnings("unused") TruffleString type,
-                    @Cached @Shared("toNumber") JSToNumberNode toNumberNode) {
+                    @Cached @Shared JSToNumberNode toNumberNode) {
         Number numberValue = toNumberNode.executeNumber(value);
         double doubleValue = JSRuntime.toDouble(numberValue);
         return (float) doubleValue;
@@ -96,7 +96,7 @@ public abstract class ToWebAssemblyValueNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isF64(type)")
     static double f64(Object value, @SuppressWarnings("unused") TruffleString type,
-                    @Cached @Shared("toNumber") JSToNumberNode toNumberNode) {
+                    @Cached @Shared JSToNumberNode toNumberNode) {
         Number numberValue = toNumberNode.executeNumber(value);
         return JSRuntime.toDouble(numberValue);
     }
