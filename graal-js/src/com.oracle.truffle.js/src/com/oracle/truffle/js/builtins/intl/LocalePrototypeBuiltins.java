@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -593,10 +593,11 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class JSLocaleGetTextInfoNode extends JSBuiltinNode {
-        @Child CreateDataPropertyNode createDirectionNode = CreateDataPropertyNode.create(getContext(), IntlUtil.KEY_DIRECTION);
+        @Child CreateDataPropertyNode createDirectionNode;
 
         public JSLocaleGetTextInfoNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.createDirectionNode = CreateDataPropertyNode.create(context, IntlUtil.KEY_DIRECTION);
         }
 
         @Specialization
@@ -620,12 +621,15 @@ public final class LocalePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     }
 
     public abstract static class JSLocaleGetWeekInfoNode extends JSBuiltinNode {
-        @Child CreateDataPropertyNode createFirstDayNode = CreateDataPropertyNode.create(getContext(), IntlUtil.KEY_FIRST_DAY);
-        @Child CreateDataPropertyNode createWeekendNode = CreateDataPropertyNode.create(getContext(), IntlUtil.KEY_WEEKEND);
-        @Child CreateDataPropertyNode createMinimalDaysNode = CreateDataPropertyNode.create(getContext(), IntlUtil.KEY_MINIMAL_DAYS);
+        @Child CreateDataPropertyNode createFirstDayNode;
+        @Child CreateDataPropertyNode createWeekendNode;
+        @Child CreateDataPropertyNode createMinimalDaysNode;
 
         public JSLocaleGetWeekInfoNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            this.createFirstDayNode = CreateDataPropertyNode.create(context, IntlUtil.KEY_FIRST_DAY);
+            this.createWeekendNode = CreateDataPropertyNode.create(context, IntlUtil.KEY_WEEKEND);
+            this.createMinimalDaysNode = CreateDataPropertyNode.create(context, IntlUtil.KEY_MINIMAL_DAYS);
         }
 
         @Specialization

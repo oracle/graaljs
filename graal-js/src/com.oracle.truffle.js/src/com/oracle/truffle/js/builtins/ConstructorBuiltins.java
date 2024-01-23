@@ -2334,7 +2334,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         public ConstructErrorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
-            this.errorType = JSErrorType.valueOf(Strings.toJavaString(getBuiltin().getName()));
+            this.errorType = JSErrorType.valueOf(Strings.toJavaString(builtin.getName()));
             this.stackTraceLimitNode = ErrorStackTraceLimitNode.create();
             this.initErrorObjectNode = InitErrorObjectNode.create(context);
             assert errorType != JSErrorType.AggregateError;

@@ -275,8 +275,8 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         public JSONStringifyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.createWrapperPropertyNode = CreateDataPropertyNode.create(getContext(), Strings.EMPTY_STRING);
-            this.jsonStringifyStringNode = JSONStringifyStringNode.create();
+            this.createWrapperPropertyNode = CreateDataPropertyNode.create(context, Strings.EMPTY_STRING);
+            this.jsonStringifyStringNode = JSONStringifyStringNode.create(context);
         }
 
         @Specialization(guards = {"!isString(value)", "isUndefined(replacer)"})

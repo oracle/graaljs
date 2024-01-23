@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1124,13 +1124,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             super(context, builtin);
             toIndexNode = JSToIndexNode.create();
             toDoubleNode = JSToDoubleNode.create();
-            loadNode = createHelperNode();
+            loadNode = AtomicsLoadNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
             createAsyncPropertyNode = CreateDataPropertyNode.create(context, Strings.ASYNC);
             createValuePropertyNode = CreateDataPropertyNode.create(context, Strings.VALUE);
-        }
-
-        protected AtomicsLoadNode createHelperNode() {
-            return AtomicsLoadNodeGen.create(getContext(), getBuiltin(), args().fixedArgs(4).createArgumentNodes(getContext()));
         }
 
         protected Object doWait(VirtualFrame frame, Object maybeTarget, Object index, Object value, Object timeout, boolean isAsync) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -332,7 +332,7 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
         public AsyncFromSyncReturn(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.getReturn = GetMethodNode.create(context, Strings.RETURN);
-            this.createIterResult = CreateIterResultObjectNode.create(getContext());
+            this.createIterResult = CreateIterResultObjectNode.create(context);
         }
 
         @Override

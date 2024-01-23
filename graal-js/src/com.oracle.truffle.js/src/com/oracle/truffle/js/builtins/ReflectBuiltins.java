@@ -194,7 +194,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         public ReflectApplyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.toObjectArray = JSToObjectArrayNodeGen.create(getContext());
+            this.toObjectArray = JSToObjectArrayNodeGen.create(context);
         }
 
         @Specialization(guards = "isJSFunction(target)")

@@ -44,6 +44,7 @@ import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
@@ -85,14 +87,15 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
     private final StringBuilderProfile stringBuilderProfile;
 
-    protected JSONStringifyStringNode() {
-        this.stringBuilderProfile = StringBuilderProfile.create(getJSContext().getStringLengthLimit());
+    protected JSONStringifyStringNode(JSContext context) {
+        this.stringBuilderProfile = StringBuilderProfile.create(context.getStringLengthLimit());
     }
 
     public abstract Object execute(Object data, Object keyStr, JSObject holder);
 
-    public static JSONStringifyStringNode create() {
-        return JSONStringifyStringNodeGen.create();
+    @NeverDefault
+    public static JSONStringifyStringNode create(JSContext context) {
+        return JSONStringifyStringNodeGen.create(context);
     }
 
     @Specialization
