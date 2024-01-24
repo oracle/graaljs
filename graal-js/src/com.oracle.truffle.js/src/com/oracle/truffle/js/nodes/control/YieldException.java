@@ -44,7 +44,6 @@ import com.oracle.truffle.api.nodes.ControlFlowException;
 
 @SuppressWarnings("serial")
 public final class YieldException extends ControlFlowException {
-    private static final long serialVersionUID = 3168046581744128272L;
 
     public static final YieldException YIELD_NULL = new YieldException(null);
     public static final YieldException AWAIT_NULL = new YieldException(null);

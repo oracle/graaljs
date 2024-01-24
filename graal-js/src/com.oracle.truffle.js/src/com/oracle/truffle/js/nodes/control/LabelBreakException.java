@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+@SuppressWarnings("serial")
 public final class LabelBreakException extends BreakException {
-
-    private static final long serialVersionUID = -91013036379258890L;
-
 }

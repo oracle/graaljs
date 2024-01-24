@@ -42,9 +42,9 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.nodes.ControlFlowException;
 
+@SuppressWarnings("serial")
 public final class ContinueException extends ControlFlowException {
 
-    private static final long serialVersionUID = 5329687983726237188L;
     static final ContinueException instance = new ContinueException();
 
     public boolean matchTarget(ContinueTarget target) {

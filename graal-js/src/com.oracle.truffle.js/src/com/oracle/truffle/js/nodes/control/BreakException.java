@@ -42,9 +42,8 @@ package com.oracle.truffle.js.nodes.control;
 
 import com.oracle.truffle.api.nodes.ControlFlowException;
 
+@SuppressWarnings("serial")
 public abstract class BreakException extends ControlFlowException {
-
-    private static final long serialVersionUID = -91013036379258890L;
 
     public final boolean matchTarget(BreakTarget target) {
         return this == target.getBreakException();
