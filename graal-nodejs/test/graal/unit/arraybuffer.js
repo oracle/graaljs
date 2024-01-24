@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,6 +74,27 @@ describe('ArrayBuffer', function () {
                 var array = module['ArrayBuffer_New' + type](buffer);
                 assert.strictEqual(array.byteLength, 0);
             });
+            it(type + '::ByteOffset(), ByteLength(), and Length() should return 0 for detached buffer', function () {
+                var buffer = new ArrayBuffer(24);
+                var array = new globalThis[type](buffer, 8);
+                assert.ok(array.length > 0);
+                assert.strictEqual(module.ArrayBuffer_ViewByteOffset(array), 8);
+                assert.strictEqual(module.ArrayBuffer_ViewByteLength(array), 16);
+                assert.strictEqual(module.ArrayBuffer_TypedArrayLength(array), array.length);
+                module.ArrayBuffer_Detach(buffer);
+                assert.strictEqual(module.ArrayBuffer_ViewByteOffset(array), 0);
+                assert.strictEqual(module.ArrayBuffer_ViewByteLength(array), 0);
+                assert.strictEqual(module.ArrayBuffer_TypedArrayLength(array), 0);
+            });
+        });
+        it('DataView::ByteOffset(), ByteLength() should return 0 for detached buffer', function () {
+            var buffer = new ArrayBuffer(24);
+            var dataView = new DataView(buffer, 8);
+            assert.strictEqual(module.ArrayBuffer_ViewByteOffset(dataView), 8);
+            assert.strictEqual(module.ArrayBuffer_ViewByteLength(dataView), 16);
+            module.ArrayBuffer_Detach(buffer);
+            assert.strictEqual(module.ArrayBuffer_ViewByteOffset(dataView), 0);
+            assert.strictEqual(module.ArrayBuffer_ViewByteLength(dataView), 0);
         });
     });
     describe('GetBackingStore', function () {

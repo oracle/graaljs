@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -99,6 +99,21 @@ EXPORT_TO_JS(NewBackingStoreEmptyDeleter) {
     std::unique_ptr<BackingStore> backing_store = ArrayBuffer::NewBackingStore(foo, 3, BackingStore::EmptyDeleter, nullptr);
     Local<ArrayBuffer> array_buffer = ArrayBuffer::New(args.GetIsolate(), std::move(backing_store));
     args.GetReturnValue().Set(array_buffer);
+}
+
+EXPORT_TO_JS(ViewByteOffset) {
+    size_t result = args[0].As<ArrayBufferView>()->ByteOffset();
+    args.GetReturnValue().Set((uint32_t)result);
+}
+
+EXPORT_TO_JS(ViewByteLength) {
+    size_t result = args[0].As<ArrayBufferView>()->ByteLength();
+    args.GetReturnValue().Set((uint32_t)result);
+}
+
+EXPORT_TO_JS(TypedArrayLength) {
+    size_t result = args[0].As<TypedArray>()->Length();
+    args.GetReturnValue().Set((uint32_t)result);
 }
 
 #undef SUITE
