@@ -265,7 +265,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
         /* ES8 24.4.1.2 ValidateAtomicAccess */
         protected static int validateAtomicAccess(JSTypedArrayObject target, long convertedIndex, Object originalIndex) {
-            int length = JSArrayBufferView.typedArrayGetLength(target);
+            int length = target.getLength();
             assert convertedIndex >= 0;
             if (convertedIndex >= length) {
                 throw createRangeErrorSharedArray(originalIndex);

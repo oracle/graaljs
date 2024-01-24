@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -510,8 +510,8 @@ public class Serializer {
         if (treatArrayBufferViewsAsHostObjects) {
             writeHostObject(view);
         } else {
-            int offset = JSArrayBufferView.typedArrayGetOffset(view);
-            TypedArray typedArray = JSArrayBufferView.typedArrayGetArrayType(view);
+            int offset = view.getOffset();
+            TypedArray typedArray = view.getArrayType();
             int length = typedArray.lengthInt(view) * typedArray.bytesPerElement();
             ArrayBufferViewTag tag = ArrayBufferViewTag.fromFactory(typedArray.getFactory());
             writeJSArrayBufferView(tag, offset, length);
@@ -523,8 +523,8 @@ public class Serializer {
             writeTag(SerializationTag.HOST_OBJECT);
             NativeAccess.writeHostObject(delegate, view);
         } else {
-            int offset = JSDataView.typedArrayGetOffset(view);
-            int length = JSDataView.typedArrayGetLength(view);
+            int offset = view.getOffset();
+            int length = view.getLength();
             writeJSArrayBufferView(ArrayBufferViewTag.DATA_VIEW, offset, length);
         }
     }

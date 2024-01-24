@@ -217,6 +217,7 @@ import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSCollectionIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSDataView;
+import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -238,6 +239,7 @@ import com.oracle.truffle.js.runtime.builtins.JSSetIteratorObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSUncheckedProxyHandler;
 import com.oracle.truffle.js.runtime.builtins.JSWeakMap;
 import com.oracle.truffle.js.runtime.builtins.JSWeakSet;
@@ -1373,11 +1375,10 @@ public final class GraalJSAccess {
     }
 
     public Object arrayBufferViewBuffer(Object arrayBufferView) {
-        JSDynamicObject dynamicObject = (JSDynamicObject) arrayBufferView;
-        if (JSDataView.isJSDataView(arrayBufferView)) {
-            return JSDataView.getArrayBuffer(dynamicObject);
+        if (arrayBufferView instanceof JSDataViewObject dataView) {
+            return dataView.getArrayBuffer();
         } else {
-            return JSArrayBufferView.getArrayBuffer(dynamicObject);
+            return ((JSTypedArrayObject) arrayBufferView).getArrayBuffer();
         }
     }
 
@@ -1395,8 +1396,8 @@ public final class GraalJSAccess {
     }
 
     public static int arrayBufferViewByteLength(JSContext context, JSDynamicObject arrayBufferView) {
-        if (JSDataView.isJSDataView(arrayBufferView)) {
-            return JSDataView.typedArrayGetLength(arrayBufferView);
+        if (arrayBufferView instanceof JSDataViewObject dataView) {
+            return JSDataView.dataViewGetByteLength(dataView);
         } else {
             return JSArrayBufferView.getByteLength(arrayBufferView, context);
         }
@@ -1408,8 +1409,8 @@ public final class GraalJSAccess {
     }
 
     public static int arrayBufferViewByteOffset(JSContext context, JSDynamicObject arrayBufferView) {
-        if (JSDataView.isJSDataView(arrayBufferView)) {
-            return JSDataView.typedArrayGetOffset(arrayBufferView);
+        if (arrayBufferView instanceof JSDataViewObject dataView) {
+            return JSDataView.dataViewGetByteOffset(dataView);
         } else {
             return JSArrayBufferView.getByteOffset(arrayBufferView, context);
         }
@@ -1475,7 +1476,7 @@ public final class GraalJSAccess {
     }
 
     public int typedArrayLength(Object typedArray) {
-        return JSArrayBufferView.typedArrayGetLength((JSDynamicObject) typedArray);
+        return ((JSTypedArrayObject) typedArray).getLength();
     }
 
     private Object typedArrayNew(Object arrayBuffer, int offset, int length, TypedArrayFactory factory) {

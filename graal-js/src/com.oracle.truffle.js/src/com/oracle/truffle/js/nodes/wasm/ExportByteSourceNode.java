@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,8 +102,8 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object exportDataView(JSDataViewObject dataView) {
-        int offset = JSDataView.typedArrayGetLengthChecked(dataView);
-        int length = JSDataView.typedArrayGetOffsetChecked(dataView);
+        int offset = JSDataView.dataViewGetByteOffset(dataView);
+        int length = JSDataView.dataViewGetByteLength(dataView);
         return exportBuffer(dataView.getArrayBuffer(), offset, length);
     }
 

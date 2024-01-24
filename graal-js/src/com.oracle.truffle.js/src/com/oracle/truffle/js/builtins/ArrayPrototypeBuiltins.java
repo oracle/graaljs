@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLength;
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
-import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetLength;
 
 import java.util.Arrays;
 import java.util.Comparator;
@@ -399,7 +398,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         protected long getLength(Object thisObject) {
             if (isTypedArrayImplementation) {
                 // %TypedArray%.prototype.* don't access the "length" property
-                return typedArrayGetLength((JSTypedArrayObject) thisObject);
+                return ((JSTypedArrayObject) thisObject).getLength();
             } else {
                 if (getLengthNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -533,7 +532,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createTypeErrorDetachedBuffer();
             }
             if (args.length == 1 && JSRuntime.isNumber(args[0])) {
-                if (JSArrayBufferView.typedArrayGetLength(newTypedArray) < JSRuntime.doubleValue((Number) args[0])) {
+                if (newTypedArray.getLength() < JSRuntime.doubleValue((Number) args[0])) {
                     errorBranch.enter();
                     throw Errors.createTypeError("invalid TypedArray created");
                 }

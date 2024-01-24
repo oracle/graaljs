@@ -209,13 +209,13 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         protected final int getBufferIndex(JSDataViewObject dataView, long getIndex, InlinedBranchProfile errorBranch) {
-            int viewLength = JSDataView.typedArrayGetLength(dataView);
+            int viewLength = dataView.getLength();
             int elementSize = factory.getBytesPerElement();
             if (getIndex + elementSize > viewLength) {
                 errorBranch.enter(this);
                 throw Errors.createRangeError("index + elementSize > viewLength");
             }
-            int viewOffset = JSDataView.typedArrayGetOffset(dataView);
+            int viewOffset = dataView.getOffset();
 
             assert getIndex + viewOffset <= Integer.MAX_VALUE;
             int bufferIndex = (int) (getIndex + viewOffset);
@@ -239,7 +239,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             long getIndex = toIndexNode.executeLong(byteOffset);
             boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
-            JSArrayBufferObject buffer = bufferTypeProfile.profile(this, JSDataView.getArrayBuffer(dataView));
+            JSArrayBufferObject buffer = bufferTypeProfile.profile(this, dataView.getArrayBuffer());
             ensureNotDetached(buffer, errorBranch);
             int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch);
 
@@ -279,7 +279,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             Object numberValue = factory.isBigInt() ? toBigIntNode.executeBigInteger(value) : toNumberNode.executeNumber(value);
             boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
-            JSArrayBufferObject buffer = bufferTypeProfile.profile(this, JSDataView.getArrayBuffer(dataView));
+            JSArrayBufferObject buffer = bufferTypeProfile.profile(this, dataView.getArrayBuffer());
             ensureNotDetached(buffer, errorBranch);
             int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch);
 
@@ -309,7 +309,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         protected final Object doDataView(JSDataViewObject dataView,
                         @Cached InlinedBranchProfile errorBranch) {
-            JSArrayBufferObject arrayBuffer = JSDataView.getArrayBuffer(dataView);
+            JSArrayBufferObject arrayBuffer = dataView.getArrayBuffer();
             switch (getter) {
                 case buffer:
                     return arrayBuffer;
@@ -318,13 +318,13 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         errorBranch.enter(this);
                         throw Errors.createTypeErrorDetachedBuffer();
                     }
-                    return JSDataView.typedArrayGetLength(dataView);
+                    return dataView.getLength();
                 case byteOffset:
                     if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
                         errorBranch.enter(this);
                         throw Errors.createTypeErrorDetachedBuffer();
                     }
-                    return JSDataView.typedArrayGetOffset(dataView);
+                    return dataView.getOffset();
                 default:
                     throw Errors.shouldNotReachHere();
             }

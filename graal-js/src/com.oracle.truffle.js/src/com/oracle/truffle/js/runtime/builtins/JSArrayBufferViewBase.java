@@ -62,4 +62,12 @@ public abstract class JSArrayBufferViewBase extends JSNonProxyObject {
     public final JSArrayBufferObject getArrayBuffer() {
         return arrayBuffer;
     }
+
+    public final int getLength() {
+        return length;
+    }
+
+    public final int getOffset() {
+        return offset;
+    }
 }

@@ -81,7 +81,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
 
     @Override
     public TruffleString getClassName() {
-        return TypedArrayAccess.getTypedArrayName(this);
+        return JSArrayBufferView.typedArrayGetName(this);
     }
 
     @Override
@@ -104,7 +104,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
 
     @ExportMessage
     public long getArraySize() {
-        return JSArrayBufferView.typedArrayGetLength(this);
+        return super.getLength();
     }
 
     @ExportMessage

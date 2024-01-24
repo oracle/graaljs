@@ -62,7 +62,6 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.SparseArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -101,7 +100,7 @@ public abstract class ArrayLengthNode extends JavaScriptBaseNode {
 
         @Specialization
         protected static int doTypedArray(JSTypedArrayObject target) {
-            return JSArrayBufferView.typedArrayGetLength(target);
+            return target.getLength();
         }
 
         @Specialization(guards = {"arrayType.isInstance(target.getArrayType())", "isLengthAlwaysInt(arrayType)"}, limit = "1")

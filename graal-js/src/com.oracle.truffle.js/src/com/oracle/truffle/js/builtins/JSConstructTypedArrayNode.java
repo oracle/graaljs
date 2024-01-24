@@ -88,6 +88,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSObjectFactory;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -259,13 +260,13 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
      * %TypedArray%(typedArray).
      */
     @SuppressWarnings("unused")
-    @Specialization(guards = {"!isUndefined(newTarget)", "isJSArrayBufferView(arrayBufferView)"})
-    protected JSDynamicObject doArrayBufferView(JSDynamicObject newTarget, JSDynamicObject arrayBufferView, Object byteOffset0, Object length0,
+    @Specialization(guards = {"!isUndefined(newTarget)"})
+    protected JSDynamicObject doTypedArray(JSDynamicObject newTarget, JSTypedArrayObject arrayBufferView, Object byteOffset0, Object length0,
                     @Cached @Exclusive InlinedConditionProfile bulkCopyProfile) {
         JSArrayBufferObject srcData = JSArrayBufferView.getArrayBuffer(arrayBufferView);
         checkDetachedBuffer(srcData);
 
-        TypedArray sourceType = JSArrayBufferView.typedArrayGetArrayType(arrayBufferView);
+        TypedArray sourceType = arrayBufferView.getArrayType();
         long length = sourceType.length(arrayBufferView);
 
         JSArrayBufferObject arrayBuffer = createTypedArrayBuffer(length);
@@ -282,7 +283,7 @@ public abstract class JSConstructTypedArrayNode extends JSBuiltinNode {
         assert typedArray == JSArrayBufferView.typedArrayGetArrayType(result);
 
         if (bulkCopyProfile.profile(this, !sourceType.isInterop() && sourceType.getElementType() == typedArray.getElementType())) {
-            int sourceByteOffset = JSArrayBufferView.typedArrayGetOffset(arrayBufferView);
+            int sourceByteOffset = arrayBufferView.getOffset();
             int elementSize = sourceType.bytesPerElement();
             int sourceByteLength = (int) length * elementSize;
 

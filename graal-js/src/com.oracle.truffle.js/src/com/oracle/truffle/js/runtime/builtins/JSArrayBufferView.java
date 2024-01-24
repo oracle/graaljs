@@ -78,16 +78,15 @@ public final class JSArrayBufferView extends JSNonProxy {
     public static final JSArrayBufferView INSTANCE = new JSArrayBufferView();
 
     public static TypedArray typedArrayGetArrayType(JSDynamicObject thisObj) {
-        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        return TypedArrayAccess.getArrayType(thisObj);
+        return ((JSTypedArrayObject) thisObj).getArrayType();
     }
 
     public static int typedArrayGetLength(JSDynamicObject thisObj) {
-        return TypedArrayAccess.getLength(thisObj);
+        return ((JSTypedArrayObject) thisObj).getLength();
     }
 
     public static int typedArrayGetOffset(JSDynamicObject thisObj) {
-        return TypedArrayAccess.getOffset(thisObj);
+        return ((JSTypedArrayObject) thisObj).getOffset();
     }
 
     public static TruffleString typedArrayGetName(JSDynamicObject thisObj) {
@@ -98,12 +97,10 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     public static JSArrayBufferObject getArrayBuffer(JSDynamicObject thisObj) {
-        assert JSArrayBufferView.isJSArrayBufferView(thisObj);
-        return TypedArrayAccess.getArrayBuffer(thisObj);
+        return ((JSTypedArrayObject) thisObj).getArrayBuffer();
     }
 
     public static int getByteLength(JSDynamicObject store, JSContext ctx) {
-        assert JSArrayBufferView.isJSArrayBufferView(store);
         if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
             return 0;
         }
@@ -112,7 +109,6 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     public static int getByteOffset(JSDynamicObject store, JSContext ctx) {
-        assert JSArrayBufferView.isJSArrayBufferView(store);
         if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
             return 0;
         }
@@ -176,7 +172,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             return Undefined.instance;
         }
         long index = ((Number) numericIndex).longValue();
-        int length = JSArrayBufferView.typedArrayGetLength(thisObj);
+        int length = ((JSTypedArrayObject) thisObj).getLength();
         if (index < 0 || index >= length) {
             return Undefined.instance;
         }

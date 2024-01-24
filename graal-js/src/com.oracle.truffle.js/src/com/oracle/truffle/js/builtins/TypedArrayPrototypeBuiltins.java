@@ -353,8 +353,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         protected JSTypedArrayObject subarrayImpl(JSTypedArrayObject thisObj, TypedArray arrayType, int begin, int end) {
-            assert arrayType == JSArrayBufferView.typedArrayGetArrayType(thisObj);
-            int offset = JSArrayBufferView.typedArrayGetOffset(thisObj);
+            assert arrayType == thisObj.getArrayType();
+            int offset = thisObj.getOffset();
             JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(thisObj);
             return getArraySpeciesConstructorNode().typedArraySpeciesCreate(thisObj, arrayBuffer, offset + begin * arrayType.bytesPerElement(), end - begin);
         }
@@ -426,8 +426,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
          * @param offset destination array offset
          * @return void
          */
-        @Specialization(guards = "isJSArrayBufferView(targetObj)")
-        protected Object set(JSDynamicObject targetObj, Object array, Object offset) {
+        @Specialization
+        protected Object set(JSTypedArrayObject targetObj, Object array, Object offset) {
             long targetOffsetLong = toInteger(offset);
             if (targetOffsetLong < 0 || targetOffsetLong > Integer.MAX_VALUE) {
                 needErrorBranch.enter();
@@ -435,8 +435,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             checkHasDetachedBuffer(targetObj);
             int targetOffset = (int) targetOffsetLong;
-            if (arrayIsArrayBufferView.profile(JSArrayBufferView.isJSArrayBufferView(array))) {
-                setArrayBufferView(targetObj, (JSDynamicObject) array, targetOffset);
+            if (arrayIsArrayBufferView.profile(array instanceof JSTypedArrayObject)) {
+                setArrayBufferView(targetObj, (JSTypedArrayObject) array, targetOffset);
             } else if (arrayIsFastArray.profile(JSArray.isJSFastArray(array))) {
                 setFastArray(targetObj, (JSDynamicObject) array, targetOffset);
             } else {
@@ -514,12 +514,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             return toBigIntNode.execute(value);
         }
 
-        private void setArrayBufferView(JSDynamicObject targetView, JSDynamicObject sourceView, int offset) {
-            assert JSArrayBufferView.isJSArrayBufferView(targetView);
-            assert JSArrayBufferView.isJSArrayBufferView(sourceView);
+        private void setArrayBufferView(JSTypedArrayObject targetView, JSTypedArrayObject sourceView, int offset) {
             checkHasDetachedBuffer(sourceView);
-            TypedArray sourceArray = sourceArrayProf.profile(typedArrayGetArrayType(sourceView));
-            TypedArray targetArray = targetArrayProf.profile(typedArrayGetArrayType(targetView));
+            TypedArray sourceArray = sourceArrayProf.profile(sourceView.getArrayType());
+            TypedArray targetArray = targetArrayProf.profile(targetView.getArrayType());
             long sourceLength = sourceArray.length(sourceView);
 
             rangeCheck(0, sourceLength, offset, targetArray.length(targetView));
@@ -527,8 +525,8 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             int sourceLen = (int) sourceLength;
             JSArrayBufferObject sourceBuffer = JSArrayBufferView.getArrayBuffer(sourceView);
             JSArrayBufferObject targetBuffer = JSArrayBufferView.getArrayBuffer(targetView);
-            int srcByteOffset = JSArrayBufferView.typedArrayGetOffset(sourceView);
-            int targetByteOffset = JSArrayBufferView.typedArrayGetOffset(targetView);
+            int srcByteOffset = sourceView.getOffset();
+            int targetByteOffset = targetView.getOffset();
 
             int srcByteIndex;
             if (sameBufferProf.profile(sourceBuffer == targetBuffer)) {
@@ -921,7 +919,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             switch (getter) {
                 case length:
-                    return JSArrayBufferView.typedArrayGetLength(typedArray);
+                    return typedArray.getLength();
                 case byteLength:
                     return JSArrayBufferView.getByteLength(typedArray, getContext());
                 case byteOffset:
@@ -951,7 +949,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
         protected final Object doTypedArray(JSTypedArrayObject typedArray) {
             switch (getter) {
                 case buffer:
-                    return JSArrayBufferView.getArrayBuffer(typedArray);
+                    return typedArray.getArrayBuffer();
                 case _toStringTag:
                     return JSArrayBufferView.typedArrayGetName(typedArray);
                 default:
