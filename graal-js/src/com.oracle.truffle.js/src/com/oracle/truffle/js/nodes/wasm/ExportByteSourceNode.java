@@ -61,12 +61,12 @@ import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
     private final JSContext context;
     private final String nonByteSourceMessage;
-    private final String emptyByteSouceMessage;
+    private final String emptyByteSourceMessage;
 
     protected ExportByteSourceNode(JSContext context, String nonByteSourceMessage, String emptyByteSourceMessage) {
         this.context = context;
         this.nonByteSourceMessage = nonByteSourceMessage;
-        this.emptyByteSouceMessage = emptyByteSourceMessage;
+        this.emptyByteSourceMessage = emptyByteSourceMessage;
     }
 
     public abstract Object execute(Object byteSource);
@@ -114,8 +114,8 @@ public abstract class ExportByteSourceNode extends JavaScriptBaseNode {
 
     private Object exportBuffer(JSArrayBufferObject arrayBuffer, int offset, int length) {
         JSArrayBufferObject buffer = arrayBuffer;
-        if (emptyByteSouceMessage != null && length == 0) {
-            throw Errors.createCompileError(emptyByteSouceMessage, this);
+        if (emptyByteSourceMessage != null && length == 0) {
+            throw Errors.createCompileError(emptyByteSourceMessage, this);
         }
         JSRealm realm = getRealm();
         if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
