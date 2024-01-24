@@ -1476,7 +1476,11 @@ public final class GraalJSAccess {
     }
 
     public int typedArrayLength(Object typedArray) {
-        return ((JSTypedArrayObject) typedArray).getLength();
+        JSTypedArrayObject typedArrayObj = (JSTypedArrayObject) typedArray;
+        if (JSArrayBufferView.hasDetachedBuffer(typedArrayObj)) {
+            return 0;
+        }
+        return typedArrayObj.getLength();
     }
 
     private Object typedArrayNew(Object arrayBuffer, int offset, int length, TypedArrayFactory factory) {
