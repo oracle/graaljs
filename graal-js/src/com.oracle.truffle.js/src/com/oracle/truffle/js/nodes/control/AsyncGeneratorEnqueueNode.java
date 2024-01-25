@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,17 +70,8 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
         this.asyncGeneratorResumeNextNode = AsyncGeneratorResumeNextNode.create(context);
     }
 
-    protected AsyncGeneratorEnqueueNode(JSContext context, AsyncGeneratorResumeNextNode impl) {
-        this.newPromiseCapabilityNode = NewPromiseCapabilityNode.create(context);
-        this.asyncGeneratorResumeNextNode = impl;
-    }
-
     public static AsyncGeneratorEnqueueNode create(JSContext context) {
         return new AsyncGeneratorEnqueueNode(context);
-    }
-
-    public static AsyncGeneratorEnqueueNode create(JSContext context, AsyncGeneratorResumeNextNode impl) {
-        return new AsyncGeneratorEnqueueNode(context, impl);
     }
 
     @SuppressWarnings("unchecked")

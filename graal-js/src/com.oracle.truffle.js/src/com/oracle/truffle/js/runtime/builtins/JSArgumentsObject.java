@@ -159,7 +159,7 @@ public class JSArgumentsObject extends JSArrayBase {
 
     @ExportMessage
     public final void writeArrayElement(long index, Object value,
-                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements,
+                    @Shared @Cached ArrayElementInfoNode elements,
                     @Cached ImportValueNode castValueNode,
                     @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
         elements.executeCheck(this, index, ArrayElementInfoNode.WRITABLE);
@@ -173,13 +173,13 @@ public class JSArgumentsObject extends JSArrayBase {
 
     @ExportMessage
     public final boolean isArrayElementModifiable(long index,
-                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements) {
+                    @Shared @Cached ArrayElementInfoNode elements) {
         return elements.executeBoolean(this, index, ArrayElementInfoNode.MODIFIABLE);
     }
 
     @ExportMessage
     public final boolean isArrayElementInsertable(long index,
-                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements) {
+                    @Shared @Cached ArrayElementInfoNode elements) {
         return elements.executeBoolean(this, index, ArrayElementInfoNode.INSERTABLE);
     }
 }

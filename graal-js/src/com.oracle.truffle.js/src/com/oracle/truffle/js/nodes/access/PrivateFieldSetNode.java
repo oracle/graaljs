@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,7 +92,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     Object doField(JSObject target, HiddenKey key, Object value,
                     @Bind("this") Node node,
                     @CachedLibrary("target") DynamicObjectLibrary access,
-                    @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         if (!Properties.putIfPresent(access, target, key, value)) {
             errorBranch.enter(node);
             missing(target, key, value);
@@ -103,7 +103,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
     @Specialization
     Object doAccessor(JSObject target, Accessor accessor, Object value,
                     @Cached("createCall()") JSFunctionCallNode callNode,
-                    @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         Object setter = accessor.getSetter();
         if (setter == Undefined.instance) {
             errorBranch.enter(this);

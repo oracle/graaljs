@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -206,14 +206,14 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isNumber.execute(this, thisNumber)", "isRadix10(radix)"}, limit = "1")
+        @Specialization(guards = {"isNumber.execute(this, thisNumber)", "isRadix10(radix)"})
         protected Object toStringPrimitiveRadix10(Object thisNumber, Object radix,
                         @Shared @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Shared @Cached JSDoubleToStringNode doubleToString) {
             return doubleToString.executeString(thisNumber);
         }
 
-        @Specialization(guards = {"isNumber.execute(this, thisNumber)"}, limit = "1")
+        @Specialization(guards = {"isNumber.execute(this, thisNumber)"})
         protected Object toStringPrimitiveRadixInt(Object thisNumber, int radix,
                         @Shared @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Shared @Cached JSToDoubleNode toDouble,
@@ -225,7 +225,7 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             this, doubleToString, radixOtherBranch, radixErrorBranch);
         }
 
-        @Specialization(guards = {"isNumber.execute(this, thisNumber)", "!isUndefined(radix)"}, limit = "1", replaces = "toStringPrimitiveRadixInt")
+        @Specialization(guards = {"isNumber.execute(this, thisNumber)", "!isUndefined(radix)"}, replaces = "toStringPrimitiveRadixInt")
         protected Object toStringPrimitive(Object thisNumber, Object radix,
                         @Shared @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Shared @Cached JSToDoubleNode toDouble,
@@ -307,8 +307,9 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return Strings.fromInt(thisInteger);
         }
 
-        @Specialization(guards = "isNumber.execute(this, thisNumber)", limit = "1")
+        @Specialization(guards = "isNumber.execute(node, thisNumber)", limit = "1")
         protected static Object doNumber(Object thisNumber,
+                        @Bind("this") @SuppressWarnings("unused") Node node,
                         @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Cached JSToDoubleNode toDouble) {
             double d = toDouble.executeDouble(thisNumber);
@@ -354,8 +355,10 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return JSNumberFormat.format(numberFormatObj, thisObj.getNumber());
         }
 
-        @Specialization(guards = "isNumber.execute(this, thisNumber)", limit = "1")
+        @SuppressWarnings("truffle-static-method")
+        @Specialization(guards = "isNumber.execute(node, thisNumber)", limit = "1")
         protected final TruffleString javaNumberToLocaleString(Object thisNumber, Object locales, Object options,
+                        @Bind("this") @SuppressWarnings("unused") Node node,
                         @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Cached JSToDoubleNode toDouble) {
             double doubleValue = toDouble.executeDouble(thisNumber);
@@ -390,8 +393,9 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return thisNumber.getNumber();
         }
 
-        @Specialization(guards = "isNumber.execute(this, thisNumber)", limit = "1")
+        @Specialization(guards = "isNumber.execute(node, thisNumber)", limit = "1")
         protected static double valueOfPrimitive(Object thisNumber,
+                        @Bind("this") @SuppressWarnings("unused") Node node,
                         @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Cached JSToDoubleNode toDouble) {
             return toDouble.executeDouble(thisNumber);
@@ -505,16 +509,18 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isNumber.execute(this, thisNumber)", "isUndefined(fractionDigits)"}, limit = "1")
+        @Specialization(guards = {"isNumber.execute(node, thisNumber)", "isUndefined(fractionDigits)"})
         protected static Object toExponentialPrimitiveUndefined(Object thisNumber, Object fractionDigits,
+                        @Bind("this") @SuppressWarnings("unused") Node node,
                         @Shared @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Shared @Cached JSToDoubleNode toDouble) {
             double doubleValue = toDouble.executeDouble(thisNumber);
             return toExponentialStandard(doubleValue);
         }
 
-        @Specialization(guards = {"isNumber.execute(this, thisNumber)", "!isUndefined(fractionDigits)"}, limit = "1")
+        @Specialization(guards = {"isNumber.execute(node, thisNumber)", "!isUndefined(fractionDigits)"})
         protected final Object toExponentialPrimitive(Object thisNumber, Object fractionDigits,
+                        @Bind("this") @SuppressWarnings("unused") Node node,
                         @Shared @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Shared @Cached JSToDoubleNode toDouble,
                         @Shared @Cached InlinedBranchProfile digitsErrorBranch,
@@ -606,14 +612,14 @@ public final class NumberPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isNumber.execute(this, thisNumber)", "isUndefined(precision)"}, limit = "1")
+        @Specialization(guards = {"isNumber.execute(this, thisNumber)", "isUndefined(precision)"})
         protected static Object toPrecisionPrimitiveUndefined(Object thisNumber, Object precision,
                         @Shared @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Shared @Cached JSToStringNode toStringNode) {
             return toStringNode.executeString(thisNumber);
         }
 
-        @Specialization(guards = {"isNumber.execute(this, thisNumber)", "!isUndefined(precision)"}, limit = "1")
+        @Specialization(guards = {"isNumber.execute(this, thisNumber)", "!isUndefined(precision)"})
         protected final Object toPrecisionPrimitive(Object thisNumber, Object precision,
                         @Shared @Cached @SuppressWarnings("unused") IsNumberNode isNumber,
                         @Shared @Cached JSToNumberNode toNumberNode,

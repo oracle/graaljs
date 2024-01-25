@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,14 +85,14 @@ public abstract class JSSetLengthNode extends JavaScriptBaseNode {
 
     @Specialization
     protected static int setIntLength(JSDynamicObject object, int length,
-                    @Cached("createSetLengthProperty()") @Shared("setLength") PropertySetNode setLengthProperty) {
+                    @Cached("createSetLengthProperty()") @Shared PropertySetNode setLengthProperty) {
         setLengthProperty.setValueInt(object, length);
         return length;
     }
 
     @Specialization(replaces = "setIntLength")
     protected static Object setLength(JSDynamicObject object, Object length,
-                    @Cached("createSetLengthProperty()") @Shared("setLength") PropertySetNode setLengthProperty) {
+                    @Cached("createSetLengthProperty()") @Shared PropertySetNode setLengthProperty) {
         setLengthProperty.setValue(object, length);
         return length;
     }

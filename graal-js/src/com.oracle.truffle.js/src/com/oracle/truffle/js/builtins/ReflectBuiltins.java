@@ -194,7 +194,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         public ReflectApplyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.toObjectArray = JSToObjectArrayNodeGen.create(getContext());
+            this.toObjectArray = JSToObjectArrayNodeGen.create(context);
         }
 
         @Specialization(guards = "isJSFunction(target)")
@@ -202,9 +202,9 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return apply(target, thisArgument, argumentsList);
         }
 
-        @Specialization(guards = "isCallable.executeBoolean(target)", replaces = "applyFunction", limit = "1")
+        @Specialization(guards = "isCallable.executeBoolean(target)", replaces = "applyFunction")
         protected final Object applyCallable(Object target, Object thisArgument, Object argumentsList,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable) {
             return apply(target, thisArgument, argumentsList);
         }
 
@@ -216,9 +216,9 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isCallable.executeBoolean(target)", limit = "1")
+        @Specialization(guards = "!isCallable.executeBoolean(target)")
         protected static Object error(Object target, Object thisArgument, Object argumentsList,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+                        @Cached @Shared IsCallableNode isCallable) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
@@ -298,7 +298,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
         protected boolean delete(Object target, Object property,
                         @Cached IsObjectNode isObjectNode,
                         @Cached JSToPropertyKeyNode toPropertyKeyNode,
-                        @Cached("createNonStrict(getContext())") DeletePropertyNode deletePropertyNode) {
+                        @Cached("create(false)") DeletePropertyNode deletePropertyNode) {
             if (isObjectNode.executeBoolean(target)) {
                 Object key = toPropertyKeyNode.execute(property);
                 return deletePropertyNode.executeEvaluated(target, key);
@@ -374,7 +374,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
 
         @Specialization
         protected Object doObject(JSObject target, Object propertyKey,
-                        @Shared("jsclassProf") @Cached JSClassProfile jsclassProfile) {
+                        @Shared @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             return JSObject.hasProperty(target, key, jsclassProfile);
         }
@@ -385,14 +385,14 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @CachedLibrary("target") InteropLibrary interop,
                         @Cached TruffleString.ToJavaStringNode toJavaStringNode,
                         @Cached ForeignObjectPrototypeNode foreignObjectPrototypeNode,
-                        @Shared("jsclassProf") @Cached JSClassProfile classProfile) {
+                        @Shared @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
                 if (key instanceof TruffleString) {
                     boolean result = interop.isMemberExisting(target, Strings.toJavaString(toJavaStringNode, (TruffleString) key));
                     if (!result && getContext().getLanguageOptions().hasForeignObjectPrototype()) {
                         JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
-                        result = JSObject.hasProperty(prototype, key, classProfile);
+                        result = JSObject.hasProperty(prototype, key, jsclassProfile);
                     }
                     return result;
                 } else {
@@ -497,7 +497,7 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
             return JSObject.setWithReceiver(target, key, value, receiver, false, jsclassProfile, this);
         }
 
-        @Specialization(guards = {"isForeignObject(target)"}, limit = "InteropLibraryLimit")
+        @Specialization(guards = {"isForeignObject(target)"})
         protected boolean doForeignObject(Object target, Object propertyKey, Object value, @SuppressWarnings("unused") Object[] optionalArgs,
                         @Cached IsObjectNode isObjectNode) {
             if (isObjectNode.executeBoolean(target)) {

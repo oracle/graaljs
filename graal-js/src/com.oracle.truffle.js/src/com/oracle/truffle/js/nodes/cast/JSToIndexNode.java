@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,7 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
 
     @Specialization
     protected long doInt(int value,
-                    @Cached @Shared("negativeIndexBranch") InlinedBranchProfile negativeIndexBranch) {
+                    @Cached @Shared InlinedBranchProfile negativeIndexBranch) {
         if (value < 0) {
             negativeIndexBranch.enter(this);
             throw Errors.createRangeErrorIndexNegative(this);
@@ -74,7 +74,7 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
 
     @Specialization
     protected long doSafeInteger(SafeInteger value,
-                    @Cached @Shared("negativeIndexBranch") InlinedBranchProfile negativeIndexBranch) {
+                    @Cached @Shared InlinedBranchProfile negativeIndexBranch) {
         long longValue = value.longValue();
         if (longValue < 0) {
             negativeIndexBranch.enter(this);
@@ -85,7 +85,7 @@ public abstract class JSToIndexNode extends JavaScriptBaseNode {
 
     @Specialization
     protected long doDouble(double value,
-                    @Cached @Shared("negativeIndexBranch") InlinedBranchProfile negativeIndexBranch,
+                    @Cached @Shared InlinedBranchProfile negativeIndexBranch,
                     @Cached @Exclusive InlinedBranchProfile tooLargeIndexBranch) {
         long integerIndex = (long) value;
         if (integerIndex < 0) {

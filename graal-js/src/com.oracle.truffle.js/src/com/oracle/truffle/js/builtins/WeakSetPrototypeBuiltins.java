@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -117,14 +117,14 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
         protected static boolean delete(JSWeakSetObject thisObj, Object key,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             return Boundaries.mapRemove(thisObj.getWeakHashMap(), key) != null;
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"})
         protected static boolean deleteNonObjectKey(JSWeakSetObject thisObj, Object key,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             return false;
@@ -146,7 +146,7 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
         protected static JSWeakSetObject add(JSWeakSetObject thisObj, Object key,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             Boundaries.mapPut(thisObj.getWeakHashMap(), key, PRESENT);
@@ -154,7 +154,7 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"})
         protected static JSWeakSetObject addNonObjectKey(JSWeakSetObject thisObj, Object key,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             throw typeErrorKeyIsNotObject();
@@ -176,14 +176,14 @@ public final class WeakSetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
         protected static boolean has(JSWeakSetObject thisObj, Object key,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             return Boundaries.mapContainsKey(thisObj.getWeakHashMap(), key);
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"}, limit = "1")
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, key)"})
         protected static boolean hasNonObjectKey(JSWeakSetObject thisObj, Object key,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             return false;

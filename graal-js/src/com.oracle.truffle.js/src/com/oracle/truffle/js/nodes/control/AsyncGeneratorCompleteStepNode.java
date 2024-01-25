@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -62,10 +62,6 @@ public class AsyncGeneratorCompleteStepNode extends JavaScriptBaseNode {
     AsyncGeneratorCompleteStepNode(JSContext context) {
         this.callNode = JSFunctionCallNode.createCall();
         this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
-    }
-
-    public static AsyncGeneratorCompleteStepNode create(JSContext context) {
-        return new AsyncGeneratorCompleteStepNode(context);
     }
 
     public final void asyncGeneratorCompleteStep(VirtualFrame frame, Completion.Type completionType, Object completionValue, boolean done, ArrayDeque<AsyncGeneratorRequest> queue) {

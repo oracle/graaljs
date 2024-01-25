@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -170,7 +170,7 @@ EXPORT_TO_JS(GetPrototype) {
 EXPORT_TO_JS(CreationContextIsCurrent) {
     Local<Object> obj = args[0].As<Object>();
 
-    Local<Context> creationContext = obj->CreationContext();
+    Local<Context> creationContext = obj->GetCreationContext().ToLocalChecked();
     Local<Context> currentContext = args.GetIsolate()->GetCurrentContext();
     bool result = (creationContext == currentContext);
     args.GetReturnValue().Set(result);
@@ -184,7 +184,7 @@ EXPORT_TO_JS(CreationContextNewContext) {
     Local<Object> object = Object::New(isolate);
     newContext->Exit();
 
-    Local<Context> creationContext = object->CreationContext();
+    Local<Context> creationContext = object->GetCreationContext().ToLocalChecked();
     bool result = (creationContext == newContext);
     args.GetReturnValue().Set(result);
 }

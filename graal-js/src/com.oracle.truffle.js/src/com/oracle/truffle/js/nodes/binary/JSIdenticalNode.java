@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,7 +82,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @NodeInfo(shortName = "===")
 @ImportStatic({JSRuntime.class, JSConfig.class})
 public abstract class JSIdenticalNode extends JSCompareNode {
-    protected static final int MAX_CLASSES = 3;
 
     protected static final int STRICT_EQUALITY_COMPARISON = 0;
     protected static final int SAME_VALUE = 1;
@@ -228,14 +227,14 @@ public abstract class JSIdenticalNode extends JSCompareNode {
 
     @Specialization(guards = {"isJSNull(a)", "!isNullOrUndefined(b)"})
     protected static boolean doNullA(@SuppressWarnings("unused") Object a, Object b,
-                    @Shared("isNullInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
         assert b != Undefined.instance;
         return nullInterop.isNull(b);
     }
 
     @Specialization(guards = {"!isNullOrUndefined(a)", "isJSNull(b)"})
     protected static boolean doNullB(Object a, @SuppressWarnings("unused") Object b,
-                    @Shared("isNullInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary nullInterop) {
         assert a != Undefined.instance;
         return nullInterop.isNull(a);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -265,7 +265,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
         /* ES8 24.4.1.2 ValidateAtomicAccess */
         protected static int validateAtomicAccess(JSTypedArrayObject target, long convertedIndex, Object originalIndex) {
-            int length = JSArrayBufferView.typedArrayGetLength(target);
+            int length = target.getLength();
             assert convertedIndex >= 0;
             if (convertedIndex >= length) {
                 throw createRangeErrorSharedArray(originalIndex);
@@ -463,7 +463,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)"})
         protected int doInt32ArrayIntObjIdx(JSTypedArrayObject target, Object index, int expected, int replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             return doCASInt(target, intIndex, expected, replacement, (TypedArray.DirectInt32Array) ta);
         }
@@ -471,7 +471,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)"})
         protected int doInt32ArrayObjObjIdx(JSTypedArrayObject target, Object index, Object expected, Object replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             return doCASInt(target, intIndex, toInt(expected), toInt(replacement), (TypedArray.DirectInt32Array) ta);
         }
@@ -479,7 +479,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigInt64Array(ta)"})
         protected BigInt doBigInt64ArrayObjObjIdx(JSTypedArrayObject target, Object index, Object expected, Object replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             return doCASBigInt(target, intIndex, toBigInt(expected).toBigInt64(), toBigInt(replacement), (TypedArray.DirectBigInt64Array) ta);
         }
@@ -487,14 +487,14 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigUint64Array(ta)"})
         protected BigInt doBigUint64ArrayObjObjIdx(JSTypedArrayObject target, Object index, Object expected, Object replacement,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             return doCASBigInt(target, intIndex, toBigInt(expected).toBigUint64(), toBigInt(replacement), (TypedArray.DirectBigUint64Array) ta);
         }
 
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index, Object expected, Object replacement,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode,
+                        @Cached @Shared JSToIndexNode toIndexNode,
                         @Cached InlinedBranchProfile notSharedArrayBuffer) {
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
@@ -636,14 +636,14 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)"})
         protected int doInt32ArrayObjObjIdx(JSTypedArrayObject target, Object index,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             return SharedMemorySync.doVolatileGet(target, intIndex, (DirectInt32Array) ta);
         }
 
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             TypedArray ta = validateIntegerTypedArray(target, false);
@@ -778,7 +778,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)"})
         protected Object doSharedInt32ArrayObjIdx(JSTypedArrayObject target, Object index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             SharedMemorySync.doVolatilePut(target, intIndex, value, (DirectInt32Array) ta);
             return value;
@@ -787,7 +787,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigInt64Array(ta)"})
         protected Object doSharedBigInt64Array(JSTypedArrayObject target, Object index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             BigInt biValue = toBigInt(value, target);
             SharedMemorySync.doVolatilePutBigInt(target, intIndex, biValue, (DirectBigInt64Array) ta);
@@ -797,7 +797,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigUint64Array(ta)"})
         protected Object doSharedBigUint64Array(JSTypedArrayObject target, Object index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             BigInt biValue = toBigInt(value, target);
             SharedMemorySync.doVolatilePutBigInt(target, intIndex, biValue, (DirectBigUint64Array) ta);
@@ -806,7 +806,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index, Object value,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
             TypedArray ta = validateIntegerTypedArray(target, false);
@@ -966,7 +966,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectInt32Array(ta)"})
         protected int doSharedInt32ArrayObjIdx(JSTypedArrayObject target, Object index, int value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             return atomicDoInt(target, intIndex, value, (DirectInt32Array) ta);
         }
@@ -974,7 +974,7 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigInt64Array(ta)"})
         protected BigInt doSharedBigInt64Array(JSTypedArrayObject target, Object index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             return atomicDoBigInt(target, intIndex, toBigInt(value), (DirectBigInt64Array) ta);
         }
@@ -982,14 +982,14 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         @Specialization(guards = {"isSharedBufferView(target)", "isDirectBigUint64Array(ta)"})
         protected BigInt doSharedBigUint64Array(JSTypedArrayObject target, Object index, Object value,
                         @Bind("typedArrayGetArrayType(target)") TypedArray ta,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode) {
+                        @Cached @Shared JSToIndexNode toIndexNode) {
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
             return atomicDoBigInt(target, intIndex, toBigInt(value), (DirectBigUint64Array) ta);
         }
 
         @Specialization
         protected Object doGeneric(Object maybeTarget, Object index, Object value,
-                        @Cached @Shared("toIndex") JSToIndexNode toIndexNode,
+                        @Cached @Shared JSToIndexNode toIndexNode,
                         @Cached InlinedBranchProfile notSharedArrayBuffer) {
 
             JSTypedArrayObject target = validateTypedArray(maybeTarget);
@@ -1124,13 +1124,9 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             super(context, builtin);
             toIndexNode = JSToIndexNode.create();
             toDoubleNode = JSToDoubleNode.create();
-            loadNode = createHelperNode();
+            loadNode = AtomicsLoadNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
             createAsyncPropertyNode = CreateDataPropertyNode.create(context, Strings.ASYNC);
             createValuePropertyNode = CreateDataPropertyNode.create(context, Strings.VALUE);
-        }
-
-        protected AtomicsLoadNode createHelperNode() {
-            return AtomicsLoadNodeGen.create(getContext(), getBuiltin(), args().fixedArgs(4).createArgumentNodes(getContext()));
         }
 
         protected Object doWait(VirtualFrame frame, Object maybeTarget, Object index, Object value, Object timeout, boolean isAsync) {

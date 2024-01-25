@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.JSTargetableNode;
 import com.oracle.truffle.js.nodes.access.PropertyNode;
@@ -97,11 +96,6 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     }
 
     @NeverDefault
-    public static SpecializedNewObjectNode create(JSContext context, boolean isBuiltin, boolean isConstructor, boolean isGenerator, boolean isAsyncGenerator) {
-        return create(context, isBuiltin, isConstructor, isGenerator, isAsyncGenerator, JSOrdinary.INSTANCE);
-    }
-
-    @NeverDefault
     public static SpecializedNewObjectNode create(JSFunctionData functionData, JSOrdinary instanceLayout) {
         return create(functionData.getContext(), functionData.isBuiltin(), functionData.isConstructor(), functionData.isGenerator(), functionData.isAsyncGenerator(), instanceLayout);
     }
@@ -112,15 +106,6 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
     }
 
     protected abstract JSDynamicObject execute(JSDynamicObject newTarget, Object prototype);
-
-    protected Shape getProtoChildShape(Object prototype) {
-        CompilerAsserts.neverPartOfCompilation();
-        if (JSGuards.isJSObject(prototype)) {
-            JSObject jsproto = (JSObject) prototype;
-            return JSObjectUtil.getProtoChildShape(jsproto, instanceLayout, context);
-        }
-        return null;
-    }
 
     @NeverDefault
     protected Shape getShapeWithoutProto() {
@@ -165,16 +150,16 @@ public abstract class SpecializedNewObjectNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()", "prototypeClass != null", "prototypeClass.isInstance(prototype)"}, limit = "1")
     public JSDynamicObject createWithProtoCachedClass(@SuppressWarnings("unused") JSDynamicObject target, Object prototype,
-                    @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
+                    @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode,
                     @Cached(value = "getClassIfJSObject(prototype)") Class<?> prototypeClass,
-                    @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
+                    @Cached("getShapeWithoutProto()") @Shared Shape cachedShape) {
         return createWithProto(target, (JSObject) prototypeClass.cast(prototype), setProtoNode, cachedShape);
     }
 
     @Specialization(guards = {"!isBuiltin", "isConstructor", "context.isMultiContext()"})
     public JSDynamicObject createWithProto(@SuppressWarnings("unused") JSDynamicObject target, JSObject prototype,
-                    @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode,
-                    @Cached("getShapeWithoutProto()") @Shared("shapeWithoutProto") Shape cachedShape) {
+                    @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode,
+                    @Cached("getShapeWithoutProto()") @Shared Shape cachedShape) {
         JSRealm realm = getRealm();
         if (isAsyncGenerator) {
             return JSAsyncGenerator.create(context, realm, prototype);

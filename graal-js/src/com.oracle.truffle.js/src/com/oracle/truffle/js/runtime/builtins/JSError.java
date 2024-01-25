@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -180,17 +180,6 @@ public final class JSError extends JSNonProxy {
         setMessage(obj, Strings.fromJavaString(message));
         setException(realm, obj, exception, context.isOptionNashornCompatibilityMode());
         return obj;
-    }
-
-    @TruffleBoundary
-    public static JSErrorObject createAggregateError(JSRealm realm, Object errors, String msg) {
-        JSErrorObject errorObj = createErrorObject(realm.getContext(), realm, JSErrorType.AggregateError);
-        if (msg != null) {
-            setMessage(errorObj, Strings.fromJavaString(msg));
-        }
-        JSObjectUtil.putDataProperty(errorObj, ERRORS_NAME, errors, ERRORS_ATTRIBUTES);
-        setException(realm, errorObj, JSException.createCapture(JSErrorType.AggregateError, msg, errorObj, realm), false);
-        return errorObj;
     }
 
     private static JSDynamicObject createErrorPrototype(JSRealm realm, JSErrorType errorType) {

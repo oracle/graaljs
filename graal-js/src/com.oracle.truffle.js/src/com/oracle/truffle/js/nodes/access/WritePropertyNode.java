@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -177,18 +177,6 @@ public class WritePropertyNode extends JSTargetableWriteNode {
     public final Object executeWithValue(Object obj, Object value) {
         verifyBindingStillExists(obj);
         cache.setValue(obj, value);
-        return value;
-    }
-
-    public final int executeIntWithValue(Object obj, int value) {
-        verifyBindingStillExists(obj);
-        cache.setValueInt(obj, value);
-        return value;
-    }
-
-    public final double executeDoubleWithValue(Object obj, double value) {
-        verifyBindingStillExists(obj);
-        cache.setValueDouble(obj, value);
         return value;
     }
 

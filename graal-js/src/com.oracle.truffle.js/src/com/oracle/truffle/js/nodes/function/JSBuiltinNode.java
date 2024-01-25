@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -81,8 +81,7 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
     }
 
     protected JSBuiltinNode(JSContext context, JSBuiltin builtin) {
-        this.context = context;
-        this.builtin = builtin;
+        this(context, builtin, false, false);
     }
 
     protected JSBuiltinNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
@@ -154,12 +153,12 @@ public abstract class JSBuiltinNode extends AbstractBodyNode {
 
     private static void verifyArgumentCount(JSBuiltinNode builtinNode) {
         assert !JSConfig.SubstrateVM;
-        int argumentNodeCount = 0;
+        long argumentNodeCount = 0;
         Class<? extends JSBuiltinNode> nodeclass = builtinNode.getClass();
         for (Class<?> superclass = nodeclass; superclass != null; superclass = superclass.getSuperclass()) {
             argumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(f -> f.getAnnotation(Child.class) != null && f.getName().startsWith(ARGUMENTS)).count();
         }
-        int providedArgumentNodeCount = 0;
+        long providedArgumentNodeCount = 0;
         for (Class<?> superclass = nodeclass; superclass != null; superclass = superclass.getSuperclass()) {
             providedArgumentNodeCount += Arrays.stream(superclass.getDeclaredFields()).filter(
                             f -> f.getAnnotation(Child.class) != null && f.getName().startsWith(ARGUMENTS)).filter(f -> {

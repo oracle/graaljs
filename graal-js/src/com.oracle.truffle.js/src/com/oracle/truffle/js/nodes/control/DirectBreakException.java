@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,16 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.control;
 
+@SuppressWarnings("serial")
 public final class DirectBreakException extends BreakException {
 
-    private static final long serialVersionUID = 9159010796978828438L;
     static final DirectBreakException instance = new DirectBreakException();
 
-    private DirectBreakException() {
-        super(0);
-    }
-
-    public DirectBreakException(int id) {
-        super(id);
-    }
 }

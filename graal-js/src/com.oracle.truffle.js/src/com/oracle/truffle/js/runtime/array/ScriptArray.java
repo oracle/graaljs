@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.array.dyn.AbstractConstantArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantEmptyArray;
 import com.oracle.truffle.js.runtime.array.dyn.ConstantObjectArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InlinedProfileBag;
 
@@ -388,25 +387,6 @@ public abstract class ScriptArray {
     }
 
     @TruffleBoundary
-    public String toString(JSDynamicObject object) {
-        StringBuilder sb = new StringBuilder();
-        int i = 0;
-        for (; i < length(object); i++) {
-            if (i != 0) {
-                sb.append(",");
-            }
-            Object element = getElement(object, i);
-            if (element != Null.instance && element != Undefined.instance) {
-                sb.append(element);
-            }
-        }
-        if (i < length(object)) {
-            sb.append(",... [" + (length(object) - i + 1) + " more]");
-        }
-        return sb.toString();
-    }
-
-    @TruffleBoundary
     protected static final void traceArrayTransition(ScriptArray oldArray, ScriptArray newArray, long index, Object value) {
         String access = oldArray.getClass().getSimpleName() + " -> " + newArray.getClass().getSimpleName();
 
@@ -530,7 +510,7 @@ public abstract class ScriptArray {
         long currentIndex = firstElementIndex(object);
         long start = currentIndex;
         long end = currentIndex;
-        int total = 0;
+        long total = 0;
         List<Long> rangeList = new ArrayList<>();
         while (currentIndex <= lastElementIndex(object)) {
             if (currentIndex == end) {
@@ -554,7 +534,8 @@ public abstract class ScriptArray {
             rangeList.add(start);
             rangeList.add(end);
         }
-        return makeMultiRangeList(total, toLongArray(rangeList));
+        assert total >= 0 && total <= Integer.MAX_VALUE : total;
+        return makeMultiRangeList((int) total, toLongArray(rangeList));
     }
 
     private static long[] toLongArray(List<Long> longList) {

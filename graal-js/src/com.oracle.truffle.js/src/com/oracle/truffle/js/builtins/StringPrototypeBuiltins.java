@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1358,7 +1358,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToStringNode toString3Node,
                         @Cached IsCallableNode isCallableNode,
-                        @Cached @Shared InlinedBranchProfile dollarProfile,
+                        @Cached @Exclusive InlinedBranchProfile dollarProfile,
                         @Cached InlinedConditionProfile isSpecialProfile,
                         @Cached InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
@@ -1494,9 +1494,9 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached IsCallableNode isCallableNode,
                         @Cached @Exclusive InlinedConditionProfile isRegExp,
                         @Cached TruffleString.ByteIndexOfCodePointNode stringIndexOfNode,
-                        @Cached @Shared TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
-                        @Cached @Shared InlinedConditionProfile isSearchValueEmpty,
-                        @Cached @Shared InlinedBranchProfile dollarProfile,
+                        @Cached @Exclusive TruffleString.ByteIndexOfStringNode stringIndexOfStringNode,
+                        @Cached @Exclusive InlinedConditionProfile isSearchValueEmpty,
+                        @Cached @Exclusive InlinedBranchProfile dollarProfile,
                         @Cached @Exclusive InlinedConditionProfile isSpecialProfile,
                         @Cached @Exclusive InlinedConditionProfile callSpecialProfile) {
             requireObjectCoercible(thisObj);
@@ -1968,7 +1968,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected final TruffleString toLowerCaseString(TruffleString thisStr,
                         @Cached TruffleString.CodeRangeEqualsNode codeRangeEquals,
-                        @Cached(neverDefault = true) TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
+                        @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,
@@ -2101,7 +2101,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Specialization
         protected final Object toUpperCaseString(TruffleString thisStr,
                         @Cached TruffleString.CodeRangeEqualsNode codeRangeEquals,
-                        @Cached(neverDefault = true) TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
+                        @Cached TruffleString.ByteIndexOfCodePointSetNode indexOfCodePointSet,
                         @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                         @Cached TruffleString.CopyToByteArrayNode copyToByteArrayNode,
                         @Cached TruffleString.FromByteArrayNode fromByteArrayNode,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -148,9 +148,9 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         abstract Object execute(JSContext context, JSRealm callerRealm, Object value);
 
-        @Specialization(guards = "isCallable.executeBoolean(value)", limit = "1")
+        @Specialization(guards = "isCallable.executeBoolean(value)")
         protected final Object objectCallable(JSContext context, JSRealm callerRealm, Object value,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("create(context)") CopyFunctionNameAndLengthNode copyNameAndLengthNode) {
             CompilerAsserts.partialEvaluationConstant(context);
             JSFunctionData wrappedFunctionCall = context.getOrCreateBuiltinFunctionData(BuiltinFunctionKey.OrdinaryWrappedFunctionCall, ShadowRealmPrototypeBuiltins::createWrappedFunctionImpl);
@@ -163,16 +163,16 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return wrapped;
         }
 
-        @Specialization(guards = {"isObject.executeBoolean(value)", "!isCallable.executeBoolean(value)"}, limit = "1")
+        @Specialization(guards = {"isObject.executeBoolean(value)", "!isCallable.executeBoolean(value)"})
         protected final Object objectNotCallable(@SuppressWarnings("unused") JSContext context, @SuppressWarnings("unused") JSRealm callerRealm, Object value,
-                        @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObject,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObject,
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(value, this);
         }
 
-        @Specialization(guards = {"!isObject.executeBoolean(value)"}, limit = "1")
+        @Specialization(guards = {"!isObject.executeBoolean(value)"})
         protected static Object primitive(@SuppressWarnings("unused") JSContext context, @SuppressWarnings("unused") JSRealm callerRealm, Object value,
-                        @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObject) {
+                        @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObject) {
             return value;
         }
 

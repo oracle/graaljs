@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,7 +94,7 @@ public final class JSIteratorWrapper implements TruffleObject {
     @ExportMessage
     boolean hasIteratorNextElement(
                     @CachedLibrary("this") InteropLibrary self,
-                    @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) {
+                    @Cached @Shared JSInteropGetIteratorNextNode iteratorNextNode) {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
         JSRealm realm = JSRealm.get(self);
         if (next == null) {
@@ -106,7 +106,7 @@ public final class JSIteratorWrapper implements TruffleObject {
     @ExportMessage
     Object getIteratorNextElement(
                     @CachedLibrary("this") InteropLibrary self,
-                    @Cached @Shared("getIteratorNext") JSInteropGetIteratorNextNode iteratorNextNode) throws StopIterationException {
+                    @Cached @Shared JSInteropGetIteratorNextNode iteratorNextNode) throws StopIterationException {
         if (hasIteratorNextElement(self, iteratorNextNode)) {
             Object result = next;
             next = null;

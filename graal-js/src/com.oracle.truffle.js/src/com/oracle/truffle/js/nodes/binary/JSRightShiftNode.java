@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,7 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
 
     @Specialization
     protected Object doDouble(double a, double b,
-                    @Cached @Shared("rightShift") JSRightShiftNode rightShift,
+                    @Cached @Shared JSRightShiftNode rightShift,
                     @Cached JSToInt32Node leftInt32,
                     @Cached JSToUInt32Node rightUInt32) {
 
@@ -123,7 +123,7 @@ public abstract class JSRightShiftNode extends JSBinaryNode {
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!hasOverloadedOperators(b)"}, replaces = {"doInteger", "doIntDouble", "doDouble", "doBigInt"})
     protected static Object doGeneric(Object a, Object b,
                     @Bind("this") Node node,
-                    @Cached @Shared("rightShift") JSRightShiftNode rightShift,
+                    @Cached @Shared JSRightShiftNode rightShift,
                     @Cached JSToNumericNode leftToNumeric,
                     @Cached JSToNumericNode rightToNumeric,
                     @Cached InlinedBranchProfile mixedNumericTypes) {

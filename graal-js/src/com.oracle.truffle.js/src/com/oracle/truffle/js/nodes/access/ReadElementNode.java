@@ -482,7 +482,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1")
+        @Specialization(guards = "isObjectNode.executeBoolean(target)")
         protected static Object doJSObjectLongIndex(Object target, long index, Object receiver, Object defaultValue, ReadElementNode root, int expectedReturn,
                         @Cached @Shared IsJSDynamicObjectNode isObjectNode,
                         @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) {
@@ -506,7 +506,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "isObjectNode.executeBoolean(target)", limit = "1", replaces = {"doJSObjectLongIndex"})
+        @Specialization(guards = "isObjectNode.executeBoolean(target)", replaces = {"doJSObjectLongIndex"})
         protected static Object doJSObject(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root, int expectedReturn,
                         @Cached @Shared IsJSDynamicObjectNode isObjectNode,
                         @Cached @Shared JSObjectReadElementTypeCacheNode objectHandler) {

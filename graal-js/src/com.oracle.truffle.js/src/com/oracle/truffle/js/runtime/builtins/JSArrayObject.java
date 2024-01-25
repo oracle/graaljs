@@ -151,7 +151,7 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
 
     @ExportMessage
     public void writeArrayElement(long index, Object value,
-                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements,
+                    @Shared @Cached ArrayElementInfoNode elements,
                     @Cached ImportValueNode castValueNode,
                     @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode) throws InvalidArrayIndexException, UnsupportedMessageException {
         elements.executeCheck(this, index, ArrayElementInfoNode.WRITABLE);
@@ -165,25 +165,25 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
 
     @ExportMessage
     public boolean isArrayElementModifiable(long index,
-                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements) {
+                    @Shared @Cached ArrayElementInfoNode elements) {
         return elements.executeBoolean(this, index, ArrayElementInfoNode.MODIFIABLE);
     }
 
     @ExportMessage
     public boolean isArrayElementInsertable(long index,
-                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements) {
+                    @Shared @Cached ArrayElementInfoNode elements) {
         return elements.executeBoolean(this, index, ArrayElementInfoNode.INSERTABLE);
     }
 
     @ExportMessage
     public boolean isArrayElementRemovable(long index,
-                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements) {
+                    @Shared @Cached ArrayElementInfoNode elements) {
         return elements.executeBoolean(this, index, ArrayElementInfoNode.REMOVABLE);
     }
 
     @ExportMessage
     public void removeArrayElement(long index,
-                    @Shared("elementInfo") @Cached ArrayElementInfoNode elements) throws UnsupportedMessageException, InvalidArrayIndexException {
+                    @Shared @Cached ArrayElementInfoNode elements) throws UnsupportedMessageException, InvalidArrayIndexException {
         elements.executeCheck(this, index, ArrayElementInfoNode.REMOVABLE);
         ScriptArray strategy = this.getArrayType();
         long len = strategy.length(this);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -56,7 +56,7 @@ public abstract class AsinhNode extends MathOperation {
 
     @Specialization
     protected double asinhDouble(double x,
-                    @Cached @Shared("isNegative") InlinedConditionProfile isNegative) {
+                    @Cached @Shared InlinedConditionProfile isNegative) {
         if (JSRuntime.isNegativeZero(x)) {
             return -0.0;
         }
@@ -76,7 +76,7 @@ public abstract class AsinhNode extends MathOperation {
 
     @Specialization
     protected double asinhGeneric(Object a,
-                    @Cached @Shared("isNegative") InlinedConditionProfile isNegative) {
+                    @Cached @Shared InlinedConditionProfile isNegative) {
         return asinhDouble(toDouble(a), isNegative);
     }
 }

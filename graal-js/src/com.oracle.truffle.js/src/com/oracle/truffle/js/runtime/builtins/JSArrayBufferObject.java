@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,7 +71,6 @@ import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
     public static final TruffleString CLASS_NAME = Strings.constant("ArrayBuffer");
-    public static final Object PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
 
     protected JSArrayBufferObject(Shape shape, JSDynamicObject proto) {
         super(shape, proto);
@@ -760,18 +759,6 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
     public static JSArrayBufferObject createHeapArrayBuffer(Shape shape, JSDynamicObject proto, byte[] byteArray) {
         return new Heap(shape, proto, byteArray);
-    }
-
-    public static JSArrayBufferObject createDirectArrayBuffer(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer) {
-        return new Direct(shape, proto, byteBuffer);
-    }
-
-    public static JSArrayBufferObject createSharedArrayBuffer(Shape shape, JSDynamicObject proto, ByteBuffer byteBuffer, JSAgentWaiterList waiterList) {
-        return new Shared(shape, proto, byteBuffer, waiterList);
-    }
-
-    public static JSArrayBufferObject createInteropArrayBuffer(Shape shape, JSDynamicObject proto, Object interopBuffer) {
-        return new Interop(shape, proto, interopBuffer);
     }
 
     @SuppressWarnings("serial")

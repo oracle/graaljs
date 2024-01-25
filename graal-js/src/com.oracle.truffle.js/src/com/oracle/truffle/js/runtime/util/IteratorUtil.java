@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,11 +44,7 @@ import java.util.AbstractList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.function.BiPredicate;
-import java.util.function.Function;
-import java.util.function.Predicate;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.js.runtime.Errors;
 
@@ -56,106 +52,6 @@ public final class IteratorUtil {
 
     private IteratorUtil() {
         // this utility class should not be instantiated
-    }
-
-    public static <S, T> Iterable<T> convertIterable(final Iterable<S> source, final Function<S, T> converter) {
-        return new ConvertIterable<>(source, converter);
-    }
-
-    public static <S, T> Iterator<T> convertIterator(final Iterator<S> source, final Function<S, T> converter) {
-        return new ConvertIterator<>(source, converter);
-    }
-
-    public static <S, T> List<T> convertList(final List<S> source, final Function<S, T> converter) {
-        return new ConvertList<>(source, converter);
-    }
-
-    private static final class ConvertIterable<S, T> implements Iterable<T> {
-        private final Iterable<S> source;
-        private final Function<S, T> converter;
-
-        ConvertIterable(Iterable<S> source, Function<S, T> converter) {
-            this.source = source;
-            this.converter = converter;
-        }
-
-        @Override
-        public Iterator<T> iterator() {
-            return new ConvertIterator<>(source.iterator(), converter);
-        }
-    }
-
-    private static final class ConvertIterator<S, T> implements Iterator<T> {
-        private final Iterator<S> nested;
-        private final Function<S, T> converter;
-
-        ConvertIterator(Iterator<S> nested, Function<S, T> converter) {
-            this.nested = nested;
-            this.converter = converter;
-        }
-
-        @Override
-        public T next() {
-            return converter.apply(nested.next());
-        }
-
-        @Override
-        public boolean hasNext() {
-            return nested.hasNext();
-        }
-    }
-
-    private static final class ConvertList<S, T> extends AbstractList<T> {
-        private final List<S> source;
-        private final Function<S, T> converter;
-
-        ConvertList(List<S> source, Function<S, T> converter) {
-            this.source = source;
-            this.converter = converter;
-        }
-
-        @Override
-        public Iterator<T> iterator() {
-            return new ConvertIterator<>(source.iterator(), converter);
-        }
-
-        @Override
-        public T get(int index) {
-            return converter.apply(source.get(index));
-        }
-
-        @Override
-        public int size() {
-            return source.size();
-        }
-    }
-
-    public static <T> Iterable<T> concatIterables(final Iterable<T> first, final Iterable<T> second) {
-        return new Iterable<>() {
-            @Override
-            public Iterator<T> iterator() {
-                return new Iterator<>() {
-                    private final Iterator<T> firstIterator = first.iterator();
-                    private final Iterator<T> secondIterator = second.iterator();
-
-                    @Override
-                    public T next() {
-                        if (firstIterator.hasNext()) {
-                            return firstIterator.next();
-                        } else if (secondIterator.hasNext()) {
-                            return secondIterator.next();
-                        }
-                        CompilerDirectives.transferToInterpreter();
-                        throw new NoSuchElementException();
-                    }
-
-                    @Override
-                    public boolean hasNext() {
-                        return firstIterator.hasNext() || secondIterator.hasNext();
-                    }
-                };
-            }
-        };
     }
 
     public static <T> List<T> concatLists(final List<T> list0, final List<T> list1) {
@@ -194,119 +90,6 @@ public final class IteratorUtil {
         };
     }
 
-    public static <T> Iterable<T> concatIterablesDistinct(final Iterable<T> first, final Iterable<T> second, final BiPredicate<T, T> comparator) {
-        if (!second.iterator().hasNext()) {
-            return first;
-        }
-        return new DistinctConcatIterable<>(first, second, comparator);
-    }
-
-    private static final class DistinctConcatIterable<T> implements Iterable<T> {
-        private final Iterable<T> first;
-        private final Iterable<T> second;
-        private final BiPredicate<T, T> comparator;
-
-        DistinctConcatIterable(Iterable<T> first, Iterable<T> second, BiPredicate<T, T> comparator) {
-            this.first = first;
-            this.second = second;
-            this.comparator = comparator;
-        }
-
-        @Override
-        public Iterator<T> iterator() {
-            return new DistinctConcatIterator();
-        }
-
-        private final class DistinctConcatIterator implements Iterator<T> {
-            private final Iterator<T> firstIterator = first.iterator();
-            private final Iterator<T> secondIterator = second.iterator();
-            private T next = forward();
-
-            @Override
-            public T next() {
-                if (next != null) {
-                    try {
-                        return next;
-                    } finally {
-                        next = forward();
-                    }
-                }
-                CompilerDirectives.transferToInterpreter();
-                throw new NoSuchElementException();
-            }
-
-            @Override
-            public boolean hasNext() {
-                return next != null;
-            }
-
-            private T forward() {
-                if (firstIterator.hasNext()) {
-                    return firstIterator.next();
-                }
-                next: while (secondIterator.hasNext()) {
-                    T item = secondIterator.next();
-                    for (T visitedItem : first) {
-                        if (comparator.test(item, visitedItem)) {
-                            continue next;
-                        }
-                    }
-                    return item;
-                }
-                return null;
-            }
-        }
-    }
-
-    public static <T> Iterable<T> filterIterable(final Iterable<T> iterable, final Predicate<T> filter) {
-        return () -> filterIterator(iterable.iterator(), filter);
-    }
-
-    public static <T> Iterator<T> filterIterator(final Iterator<T> iterator, final Predicate<T> filter) {
-        return new FilteredIterator<>(iterator, filter);
-    }
-
-    private static final class FilteredIterator<T> implements Iterator<T> {
-        private final Iterator<T> iterator;
-        private final Predicate<T> filter;
-        private T next;
-
-        FilteredIterator(Iterator<T> iterator, Predicate<T> filter) {
-            this.iterator = iterator;
-            this.filter = filter;
-            this.next = forward();
-        }
-
-        @Override
-        public T next() {
-            if (next != null) {
-                try {
-                    return next;
-                } finally {
-                    next = forward();
-                }
-            }
-            CompilerDirectives.transferToInterpreter();
-            throw new NoSuchElementException();
-        }
-
-        @Override
-        public boolean hasNext() {
-            return next != null;
-        }
-
-        private T forward() {
-            while (iterator.hasNext()) {
-                T item = iterator.next();
-                if (!filter.test(item)) {
-                    continue;
-                }
-                return item;
-            }
-            return null;
-        }
-    }
-
     /**
      * Like {@code Arrays.asList(array).iterator()}, but without concurrent modification checks.
      */
@@ -327,57 +110,5 @@ public final class IteratorUtil {
                 throw new NoSuchElementException();
             }
         };
-    }
-
-    /**
-     * Like {@link AbstractList#iterator()}, but without concurrent modification checks.
-     */
-    public static <T> Iterator<T> simpleListIterator(List<T> list) {
-        return new Iterator<>() {
-            private int cursor;
-
-            @Override
-            public boolean hasNext() {
-                return cursor < list.size();
-            }
-
-            @Override
-            public T next() {
-                if (hasNext()) {
-                    return list.get(cursor++);
-                }
-                throw new NoSuchElementException();
-            }
-        };
-    }
-
-    public static Iterator<Integer> rangeIterator(int length) {
-        return new RangeIterator(length);
-    }
-
-    public static Iterable<Integer> rangeIterable(int length) {
-        return () -> rangeIterator(length);
-    }
-
-    private static final class RangeIterator implements Iterator<Integer> {
-        private final int length;
-        private int index;
-
-        RangeIterator(int length) {
-            this.length = length;
-        }
-
-        @Override
-        public boolean hasNext() {
-            return index < length;
-        }
-
-        @Override
-        public Integer next() {
-            if (index < length) {
-                return index++;
-            }
-            throw new NoSuchElementException();
-        }
     }
 }

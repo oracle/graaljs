@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -164,8 +164,8 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "isInt"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigIntThrows"})
     protected Object doGenericIntCase(Object a,
-                    @Cached @Shared("toNumeric") JSToNumericNode toNumeric,
-                    @Cached @Shared("isBigInt") InlinedConditionProfile profileIsBigInt,
+                    @Cached @Shared JSToNumericNode toNumeric,
+                    @Cached @Shared InlinedConditionProfile profileIsBigInt,
                     @Cached("makeCopy()") JavaScriptNode innerOrNode) {
         Object numericA = toNumeric.execute(a);
         if (profileIsBigInt.profile(this, JSRuntime.isBigInt(numericA))) {
@@ -182,8 +182,8 @@ public abstract class JSBitwiseOrConstantNode extends JSUnaryNode {
 
     @Specialization(guards = {"!hasOverloadedOperators(a)", "!isInt"}, replaces = {"doIntegerThrows", "doDoubleThrows", "doBigInt"})
     protected BigInt doGenericBigIntCase(Object a,
-                    @Cached @Shared("toNumeric") JSToNumericNode toNumeric,
-                    @Cached @Shared("isBigInt") InlinedConditionProfile profileIsBigInt) {
+                    @Cached @Shared JSToNumericNode toNumeric,
+                    @Cached @Shared InlinedConditionProfile profileIsBigInt) {
         Object numericA = toNumeric.execute(a);
         if (profileIsBigInt.profile(this, JSRuntime.isBigInt(numericA))) {
             return doBigInt((BigInt) numericA);

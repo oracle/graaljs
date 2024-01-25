@@ -49,8 +49,6 @@ suite = {
 
   "defaultLicense" : "UPL",
 
-  "javac.lint.overrides" : "none",
-
   "libraries" : {
     "NETBEANS_PROFILER" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/org-netbeans-lib-profiler-8.2-201609300101.jar"],
@@ -388,6 +386,7 @@ suite = {
       "javaCompliance" : "17+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
+      "testProject" : True,
     },
 
     "com.oracle.truffle.js.test.external" : {
@@ -718,6 +717,7 @@ suite = {
         "sdk:POLYGLOT",
         "GRAALJS"
       ],
+      "testDistribution": True,
       "maven" : False,
     }
   }

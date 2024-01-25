@@ -209,7 +209,8 @@ public abstract class JSClass {
     }
 
     /**
-     * If true, {@link #ownPropertyKeys} and {@link JSShape#getProperties} enumerate the same keys.
+     * If true, {@link #ownPropertyKeys} and {@link JSShape#getPropertyKeyList} enumerate the same
+     * keys.
      */
     @TruffleBoundary
     public abstract boolean hasOnlyShapeProperties(JSDynamicObject obj);

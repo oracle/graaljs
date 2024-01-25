@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -101,16 +101,16 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
     public long nextWithHolesCached(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
                     @Cached("getArrayTypeIfArray(object, isArray)") ScriptArray cachedArrayType,
                     @Bind("this") Node node,
-                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached @Shared("isPlusOne") InlinedConditionProfile isPlusOne) {
+                    @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared InlinedConditionProfile isPlusOne) {
         assert isSupportedArray(object) && cachedArrayType == getArrayType(object);
         return holesArrayImpl(object, currentIndex, length, cachedArrayType, node, nextElementIndexNode, isPlusOne);
     }
 
     @Specialization(guards = {"isArray", "hasPrototypeElements(object) || hasHoles(object)"}, replaces = "nextWithHolesCached")
     public long nextWithHolesUncached(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached("create(context)") @Shared("nextElementIndex") JSArrayNextElementIndexNode nextElementIndexNode,
-                    @Cached @Shared("isPlusOne") InlinedConditionProfile isPlusOne,
+                    @Cached("create(context)") @Shared JSArrayNextElementIndexNode nextElementIndexNode,
+                    @Cached @Shared InlinedConditionProfile isPlusOne,
                     @Cached InlinedExactClassProfile arrayTypeProfile) {
         assert isSupportedArray(object);
         ScriptArray arrayType = arrayTypeProfile.profile(this, getArrayType(object));
@@ -140,7 +140,7 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)"})
     public long nextObjectViaEnumeration(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared JSHasPropertyNode hasPropertyNode) {
         long currentIndexPlusOne = currentIndex + 1;
         if (hasPropertyNode.executeBoolean(object, currentIndexPlusOne)) {
             return currentIndexPlusOne;
@@ -150,7 +150,7 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessingUsingOwnKeys(object, length)", "isSuitableForEnumBasedProcessing(object, length)"})
     public long nextObjectViaFullEnumeration(JSDynamicObject object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared JSHasPropertyNode hasPropertyNode) {
         long currentIndexPlusOne = currentIndex + 1;
         if (hasPropertyNode.executeBoolean(object, currentIndexPlusOne)) {
             return currentIndexPlusOne;
@@ -160,7 +160,7 @@ public abstract class JSArrayNextElementIndexNode extends JSArrayElementIndexNod
 
     @Specialization(guards = {"!isArray", "!isSuitableForEnumBasedProcessing(object, length)"})
     public long nextObjectViaPolling(Object object, long currentIndex, long length, @SuppressWarnings("unused") boolean isArray,
-                    @Cached @Shared("hasProperty") JSHasPropertyNode hasPropertyNode) {
+                    @Cached @Shared JSHasPropertyNode hasPropertyNode) {
         long index = currentIndex + 1;
         while (!hasPropertyNode.executeBoolean(object, index)) {
             index++;

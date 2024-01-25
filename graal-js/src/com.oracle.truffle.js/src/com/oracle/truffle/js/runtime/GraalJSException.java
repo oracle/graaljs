@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,10 +80,11 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
+@SuppressWarnings("serial")
 @ImportStatic({JSConfig.class})
 @ExportLibrary(InteropLibrary.class)
 public abstract class GraalJSException extends AbstractTruffleException {
-    private static final long serialVersionUID = -6624166672101791072L;
+
     private static final JSStackTraceElement[] EMPTY_STACK_TRACE = new JSStackTraceElement[0];
 
     private JSStackTraceElement[] jsStackTrace;
@@ -556,8 +557,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
     public static final class IsIdenticalOrUndefined {
         @Specialization
         public static TriState doException(GraalJSException receiver, GraalJSException other,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary thisLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("otherLib") InteropLibrary otherLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary thisLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary otherLib) {
             if (receiver == other) {
                 return TriState.TRUE;
             }
@@ -590,8 +591,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
 
         @Specialization(guards = {"!isGraalJSException(other)"}, replaces = {"doJSObject"})
         public static TriState doOther(GraalJSException receiver, Object other,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary thisLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("otherLib") InteropLibrary otherLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary thisLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary otherLib) {
             Object thisObj = receiver.getErrorObjectLazy();
             if (thisObj == null) {
                 // The error object cannot be identical since this is a lazily allocated Error.
@@ -615,8 +616,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
     @ExportMessage
     @TruffleBoundary
     public final int identityHashCode(
-                    @CachedLibrary(limit = "InteropLibraryLimit") @Shared("thisLib") InteropLibrary delegateLib) throws UnsupportedMessageException {
-        return delegateLib.identityHashCode(getErrorObject());
+                    @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary thisLib) throws UnsupportedMessageException {
+        return thisLib.identityHashCode(getErrorObject());
     }
 
     public static final class JSStackTraceElement {

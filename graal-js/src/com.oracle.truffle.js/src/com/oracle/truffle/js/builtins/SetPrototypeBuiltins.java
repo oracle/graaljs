@@ -660,9 +660,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isCallable.executeBoolean(callback)"}, limit = "1")
+        @Specialization(guards = {"isCallable.executeBoolean(callback)"})
         protected Object forEachFunction(JSSetObject thisObj, JSDynamicObject callback, Object thisArg,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
                         @Cached("createCall()") JSFunctionCallNode callNode) {
             JSHashMap map = JSSet.getInternalSet(thisObj);
             JSHashMap.Cursor cursor = map.getEntries();
@@ -674,9 +674,9 @@ public final class SetPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<S
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isCallable.executeBoolean(callback)"}, limit = "1")
+        @Specialization(guards = {"!isCallable.executeBoolean(callback)"})
         protected static Object forEachFunctionNoFunction(JSSetObject thisObj, Object callback, Object thisArg,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable) {
             throw Errors.createTypeErrorCallableExpected();
         }
 

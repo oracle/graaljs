@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,7 +63,7 @@ public class BreakTarget {
     }
 
     public static BreakTarget forLabel(String label, int id) {
-        return new BreakTarget(label, id, new LabelBreakException(id));
+        return new BreakTarget(label, id, new LabelBreakException());
     }
 
     public static BreakTarget forSwitch() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -261,7 +261,7 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
                         "catch (e) {" +
                         // exception must be reference error
                         "  e instanceof ReferenceError;" +
-                        "}", new Class[]{ReadPropertyTag.class, BinaryOperationTag.class});
+                        "}", new Class<?>[]{ReadPropertyTag.class, BinaryOperationTag.class});
 
         enter(ReadPropertyTag.class, (e, p) -> {
             p.input(assertGlobalObjectInput);
@@ -305,7 +305,7 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
                         "Object.keys(exports.val)" +
                         "  .concat(Object.keys(exports.bool.relaxing))" +
                         "  .concat();";
-        evalWithTags(src, new Class[]{FunctionCallTag.class, ReadPropertyTag.class});
+        evalWithTags(src, new Class<?>[]{FunctionCallTag.class, ReadPropertyTag.class});
 
         // .concat()
         enter(FunctionCallTag.class, (e0, call0) -> {
@@ -372,7 +372,7 @@ public class PropertyAccessTest extends FineGrainedAccessTest {
                         "baz(bar(1));";
         // ReadPropertyTag instrumentation only; no input tags specified, thus should not trigger
         // materialize in CallApplyArgumentsNode
-        evalWithTags(src, new Class[]{ReadPropertyTag.class}, new Class[]{});
+        evalWithTags(src, new Class<?>[]{ReadPropertyTag.class}, new Class<?>[]{});
 
         enter(ReadPropertyTag.class, (e, pr) -> {
             assertAttribute(e, KEY, "baz");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -189,7 +189,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected JSDynamicObject doForeignMap(Object thisObj,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary iteratorLib,
                         @Cached InlinedBranchProfile growProfile) {
             try {
@@ -222,7 +222,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
         protected static JSDynamicObject notMap(@SuppressWarnings("unused") Object thisObj,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }
     }
@@ -245,7 +245,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected boolean doForeignMap(Object thisObj, Object key,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             Object normalizedKey = normalize(key);
             try {
                 mapLib.removeHashEntry(thisObj, normalizedKey);
@@ -260,7 +260,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
         protected static boolean notMap(Object thisObj, Object key,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }
     }
@@ -284,7 +284,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected Object doForeignMap(Object thisObj, Object key,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
                         @Cached ImportValueNode importValue) {
             Object normalizedKey = normalize(key);
             try {
@@ -297,7 +297,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
         protected static Object notMap(Object thisObj, Object key,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }
     }
@@ -321,7 +321,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected Object doForeignMap(Object thisObj, Object key, Object value,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
                         @Cached ExportValueNode exportValueNode) {
             Object normalizedKey = normalize(key);
             Object exportedValue = exportValueNode.execute(value);
@@ -336,7 +336,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
         protected static JSDynamicObject notMap(Object thisObj, Object key, Object value,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }
     }
@@ -359,7 +359,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected Object doForeignMap(Object thisObj, Object key,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             Object normalizedKey = normalize(key);
             return mapLib.isHashEntryReadable(thisObj, normalizedKey);
         }
@@ -367,7 +367,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
         protected static boolean notMap(Object thisObj, Object key,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }
     }
@@ -379,10 +379,10 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             super(context, builtin);
         }
 
-        @Specialization(guards = {"isCallable.executeBoolean(callback)"}, limit = "1")
+        @Specialization(guards = {"isCallable.executeBoolean(callback)"})
         protected Object doMap(JSMapObject thisObj, Object callback, Object thisArg,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
-                        @Cached("createCall()") @Shared("callNode") JSFunctionCallNode callNode) {
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached("createCall()") @Shared JSFunctionCallNode callNode) {
             JSHashMap map = JSMap.getInternalMap(thisObj);
             JSHashMap.Cursor cursor = map.getEntries();
             while (cursor.advance()) {
@@ -393,11 +393,11 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             return Undefined.instance;
         }
 
-        @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)", "isCallable.executeBoolean(callback)"}, limit = "1")
+        @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)", "isCallable.executeBoolean(callback)"})
         protected Object doForeignMap(Object thisObj, Object callback, Object thisArg,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
-                        @Cached("createCall()") @Shared("callNode") JSFunctionCallNode callNode,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
+                        @Cached("createCall()") @Shared JSFunctionCallNode callNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary iteratorLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary entryLib) {
             try {
@@ -419,17 +419,17 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isJSMap(thisObj) || isForeignHash(thisObj, mapLib)", "!isCallable.executeBoolean(callback)"}, limit = "1")
+        @Specialization(guards = {"isJSMap(thisObj) || isForeignHash(thisObj, mapLib)", "!isCallable.executeBoolean(callback)"})
         protected static Object invalidCallback(Object thisObj, Object callback, Object thisArg,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @Cached @Shared IsCallableNode isCallable,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             throw Errors.createTypeErrorCallableExpected();
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
         protected static Object notMap(Object thisObj, Object callback, Object thisArg,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }
     }
@@ -451,7 +451,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
 
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected final Object doForeignMap(Object thisObj,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
                         @Cached(inline = true) LongToIntOrDoubleNode sizeToJSNumber) {
             try {
                 long hashSize = mapLib.getHashSize(thisObj);
@@ -464,7 +464,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
         protected static int notMap(@SuppressWarnings("unused") Object thisObj,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }
     }
@@ -486,7 +486,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @InliningCutoff
         @Specialization(guards = {"!isJSMap(map)", "isForeignHash(map, mapLib)"})
         protected final JSObject doForeignMap(Object map,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
                         @Cached("createSetHidden(ENUMERATE_ITERATOR_ID, getContext())") PropertySetNode setEnumerateIteratorNode) {
             Object iterator;
             try {
@@ -510,7 +510,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSMap(thisObj)", "!isForeignHash(thisObj, mapLib)"})
         protected static JSObject doIncompatibleReceiver(Object thisObj,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
             throw Errors.createTypeErrorMapExpected();
         }
     }

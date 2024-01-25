@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -303,9 +303,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         protected final JSDynamicObject bindJSFunction(JSFunctionObject thisFnObj, Object thisArg, Object[] args,
                         @Cached @Shared GetPrototypeNode getPrototypeNode,
                         @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
-                        @Cached @Shared("isConstructorProf") InlinedConditionProfile isConstructorProfile,
+                        @Cached @Shared InlinedConditionProfile isConstructorProfile,
                         @Cached @Exclusive InlinedConditionProfile isAsyncProfile,
-                        @Cached @Shared("setProtoProf") InlinedConditionProfile setProtoProfile) {
+                        @Cached @Shared InlinedConditionProfile setProtoProfile) {
             JSDynamicObject proto = getPrototypeNode.execute(thisFnObj);
 
             JSFunctionObject boundFunction = JSFunction.boundFunctionCreate(getContext(), thisFnObj, thisArg, args, proto,
@@ -316,7 +316,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return boundFunction;
         }
 
-        @Specialization(guards = {"!isJSFunction(thisObj)", "isCallableNode.executeBoolean(thisObj)"}, limit = "1")
+        @Specialization(guards = {"!isJSFunction(thisObj)", "isCallableNode.executeBoolean(thisObj)"})
         protected final JSDynamicObject bindOther(Object thisObj, Object thisArg, Object[] args,
                         @SuppressWarnings("unused") @Cached @Shared IsCallableNode isCallableNode,
                         @Cached @Shared GetPrototypeNode getPrototypeNode,
@@ -324,8 +324,8 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                         @Cached IsConstructorNode isConstructorNode,
                         @Cached("create(getContext())") @Shared CopyFunctionNameAndLengthNode copyNameAndLengthNode,
                         @Cached @Exclusive InlinedConditionProfile isProxyProfile,
-                        @Cached @Shared("isConstructorProf") InlinedConditionProfile isConstructorProfile,
-                        @Cached @Shared("setProtoProf") InlinedConditionProfile setProtoProfile) {
+                        @Cached @Shared InlinedConditionProfile isConstructorProfile,
+                        @Cached @Shared InlinedConditionProfile setProtoProfile) {
             JSRealm realm = JSRuntime.getFunctionRealm(thisObj, JSRealm.get(this));
             JSDynamicObject proto;
             if (isProxyProfile.profile(this, JSProxy.isJSProxy(thisObj))) {
@@ -355,7 +355,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"!isCallableNode.executeBoolean(thisObj)"}, limit = "1")
+        @Specialization(guards = {"!isCallableNode.executeBoolean(thisObj)"})
         protected static JSDynamicObject bindError(Object thisObj, Object thisArg, Object[] arg,
                         @SuppressWarnings("unused") @Cached @Shared IsCallableNode isCallableNode) {
             throw Errors.createTypeErrorNotAFunction(thisObj);
@@ -395,7 +395,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isES2019OrLater()", "!isJSFunction(fnObj)", "isCallable.executeBoolean(fnObj)"}, limit = "1")
+        @Specialization(guards = {"isES2019OrLater()", "!isJSFunction(fnObj)", "isCallable.executeBoolean(fnObj)"})
         protected TruffleString toStringCallable(Object fnObj,
                         @Cached @Shared IsCallableNode isCallable,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
@@ -417,7 +417,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = {"isES2019OrLater()", "!isCallable.executeBoolean(fnObj)"}, limit = "1")
+        @Specialization(guards = {"isES2019OrLater()", "!isCallable.executeBoolean(fnObj)"})
         protected TruffleString toStringNotCallable(Object fnObj,
                         @Cached @Shared IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(fnObj);
@@ -468,9 +468,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             return apply(function, target, args);
         }
 
-        @Specialization(guards = "isCallable.executeBoolean(function)", replaces = "applyFunction", limit = "1")
+        @Specialization(guards = "isCallable.executeBoolean(function)", replaces = "applyFunction")
         protected Object applyCallable(Object function, Object target, Object args,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+                        @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable) {
             return apply(function, target, args);
         }
 
@@ -482,9 +482,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         @SuppressWarnings("unused")
-        @Specialization(guards = "!isCallable.executeBoolean(function)", limit = "1")
+        @Specialization(guards = "!isCallable.executeBoolean(function)")
         protected Object error(Object function, Object target, Object args,
-                        @Cached @Shared("isCallable") @SuppressWarnings("unused") IsCallableNode isCallable) {
+                        @Cached @Shared IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(function);
         }
 

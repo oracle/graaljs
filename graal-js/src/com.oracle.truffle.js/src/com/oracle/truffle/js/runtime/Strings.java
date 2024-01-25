@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -332,33 +332,6 @@ public final class Strings {
     public static final TruffleString MS = constant("ms");
     public static final TruffleString Y = constant("y");
 
-    /* Time */
-    public static final TruffleString SECOND = constant("second");
-    public static final TruffleString SECONDS = constant("seconds");
-    public static final TruffleString MINUTE = constant("minute");
-    public static final TruffleString MINUTES = constant("minutes");
-    public static final TruffleString HOUR = constant("hour");
-    public static final TruffleString HOURS = constant("hours");
-    public static final TruffleString DAYS = constant("days");
-    public static final TruffleString DAY = constant("day");
-    public static final TruffleString WEEKDAY = constant("weekday");
-    public static final TruffleString WEEKS = constant("weeks");
-    public static final TruffleString WEEK = constant("week");
-    public static final TruffleString MONTHS = constant("months");
-    public static final TruffleString MONTH = constant("month");
-    public static final TruffleString QUARTERS = constant("quarters");
-    public static final TruffleString QUARTER = constant("quarter");
-    public static final TruffleString YEAR = constant("year");
-    public static final TruffleString YEARS = constant("years");
-
-    public static final TruffleString DATE = constant("date");
-    public static final TruffleString TIME = constant("time");
-
-    public static final TruffleString DATE_STYLE = constant("dateStyle");
-    public static final TruffleString TIME_STYLE = constant("timeStyle");
-
-    public static final TruffleString NUMERIC = constant("numeric");
-
     public static final TruffleString OK = constant("ok");
     public static final TruffleString NOT_EQUAL = constant("not-equal");
     public static final TruffleString TIMED_OUT = constant("timed-out");
@@ -499,44 +472,6 @@ public final class Strings {
     public static final TruffleString _COMPILE_ONLY = constant("_compile_only");
     public static final TruffleString $_OPTIONS = constant("$OPTIONS");
     public static final TruffleString $_ARG = constant("$ARG");
-
-    /* units */
-    public static final TruffleString ACRE = constant("acre");
-    public static final TruffleString BIT = constant("bit");
-    public static final TruffleString BYTE = constant("byte");
-    public static final TruffleString CELSIUS = constant("celsius");
-    public static final TruffleString CENTIMETER = constant("centimeter");
-    public static final TruffleString DEGREE = constant("degree");
-    public static final TruffleString FAHRENHEIT = constant("fahrenheit");
-    public static final TruffleString FLUID_OUNCE = constant("fluid-ounce");
-    public static final TruffleString FOOT = constant("foot");
-    public static final TruffleString GALLON = constant("gallon");
-    public static final TruffleString GIGABIT = constant("gigabit");
-    public static final TruffleString GIGABYTE = constant("gigabyte");
-    public static final TruffleString GRAM = constant("gram");
-    public static final TruffleString HECTARE = constant("hectare");
-    public static final TruffleString INCH = constant("inch");
-    public static final TruffleString KILOBIT = constant("kilobit");
-    public static final TruffleString KILOBYTE = constant("kilobyte");
-    public static final TruffleString KILOGRAM = constant("kilogram");
-    public static final TruffleString KILOMETER = constant("kilometer");
-    public static final TruffleString LITER = constant("liter");
-    public static final TruffleString MEGABIT = constant("megabit");
-    public static final TruffleString MEGABYTE = constant("megabyte");
-    public static final TruffleString METER = constant("meter");
-    public static final TruffleString MILE = constant("mile");
-    public static final TruffleString MILE_SCANDINAVIAN = constant("mile-scandinavian");
-    public static final TruffleString MILLILITER = constant("milliliter");
-    public static final TruffleString MILLIMETER = constant("millimeter");
-    public static final TruffleString MILLISECOND = constant("millisecond");
-    public static final TruffleString OUNCE = constant("ounce");
-    public static final TruffleString PERCENT = constant("percent");
-    public static final TruffleString PETABYTE = constant("petabyte");
-    public static final TruffleString POUND = constant("pound");
-    public static final TruffleString STONE = constant("stone");
-    public static final TruffleString TERABIT = constant("terabit");
-    public static final TruffleString TERABYTE = constant("terabyte");
-    public static final TruffleString YARD = constant("yard");
 
     public static final TruffleString GREGORY = constant("gregory");
     public static final TruffleString MEMORY = constant("memory");
@@ -919,10 +854,6 @@ public final class Strings {
 
     public static double parseDouble(TruffleString.ParseDoubleNode node, TruffleString s) throws TruffleString.NumberFormatException {
         return node.execute(s);
-    }
-
-    public static TruffleString fromCodePoint(int c) {
-        return fromCodePoint(TruffleString.FromCodePointNode.getUncached(), c);
     }
 
     public static TruffleString fromCodePoint(TruffleString.FromCodePointNode node, int c) {

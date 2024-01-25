@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,8 +80,6 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     public static final TruffleString ITERATOR_PROTOTYPE_NAME = Strings.constant("Segment Iterator.prototype");
 
     public static final TruffleString TO_STRING_TAG = Strings.constant("Intl.Segmenter");
-    public static final TruffleString GET_BREAK_TYPE = Strings.constant("get " + IntlUtil.BREAK_TYPE);
-    public static final TruffleString GET_INDEX = Strings.constant("get " + IntlUtil.INDEX);
 
     public static final JSSegmenter INSTANCE = new JSSegmenter();
 

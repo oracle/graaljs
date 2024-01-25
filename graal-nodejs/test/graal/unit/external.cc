@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,7 +68,7 @@ EXPORT_TO_JS(New) {
 EXPORT_TO_JS(CheckInternalFieldIsExtern) {
     Isolate* isolate = args.GetIsolate();
     Local<Object> obj = args[0].As<Object>();
-    Local<Value> val = obj->GetInternalField(args[1]->ToInt32(isolate->GetCurrentContext()).ToLocalChecked()->Value());
+    Local<Value> val = obj->GetInternalField(args[1]->ToInt32(isolate->GetCurrentContext()).ToLocalChecked()->Value()).As<Value>();
     args.GetReturnValue().Set(val->IsExternal());
 }
 

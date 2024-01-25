@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -148,26 +148,26 @@ public final class BigIntPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("unused")
         @Specialization(guards = {"isUndefined(radix)"})
         protected TruffleString toStringBigIntRadix10(BigInt thisObj, Object radix,
-                        @Cached @Shared("radixError") InlinedBranchProfile radixErrorBranch) {
+                        @Cached @Shared InlinedBranchProfile radixErrorBranch) {
             return toStringImpl(thisObj, 10, radixErrorBranch);
         }
 
         @Specialization(guards = {"!isUndefined(radix)"})
         protected TruffleString toStringBigInt(BigInt thisObj, Object radix,
-                        @Cached @Shared("radixError") InlinedBranchProfile radixErrorBranch) {
+                        @Cached @Shared InlinedBranchProfile radixErrorBranch) {
             return toStringImpl(thisObj, radix, radixErrorBranch);
         }
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isJSBigInt(thisObj)", "isUndefined(radix)"})
         protected TruffleString toStringRadix10(JSDynamicObject thisObj, Object radix,
-                        @Cached @Shared("radixError") InlinedBranchProfile radixErrorBranch) {
+                        @Cached @Shared InlinedBranchProfile radixErrorBranch) {
             return toStringImpl(JSBigInt.valueOf(thisObj), 10, radixErrorBranch);
         }
 
         @Specialization(guards = {"isJSBigInt(thisObj)", "!isUndefined(radix)"})
         protected TruffleString toString(JSDynamicObject thisObj, Object radix,
-                        @Cached @Shared("radixError") InlinedBranchProfile radixErrorBranch) {
+                        @Cached @Shared InlinedBranchProfile radixErrorBranch) {
             return toStringImpl(JSBigInt.valueOf(thisObj), radix, radixErrorBranch);
         }
 

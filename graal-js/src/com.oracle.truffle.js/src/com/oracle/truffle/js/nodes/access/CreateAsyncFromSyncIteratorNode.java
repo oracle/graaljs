@@ -64,7 +64,7 @@ public abstract class CreateAsyncFromSyncIteratorNode extends JavaScriptBaseNode
 
     @Specialization
     protected final IteratorRecord createAsyncFromSyncIterator(IteratorRecord syncIteratorRecord,
-                    @Cached("create(NEXT, getJSContext())") PropertyGetNode getNextMethodNode) {
+                    @Cached(value = "create(NEXT, getJSContext())", inline = false) PropertyGetNode getNextMethodNode) {
         JSObject asyncIterator = JSAsyncFromSyncIteratorObject.create(getJSContext(), getRealm(), syncIteratorRecord);
         Object nextMethod = getNextMethodNode.getValue(asyncIterator);
         return IteratorRecord.create(asyncIterator, nextMethod, false);

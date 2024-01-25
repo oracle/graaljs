@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -122,8 +122,8 @@ public abstract class RoundNode extends MathOperation {
 
     @Specialization(guards = {"!isCornercase(value)", "isDoubleInInt32Range(value)"}, rewriteOn = ArithmeticException.class)
     protected int roundDoubleInt(double value,
-                    @Cached @Shared("shiftProfile") InlinedConditionProfile shiftProfile,
-                    @Cached @Shared("negativeLongBitsProfile") InlinedBranchProfile negativeLongBitsProfile) {
+                    @Cached @Shared InlinedConditionProfile shiftProfile,
+                    @Cached @Shared InlinedBranchProfile negativeLongBitsProfile) {
         long longValue = round(value,
                         this, shiftProfile, negativeLongBitsProfile);
         if (longValue == 0 && value < 0) {
@@ -139,8 +139,8 @@ public abstract class RoundNode extends MathOperation {
     protected double roundDouble(double value,
                     @Cached @Exclusive InlinedConditionProfile profileA,
                     @Cached @Exclusive InlinedConditionProfile profileB,
-                    @Cached @Shared("shiftProfile") InlinedConditionProfile shiftProfile,
-                    @Cached @Shared("negativeLongBitsProfile") InlinedBranchProfile negativeLongBitsProfile) {
+                    @Cached @Shared InlinedConditionProfile shiftProfile,
+                    @Cached @Shared InlinedBranchProfile negativeLongBitsProfile) {
         long longValue = round(value,
                         this, shiftProfile, negativeLongBitsProfile);
         if (profileA.profile(this, longValue == Long.MIN_VALUE || longValue == Long.MAX_VALUE)) {

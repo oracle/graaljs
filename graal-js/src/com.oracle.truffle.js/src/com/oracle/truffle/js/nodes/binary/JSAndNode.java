@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ public abstract class JSAndNode extends JSLogicalNode {
 
     @Specialization
     protected Object doBoolean(VirtualFrame frame, boolean leftValue,
-                    @Cached @Shared("profile") InlinedConditionProfile canShortCircuit) {
+                    @Cached @Shared InlinedConditionProfile canShortCircuit) {
         if (canShortCircuit.profile(this, !leftValue)) {
             return leftValue;
         } else {
@@ -76,7 +76,7 @@ public abstract class JSAndNode extends JSLogicalNode {
     @Specialization(replaces = "doBoolean")
     protected Object doGeneric(VirtualFrame frame, Object leftValue,
                     @Cached(inline = true) JSToBooleanNode toBoolean,
-                    @Cached @Shared("profile") InlinedConditionProfile canShortCircuit) {
+                    @Cached @Shared InlinedConditionProfile canShortCircuit) {
         if (canShortCircuit.profile(this, !toBoolean.executeBoolean(this, leftValue))) {
             return leftValue;
         } else {

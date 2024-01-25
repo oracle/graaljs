@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,7 +48,7 @@ public class AwaitTest extends FineGrainedAccessTest {
     @Test
     public void testAwaitLiteral() {
         String src = "(async function() { var x = await 42; return x + 1; })();";
-        evalWithTags(src, new Class[]{JSTags.ControlFlowBranchTag.class});
+        evalWithTags(src, new Class<?>[]{JSTags.ControlFlowBranchTag.class});
 
         // First, execution is suspended. A promise is created and returned.
         enter(JSTags.ControlFlowBranchTag.class, (e, b) -> {
@@ -72,7 +72,7 @@ public class AwaitTest extends FineGrainedAccessTest {
     @Test
     public void testAwaitAsInput() {
         String src = "(async () => { return await 42 + await 43; })();";
-        evalWithTags(src, new Class[]{JSTags.ControlFlowBranchTag.class, JSTags.BinaryOperationTag.class});
+        evalWithTags(src, new Class<?>[]{JSTags.ControlFlowBranchTag.class, JSTags.BinaryOperationTag.class});
 
         // return (suspend 1)
         enter(JSTags.ControlFlowBranchTag.class, (e0, b0) -> {
@@ -122,7 +122,7 @@ public class AwaitTest extends FineGrainedAccessTest {
     @Test
     public void generatorWrapperAsInput() {
         String src = "(async () => { let val = await 42;})();";
-        evalWithTags(src, new Class[]{JSTags.WriteVariableTag.class, JSTags.ControlFlowBranchTag.class});
+        evalWithTags(src, new Class<?>[]{JSTags.WriteVariableTag.class, JSTags.ControlFlowBranchTag.class});
 
         // write (suspend)
         enter(JSTags.WriteVariableTag.class, (e0, b0) -> {

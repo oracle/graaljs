@@ -80,7 +80,6 @@ import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSError;
@@ -94,6 +93,7 @@ import com.oracle.truffle.js.runtime.builtins.JSProxy;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
+import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
 import com.oracle.truffle.js.runtime.doubleconv.DoubleConversion;
 import com.oracle.truffle.js.runtime.external.DToA;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
@@ -406,14 +406,6 @@ public final class JSRuntime {
     @TruffleBoundary
     public static boolean toBoolean(Object value) {
         return JSToBooleanNode.getUncached().executeBoolean(value);
-    }
-
-    public static boolean toBoolean(Number number) {
-        double val = doubleValue(number);
-        if (val == 0 || Double.isNaN(val)) {
-            return false;
-        }
-        return Boolean.TRUE;
     }
 
     private static Object toPrimitiveHintNumber(Object value) {
@@ -997,9 +989,9 @@ public final class JSRuntime {
             isArrayLike = true;
             isArray = true;
             length = JSArray.arrayGetLength(obj);
-        } else if (JSArrayBufferView.isJSArrayBufferView(obj)) {
+        } else if (obj instanceof JSTypedArrayObject typedArrayObj) {
             isArrayLike = true;
-            length = JSArrayBufferView.typedArrayGetLength(obj);
+            length = typedArrayObj.getLength();
         } else if (JSString.isJSString(obj)) {
             length = JSString.getStringLength(obj);
         }

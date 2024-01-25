@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -226,13 +226,13 @@ public abstract class JSEqualNode extends JSCompareNode {
 
     @Specialization(guards = {"isNullOrUndefined(a)"})
     protected static boolean doLeftNullOrUndefined(@SuppressWarnings("unused") Object a, Object b,
-                    @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop) {
         return isNullish(b, bInterop);
     }
 
     @Specialization(guards = {"isNullOrUndefined(b)"})
     protected static boolean doRightNullOrUndefined(Object a, @SuppressWarnings("unused") Object b,
-                    @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop) {
         return isNullish(a, aInterop);
     }
 
@@ -266,12 +266,12 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @InliningCutoff
-    @Specialization(guards = {"!hasOverloadedOperators(a)", "isPrimitiveNode.executeBoolean(b)"}, limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(a)", "isPrimitiveNode.executeBoolean(b)"})
     protected static boolean doJSObjectVsPrimitive(JSObject a, Object b,
-                    @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
-                    @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
-                    @Shared("isPrimitive") @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
-                    @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
+                    @Shared @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
+                    @Shared @Cached JSEqualNode nestedEqualNode) {
         if (isNullish(b, bInterop)) {
             return false;
         }
@@ -279,12 +279,12 @@ public abstract class JSEqualNode extends JSCompareNode {
     }
 
     @InliningCutoff
-    @Specialization(guards = {"!hasOverloadedOperators(b)", "isPrimitiveNode.executeBoolean(a)"}, limit = "1")
+    @Specialization(guards = {"!hasOverloadedOperators(b)", "isPrimitiveNode.executeBoolean(a)"})
     protected static boolean doJSObjectVsPrimitive(Object a, JSObject b,
-                    @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
-                    @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
-                    @Shared("isPrimitive") @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
-                    @Shared("equal") @Cached JSEqualNode nestedEqualNode) {
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
+                    @Shared @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached @SuppressWarnings("unused") IsPrimitiveNode isPrimitiveNode,
+                    @Shared @Cached JSEqualNode nestedEqualNode) {
         if (isNullish(a, aInterop)) {
             return false;
         }
@@ -322,14 +322,14 @@ public abstract class JSEqualNode extends JSCompareNode {
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isSymbol(b)", "!isObjectNode.executeBoolean(b)"})
     protected static boolean doSymbolNotSymbol(Symbol a, Object b,
-                    @Shared("isObject") @Cached IsObjectNode isObjectNode) {
+                    @Shared @Cached IsObjectNode isObjectNode) {
         return false;
     }
 
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isSymbol(a)", "!isObjectNode.executeBoolean(a)"})
     protected static boolean doSymbolNotSymbol(Object a, Symbol b,
-                    @Shared("isObject") @Cached IsObjectNode isObjectNode) {
+                    @Shared @Cached IsObjectNode isObjectNode) {
         return false;
     }
 
@@ -338,11 +338,11 @@ public abstract class JSEqualNode extends JSCompareNode {
     protected final boolean doForeign(Object a, Object b,
                     @Bind("isForeignObjectOrNumber(a)") boolean isAForeign,
                     @Bind("isForeignObjectOrNumber(b)") boolean isBForeign,
-                    @Shared("aInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
-                    @Shared("bInterop") @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
-                    @Shared("toPrimitive") @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
-                    @Shared("isPrimitive") @Cached IsPrimitiveNode isPrimitiveNode,
-                    @Shared("equal") @Cached JSEqualNode nestedEqualNode,
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary aInterop,
+                    @Shared @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bInterop,
+                    @Shared @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
+                    @Shared @Cached IsPrimitiveNode isPrimitiveNode,
+                    @Shared @Cached JSEqualNode nestedEqualNode,
                     @Cached LongToBigIntNode longToBigIntA,
                     @Cached LongToBigIntNode longToBigIntB) {
         assert a != null && b != null;

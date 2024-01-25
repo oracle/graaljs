@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -123,8 +123,8 @@ public class IfStatementTest extends FineGrainedAccessTest {
     }
 
     private void evalIfBlock(String src, Object condition, Object blockReturns) {
-        evalWithTags(src, new Class[]{ControlFlowRootTag.class, ControlFlowBlockTag.class, ControlFlowBranchTag.class},
-                        new Class[]{});
+        evalWithTags(src, new Class<?>[]{ControlFlowRootTag.class, ControlFlowBlockTag.class, ControlFlowBranchTag.class},
+                        new Class<?>[]{});
 
         enter(ControlFlowRootTag.class, (e1) -> {
             assertAttribute(e1, TYPE, ControlFlowRootTag.Type.Conditional.name());

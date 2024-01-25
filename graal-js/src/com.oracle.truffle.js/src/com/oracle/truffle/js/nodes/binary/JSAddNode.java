@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -174,35 +174,35 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
 
     @Specialization
     protected TruffleString doString(TruffleString a, TruffleString b,
-                    @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode) {
+                    @Cached @Shared JSConcatStringsNode concatStringsNode) {
         return concatStringsNode.executeTString(a, b);
     }
 
     @Specialization
     protected TruffleString doStringInt(TruffleString a, int b,
-                    @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode,
-                    @Cached @Shared("stringFromLongNode") TruffleString.FromLongNode stringFromLongNode) {
+                    @Cached @Shared JSConcatStringsNode concatStringsNode,
+                    @Cached @Shared TruffleString.FromLongNode stringFromLongNode) {
         return concatStringsNode.executeTString(a, Strings.fromLong(stringFromLongNode, b));
     }
 
     @Specialization
     protected TruffleString doIntString(int a, TruffleString b,
-                    @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode,
-                    @Cached @Shared("stringFromLongNode") TruffleString.FromLongNode stringFromLongNode) {
+                    @Cached @Shared JSConcatStringsNode concatStringsNode,
+                    @Cached @Shared TruffleString.FromLongNode stringFromLongNode) {
         return concatStringsNode.executeTString(Strings.fromLong(stringFromLongNode, a), b);
     }
 
     @Specialization(guards = "isNumber(b)")
     protected Object doStringNumber(TruffleString a, Object b,
-                    @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode,
-                    @Cached @Shared("doubleToStringNode") JSDoubleToStringNode doubleToStringNode) {
+                    @Cached @Shared JSConcatStringsNode concatStringsNode,
+                    @Cached @Shared JSDoubleToStringNode doubleToStringNode) {
         return concatStringsNode.executeTString(a, doubleToStringNode.executeString(b));
     }
 
     @Specialization(guards = "isNumber(a)")
     protected Object doNumberString(Object a, TruffleString b,
-                    @Cached @Shared("concatStringsNode") JSConcatStringsNode concatStringsNode,
-                    @Cached @Shared("doubleToStringNode") JSDoubleToStringNode doubleToStringNode) {
+                    @Cached @Shared JSConcatStringsNode concatStringsNode,
+                    @Cached @Shared JSDoubleToStringNode doubleToStringNode) {
         return concatStringsNode.executeTString(doubleToStringNode.executeString(a), b);
     }
 

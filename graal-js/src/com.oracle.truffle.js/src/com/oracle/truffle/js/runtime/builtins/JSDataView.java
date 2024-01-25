@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,7 +43,6 @@ package com.oracle.truffle.js.runtime.builtins;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DataViewPrototypeBuiltins;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -58,22 +57,7 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
 
     public static final JSDataView INSTANCE = new JSDataView();
 
-    public static int typedArrayGetLength(Object thisObj) {
-        assert JSDataView.isJSDataView(thisObj);
-        return JSDataViewObject.getLength(thisObj);
-    }
-
-    public static int typedArrayGetOffset(Object thisObj) {
-        assert JSDataView.isJSDataView(thisObj);
-        return JSDataViewObject.getOffset(thisObj);
-    }
-
     private JSDataView() {
-    }
-
-    public static JSArrayBufferObject getArrayBuffer(Object thisObj) {
-        assert JSDataView.isJSDataView(thisObj);
-        return JSDataViewObject.getArrayBuffer(thisObj);
     }
 
     public static JSDataViewObject createDataView(JSContext context, JSRealm realm, JSArrayBufferObject arrayBuffer, int offset, int length) {
@@ -97,18 +81,18 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
         return prototype;
     }
 
-    public static int typedArrayGetLengthChecked(JSDynamicObject thisObj) {
-        if (JSArrayBuffer.isDetachedBuffer(JSDataView.getArrayBuffer(thisObj))) {
-            throw Errors.createTypeErrorDetachedBuffer();
+    public static int dataViewGetByteLength(JSDataViewObject thisObj) {
+        if (JSArrayBuffer.isDetachedBuffer(thisObj.getArrayBuffer())) {
+            return 0;
         }
-        return typedArrayGetLength(thisObj);
+        return thisObj.getLength();
     }
 
-    public static int typedArrayGetOffsetChecked(JSDynamicObject thisObj) {
-        if (JSArrayBuffer.isDetachedBuffer(JSDataView.getArrayBuffer(thisObj))) {
-            throw Errors.createTypeErrorDetachedBuffer();
+    public static int dataViewGetByteOffset(JSDataViewObject thisObj) {
+        if (JSArrayBuffer.isDetachedBuffer(thisObj.getArrayBuffer())) {
+            return 0;
         }
-        return typedArrayGetOffset(thisObj);
+        return thisObj.getOffset();
     }
 
     @Override

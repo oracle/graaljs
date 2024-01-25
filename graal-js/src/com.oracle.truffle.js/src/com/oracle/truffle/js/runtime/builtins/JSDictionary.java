@@ -94,10 +94,6 @@ public final class JSDictionary extends JSNonProxy {
     private JSDictionary() {
     }
 
-    public static boolean isJSDictionaryObject(Object obj) {
-        return JSDynamicObject.isJSDynamicObject(obj) && isJSDictionaryObject((JSDynamicObject) obj);
-    }
-
     public static boolean isJSDictionaryObject(JSDynamicObject obj) {
         return isInstance(obj, INSTANCE);
     }

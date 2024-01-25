@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -204,11 +204,11 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
     }
 
     private void testNoDoubleMaterializationWhileOrForNode(String src, Class<?> whileOrForNodeClass) {
-        Source source = evalWithTags(src, new Class[]{
+        Source source = evalWithTags(src, new Class<?>[]{
                         JSTags.ControlFlowRootTag.class,
                         JSTags.ControlFlowBranchTag.class,
                         JSTags.ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         List<Node> whileOrForNodeList = new ArrayList<>();
         testNoDoubleMaterializationWhileOrForNodeCheck(whileOrForNodeList, whileOrForNodeClass);
@@ -372,7 +372,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
                         " setKey({" +
                         " a: 1" +
                         " }, callable);" +
-                        "}", new Class[]{JSTags.ReadElementTag.class, JSTags.FunctionCallTag.class});
+                        "}", new Class<?>[]{JSTags.ReadElementTag.class, JSTags.FunctionCallTag.class});
 
         nestedInvokeReadsMultipleInstrumentationCheck();
 
@@ -442,7 +442,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
                         " }, callable);" +
                         "}");
 
-        evalWithTags(source, new Class[]{JSTags.FunctionCallTag.class}, new Class[]{});
+        evalWithTags(source, new Class<?>[]{JSTags.FunctionCallTag.class}, new Class<?>[]{});
 
         for (int i = 0; i < 3; i++) {
             enter(JSTags.FunctionCallTag.class, (e, elem) -> {
@@ -453,7 +453,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
             }).exit();
         }
 
-        evalWithNewTags(source, new Class[]{JSTags.FunctionCallTag.class, JSTags.ReadElementTag.class}, new Class[]{});
+        evalWithNewTags(source, new Class<?>[]{JSTags.FunctionCallTag.class, JSTags.ReadElementTag.class}, new Class<?>[]{});
 
         nestedInvokeReadsNoInputInstrumentationCheck();
     }
@@ -472,7 +472,7 @@ public class MaterializationCorrectnessTest extends FineGrainedAccessTest {
                         " setKey({" +
                         " a: 1" +
                         " }, callable);" +
-                        "}", new Class[]{JSTags.FunctionCallTag.class, JSTags.ReadElementTag.class}, new Class[]{});
+                        "}", new Class<?>[]{JSTags.FunctionCallTag.class, JSTags.ReadElementTag.class}, new Class<?>[]{});
 
         nestedInvokeReadsNoInputInstrumentationCheck();
     }

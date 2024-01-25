@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,6 @@ public final class JSConfig {
     // LazyString options
     public static final boolean LazyStrings = true;
     public static final int MinLazyStringLength = 20;
-    public static final int ConcatToLeafLimit = MinLazyStringLength / 2;
 
     // Parser options
     public static final boolean ReturnOptimizer = true;
@@ -130,10 +129,6 @@ public final class JSConfig {
     /** [Construct] as part of the CallTarget names. Off by default (footprint). */
     public static final boolean DetailedCallTargetNames = false;
     public static final int SpreadArgumentPlaceholderCount = 3;
-    // should Graal.js Exceptions use the default Exception.fillInStackTrace? Turning it off might
-    // hide Java frames (causing problems with interop, debugger), but increase performance around
-    // fast-path exceptions.
-    public static final boolean FillExceptionStack = true;
     /** Always capture stack trace eagerly. */
     public static final boolean EagerStackTrace = false;
     static final int StackTraceLimit = 10;

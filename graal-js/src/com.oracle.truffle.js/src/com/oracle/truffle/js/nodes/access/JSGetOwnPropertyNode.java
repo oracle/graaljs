@@ -169,7 +169,7 @@ public abstract class JSGetOwnPropertyNode extends JavaScriptBaseNode {
         return ordinaryGetOwnProperty(thisObj, cachedProperty);
     }
 
-    @Specialization(guards = "usesOrdinaryGetOwnProperty(thisObj.getShape())", replaces = "cachedOrdinary", limit = "1")
+    @Specialization(guards = "usesOrdinaryGetOwnProperty(thisObj.getShape())", replaces = "cachedOrdinary")
     PropertyDescriptor uncachedOrdinary(JSDynamicObject thisObj, Object propertyKey) {
         assert JSRuntime.isPropertyKey(propertyKey) && JSObject.getJSClass(thisObj).usesOrdinaryGetOwnProperty();
         Property prop = thisObj.getShape().getProperty(propertyKey);

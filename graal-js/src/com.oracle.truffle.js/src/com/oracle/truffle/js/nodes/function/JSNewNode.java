@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -143,7 +143,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     @Specialization(guards = "isJSFunction(target)")
     public Object doNewReturnThis(VirtualFrame frame, JSDynamicObject target,
-                    @Cached("createNew()") @Shared("callNew") JSFunctionCallNode callNew) {
+                    @Cached("createNew()") @Shared JSFunctionCallNode callNew) {
         int userArgumentCount = arguments.getCount(frame);
         Object[] args = JSArguments.createInitial(JSFunction.CONSTRUCT, target, userArgumentCount);
         args = arguments.executeFillObjectArray(frame, args, JSArguments.RUNTIME_ARGUMENT_COUNT);
@@ -152,7 +152,7 @@ public abstract class JSNewNode extends JavaScriptNode {
 
     @Specialization(guards = "isJSProxy(proxy)")
     protected Object doNewJSProxy(VirtualFrame frame, JSDynamicObject proxy,
-                    @Cached("createNew()") @Shared("callNew") JSFunctionCallNode callNew) {
+                    @Cached("createNew()") @Shared JSFunctionCallNode callNew) {
         return doNewReturnThis(frame, proxy, callNew);
     }
 

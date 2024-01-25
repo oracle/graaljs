@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -106,10 +106,6 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
     protected abstract CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
 
-    final JSContext getContext() {
-        return context;
-    }
-
     private static class CreateOrdinaryObjectNode extends CreateObjectNode {
         protected CreateOrdinaryObjectNode(JSContext context) {
             super(context);
@@ -173,7 +169,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Specialization(guards = {"isOrdinaryObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
         final JSObject doOrdinaryInstancePrototype(JSDynamicObject prototype,
-                        @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
+                        @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode) {
             JSObject object = JSOrdinary.createWithoutPrototype(context, prototype);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;
@@ -181,7 +177,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @Specialization(guards = {"isPromiseObject()", "isValidPrototype(prototype)"}, replaces = "doCachedPrototype")
         final JSObject doPromiseInstancePrototype(JSDynamicObject prototype,
-                        @CachedLibrary(limit = "3") @Shared("setProtoNode") DynamicObjectLibrary setProtoNode) {
+                        @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode) {
             JSObject object = JSPromise.createWithoutPrototype(context, prototype);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
             return object;

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -600,7 +600,7 @@ class Bignum {
             assert (bigits_[used_digits_ - 1] < 0x10000);
             // Remove the multiples of the first digit.
             // Example this = 23 and other equals 9. -> Remove 2 multiples.
-            result += (bigits_[used_digits_ - 1]);
+            result += (char) (bigits_[used_digits_ - 1]);
             subtractTimes(other, bigits_[used_digits_ - 1]);
         }
 
@@ -617,14 +617,14 @@ class Bignum {
             final int quotient = Integer.divideUnsigned(this_bigit, other_bigit);
             bigits_[used_digits_ - 1] = this_bigit - other_bigit * quotient;
             assert (Integer.compareUnsigned(quotient, 0x10000) < 0);
-            result += quotient;
+            result += (char) quotient;
             clamp();
             return result;
         }
 
         final int division_estimate = Integer.divideUnsigned(this_bigit, (other_bigit + 1));
         assert (Integer.compareUnsigned(division_estimate, 0x10000) < 0);
-        result += division_estimate;
+        result += (char) division_estimate;
         subtractTimes(other, division_estimate);
 
         if (other_bigit * (division_estimate + 1) > this_bigit) {

@@ -177,13 +177,13 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
 
     @ExportMessage
     public final boolean isMemberReadable(String key,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+                    @Shared @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(this, key, KeyInfoNode.READABLE);
     }
 
     @ExportMessage
     public final void writeMember(String key, Object value,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo,
+                    @Shared @Cached KeyInfoNode keyInfo,
                     @Cached ImportValueNode castValueNode,
                     @Cached(value = "createCachedInterop()", uncached = "getUncachedWrite()") WriteElementNode writeNode,
                     @Cached @Shared TruffleString.FromJavaStringNode fromJavaString)
@@ -206,13 +206,13 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
 
     @ExportMessage
     public final boolean isMemberModifiable(String key,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+                    @Shared @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(this, key, KeyInfoNode.MODIFIABLE);
     }
 
     @ExportMessage
     public final boolean isMemberInsertable(String key,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+                    @Shared @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(this, key, KeyInfoNode.INSERTABLE);
     }
 
@@ -227,7 +227,7 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
 
     @ExportMessage
     public final boolean isMemberRemovable(String key,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+                    @Shared @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(this, key, KeyInfoNode.REMOVABLE);
     }
 
@@ -250,26 +250,26 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
 
     @ExportMessage
     public final boolean isMemberInvocable(String key,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+                    @Shared @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(this, key, KeyInfoNode.INVOCABLE);
     }
 
     @ExportMessage
     public final boolean hasMemberReadSideEffects(String key,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+                    @Shared @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(this, key, KeyInfoNode.READ_SIDE_EFFECTS);
     }
 
     @ExportMessage
     public final boolean hasMemberWriteSideEffects(String key,
-                    @Shared("keyInfo") @Cached KeyInfoNode keyInfo) {
+                    @Shared @Cached KeyInfoNode keyInfo) {
         return keyInfo.execute(this, key, KeyInfoNode.WRITE_SIDE_EFFECTS);
     }
 
     @ExportMessage
     public boolean hasIterator(
                     @CachedLibrary("this") InteropLibrary self,
-                    @Cached @Shared("getIterator") JSInteropGetIteratorNode getIteratorNode) {
+                    @Cached @Shared JSInteropGetIteratorNode getIteratorNode) {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
         return getIteratorNode.hasIterator(this, language);
     }
@@ -277,7 +277,7 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
     @ExportMessage
     public Object getIterator(
                     @CachedLibrary("this") InteropLibrary self,
-                    @Cached @Shared("getIterator") JSInteropGetIteratorNode getIteratorNode) throws UnsupportedMessageException {
+                    @Cached @Shared JSInteropGetIteratorNode getIteratorNode) throws UnsupportedMessageException {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
         JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);

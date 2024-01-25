@@ -79,13 +79,13 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     Object doCachedKey(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Cached("propertyKeyOrNull(key)") Object cachedKey,
                     @Cached("create(cachedKey, context)") PropertyGetNode propertyNode,
-                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared TruffleString.EqualNode equalsNode) {
         return propertyNode.getValueOrDefault(target, receiver, defaultValue);
     }
 
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
     Object doIntIndex(JSDynamicObject target, int index, Object receiver, Object defaultValue,
-                    @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
+                    @Cached @Shared JSClassProfile jsclassProfile) {
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
@@ -93,7 +93,7 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
     Object doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object receiver, Object defaultValue,
                     @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
                     @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
-                    @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
+                    @Cached @Shared JSClassProfile jsclassProfile) {
         long index = (long) maybeIndex;
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
@@ -111,10 +111,10 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
                     @Cached RequireObjectCoercibleNode requireObjectCoercibleNode,
                     @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached InlinedConditionProfile getType,
-                    @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile,
+                    @Cached @Shared JSClassProfile jsclassProfile,
                     @Cached InlinedConditionProfile highFrequency,
                     @Cached("createFrequencyBasedPropertyGet(context)") FrequencyBasedPropertyGetNode hotKey,
-                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared TruffleString.EqualNode equalsNode) {
         requireObjectCoercibleNode.executeVoid(target);
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(node, arrayIndex instanceof Long)) {

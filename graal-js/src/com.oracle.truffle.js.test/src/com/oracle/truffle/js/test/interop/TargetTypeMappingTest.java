@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -193,7 +193,7 @@ public class TargetTypeMappingTest {
      */
     @Test
     public void testJavaListToJavaArray() {
-        final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object[].class, null, List::toArray).build();
+        final HostAccess hostAccess = HostAccess.newBuilder().targetTypeMapping(List.class, Object[].class, null, List<?>::toArray).build();
         try (Context context = JSTest.newContextBuilder().allowHostAccess(hostAccess).build()) {
             Object[] javaArray = new Object[]{true, "abc", 1, 1.034};
             List<Object> javaList = Arrays.asList(javaArray);

@@ -64,16 +64,11 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ExportLibrary(InteropLibrary.class)
 public final class JSTypedArrayObject extends JSArrayBufferViewBase {
 
-    TypedArray arrayType;
+    final TypedArray arrayType;
 
     protected JSTypedArrayObject(Shape shape, JSDynamicObject proto, TypedArray arrayType, JSArrayBufferObject arrayBuffer, int length, int offset) {
         super(shape, proto, arrayBuffer, length, offset);
         this.arrayType = arrayType;
-    }
-
-    @SuppressWarnings("static-method")
-    public TypedArrayAccess typedArrayAccess() {
-        return TypedArrayAccess.SINGLETON;
     }
 
     public TypedArray getArrayType() {
@@ -86,7 +81,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
 
     @Override
     public TruffleString getClassName() {
-        return typedArrayAccess().getTypedArrayName(this);
+        return JSArrayBufferView.typedArrayGetName(this);
     }
 
     @Override
@@ -109,7 +104,7 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
 
     @ExportMessage
     public long getArraySize() {
-        return JSArrayBufferView.typedArrayGetLength(this);
+        return super.getLength();
     }
 
     @ExportMessage

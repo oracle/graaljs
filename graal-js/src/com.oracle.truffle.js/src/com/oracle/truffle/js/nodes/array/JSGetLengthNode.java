@@ -89,13 +89,13 @@ public abstract class JSGetLengthNode extends JavaScriptBaseNode {
 
     @Specialization(rewriteOn = UnexpectedResultException.class)
     public int getArrayLengthInt(JSArrayObject target,
-                    @Cached @Shared("arrayLengthRead") ArrayLengthReadNode arrayLengthReadNode) throws UnexpectedResultException {
+                    @Cached @Shared ArrayLengthReadNode arrayLengthReadNode) throws UnexpectedResultException {
         return arrayLengthReadNode.executeInt(target);
     }
 
     @Specialization(replaces = "getArrayLengthInt")
     public double getArrayLength(JSArrayObject target,
-                    @Cached @Shared("arrayLengthRead") ArrayLengthReadNode arrayLengthReadNode) {
+                    @Cached @Shared ArrayLengthReadNode arrayLengthReadNode) {
         return arrayLengthReadNode.executeDouble(target);
     }
 

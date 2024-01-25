@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -71,10 +71,6 @@ public abstract class JSObjectFactory {
         return new JSObjectFactory.BoundProto(context, prototype, factory);
     }
 
-    public static JSObjectFactory createDefault(JSContext context, PrototypeSupplier prototypeSupplier, Shape factory) {
-        return new JSObjectFactory.Eager(context, prototypeSupplier, factory);
-    }
-
     static JSObjectFactory createIntrinsic(JSContext context, PrototypeSupplier prototypeSupplier, CompilableBiFunction<JSContext, JSDynamicObject, Shape> shapeSupplier, int slot) {
         return new JSObjectFactory.LazySupplier(context, prototypeSupplier, shapeSupplier, slot);
     }
@@ -127,10 +123,6 @@ public abstract class JSObjectFactory {
             assert !closed;
             closed = true;
             return count;
-        }
-
-        JSContext getContext() {
-            return context;
         }
     }
 
@@ -230,27 +222,6 @@ public abstract class JSObjectFactory {
         @Override
         public Shape getShape(JSRealm realm, JSDynamicObject proto) {
             assert proto == this.prototype;
-            return factory;
-        }
-    }
-
-    private static final class Eager extends JSObjectFactory {
-        protected final PrototypeSupplier prototypeSupplier;
-        protected final Shape factory;
-
-        protected Eager(JSContext context, PrototypeSupplier prototypeSupplier, Shape factory) {
-            super(context, hasInObjectProto(factory));
-            this.prototypeSupplier = prototypeSupplier;
-            this.factory = factory;
-        }
-
-        @Override
-        public JSDynamicObject getPrototype(JSRealm realm) {
-            return prototypeSupplier.getIntrinsicDefaultProto(realm);
-        }
-
-        @Override
-        public Shape getShape(JSRealm realm, JSDynamicObject prototype) {
             return factory;
         }
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ public final class ToDisplayStringFormat {
     private static final int TO_STRING_MAX_DEPTH = 3;
 
     private static final ToDisplayStringFormat DEFAULT_FORMAT = new ToDisplayStringFormat(TO_STRING_MAX_DEPTH, JSConfig.MaxConsolePrintProperties, false, true);
-    private static final ToDisplayStringFormat ARRAY_FORMAT = new ToDisplayStringFormat(TO_STRING_MAX_DEPTH, Integer.MAX_VALUE, false, false);
 
     private final int maxDepth;
     private final int maxElements;
@@ -86,9 +85,5 @@ public final class ToDisplayStringFormat {
 
     public static ToDisplayStringFormat getDefaultFormat() {
         return DEFAULT_FORMAT;
-    }
-
-    public static ToDisplayStringFormat getArrayFormat() {
-        return ARRAY_FORMAT;
     }
 }

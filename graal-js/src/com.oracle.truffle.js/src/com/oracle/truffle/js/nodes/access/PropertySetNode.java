@@ -158,10 +158,6 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         setValueInt(obj, value, obj);
     }
 
-    public final void setValueDouble(Object obj, double value) {
-        setValueDouble(obj, value, obj);
-    }
-
     public final void setValueBoolean(Object obj, boolean value) {
         setValueBoolean(obj, value, obj);
     }

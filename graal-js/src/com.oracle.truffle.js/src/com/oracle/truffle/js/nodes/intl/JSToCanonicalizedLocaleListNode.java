@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -110,10 +110,10 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                     @Cached JSToObjectNode toObjectNode,
                     @Cached("create(context)") JSGetLengthNode getLengthNode,
                     @Cached JSHasPropertyNode hasPropertyNode,
-                    @Cached @Shared("typeOfNode") TypeOfNode typeOfNode,
-                    @Cached @Shared("toStringNode") JSToStringNode toStringNode,
-                    @Cached @Shared("equalsNode") TruffleString.EqualNode equalsNode,
-                    @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode) {
+                    @Cached @Shared TypeOfNode typeOfNode,
+                    @Cached @Shared JSToStringNode toStringNode,
+                    @Cached @Shared TruffleString.EqualNode equalsNode,
+                    @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode) {
         List<String> result = new ArrayList<>();
         JSDynamicObject localeObj = (JSDynamicObject) toObjectNode.execute(object);
         long len = getLengthNode.executeLong(localeObj);
@@ -143,10 +143,10 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
     @Specialization(guards = {"isForeignObject(object)"})
     protected String[] doForeignType(Object object,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
-                    @Cached @Shared("typeOfNode") TypeOfNode typeOfNode,
-                    @Cached @Shared("toStringNode") JSToStringNode toStringNode,
-                    @Cached @Shared("equalsNode") TruffleString.EqualNode equalsNode,
-                    @Cached @Shared("toJavaStringNode") TruffleString.ToJavaStringNode toJavaStringNode) {
+                    @Cached @Shared TypeOfNode typeOfNode,
+                    @Cached @Shared JSToStringNode toStringNode,
+                    @Cached @Shared TruffleString.EqualNode equalsNode,
+                    @Cached @Shared TruffleString.ToJavaStringNode toJavaStringNode) {
         List<String> result = new ArrayList<>();
         long len;
         try {

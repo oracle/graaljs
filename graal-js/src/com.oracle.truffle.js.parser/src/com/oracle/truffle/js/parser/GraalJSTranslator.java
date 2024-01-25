@@ -189,6 +189,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InternalSlotId;
 import com.oracle.truffle.js.runtime.util.Pair;
 
+@SuppressWarnings("try")
 abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor<LexicalContext, JavaScriptNode> {
 
     public static final TruffleString SUPER_CALLED_TWICE = Strings.constant("super() called twice");
@@ -2536,7 +2537,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         if (baseNode.isOptionalChain()) {
             target = filterOptionalChainTarget(target, baseNode.isOptional());
         }
-        JavaScriptNode delete = factory.createDeleteProperty(target, key, environment.isStrictMode(), context);
+        JavaScriptNode delete = factory.createDeleteProperty(target, key, environment.isStrictMode());
         tagExpression(delete, deleteNode);
         if (baseNode.isOptionalChain()) {
             delete = factory.createOptionalChain(delete);
@@ -2832,6 +2833,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         return transformAssignmentImpl(assignmentExpression, lhsExpression, assignedValue, false, binaryOp, returnOldValue, convertLHSToNumeric);
     }
 
+    @SuppressWarnings("fallthrough")
     private JavaScriptNode transformAssignmentImpl(Expression assignmentExpression, Expression lhsExpression, JavaScriptNode assignedValue, boolean initializationAssignment,
                     BinaryOperation binaryOp, boolean returnOldValue, boolean convertLHSToNumeric) {
         JavaScriptNode assignedNode;

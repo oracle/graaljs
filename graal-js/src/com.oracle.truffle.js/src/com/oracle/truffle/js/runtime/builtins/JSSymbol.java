@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,7 +66,6 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     public static final TruffleString TYPE_NAME = Strings.SYMBOL;
     public static final TruffleString CLASS_NAME = Strings.UC_SYMBOL;
     public static final TruffleString PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
-    public static final TruffleString DESCRIPTION = Strings.constant("description");
 
     private JSSymbol() {
     }
@@ -77,11 +76,6 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSSymbolObject(shape, proto, symbol), realm, proto);
         return factory.trackAllocation(newObj);
-    }
-
-    public static Symbol getSymbolData(JSDynamicObject symbolWrapper) {
-        assert JSSymbol.isJSSymbol(symbolWrapper);
-        return ((JSSymbolObject) symbolWrapper).getSymbol();
     }
 
     @Override
@@ -128,5 +122,4 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     public JSDynamicObject getIntrinsicDefaultProto(JSRealm realm) {
         return realm.getSymbolPrototype();
     }
-
 }

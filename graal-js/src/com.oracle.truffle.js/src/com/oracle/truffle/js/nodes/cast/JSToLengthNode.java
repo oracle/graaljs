@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,7 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
 
     @Specialization
     protected final long doInt(int value,
-                    @Cached @Shared("negativeBranch") InlinedBranchProfile negativeBranch) {
+                    @Cached @Shared InlinedBranchProfile negativeBranch) {
         if (value < 0) {
             negativeBranch.enter(this);
             return 0;
@@ -74,7 +74,7 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
 
     @Specialization
     protected final long doSafeInteger(SafeInteger value,
-                    @Cached @Shared("negativeBranch") InlinedBranchProfile negativeBranch) {
+                    @Cached @Shared InlinedBranchProfile negativeBranch) {
         long longValue = value.longValue();
         if (longValue < 0) {
             negativeBranch.enter(this);
@@ -85,8 +85,8 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
 
     @Specialization
     protected final long doDouble(double value,
-                    @Cached @Shared("negativeBranch") InlinedBranchProfile negativeBranch,
-                    @Cached @Shared("tooLargeBranch") InlinedBranchProfile tooLargeBranch) {
+                    @Cached @Shared InlinedBranchProfile negativeBranch,
+                    @Cached @Shared InlinedBranchProfile tooLargeBranch) {
         // NaN and Infinity are converted to 0L and Long.MAX_VALUE by the long cast, respectively.
         return doLong((long) value, negativeBranch, tooLargeBranch);
     }
@@ -99,8 +99,8 @@ public abstract class JSToLengthNode extends JavaScriptBaseNode {
     @Specialization
     protected final long doObject(Object value,
                     @Cached JSToNumberNode toNumberNode,
-                    @Cached @Shared("negativeBranch") InlinedBranchProfile negativeBranch,
-                    @Cached @Shared("tooLargeBranch") InlinedBranchProfile tooLargeBranch) {
+                    @Cached @Shared InlinedBranchProfile negativeBranch,
+                    @Cached @Shared InlinedBranchProfile tooLargeBranch) {
         Number result = (Number) toNumberNode.execute(value);
         return doLong(JSRuntime.toInteger(result), negativeBranch, tooLargeBranch);
     }

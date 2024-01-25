@@ -559,6 +559,7 @@ public class JSContext {
         }
     }
 
+    @SuppressWarnings("this-escape")
     protected JSContext(Evaluator evaluator, JavaScriptLanguage lang, JSLanguageOptions languageOptions, TruffleLanguage.Env env) {
         this.language = lang;
         this.languageOptions = languageOptions;
@@ -835,6 +836,14 @@ public class JSContext {
             if (languageOptions.v8RealmBuiltin()) {
                 newRealm.initRealmList();
                 newRealm.addToRealmList(newRealm);
+            }
+        } else {
+            if (languageOptions.v8RealmBuiltin()) {
+                JSRealm topLevelRealm = parentRealm;
+                while (topLevelRealm.getParent() != null) {
+                    topLevelRealm = topLevelRealm.getParent();
+                }
+                topLevelRealm.addToRealmList(newRealm);
             }
         }
 

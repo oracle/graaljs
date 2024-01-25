@@ -924,6 +924,7 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
             }
         }
 
+        @SuppressWarnings("truffle-inlining") // TruffleString nodes do not support object inlining.
         @GenerateInline
         @GenerateCached(false)
         @ImportStatic(Strings.class)

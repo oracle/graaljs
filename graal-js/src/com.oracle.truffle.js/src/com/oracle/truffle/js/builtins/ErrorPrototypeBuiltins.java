@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -94,33 +94,20 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
         return null;
     }
 
-    public static final class ErrorPrototypeNashornCompatBuiltins extends JSBuiltinsContainer.SwitchEnum<ErrorPrototypeNashornCompatBuiltins.ErrorNashornCompat> {
+    public static final class ErrorPrototypeNashornCompatBuiltins extends JSBuiltinsContainer.Switch {
+        private static final TruffleString GET_STACK_TRACE = Strings.constant("getStackTrace");
+
         public static final JSBuiltinsContainer BUILTINS = new ErrorPrototypeNashornCompatBuiltins();
 
         protected ErrorPrototypeNashornCompatBuiltins() {
-            super(JSError.PROTOTYPE_NAME, ErrorNashornCompat.class);
-        }
-
-        public enum ErrorNashornCompat implements BuiltinEnum<ErrorNashornCompat> {
-            getStackTrace(0);
-
-            private final int length;
-
-            ErrorNashornCompat(int length) {
-                this.length = length;
-            }
-
-            @Override
-            public int getLength() {
-                return length;
-            }
+            super(JSError.PROTOTYPE_NAME);
+            defineFunction(GET_STACK_TRACE, 0);
         }
 
         @Override
-        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, ErrorNashornCompat builtinEnum) {
-            switch (builtinEnum) {
-                case getStackTrace:
-                    return ErrorPrototypeGetStackTraceNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
+            if (Strings.equals(GET_STACK_TRACE, builtin.getName())) {
+                return ErrorPrototypeGetStackTraceNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             }
             return null;
         }
@@ -134,13 +121,13 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
         }
 
         @TruffleBoundary
-        @Specialization(guards = "!isObjectNode.executeBoolean(thisObj)", limit = "1")
+        @Specialization(guards = "!isObjectNode.executeBoolean(thisObj)")
         protected final Object toStringNonObject(Object thisObj,
                         @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode) {
             throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
         }
 
-        @Specialization(guards = "isObjectNode.executeBoolean(errorObj)", limit = "1")
+        @Specialization(guards = "isObjectNode.executeBoolean(errorObj)")
         protected static Object toStringObject(Object errorObj,
                         @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
                         @Cached("create(NAME, false, getContext())") PropertyGetNode getNameNode,

@@ -100,10 +100,6 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
         return getClassName();
     }
 
-    public static boolean isJSWebAssemblyInstance(Object object) {
-        return object instanceof JSWebAssemblyInstanceObject;
-    }
-
     @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject constructor) {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);

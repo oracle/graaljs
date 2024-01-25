@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import java.util.Set;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-
 import org.graalvm.shadowed.com.ibm.icu.text.ConstrainedFieldPosition;
 import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
 import org.graalvm.shadowed.com.ibm.icu.text.DateIntervalFormat;
@@ -63,9 +62,9 @@ import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
-import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.DateTimeFormatFunctionBuiltins;
@@ -98,9 +97,6 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
     public static final TruffleString CLASS_NAME = Strings.constant("DateTimeFormat");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("DateTimeFormat.prototype");
     public static final TruffleString TO_STRING_TAG = Strings.constant("Intl.DateTimeFormat");
-    public static final TruffleString GET_FORMAT_NAME = Strings.constant("get format");
-
-    static final HiddenKey BOUND_OBJECT_KEY = new HiddenKey(Strings.toJavaString(CLASS_NAME));
 
     public static final JSDateTimeFormat INSTANCE = new JSDateTimeFormat();
 

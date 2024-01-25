@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,11 +52,11 @@ public class IterationsTest extends FineGrainedAccessTest {
     public void basicFor() {
         String src = "for (var a=0; a<3; a++) { 42;};";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
                         ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
             assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
@@ -72,11 +72,11 @@ public class IterationsTest extends FineGrainedAccessTest {
     public void basicWhileDo() {
         String src = "var a=0; while(a<3) { a++; };";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
                         ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
             assertAttribute(e, TYPE, ControlFlowRootTag.Type.WhileIteration.name());
@@ -92,11 +92,11 @@ public class IterationsTest extends FineGrainedAccessTest {
     public void basicDoWhile() {
         String src = "var a=0; do { a++; } while(a<3);";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
                         ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
             assertAttribute(e, TYPE, ControlFlowRootTag.Type.DoWhileIteration.name());
@@ -113,11 +113,11 @@ public class IterationsTest extends FineGrainedAccessTest {
     public void emptyForLet() {
         String src = "for (let i = 0; i < 3; i++) {};";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
                         ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
             assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
@@ -133,11 +133,11 @@ public class IterationsTest extends FineGrainedAccessTest {
     public void forLetWithPerIterationScope() {
         String src = "for (let i = 0; i < 3; i++) { function dummy(){return i;} };";
 
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
                         ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
             assertAttribute(e, TYPE, ControlFlowRootTag.Type.ForIteration.name());
@@ -160,11 +160,11 @@ public class IterationsTest extends FineGrainedAccessTest {
     }
 
     private void testForInForOf(String src, String expectedName) {
-        evalWithTags(src, new Class[]{
+        evalWithTags(src, new Class<?>[]{
                         ControlFlowRootTag.class,
                         ControlFlowBranchTag.class,
                         ControlFlowBlockTag.class
-        }, new Class[]{/* no input events */});
+        }, new Class<?>[]{/* no input events */});
 
         enter(ControlFlowRootTag.class, (e) -> {
             assertAttribute(e, TYPE, expectedName);

@@ -595,10 +595,7 @@ public class JSRealm {
     /** 0 = Number, 1 = BigInt, 2 = String. */
     private int operatorCounter = 3;
 
-    protected JSRealm(JSContext context, TruffleLanguage.Env env) {
-        this(context, env, null);
-    }
-
+    @SuppressWarnings("this-escape")
     protected JSRealm(JSContext context, TruffleLanguage.Env env, JSRealm parentRealm) {
         this.context = context;
         this.contextOptions = JSContextOptions.fromOptionValues(env.getSandboxPolicy(), env.getOptions());
@@ -615,13 +612,6 @@ public class JSRealm {
         } else {
             this.currentRealm = null;
             this.agent = parentRealm.agent;
-            if (context.getLanguageOptions().v8RealmBuiltin()) {
-                JSRealm topLevelRealm = parentRealm;
-                while (topLevelRealm.parentRealm != null) {
-                    topLevelRealm = topLevelRealm.parentRealm;
-                }
-                topLevelRealm.addToRealmList(this);
-            }
         }
 
         // need to build Function and Function.proto in a weird order to avoid circular dependencies

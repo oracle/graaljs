@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -359,7 +359,7 @@ public abstract class Environment {
                 JavaScriptNode dynamicScopeNode = new FrameSlotVarRef(dynamicScopeSlot, scopeLevel, frameLevel, FunctionEnvironment.DYNAMIC_SCOPE_IDENTIFIER, current).createReadNode();
                 JSTargetableNode scopeAccessNode;
                 if (access == WrapAccess.Delete) {
-                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
+                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode());
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
                     scopeAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode());
@@ -381,7 +381,7 @@ public abstract class Environment {
                 VarRef withVarNameRef = Objects.requireNonNull(findInternalSlot(withVarName));
                 JSTargetableNode withAccessNode;
                 if (access == WrapAccess.Delete) {
-                    withAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
+                    withAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode());
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
                     withAccessNode = factory.createWriteProperty(null, name, null, context, isStrictMode(), false, true);
@@ -422,7 +422,7 @@ public abstract class Environment {
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
                 JSTargetableNode scopeAccessNode;
                 if (access == WrapAccess.Delete) {
-                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
+                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode());
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
                     scopeAccessNode = factory.createWriteProperty(null, name, null, context, true);
@@ -445,7 +445,7 @@ public abstract class Environment {
             public JavaScriptNode apply(JavaScriptNode delegateNode, WrapAccess access) {
                 JSTargetableNode scopeAccessNode;
                 if (access == WrapAccess.Delete) {
-                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode(), context);
+                    scopeAccessNode = factory.createDeleteProperty(null, factory.createConstantString(name), isStrictMode());
                 } else if (access == WrapAccess.Write) {
                     assert delegateNode instanceof WriteNode : delegateNode;
                     scopeAccessNode = factory.createWriteProperty(null, name, null, context, true);
@@ -961,7 +961,7 @@ public abstract class Environment {
         public JavaScriptNode createDeleteNode() {
             JavaScriptNode element = factory.createConstantString(getName());
             JavaScriptNode object = factory.createGlobalObject();
-            return factory.createDeleteProperty(object, element, isStrictMode(), context);
+            return factory.createDeleteProperty(object, element, isStrictMode());
         }
 
         @Override
@@ -1031,7 +1031,7 @@ public abstract class Environment {
         public JavaScriptNode createDeleteNode() {
             JavaScriptNode element = factory.createConstantString(getName());
             JavaScriptNode object = factory.createGlobalScope(context);
-            return factory.createDeleteProperty(object, element, isStrictMode(), context);
+            return factory.createDeleteProperty(object, element, isStrictMode());
         }
 
         @Override

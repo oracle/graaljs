@@ -75,13 +75,13 @@ public abstract class GetIteratorDirectNode extends JavaScriptBaseNode {
 
     @Specialization
     protected IteratorRecord get(JSObject obj,
-                    @Cached(value = "createGetNextNode()", uncached = "getNullNode()") @Shared PropertyGetNode getNextMethodNode) {
+                    @Cached(value = "createGetNextNode()", uncached = "getNullNode()", inline = false) @Shared PropertyGetNode getNextMethodNode) {
         return getImpl(obj, getNextMethodNode);
     }
 
     @Specialization(guards = "isForeignObject(obj)")
     protected IteratorRecord get(Object obj,
-                    @Cached(value = "createGetNextNode()", uncached = "getNullNode()") @Shared PropertyGetNode getNextMethodNode,
+                    @Cached(value = "createGetNextNode()", uncached = "getNullNode()", inline = false) @Shared PropertyGetNode getNextMethodNode,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
         JSRealm realm = JSRealm.get(this);
         TruffleLanguage.Env env = realm.getEnv();

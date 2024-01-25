@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,9 +92,9 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         hasSetNode = HasPropertyCacheNode.create(JSAttributes.SET, context);
     }
 
-    @Specialization(guards = {"isObjectNode.executeBoolean(obj)"}, limit = "1")
+    @Specialization(guards = {"isObjectNode.executeBoolean(obj)"})
     protected PropertyDescriptor doDefault(Object obj,
-                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode,
+                    @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode,
                     @Cached(inline = true) JSToBooleanNode toBooleanNode,
                     @Cached InlinedBranchProfile hasGetBranch,
                     @Cached InlinedBranchProfile hasSetBranch,
@@ -206,9 +206,9 @@ public abstract class ToPropertyDescriptorNode extends JavaScriptBaseNode {
         return getEnumerableNode;
     }
 
-    @Specialization(guards = "!isObjectNode.executeBoolean(obj)", limit = "1")
+    @Specialization(guards = "!isObjectNode.executeBoolean(obj)")
     protected PropertyDescriptor doNonObject(Object obj,
-                    @Cached @Shared("isObject") @SuppressWarnings("unused") IsObjectNode isObjectNode) {
+                    @Cached @Shared @SuppressWarnings("unused") IsObjectNode isObjectNode) {
         throw Errors.createTypeErrorPropertyDescriptorNotAnObject(obj, this);
     }
 }

@@ -445,7 +445,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         @Specialization(guards = {"isJSObject(jsObj)"})
         protected Object to(Object jsObj, Object toType,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("typeInterop") InteropLibrary interop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary typeInterop) {
             TruffleLanguage.Env env = getRealm().getEnv();
             Object javaType;
             boolean knownArrayClass = false;
@@ -465,7 +465,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
                     throw Errors.createTypeErrorClassNotFound(className);
                 }
             }
-            if (knownArrayClass || isJavaArrayClass(javaType, env, interop)) {
+            if (knownArrayClass || isJavaArrayClass(javaType, env, typeInterop)) {
                 return toArray(jsObj, javaType);
             } else {
                 throw Errors.createTypeErrorFormat("Unsupported type: %s", toString(javaType));
@@ -475,7 +475,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
         @Specialization(guards = {"!isJSObject(obj)"}, limit = "InteropLibraryLimit")
         protected Object toNonObject(Object obj, @SuppressWarnings("unused") Object toType,
                         @CachedLibrary("obj") InteropLibrary objInterop,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("typeInterop") InteropLibrary typeInterop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary typeInterop) {
             if (objInterop.hasArrayElements(obj)) {
                 return to(obj, toType, typeInterop);
             }

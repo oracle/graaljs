@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,13 +90,13 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     void doCachedKey(JSDynamicObject target, Object key, Object value, Object receiver,
                     @Cached("propertyKeyOrNull(key)") Object cachedKey,
                     @Cached("createSet(cachedKey)") PropertySetNode propertyNode,
-                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared TruffleString.EqualNode equalsNode) {
         propertyNode.setValue(target, value, receiver);
     }
 
     @Specialization(guards = {"isArrayIndex(index)", "!isJSProxy(target)"})
     void doIntIndex(JSDynamicObject target, int index, Object value, Object receiver,
-                    @Cached @Shared("jsclassProf") JSClassProfile jsclassProfile) {
+                    @Cached @Shared JSClassProfile jsclassProfile) {
         doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
     }
 
@@ -104,7 +104,7 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
     void doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object value, Object receiver,
                     @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
                     @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
-                    @Cached @Shared("jsclassProf") JSClassProfile jsclassProfile) {
+                    @Cached @Shared JSClassProfile jsclassProfile) {
         long index = (long) maybeIndex;
         doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
     }
@@ -134,10 +134,10 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
                     @Bind("this") Node node,
                     @Cached ToArrayIndexNode toArrayIndexNode,
                     @Cached InlinedConditionProfile getType,
-                    @Cached @Shared("jsclassProf") JSClassProfile jsclassProfile,
+                    @Cached @Shared JSClassProfile jsclassProfile,
                     @Cached InlinedConditionProfile highFrequency,
                     @Cached("createFrequencyBasedPropertySet(context, setOwn, strict, superProperty)") FrequencyBasedPropertySetNode hotKey,
-                    @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared TruffleString.EqualNode equalsNode) {
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(node, arrayIndex instanceof Long)) {
             long index = (long) arrayIndex;

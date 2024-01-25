@@ -893,7 +893,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"args.length == 1", "toArrayLengthNode.isTypeNumber(len)"}, replaces = "constructArrayWithIntLength", limit = "1")
         protected JSObject constructWithLength(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args,
                         @Cached @SuppressWarnings("unused") ToArrayLengthNode toArrayLengthNode,
-                        @Cached("create(getContext())") @Shared("arrayCreate") ArrayCreateNode arrayCreateNode,
+                        @Cached("create(getContext())") @Shared ArrayCreateNode arrayCreateNode,
                         @Bind("toArrayLengthNode.executeLong(firstArg(args))") long len) {
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
@@ -909,7 +909,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected JSObject constructWithForeignArg(JSDynamicObject newTarget, Object[] args,
                         @Bind("this") Node node,
                         @CachedLibrary("firstArg(args)") InteropLibrary interop,
-                        @Cached("create(getContext())") @Shared("arrayCreate") ArrayCreateNode arrayCreateNode,
+                        @Cached("create(getContext())") @Shared ArrayCreateNode arrayCreateNode,
                         @Cached @Exclusive InlinedConditionProfile isNumber,
                         @Cached @Exclusive InlinedBranchProfile rangeErrorProfile) {
             JSRealm realm = getRealm();
@@ -1692,7 +1692,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             super(context, builtin, newTargetCase);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly.execute(this, target)"}, limit = "1")
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, target)"})
         protected JSObject constructWeakRef(JSDynamicObject newTarget, Object target,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             JSRealm realm = getRealm();
@@ -1700,7 +1700,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             return JSWeakRef.create(getContext(), realm, proto, target);
         }
 
-        @Specialization(guards = {"!canBeHeldWeakly.execute(this, target)"}, limit = "1")
+        @Specialization(guards = {"!canBeHeldWeakly.execute(this, target)"})
         protected static JSObject constructWeakRefNonObject(@SuppressWarnings("unused") JSDynamicObject newTarget, @SuppressWarnings("unused") Object target,
                         @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly) {
             throw Errors.createTypeError("WeakRef: invalid target");
@@ -2272,8 +2272,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @Specialization(guards = {"!bufferInterop.hasBufferElements(length)"})
         protected JSDynamicObject constructFromLength(JSDynamicObject newTarget, Object length,
                         @Cached JSToIndexNode toIndexNode,
-                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared @SuppressWarnings("unused") InteropLibrary bufferInterop) {
             long byteLength = toIndexNode.executeLong(length);
 
             JSRealm realm = getRealm();
@@ -2300,8 +2300,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"bufferInterop.hasBufferElements(buffer)"})
         protected JSDynamicObject constructFromInteropBuffer(JSDynamicObject newTarget, Object buffer,
-                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") @SuppressWarnings("unused") InteropLibrary bufferInterop) {
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared @SuppressWarnings("unused") InteropLibrary bufferInterop) {
             getBufferSizeSafe(buffer, bufferInterop, this, errorBranch);
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
@@ -2334,7 +2334,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         public ConstructErrorNode(JSContext context, JSBuiltin builtin, boolean isNewTargetCase) {
             super(context, builtin, isNewTargetCase);
-            this.errorType = JSErrorType.valueOf(Strings.toJavaString(getBuiltin().getName()));
+            this.errorType = JSErrorType.valueOf(Strings.toJavaString(builtin.getName()));
             this.stackTraceLimitNode = ErrorStackTraceLimitNode.create();
             this.initErrorObjectNode = InitErrorObjectNode.create(context);
             assert errorType != JSErrorType.AggregateError;
@@ -2455,39 +2455,39 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization(guards = {"isJSHeapArrayBuffer(buffer)"})
         protected final JSDynamicObject ofHeapArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
-                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
-                        @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
-                        @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode) {
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached @Shared InlinedConditionProfile byteLengthCondition,
+                        @Cached @Shared JSToIndexNode offsetToIndexNode,
+                        @Cached @Shared JSToIndexNode lengthToIndexNode) {
             return constructDataView(newTarget, buffer, byteOffset, byteLength, false, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
         }
 
         @Specialization(guards = {"isJSDirectOrSharedArrayBuffer(buffer)"})
         protected final JSDynamicObject ofDirectArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
-                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
-                        @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
-                        @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode) {
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached @Shared InlinedConditionProfile byteLengthCondition,
+                        @Cached @Shared JSToIndexNode offsetToIndexNode,
+                        @Cached @Shared JSToIndexNode lengthToIndexNode) {
             return constructDataView(newTarget, buffer, byteOffset, byteLength, true, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
         }
 
         @Specialization(guards = {"isJSInteropArrayBuffer(buffer)"})
         protected final JSDynamicObject ofInteropArrayBuffer(JSDynamicObject newTarget, JSArrayBufferObject buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
-                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
-                        @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
-                        @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached @Shared InlinedConditionProfile byteLengthCondition,
+                        @Cached @Shared JSToIndexNode offsetToIndexNode,
+                        @Cached @Shared JSToIndexNode lengthToIndexNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary bufferInterop) {
             return constructDataView(newTarget, buffer, byteOffset, byteLength, false, true, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, bufferInterop);
         }
 
         @Specialization(guards = {"!isJSAbstractBuffer(buffer)", "bufferInterop.hasBufferElements(buffer)"})
         protected final JSDynamicObject ofInteropBuffer(JSDynamicObject newTarget, Object buffer, Object byteOffset, Object byteLength,
-                        @Cached @Shared("errorBranch") InlinedBranchProfile errorBranch,
-                        @Cached @Shared("byteLengthCondition") InlinedConditionProfile byteLengthCondition,
-                        @Cached @Shared("offsetToIndexNode") JSToIndexNode offsetToIndexNode,
-                        @Cached @Shared("lengthToIndexNode") JSToIndexNode lengthToIndexNode,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached @Shared InlinedConditionProfile byteLengthCondition,
+                        @Cached @Shared JSToIndexNode offsetToIndexNode,
+                        @Cached @Shared JSToIndexNode lengthToIndexNode,
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary bufferInterop) {
             JSArrayBufferObject arrayBuffer = JSArrayBuffer.createInteropArrayBuffer(getContext(), getRealm(), buffer);
             return ofInteropArrayBuffer(newTarget, arrayBuffer, byteOffset, byteLength, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, bufferInterop);
         }
@@ -2495,7 +2495,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @SuppressWarnings("unused")
         @Specialization(guards = {"!isJSAbstractBuffer(buffer)", "!bufferInterop.hasBufferElements(buffer)"})
         protected static JSDynamicObject error(JSDynamicObject newTarget, Object buffer, Object byteOffset, Object byteLength,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared("bufferInterop") InteropLibrary bufferInterop) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary bufferInterop) {
             throw Errors.createTypeError("Not an ArrayBuffer");
         }
 

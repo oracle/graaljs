@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -296,7 +296,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = {"!isJSProxy(thisObj)"})
         protected TruffleString doJSObject(JSObject thisObj,
-                        @Shared("builtinTag") @Cached GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
+                        @Shared @Cached GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
             TruffleString toString = getToStringTag(thisObj);
             if (toString == null) {
                 if (getContext().getEcmaScriptVersion() >= 6) {
@@ -310,7 +310,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization
         protected TruffleString doJSProxy(JSProxyObject thisObj,
-                        @Shared("builtinTag") @Cached GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
+                        @Shared @Cached GetBuiltinToStringTagNode getBuiltinToStringTagNode) {
             // builtinTag must be read before tag because the latter may revoke the proxy
             TruffleString builtinTag = getBuiltinToStringTagNode.execute(thisObj);
             TruffleString tag = getToStringTag(thisObj);

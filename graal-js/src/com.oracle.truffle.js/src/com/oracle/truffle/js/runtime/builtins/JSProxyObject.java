@@ -101,7 +101,7 @@ public final class JSProxyObject extends JSClassObject {
     public Object execute(Object[] args,
                     @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropExecuteNode callNode,
-                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+                    @Shared @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
         JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);
@@ -122,7 +122,7 @@ public final class JSProxyObject extends JSClassObject {
     public Object instantiate(Object[] args,
                     @CachedLibrary("this") InteropLibrary self,
                     @Cached JSInteropInstantiateNode callNode,
-                    @Shared("exportValue") @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
+                    @Shared @Cached ExportValueNode exportNode) throws UnsupportedMessageException {
         JavaScriptLanguage language = JavaScriptLanguage.get(self);
         JSRealm realm = JSRealm.get(self);
         language.interopBoundaryEnter(realm);

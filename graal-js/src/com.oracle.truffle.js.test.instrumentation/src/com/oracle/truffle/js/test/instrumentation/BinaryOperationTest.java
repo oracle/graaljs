@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -294,7 +294,7 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
 
         String src = "var a = 42; var c = " + lhs + operator + rhs;
 
-        evalWithTags(src, new Class[]{BinaryOperationTag.class, UnaryOperationTag.class, LiteralTag.class});
+        evalWithTags(src, new Class<?>[]{BinaryOperationTag.class, UnaryOperationTag.class, LiteralTag.class});
 
         enter(LiteralTag.class).exit(assertReturnValue(42));
 
@@ -326,7 +326,7 @@ public class BinaryOperationTest extends FineGrainedAccessTest {
     private void binaryOperationTest(String srcOperator, String unOperator, String binOperator) {
         String src = "var a = 42 " + srcOperator + " 41";
 
-        evalWithTags(src, new Class[]{BinaryOperationTag.class, UnaryOperationTag.class});
+        evalWithTags(src, new Class<?>[]{BinaryOperationTag.class, UnaryOperationTag.class});
 
         enter(UnaryOperationTag.class, (e, u) -> {
             assertAttribute(e, OPERATOR, unOperator);

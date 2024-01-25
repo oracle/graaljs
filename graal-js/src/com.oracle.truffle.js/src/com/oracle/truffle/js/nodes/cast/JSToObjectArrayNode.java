@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -136,7 +135,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
                     @Bind("this") Node node,
                     @Cached("create(context)") JSGetLengthNode getLengthNode,
                     @Cached("create(context)") ReadElementNode readNode,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         long len = getLengthNode.executeLong(obj);
         if (len > context.getLanguageOptions().maxApplyArgumentLength()) {
             errorBranch.enter(node);
@@ -155,37 +154,37 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "isUndefined(value)")
     protected Object[] doUndefined(Object value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         return emptyArrayOrObjectError(value, errorBranch);
     }
 
     @Specialization(guards = "isJSNull(value)")
     protected Object[] doNull(Object value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         return emptyArrayOrObjectError(value, errorBranch);
     }
 
     @Specialization
     protected Object[] toArrayString(TruffleString value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         return notAnObjectError(value, errorBranch);
     }
 
     @Specialization
     protected Object[] toArrayInt(int value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         return notAnObjectError(value, errorBranch);
     }
 
     @Specialization
     protected Object[] toArrayDouble(double value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         return notAnObjectError(value, errorBranch);
     }
 
     @Specialization
     protected Object[] toArrayBoolean(boolean value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         return notAnObjectError(value, errorBranch);
     }
 
@@ -209,7 +208,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
 
     @Specialization
     protected Object[] passArray(Object[] array,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         if (array.length > context.getLanguageOptions().maxApplyArgumentLength()) {
             errorBranch.enter(this);
             throw Errors.createRangeErrorTooManyArguments();
@@ -220,7 +219,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     @TruffleBoundary
     @Specialization(guards = "isList(value)")
     protected Object[] doList(Object value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch) {
         List<?> list = ((List<?>) value);
         if (list.size() > context.getLanguageOptions().maxApplyArgumentLength()) {
             errorBranch.enter(this);
@@ -234,8 +233,8 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     protected Object[] doForeignObject(Object obj,
                     @Bind("this") Node node,
                     @CachedLibrary("obj") InteropLibrary interop,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch,
-                    @Cached @Exclusive InlinedBranchProfile hasPropertiesBranch,
+                    @Cached @Shared InlinedBranchProfile errorBranch,
+                    @Cached @Shared InlinedBranchProfile hasPropertiesBranch,
                     @Cached ImportValueNode foreignConvertNode) {
         try {
             if (!interop.hasArrayElements(obj)) {
@@ -265,7 +264,8 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
 
     @Fallback
     protected Object[] doFallback(Object value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
+                    @Cached @Shared InlinedBranchProfile errorBranch,
+                    @Cached @Shared @SuppressWarnings("unused") InlinedBranchProfile hasPropertiesBranch) {
         assert !JSRuntime.isObject(value);
         return notAnObjectError(value, errorBranch);
     }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -203,7 +203,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     @Specialization(guards = {"!isPrivate", "record.isMethod()"}, replaces = {"doPublicMethodCached"})
     public JSObject doPublicMethodUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
-                    @Cached("createGetterFromPropertyUncached(context)") @Shared("propertyGetterUncached") JSFunctionData valueGetterFunctionData) {
+                    @Cached("createGetterFromPropertyUncached(context)") @Shared JSFunctionData valueGetterFunctionData) {
         Object description = record.getKey();
         JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
         return createContextObject(frame, description, initializers, state, getter, null, METHOD_KIND);
@@ -236,8 +236,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     @Specialization(guards = {"!isPrivate", "record.isField()"}, replaces = "doPublicFieldCached")
     public JSObject doPublicFieldUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
-                    @Cached("createGetterFromPropertyUncached(context)") @Shared("propertyGetterUncached") JSFunctionData valueGetterFunctionData,
-                    @Cached("createSetterFromPropertyUncached(context)") @Shared("propertySetterUncached") JSFunctionData valueSetterFunctionData) {
+                    @Cached("createGetterFromPropertyUncached(context)") @Shared JSFunctionData valueGetterFunctionData,
+                    @Cached("createSetterFromPropertyUncached(context)") @Shared JSFunctionData valueSetterFunctionData) {
         Object description = record.getKey();
         JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
         JSObject setter = createFunctionWithElementRecordField(record, valueSetterFunctionData, setElementRecord);
@@ -275,8 +275,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     @Specialization(guards = {"!isPrivate", "record.isAutoAccessor()"}, replaces = "doPublicAutoAccessorCached")
     public JSObject doPublicAutoAccessor(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
-                    @Cached("createGetterFromPropertyUncached(context)") @Shared("propertyGetterUncached") JSFunctionData valueGetterFunctionData,
-                    @Cached("createSetterFromPropertyUncached(context)") @Shared("propertySetterUncached") JSFunctionData valueSetterFunctionData) {
+                    @Cached("createGetterFromPropertyUncached(context)") @Shared JSFunctionData valueGetterFunctionData,
+                    @Cached("createSetterFromPropertyUncached(context)") @Shared JSFunctionData valueSetterFunctionData) {
         Object description = record.getKey();
         JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
         JSObject setter = createFunctionWithElementRecordField(record, valueSetterFunctionData, setElementRecord);
@@ -310,7 +310,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     @Specialization(guards = {"!isPrivate", "record.isGetter()"}, replaces = "doPublicGetterCached")
     public JSObject doPublicGetterUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
-                    @Cached("createGetterFromPropertyUncached(context)") @Shared("propertyGetterUncached") JSFunctionData valueGetterFunctionData) {
+                    @Cached("createGetterFromPropertyUncached(context)") @Shared JSFunctionData valueGetterFunctionData) {
         Object name = record.getKey();
         JSObject getter = createFunctionWithElementRecordField(record, valueGetterFunctionData, setElementRecord);
         return createContextObject(frame, name, initializers, state, getter, null, GETTER_KIND);
@@ -341,7 +341,7 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     @Specialization(guards = {"!isPrivate", "record.isSetter()"}, replaces = "doPublicSetterCached")
     public JSObject doPublicSetterUncached(VirtualFrame frame, ClassElementDefinitionRecord record, Object initializers, DecorationState state,
                     @Cached("createSetHidden(ELEMENT_RECORD_KEY, context)") @Shared PropertySetNode setElementRecord,
-                    @Cached("createSetterFromPropertyUncached(context)") @Shared("propertySetterUncached") JSFunctionData valueSetterFunctionData) {
+                    @Cached("createSetterFromPropertyUncached(context)") @Shared JSFunctionData valueSetterFunctionData) {
         Object name = record.getKey();
         JSObject setter = createFunctionWithElementRecordField(record, valueSetterFunctionData, setElementRecord);
         return createContextObject(frame, name, initializers, state, null, setter, SETTER_KIND);
