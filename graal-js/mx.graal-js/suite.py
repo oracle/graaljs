@@ -386,6 +386,7 @@ suite = {
       "javaCompliance" : "17+",
       "annotationProcessors" : ["mx:JMH_1_21"],
       "spotbugsIgnoresGenerated" : True,
+      "testProject" : True,
     },
 
     "com.oracle.truffle.js.test.external" : {
@@ -716,6 +717,7 @@ suite = {
         "sdk:POLYGLOT",
         "GRAALJS"
       ],
+      "testDistribution": True,
       "maven" : False,
     }
   }
