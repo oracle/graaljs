@@ -4,6 +4,10 @@
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."
   }, {
+    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/next/for-await-next-rejected-promise-close.js",
+    "status" : "FAIL",
+    "comment" : "new failure 2024-01-25"
+  }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
     "statusOverrides" : {
@@ -150,22 +154,6 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
-  }, {
-    "filePath" : "built-ins/Iterator/prototype/constructor/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test: deletes the tested property accidentally"
-  }, {
-    "filePath" : "built-ins/Iterator/prototype/constructor/weird-setter.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test: missing argument in assert.throws() calls"
-  }, {
-    "filePath" : "built-ins/Iterator/prototype/Symbol.toStringTag/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test: deletes the tested property accidentally"
-  }, {
-    "filePath" : "built-ins/Iterator/prototype/Symbol.toStringTag/weird-setter.js",
-    "status" : "FAIL",
-    "comment" : "Incorrect test: missing argument in assert.throws() calls"
   }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
