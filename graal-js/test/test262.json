@@ -4,10 +4,6 @@
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."
   }, {
-    "filePath" : "built-ins/AsyncFromSyncIteratorPrototype/next/for-await-next-rejected-promise-close.js",
-    "status" : "FAIL",
-    "comment" : "new failure 2024-01-25"
-  }, {
     "filePath" : "built-ins/Atomics/wait/bigint/no-spurious-wakeup-no-operation.js",
     "status" : "PASS",
     "statusOverrides" : {
