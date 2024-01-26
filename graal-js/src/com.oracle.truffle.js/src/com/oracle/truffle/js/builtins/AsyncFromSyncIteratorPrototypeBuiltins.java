@@ -215,7 +215,8 @@ public final class AsyncFromSyncIteratorPrototypeBuiltins extends JSBuiltinsCont
                     if (!done && closeOnRejection) {
                         iteratorCloseNode.executeAbrupt(syncIteratorRecord.getIterator());
                     }
-                    throw e;
+                    promiseCapabilityReject(promiseCapability, e);
+                    return promiseCapability.getPromise();
                 }
             } else {
                 PromiseCapabilityRecord valueWrapperCapability = createPromiseCapability();
