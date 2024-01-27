@@ -295,6 +295,7 @@ public class JSContext {
         AwaitRejected,
         AsyncGeneratorReturnFulfilled,
         AsyncGeneratorReturnRejected,
+        AsyncFromSyncIteratorCloseIterator,
         AsyncFromSyncIteratorValueUnwrap,
         AsyncIteratorYield,
         AsyncIteratorUnwrapYieldResumptionClose,

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,28 +103,31 @@ public class AsyncIteratorCloseWrapperNode extends AbstractAwaitNode implements 
             } catch (ControlFlowException e) {
                 exitBranch.enter();
                 IteratorRecord iteratorRecord = getIteratorRecord(frame);
-                Object iterator = iteratorRecord.getIterator();
-                Object returnMethod = getReturnNode.executeWithTarget(iterator);
-                if (returnMethod != Undefined.instance) {
-                    innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-                    completion = Completion.forReturn(e);
-                    break await;
-                } else {
-                    throw e;
-                }
-            } catch (AbstractTruffleException e) {
-                throwBranch.enter();
-                IteratorRecord iteratorRecord = getIteratorRecord(frame);
-                Object iterator = iteratorRecord.getIterator();
-                try {
+                if (!iteratorRecord.isDone()) {
+                    Object iterator = iteratorRecord.getIterator();
                     Object returnMethod = getReturnNode.executeWithTarget(iterator);
                     if (returnMethod != Undefined.instance) {
                         innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
-                        completion = Completion.forThrow(e);
+                        completion = Completion.forReturn(e);
                         break await;
                     }
-                } catch (AbstractTruffleException ex) {
-                    // re-throw outer exception below
+                }
+                throw e;
+            } catch (AbstractTruffleException e) {
+                throwBranch.enter();
+                IteratorRecord iteratorRecord = getIteratorRecord(frame);
+                if (!iteratorRecord.isDone()) {
+                    Object iterator = iteratorRecord.getIterator();
+                    try {
+                        Object returnMethod = getReturnNode.executeWithTarget(iterator);
+                        if (returnMethod != Undefined.instance) {
+                            innerResult = getReturnMethodCallNode().executeCall(JSArguments.createZeroArg(iterator, returnMethod));
+                            completion = Completion.forThrow(e);
+                            break await;
+                        }
+                    } catch (AbstractTruffleException ex) {
+                        // re-throw outer exception below
+                    }
                 }
                 throw e;
             }
