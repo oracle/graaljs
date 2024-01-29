@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -78,10 +78,15 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
     }
 
     private ScriptArray rewrite(JSDynamicObject object, long index, Object value) {
-        if (isSupportedContiguous(object, index)) {
-            return toContiguous(object, index, value);
-        } else if (isSupportedHoles(object, index)) {
-            return toHoles(object, index, value);
+        if (JSDynamicObject.isJSDynamicObject(value)) {
+            assert !isSupported(object, index);
+            if (isSupportedContiguous(object, index)) {
+                return toContiguous(object, index, value);
+            } else if (isSupportedHoles(object, index)) {
+                return toHoles(object, index, value);
+            } else {
+                return toSparse(object, index, value);
+            }
         } else {
             return toObject(object, index, value);
         }
