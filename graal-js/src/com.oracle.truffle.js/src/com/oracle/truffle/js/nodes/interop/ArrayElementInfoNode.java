@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,7 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBase;
 
 /**
@@ -99,7 +100,7 @@ public abstract class ArrayElementInfoNode extends JavaScriptBaseNode {
                 return TriState.UNDEFINED;
             }
         }
-        if (index >= 0 && index < arrayType.length(target)) {
+        if (index >= 0 && index < JSAbstractArray.arrayGetLength(target)) {
             if ((query & READABLE) != 0) {
                 return TriState.TRUE;
             }
