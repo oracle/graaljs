@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -70,6 +70,7 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalUnbalanceDateDurationRelativeNode extends JavaScriptBaseNode {
 
+    @Child private ToTemporalCalendarObjectNode toCalendarObjectNode;
     @Child private JSFunctionCallNode callDateAddNode;
     @Child private JSFunctionCallNode callDateUntilNode;
 
@@ -160,7 +161,8 @@ public abstract class TemporalUnbalanceDateDurationRelativeNode extends JavaScri
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callDateAddNode = insert(JSFunctionCallNode.createCall());
         }
-        Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendarRec.receiver(), calendarRec.dateAdd(), date, duration));
+        Object calendar = toCalendarObject(calendarRec);
+        Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, calendarRec.dateAdd(), date, duration));
         return TemporalUtil.requireTemporalDate(addedDate, node, errorBranch);
     }
 
@@ -169,8 +171,17 @@ public abstract class TemporalUnbalanceDateDurationRelativeNode extends JavaScri
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callDateUntilNode = insert(JSFunctionCallNode.createCall());
         }
-        Object addedDate = callDateUntilNode.executeCall(JSArguments.create(calendarRec.receiver(), calendarRec.dateUntil(), date, duration, options));
+        Object calendar = toCalendarObject(calendarRec);
+        Object addedDate = callDateUntilNode.executeCall(JSArguments.create(calendar, calendarRec.dateUntil(), date, duration, options));
         return TemporalUtil.requireTemporalDuration(addedDate);
+    }
+
+    private Object toCalendarObject(CalendarMethodsRecord calendarRec) {
+        if (toCalendarObjectNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toCalendarObjectNode = insert(ToTemporalCalendarObjectNode.create());
+        }
+        return toCalendarObjectNode.execute(calendarRec.receiver());
     }
 
     private static void checkCalendar(CalendarMethodsRecord calendarRec, Node node, InlinedBranchProfile errorBranch) {

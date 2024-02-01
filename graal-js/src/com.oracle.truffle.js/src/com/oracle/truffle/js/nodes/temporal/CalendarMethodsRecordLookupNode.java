@@ -41,46 +41,84 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
 /**
- * Implementation of ToTemporalCalendarIdentifier() operation.
+ * Implementation of CalendarMethodsRecordLookup() operation.
  */
-@ImportStatic(Strings.class)
-public abstract class ToTemporalCalendarIdentifierNode extends JavaScriptBaseNode {
+public abstract class CalendarMethodsRecordLookupNode extends JavaScriptBaseNode {
+    protected final TruffleString key;
 
-    protected ToTemporalCalendarIdentifierNode() {
+    protected CalendarMethodsRecordLookupNode(TruffleString key) {
+        this.key = key;
     }
 
-    public static ToTemporalCalendarIdentifierNode create() {
-        return ToTemporalCalendarIdentifierNodeGen.create();
+    public TruffleString getKey() {
+        return key;
     }
 
-    public abstract TruffleString executeString(Object calendarSlotValue);
+    public static CalendarMethodsRecordLookupNode createDateAdd() {
+        return create(TemporalConstants.DATE_ADD);
+    }
+
+    public static CalendarMethodsRecordLookupNode createDateFromFields() {
+        return create(TemporalConstants.DATE_FROM_FIELDS);
+    }
+
+    public static CalendarMethodsRecordLookupNode createDateUntil() {
+        return create(TemporalConstants.DATE_UNTIL);
+    }
+
+    public static CalendarMethodsRecordLookupNode createDay() {
+        return create(TemporalConstants.DAY);
+    }
+
+    public static CalendarMethodsRecordLookupNode createFields() {
+        return create(TemporalConstants.FIELDS);
+    }
+
+    public static CalendarMethodsRecordLookupNode createMergeFields() {
+        return create(TemporalConstants.MERGE_FIELDS);
+    }
+
+    public static CalendarMethodsRecordLookupNode createMonthDayFromFields() {
+        return create(TemporalConstants.MONTH_DAY_FROM_FIELDS);
+    }
+
+    public static CalendarMethodsRecordLookupNode createYearMonthFromFields() {
+        return create(TemporalConstants.YEAR_MONTH_FROM_FIELDS);
+    }
+
+    public static CalendarMethodsRecordLookupNode create(TruffleString key) {
+        return CalendarMethodsRecordLookupNodeGen.create(key);
+    }
+
+    public abstract Object execute(Object receiver);
 
     @Specialization
-    public TruffleString doString(TruffleString calendarSlotValue) {
-        return calendarSlotValue;
+    protected Object lookup(TruffleString receiver) {
+        // TODO: get these methods from JSRealm directly
+        return JSObject.get(getRealm().getTemporalCalendarPrototype(), key);
     }
 
-    @Specialization(guards = "!isString(calendarSlotValue)")
-    public TruffleString doNonString(Object calendarSlotValue,
-                    @Cached("create(ID_PROPERTY_NAME, getJSContext())") PropertyGetNode getIdNode,
+    @Specialization(guards = "!isString(receiver)")
+    protected Object lookup(Object receiver,
+                    @Cached("create(getJSContext(), key)") GetMethodNode getMethod,
                     @Cached InlinedBranchProfile errorBranch) {
-        Object identifier = getIdNode.getValue(calendarSlotValue);
-        if (identifier instanceof TruffleString stringIdentifier) {
-            return stringIdentifier;
-        } else {
+        Object method = getMethod.executeWithTarget(receiver);
+        if (method == Undefined.instance) {
             errorBranch.enter(this);
-            throw Errors.createTypeErrorNotAString(identifier);
+            throw Errors.createTypeErrorCallableExpected();
         }
+        return method;
     }
 
 }

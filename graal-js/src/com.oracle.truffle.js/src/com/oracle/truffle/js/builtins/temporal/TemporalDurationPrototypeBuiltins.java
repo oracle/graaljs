@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -74,13 +74,13 @@ import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationTotalNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationValueOfNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalBalanceDateDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
@@ -351,19 +351,16 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         private final int sign;
 
-        @Child private GetMethodNode getMethodDateAddNode;
-        @Child private GetMethodNode getMethodDateUntilNode;
-
         protected JSTemporalDurationAddSubNode(JSContext context, JSBuiltin builtin, int sign) {
             super(context, builtin);
             this.sign = sign;
-            this.getMethodDateAddNode = GetMethodNode.create(context, TemporalConstants.DATE_ADD);
-            this.getMethodDateUntilNode = GetMethodNode.create(context, TemporalConstants.DATE_UNTIL);
         }
 
         @Specialization
         protected JSTemporalDurationObject addDurationToOrSubtractDurationFromDuration(JSTemporalDurationObject duration, Object other, Object options,
                         @Cached ToTemporalDurationNode toTemporalDurationNode,
+                        @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
+                        @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
                         @Cached TemporalDurationAddNode durationAddNode,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached InlinedBranchProfile errorBranch,
@@ -374,7 +371,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             var relativeTo = relativeToRec.relativeTo();
             TimeZoneMethodsRecord timeZoneRec = relativeToRec.timeZoneRec();
-            CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(getMethodDateAddNode, getMethodDateUntilNode);
+            CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(lookupDateAdd, lookupDateUntil);
 
             JSTemporalDurationRecord result = durationAddNode.execute(duration.getYears(), duration.getMonths(),
                             duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(),
@@ -398,13 +395,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class JSTemporalDurationRound extends JSTemporalBuiltinOperation {
 
-        @Child private GetMethodNode getMethodDateAddNode;
-        @Child private GetMethodNode getMethodDateUntilNode;
-
         protected JSTemporalDurationRound(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getMethodDateAddNode = GetMethodNode.create(context, TemporalConstants.DATE_ADD);
-            this.getMethodDateUntilNode = GetMethodNode.create(context, TemporalConstants.DATE_UNTIL);
         }
 
         @Specialization
@@ -416,6 +408,8 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached InlinedConditionProfile relativeToIsZonedDateTime,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached TemporalRoundDurationNode roundDurationNode,
+                        @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
+                        @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
                         @Cached TemporalUnbalanceDateDurationRelativeNode unbalanceDurationRelativeNode,
                         @Cached TemporalBalanceDateDurationRelativeNode balanceDateDurationRelativeNode,
                         @Cached TemporalGetOptionNode getOptionNode,
@@ -500,7 +494,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 zonedRelativeTo.getCalendar(), this, errorBranch);
             }
 
-            CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(getMethodDateAddNode, getMethodDateUntilNode);
+            CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(lookupDateAdd, lookupDateUntil);
 
             JSTemporalDurationRecord unbalanceResult = unbalanceDurationRelativeNode.execute(duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), largestUnit,
                             plainRelativeTo, calendarRec);
@@ -542,19 +536,16 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
     public abstract static class JSTemporalDurationTotal extends JSTemporalBuiltinOperation {
 
-        @Child private GetMethodNode getMethodDateAddNode;
-        @Child private GetMethodNode getMethodDateUntilNode;
-
         protected JSTemporalDurationTotal(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getMethodDateAddNode = GetMethodNode.create(context, TemporalConstants.DATE_ADD);
-            this.getMethodDateUntilNode = GetMethodNode.create(context, TemporalConstants.DATE_UNTIL);
         }
 
         @Specialization
         protected double total(JSTemporalDurationObject duration, Object totalOfParam,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
+                        @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
+                        @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
                         @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalUnbalanceDateDurationRelativeNode unbalanceDurationRelativeNode,
                         @Cached TemporalGetOptionNode getOptionNode,
@@ -595,7 +586,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 zonedRelativeTo.getCalendar(), this, errorBranch);
             }
 
-            CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(getMethodDateAddNode, getMethodDateUntilNode);
+            CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(lookupDateAdd, lookupDateUntil);
 
             JSTemporalDurationRecord unbalanceResult = unbalanceDurationRelativeNode.execute(
                             duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), unit, plainRelativeTo, calendarRec);

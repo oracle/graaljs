@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime;
 import java.math.BigDecimal;
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Queue;
@@ -165,6 +166,18 @@ public final class Boundaries {
     @TruffleBoundary
     public static <T> Object[] listToArray(List<T> list) {
         return list.toArray();
+    }
+
+    public static <T> List<T> listToEditable(List<T> list) {
+        if (list instanceof ArrayList) {
+            return list;
+        }
+        return listEditableCopy(list);
+    }
+
+    @TruffleBoundary
+    public static <T> List<T> listEditableCopy(List<T> list) {
+        return new ArrayList<>(list);
     }
 
     @TruffleBoundary

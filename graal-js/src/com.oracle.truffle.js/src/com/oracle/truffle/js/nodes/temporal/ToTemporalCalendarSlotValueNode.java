@@ -49,6 +49,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import java.util.Locale;
@@ -65,6 +66,10 @@ public abstract class ToTemporalCalendarSlotValueNode extends JavaScriptBaseNode
 
     public static ToTemporalCalendarSlotValueNode create() {
         return createWithDefault(null);
+    }
+
+    public static ToTemporalCalendarSlotValueNode createWithISO8601() {
+        return createWithDefault(TemporalConstants.ISO8601);
     }
 
     public static ToTemporalCalendarSlotValueNode createWithDefault(TruffleString defaultValue) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,6 +51,7 @@ import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -66,13 +67,14 @@ import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsF
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToZonedDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantUntilSinceNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantValueOfNodeGen;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
@@ -435,6 +437,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
     }
 
+    @ImportStatic(TemporalConstants.class)
     public abstract static class JSTemporalInstantToZonedDateTimeNode extends JSTemporalBuiltinOperation {
 
         protected JSTemporalInstantToZonedDateTimeNode(JSContext context, JSBuiltin builtin) {
@@ -443,26 +446,27 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSTemporalZonedDateTimeObject toZonedDateTime(JSTemporalInstantObject instant, Object item,
-                        @Cached ToTemporalCalendarNode toTemporalCalendar,
+                        @Cached("create(CALENDAR, getJSContext())") PropertyGetNode getCalendar,
+                        @Cached("create(TIME_ZONE, getJSContext())") PropertyGetNode getTimeZone,
+                        @Cached ToTemporalCalendarSlotValueNode toCalendarSlot,
                         @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
                         @Cached InlinedBranchProfile errorBranch) {
             if (!isObject(item)) {
                 errorBranch.enter(this);
-                throw Errors.createTypeError("object expected");
+                throw Errors.createTypeErrorNotAnObject(item);
             }
-            JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, this, errorBranch);
-            Object calendarLike = JSObject.get(itemObj, TemporalConstants.CALENDAR);
+            Object calendarLike = getCalendar.getValue(item);
             if (calendarLike == Undefined.instance) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorTemporalCalendarExpected();
             }
-            JSDynamicObject calendar = toTemporalCalendar.execute(calendarLike);
-            Object timeZoneLike = JSObject.get(itemObj, TemporalConstants.TIME_ZONE);
-            if (timeZoneLike == Undefined.instance) {
+            Object calendar = toCalendarSlot.execute(calendarLike);
+            Object temporalTimeZoneLike = getTimeZone.getValue(item);
+            if (temporalTimeZoneLike == Undefined.instance) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorTemporalTimeZoneExpected();
             }
-            JSDynamicObject timeZone = toTemporalTimeZone.execute(timeZoneLike);
+            JSDynamicObject timeZone = toTemporalTimeZone.execute(temporalTimeZoneLike);
             return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, calendar);
         }
 

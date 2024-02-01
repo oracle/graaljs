@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,14 +49,14 @@ import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
  */
 public abstract class JSTemporalCalendarHolder extends JSNonProxyObject {
 
-    private final JSDynamicObject calendar;
+    private final Object calendar;
 
-    public JSTemporalCalendarHolder(Shape shape, JSDynamicObject proto, JSDynamicObject calendar) {
+    public JSTemporalCalendarHolder(Shape shape, JSDynamicObject proto, Object calendar) {
         super(shape, proto);
         this.calendar = calendar;
     }
 
-    public final JSDynamicObject getCalendar() {
+    public final Object getCalendar() {
         return calendar;
     }
 }

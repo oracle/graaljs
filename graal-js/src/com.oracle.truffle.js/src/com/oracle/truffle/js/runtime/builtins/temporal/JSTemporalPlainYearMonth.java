@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -77,13 +77,13 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     private JSTemporalPlainYearMonth() {
     }
 
-    public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
+    public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, int isoYear, int isoMonth, Object calendar, int referenceISODay,
                     Node node, InlinedBranchProfile errorBranch) {
         return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), isoYear, isoMonth, calendar, referenceISODay,
                         node, errorBranch);
     }
 
-    public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay,
+    public static JSTemporalPlainYearMonthObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, Object calendar, int referenceISODay,
                     Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isValidISODate(isoYear, isoMonth, referenceISODay)) {
             errorBranch.enter(node);
@@ -96,7 +96,7 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
         return createIntl(context, realm, proto, isoYear, isoMonth, calendar, referenceISODay);
     }
 
-    private static JSTemporalPlainYearMonthObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, JSDynamicObject calendar, int referenceISODay) {
+    private static JSTemporalPlainYearMonthObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, Object calendar, int referenceISODay) {
         JSObjectFactory factory = context.getTemporalPlainYearMonthFactory();
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSTemporalPlainYearMonthObject(shape, proto, isoYear, isoMonth, referenceISODay, calendar), realm, proto);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,12 +49,15 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -72,10 +75,10 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached JSToStringNode toStringNode,
                     @Cached TemporalGetOptionNode getOptionNode,
-                    @Cached GetTemporalCalendarWithISODefaultNode getTemporalCalendarWithISODefaultNode,
-                    @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
+                    @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
+                    @Cached("createYearMonthFromFields()") CalendarMethodsRecordLookupNode lookupYearMonthFromFields,
                     @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                     @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
         assert options != null;
@@ -84,20 +87,32 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
             if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(itemObj)) {
                 return (JSTemporalPlainYearMonthObject) itemObj;
             }
-            JSDynamicObject calendar = getTemporalCalendarWithISODefaultNode.execute(itemObj);
-
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listMMCY);
+            Object calendar = getCalendarSlotValueWithISODefault.execute(item);
+            Object fieldsMethod = lookupFields.execute(calendar);
+            Object yearMonthFromFieldsMethod = lookupYearMonthFromFields.execute(calendar);
+            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forFieldsAndYearMonthFromFields(calendar, fieldsMethod, yearMonthFromFieldsMethod);
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listMMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getLanguage().getJSContext(), itemObj, fieldNames, TemporalUtil.listEmpty);
-            return yearMonthFromFieldsNode.execute(calendar, fields, options);
-        } else {
-            TemporalUtil.toTemporalOverflow(options, getOptionNode);
-
-            TruffleString string = toStringNode.executeString(item);
+            return yearMonthFromFieldsNode.execute(calendarRec, fields, options);
+        } else if (item instanceof TruffleString string) {
             JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalYearMonthString(string);
-            JSDynamicObject calendar = toTemporalCalendarWithISODefaultNode.execute(result.getCalendar());
+            TruffleString calendar = result.getCalendar();
+            if (calendar == null) {
+                calendar = TemporalConstants.ISO8601;
+            }
+            if (!TemporalUtil.isBuiltinCalendar(calendar)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorCalendarNotSupported();
+            }
+            TemporalUtil.toTemporalOverflow(options, getOptionNode);
             JSDynamicObject result2 = JSTemporalPlainYearMonth.create(getLanguage().getJSContext(), getRealm(),
                             result.getYear(), result.getMonth(), calendar, result.getDay(), this, errorBranch);
-            return yearMonthFromFieldsNode.execute(calendar, result2, Undefined.instance);
+            Object yearMonthFromFieldsMethod = lookupYearMonthFromFields.execute(calendar);
+            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forYearMonthFromFields(calendar, yearMonthFromFieldsMethod);
+            return yearMonthFromFieldsNode.execute(calendarRec, result2, Undefined.instance);
+        } else {
+            errorBranch.enter(this);
+            throw Errors.createTypeErrorNotAString(item);
         }
     }
 }

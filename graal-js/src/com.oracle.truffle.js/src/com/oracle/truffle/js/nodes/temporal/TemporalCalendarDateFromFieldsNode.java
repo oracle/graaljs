@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,14 +43,12 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -58,21 +56,18 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalCalendarDateFromFieldsNode extends JavaScriptBaseNode {
 
-    @Child protected PropertyGetNode getDateFromFieldsNode;
-    @Child protected JSFunctionCallNode callNode;
-
     protected TemporalCalendarDateFromFieldsNode() {
-        this.getDateFromFieldsNode = PropertyGetNode.create(TemporalConstants.DATE_FROM_FIELDS, false, JavaScriptLanguage.get(null).getJSContext());
-        this.callNode = JSFunctionCallNode.createCall();
     }
 
-    public abstract JSTemporalPlainDateObject execute(JSDynamicObject calendar, JSDynamicObject fields, Object options);
+    public abstract JSTemporalPlainDateObject execute(CalendarMethodsRecord calendarRec, JSDynamicObject fields, Object options);
 
     @Specialization
-    public JSTemporalPlainDateObject toTemporalDate(JSDynamicObject calendar, JSDynamicObject fields, Object options,
+    public JSTemporalPlainDateObject toTemporalDate(CalendarMethodsRecord calendarRec, JSDynamicObject fields, Object options,
+                    @Cached ToTemporalCalendarObjectNode toCalendar,
+                    @Cached("createCall()") JSFunctionCallNode callNode,
                     @Cached InlinedBranchProfile errorBranch) {
-        Object dateFromFields = getDateFromFieldsNode.getValue(calendar);
-        Object date = callNode.executeCall(JSArguments.create(calendar, dateFromFields, fields, options));
+        Object calendarObject = toCalendar.execute(calendarRec.receiver());
+        Object date = callNode.executeCall(JSArguments.create(calendarObject, calendarRec.dateFromFields(), fields, options));
         return TemporalUtil.requireTemporalDate(date, this, errorBranch);
     }
 }

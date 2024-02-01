@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,8 +47,8 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDateDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
@@ -66,7 +66,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
@@ -128,20 +127,17 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
 
     public abstract static class JSTemporalDurationCompare extends JSTemporalBuiltinOperation {
 
-        @Child private GetMethodNode getMethodDateAddNode;
-        @Child private GetMethodNode getMethodDateUntilNode;
-
         protected JSTemporalDurationCompare(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getMethodDateAddNode = GetMethodNode.create(context, TemporalConstants.DATE_ADD);
-            this.getMethodDateUntilNode = GetMethodNode.create(context, TemporalConstants.DATE_UNTIL);
         }
 
         @Specialization
         protected int compare(Object oneParam, Object twoParam, Object optionsParam,
+                        @Cached ToTemporalDurationNode toTemporalDurationNode,
+                        @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
+                        @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached TemporalUnbalanceDateDurationRelativeNode unbalanceDurationRelativeNode,
-                        @Cached ToTemporalDurationNode toTemporalDurationNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalDurationObject one = toTemporalDurationNode.execute(oneParam);
@@ -153,7 +149,7 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
             JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();
             TimeZoneMethodsRecord timeZoneRec = relativeToRec.timeZoneRec();
-            CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(getMethodDateAddNode, getMethodDateUntilNode);
+            CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(lookupDateAdd, lookupDateUntil);
 
             boolean calendarUnitsPresent = one.getYears() != 0 || two.getYears() != 0 ||
                             one.getMonths() != 0 || two.getMonths() != 0 ||

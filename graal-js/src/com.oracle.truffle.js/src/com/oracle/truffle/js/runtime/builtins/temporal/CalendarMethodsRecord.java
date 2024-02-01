@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-
 /**
  * Calendar Methods Record.
  *
@@ -53,7 +51,7 @@ public record CalendarMethodsRecord(
                  * A String or Object. The calendar object, or a string indicating a built-in time
                  * zone.
                  */
-                JSDynamicObject receiver,
+                Object receiver,
                 /**
                  * A function object or undefined. The calendar's dateAdd method. For a built-in
                  * calendar this is always %Temporal.Calendar.prototype.dateAdd%.
@@ -97,11 +95,44 @@ public record CalendarMethodsRecord(
                  */
                 Object yearMonthFromFields) {
 
-    public static CalendarMethodsRecord forDateAdd(JSDynamicObject receiver, Object dateAdd) {
+    public static CalendarMethodsRecord forDateAdd(Object receiver, Object dateAdd) {
         return new CalendarMethodsRecord(receiver, dateAdd, null, null, null, null, null, null, null);
     }
 
-    public static CalendarMethodsRecord forDateAddDateUntil(JSDynamicObject receiver, Object dateAdd, Object dateUntil) {
+    public static CalendarMethodsRecord forMonthDayFromFieldsMethod(Object receiver, Object monthDayFromFields) {
+        return new CalendarMethodsRecord(receiver, null, null, null, null, null, null, monthDayFromFields, null);
+    }
+
+    public static CalendarMethodsRecord forYearMonthFromFields(Object receiver, Object yearMonthFromFields) {
+        return new CalendarMethodsRecord(receiver, null, null, null, null, null, null, null, yearMonthFromFields);
+    }
+
+    public static CalendarMethodsRecord forDateAddDateUntil(Object receiver, Object dateAdd, Object dateUntil) {
         return new CalendarMethodsRecord(receiver, dateAdd, null, dateUntil, null, null, null, null, null);
     }
+
+    public static CalendarMethodsRecord forDateFromFieldsAndFields(Object receiver, Object dateFromFields, Object fields) {
+        return new CalendarMethodsRecord(receiver, null, dateFromFields, null, null, fields, null, null, null);
+    }
+
+    public static CalendarMethodsRecord forDateFromFieldsAndFieldsAndMergeFields(Object receiver, Object dateFromFields, Object fields, Object mergeFields) {
+        return new CalendarMethodsRecord(receiver, null, dateFromFields, null, null, fields, mergeFields, null, null);
+    }
+
+    public static CalendarMethodsRecord forFieldsAndMonthDayFromFields(Object receiver, Object fields, Object monthDayFromFields) {
+        return new CalendarMethodsRecord(receiver, null, null, null, null, fields, null, monthDayFromFields, null);
+    }
+
+    public static CalendarMethodsRecord forFieldsAndMergeFieldsAndMonthDayFromFields(Object receiver, Object fields, Object mergeFields, Object monthDayFromFields) {
+        return new CalendarMethodsRecord(receiver, null, null, null, null, fields, mergeFields, monthDayFromFields, null);
+    }
+
+    public static CalendarMethodsRecord forFieldsAndMergeFieldsAndYearMonthFromFields(Object receiver, Object fields, Object mergeFields, Object yearMonthFromFields) {
+        return new CalendarMethodsRecord(receiver, null, null, null, null, fields, mergeFields, null, yearMonthFromFields);
+    }
+
+    public static CalendarMethodsRecord forFieldsAndYearMonthFromFields(Object receiver, Object fields, Object yearMonthFromFields) {
+        return new CalendarMethodsRecord(receiver, null, null, null, null, fields, null, null, yearMonthFromFields);
+    }
+
 }
