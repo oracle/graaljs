@@ -1,5 +1,9 @@
 /*
+<<<<<<< HEAD
  * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+=======
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+>>>>>>> 561fec6e53e (using latest double-conversion version 3.3.0. No code changes necessary for that, already compatible)
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,7 +79,7 @@ package com.oracle.truffle.js.runtime.doubleconv;
 /**
  * This class provides the public API for the double conversion package.
  *
- * Using double-conversion version 3.1.5.
+ * Using double-conversion version 3.3.0.
  */
 public final class DoubleConversion {
 
