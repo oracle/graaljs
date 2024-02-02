@@ -85,7 +85,6 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
                     @Cached InlinedConditionProfile isPlainTimeProfile,
                     @Cached InlinedBranchProfile errorBranch,
-                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getTemporalCalendarNode,
                     @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
         Overflow overflow = overflowParam == null ? Overflow.CONSTRAIN : overflowParam;
         assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;

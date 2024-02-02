@@ -43,9 +43,7 @@ package com.oracle.truffle.js.nodes.temporal;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -69,8 +67,7 @@ public abstract class TemporalCalendarFieldsNode extends JavaScriptBaseNode {
     public abstract List<TruffleString> execute(CalendarMethodsRecord calendarRec, List<TruffleString> strings);
 
     @Specialization
-    protected List<TruffleString> calendarFields(CalendarMethodsRecord calendarRec, List<TruffleString> strings,
-                    @Cached InlinedConditionProfile fieldsUndefined) {
+    protected List<TruffleString> calendarFields(CalendarMethodsRecord calendarRec, List<TruffleString> strings) {
         if (calendarRec.receiver() instanceof TruffleString) {
             return strings;
         }

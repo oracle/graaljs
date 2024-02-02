@@ -114,7 +114,7 @@ public abstract class CalendarMethodsRecordLookupNode extends JavaScriptBaseNode
     public abstract Object execute(Object receiver);
 
     @Specialization
-    protected Object lookup(TruffleString receiver) {
+    protected Object lookup(@SuppressWarnings("unused") TruffleString receiver) {
         // TODO: get these methods from JSRealm directly
         return JSObject.get(getRealm().getTemporalCalendarPrototype(), key);
     }

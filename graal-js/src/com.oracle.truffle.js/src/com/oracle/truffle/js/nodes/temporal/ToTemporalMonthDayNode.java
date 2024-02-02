@@ -89,7 +89,6 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
     public JSTemporalPlainMonthDayObject toTemporalMonthDay(Object item, JSDynamicObject options,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isObjectProfile,
-                    @Cached InlinedConditionProfile setReferenceYear,
                     @Cached InlinedConditionProfile returnPlainMonthDay,
                     @Cached InlinedConditionProfile getCalendarPath,
                     @Cached IsObjectNode isObjectNode,

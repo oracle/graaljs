@@ -67,7 +67,7 @@ public abstract class ObjectImplementsTemporalCalendarProtocolNode extends JavaS
     public abstract boolean execute(Object object);
 
     @Specialization
-    public boolean doCalendar(JSTemporalCalendarObject object) {
+    public boolean doCalendar(@SuppressWarnings("unused") JSTemporalCalendarObject object) {
         return true;
     }
 

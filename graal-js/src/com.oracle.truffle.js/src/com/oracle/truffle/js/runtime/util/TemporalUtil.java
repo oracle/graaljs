@@ -1722,7 +1722,7 @@ public final class TemporalUtil {
     }
 
     public static JSDynamicObject calendarMergeFields(JSContext ctx, JSRealm realm, CalendarMethodsRecord calendarRec, JSDynamicObject fields,
-                    JSDynamicObject additionalFields, EnumerableOwnPropertyNamesNode namesNode, Node node, InlinedBranchProfile errorBranch) {
+                    JSDynamicObject additionalFields, Node node, InlinedBranchProfile errorBranch) {
         Object calendarSlotValue = calendarRec.receiver();
         Object calendar;
         boolean isBuiltinCalendar;
