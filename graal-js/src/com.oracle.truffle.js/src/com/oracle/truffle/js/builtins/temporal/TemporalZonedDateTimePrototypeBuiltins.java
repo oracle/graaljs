@@ -54,8 +54,10 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -773,8 +775,10 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             this.sign = sign;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization
         protected Object differenceTemporalZonedDateTime(JSTemporalZonedDateTimeObject zonedDateTime, Object otherParam, Object optionsParam,
+                        @Bind("this") Node node,
                         @Cached JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
@@ -792,13 +796,13 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             JSTemporalZonedDateTimeObject other = toTemporalZonedDateTime.execute(otherParam, Undefined.instance);
             var calendar = zonedDateTime.getCalendar();
             if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toCalendarIdentifier)) {
-                errorBranch.enter(this);
+                errorBranch.enter(node);
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
-            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listEmpty, NANOSECOND, equalNode, getOptionNode, this, errorBranch);
+            JSDynamicObject options = getOptionsObject(optionsParam, node, errorBranch, optionUndefined);
+            Unit smallestUnit = toSmallestTemporalUnit(options, TemporalUtil.listEmpty, NANOSECOND, equalNode, getOptionNode, node, errorBranch);
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.HOUR, smallestUnit);
-            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listEmpty, AUTO, defaultLargestUnit, equalNode, getOptionNode, this, errorBranch);
+            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listEmpty, AUTO, defaultLargestUnit, equalNode, getOptionNode, node, errorBranch);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
@@ -809,15 +813,15 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                                 roundingIncrement, smallestUnit, largestUnit, roundingMode, roundDurationNode);
                 return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
                                 sign * result.hours(), sign * result.minutes(), sign * result.seconds(),
-                                sign * result.milliseconds(), sign * result.microseconds(), sign * result.nanoseconds(), this, errorBranch);
+                                sign * result.milliseconds(), sign * result.microseconds(), sign * result.nanoseconds(), node, errorBranch);
             }
             var timeZone = zonedDateTime.getTimeZone();
             if (!TemporalUtil.timeZoneEquals(timeZone, other.getTimeZone(), toStringNode)) {
-                errorBranch.enter(this);
+                errorBranch.enter(node);
                 throw TemporalErrors.createRangeErrorIdenticalTimeZoneExpected();
             }
             if (zonedDateTime.getNanoseconds().compareTo(other.getNanoseconds()) == 0) {
-                return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
+                return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, node, errorBranch);
             }
 
             var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
@@ -829,7 +833,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             var precalculatedPlainDateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZoneRec, instant, options);
             var plainRelativeTo = JSTemporalPlainDate.create(getContext(), realm,
                             precalculatedPlainDateTime.getYear(), precalculatedPlainDateTime.getMonth(), precalculatedPlainDateTime.getDay(),
-                            calendar, this, errorBranch);
+                            calendar, node, errorBranch);
 
             JSDynamicObject untilOptions = TemporalUtil.mergeLargestUnitOption(getContext(), namesNode, options, largestUnit);
             JSTemporalDurationRecord difference = TemporalUtil.differenceZonedDateTime(getContext(), realm, namesNode,
@@ -849,7 +853,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             return JSTemporalDuration.createTemporalDuration(getContext(), realm,
                             sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(),
                             sign * result.getHours(), sign * result.getMinutes(), sign * result.getSeconds(),
-                            sign * result.getMilliseconds(), sign * result.getMicroseconds(), sign * result.getNanoseconds(), this, errorBranch);
+                            sign * result.getMilliseconds(), sign * result.getMicroseconds(), sign * result.getNanoseconds(), node, errorBranch);
         }
 
         @SuppressWarnings("unused")

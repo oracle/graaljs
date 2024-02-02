@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -65,38 +66,47 @@ public abstract class CalendarMethodsRecordLookupNode extends JavaScriptBaseNode
         return key;
     }
 
+    @NeverDefault
     public static CalendarMethodsRecordLookupNode createDateAdd() {
         return create(TemporalConstants.DATE_ADD);
     }
 
+    @NeverDefault
     public static CalendarMethodsRecordLookupNode createDateFromFields() {
         return create(TemporalConstants.DATE_FROM_FIELDS);
     }
 
+    @NeverDefault
     public static CalendarMethodsRecordLookupNode createDateUntil() {
         return create(TemporalConstants.DATE_UNTIL);
     }
 
+    @NeverDefault
     public static CalendarMethodsRecordLookupNode createDay() {
         return create(TemporalConstants.DAY);
     }
 
+    @NeverDefault
     public static CalendarMethodsRecordLookupNode createFields() {
         return create(TemporalConstants.FIELDS);
     }
 
+    @NeverDefault
     public static CalendarMethodsRecordLookupNode createMergeFields() {
         return create(TemporalConstants.MERGE_FIELDS);
     }
 
+    @NeverDefault
     public static CalendarMethodsRecordLookupNode createMonthDayFromFields() {
         return create(TemporalConstants.MONTH_DAY_FROM_FIELDS);
     }
 
+    @NeverDefault
     public static CalendarMethodsRecordLookupNode createYearMonthFromFields() {
         return create(TemporalConstants.YEAR_MONTH_FROM_FIELDS);
     }
 
+    @NeverDefault
     public static CalendarMethodsRecordLookupNode create(TruffleString key) {
         return CalendarMethodsRecordLookupNodeGen.create(key);
     }

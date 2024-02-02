@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
@@ -57,6 +58,7 @@ public abstract class GetTemporalCalendarSlotValueWithISODefaultNode extends Jav
     protected GetTemporalCalendarSlotValueWithISODefaultNode() {
     }
 
+    @NeverDefault
     public static GetTemporalCalendarSlotValueWithISODefaultNode create() {
         return GetTemporalCalendarSlotValueWithISODefaultNodeGen.create();
     }

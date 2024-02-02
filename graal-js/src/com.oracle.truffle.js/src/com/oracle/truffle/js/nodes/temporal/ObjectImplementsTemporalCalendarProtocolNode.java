@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
@@ -58,6 +59,7 @@ public abstract class ObjectImplementsTemporalCalendarProtocolNode extends JavaS
     protected ObjectImplementsTemporalCalendarProtocolNode() {
     }
 
+    @NeverDefault
     public static ObjectImplementsTemporalCalendarProtocolNode create() {
         return ObjectImplementsTemporalCalendarProtocolNodeGen.create();
     }

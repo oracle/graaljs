@@ -42,6 +42,7 @@ package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -59,6 +60,7 @@ public abstract class ToTemporalCalendarIdentifierNode extends JavaScriptBaseNod
     protected ToTemporalCalendarIdentifierNode() {
     }
 
+    @NeverDefault
     public static ToTemporalCalendarIdentifierNode create() {
         return ToTemporalCalendarIdentifierNodeGen.create();
     }
