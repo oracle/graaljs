@@ -4258,6 +4258,10 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-11-28"
   }, {
+    "filePath" : "mjsunit/temporal/calendar-month-day-from-fields.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
     "filePath" : "mjsunit/temporal/date-totemporalinstant.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -4270,9 +4274,45 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-11-28"
   }, {
+    "filePath" : "mjsunit/temporal/function-exist-no-intl.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
     "filePath" : "mjsunit/temporal/function-exist.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-from.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-calendar.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-day.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-dayOfWeek.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-dayOfYear.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-daysInMonth.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-daysInWeek.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-daysInYear.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
   }, {
     "filePath" : "mjsunit/temporal/plain-date-get-era.js",
     "status" : "FAIL",
@@ -4282,6 +4322,70 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-inLeapYear.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-month.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-monthCode.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-monthsInYear.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-weekOfYear.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-get-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-add.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-constructor.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-from.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-calendar.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-day.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-dayOfWeek.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-dayOfYear.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-daysInMonth.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-daysInWeek.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-daysInYear.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
     "filePath" : "mjsunit/temporal/plain-date-time-get-era.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
@@ -4289,6 +4393,106 @@
     "filePath" : "mjsunit/temporal/plain-date-time-get-eraYear.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-hour.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-inLeapYear.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-iso-fields.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-microsecond.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-millisecond.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-minute.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-month.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-monthCode.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-monthsInYear.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-nanosecond.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-second.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-weekOfYear.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-get-year.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-subtract.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-to-plain-month-day.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-to-plain-year-month.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-with-calendar.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-with-plain-date.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-with-plain-time.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-time-with.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-to-plain-date-time.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-to-plain-month-day.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-to-plain-year-month.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-with-calendar.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
+  }, {
+    "filePath" : "mjsunit/temporal/plain-date-with.js",
+    "status" : "FAIL",
+    "comment" : "Obsolete/off-spec test."
   }, {
     "filePath" : "mjsunit/test-builtins-setup.js",
     "status" : "FAIL",
