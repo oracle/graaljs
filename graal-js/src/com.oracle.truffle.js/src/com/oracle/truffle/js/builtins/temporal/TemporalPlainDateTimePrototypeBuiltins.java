@@ -59,6 +59,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeAddSubNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeCalendarGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeGetISOFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltinsFactory.JSTemporalPlainDateTimeGetterNodeGen;
@@ -145,7 +146,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
     public enum TemporalPlainDateTimePrototype implements BuiltinEnum<TemporalPlainDateTimePrototype> {
         // getters
-        calendar(0),
+        calendarId(0),
         year(0),
         month(0),
         monthCode(0),
@@ -200,15 +201,16 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Override
         public boolean isGetter() {
-            return EnumSet.of(calendar, hour, minute, second, millisecond, microsecond, nanosecond, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, daysInWeek, daysInMonth, daysInYear,
-                            monthsInYear, inLeapYear).contains(this);
+            return EnumSet.of(calendarId, hour, minute, second, millisecond, microsecond, nanosecond, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, daysInWeek, daysInMonth,
+                            daysInYear, monthsInYear, inLeapYear).contains(this);
         }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainDateTimePrototype builtinEnum) {
         switch (builtinEnum) {
-            case calendar:
+            case calendarId:
+                return JSTemporalPlainDateTimeCalendarGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case year:
             case month:
             case monthCode:
@@ -288,6 +290,24 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         return null;
     }
 
+    public abstract static class JSTemporalPlainDateTimeCalendarGetterNode extends JSBuiltinNode {
+
+        public JSTemporalPlainDateTimeCalendarGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected TruffleString calendarId(JSTemporalPlainDateTimeObject dateTime,
+                        @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier) {
+            return toCalendarIdentifier.executeString(dateTime.getCalendar());
+        }
+
+        @Specialization(guards = "!isJSTemporalPlainDateTime(dateTime)")
+        protected static TruffleString invalidReceiver(@SuppressWarnings("unused") Object dateTime) {
+            throw TemporalErrors.createTypeErrorTemporalPlainDateTimeExpected();
+        }
+    }
+
     public abstract static class JSTemporalPlainDateTimeGetterNode extends JSBuiltinNode {
 
         public final TemporalPlainDateTimePrototype property;
@@ -301,8 +321,6 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         protected Object dateTimeGetter(JSTemporalPlainDateTimeObject temporalDT,
                         @Cached TemporalCalendarGetterNode calendarGetterNode) {
             switch (property) {
-                case calendar:
-                    return temporalDT.getCalendar();
                 case hour:
                     return temporalDT.getHour();
                 case minute:

@@ -56,6 +56,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateAddSubNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateCalendarGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateGetISOFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltinsFactory.JSTemporalPlainDateGetterNodeGen;
@@ -130,7 +131,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
     public enum TemporalPlainDatePrototype implements BuiltinEnum<TemporalPlainDatePrototype> {
         // getters
-        calendar(0),
+        calendarId(0),
         year(0),
         month(0),
         monthCode(0),
@@ -175,7 +176,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Override
         public boolean isGetter() {
-            return EnumSet.of(calendar, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, daysInWeek, daysInMonth, daysInYear,
+            return EnumSet.of(calendarId, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, daysInWeek, daysInMonth, daysInYear,
                             monthsInYear, inLeapYear).contains(this);
         }
     }
@@ -183,7 +184,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainDatePrototype builtinEnum) {
         switch (builtinEnum) {
-            case calendar:
+            case calendarId:
+                return JSTemporalPlainDateCalendarGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case year:
             case month:
             case monthCode:
@@ -233,6 +235,24 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         return null;
     }
 
+    public abstract static class JSTemporalPlainDateCalendarGetterNode extends JSBuiltinNode {
+
+        protected JSTemporalPlainDateCalendarGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected final TruffleString calendarId(JSTemporalPlainDateObject temporalDate,
+                        @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier) {
+            return toCalendarIdentifier.executeString(temporalDate.getCalendar());
+        }
+
+        @Specialization(guards = "!isJSTemporalPlainDate(temporalDate)")
+        protected static TruffleString invalidReceiver(@SuppressWarnings("unused") Object temporalDate) {
+            throw TemporalErrors.createTypeErrorTemporalPlainDateExpected();
+        }
+    }
+
     public abstract static class JSTemporalPlainDateGetterNode extends JSBuiltinNode {
 
         protected final TemporalPlainDatePrototype property;
@@ -246,8 +266,6 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected final Object dateGetter(JSTemporalPlainDateObject temporalDT,
                         @Cached TemporalCalendarGetterNode calendarGetterNode) {
             switch (property) {
-                case calendar:
-                    return temporalDT.getCalendar();
                 case year:
                     return TemporalUtil.calendarYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case month:

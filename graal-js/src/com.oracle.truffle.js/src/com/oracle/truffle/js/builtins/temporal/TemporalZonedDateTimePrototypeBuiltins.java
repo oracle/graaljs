@@ -61,6 +61,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeAddSubNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeCalendarGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeGetISOFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalZonedDateTimePrototypeBuiltinsFactory.JSTemporalZonedDateTimeGetterNodeGen;
@@ -156,7 +157,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
     public enum TemporalZonedDateTimePrototype implements BuiltinEnum<TemporalZonedDateTimePrototype> {
         // getters
-        calendar(0),
+        calendarId(0),
         timeZone(0),
         year(0),
         month(0),
@@ -222,14 +223,15 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Override
         public boolean isGetter() {
-            return EnumSet.range(calendar, offset).contains(this);
+            return EnumSet.range(calendarId, offset).contains(this);
         }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalZonedDateTimePrototype builtinEnum) {
         switch (builtinEnum) {
-            case calendar:
+            case calendarId:
+                return JSTemporalZonedDateTimeCalendarGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case timeZone:
             case year:
             case month:
@@ -308,6 +310,24 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         return null;
     }
 
+    public abstract static class JSTemporalZonedDateTimeCalendarGetterNode extends JSBuiltinNode {
+
+        protected JSTemporalZonedDateTimeCalendarGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected TruffleString calendarId(JSTemporalZonedDateTimeObject zonedDateTime,
+                        @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier) {
+            return toCalendarIdentifier.executeString(zonedDateTime.getCalendar());
+        }
+
+        @Specialization(guards = "!isJSTemporalZonedDateTime(zonedDateTime)")
+        static TruffleString invalidReceiver(@SuppressWarnings("unused") Object zonedDateTime) {
+            throw TemporalErrors.createTypeErrorTemporalZonedDateTimeExpected();
+        }
+    }
+
     public abstract static class JSTemporalZonedDateTimeGetterNode extends JSBuiltinNode {
 
         protected final TemporalZonedDateTimePrototype property;
@@ -323,8 +343,6 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
             switch (property) {
-                case calendar:
-                    return zdt.getCalendar();
                 case timeZone:
                     return zdt.getTimeZone();
                 case year:

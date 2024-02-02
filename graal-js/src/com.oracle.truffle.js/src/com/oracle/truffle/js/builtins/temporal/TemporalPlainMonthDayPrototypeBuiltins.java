@@ -54,6 +54,7 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayCalendarGetterNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayEqualsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayGetISOFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltinsFactory.JSTemporalPlainMonthDayGetterNodeGen;
@@ -99,7 +100,7 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
 
     public enum TemporalPlainMonthDayPrototype implements BuiltinEnum<TemporalPlainMonthDayPrototype> {
         // getters
-        calendar(0),
+        calendarId(0),
         monthCode(0),
         day(0),
 
@@ -126,14 +127,15 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
 
         @Override
         public boolean isGetter() {
-            return EnumSet.of(calendar, monthCode, day).contains(this);
+            return EnumSet.of(calendarId, monthCode, day).contains(this);
         }
     }
 
     @Override
     protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, TemporalPlainMonthDayPrototype builtinEnum) {
         switch (builtinEnum) {
-            case calendar:
+            case calendarId:
+                return JSTemporalPlainMonthDayCalendarGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case monthCode:
             case day:
                 return JSTemporalPlainMonthDayGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
@@ -157,6 +159,24 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
         return null;
     }
 
+    public abstract static class JSTemporalPlainMonthDayCalendarGetterNode extends JSBuiltinNode {
+
+        protected JSTemporalPlainMonthDayCalendarGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected TruffleString calendarId(JSTemporalPlainMonthDayObject monthDay,
+                        @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier) {
+            return toCalendarIdentifier.executeString(monthDay.getCalendar());
+        }
+
+        @Specialization(guards = "!isJSTemporalMonthDay(monthDay)")
+        protected static Object invalidReceiver(@SuppressWarnings("unused") Object monthDay) {
+            throw TemporalErrors.createTypeErrorTemporalPlainMonthDayExpected();
+        }
+    }
+
     public abstract static class JSTemporalPlainMonthDayGetterNode extends JSBuiltinNode {
 
         protected final TemporalPlainMonthDayPrototype property;
@@ -174,8 +194,6 @@ public class TemporalPlainMonthDayPrototypeBuiltins extends JSBuiltinsContainer.
                     return TemporalUtil.calendarDay(calendarGetterNode, plainMD.getCalendar(), plainMD);
                 case monthCode:
                     return TemporalUtil.calendarMonthCode(calendarGetterNode, plainMD.getCalendar(), plainMD);
-                case calendar:
-                    return plainMD.getCalendar();
             }
             throw Errors.shouldNotReachHere();
         }
