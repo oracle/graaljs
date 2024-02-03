@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,24 +68,23 @@
 
 package com.oracle.truffle.js.runtime.doubleconv;
 
-// @formatter:off
-
 /**
  * This defines the string conversion modes supported by this package.
- * The original C++ library also supports SHORTEST-SINGLE for single
- * precision floats but we don't since we always operate with doubles.
+ *
+ * The original C++ library also supports SHORTEST-SINGLE for single precision floats but we don't
+ * since we always operate with doubles.
  */
 public enum DtoaMode {
     /**
      * Produce the shortest correct representation.
-     * For example the output of 0.299999999999999988897 is (the less accurate
-     * but correct) 0.3.
+     *
+     * For example the output of 0.299999999999999988897 is (the less accurate but correct) 0.3.
      */
     SHORTEST,
     /**
      * Produce a fixed number of digits after the decimal point.
-     * For instance fixed(0.1, 4) becomes 0.1000
-     * If the input number is big, the output will be big.
+     *
+     * For instance fixed(0.1, 4) becomes 0.1000 If the input number is big, the output will be big.
      */
     FIXED,
     /**
