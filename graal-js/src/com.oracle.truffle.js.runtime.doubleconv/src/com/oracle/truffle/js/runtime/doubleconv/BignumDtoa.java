@@ -1,5 +1,9 @@
 /*
+<<<<<<< HEAD
  * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+=======
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+>>>>>>> 5977c9c4c37 (Apply simplifications and cleanups from upstream double-conversion (v3.1.5..v3.3.0).)
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -294,7 +298,7 @@ class BignumDtoa {
 
     // Let v = numerator / denominator < 10.
     // Then we generate 'count' digits of d = x.xxxxx... (without the decimal point)
-    // from left to right. Once 'count' digits have been produced we decide wether
+    // from left to right. Once 'count' digits have been produced we decide whether
     // to round up or down. Remainders of exactly .5 round upwards. Numbers such
     // as 9.999999 propagate a carry all the way, and change the
     // exponent (decimal_point), when rounding upwards.
@@ -388,7 +392,7 @@ class BignumDtoa {
     // Returns an estimation of k such that 10^(k-1) <= v < 10^k where
     // v = f * 2^exponent and 2^52 <= f < 2^53.
     // v is hence a normalized double with the given exponent. The output is an
-    // approximation for the exponent of the decimal approimation .digits * 10^k.
+    // approximation for the exponent of the decimal approximation .digits * 10^k.
     //
     // The result might undershoot by 1 in which case 10^k <= v < 10^k+1.
     // Note: this property holds for v's upper boundary m+ too.
@@ -566,7 +570,7 @@ class BignumDtoa {
     //
     // Let ep == estimated_power, then the returned values will satisfy:
     //  v / 10^ep = numerator / denominator.
-    //  v's boundarys m- and m+:
+    //  v's boundaries m- and m+:
     //    m- / 10^ep == v / 10^ep - delta_minus / denominator
     //    m+ / 10^ep == v / 10^ep + delta_plus / denominator
     //  Or in other words:

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2019, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -98,9 +98,9 @@ class DiyFp {
         this.e_ = e;
     }
 
-    // this = this - other.
+    // this -= other.
     // The exponents of both numbers must be the same and the significand of this
-    // must be bigger than the significand of other.
+    // must be greater or equal than the significand of other.
     // The result will not be normalized.
     void subtract(final DiyFp other) {
         assert (e_ == other.e_);
@@ -109,8 +109,8 @@ class DiyFp {
     }
 
     // Returns a - b.
-    // The exponents of both numbers must be the same and this must be bigger
-    // than other. The result will not be normalized.
+    // The exponents of both numbers must be the same and a must be greater
+    // or equal than b. The result will not be normalized.
     static DiyFp minus(final DiyFp a, final DiyFp b) {
         final DiyFp result = new DiyFp(a.f_, a.e_);
         result.subtract(b);
@@ -118,7 +118,7 @@ class DiyFp {
     }
 
 
-    // this = this * other.
+    // this *= other.
     final void multiply(final DiyFp other) {
         // Simply "emulates" a 128 bit multiplication.
         // However: the resulting number only contains 64 bits. The least
@@ -133,13 +133,11 @@ class DiyFp {
         final long bc = b * c;
         final long ad = a * d;
         final long bd = b * d;
-        long tmp = (bd >>> 32) + (ad & kM32) + (bc & kM32);
         // By adding 1U << 31 to tmp we round the final result.
         // Halfway cases will be round up.
-        tmp += 1L << 31;
-        final long result_f = ac + (ad >>> 32) + (bc >>> 32) + (tmp >>> 32);
+        final long tmp = (bd >>> 32) + (ad & kM32) + (bc & kM32) + (1L << 31);
         e_ += other.e_ + 64;
-        f_ = result_f;
+        f_ = ac + (ad >>> 32) + (bc >>> 32) + (tmp >>> 32);
     }
 
     // returns a * b;
@@ -154,8 +152,8 @@ class DiyFp {
         long significand = this.f_;
         int exponent = this.e_;
 
-        // This method is mainly called for normalizing boundaries. In general
-        // boundaries need to be shifted by 10 bits. We thus optimize for this case.
+        // This method is mainly called for normalizing boundaries. In general,
+        // boundaries need to be shifted by 10 bits, and we optimize for this case.
         final long k10MSBits = 0xFFC00000L << 32;
         while ((significand & k10MSBits) == 0) {
             significand <<= 10;

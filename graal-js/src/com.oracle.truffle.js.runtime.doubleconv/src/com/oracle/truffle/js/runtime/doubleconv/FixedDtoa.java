@@ -1,5 +1,9 @@
 /*
+<<<<<<< HEAD
  * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+=======
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+>>>>>>> 5977c9c4c37 (Apply simplifications and cleanups from upstream double-conversion (v3.1.5..v3.3.0).)
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -429,8 +433,8 @@ class FixedDtoa {
         }
         trimZeros(buffer);
         if (buffer.length == 0) {
-            // The string is empty and the decimal_point thus has no importance. Mimick
-            // Gay's dtoa and and set it to -fractional_count.
+            // The string is empty and the decimal_point thus has no importance. Mimic
+            // Gay's dtoa and set it to -fractional_count.
             buffer.decimalPoint = -fractional_count;
         }
         return true;
