@@ -70,8 +70,6 @@ package com.oracle.truffle.js.runtime.doubleconv;
 
 import java.util.Arrays;
 
-// @formatter:off
-
 @SuppressWarnings("all")
 class Bignum {
 
@@ -95,16 +93,21 @@ class Bignum {
     private int exponent_;
     private final int[] bigits_ = new int[kBigitCapacity];
 
-    Bignum() {}
+    Bignum() {
+    }
 
-    void times10() { multiplyByUInt32(10); }
+    void times10() {
+        multiplyByUInt32(10);
+    }
 
     static boolean equal(final Bignum a, final Bignum b) {
         return compare(a, b) == 0;
     }
+
     static boolean lessEqual(final Bignum a, final Bignum b) {
         return compare(a, b) <= 0;
     }
+
     static boolean less(final Bignum a, final Bignum b) {
         return compare(a, b) < 0;
     }
@@ -113,10 +116,12 @@ class Bignum {
     static boolean plusEqual(final Bignum a, final Bignum b, final Bignum c) {
         return plusCompare(a, b, c) == 0;
     }
+
     // Returns a + b <= c
     static boolean plusLessEqual(final Bignum a, final Bignum b, final Bignum c) {
         return plusCompare(a, b, c) <= 0;
     }
+
     // Returns a + b < c
     static boolean plusLess(final Bignum a, final Bignum b, final Bignum c) {
         return plusCompare(a, b, c) < 0;
@@ -129,7 +134,9 @@ class Bignum {
     }
 
     // BigitLength includes the "hidden" digits encoded in the exponent.
-    int bigitLength() { return used_bigits_ + exponent_; }
+    int bigitLength() {
+        return used_bigits_ + exponent_;
+    }
 
     // Guaranteed to lie in one Bigit.
     void assignUInt16(final char value) {
@@ -141,9 +148,8 @@ class Bignum {
         }
     }
 
-
     void assignUInt64(long value) {
-        final  int kUInt64Size = 64;
+        final int kUInt64Size = 64;
 
         zero();
         for (int i = 0; value > 0; ++i) {
@@ -152,7 +158,6 @@ class Bignum {
             ++used_bigits_;
         }
     }
-
 
     void assignBignum(final Bignum other) {
         assert isClamped();
@@ -164,10 +169,9 @@ class Bignum {
         used_bigits_ = other.used_bigits_;
     }
 
-
     static long readUInt64(final String str,
-                           final int from,
-                           final int digits_to_read) {
+                    final int from,
+                    final int digits_to_read) {
         long result = 0;
         for (int i = from; i < from + digits_to_read; ++i) {
             final int digit = str.charAt(i) - '0';
@@ -176,7 +180,6 @@ class Bignum {
         }
         return result;
     }
-
 
     void assignDecimalString(final String str) {
         // 2^64 = 18446744073709551616 > 10^19
@@ -197,7 +200,6 @@ class Bignum {
         addUInt64(digits);
         clamp();
     }
-
 
     static int hexCharValue(final char c) {
         if ('0' <= c && c <= '9') {
@@ -236,7 +238,6 @@ class Bignum {
         clamp();
     }
 
-
     void addUInt64(final long operand) {
         if (operand == 0) {
             return;
@@ -246,7 +247,6 @@ class Bignum {
         addBignum(other);
     }
 
-
     void addBignum(final Bignum other) {
         assert (isClamped());
         assert (other.isClamped());
@@ -255,6 +255,7 @@ class Bignum {
         // After this call exponent_ <= other.exponent_.
         align(other);
 
+        // @formatter:off
         // There are two possibilities:
         //   aaaaaaaaaaa 0000  (where the 0s represent a's exponent)
         //     bbbbb 00000000
@@ -266,6 +267,7 @@ class Bignum {
         //  -----------------
         //  cccccccccccc 0000
         // In both cases we might need a carry bigit.
+        // @formatter:on
 
         ensureCapacity(1 + Math.max(bigitLength(), other.bigitLength()) - exponent_);
         int carry = 0;
@@ -293,7 +295,6 @@ class Bignum {
         assert (isClamped());
     }
 
-
     void subtractBignum(final Bignum other) {
         assert (isClamped());
         assert (other.isClamped());
@@ -320,7 +321,6 @@ class Bignum {
         clamp();
     }
 
-
     void shiftLeft(final int shift_amount) {
         if (used_bigits_ == 0) {
             return;
@@ -330,7 +330,6 @@ class Bignum {
         ensureCapacity(used_bigits_ + 1);
         bigitsShiftLeft(local_shift);
     }
-
 
     void multiplyByUInt32(final int factor) {
         if (factor == 1) {
@@ -361,7 +360,6 @@ class Bignum {
         }
     }
 
-
     void multiplyByUInt64(final long factor) {
         if (factor == 1) {
             return;
@@ -383,7 +381,7 @@ class Bignum {
             final long tmp = (carry & kBigitMask) + product_low;
             bigits_[i] = (int) (tmp & kBigitMask);
             carry = (carry >>> kBigitSize) + (tmp >>> kBigitSize) +
-                    (product_high << (32 - kBigitSize));
+                            (product_high << (32 - kBigitSize));
         }
         while (carry != 0) {
             ensureCapacity(used_bigits_ + 1);
@@ -392,7 +390,6 @@ class Bignum {
             carry >>>= kBigitSize;
         }
     }
-
 
     void multiplyByPowerOfTen(final int exponent) {
         final long kFive27 = 0x6765c793fa10079dL;
@@ -409,9 +406,9 @@ class Bignum {
         final int kFive11 = kFive10 * 5;
         final int kFive12 = kFive11 * 5;
         final int kFive13 = kFive12 * 5;
-        final int kFive1_to_12[] =
-                { kFive1, kFive2, kFive3, kFive4, kFive5, kFive6,
-                        kFive7, kFive8, kFive9, kFive10, kFive11, kFive12 };
+        final int kFive1_to_12[] = {
+                        kFive1, kFive2, kFive3, kFive4, kFive5, kFive6,
+                        kFive7, kFive8, kFive9, kFive10, kFive11, kFive12};
 
         assert (exponent >= 0);
         if (exponent == 0) {
@@ -437,12 +434,12 @@ class Bignum {
         shiftLeft(exponent);
     }
 
-
     void square() {
         assert (isClamped());
         final int product_length = 2 * used_bigits_;
         ensureCapacity(product_length);
 
+        // @formatter:off
         // Comba multiplication: compute each column separately.
         // Example: r = a2a1a0 * b2b1b0.
         //    r =  1    * a0b0 +
@@ -452,7 +449,8 @@ class Bignum {
         //        10000 * a2b2
         //
         // In the worst case we have to accumulate nb-digits products of digit*digit.
-        //
+        // @formatter:on
+
         // Assert that the additional number of bits in a DoubleChunk are enough to
         // sum up used_digits of Bigit*Bigit.
         if ((1L << (2 * (kChunkSize - kBigitSize))) <= used_bigits_) {
@@ -509,7 +507,6 @@ class Bignum {
         clamp();
     }
 
-
     void assignPowerUInt16(int base, final int power_exponent) {
         assert (base != 0);
         assert (power_exponent >= 0);
@@ -538,7 +535,9 @@ class Bignum {
 
         // Left to Right exponentiation.
         int mask = 1;
-        while (power_exponent >= mask) mask <<= 1;
+        while (power_exponent >= mask) {
+            mask <<= 1;
+        }
 
         // The mask is now pointing to the bit above the most significant 1-bit of
         // power_exponent.
@@ -551,11 +550,10 @@ class Bignum {
         while (mask != 0 && this_value <= max_32bits) {
             this_value = this_value * this_value;
             // Verify that there is enough space in this_value to perform the
-            // multiplication.  The first bit_size bits must be 0.
+            // multiplication. The first bit_size bits must be 0.
             if ((power_exponent & mask) != 0) {
                 assert bit_size > 0;
-                final long base_bits_mask =
-                        ~((1L << (64 - bit_size)) - 1);
+                final long base_bits_mask = ~((1L << (64 - bit_size)) - 1);
                 final boolean high_bits_zero = (this_value & base_bits_mask) == 0;
                 if (high_bits_zero) {
                     this_value *= base;
@@ -582,7 +580,6 @@ class Bignum {
         // And finally add the saved shifts.
         shiftLeft(shifts * power_exponent);
     }
-
 
     // Precondition: this/other < 16bit.
     char divideModuloIntBignum(final Bignum other) {
@@ -655,7 +652,6 @@ class Bignum {
         return result;
     }
 
-
     static int sizeInHexChars(int number) {
         assert (number > 0);
         int result = 0;
@@ -666,7 +662,6 @@ class Bignum {
         return result;
     }
 
-
     static char hexCharOfValue(final int value) {
         assert (0 <= value && value <= 16);
         if (value < 10) {
@@ -674,7 +669,6 @@ class Bignum {
         }
         return (char) (value - 10 + 'A');
     }
-
 
     String toHexString() {
         assert (isClamped());
@@ -687,7 +681,7 @@ class Bignum {
         }
 
         final int needed_chars = (bigitLength() - 1) * kHexCharsPerBigit +
-                sizeInHexChars(bigits_[used_bigits_ - 1]);
+                        sizeInHexChars(bigits_[used_bigits_ - 1]);
         final StringBuilder buffer = new StringBuilder(needed_chars);
         buffer.setLength(needed_chars);
 
@@ -713,7 +707,6 @@ class Bignum {
         return buffer.toString();
     }
 
-
     int bigitOrZero(final int index) {
         if (index >= bigitLength()) {
             return 0;
@@ -723,7 +716,6 @@ class Bignum {
         }
         return bigits_[index - exponent_];
     }
-
 
     static int compare(final Bignum a, final Bignum b) {
         assert (a.isClamped());
@@ -749,7 +741,6 @@ class Bignum {
         }
         return 0;
     }
-
 
     static int plusCompare(final Bignum a, final Bignum b, final Bignum c) {
         assert (a.isClamped());
@@ -795,7 +786,6 @@ class Bignum {
         return -1;
     }
 
-
     void clamp() {
         while (used_bigits_ > 0 && bigits_[used_bigits_ - 1] == 0) {
             used_bigits_--;
@@ -806,26 +796,25 @@ class Bignum {
         }
     }
 
-
     boolean isClamped() {
         return used_bigits_ == 0 || bigits_[used_bigits_ - 1] != 0;
     }
-
 
     void zero() {
         used_bigits_ = 0;
         exponent_ = 0;
     }
 
-
     void align(final Bignum other) {
         if (exponent_ > other.exponent_) {
+            // @formatter:off
             // If "X" represents a "hidden" bigit (by the exponent) then we are in the
             // following case (a == this, b == other):
             // a:  aaaaaaXXXX   or a:   aaaaaXXX
             // b:     bbbbbbX      b: bbbbbbbbXX
             // We replace some of the hidden digits (X) of a with 0 digits.
             // a:  aaaaaa000X   or a:   aaaaa0XX
+            // @formatter:on
             final int zero_bigits = exponent_ - other.exponent_;
             ensureCapacity(used_bigits_ + zero_bigits);
             for (int i = used_bigits_ - 1; i >= 0; --i) {
@@ -841,7 +830,6 @@ class Bignum {
         }
     }
 
-
     void bigitsShiftLeft(final int shift_amount) {
         assert (shift_amount < kBigitSize);
         assert (shift_amount >= 0);
@@ -856,7 +844,6 @@ class Bignum {
             used_bigits_++;
         }
     }
-
 
     void subtractTimes(final Bignum other, final int factor) {
         assert (exponent_ <= other.exponent_);
@@ -874,7 +861,7 @@ class Bignum {
             final int difference = bigits_[i + exponent_diff] - (int) (remove & kBigitMask);
             bigits_[i + exponent_diff] = difference & kBigitMask;
             borrow = (int) ((difference >>> (kChunkSize - 1)) +
-                    (remove >>> kBigitSize));
+                            (remove >>> kBigitSize));
         }
         for (int i = other.used_bigits_ + exponent_diff; i < used_bigits_; ++i) {
             if (borrow == 0) {
