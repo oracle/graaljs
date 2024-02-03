@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -68,13 +68,15 @@
 
 package com.oracle.truffle.js.runtime.doubleconv;
 
-public class CachedPowers {
+import java.util.List;
+
+public final class CachedPowers {
 
     private CachedPowers() {
         // should not be constructed
     }
 
-    static class CachedPower {
+    private static final class CachedPower {
         final private long significand;
         final private int binaryExponent;
         final private int decimalExponent;
@@ -86,7 +88,7 @@ public class CachedPowers {
         }
     }
 
-    static private final CachedPower[] kCachedPowers = {
+    private static final List<CachedPower> kCachedPowers = List.of(
                     new CachedPower(0xfa8fd5a0081c0288L, -1220, -348),
                     new CachedPower(0xbaaee17fa23ebf76L, -1193, -340),
                     new CachedPower(0x8b16fb203055ac76L, -1166, -332),
@@ -173,8 +175,7 @@ public class CachedPowers {
                     new CachedPower(0xd433179d9c8cb841L, 986, 316),
                     new CachedPower(0x9e19db92b4e31ba9L, 1013, 324),
                     new CachedPower(0xeb96bf6ebadf77d9L, 1039, 332),
-                    new CachedPower(0xaf87023b9bf0ee6bL, 1066, 340)
-    };
+                    new CachedPower(0xaf87023b9bf0ee6bL, 1066, 340));
 
     static final int kCachedPowersOffset = 348;  // -1 * the first decimal_exponent.
     static final double kD_1_LOG2_10 = 0.30102999566398114;  // 1 / lg(10)
@@ -190,8 +191,8 @@ public class CachedPowers {
         final int kQ = DiyFp.kSignificandSize;
         final double k = Math.ceil((min_exponent + kQ - 1) * kD_1_LOG2_10);
         final int index = (kCachedPowersOffset + (int) k - 1) / kDecimalExponentDistance + 1;
-        assert (0 <= index && index < kCachedPowers.length);
-        final CachedPower cached_power = kCachedPowers[index];
+        assert (0 <= index && index < kCachedPowers.size());
+        final CachedPower cached_power = kCachedPowers.get(index);
         assert (min_exponent <= cached_power.binaryExponent);
         assert (cached_power.binaryExponent <= max_exponent);
         power.setF(cached_power.significand);
@@ -199,12 +200,11 @@ public class CachedPowers {
         return cached_power.decimalExponent;
     }
 
-    static int getCachedPowerForDecimalExponent(final int requested_exponent,
-                    final DiyFp power) {
+    static int getCachedPowerForDecimalExponent(final int requested_exponent, final DiyFp power) {
         assert (kMinDecimalExponent <= requested_exponent);
         assert (requested_exponent < kMaxDecimalExponent + kDecimalExponentDistance);
         final int index = (requested_exponent + kCachedPowersOffset) / kDecimalExponentDistance;
-        final CachedPower cached_power = kCachedPowers[index];
+        final CachedPower cached_power = kCachedPowers.get(index);
         power.setF(cached_power.significand);
         power.setE(cached_power.binaryExponent);
         final int found_exponent = cached_power.decimalExponent;

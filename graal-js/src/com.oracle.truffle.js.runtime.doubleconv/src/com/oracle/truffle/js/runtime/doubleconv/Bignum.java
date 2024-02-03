@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2025, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -607,13 +607,8 @@ class Bignum {
             assert (bigits_[used_bigits_ - 1] < 0x10000);
             // Remove the multiples of the first digit.
             // Example this = 23 and other equals 9. -> Remove 2 multiples.
-<<<<<<< HEAD
-            result += (bigits_[used_digits_ - 1]);
-            subtractTimes(other, bigits_[used_digits_ - 1]);
-=======
             result += (char) (bigits_[used_bigits_ - 1]);
             subtractTimes(other, bigits_[used_bigits_ - 1]);
->>>>>>> da29e944606 (Rename `used_digits_` to `used_bigits_`.)
         }
 
         assert (bigitLength() == other.bigitLength());
