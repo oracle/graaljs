@@ -72,8 +72,6 @@
 
 package com.oracle.truffle.js.runtime.doubleconv;
 
-// @formatter:off
-
 // This "Do It Yourself Floating Point" class implements a floating-point number
 // with a uint64 significand and an int exponent. Normalized DiyFp numbers will
 // have the most significant bit of the significand set.
@@ -86,7 +84,6 @@ class DiyFp {
 
     static final int kSignificandSize = 64;
     static final long kUint64MSB = 0x8000000000000000L;
-
 
     DiyFp() {
         this.f_ = 0;
@@ -117,8 +114,7 @@ class DiyFp {
         return result;
     }
 
-
-    // this *= other.
+    // this = this * other.
     final void multiply(final DiyFp other) {
         // Simply "emulates" a 128 bit multiplication.
         // However: the resulting number only contains 64 bits. The least
@@ -148,7 +144,7 @@ class DiyFp {
     }
 
     void normalize() {
-        assert(f_ != 0);
+        assert (f_ != 0);
         long significand = this.f_;
         int exponent = this.e_;
 
@@ -173,11 +169,21 @@ class DiyFp {
         return result;
     }
 
-    long f() { return f_; }
-    int e() { return e_; }
+    long f() {
+        return f_;
+    }
 
-    void setF(final long new_value) { f_ = new_value; }
-    void setE(final int new_value) { e_ = new_value; }
+    int e() {
+        return e_;
+    }
+
+    void setF(final long new_value) {
+        f_ = new_value;
+    }
+
+    void setE(final int new_value) {
+        e_ = new_value;
+    }
 
     @Override
     public String toString() {
