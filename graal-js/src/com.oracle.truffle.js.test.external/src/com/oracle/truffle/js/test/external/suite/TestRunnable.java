@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import java.nio.file.Paths;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
+import java.util.StringJoiner;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Matcher;
@@ -60,7 +61,7 @@ import java.util.stream.Stream;
 import org.graalvm.polyglot.Source;
 
 public abstract class TestRunnable implements Runnable {
-
+    private static final int LONG_RUNNING_TEST_SECONDS = 55;
     protected static final Pattern EXTERNAL_LAUNCHER_ERROR_PATTERN = Pattern.compile("^(\\w+Error)(?::|\\s+at)");
     protected static final Pattern EXTERNAL_LAUNCHER_EXCEPTION_PATTERN = Pattern.compile("^([\\w\\.]+Exception):");
 
@@ -208,6 +209,30 @@ public abstract class TestRunnable implements Runnable {
         assert List.of(features).equals(Arrays.stream(features).sorted().distinct().collect(Collectors.toList())) : "Feature list is not sorted/distinct. Expected:\n" +
                         Arrays.stream(features).sorted().distinct().map(f -> String.format("\"%s\",", f)).collect(Collectors.joining("\n"));
         return Set.of(features);
+    }
+
+    protected void reportStart() {
+        synchronized (suite) {
+            suite.getActiveTests().add(this);
+        }
+    }
+
+    protected void reportEnd(long startDate) {
+        long executionTime = System.currentTimeMillis() - startDate;
+        synchronized (suite) {
+            if (executionTime > LONG_RUNNING_TEST_SECONDS * 1000) {
+                System.out.println("Long running test finished: " + getTestFile().getFilePath() + " " + executionTime);
+            }
+
+            suite.getActiveTests().remove(this);
+            StringJoiner activeTestNames = new StringJoiner(", ");
+            if (suite.getConfig().isVerbose()) {
+                for (TestRunnable test : suite.getActiveTests()) {
+                    activeTestNames.add(test.getName());
+                }
+                suite.logVerbose("Finished test: " + getName() + " after " + executionTime + " ms, active: " + activeTestNames);
+            }
+        }
     }
 
     // ~ Inner classes

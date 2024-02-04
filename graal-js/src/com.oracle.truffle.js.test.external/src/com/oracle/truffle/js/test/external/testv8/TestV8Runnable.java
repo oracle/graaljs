@@ -51,7 +51,6 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.StringJoiner;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
@@ -68,9 +67,6 @@ import com.oracle.truffle.js.test.external.suite.TestRunnable;
 import com.oracle.truffle.js.test.external.suite.TestSuite;
 
 public class TestV8Runnable extends TestRunnable {
-
-    private static final int LONG_RUNNING_TEST_SECONDS = 55;
-
     private static final String ALLOW_NATIVES_SYNTAX = "--allow-natives-syntax";
     private static final String ALLOW_NATIVES_FOR_DIFFERENTIAL_FUZZING = "--allow-natives-for-differential-fuzzing";
     private static final String HARMONY_ERROR_CAUSE = "--harmony-error-cause";
@@ -345,30 +341,6 @@ public class TestV8Runnable extends TestRunnable {
 
     private static String createTestFileNamePrefix(File file) {
         return "TEST_FILE_NAME = \"" + file.getPath().replaceAll("\\\\", "\\\\\\\\") + "\"";
-    }
-
-    private void reportStart() {
-        synchronized (suite) {
-            suite.getActiveTests().add(this);
-        }
-    }
-
-    private void reportEnd(long startDate) {
-        long executionTime = System.currentTimeMillis() - startDate;
-        synchronized (suite) {
-            if (executionTime > LONG_RUNNING_TEST_SECONDS * 1000) {
-                System.out.println("Long running test finished: " + getTestFile().getFilePath() + " " + executionTime);
-            }
-
-            suite.getActiveTests().remove(this);
-            StringJoiner activeTestNames = new StringJoiner(", ");
-            if (suite.getConfig().isVerbose()) {
-                for (TestRunnable test : suite.getActiveTests()) {
-                    activeTestNames.add(test.getName());
-                }
-                suite.logVerbose("Finished test: " + getName() + " after " + executionTime + " ms, active: " + activeTestNames);
-            }
-        }
     }
 
     private void printScript(String scriptCode) {
