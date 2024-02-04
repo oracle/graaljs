@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,37 +43,34 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Implementation of the Temporal monthDayFromFields() operation.
  */
 public abstract class TemporalMonthDayFromFieldsNode extends JavaScriptBaseNode {
 
-    @Child private GetMethodNode getMethodMonthDayFromFieldsNode;
     @Child private JSFunctionCallNode callMonthDayFromFieldsNode;
 
     protected TemporalMonthDayFromFieldsNode() {
-        this.getMethodMonthDayFromFieldsNode = GetMethodNode.create(JavaScriptLanguage.get(null).getJSContext(), TemporalUtil.MONTH_DAY_FROM_FIELDS);
         this.callMonthDayFromFieldsNode = JSFunctionCallNode.createCall();
     }
 
-    public abstract JSTemporalPlainMonthDayObject execute(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options);
+    public abstract JSTemporalPlainMonthDayObject execute(CalendarMethodsRecord calendarRec, JSDynamicObject fields, JSDynamicObject options);
 
     @Specialization
-    protected JSTemporalPlainMonthDayObject monthDayFromFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options,
+    protected JSTemporalPlainMonthDayObject monthDayFromFields(CalendarMethodsRecord calendarRec, JSDynamicObject fields, JSDynamicObject options,
+                    @Cached ToTemporalCalendarObjectNode toCalendar,
                     @Cached InlinedBranchProfile errorBranch) {
         assert options != null;
-        Object fn = getMethodMonthDayFromFieldsNode.executeWithTarget(calendar);
-        Object monthDay = callMonthDayFromFieldsNode.executeCall(JSArguments.create(calendar, fn, fields, options));
+        Object calendar = toCalendar.execute(calendarRec.receiver());
+        Object monthDay = callMonthDayFromFieldsNode.executeCall(JSArguments.create(calendar, calendarRec.monthDayFromFields(), fields, options));
         return requireTemporalMonthDay(monthDay, errorBranch);
     }
 

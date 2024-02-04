@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,12 +69,14 @@ public abstract class TemporalAddDateNode extends JavaScriptBaseNode {
 
     @Specialization
     protected JSTemporalPlainDateObject addDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject plainDate, JSTemporalDurationObject duration, JSDynamicObject options,
+                    @Cached ToTemporalCalendarObjectNode toCalendarObject,
                     @Cached("createCall()") JSFunctionCallNode callDateAddNode,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached TemporalGetOptionNode getOptionNode) {
         if (duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0) {
             // CalendarDateAdd(calendarRec, plainDate, duration, options).
-            Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendarRec.receiver(), calendarRec.dateAdd(), plainDate, duration, options));
+            Object calendar = toCalendarObject.execute(calendarRec.receiver());
+            Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, calendarRec.dateAdd(), plainDate, duration, options));
             return TemporalUtil.requireTemporalDate(addedDate, this, errorBranch);
         } else {
             JSContext ctx = getLanguage().getJSContext();

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins.temporal;
+package com.oracle.truffle.js.nodes.temporal;
 
-import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Strings;
 
-public final class JSTemporalPlainYearMonthObject extends JSTemporalCalendarHolder {
+/**
+ * Implementation of ToTemporalCalendarIdentifier() operation.
+ */
+@ImportStatic(Strings.class)
+public abstract class ToTemporalCalendarIdentifierNode extends JavaScriptBaseNode {
 
-    private final int isoYear;
-    private final int isoMonth;
-    private final int isoDay;
-
-    protected JSTemporalPlainYearMonthObject(Shape shape, JSDynamicObject proto, int isoYear, int isoMonth, int isoDay,
-                    Object calendar) {
-        super(shape, proto, calendar);
-        this.isoYear = isoYear;
-        this.isoMonth = isoMonth;
-        this.isoDay = isoDay;
+    protected ToTemporalCalendarIdentifierNode() {
     }
 
-    public int getYear() {
-        return isoYear;
+    @NeverDefault
+    public static ToTemporalCalendarIdentifierNode create() {
+        return ToTemporalCalendarIdentifierNodeGen.create();
     }
 
-    public int getMonth() {
-        return isoMonth;
+    public abstract TruffleString executeString(Object calendarSlotValue);
+
+    @Specialization
+    public TruffleString doString(TruffleString calendarSlotValue) {
+        return calendarSlotValue;
     }
 
-    public int getDay() {
-        return isoDay;
+    @Specialization(guards = "!isString(calendarSlotValue)")
+    public TruffleString doNonString(Object calendarSlotValue,
+                    @Cached("create(ID_PROPERTY_NAME, getJSContext())") PropertyGetNode getIdNode,
+                    @Cached InlinedBranchProfile errorBranch) {
+        Object identifier = getIdNode.getValue(calendarSlotValue);
+        if (identifier instanceof TruffleString stringIdentifier) {
+            return stringIdentifier;
+        } else {
+            errorBranch.enter(this);
+            throw Errors.createTypeErrorNotAString(identifier);
+        }
     }
+
 }

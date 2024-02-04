@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,7 +65,7 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
     private final BigInt nanoseconds; // 6.4. A BigInt value
     private final JSDynamicObject timeZone;
 
-    protected JSTemporalZonedDateTimeObject(Shape shape, JSDynamicObject proto, BigInt nanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar) {
+    protected JSTemporalZonedDateTimeObject(Shape shape, JSDynamicObject proto, BigInt nanoseconds, JSDynamicObject timeZone, Object calendar) {
         super(shape, proto, calendar);
         assert TemporalUtil.isValidEpochNanoseconds(nanoseconds);
         this.nanoseconds = nanoseconds;

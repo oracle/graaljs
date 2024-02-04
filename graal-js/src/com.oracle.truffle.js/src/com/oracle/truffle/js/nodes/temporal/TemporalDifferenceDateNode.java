@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,6 +75,7 @@ public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
     final JSTemporalDurationObject differenceDate(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two,
                     Unit largestUnit, JSObject untilOptions,
                     @Cached InlinedBranchProfile errorBranch,
+                    @Cached ToTemporalCalendarObjectNode toCalendarObject,
                     @Cached("createCall()") JSFunctionCallNode callDateUntilNode) {
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
@@ -86,7 +87,8 @@ public abstract class TemporalDifferenceDateNode extends JavaScriptBaseNode {
             return JSTemporalDuration.createTemporalDuration(ctx, realm, 0, 0, 0, days, 0, 0, 0, 0, 0, 0, this, errorBranch);
         } else {
             // CalendarDateUntil(calenderRec, one, two, options)
-            Object addedDate = callDateUntilNode.executeCall(JSArguments.create(calendarRec.receiver(), calendarRec.dateUntil(), one, two, untilOptions));
+            Object calendar = toCalendarObject.execute(calendarRec.receiver());
+            Object addedDate = callDateUntilNode.executeCall(JSArguments.create(calendar, calendarRec.dateUntil(), one, two, untilOptions));
             return TemporalUtil.requireTemporalDuration(addedDate);
         }
     }

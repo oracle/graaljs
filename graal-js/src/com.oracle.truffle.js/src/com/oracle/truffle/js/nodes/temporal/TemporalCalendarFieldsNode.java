@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,20 +43,15 @@ package com.oracle.truffle.js.nodes.temporal;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
+import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
@@ -64,29 +59,24 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class TemporalCalendarFieldsNode extends JavaScriptBaseNode {
 
-    @Child private GetMethodNode getMethodFieldsNode;
     @Child private JSFunctionCallNode callFieldsNode;
 
     protected TemporalCalendarFieldsNode() {
-        this.getMethodFieldsNode = GetMethodNode.create(JavaScriptLanguage.get(null).getJSContext(), TemporalConstants.FIELDS);
     }
 
-    public abstract List<TruffleString> execute(JSDynamicObject calendar, List<TruffleString> strings);
+    public abstract List<TruffleString> execute(CalendarMethodsRecord calendarRec, List<TruffleString> strings);
 
     @Specialization
-    protected List<TruffleString> calendarFields(JSDynamicObject calendar, List<TruffleString> strings,
-                    @Cached InlinedConditionProfile fieldsUndefined) {
-        Object fields = getMethodFieldsNode.executeWithTarget(calendar);
-        if (fieldsUndefined.profile(this, fields == Undefined.instance)) {
+    protected List<TruffleString> calendarFields(CalendarMethodsRecord calendarRec, List<TruffleString> strings) {
+        if (calendarRec.receiver() instanceof TruffleString) {
             return strings;
-        } else {
-            JSDynamicObject fieldsArray = JSArray.createConstant(getLanguage().getJSContext(), getRealm(), Boundaries.listToArray(strings));
-            fieldsArray = callFields(fields, calendar, new Object[]{fieldsArray});
-            return TemporalUtil.iterableToListOfTypeString(fieldsArray);
         }
+        JSDynamicObject fieldsArray = JSArray.createConstant(getLanguage().getJSContext(), getRealm(), Boundaries.listToArray(strings));
+        fieldsArray = callFields(calendarRec.fields(), calendarRec.receiver(), new Object[]{fieldsArray});
+        return TemporalUtil.iterableToListOfTypeString(fieldsArray);
     }
 
-    private JSDynamicObject callFields(Object fieldsFn, JSDynamicObject calendar, Object[] args) {
+    private JSDynamicObject callFields(Object fieldsFn, Object calendar, Object[] args) {
         if (callFieldsNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callFieldsNode = insert(JSFunctionCallNode.createCall());

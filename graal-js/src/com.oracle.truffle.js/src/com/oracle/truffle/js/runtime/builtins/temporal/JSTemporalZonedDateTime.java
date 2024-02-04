@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,17 +69,17 @@ public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConst
     private JSTemporalZonedDateTime() {
     }
 
-    public static JSTemporalZonedDateTimeObject create(JSContext context, JSRealm realm, BigInt nanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar) {
+    public static JSTemporalZonedDateTimeObject create(JSContext context, JSRealm realm, BigInt nanoseconds, JSDynamicObject timeZone, Object calendar) {
         JSObjectFactory factory = context.getTemporalZonedDateTimeFactory();
         return create(factory, realm, factory.getPrototype(realm), nanoseconds, timeZone, calendar);
     }
 
-    public static JSTemporalZonedDateTimeObject create(JSContext context, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar) {
+    public static JSTemporalZonedDateTimeObject create(JSContext context, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds, JSDynamicObject timeZone, Object calendar) {
         JSObjectFactory factory = context.getTemporalZonedDateTimeFactory();
         return create(factory, realm, proto, nanoseconds, timeZone, calendar);
     }
 
-    private static JSTemporalZonedDateTimeObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds, JSDynamicObject timeZone, JSDynamicObject calendar) {
+    private static JSTemporalZonedDateTimeObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds, JSDynamicObject timeZone, Object calendar) {
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSTemporalZonedDateTimeObject(shape, proto, nanoseconds, timeZone, calendar), realm, proto);
         return factory.trackAllocation(newObj);

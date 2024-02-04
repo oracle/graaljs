@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,37 +43,34 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
 import com.oracle.truffle.js.runtime.JSArguments;
+import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Implementation of the Temporal yearMonthFromFields() operation.
  */
 public abstract class TemporalYearMonthFromFieldsNode extends JavaScriptBaseNode {
 
-    @Child private GetMethodNode getMethodYearMonthFromFieldsNode;
     @Child private JSFunctionCallNode callYearMonthFromFieldsNode;
 
     protected TemporalYearMonthFromFieldsNode() {
-        this.getMethodYearMonthFromFieldsNode = GetMethodNode.create(JavaScriptLanguage.get(null).getJSContext(), TemporalUtil.YEAR_MONTH_FROM_FIELDS);
         this.callYearMonthFromFieldsNode = JSFunctionCallNode.createCall();
     }
 
-    public abstract JSTemporalPlainYearMonthObject execute(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options);
+    public abstract JSTemporalPlainYearMonthObject execute(CalendarMethodsRecord calendarRec, JSDynamicObject fields, JSDynamicObject options);
 
     @Specialization
-    protected JSTemporalPlainYearMonthObject yearMonthFromFields(JSDynamicObject calendar, JSDynamicObject fields, JSDynamicObject options,
+    protected JSTemporalPlainYearMonthObject yearMonthFromFields(CalendarMethodsRecord calendarRec, JSDynamicObject fields, JSDynamicObject options,
+                    @Cached ToTemporalCalendarObjectNode toCalendar,
                     @Cached InlinedBranchProfile errorBranch) {
         assert options != null;
-        Object fn = getMethodYearMonthFromFieldsNode.executeWithTarget(calendar);
-        Object yearMonth = callYearMonthFromFieldsNode.executeCall(JSArguments.create(calendar, fn, fields, options));
+        Object calendar = toCalendar.execute(calendarRec.receiver());
+        Object yearMonth = callYearMonthFromFieldsNode.executeCall(JSArguments.create(calendar, calendarRec.yearMonthFromFields(), fields, options));
         return requireTemporalYearMonth(yearMonth, errorBranch);
     }
 

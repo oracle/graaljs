@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,34 +40,36 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
- * Implementation of ToTemporalCalendarWithISODefault() operation.
+ * Implementation of ToTemporalCalendarObject() operation.
  */
-public abstract class ToTemporalCalendarWithISODefaultNode extends JavaScriptBaseNode {
+public abstract class ToTemporalCalendarObjectNode extends JavaScriptBaseNode {
 
-    protected ToTemporalCalendarWithISODefaultNode() {
+    protected ToTemporalCalendarObjectNode() {
     }
 
-    public abstract JSDynamicObject execute(Object calendar);
+    @NeverDefault
+    public static ToTemporalCalendarObjectNode create() {
+        return ToTemporalCalendarObjectNodeGen.create();
+    }
+
+    public abstract Object execute(Object calendarSlotValue);
 
     @Specialization
-    public JSDynamicObject toTemporalCalendarWithISODefault(Object calendar,
-                    @Cached InlinedConditionProfile calendarAvailable,
-                    @Cached ToTemporalCalendarNode toTemporalCalendarNode) {
-        if (calendarAvailable.profile(this, calendar == null || calendar == Undefined.instance)) {
-            return JSTemporalCalendar.create(getLanguage().getJSContext(), getRealm(), ISO8601);
-        } else {
-            return toTemporalCalendarNode.execute(calendar);
+    public Object toTemporalCalendarObject(Object calendarSlotValue,
+                    @Cached IsObjectNode isObjectNode) {
+        if (isObjectNode.executeBoolean(calendarSlotValue)) {
+            return calendarSlotValue;
         }
+        return JSTemporalCalendar.create(getJSContext(), getRealm(), (TruffleString) calendarSlotValue);
     }
+
 }

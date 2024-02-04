@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,6 +58,7 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
@@ -65,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.MatchBehaviour;
@@ -87,12 +89,13 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
                     @Cached IsObjectNode isObjectNode,
+                    @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
+                    @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
                     @Cached JSToStringNode toStringNode,
                     @Cached TruffleString.EqualNode equalNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
-                    @Cached GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
-                    @Cached ToTemporalCalendarWithISODefaultNode toTemporalCalendarWithISODefaultNode,
+                    @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
                     @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                     @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
@@ -100,7 +103,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;
         JSDynamicObject timeZone;
-        JSDynamicObject calendar;
+        Object calendar;
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
         OffsetBehaviour offsetBehaviour = OffsetBehaviour.OPTION;
@@ -110,8 +113,14 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(itemObj))) {
                 return (JSTemporalZonedDateTimeObject) itemObj;
             }
-            calendar = getTemporalCalendarNode.execute(itemObj);
-            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendar, TemporalUtil.listDHMMMMMNSY);
+
+            calendar = getCalendarSlotValueWithISODefault.execute(itemObj);
+            Object dateFromFieldsMethod = lookupDateFromFields.execute(calendar);
+            Object fieldsMethod = lookupFields.execute(calendar);
+            CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateFromFieldsAndFields(calendar, dateFromFieldsMethod, fieldsMethod);
+
+            List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listDHMMMMMNSY);
+            fieldNames = Boundaries.listToEditable(fieldNames);
             Boundaries.listAdd(fieldNames, TIME_ZONE);
             Boundaries.listAdd(fieldNames, OFFSET);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, itemObj, fieldNames, TemporalUtil.listTimeZone);
@@ -123,7 +132,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             } else {
                 offsetString = toStringNode.executeString(offsetStringObj);
             }
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendar, fields, options, getOptionNode, dateFromFieldsNode);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendarRec, fields, options, getOptionNode, dateFromFieldsNode);
         } else {
             TemporalUtil.toTemporalOverflow(options, getOptionNode);
             TruffleString string = toStringNode.executeString(item);
@@ -145,7 +154,14 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                 offsetBehaviour = OffsetBehaviour.WALL;
             }
             timeZone = TemporalUtil.createTemporalTimeZone(ctx, realm, timeZoneName);
-            calendar = toTemporalCalendarWithISODefaultNode.execute(result.getCalendar());
+            calendar = result.getCalendar();
+            if (calendar == null) {
+                calendar = TemporalConstants.ISO8601;
+            }
+            if (!TemporalUtil.isBuiltinCalendar((TruffleString) calendar)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorCalendarNotSupported();
+            }
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
         }
         long offsetNanoseconds = 0;

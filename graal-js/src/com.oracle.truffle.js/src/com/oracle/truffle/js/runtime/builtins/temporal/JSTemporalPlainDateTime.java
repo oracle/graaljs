@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,13 +86,13 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
     }
 
     public static JSTemporalPlainDateTimeObject create(JSContext context, JSRealm realm,
-                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar) {
+                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, Object calendar) {
         return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm),
                         y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar);
     }
 
     public static JSTemporalPlainDateTimeObject create(JSContext context, JSRealm realm,
-                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar,
+                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, Object calendar,
                     Node node, InlinedBranchProfile errorBranch) {
         return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm),
                         y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar,
@@ -100,7 +100,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
     }
 
     public static JSTemporalPlainDateTimeObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
-                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar,
+                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, Object calendar,
                     Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isValidISODate(y, m, d)) {
             errorBranch.enter(node);
@@ -118,12 +118,12 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
     }
 
     public static JSTemporalPlainDateTimeObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
-                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar) {
+                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, Object calendar) {
         return create(context, realm, proto, y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar, null, InlinedBranchProfile.getUncached());
     }
 
     private static JSTemporalPlainDateTimeObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,
-                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, JSDynamicObject calendar) {
+                    int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, Object calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateTimeFactory();
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSTemporalPlainDateTimeObject(shape, proto, y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar), realm, proto);
@@ -160,7 +160,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
 
     @TruffleBoundary
     public static TruffleString temporalDateTimeToString(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond,
-                    JSDynamicObject calendar, Object precision, ShowCalendar showCalendar) {
+                    Object calendar, Object precision, ShowCalendar showCalendar) {
         TruffleString yearString = TemporalUtil.padISOYear(year);
         TruffleString monthString = TemporalUtil.toZeroPaddedDecimalString(month, 2);
         TruffleString dayString = TemporalUtil.toZeroPaddedDecimalString(day, 2);

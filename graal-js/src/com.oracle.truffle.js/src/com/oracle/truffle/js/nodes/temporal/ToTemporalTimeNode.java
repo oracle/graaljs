@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -85,7 +85,6 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
                     @Cached InlinedConditionProfile isPlainTimeProfile,
                     @Cached InlinedBranchProfile errorBranch,
-                    @Cached GetTemporalCalendarWithISODefaultNode getTemporalCalendarNode,
                     @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
         Overflow overflow = overflowParam == null ? Overflow.CONSTRAIN : overflowParam;
         assert overflow == Overflow.CONSTRAIN || overflow == Overflow.REJECT;
@@ -109,11 +108,6 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
                 return JSTemporalPlainTime.create(ctx, realm,
                                 dt.getHour(), dt.getMinute(), dt.getSecond(),
                                 dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), this, errorBranch);
-            }
-            JSDynamicObject calendar = getTemporalCalendarNode.execute(itemObj);
-            if (!toStringNode.executeString(calendar).equals(TemporalConstants.ISO8601)) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
             }
             JSTemporalDateTimeRecord result = TemporalUtil.toTemporalTimeRecord(itemObj);
             result2 = TemporalUtil.regulateTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), overflow);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,52 +40,42 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarHolder;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of GetTemporalCalendarWithISODefault() operation.
+ * Implementation of GetTemporalCalendarSlotValueWithISODefault() operation.
  */
-public abstract class GetTemporalCalendarWithISODefaultNode extends JavaScriptBaseNode {
+@ImportStatic(TemporalConstants.class)
+public abstract class GetTemporalCalendarSlotValueWithISODefaultNode extends JavaScriptBaseNode {
 
-    @Child protected PropertyGetNode getCalendarNode;
-
-    protected GetTemporalCalendarWithISODefaultNode() {
+    protected GetTemporalCalendarSlotValueWithISODefaultNode() {
     }
 
-    public abstract JSDynamicObject execute(Object temporalTimeZoneLike);
+    @NeverDefault
+    public static GetTemporalCalendarSlotValueWithISODefaultNode create() {
+        return GetTemporalCalendarSlotValueWithISODefaultNodeGen.create();
+    }
+
+    public abstract Object execute(Object item);
 
     @Specialization
-    protected JSDynamicObject getTemporalCalendarWithISODefault(Object item,
-                    @Cached InlinedConditionProfile isCalendarProfile,
-                    @Cached InlinedConditionProfile isNullishProfile,
-                    @Cached ToTemporalCalendarNode toTemporalCalendarNode) {
-        if (isCalendarProfile.profile(this, item instanceof JSTemporalCalendarHolder)) {
-            return ((JSTemporalCalendarHolder) item).getCalendar();
-        } else {
-            Object calendar = getCalendar(item);
-            if (isNullishProfile.profile(this, calendar == Undefined.instance)) {
-                return TemporalUtil.getISO8601Calendar(getLanguage().getJSContext(), getRealm());
-            } else {
-                return toTemporalCalendarNode.execute(calendar);
-            }
-        }
+    protected Object doJSTemporalCalendarHolder(JSTemporalCalendarHolder item) {
+        return item.getCalendar();
     }
 
-    private Object getCalendar(Object obj) {
-        if (getCalendarNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getCalendarNode = insert(PropertyGetNode.create(TemporalConstants.CALENDAR, getLanguage().getJSContext()));
-        }
-        return getCalendarNode.getValue(obj);
+    @Specialization(guards = "!isJSTemporalCalendarHolder(item)")
+    protected Object doOther(Object item,
+                    @Cached("create(CALENDAR, getJSContext())") PropertyGetNode getCalendar,
+                    @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue) {
+        Object calendarLike = getCalendar.getValue(item);
+        return toCalendarSlotValue.execute(calendarLike);
     }
+
 }
