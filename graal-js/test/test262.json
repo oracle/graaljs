@@ -1,5 +1,19 @@
 {
   "testFiles" : [ {
+    "filePath" : "annexB/built-ins/RegExp/RegExp-leading-escape-BMP.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "annexB/built-ins/RegExp/RegExp-trailing-escape-BMP.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
     "filePath" : "annexB/language/function-code/block-decl-func-skip-arguments.js",
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."
@@ -150,6 +164,13 @@
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
+  }, {
+    "filePath" : "built-ins/Function/prototype/toString/built-in-function-object.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
   }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
@@ -8345,6 +8366,34 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "intl402/Intl/getCanonicalLocales/canonicalized-tags.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "intl402/Intl/getCanonicalLocales/transformed-ext-valid.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "intl402/language-tags-canonicalized.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "intl402/NumberFormat/prototype/format/format-significant-digits.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
     "filePath" : "intl402/Temporal/Calendar/calendar-case-insensitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -9393,6 +9442,20 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "language/comments/S7.4_A5.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/comments/S7.4_A6.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
     "filePath" : "language/expressions/assignment/target-member-computed-reference-null.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-07-08"
@@ -9407,6 +9470,62 @@
       "MACOS" : "SKIP"
     },
     "comment" : "Skipping on macOS because of transient spurious failures (GR-41067)."
+  }, {
+    "filePath" : "language/literals/regexp/S7.8.5_A1.1_T2.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/literals/regexp/S7.8.5_A1.4_T2.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/literals/regexp/S7.8.5_A2.1_T2.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/literals/regexp/S7.8.5_A2.4_T2.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/module-code/top-level-await/syntax/for-await-expr-nested.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/module-code/top-level-await/syntax/for-in-await-expr-nested.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/module-code/top-level-await/syntax/for-of-await-expr-nested.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
+  }, {
+    "filePath" : "language/module-code/top-level-await/syntax/try-await-expr-nested.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
   }, {
     "filePath" : "staging/Intl402/Temporal/old/addition-across-lunisolar-leap-months.js",
     "status" : "FAIL",
@@ -9475,6 +9594,13 @@
     "filePath" : "staging/Intl402/Temporal/old/zoneddatetime-dst-corner-cases.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
+  }, {
+    "filePath" : "staging/JSON/json-parse-with-source.js",
+    "status" : "PASS",
+    "statusOverrides" : {
+      "COMPILE_IMMEDIATELY" : "SKIP"
+    },
+    "comment" : "Long-running in compile mode"
   }, {
     "filePath" : "staging/Temporal/Duration/old/add.js",
     "status" : "FAIL",
