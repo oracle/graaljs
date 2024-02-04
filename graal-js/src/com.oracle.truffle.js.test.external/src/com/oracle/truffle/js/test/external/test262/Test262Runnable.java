@@ -386,17 +386,26 @@ public class Test262Runnable extends TestRunnable {
     private TestFile.Result runInternal(int ecmaVersion, File file, Source testSource, boolean negative, boolean asyncTest, boolean strict, boolean module, String negativeExpectedMessage,
                     Source[] harnessSources, Map<String, String> extraOptions) {
         suite.logVerbose(getName() + ecmaVersionToString(ecmaVersion));
+        TestFile.Result testResult;
+
+        long startDate = System.currentTimeMillis();
+        reportStart();
+
         OutputStream byteArrayOutputStream = new ByteArrayOutputStream();
         OutputStream outputStream = byteArrayOutputStream;
         if (getConfig().isPrintFullOutput()) {
             outputStream = makeDualStream(byteArrayOutputStream, System.out);
         }
         if (suite.getConfig().isExtLauncher()) {
-            return runExternalLauncher(ecmaVersion, testSource, negative, asyncTest, strict, module, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
+            testResult = runExternalLauncher(ecmaVersion, testSource, negative, asyncTest, strict, module, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
         } else {
             Thread.currentThread().setName("Test262 Main Thread");
-            return runInJVM(ecmaVersion, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
+            testResult = runInJVM(ecmaVersion, file, testSource, negative, asyncTest, negativeExpectedMessage, harnessSources, extraOptions, byteArrayOutputStream, outputStream);
         }
+
+        reportEnd(startDate);
+
+        return testResult;
     }
 
     private TestFile.Result runInJVM(int ecmaVersion, File file, Source testSource, boolean negative, boolean asyncTest, String negativeExpectedMessage, Source[] harnessSources,
