@@ -26,7 +26,10 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import os, shutil, tarfile, tempfile
+import os
+import shutil
+import tarfile
+import tempfile
 from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
@@ -365,10 +368,10 @@ def _fetch_test262():
     """clones/updates test262 test-suite"""
     _location = join(_suite.dir, 'lib', 'test262')
     _clone = False
-    if not mx.isdir(_location):
+    if not os.path.isdir(_location):
         _clone = True
     else:
-        if not mx.isdir(join(_location, '.git')):
+        if not os.path.isdir(join(_location, '.git')):
             # Not a git repository, an old version of the test-suite extracted from an archive most likely.
             shutil.rmtree(_location)
             _clone = True
@@ -411,10 +414,10 @@ def _fetch_testv8():
     """clones/updates testv8 test-suite"""
     _location = join(_suite.dir, 'lib', 'testv8')
     _clone = False
-    if not mx.isdir(_location):
+    if not os.path.isdir(_location):
         _clone = True
     else:
-        if not mx.isdir(join(_location, '.git')):
+        if not os.path.isdir(join(_location, '.git')):
             # Not a git repository, an old version of the test-suite extracted from an archive most likely.
             shutil.rmtree(_location)
             _clone = True
