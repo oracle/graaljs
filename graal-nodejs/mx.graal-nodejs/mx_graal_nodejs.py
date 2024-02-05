@@ -27,6 +27,7 @@
 # ----------------------------------------------------------------------------------------------------
 
 import mx, mx_gate, mx_subst, mx_sdk, mx_sdk_vm, mx_graal_js, os, tempfile
+import mx_util
 
 import mx_graal_nodejs_benchmark
 import mx_truffle
@@ -212,7 +213,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         if not _is_windows:
             # copy libjsig.so from the jdk for inclusion in the standalone and `mx node`
             libjsig_name = mx.add_lib_suffix(mx.add_lib_prefix('jsig'))
-            mx.ensure_dir_exists(join(self._out_dir, 'lib'))
+            mx_util.ensure_dir_exists(join(self._out_dir, 'lib'))
             mx.copyfile(join(_java_home(forBuild=True), 'lib', libjsig_name), join(self._out_dir, 'lib', libjsig_name))
 
         post_ts = GraalNodeJsBuildTask._get_newest_ts(self.subject.getResults(), fatalIfMissing=True)
@@ -334,7 +335,7 @@ class PreparsedCoreModulesBuildTask(mx.ArchivableBuildTask):
         moduleSet = self.modulesToSnapshot()
 
         outputDirBin = join(outputDir, 'lib')
-        mx.ensure_dir_exists(outputDirBin)
+        mx_util.ensure_dir_exists(outputDirBin)
 
         macroFiles = [join('tools', 'js2c_macros', 'check_macros.py')]
         # DTrace is disabled explicitly by the --without-dtrace option

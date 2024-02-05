@@ -34,6 +34,7 @@ from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
 import mx, mx_sdk, mx_urlrewrites
+import mx_util
 import mx_truffle
 from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
 
@@ -304,7 +305,7 @@ def _fetch_test_suite(dest, library_names):
         if exists(dest):
             mx.logv('Deleting the old test directory {}'.format(dest))
             shutil.rmtree(dest)
-            mx.ensure_dir_exists(dest)
+            mx_util.ensure_dir_exists(dest)
         for _lib_name in library_names:
             with tarfile.open(_get_lib_path(_lib_name), 'r') as _tar:
                 _tar.extractall(dest)
