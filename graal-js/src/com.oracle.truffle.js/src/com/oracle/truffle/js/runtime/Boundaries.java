@@ -64,16 +64,6 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
-    public static String javaToString(Object value) {
-        return value.toString();
-    }
-
-    @TruffleBoundary
-    public static String stringValueOf(Object o) {
-        return String.valueOf(o);
-    }
-
-    @TruffleBoundary
     public static String stringFormat(String format, Object... params) {
         return String.format(format, params);
     }
@@ -129,18 +119,8 @@ public final class Boundaries {
     }
 
     @TruffleBoundary
-    public static <T> void listSet(List<T> list, int index, T value) {
-        list.set(index, value);
-    }
-
-    @TruffleBoundary
     public static <T> int listSize(List<T> list) {
         return list.size();
-    }
-
-    @TruffleBoundary
-    public static <T> int listIndexOf(List<T> list, T element) {
-        return list.indexOf(element);
     }
 
     @TruffleBoundary

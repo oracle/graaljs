@@ -1314,15 +1314,6 @@ public final class JSRuntime {
         throw new UnsupportedOperationException("unknown number value: " + number.toString() + " " + number.getClass().getSimpleName());
     }
 
-    public static String javaToString(Object obj) {
-        if (obj instanceof String) {
-            return (String) obj;
-        } else if (Strings.isTString(obj)) {
-            return Strings.toJavaString((TruffleString) obj);
-        }
-        return Boundaries.javaToString(obj);
-    }
-
     // avoiding a virtual call for equals(), not fail on SVM.
     // No TruffleBoundary, we want this to partially evaluate.
     public static boolean propertyKeyEquals(TruffleString.EqualNode equalsNode, Object a, Object b) {
@@ -2109,16 +2100,6 @@ public final class JSRuntime {
      */
     public static long toLong(Number value) {
         return longValue(value);
-    }
-
-    /**
-     * Concatenate two strings, preallocating the buffer with the exact length of the result.
-     */
-    @TruffleBoundary
-    public static String stringConcat(String first, String second) {
-        StringBuilder stringBuilder = new StringBuilder(first.length() + second.length());
-        stringBuilder.append(first).append(second);
-        return stringBuilder.toString();
     }
 
     // ES2015, 6.2.4.4, FromPropertyDescriptor
