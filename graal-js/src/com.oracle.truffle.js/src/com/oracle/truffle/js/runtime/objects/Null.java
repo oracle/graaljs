@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ public final class Null {
 
     public static final TruffleString TYPE_NAME = Strings.OBJECT;
     public static final TruffleString NAME = Strings.NULL;
-    public static final TruffleString CLASS_NAME = Strings.NULL_UNDEFINED;
 
     public static final TruffleString DISPLAY_STRING_UNDEFINED = Strings.constant("[object Undefined]");
     public static final TruffleString DISPLAY_STRING_NULL = Strings.constant("[object Null]");
@@ -77,7 +76,7 @@ public final class Null {
 
         @Override
         public String toString() {
-            return Strings.toJavaString(CLASS_NAME);
+            return "null|undefined";
         }
 
         @Override

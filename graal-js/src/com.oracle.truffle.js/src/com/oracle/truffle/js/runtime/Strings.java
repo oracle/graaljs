@@ -209,7 +209,6 @@ public final class Strings {
     public static final TruffleString NEXT = constant("next");
     public static final TruffleString NOW = constant("now");
     public static final TruffleString NULL = constant("null");
-    public static final TruffleString NULL_UNDEFINED = constant("null|undefined");
     public static final TruffleString UC_NUMBER = constant("Number");
     public static final TruffleString OBJECT = constant("object");
     public static final TruffleString PARSE = constant("parse");
