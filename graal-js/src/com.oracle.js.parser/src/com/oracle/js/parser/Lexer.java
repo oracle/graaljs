@@ -51,7 +51,6 @@ import static com.oracle.js.parser.TokenType.EOF;
 import static com.oracle.js.parser.TokenType.EOL;
 import static com.oracle.js.parser.TokenType.ERROR;
 import static com.oracle.js.parser.TokenType.ESCSTRING;
-import static com.oracle.js.parser.TokenType.EXECSTRING;
 import static com.oracle.js.parser.TokenType.FLOATING;
 import static com.oracle.js.parser.TokenType.FUNCTION;
 import static com.oracle.js.parser.TokenType.HEXADECIMAL;
@@ -1144,6 +1143,7 @@ public class Lexer extends Scanner implements StringPool {
         TokenType type = STRING;
         // Record starting quote.
         final char quote = ch0;
+        assert isStringDelimiter(quote) : quote;
         // Skip over quote.
         skip(1);
 
@@ -1182,29 +1182,9 @@ public class Lexer extends Scanner implements StringPool {
             // Record end of string.
             stringState.setLimit(position - 1);
 
-            if (scripting && !stringState.isEmpty()) {
-                switch (quote) {
-                    case '`':
-                        // Mark the beginning of an exec string.
-                        add(EXECSTRING, stringState.position, stringState.getLimit());
-                        // Frame edit string with left brace.
-                        add(LBRACE, stringState.position, stringState.position);
-                        // Process edit string.
-                        editString(type, stringState);
-                        // Frame edit string with right brace.
-                        add(RBRACE, stringState.getLimit(), stringState.getLimit());
-                        break;
-                    case '"':
-                        // Only edit double quoted strings.
-                        editString(type, stringState);
-                        break;
-                    case '\'':
-                        // Add string token without editing.
-                        add(type, stringState.position, stringState.getLimit());
-                        break;
-                    default:
-                        break;
-                }
+            if (scripting && !stringState.isEmpty() && quote == '"') {
+                // Only edit double quoted strings.
+                editString(type, stringState);
             } else {
                 /// Add string token without editing.
                 add(type, stringState.position, stringState.getLimit());
@@ -1897,14 +1877,11 @@ public class Lexer extends Scanner implements StringPool {
             } else if ('0' <= ch0 && ch0 <= '9') {
                 // Scan and add a number.
                 scanNumber();
-            } else if (isTemplateDelimiter(ch0) && isES6()) {
+            } else if (isTemplateDelimiter(ch0) && (isES6() || scripting)) {
                 // Scan and add template in ES6 mode.
                 scanTemplate();
                 // Let the parser continue from here.
                 break;
-            } else if (isTemplateDelimiter(ch0) && scripting) {
-                // Scan and add an exec string ('`') in scripting mode.
-                scanString(true);
             } else if (isPrivateIdentifierStart(ch0)) {
                 // Scan and add a PrivateIdentifier
                 scanPrivateIdentifier();
