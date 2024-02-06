@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -63,9 +63,18 @@ public class NashornCompatibilityModeTests {
     @Test
     public void testTypedArrayJoinNotAvailable() {
         Assert.assertTrue(testIntl("var a = new Int8Array(8); a.join()==='0,0,0,0,0,0,0,0';", false));
-        Assert.assertTrue(testIntl("function t() { var a = new Int8Array(8); " +
-                        "try { a.join(); return false; } " +
-                        "catch (e) { return e.message.indexOf('join is not a function') >= 0; }; }; t();",
+        Assert.assertTrue(testIntl("""
+                        function t() {
+                            var a = new Int8Array(8);
+                            try {
+                                a.join();
+                                return false;
+                            } catch (e) {
+                                return e.message.indexOf('join is not a function') >= 0;
+                            }
+                        }
+                        t();
+                        """,
                         true));
     }
 }

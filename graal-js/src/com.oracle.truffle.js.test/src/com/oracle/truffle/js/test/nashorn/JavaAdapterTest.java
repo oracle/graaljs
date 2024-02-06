@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,19 +61,21 @@ public class JavaAdapterTest {
 
     @Test
     public void javaAdapterTest() {
-        String sourceCode = "load('nashorn:mozilla_compat.js');" +
-                        "var executed = false; \n" +
-                        "var Runnable = Java.type('java.lang.Runnable'); \n" +
-                        "var runnable = new JavaAdapter(Runnable) { \n" +
-                        "    run: function() { \n" +
-                        "        executed = true; \n" +
-                        "    } \n" +
-                        "}; \n" +
-                        "runnable.run(); \n" +
-                        "if (!(runnable instanceof Runnable)) { \n" +
-                        "    throw new Error('Runnable expected'); \n" +
-                        "} \n" +
-                        "executed;";
+        String sourceCode = """
+                        load('nashorn:mozilla_compat.js');
+                        var executed = false;
+                        var Runnable = Java.type('java.lang.Runnable');
+                        var runnable = new JavaAdapter(Runnable) {
+                            run: function() {
+                                executed = true;
+                            }
+                        };
+                        runnable.run();
+                        if (!(runnable instanceof Runnable)) {
+                            throw new Error('Runnable expected');
+                        }
+                        executed;
+                        """;
 
         Assert.assertTrue(testIntl(sourceCode));
     }

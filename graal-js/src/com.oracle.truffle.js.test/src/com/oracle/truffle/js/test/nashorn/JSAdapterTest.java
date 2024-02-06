@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,26 +61,28 @@ public class JSAdapterTest {
 
     @Test
     public void jsAdapterTest() {
-        String sourceCode = "var msg='';\n" +
-                        "var obj = new JSAdapter() {\n" +
-                        "    __get__: function(name) { msg += '__get__'+name; },\n" +
-                        "    __put__: function(name, value) { msg += '__put__'+name+value; },\n" +
-                        "    __call__: function(name, arg1, arg2) { msg += '__call__'+arg1+arg2; },\n" +
-                        "    __new__: function(arg1, arg2) { msg += '__new__'+arg1+arg2; },\n" +
-                        "    __getKeys__: function() { msg += '__getKeys__'; return [ ]; },\n" +
-                        "    __getValues__: function() { msg += '__getValues__'; return [ ]; },\n" +
-                        "    __has__: function(name) { msg += '__has__'+name; return true; },\n" +
-                        "    __delete__: function(name) { msg += '__delete__'+name; return true; },\n" +
-                        "};\n" +
-                        "obj.foo \n" +
-                        "obj.foo = 42;\n" +
-                        "obj.func('graal', '.js');\n" +
-                        "new obj('Oracle Labs', 'GraalVM');\n" +
-                        "for (i in obj) { };\n" +
-                        "for each (i in obj) { };\n" +
-                        "'test' in obj;\n" +
-                        "delete obj.prop;\n" +
-                        "msg;";
+        String sourceCode = """
+                        var msg='';
+                        var obj = new JSAdapter() {
+                            __get__: function(name) { msg += '__get__'+name; },
+                            __put__: function(name, value) { msg += '__put__'+name+value; },
+                            __call__: function(name, arg1, arg2) { msg += '__call__'+arg1+arg2; },
+                            __new__: function(arg1, arg2) { msg += '__new__'+arg1+arg2; },
+                            __getKeys__: function() { msg += '__getKeys__'; return [ ]; },
+                            __getValues__: function() { msg += '__getValues__'; return [ ]; },
+                            __has__: function(name) { msg += '__has__'+name; return true; },
+                            __delete__: function(name) { msg += '__delete__'+name; return true; },
+                        };
+                        obj.foo
+                        obj.foo = 42;
+                        obj.func('graal', '.js');
+                        new obj('Oracle Labs', 'GraalVM');
+                        for (i in obj) { };
+                        for each (i in obj) { };
+                        'test' in obj;
+                        delete obj.prop;
+                        msg;
+                        """;
 
         Assert.assertEquals("__get__foo__put__foo42__call__graal.js__new__Oracle LabsGraalVM__getValues____has__test__delete__prop", testIntl(sourceCode));
     }
