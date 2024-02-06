@@ -116,7 +116,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Override
         public int getECMAScriptVersion() {
             if (EnumSet.of(detached, transfer, transferToFixedLength).contains(this)) {
-                return JSConfig.StagingECMAScriptVersion;
+                return JSConfig.ECMAScript2024;
             }
             return BuiltinEnum.super.getECMAScriptVersion();
         }
