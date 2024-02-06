@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             String canonicalPath;
             URI maybeUri = asURI(specifier);
 
-            TruffleString maybeCustomPath = realm.getCustomEsmPathMapping(Strings.fromJavaString(refPath), specifierTS);
+            TruffleString maybeCustomPath = realm.getCustomEsmPathMapping(refPath == null ? null : Strings.fromJavaString(refPath), specifierTS);
             if (maybeCustomPath != null) {
                 canonicalPath = maybeCustomPath.toJavaStringUncached();
                 moduleFile = realm.getEnv().getPublicTruffleFile(canonicalPath).getCanonicalFile();
