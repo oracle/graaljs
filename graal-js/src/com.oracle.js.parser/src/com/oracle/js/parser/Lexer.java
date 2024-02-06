@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,6 @@
 
 package com.oracle.js.parser;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 import static com.oracle.js.parser.TokenType.ADD;
 import static com.oracle.js.parser.TokenType.BIGINT;
 import static com.oracle.js.parser.TokenType.BINARY_NUMBER;
@@ -70,18 +68,18 @@ import static com.oracle.js.parser.TokenType.TEMPLATE;
 import static com.oracle.js.parser.TokenType.TEMPLATE_HEAD;
 import static com.oracle.js.parser.TokenType.TEMPLATE_MIDDLE;
 import static com.oracle.js.parser.TokenType.TEMPLATE_TAIL;
-import static com.oracle.js.parser.TokenType.XML;
 
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
+
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Responsible for converting source content into a stream of tokens.
  */
 @SuppressWarnings("fallthrough")
 public class Lexer extends Scanner implements StringPool {
-    private static final boolean XML_LITERALS = Options.getBooleanProperty("lexer.xmlliterals");
 
     private static final String MSG_EDIT_STRING_MISSING_BRACE = "edit.string.missing.brace";
     private static final String MSG_HERE_MISSING_END_MARKER = "here.missing.end.marker";
@@ -630,7 +628,7 @@ public class Lexer extends Scanner implements StringPool {
      * @return true if token can start a literal.
      */
     public boolean canStartLiteral(final TokenType token) {
-        return token.startsWith('/') || ((scripting || XML_LITERALS) && token.startsWith('<'));
+        return token.startsWith('/') || (scripting && token.startsWith('<'));
     }
 
     /**
@@ -675,8 +673,6 @@ public class Lexer extends Scanner implements StringPool {
         } else if (ch0 == '<') {
             if (ch1 == '<') {
                 return scanHereString(lir, state);
-            } else if (Character.isJavaIdentifierStart(ch1)) {
-                return scanXMLLiteral();
             }
         }
 
@@ -1457,80 +1453,6 @@ public class Lexer extends Scanner implements StringPool {
     }
 
     /**
-     * Convert a XML token to a token object.
-     *
-     * @param start Position in source content.
-     * @param length Length of XML token.
-     * @return XML token object.
-     */
-    XMLToken valueOfXML(final int start, final int length) {
-        return new XMLToken(stringIntern(source.getString(start, length)));
-    }
-
-    /**
-     * Scan over a XML token.
-     *
-     * @return TRUE if is an XML literal.
-     */
-    private boolean scanXMLLiteral() {
-        assert ch0 == '<' && Character.isJavaIdentifierStart(ch1);
-        if (XML_LITERALS) {
-            // Record beginning of xml expression.
-            final int start = position;
-
-            int openCount = 0;
-
-            do {
-                if (ch0 == '<') {
-                    if (ch1 == '/' && Character.isJavaIdentifierStart(ch2)) {
-                        skip(3);
-                        openCount--;
-                    } else if (Character.isJavaIdentifierStart(ch1)) {
-                        skip(2);
-                        openCount++;
-                    } else if (ch1 == '?') {
-                        skip(2);
-                    } else if (ch1 == '!' && ch2 == '-' && ch3 == '-') {
-                        skip(4);
-                    } else {
-                        reset(start);
-                        return false;
-                    }
-
-                    while (!atEOF() && ch0 != '>') {
-                        if (ch0 == '/' && ch1 == '>') {
-                            openCount--;
-                            skip(1);
-                            break;
-                        } else if (ch0 == '\"' || ch0 == '\'') {
-                            scanString(false);
-                        } else {
-                            skip(1);
-                        }
-                    }
-
-                    if (ch0 != '>') {
-                        reset(start);
-                        return false;
-                    }
-
-                    skip(1);
-                } else if (atEOF()) {
-                    reset(start);
-                    return false;
-                } else {
-                    skip(1);
-                }
-            } while (openCount > 0);
-
-            add(XML, start);
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
      * Scan over identifier characters.
      *
      * @return Length of identifier or zero if none found.
@@ -2061,8 +1983,6 @@ public class Lexer extends Scanner implements StringPool {
             case TEMPLATE_MIDDLE:
             case TEMPLATE_TAIL:
                 return valueOfString(start, len, true); // String
-            case XML:
-                return valueOfXML(start, len); // XMLToken::LexerToken
             case DIRECTIVE_COMMENT:
                 return source.getString(start, len);
             default:
@@ -2237,21 +2157,6 @@ public class Lexer extends Scanner implements StringPool {
         @Override
         public String toString() {
             return '/' + getExpression() + '/' + options;
-        }
-    }
-
-    /**
-     * Temporary container for XML expression.
-     */
-    public static class XMLToken extends LexerToken {
-
-        /**
-         * Constructor.
-         *
-         * @param expression XML expression
-         */
-        public XMLToken(final TruffleString expression) {
-            super(expression);
         }
     }
 }

@@ -3973,7 +3973,6 @@ public class Parser extends AbstractParser {
             case BIGINT:
             case FLOATING:
             case REGEX:
-            case XML:
                 return getLiteral();
             case EXECSTRING:
                 return execString(primaryLine, primaryToken);
