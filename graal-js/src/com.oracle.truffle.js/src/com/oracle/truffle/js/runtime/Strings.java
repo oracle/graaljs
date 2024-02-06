@@ -700,10 +700,6 @@ public final class Strings {
         return string.charIndexOfAnyCharUTF16Uncached(0, length(string), new char[]{c});
     }
 
-    public static int indexOfAny(TruffleString s, char... chars) {
-        return s.charIndexOfAnyCharUTF16Uncached(0, length(s), chars);
-    }
-
     public static int indexOfAny(TruffleString.CharIndexOfAnyCharUTF16Node node, TruffleString s, char... chars) {
         return node.execute(s, 0, length(s), chars);
     }
@@ -903,10 +899,6 @@ public final class Strings {
     @TruffleBoundary
     private static String objectToJavaString(Object o) {
         return String.valueOf(o);
-    }
-
-    public static TruffleString fromCharArray(char[] chars) {
-        return fromCharArray(chars, 0, chars.length);
     }
 
     public static TruffleString fromCharArray(TruffleString.FromCharArrayUTF16Node node, char[] chars) {
