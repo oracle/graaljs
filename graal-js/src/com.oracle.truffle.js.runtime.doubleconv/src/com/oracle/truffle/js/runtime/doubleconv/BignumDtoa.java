@@ -73,7 +73,7 @@ package com.oracle.truffle.js.runtime.doubleconv;
 // Dtoa implementation based on our own Bignum implementation, supporting
 // all conversion modes but slightly slower than the specialized implementations.
 @SuppressWarnings("all")
-class BignumDtoa {
+final class BignumDtoa {
 
     private static int normalizedExponent(long significand, int exponent) {
         assert (significand != 0);
@@ -657,5 +657,6 @@ class BignumDtoa {
         return decimal_point;
     }
 
-
+    private BignumDtoa() {
+    }
 }

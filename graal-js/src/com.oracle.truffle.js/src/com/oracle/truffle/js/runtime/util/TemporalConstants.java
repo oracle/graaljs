@@ -44,6 +44,10 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Strings;
 
 public final class TemporalConstants {
+
+    private TemporalConstants() {
+    }
+
     public static final TruffleString TEMPORAL = Strings.constant("Temporal");
 
     public static final TruffleString YEAR = Strings.constant("year");

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,7 +72,7 @@ package com.oracle.truffle.js.runtime.doubleconv;
 
 // Helper functions for doubles.
 @SuppressWarnings("all")
-class IeeeDouble {
+final class IeeeDouble {
 
     // We assume that doubles and long have the same endianness.
     static long doubleToLong(final double d)   { return Double.doubleToRawLongBits(d); }
@@ -242,4 +242,6 @@ class IeeeDouble {
         return longToDouble(kNaN);
     }
 
+    private IeeeDouble() {
+    }
 }

@@ -54,6 +54,9 @@ import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 
 public final class Strings {
 
+    private Strings() {
+    }
+
     public static final TruffleString EMPTY_STRING = TruffleString.Encoding.UTF_16.getEmpty();
     public static final TruffleString LINE_SEPARATOR = constant("\n");
     public static final String LINE_SEPARATOR_JLS = toJavaString(LINE_SEPARATOR);

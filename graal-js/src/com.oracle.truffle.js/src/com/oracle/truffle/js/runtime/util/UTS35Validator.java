@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,9 +48,12 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
  * Validation of patterns from Unicode Technical Standard #35: UNICODE LOCALE DATA MARKUP LANGUAGE.
  * https://unicode.org/reports/tr35/
  */
-public class UTS35Validator {
+public final class UTS35Validator {
     private static final Pattern LANGUAGE_ID_PATTERN = Pattern.compile(unicodeLanguageID());
     private static final Pattern LOCALE_ID_PATTERN = Pattern.compile(unicodeLocaleID());
+
+    private UTS35Validator() {
+    }
 
     @TruffleBoundary
     public static boolean isWellFormedUnicodeBCP47LocaleIdentifier(String languageTag) {
