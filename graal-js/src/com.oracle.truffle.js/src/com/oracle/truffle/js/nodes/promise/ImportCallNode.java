@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -86,8 +86,6 @@ import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.js.runtime.util.Pair;
-import com.oracle.truffle.js.runtime.util.Triple;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 
 /**
@@ -281,17 +279,26 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     /**
+     * Arguments to HostLoadImportedModule.
+     */
+    private record LoadImportedModuleRequest(
+                    ScriptOrModule referencingScriptOrModule,
+                    ModuleRequest moduleRequest,
+                    PromiseCapabilityRecord promiseCapability) {
+    }
+
+    /**
      * Returns a promise job that performs both HostImportModuleDynamically and FinishDynamicImport.
      */
     public JSFunctionObject createImportModuleDynamicallyJob(ScriptOrModule referencingScriptOrModule, ModuleRequest moduleRequest, PromiseCapabilityRecord promiseCapability, JSRealm realm) {
         JobCallback importModuleDynamicallyHandler = realm.getAgent().hostMakeJobCallback(createImportModuleDynamicallyHandler(realm));
         if (context.isOptionTopLevelAwait()) {
-            Triple<ScriptOrModule, ModuleRequest, PromiseCapabilityRecord> request = new Triple<>(referencingScriptOrModule, moduleRequest, promiseCapability);
+            LoadImportedModuleRequest request = new LoadImportedModuleRequest(referencingScriptOrModule, moduleRequest, promiseCapability);
             PromiseCapabilityRecord startModuleLoadCapability = newPromiseCapability();
             PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, importModuleDynamicallyHandler, true);
             return promiseReactionJobNode.execute(startModuleLoad, request);
         } else {
-            Pair<ScriptOrModule, ModuleRequest> request = new Pair<>(referencingScriptOrModule, moduleRequest);
+            LoadImportedModuleRequest request = new LoadImportedModuleRequest(referencingScriptOrModule, moduleRequest, null);
             return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, importModuleDynamicallyHandler, true), request);
         }
     }
@@ -313,12 +320,11 @@ public class ImportCallNode extends JavaScriptNode {
                 super(lang);
             }
 
-            @SuppressWarnings("unchecked")
             @Override
             public Object executeInRealm(VirtualFrame frame) {
-                Pair<ScriptOrModule, ModuleRequest> request = (Pair<ScriptOrModule, ModuleRequest>) argumentNode.execute(frame);
-                ScriptOrModule referencingScriptOrModule = request.getFirst();
-                ModuleRequest moduleRequest = request.getSecond();
+                LoadImportedModuleRequest request = (LoadImportedModuleRequest) argumentNode.execute(frame);
+                ScriptOrModule referencingScriptOrModule = request.referencingScriptOrModule();
+                ModuleRequest moduleRequest = request.moduleRequest();
                 JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                 return finishDynamicImport(getRealm(), moduleRecord, referencingScriptOrModule, moduleRequest);
             }
@@ -348,13 +354,12 @@ public class ImportCallNode extends JavaScriptNode {
                 super(lang);
             }
 
-            @SuppressWarnings("unchecked")
             @Override
             public Object executeInRealm(VirtualFrame frame) {
-                Triple<ScriptOrModule, ModuleRequest, PromiseCapabilityRecord> request = (Triple<ScriptOrModule, ModuleRequest, PromiseCapabilityRecord>) argumentNode.execute(frame);
-                ScriptOrModule referencingScriptOrModule = request.getFirst();
-                ModuleRequest moduleRequest = request.getSecond();
-                PromiseCapabilityRecord moduleLoadedCapability = request.getThird();
+                LoadImportedModuleRequest request = (LoadImportedModuleRequest) argumentNode.execute(frame);
+                ScriptOrModule referencingScriptOrModule = request.referencingScriptOrModule();
+                ModuleRequest moduleRequest = request.moduleRequest();
+                PromiseCapabilityRecord moduleLoadedCapability = request.promiseCapability();
                 try {
                     JSRealm realm = getRealm();
                     assert realm == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
