@@ -765,12 +765,6 @@ public final class Strings {
     }
 
     public static boolean equals(TruffleString.EqualNode node, TruffleString s1, TruffleString s2) {
-        if (s1 == null) {
-            return s2 == null;
-        }
-        if (!isTString(s2)) {
-            return false;
-        }
         return node.execute(s1, s2, TruffleString.Encoding.UTF_16);
     }
 
