@@ -554,9 +554,6 @@ public final class Strings {
     }
 
     public static TruffleString fromJavaString(TruffleString.FromJavaStringNode node, String str) {
-        if (str == null) {
-            return null;
-        }
         return node.execute(str, TruffleString.Encoding.UTF_16);
     }
 
@@ -799,7 +796,7 @@ public final class Strings {
     }
 
     public static String toJavaString(TruffleString.ToJavaStringNode node, TruffleString s) {
-        return s == null ? null : node.execute(s);
+        return node.execute(s);
     }
 
     public static TruffleString toUpperCase(TruffleString s, Locale locale) {
