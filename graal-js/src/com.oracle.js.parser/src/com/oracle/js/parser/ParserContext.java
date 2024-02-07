@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2014, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2014, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,15 +102,11 @@ class ParserContext {
      * Removes and returns the topmost Node from the stack.
      *
      * @param node The node expected to be popped, used for sanity check
-     * @return The removed node
      */
-    @SuppressWarnings("unchecked")
-    public <T extends ParserContextNode> T pop(final T node) {
+    public void pop(final ParserContextNode node) {
+        assert node != null;
         --sp;
-        final T popped = (T) stack[sp];
         stack[sp] = null;
-
-        return popped;
     }
 
     /**
