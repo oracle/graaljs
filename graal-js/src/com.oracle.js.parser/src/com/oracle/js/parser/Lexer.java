@@ -78,7 +78,7 @@ import com.oracle.truffle.api.strings.TruffleString;
  * Responsible for converting source content into a stream of tokens.
  */
 @SuppressWarnings("fallthrough")
-public class Lexer extends Scanner implements StringPool {
+public final class Lexer extends Scanner implements StringPool {
 
     private static final String MSG_EDIT_STRING_MISSING_BRACE = "edit.string.missing.brace";
     private static final String MSG_HERE_MISSING_END_MARKER = "here.missing.end.marker";
@@ -347,7 +347,7 @@ public class Lexer extends Scanner implements StringPool {
      * @param ch a char
      * @return true if valid JavaScript whitespace
      */
-    public static boolean isJSWhitespace(final char ch) {
+    public static boolean isWhitespace(final char ch) {
         if (ch <= 0x000d) {
             return (ch >= 0x0009); // \t\n\u000b\u000c\r
         } else if (ch < JAVASCRIPT_WHITESPACE_HIGH_START) {
@@ -386,7 +386,7 @@ public class Lexer extends Scanner implements StringPool {
      * @param ch a char
      * @return true if valid JavaScript end of line
      */
-    public static boolean isJSEOL(final char ch) {
+    public static boolean isEOL(final char ch) {
         return ch == '\n' || ch == '\r' || ch == '\u2028' || ch == '\u2029';
     }
 
@@ -407,7 +407,7 @@ public class Lexer extends Scanner implements StringPool {
      * @param ch a char
      * @return true if string delimiter
      */
-    protected boolean isStringDelimiter(final char ch) {
+    protected static boolean isStringDelimiter(final char ch) {
         return ch == '\'' || ch == '"';
     }
 
@@ -416,26 +416,6 @@ public class Lexer extends Scanner implements StringPool {
      */
     private static boolean isTemplateDelimiter(char ch) {
         return ch == '`';
-    }
-
-    /**
-     * Test whether a char is valid JavaScript whitespace
-     *
-     * @param ch a char
-     * @return true if valid JavaScript whitespace
-     */
-    protected boolean isWhitespace(final char ch) {
-        return Lexer.isJSWhitespace(ch);
-    }
-
-    /**
-     * Test whether a char is valid JavaScript end of line
-     *
-     * @param ch a char
-     * @return true if valid JavaScript end of line
-     */
-    protected boolean isEOL(final char ch) {
-        return Lexer.isJSEOL(ch);
     }
 
     /**
@@ -1264,7 +1244,7 @@ public class Lexer extends Scanner implements StringPool {
      * @param ch character to be checked
      * @return if the given character is valid after "\"
      */
-    protected boolean isEscapeCharacter(final char ch) {
+    protected static boolean isEscapeCharacter(final char ch) {
         return true;
     }
 
