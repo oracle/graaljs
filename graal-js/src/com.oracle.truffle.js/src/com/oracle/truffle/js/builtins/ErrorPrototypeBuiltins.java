@@ -50,7 +50,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeGetStackTraceNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ErrorPrototypeToStringNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeCauseNodeGen;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltinsFactory.ForeignErrorPrototypeMessageNodeGen;
@@ -63,16 +62,12 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSError;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
@@ -92,25 +87,6 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             return ErrorPrototypeToStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
-    }
-
-    public static final class ErrorPrototypeNashornCompatBuiltins extends JSBuiltinsContainer.Switch {
-        private static final TruffleString GET_STACK_TRACE = Strings.constant("getStackTrace");
-
-        public static final JSBuiltinsContainer BUILTINS = new ErrorPrototypeNashornCompatBuiltins();
-
-        protected ErrorPrototypeNashornCompatBuiltins() {
-            super(JSError.PROTOTYPE_NAME);
-            defineFunction(GET_STACK_TRACE, 0);
-        }
-
-        @Override
-        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
-            if (Strings.equals(GET_STACK_TRACE, builtin.getName())) {
-                return ErrorPrototypeGetStackTraceNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            }
-            return null;
-        }
     }
 
     @ImportStatic(Strings.class)
@@ -151,36 +127,6 @@ public final class ErrorPrototypeBuiltins extends JSBuiltinsContainer.Switch {
             return Strings.concatAll(strName, Strings.COLON_SPACE, strMessage);
         }
 
-    }
-
-    public abstract static class ErrorPrototypeGetStackTraceNode extends JSBuiltinNode {
-
-        public ErrorPrototypeGetStackTraceNode(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected JSDynamicObject getStackTrace(JSObject thisObj) {
-            // get original exception from special exception property; call
-            // Throwable#getStackTrace(), transform it a bit and turn it into a JSArray
-            Object exception = JSDynamicObject.getOrNull(thisObj, JSError.EXCEPTION_PROPERTY_NAME);
-            Object[] stackTrace = getStackTraceFromThrowable(exception);
-            return JSArray.createConstant(getContext(), getRealm(), stackTrace);
-        }
-
-        @TruffleBoundary
-        private static Object[] getStackTraceFromThrowable(Object exception) {
-            if (exception instanceof GraalJSException) {
-                return ((GraalJSException) exception).getJSStackTrace();
-            } else {
-                return new StackTraceElement[0];
-            }
-        }
-
-        @Specialization(guards = "!isJSObject(thisObj)")
-        protected JSDynamicObject getStackTrace(Object thisObj) {
-            throw Errors.createTypeErrorNotAnObject(thisObj);
-        }
     }
 
     public static final class ForeignErrorPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<ForeignErrorPrototypeBuiltins.ForeignError> {
