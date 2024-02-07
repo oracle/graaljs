@@ -1534,124 +1534,107 @@ public class Lexer extends Scanner implements StringPool {
     }
 
     /**
-     * Lexer to service edit strings.
+     * Lexify the contents of an edit string.
+     *
+     * @param stringType Type of string literals to emit.
      */
-    private static class EditStringLexer extends Lexer {
-        /** Type of string literals to emit. */
-        final TokenType stringType;
+    private void lexifyEditString(TokenType stringType) {
+        assert nested : "must be called on a nested Lexer instance";
+        // Record start of string position.
+        int stringStart = position;
+        // Indicate that the priming first string has not been emitted.
+        boolean primed = false;
 
-        /*
-         * Constructor.
-         */
+        while (true) {
+            // Detect end of content.
+            if (atEOF()) {
+                break;
+            }
 
-        EditStringLexer(final Lexer lexer, final TokenType stringType, final Lexer.State stringState) {
-            super(lexer, stringState);
+            // Honour escapes (should be well formed.)
+            if (ch0 == '\\' && stringType == ESCSTRING) {
+                skip(2);
 
-            this.stringType = stringType;
-        }
+                continue;
+            }
 
-        /**
-         * Lexify the contents of the string.
-         */
-        @Override
-        public void lexify() {
-            // Record start of string position.
-            int stringStart = position;
-            // Indicate that the priming first string has not been emitted.
-            boolean primed = false;
+            // If start of expression.
+            if (ch0 == '$' && ch1 == '{') {
+                if (!primed || stringStart != position) {
+                    if (primed) {
+                        add(ADD, stringStart, stringStart + 1);
+                    }
 
-            while (true) {
-                // Detect end of content.
-                if (atEOF()) {
-                    break;
+                    add(stringType, stringStart, position);
+                    primed = true;
                 }
 
-                // Honour escapes (should be well formed.)
-                if (ch0 == '\\' && stringType == ESCSTRING) {
-                    skip(2);
+                // Skip ${
+                skip(2);
 
-                    continue;
-                }
+                // Save expression state.
+                final Lexer.State expressionState = saveState();
 
-                // If start of expression.
-                if (ch0 == '$' && ch1 == '{') {
-                    if (!primed || stringStart != position) {
-                        if (primed) {
-                            add(ADD, stringStart, stringStart + 1);
+                // Start with one open brace.
+                int braceCount = 1;
+
+                // Scan for the rest of the string.
+                while (!atEOF()) {
+                    // If closing brace.
+                    if (ch0 == '}') {
+                        // Break only only if matching brace.
+                        if (--braceCount == 0) {
+                            break;
                         }
-
-                        add(stringType, stringStart, position);
-                        primed = true;
+                    } else if (ch0 == '{') {
+                        // Bump up the brace count.
+                        braceCount++;
                     }
 
-                    // Skip ${
-                    skip(2);
-
-                    // Save expression state.
-                    final Lexer.State expressionState = saveState();
-
-                    // Start with one open brace.
-                    int braceCount = 1;
-
-                    // Scan for the rest of the string.
-                    while (!atEOF()) {
-                        // If closing brace.
-                        if (ch0 == '}') {
-                            // Break only only if matching brace.
-                            if (--braceCount == 0) {
-                                break;
-                            }
-                        } else if (ch0 == '{') {
-                            // Bump up the brace count.
-                            braceCount++;
-                        }
-
-                        // Skip to next character.
-                        skip(1);
-                    }
-
-                    // If braces don't match then report an error.
-                    if (braceCount != 0) {
-                        error(Lexer.message(MSG_EDIT_STRING_MISSING_BRACE), LBRACE, expressionState.position - 1, 1);
-                    }
-
-                    // Mark end of expression.
-                    expressionState.setLimit(position);
-                    // Skip closing brace.
+                    // Skip to next character.
                     skip(1);
-
-                    // Start next string.
-                    stringStart = position;
-
-                    // Concatenate expression.
-                    add(ADD, expressionState.position, expressionState.position + 1);
-                    add(LPAREN, expressionState.position, expressionState.position + 1);
-
-                    // Scan expression.
-                    final Lexer lexer = new Lexer(this, expressionState);
-                    lexer.lexify();
-
-                    // Close out expression parenthesis.
-                    add(RPAREN, position - 1, position);
-
-                    continue;
                 }
 
-                // Next character in string.
+                // If braces don't match then report an error.
+                if (braceCount != 0) {
+                    error(Lexer.message(MSG_EDIT_STRING_MISSING_BRACE), LBRACE, expressionState.position - 1, 1);
+                }
+
+                // Mark end of expression.
+                expressionState.setLimit(position);
+                // Skip closing brace.
                 skip(1);
+
+                // Start next string.
+                stringStart = position;
+
+                // Concatenate expression.
+                add(ADD, expressionState.position, expressionState.position + 1);
+                add(LPAREN, expressionState.position, expressionState.position + 1);
+
+                // Scan expression.
+                final Lexer lexer = new Lexer(this, expressionState);
+                lexer.lexify();
+
+                // Close out expression parenthesis.
+                add(RPAREN, position - 1, position);
+
+                continue;
             }
 
-            // If there is any unemitted string portion.
-            if (stringStart != limit) {
-                // Concatenate remaining string.
-                if (primed) {
-                    add(ADD, stringStart, stringStart + 1);
-                }
-
-                add(stringType, stringStart, limit);
-            }
+            // Next character in string.
+            skip(1);
         }
 
+        // If there is any unemitted string portion.
+        if (stringStart != limit) {
+            // Concatenate remaining string.
+            if (primed) {
+                add(ADD, stringStart, stringStart + 1);
+            }
+
+            add(stringType, stringStart, limit);
+        }
     }
 
     /**
@@ -1661,9 +1644,9 @@ public class Lexer extends Scanner implements StringPool {
      * @param stringState State of lexer at start of string.
      */
     private void editString(final TokenType stringType, final State stringState) {
-        // Use special lexer to scan string.
-        final EditStringLexer lexer = new EditStringLexer(this, stringType, stringState);
-        lexer.lexify();
+        // Use nested lexer to scan string.
+        final Lexer lexer = new Lexer(this, stringState);
+        lexer.lexifyEditString(stringType);
 
         // Need to keep lexer informed.
         last = stringType;
