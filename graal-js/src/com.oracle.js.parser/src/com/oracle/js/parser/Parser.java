@@ -791,8 +791,8 @@ public class Parser extends AbstractParser {
     /**
      * Restore the current block.
      */
-    private ParserContextBlockNode restoreBlock(final ParserContextBlockNode block) {
-        return lc.pop(block);
+    private void restoreBlock(final ParserContextBlockNode block) {
+        lc.pop(block);
     }
 
     /**
