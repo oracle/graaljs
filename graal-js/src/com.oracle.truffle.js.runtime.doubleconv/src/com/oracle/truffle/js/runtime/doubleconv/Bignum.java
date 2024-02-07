@@ -68,10 +68,8 @@
 
 package com.oracle.truffle.js.runtime.doubleconv;
 
-import java.util.Arrays;
-
 @SuppressWarnings("all")
-class Bignum {
+public final class Bignum {
 
     // 3584 = 128 * 28. We can represent 2^3584 > 10^1000 accurately.
     // This bignum can encode much bigger numbers, since it contains an
@@ -93,7 +91,7 @@ class Bignum {
     private int exponent_;
     private final int[] bigits_ = new int[kBigitCapacity];
 
-    Bignum() {
+    public Bignum() {
     }
 
     void times10() {
@@ -181,7 +179,7 @@ class Bignum {
         return result;
     }
 
-    void assignDecimalString(final String str) {
+    public void assignDecimalString(final String str) {
         // 2^64 = 18446744073709551616 > 10^19
         final int kMaxUint64DecimalDigits = 19;
         zero();
@@ -214,7 +212,7 @@ class Bignum {
 
     // Unlike AssignDecimalString(), this function is "only" used
     // for unit-tests and therefore not performance critical.
-    void assignHexString(final String value) {
+    public void assignHexString(final String value) {
         zero();
         final int length = value.length();
 
@@ -665,7 +663,7 @@ class Bignum {
         return (char) (value - 10 + 'A');
     }
 
-    String toHexString() {
+    public String toHexString() {
         assert (isClamped());
         // Each bigit must be printable as separate hex-character.
         assert (kBigitSize % 4 == 0);
@@ -871,6 +869,6 @@ class Bignum {
 
     @Override
     public String toString() {
-        return "Bignum" + Arrays.toString(bigits_);
+        return "Bignum[" + toHexString() + "]";
     }
 }
