@@ -106,6 +106,8 @@ import java.time.ZonedDateTime;
 import java.time.zone.ZoneOffsetTransition;
 import java.time.zone.ZoneRules;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
@@ -1013,26 +1015,57 @@ public final class TemporalUtil {
 
     // 13.52
     @TruffleBoundary
-    public static JSObject prepareTemporalFields(JSContext ctx, JSDynamicObject fields, List<TruffleString> fieldNames, List<TruffleString> requiredFields) {
+    public static JSObject prepareTemporalFields(JSContext ctx, Object fields, List<TruffleString> fieldNames, List<TruffleString> requiredFields) {
+        boolean duplicateBehaviourThrow = true;
         JSObject result = JSOrdinary.createWithNullPrototype(ctx);
-        for (TruffleString property : fieldNames) {
-            Object value = JSObject.get(fields, property);
-            assert value != null;
-            if (value == Undefined.instance) {
-                if (requiredFields.contains(property)) {
-                    throw TemporalErrors.createTypeErrorPropertyRequired(property);
+        boolean any = false;
+        List<TruffleString> sortedFieldNames = new ArrayList<>(fieldNames);
+        TruffleString.CompareCharsUTF16Node compareNode = TruffleString.CompareCharsUTF16Node.getUncached();
+        Collections.sort(sortedFieldNames, new Comparator<>() {
+            @Override
+            public int compare(TruffleString o1, TruffleString o2) {
+                return Strings.compareTo(compareNode, o1, o2);
+            }
+        });
+
+        TruffleString previousProperty = null;
+        for (TruffleString property : sortedFieldNames) {
+            if (JSObject.CONSTRUCTOR.equals(property) || JSObject.PROTO.equals(property)) {
+                throw Errors.createRangeErrorFormat("Invalid field: %s", null, property);
+            }
+            if (property.equals(previousProperty)) {
+                if (duplicateBehaviourThrow) {
+                    throw Errors.createRangeErrorFormat("Duplicate field: %s", null, property);
                 } else {
-                    if (temporalFieldDefaults.containsKey(property)) {
-                        value = temporalFieldDefaults.get(property);
+                    continue;
+                }
+            }
+            previousProperty = property;
+
+            Object value = JSRuntime.get(fields, property);
+            if (value == Undefined.instance) {
+                if (requiredFields != null) {
+                    if (requiredFields.contains(property)) {
+                        throw TemporalErrors.createTypeErrorPropertyRequired(property);
+                    } else {
+                        if (temporalFieldDefaults.containsKey(property)) {
+                            value = temporalFieldDefaults.get(property);
+                        }
                     }
                 }
             } else {
+                any = true;
                 if (temporalFieldConversion.containsKey(property)) {
                     Function<Object, Object> conversion = temporalFieldConversion.get(property);
                     value = conversion.apply(value);
                 }
             }
             createDataPropertyOrThrow(ctx, result, property, value);
+        }
+
+        // If requiredFields is PARTIAL and any is false
+        if (requiredFields == null && !any) {
+            throw Errors.createTypeError("No relevant field provided");
         }
         return result;
     }
