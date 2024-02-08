@@ -1502,7 +1502,7 @@ public final class TemporalUtil {
         if (Double.isInfinite(d)) {
             return d;
         }
-        return number;
+        return JSRuntime.truncateDouble(d);
     }
 
     public static JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSDynamicObject date, JSDynamicObject duration) {
