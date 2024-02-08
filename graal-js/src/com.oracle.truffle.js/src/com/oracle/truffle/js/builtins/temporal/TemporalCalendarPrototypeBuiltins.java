@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -121,6 +121,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthO
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
@@ -358,22 +359,24 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object dateFromFields(JSTemporalCalendarObject calendar, Object fields, Object optionsParam,
+        protected Object dateFromFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object optionsParam,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             assert calendar.getId().equals(ISO8601);
-            if (!isObject(fields)) {
+            if (!isObject(fieldsParam)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
-            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            ISODateRecord result = TemporalUtil.isoDateFromFields((JSDynamicObject) fields, options, getContext(),
-                            isObjectNode, getOptionNode, toIntOrInfinityNode, identicalNode);
+            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);            
+            JSObject fields = TemporalUtil.prepareTemporalFields(getContext(), fieldsParam, TemporalUtil.listDMMCY, TemporalUtil.listYD);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
+            TemporalUtil.resolveISOMonth(getContext(), fields, toIntOrInfinityNode, identicalNode);
+            ISODateRecord result = TemporalUtil.isoDateFromFields(fields, overflow);
 
-            return JSTemporalPlainDate.create(getContext(), getRealm(), result.year(), result.month(), result.day(), calendar, this, errorBranch);
+            return JSTemporalPlainDate.create(getContext(), getRealm(), result.year(), result.month(), result.day(), calendar.getId(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")
