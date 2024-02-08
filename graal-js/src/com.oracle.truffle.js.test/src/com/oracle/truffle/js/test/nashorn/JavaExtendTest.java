@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,10 +61,12 @@ public class JavaExtendTest {
 
     @Test
     public void javaExtendTest() {
-        String sourceCode = "var run1 = Java.extend(java.lang.Runnable, {}); \n" +
-                        "var run2 = Java.extend(java.lang.Runnable, function() { print('extended runnable'); }) \n" +
-                        "var obj1 = new (Java.extend(java.lang.Object))() { getMember: function(name) { return 'called '+name; } }; \n" +
-                        "'true';";
+        String sourceCode = """
+                        var run1 = Java.extend(java.lang.Runnable, {});
+                        var run2 = Java.extend(java.lang.Runnable, function() { print('extended runnable'); })
+                        var obj1 = new (Java.extend(java.lang.Object))() { getMember: function(name) { return 'called '+name; } };
+                        'true';
+                        """;
         Assert.assertEquals("true", testIntl(sourceCode));
     }
 

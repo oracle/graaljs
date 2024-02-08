@@ -54,6 +54,9 @@ import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 
 public final class Strings {
 
+    private Strings() {
+    }
+
     public static final TruffleString EMPTY_STRING = TruffleString.Encoding.UTF_16.getEmpty();
     public static final TruffleString LINE_SEPARATOR = constant("\n");
     public static final String LINE_SEPARATOR_JLS = toJavaString(LINE_SEPARATOR);
@@ -206,7 +209,6 @@ public final class Strings {
     public static final TruffleString NEXT = constant("next");
     public static final TruffleString NOW = constant("now");
     public static final TruffleString NULL = constant("null");
-    public static final TruffleString NULL_UNDEFINED = constant("null|undefined");
     public static final TruffleString UC_NUMBER = constant("Number");
     public static final TruffleString OBJECT = constant("object");
     public static final TruffleString PARSE = constant("parse");
@@ -552,9 +554,6 @@ public final class Strings {
     }
 
     public static TruffleString fromJavaString(TruffleString.FromJavaStringNode node, String str) {
-        if (str == null) {
-            return null;
-        }
         return node.execute(str, TruffleString.Encoding.UTF_16);
     }
 
@@ -697,10 +696,6 @@ public final class Strings {
         return string.charIndexOfAnyCharUTF16Uncached(0, length(string), new char[]{c});
     }
 
-    public static int indexOfAny(TruffleString s, char... chars) {
-        return s.charIndexOfAnyCharUTF16Uncached(0, length(s), chars);
-    }
-
     public static int indexOfAny(TruffleString.CharIndexOfAnyCharUTF16Node node, TruffleString s, char... chars) {
         return node.execute(s, 0, length(s), chars);
     }
@@ -765,12 +760,6 @@ public final class Strings {
     }
 
     public static boolean equals(TruffleString.EqualNode node, TruffleString s1, TruffleString s2) {
-        if (s1 == null) {
-            return s2 == null;
-        }
-        if (!isTString(s2)) {
-            return false;
-        }
         return node.execute(s1, s2, TruffleString.Encoding.UTF_16);
     }
 
@@ -807,7 +796,7 @@ public final class Strings {
     }
 
     public static String toJavaString(TruffleString.ToJavaStringNode node, TruffleString s) {
-        return s == null ? null : node.execute(s);
+        return node.execute(s);
     }
 
     public static TruffleString toUpperCase(TruffleString s, Locale locale) {
@@ -906,10 +895,6 @@ public final class Strings {
     @TruffleBoundary
     private static String objectToJavaString(Object o) {
         return String.valueOf(o);
-    }
-
-    public static TruffleString fromCharArray(char[] chars) {
-        return fromCharArray(chars, 0, chars.length);
     }
 
     public static TruffleString fromCharArray(TruffleString.FromCharArrayUTF16Node node, char[] chars) {

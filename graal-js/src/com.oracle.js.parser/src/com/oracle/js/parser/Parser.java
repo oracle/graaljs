@@ -203,7 +203,7 @@ public class Parser extends AbstractParser {
     private static final String APPLY_NAME = "apply";
 
     /** EXEC name - special property used by $EXEC API. */
-    private static final TruffleString EXEC_NAME = ParserStrings.constant("$EXEC");
+    private static final String EXEC_NAME = "$EXEC";
     /** Function name for anonymous functions. */
     private static final TruffleString ANONYMOUS_FUNCTION_NAME = ParserStrings.constant(":anonymous");
     /** Function name for the program entry point. */
@@ -3939,7 +3939,6 @@ public class Parser extends AbstractParser {
     @SuppressWarnings("fallthrough")
     private Expression primaryExpression(boolean yield, boolean await, CoverExpressionError coverExpression) {
         // Capture first token.
-        final int primaryLine = line;
         final long primaryToken = token;
 
         switch (type) {
@@ -3973,10 +3972,7 @@ public class Parser extends AbstractParser {
             case BIGINT:
             case FLOATING:
             case REGEX:
-            case XML:
                 return getLiteral();
-            case EXECSTRING:
-                return execString(primaryLine, primaryToken);
             case FALSE:
                 next();
                 return LiteralNode.newInstance(primaryToken, finish, false);
@@ -3994,7 +3990,7 @@ public class Parser extends AbstractParser {
                 return parenthesizedExpressionAndArrowParameterList(yield, await);
             case TEMPLATE:
             case TEMPLATE_HEAD:
-                return templateLiteral(yield, await);
+                return templateLiteralOrExecString(yield, await, primaryToken);
             case MOD:
                 if (isV8Intrinsics() && lookaheadIsIdentAndLParen()) {
                     long v8IntrinsicToken = Token.recast(token, TokenType.IDENT);
@@ -4063,29 +4059,6 @@ public class Parser extends AbstractParser {
 
     private boolean isPrivateFieldsIn() {
         return env.privateFieldsIn;
-    }
-
-    /**
-     * Convert execString to a call to $EXEC.
-     *
-     * @param primaryToken Original string token.
-     * @return callNode to $EXEC.
-     */
-    private Expression execString(final int primaryLine, final long primaryToken) {
-        // Synthesize an ident to call $EXEC.
-        final IdentNode execIdent = new IdentNode(primaryToken, finish, lexer.stringIntern(EXEC_NAME));
-        // Skip over EXECSTRING.
-        next();
-        // Set up argument list for call.
-        // Skip beginning of edit string expression.
-        expect(LBRACE);
-        // Add the following expression to arguments.
-        final List<Expression> arguments = List.of(expression(false, false));
-        // Skip ending of edit string expression.
-        expect(RBRACE);
-
-        long tokenWithDelimiter = Token.withDelimiter(primaryToken);
-        return CallNode.forCall(primaryLine, tokenWithDelimiter, Token.descPosition(tokenWithDelimiter), finish, execIdent, arguments);
     }
 
     /**
@@ -6714,6 +6687,21 @@ public class Parser extends AbstractParser {
                 }
                 break;
         }
+    }
+
+    /**
+     * Parse an untagged template literal, or an "exec string" in scripting mode.
+     */
+    private Expression templateLiteralOrExecString(boolean yield, boolean await, long primaryToken) {
+        final int primaryLine = line;
+        Expression templateLiteral = templateLiteral(yield, await);
+        if (scripting) {
+            // Synthesize a call to $EXEC(templateLiteral).
+            final IdentNode execIdent = createIdentNode(primaryToken, finish, lexer.stringIntern(EXEC_NAME));
+            addIdentifierReference(EXEC_NAME);
+            return CallNode.forCall(primaryLine, primaryToken, templateLiteral.getStart(), finish, execIdent, List.of(templateLiteral));
+        }
+        return templateLiteral;
     }
 
     /**

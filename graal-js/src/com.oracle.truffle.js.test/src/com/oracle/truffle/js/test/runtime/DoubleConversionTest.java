@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,62 +38,35 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.util;
+package com.oracle.truffle.js.test.runtime;
 
-import java.util.Objects;
+import static org.junit.Assert.assertEquals;
 
-import com.oracle.truffle.api.CompilerDirectives;
+import org.junit.Test;
 
-public final class Triple<T, U, P> {
+import com.oracle.truffle.js.runtime.doubleconv.Bignum;
 
-    private final T first;
-    private final U second;
-    private final P third;
+public class DoubleConversionTest {
 
-    public Triple(T first, U second, P third) {
-        this.first = first;
-        this.second = second;
-        this.third = third;
-    }
+    @Test
+    public void testBignumAssign() {
+        Bignum bignum = new Bignum();
 
-    public T getFirst() {
-        return first;
-    }
+        bignum.assignDecimalString("0");
+        assertEquals(bignum.toString(), "0", bignum.toHexString());
+        bignum.assignDecimalString("43");
+        assertEquals(bignum.toString(), "2B", bignum.toHexString());
+        bignum.assignDecimalString("1234567890");
+        assertEquals(bignum.toString(), "499602D2", bignum.toHexString());
+        bignum.assignDecimalString("85968058272638546411520");
+        assertEquals(bignum.toString(), "1234567890ABCDEF0000", bignum.toHexString());
 
-    public U getSecond() {
-        return second;
-    }
-
-    public P getThird() {
-        return third;
-    }
-
-    @Override
-    public int hashCode() {
-        final int prime = 31;
-        int result = 1;
-        result = prime * result + Objects.hashCode(first);
-        result = prime * result + Objects.hashCode(second);
-        result = prime * result + Objects.hashCode(third);
-        return result;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) {
-            return true;
-        }
-        if (!(obj instanceof Triple)) {
-            return false;
-        }
-        Triple<?, ?, ?> other = (Triple<?, ?, ?>) obj;
-        return Objects.equals(this.first, other.first) && Objects.equals(this.second, other.second) && Objects.equals(this.third, other.third);
-    }
-
-    @Override
-    @CompilerDirectives.TruffleBoundary
-    public String toString() {
-        return "(" + first + ", " + second + ", " + third + ")";
+        bignum.assignHexString("0");
+        assertEquals(bignum.toString(), "0", bignum.toHexString());
+        bignum.assignHexString("42");
+        assertEquals(bignum.toString(), "42", bignum.toHexString());
+        bignum.assignHexString("1234567890ABCDEF0000");
+        assertEquals(bignum.toString(), "1234567890ABCDEF0000", bignum.toHexString());
     }
 
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.api.nodes.DirectCallNode;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -102,7 +101,7 @@ public abstract class NewTargetRootNode extends JavaScriptRootNode {
     @TruffleBoundary
     public String toString() {
         String callTargetName = ((RootCallTarget) callTarget).getRootNode().toString();
-        return JSConfig.DetailedCallTargetNames ? JSRuntime.stringConcat("[NewTarget]", callTargetName) : callTargetName;
+        return JSConfig.DetailedCallTargetNames ? "[NewTarget]".concat(callTargetName) : callTargetName;
     }
 
     @Override

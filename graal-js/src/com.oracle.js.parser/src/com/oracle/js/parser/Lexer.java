@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,6 @@
 
 package com.oracle.js.parser;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 import static com.oracle.js.parser.TokenType.ADD;
 import static com.oracle.js.parser.TokenType.BIGINT;
 import static com.oracle.js.parser.TokenType.BINARY_NUMBER;
@@ -53,7 +51,6 @@ import static com.oracle.js.parser.TokenType.EOF;
 import static com.oracle.js.parser.TokenType.EOL;
 import static com.oracle.js.parser.TokenType.ERROR;
 import static com.oracle.js.parser.TokenType.ESCSTRING;
-import static com.oracle.js.parser.TokenType.EXECSTRING;
 import static com.oracle.js.parser.TokenType.FLOATING;
 import static com.oracle.js.parser.TokenType.FUNCTION;
 import static com.oracle.js.parser.TokenType.HEXADECIMAL;
@@ -70,18 +67,18 @@ import static com.oracle.js.parser.TokenType.TEMPLATE;
 import static com.oracle.js.parser.TokenType.TEMPLATE_HEAD;
 import static com.oracle.js.parser.TokenType.TEMPLATE_MIDDLE;
 import static com.oracle.js.parser.TokenType.TEMPLATE_TAIL;
-import static com.oracle.js.parser.TokenType.XML;
 
 import java.math.BigInteger;
 import java.util.HashMap;
 import java.util.Map;
 
+import com.oracle.truffle.api.strings.TruffleString;
+
 /**
  * Responsible for converting source content into a stream of tokens.
  */
 @SuppressWarnings("fallthrough")
-public class Lexer extends Scanner implements StringPool {
-    private static final boolean XML_LITERALS = Options.getBooleanProperty("lexer.xmlliterals");
+public final class Lexer extends Scanner implements StringPool {
 
     private static final String MSG_EDIT_STRING_MISSING_BRACE = "edit.string.missing.brace";
     private static final String MSG_HERE_MISSING_END_MARKER = "here.missing.end.marker";
@@ -350,7 +347,7 @@ public class Lexer extends Scanner implements StringPool {
      * @param ch a char
      * @return true if valid JavaScript whitespace
      */
-    public static boolean isJSWhitespace(final char ch) {
+    public static boolean isWhitespace(final char ch) {
         if (ch <= 0x000d) {
             return (ch >= 0x0009); // \t\n\u000b\u000c\r
         } else if (ch < JAVASCRIPT_WHITESPACE_HIGH_START) {
@@ -389,7 +386,7 @@ public class Lexer extends Scanner implements StringPool {
      * @param ch a char
      * @return true if valid JavaScript end of line
      */
-    public static boolean isJSEOL(final char ch) {
+    public static boolean isEOL(final char ch) {
         return ch == '\n' || ch == '\r' || ch == '\u2028' || ch == '\u2029';
     }
 
@@ -410,7 +407,7 @@ public class Lexer extends Scanner implements StringPool {
      * @param ch a char
      * @return true if string delimiter
      */
-    protected boolean isStringDelimiter(final char ch) {
+    protected static boolean isStringDelimiter(final char ch) {
         return ch == '\'' || ch == '"';
     }
 
@@ -419,26 +416,6 @@ public class Lexer extends Scanner implements StringPool {
      */
     private static boolean isTemplateDelimiter(char ch) {
         return ch == '`';
-    }
-
-    /**
-     * Test whether a char is valid JavaScript whitespace
-     *
-     * @param ch a char
-     * @return true if valid JavaScript whitespace
-     */
-    protected boolean isWhitespace(final char ch) {
-        return Lexer.isJSWhitespace(ch);
-    }
-
-    /**
-     * Test whether a char is valid JavaScript end of line
-     *
-     * @param ch a char
-     * @return true if valid JavaScript end of line
-     */
-    protected boolean isEOL(final char ch) {
-        return Lexer.isJSEOL(ch);
     }
 
     /**
@@ -630,7 +607,7 @@ public class Lexer extends Scanner implements StringPool {
      * @return true if token can start a literal.
      */
     public boolean canStartLiteral(final TokenType token) {
-        return token.startsWith('/') || ((scripting || XML_LITERALS) && token.startsWith('<'));
+        return token.startsWith('/') || (scripting && token.startsWith('<'));
     }
 
     /**
@@ -675,8 +652,6 @@ public class Lexer extends Scanner implements StringPool {
         } else if (ch0 == '<') {
             if (ch1 == '<') {
                 return scanHereString(lir, state);
-            } else if (Character.isJavaIdentifierStart(ch1)) {
-                return scanXMLLiteral();
             }
         }
 
@@ -1148,6 +1123,7 @@ public class Lexer extends Scanner implements StringPool {
         TokenType type = STRING;
         // Record starting quote.
         final char quote = ch0;
+        assert isStringDelimiter(quote) : quote;
         // Skip over quote.
         skip(1);
 
@@ -1186,29 +1162,9 @@ public class Lexer extends Scanner implements StringPool {
             // Record end of string.
             stringState.setLimit(position - 1);
 
-            if (scripting && !stringState.isEmpty()) {
-                switch (quote) {
-                    case '`':
-                        // Mark the beginning of an exec string.
-                        add(EXECSTRING, stringState.position, stringState.getLimit());
-                        // Frame edit string with left brace.
-                        add(LBRACE, stringState.position, stringState.position);
-                        // Process edit string.
-                        editString(type, stringState);
-                        // Frame edit string with right brace.
-                        add(RBRACE, stringState.getLimit(), stringState.getLimit());
-                        break;
-                    case '"':
-                        // Only edit double quoted strings.
-                        editString(type, stringState);
-                        break;
-                    case '\'':
-                        // Add string token without editing.
-                        add(type, stringState.position, stringState.getLimit());
-                        break;
-                    default:
-                        break;
-                }
+            if (scripting && !stringState.isEmpty() && quote == '"') {
+                // Only edit double quoted strings.
+                editString(type, stringState);
             } else {
                 /// Add string token without editing.
                 add(type, stringState.position, stringState.getLimit());
@@ -1288,7 +1244,7 @@ public class Lexer extends Scanner implements StringPool {
      * @param ch character to be checked
      * @return if the given character is valid after "\"
      */
-    protected boolean isEscapeCharacter(final char ch) {
+    protected static boolean isEscapeCharacter(final char ch) {
         return true;
     }
 
@@ -1457,80 +1413,6 @@ public class Lexer extends Scanner implements StringPool {
     }
 
     /**
-     * Convert a XML token to a token object.
-     *
-     * @param start Position in source content.
-     * @param length Length of XML token.
-     * @return XML token object.
-     */
-    XMLToken valueOfXML(final int start, final int length) {
-        return new XMLToken(stringIntern(source.getString(start, length)));
-    }
-
-    /**
-     * Scan over a XML token.
-     *
-     * @return TRUE if is an XML literal.
-     */
-    private boolean scanXMLLiteral() {
-        assert ch0 == '<' && Character.isJavaIdentifierStart(ch1);
-        if (XML_LITERALS) {
-            // Record beginning of xml expression.
-            final int start = position;
-
-            int openCount = 0;
-
-            do {
-                if (ch0 == '<') {
-                    if (ch1 == '/' && Character.isJavaIdentifierStart(ch2)) {
-                        skip(3);
-                        openCount--;
-                    } else if (Character.isJavaIdentifierStart(ch1)) {
-                        skip(2);
-                        openCount++;
-                    } else if (ch1 == '?') {
-                        skip(2);
-                    } else if (ch1 == '!' && ch2 == '-' && ch3 == '-') {
-                        skip(4);
-                    } else {
-                        reset(start);
-                        return false;
-                    }
-
-                    while (!atEOF() && ch0 != '>') {
-                        if (ch0 == '/' && ch1 == '>') {
-                            openCount--;
-                            skip(1);
-                            break;
-                        } else if (ch0 == '\"' || ch0 == '\'') {
-                            scanString(false);
-                        } else {
-                            skip(1);
-                        }
-                    }
-
-                    if (ch0 != '>') {
-                        reset(start);
-                        return false;
-                    }
-
-                    skip(1);
-                } else if (atEOF()) {
-                    reset(start);
-                    return false;
-                } else {
-                    skip(1);
-                }
-            } while (openCount > 0);
-
-            add(XML, start);
-            return true;
-        }
-
-        return false;
-    }
-
-    /**
      * Scan over identifier characters.
      *
      * @return Length of identifier or zero if none found.
@@ -1632,124 +1514,107 @@ public class Lexer extends Scanner implements StringPool {
     }
 
     /**
-     * Lexer to service edit strings.
+     * Lexify the contents of an edit string.
+     *
+     * @param stringType Type of string literals to emit.
      */
-    private static class EditStringLexer extends Lexer {
-        /** Type of string literals to emit. */
-        final TokenType stringType;
+    private void lexifyEditString(TokenType stringType) {
+        assert nested : "must be called on a nested Lexer instance";
+        // Record start of string position.
+        int stringStart = position;
+        // Indicate that the priming first string has not been emitted.
+        boolean primed = false;
 
-        /*
-         * Constructor.
-         */
+        while (true) {
+            // Detect end of content.
+            if (atEOF()) {
+                break;
+            }
 
-        EditStringLexer(final Lexer lexer, final TokenType stringType, final Lexer.State stringState) {
-            super(lexer, stringState);
+            // Honour escapes (should be well formed.)
+            if (ch0 == '\\' && stringType == ESCSTRING) {
+                skip(2);
 
-            this.stringType = stringType;
-        }
+                continue;
+            }
 
-        /**
-         * Lexify the contents of the string.
-         */
-        @Override
-        public void lexify() {
-            // Record start of string position.
-            int stringStart = position;
-            // Indicate that the priming first string has not been emitted.
-            boolean primed = false;
+            // If start of expression.
+            if (ch0 == '$' && ch1 == '{') {
+                if (!primed || stringStart != position) {
+                    if (primed) {
+                        add(ADD, stringStart, stringStart + 1);
+                    }
 
-            while (true) {
-                // Detect end of content.
-                if (atEOF()) {
-                    break;
+                    add(stringType, stringStart, position);
+                    primed = true;
                 }
 
-                // Honour escapes (should be well formed.)
-                if (ch0 == '\\' && stringType == ESCSTRING) {
-                    skip(2);
+                // Skip ${
+                skip(2);
 
-                    continue;
-                }
+                // Save expression state.
+                final Lexer.State expressionState = saveState();
 
-                // If start of expression.
-                if (ch0 == '$' && ch1 == '{') {
-                    if (!primed || stringStart != position) {
-                        if (primed) {
-                            add(ADD, stringStart, stringStart + 1);
+                // Start with one open brace.
+                int braceCount = 1;
+
+                // Scan for the rest of the string.
+                while (!atEOF()) {
+                    // If closing brace.
+                    if (ch0 == '}') {
+                        // Break only only if matching brace.
+                        if (--braceCount == 0) {
+                            break;
                         }
-
-                        add(stringType, stringStart, position);
-                        primed = true;
+                    } else if (ch0 == '{') {
+                        // Bump up the brace count.
+                        braceCount++;
                     }
 
-                    // Skip ${
-                    skip(2);
-
-                    // Save expression state.
-                    final Lexer.State expressionState = saveState();
-
-                    // Start with one open brace.
-                    int braceCount = 1;
-
-                    // Scan for the rest of the string.
-                    while (!atEOF()) {
-                        // If closing brace.
-                        if (ch0 == '}') {
-                            // Break only only if matching brace.
-                            if (--braceCount == 0) {
-                                break;
-                            }
-                        } else if (ch0 == '{') {
-                            // Bump up the brace count.
-                            braceCount++;
-                        }
-
-                        // Skip to next character.
-                        skip(1);
-                    }
-
-                    // If braces don't match then report an error.
-                    if (braceCount != 0) {
-                        error(Lexer.message(MSG_EDIT_STRING_MISSING_BRACE), LBRACE, expressionState.position - 1, 1);
-                    }
-
-                    // Mark end of expression.
-                    expressionState.setLimit(position);
-                    // Skip closing brace.
+                    // Skip to next character.
                     skip(1);
-
-                    // Start next string.
-                    stringStart = position;
-
-                    // Concatenate expression.
-                    add(ADD, expressionState.position, expressionState.position + 1);
-                    add(LPAREN, expressionState.position, expressionState.position + 1);
-
-                    // Scan expression.
-                    final Lexer lexer = new Lexer(this, expressionState);
-                    lexer.lexify();
-
-                    // Close out expression parenthesis.
-                    add(RPAREN, position - 1, position);
-
-                    continue;
                 }
 
-                // Next character in string.
+                // If braces don't match then report an error.
+                if (braceCount != 0) {
+                    error(Lexer.message(MSG_EDIT_STRING_MISSING_BRACE), LBRACE, expressionState.position - 1, 1);
+                }
+
+                // Mark end of expression.
+                expressionState.setLimit(position);
+                // Skip closing brace.
                 skip(1);
+
+                // Start next string.
+                stringStart = position;
+
+                // Concatenate expression.
+                add(ADD, expressionState.position, expressionState.position + 1);
+                add(LPAREN, expressionState.position, expressionState.position + 1);
+
+                // Scan expression.
+                final Lexer lexer = new Lexer(this, expressionState);
+                lexer.lexify();
+
+                // Close out expression parenthesis.
+                add(RPAREN, position - 1, position);
+
+                continue;
             }
 
-            // If there is any unemitted string portion.
-            if (stringStart != limit) {
-                // Concatenate remaining string.
-                if (primed) {
-                    add(ADD, stringStart, stringStart + 1);
-                }
-
-                add(stringType, stringStart, limit);
-            }
+            // Next character in string.
+            skip(1);
         }
 
+        // If there is any unemitted string portion.
+        if (stringStart != limit) {
+            // Concatenate remaining string.
+            if (primed) {
+                add(ADD, stringStart, stringStart + 1);
+            }
+
+            add(stringType, stringStart, limit);
+        }
     }
 
     /**
@@ -1759,9 +1624,9 @@ public class Lexer extends Scanner implements StringPool {
      * @param stringState State of lexer at start of string.
      */
     private void editString(final TokenType stringType, final State stringState) {
-        // Use special lexer to scan string.
-        final EditStringLexer lexer = new EditStringLexer(this, stringType, stringState);
-        lexer.lexify();
+        // Use nested lexer to scan string.
+        final Lexer lexer = new Lexer(this, stringState);
+        lexer.lexifyEditString(stringType);
 
         // Need to keep lexer informed.
         last = stringType;
@@ -1975,14 +1840,11 @@ public class Lexer extends Scanner implements StringPool {
             } else if ('0' <= ch0 && ch0 <= '9') {
                 // Scan and add a number.
                 scanNumber();
-            } else if (isTemplateDelimiter(ch0) && isES6()) {
+            } else if (isTemplateDelimiter(ch0) && (isES6() || scripting)) {
                 // Scan and add template in ES6 mode.
                 scanTemplate();
                 // Let the parser continue from here.
                 break;
-            } else if (isTemplateDelimiter(ch0) && scripting) {
-                // Scan and add an exec string ('`') in scripting mode.
-                scanString(true);
             } else if (isPrivateIdentifierStart(ch0)) {
                 // Scan and add a PrivateIdentifier
                 scanPrivateIdentifier();
@@ -2061,8 +1923,6 @@ public class Lexer extends Scanner implements StringPool {
             case TEMPLATE_MIDDLE:
             case TEMPLATE_TAIL:
                 return valueOfString(start, len, true); // String
-            case XML:
-                return valueOfXML(start, len); // XMLToken::LexerToken
             case DIRECTIVE_COMMENT:
                 return source.getString(start, len);
             default:
@@ -2237,21 +2097,6 @@ public class Lexer extends Scanner implements StringPool {
         @Override
         public String toString() {
             return '/' + getExpression() + '/' + options;
-        }
-    }
-
-    /**
-     * Temporary container for XML expression.
-     */
-    public static class XMLToken extends LexerToken {
-
-        /**
-         * Constructor.
-         *
-         * @param expression XML expression
-         */
-        public XMLToken(final TruffleString expression) {
-            super(expression);
         }
     }
 }

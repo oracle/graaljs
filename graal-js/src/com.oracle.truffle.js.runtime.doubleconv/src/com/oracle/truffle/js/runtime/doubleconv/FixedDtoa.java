@@ -70,11 +70,11 @@ package com.oracle.truffle.js.runtime.doubleconv;
 
 // @formatter:off
 @SuppressWarnings("all")
-class FixedDtoa {
+final class FixedDtoa {
 
     // Represents a 128bit type. This class should be replaced by a native type on
     // platforms that support 128bit integers.
-    static class UInt128 {
+    static final class UInt128 {
 
         private static final long kMask32 = 0xFFFFFFFFL;
         // Value == (high_bits_ << 64) + low_bits_
@@ -436,4 +436,6 @@ class FixedDtoa {
         return true;
     }
 
+    private FixedDtoa() {
+    }
 }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,10 +48,6 @@ final class ArrayCopy {
 
     private ArrayCopy() {
         // private constructor
-    }
-
-    static byte[] byteToByte(byte[] array) {
-        return Arrays.copyOf(array, array.length);
     }
 
     static int[] byteToInt(byte[] array) {
@@ -175,16 +171,6 @@ final class ArrayCopy {
 
     static Object[] objectToObject(Object[] array, int usedLength) {
         Object[] newArray = new Object[usedLength];
-        System.arraycopy(array, 0, newArray, 0, usedLength);
-        return newArray;
-    }
-
-    static JSDynamicObject[] jsobjectToJSObject(JSDynamicObject[] array) {
-        return jsobjectToJSObject(array, array.length);
-    }
-
-    static JSDynamicObject[] jsobjectToJSObject(JSDynamicObject[] array, int usedLength) {
-        JSDynamicObject[] newArray = new JSDynamicObject[usedLength];
         System.arraycopy(array, 0, newArray, 0, usedLength);
         return newArray;
     }

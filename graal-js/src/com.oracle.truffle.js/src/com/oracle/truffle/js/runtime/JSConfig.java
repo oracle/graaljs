@@ -160,4 +160,7 @@ public final class JSConfig {
     // Symbol singletons: always return the same Symbol instance if Symbols with the same name are
     // globally unique.
     public static final boolean UseSingletonSymbols = true;
+
+    private JSConfig() {
+    }
 }

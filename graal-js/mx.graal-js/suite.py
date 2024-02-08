@@ -237,9 +237,8 @@ suite = {
       "subDir" : "src",
       "sourceDirs" : ["src"],
       "dependencies" : [
-        "com.oracle.truffle.js.shell",
         "NETBEANS_PROFILER",
-        "com.oracle.truffle.js",
+        "truffle:TRUFFLE_API",
       ],
       "jacoco" : "include",
       "checkstyle" : "com.oracle.truffle.js",
@@ -584,9 +583,8 @@ suite = {
       "mainClass" : "com.oracle.truffle.js.stats.heap.HeapDumpAnalyzer",
       "dependencies" : ["com.oracle.truffle.js.stats"],
       "distDependencies" : [
-        "GRAALJS",
         "NETBEANS_PROFILER",
-        "GRAALJS_LAUNCHER"
+        "truffle:TRUFFLE_API",
       ],
       "maven" : False,
     },

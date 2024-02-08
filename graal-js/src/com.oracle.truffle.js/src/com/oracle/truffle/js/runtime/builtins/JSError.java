@@ -198,9 +198,6 @@ public final class JSError extends JSNonProxy {
 
         if (errorType == JSErrorType.Error) {
             JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.BUILTINS);
-            if (ctx.isOptionNashornCompatibilityMode()) {
-                JSObjectUtil.putFunctionsFromContainer(realm, errorPrototype, ErrorPrototypeBuiltins.ErrorPrototypeNashornCompatBuiltins.BUILTINS);
-            }
         }
         return errorPrototype;
     }

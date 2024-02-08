@@ -2362,7 +2362,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             // We skip until newTarget (if any) so as to also skip user-defined Error constructors.
             JSDynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;
 
-            GraalJSException exception = JSException.createCapture(errorType, Strings.toJavaString(messageOpt), errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
+            String messageAsJavaString = messageOpt == null ? null : Strings.toJavaString(messageOpt);
+            GraalJSException exception = JSException.createCapture(errorType, messageAsJavaString, errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
             return initErrorObjectNode.execute(errorObj, exception, messageOpt, null, options);
         }
 
@@ -2402,11 +2403,14 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             JSErrorObject errorObj = JSError.createErrorObject(context, realm, JSErrorType.AggregateError, proto);
 
             TruffleString message;
+            String messageAsJavaString;
             if (messageObj == Undefined.instance) {
                 message = null;
+                messageAsJavaString = null;
             } else {
                 message = toStringNode.executeString(messageObj);
                 setMessage.putWithFlags(errorObj, JSError.MESSAGE, message, JSError.MESSAGE_ATTRIBUTES);
+                messageAsJavaString = Strings.toJavaString(message);
             }
 
             if (context.getLanguageOptions().errorCause() && options != Undefined.instance) {
@@ -2423,7 +2427,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             // We skip until newTarget (if any) so as to also skip user-defined Error constructors.
             JSDynamicObject skipUntil = newTarget == Undefined.instance ? errorFunction : newTarget;
 
-            GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, Strings.toJavaString(message), errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
+            GraalJSException exception = JSException.createCapture(JSErrorType.AggregateError, messageAsJavaString, errorObj, realm, stackTraceLimit, skipUntil, skipUntil != errorFunction);
             initErrorObjectNode.execute(errorObj, exception, null, errorsArray);
             return errorObj;
         }

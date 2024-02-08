@@ -73,7 +73,7 @@ package com.oracle.truffle.js.runtime.doubleconv;
 // Fast Dtoa implementation supporting shortest and precision modes. Does not
 // work for all numbers so BugnumDtoa is used as fallback.
 @SuppressWarnings("all")
-class FastDtoa {
+final class FastDtoa {
 
     // FastDtoa will produce at most kFastDtoaMaximalLength digits. This does not
     // include the terminating '\0' character.
@@ -662,4 +662,6 @@ class FastDtoa {
         return result;
     }
 
+    private FastDtoa() {
+    }
 }

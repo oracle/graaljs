@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -158,6 +157,6 @@ public abstract class ConstructorRootNode extends JavaScriptRootNode {
     @TruffleBoundary
     public String toString() {
         String callTargetName = ((RootCallTarget) callTarget).getRootNode().toString();
-        return JSConfig.DetailedCallTargetNames ? JSRuntime.stringConcat("[Construct]", callTargetName) : callTargetName;
+        return JSConfig.DetailedCallTargetNames ? "[Construct]".concat(callTargetName) : callTargetName;
     }
 }

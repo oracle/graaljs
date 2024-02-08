@@ -179,7 +179,6 @@ import com.oracle.truffle.js.parser.JavaScriptTranslator;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
-import com.oracle.truffle.js.runtime.ExitException;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.ImportMetaInitializer;
 import com.oracle.truffle.js.runtime.ImportModuleDynamicallyCallback;
@@ -2482,10 +2481,18 @@ public final class GraalJSAccess {
     @CompilerDirectives.TruffleBoundary
     public Object tryCatchException(@SuppressWarnings("unused") Object context, Object exception) {
         Throwable throwable = (Throwable) exception;
-        if (exception instanceof ExitException) {
-            int exitCode = ((ExitException) exception).getStatus();
-            exit(exitCode);
-        } else if (throwable instanceof OutOfMemoryError) {
+        if (exception instanceof AbstractTruffleException truffleException) {
+            try {
+                InteropLibrary interop = InteropLibrary.getUncached(truffleException);
+                if (interop.getExceptionType(truffleException) == ExceptionType.EXIT) {
+                    int exitCode = interop.getExceptionExitStatus(truffleException);
+                    exit(exitCode);
+                }
+            } catch (UnsupportedMessageException e) {
+                throw CompilerDirectives.shouldNotReachHere(e);
+            }
+        }
+        if (throwable instanceof OutOfMemoryError) {
             throwable.printStackTrace();
             exit(1);
         }

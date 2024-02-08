@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.Engine;
@@ -55,9 +56,9 @@ import org.graalvm.polyglot.PolyglotException;
 import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
-import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 
 /**
  * Tests for the global builtin.
@@ -101,7 +102,7 @@ public class GlobalBuiltinTest extends JSTest {
     @Test
     public void testQuitInPromiseJob() {
         Engine engine = JSTest.newEngineBuilder().build();
-        try (Context context = JSTest.newContextBuilder().engine(engine).option(JSContextOptions.SHELL_NAME, "true").build()) {
+        try (Context context = JSTest.newContextBuilder().engine(engine).useSystemExit(false).option(JSContextOptions.SHELL_NAME, "true").build()) {
             // Schedule a promise job that exits while the promise job queue is not empty.
             context.eval(JavaScriptLanguage.ID, "var promise = Promise.resolve(42); promise.then(x => quit()); promise.then(x => x*x)");
             fail("Exception expected");
@@ -167,6 +168,32 @@ public class GlobalBuiltinTest extends JSTest {
         try (Context ctx = Context.newBuilder("js").allowExperimentalOptions(true).option("js.print-no-newline", "true").err(baos).build()) {
             ctx.eval("js", "printErr('hello '); printErr('world');");
             assertEquals("hello world", baos.toString(StandardCharsets.UTF_8));
+        }
+    }
+
+    @Test
+    public void testExitCode() {
+        for (int exitCode : List.of(2, 1, 0)) {
+            String arg = switch (exitCode) {
+                case 0 -> "";
+                case 1 -> "1";
+                case 2 -> "'2'";
+                default -> throw new IllegalArgumentException("Unexpected value: " + exitCode);
+            };
+            try (Context context = JSTest.newContextBuilder().useSystemExit(false).option(JSContextOptions.SHELL_NAME, "true").build()) {
+                context.eval(JavaScriptLanguage.ID, "quit(" + arg + ")");
+                fail("Exception expected");
+            } catch (PolyglotException pex) {
+                assertTrue(pex.toString(), pex.isExit());
+                assertEquals(exitCode, pex.getExitStatus());
+            }
+            try (Context context = JSTest.newContextBuilder().useSystemExit(false).option(JSContextOptions.NASHORN_COMPATIBILITY_MODE_NAME, "true").build()) {
+                context.eval(JavaScriptLanguage.ID, "exit(" + arg + ")");
+                fail("Exception expected");
+            } catch (PolyglotException pex) {
+                assertTrue(pex.toString(), pex.isExit());
+                assertEquals(exitCode, pex.getExitStatus());
+            }
         }
     }
 }
