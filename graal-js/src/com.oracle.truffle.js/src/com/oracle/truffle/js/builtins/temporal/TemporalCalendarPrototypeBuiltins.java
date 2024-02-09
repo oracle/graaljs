@@ -370,7 +370,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
-            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);            
+            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             JSObject fields = TemporalUtil.prepareTemporalFields(getContext(), fieldsParam, TemporalUtil.listDMMCY, TemporalUtil.listYD);
             Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
             TemporalUtil.resolveISOMonth(getContext(), fields, toIntOrInfinityNode, identicalNode);
@@ -394,22 +394,25 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object yearMonthFromFields(JSTemporalCalendarObject calendar, Object fields, Object optionsParam,
+        protected Object yearMonthFromFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object optionsParam,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             assert calendar.getId().equals(ISO8601);
-            if (!isObject(fields)) {
+            if (!isObject(fieldsParam)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            ISODateRecord result = TemporalUtil.isoYearMonthFromFields((JSDynamicObject) fields, options, getContext(),
-                            isObjectNode, getOptionNode, toIntOrInfinityNode, identicalNode);
+            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), fieldsParam, TemporalUtil.listMMCY, TemporalUtil.listY);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
+            TemporalUtil.resolveISOMonth(getContext(), fields, toIntOrInfinityNode, identicalNode);
+            ISODateRecord result = TemporalUtil.isoYearMonthFromFields(fields, overflow);
+
             return JSTemporalPlainYearMonth.create(getContext(), getRealm(),
-                            result.year(), result.month(), calendar, result.day(), this, errorBranch);
+                            result.year(), result.month(), calendar.getId(), result.day(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")

@@ -3618,16 +3618,11 @@ public final class TemporalUtil {
                         dtoi(JSRuntime.doubleValue(day)), overflow);
     }
 
-    public static ISODateRecord isoYearMonthFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
-        assert isObject.executeBoolean(fields);
-        Overflow overflow = toTemporalOverflow(options, getOptionNode);
-        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listMMCY, listY);
-        Object year = JSObject.get(preparedFields, YEAR);
-        Object month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
-
-        ISOYearMonthRecord result = regulateISOYearMonth(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))),
-                        dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))), overflow);
+    public static ISODateRecord isoYearMonthFromFields(JSDynamicObject fields, Overflow overflow) {
+        Number year = (Number) JSObject.get(fields, YEAR);
+        Number month = (Number) JSObject.get(fields, MONTH);
+        ISOYearMonthRecord result = regulateISOYearMonth(dtoi(JSRuntime.doubleValue(year)),
+                        dtoi(JSRuntime.doubleValue(month)), overflow);
         return new ISODateRecord(result.year(), result.month(), 1);
     }
 
