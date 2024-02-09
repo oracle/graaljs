@@ -430,22 +430,24 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object monthDayFromFields(JSTemporalCalendarObject calendar, Object fields, Object optionsParam,
+        protected Object monthDayFromFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object optionsParam,
                         @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             assert calendar.getId().equals(ISO8601);
-            if (!isObject(fields)) {
+            if (!isObject(fieldsParam)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            ISODateRecord result = TemporalUtil.isoMonthDayFromFields((JSDynamicObject) fields, options, getContext(),
-                            isObjectNode, getOptionNode, toIntOrInfinityNode, identicalNode);
+            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), fieldsParam, TemporalUtil.listDMMCY, TemporalUtil.listD);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
+            TemporalUtil.resolveISOMonth(getContext(), fields, toIntOrInfinityNode, identicalNode);
+            ISODateRecord result = TemporalUtil.isoMonthDayFromFields(fields, overflow);
             return JSTemporalPlainMonthDay.create(getContext(), getRealm(),
-                            result.month(), result.day(), calendar, result.year(), this, errorBranch);
+                            result.month(), result.day(), calendar.getId(), result.year(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")

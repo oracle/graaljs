@@ -3626,25 +3626,19 @@ public final class TemporalUtil {
         return new ISODateRecord(result.year(), result.month(), 1);
     }
 
-    public static ISODateRecord isoMonthDayFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
-        assert isObject.executeBoolean(fields);
-        Overflow overflow = toTemporalOverflow(options, getOptionNode);
-        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listDMMCY, listD);
-        Object month = JSObject.get(preparedFields, MONTH);
-        Object monthCode = JSObject.get(preparedFields, MONTH_CODE);
-        Object year = JSObject.get(preparedFields, YEAR);
-        month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
-        Object day = JSObject.get(preparedFields, DAY);
+    public static ISODateRecord isoMonthDayFromFields(JSDynamicObject fields, Overflow overflow) {
+        Number month = (Number) JSObject.get(fields, MONTH);
+        Number day = (Number) JSObject.get(fields, DAY);
+        Object year = JSObject.get(fields, YEAR);
         int referenceISOYear = 1972;
-        ISODateRecord result;
-        if (monthCode == Undefined.instance) {
-            result = regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
-                            dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
+        int yearForRegulateISODate;
+        if (year == Undefined.instance) {
+            yearForRegulateISODate = referenceISOYear;
         } else {
-            result = regulateISODate(referenceISOYear, dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
-                            dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
+            yearForRegulateISODate = dtoi(JSRuntime.doubleValue((Number) year));
         }
+        ISODateRecord result = regulateISODate(yearForRegulateISODate, dtoi(JSRuntime.doubleValue(month)),
+                        dtoi(JSRuntime.doubleValue(day)), overflow);
         return new ISODateRecord(referenceISOYear, result.month(), result.day());
     }
 
