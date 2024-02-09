@@ -3573,40 +3573,34 @@ public final class TemporalUtil {
     }
 
     // 12.1.38
-    public static Object resolveISOMonth(JSContext ctx, JSDynamicObject fields, JSToIntegerOrInfinityNode toIntegerOrInfinity, JSIdenticalNode identicalNode) {
+    public static void isoResolveMonth(JSContext ctx, JSDynamicObject fields, JSToIntegerOrInfinityNode toIntegerOrInfinity, JSIdenticalNode identicalNode) {
         Object month = JSObject.get(fields, MONTH);
         Object monthCode = JSObject.get(fields, MONTH_CODE);
         if (monthCode == Undefined.instance) {
             if (month == Undefined.instance) {
                 throw Errors.createTypeError("No month or month code present.");
             }
-            return month;
+            return;
         }
-        assert monthCode instanceof TruffleString;
         int monthLength = Strings.length((TruffleString) monthCode);
         if (monthLength != 3) {
             throw Errors.createRangeError("Month code should be in 3 character code.");
         }
-        TruffleString numberPart = Strings.substring(ctx, (TruffleString) monthCode, 1);
-        double numberPart2 = JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(numberPart));
-
-        if (Double.isNaN(numberPart2)) {
-            throw Errors.createRangeError("The last character of the monthCode should be a number.");
+        if (Strings.charAt((TruffleString) monthCode, 0) != 'M') {
+            throw Errors.createRangeError("Month code should start with 'M'");
         }
-        if (numberPart2 < 1 || numberPart2 > 12) {
-            throw Errors.createRangeError("monthCode out of bounds");
+        TruffleString monthCodeDigits = Strings.substring(ctx, (TruffleString) monthCode, 1);
+        double monthCodeInteger = JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(monthCodeDigits));
+
+        if (Double.isNaN(monthCodeInteger) || monthCodeInteger < 1 || monthCodeInteger > 12) {
+            throw Errors.createRangeErrorFormat("Invalid month code: %s", null, monthCode);
         }
 
-        double m1 = (month == Undefined.instance) ? -1 : JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(month));
-
-        if (month != Undefined.instance && m1 != numberPart2) {
+        if (month != Undefined.instance && JSRuntime.doubleValue((Number) month) != monthCodeInteger) {
             throw Errors.createRangeError("Month does not equal the month code.");
         }
-        if (!identicalNode.executeBoolean(monthCode, buildISOMonthCode((int) numberPart2))) {
-            throw Errors.createRangeError("Not same value");
-        }
 
-        return (long) numberPart2;
+        createDataPropertyOrThrow(ctx, fields, MONTH, monthCodeInteger);
     }
 
     @TruffleBoundary
