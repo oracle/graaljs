@@ -234,8 +234,8 @@ public final class GraalJSParserHelper {
             }
         }
         String message;
-        if (context.isOptionV8CompatibilityMode()) {
-            message = errors.getParserException().getRawMessage();
+        if (parserException != null && context.isOptionV8CompatibilityMode()) {
+            message = parserException.getRawMessage();
         } else {
             message = ((ErrorManager.StringBuilderErrorManager) errors).getOutput();
         }
