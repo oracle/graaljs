@@ -106,6 +106,8 @@ import java.time.ZonedDateTime;
 import java.time.zone.ZoneOffsetTransition;
 import java.time.zone.ZoneRules;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
@@ -122,7 +124,6 @@ import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
@@ -270,7 +271,8 @@ public final class TemporalUtil {
     public static final List<TruffleString> listTimeZone = List.of(TIME_ZONE);
     public static final List<TruffleString> listTimeZoneOffset = List.of(TIME_ZONE, OFFSET);
     public static final List<TruffleString> listRoundingMode = List.of(CEIL, FLOOR, EXPAND, TRUNC, HALF_FLOOR, HALF_CEIL, HALF_EXPAND, HALF_TRUNC, HALF_EVEN);
-    public static final List<TruffleString> listOffset = List.of(PREFER, USE, IGNORE, REJECT);
+    public static final List<TruffleString> listOffset = List.of(OFFSET);
+    public static final List<TruffleString> listOffsets = List.of(PREFER, USE, IGNORE, REJECT);
     public static final List<TruffleString> listDisambiguation = List.of(COMPATIBLE, EARLIER, LATER, REJECT);
 
     public static final TruffleString[] TIME_LIKE_PROPERTIES = new TruffleString[]{HOUR, MICROSECOND, MILLISECOND, MINUTE, NANOSECOND, SECOND};
@@ -1013,26 +1015,57 @@ public final class TemporalUtil {
 
     // 13.52
     @TruffleBoundary
-    public static JSObject prepareTemporalFields(JSContext ctx, JSDynamicObject fields, List<TruffleString> fieldNames, List<TruffleString> requiredFields) {
+    public static JSObject prepareTemporalFields(JSContext ctx, Object fields, List<TruffleString> fieldNames, List<TruffleString> requiredFields) {
+        boolean duplicateBehaviourThrow = true;
         JSObject result = JSOrdinary.createWithNullPrototype(ctx);
-        for (TruffleString property : fieldNames) {
-            Object value = JSObject.get(fields, property);
-            assert value != null;
-            if (value == Undefined.instance) {
-                if (requiredFields.contains(property)) {
-                    throw TemporalErrors.createTypeErrorPropertyRequired(property);
+        boolean any = false;
+        List<TruffleString> sortedFieldNames = new ArrayList<>(fieldNames);
+        TruffleString.CompareCharsUTF16Node compareNode = TruffleString.CompareCharsUTF16Node.getUncached();
+        Collections.sort(sortedFieldNames, new Comparator<>() {
+            @Override
+            public int compare(TruffleString o1, TruffleString o2) {
+                return Strings.compareTo(compareNode, o1, o2);
+            }
+        });
+
+        TruffleString previousProperty = null;
+        for (TruffleString property : sortedFieldNames) {
+            if (JSObject.CONSTRUCTOR.equals(property) || JSObject.PROTO.equals(property)) {
+                throw Errors.createRangeErrorFormat("Invalid field: %s", null, property);
+            }
+            if (property.equals(previousProperty)) {
+                if (duplicateBehaviourThrow) {
+                    throw Errors.createRangeErrorFormat("Duplicate field: %s", null, property);
                 } else {
-                    if (temporalFieldDefaults.containsKey(property)) {
-                        value = temporalFieldDefaults.get(property);
+                    continue;
+                }
+            }
+            previousProperty = property;
+
+            Object value = JSRuntime.get(fields, property);
+            if (value == Undefined.instance) {
+                if (requiredFields != null) {
+                    if (requiredFields.contains(property)) {
+                        throw TemporalErrors.createTypeErrorPropertyRequired(property);
+                    } else {
+                        if (temporalFieldDefaults.containsKey(property)) {
+                            value = temporalFieldDefaults.get(property);
+                        }
                     }
                 }
             } else {
+                any = true;
                 if (temporalFieldConversion.containsKey(property)) {
                     Function<Object, Object> conversion = temporalFieldConversion.get(property);
                     value = conversion.apply(value);
                 }
             }
             createDataPropertyOrThrow(ctx, result, property, value);
+        }
+
+        // If requiredFields is PARTIAL and any is false
+        if (requiredFields == null && !any) {
+            throw Errors.createTypeError("No relevant field provided");
         }
         return result;
     }
@@ -1469,7 +1502,7 @@ public final class TemporalUtil {
         if (Double.isInfinite(d)) {
             return d;
         }
-        return number;
+        return JSRuntime.truncateDouble(d);
     }
 
     public static JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSDynamicObject date, JSDynamicObject duration) {
@@ -1713,7 +1746,7 @@ public final class TemporalUtil {
         return Boundaries.equals(toCalendarIdentifier.executeString(one), toCalendarIdentifier.executeString(two));
     }
 
-    public static void rejectTemporalCalendarType(JSDynamicObject obj, Node node, InlinedBranchProfile errorBranch) {
+    public static void rejectTemporalCalendarType(Object obj, Node node, InlinedBranchProfile errorBranch) {
         if (obj instanceof JSTemporalPlainDateObject || obj instanceof JSTemporalPlainDateTimeObject || obj instanceof JSTemporalPlainMonthDayObject ||
                         obj instanceof JSTemporalPlainTimeObject || obj instanceof JSTemporalPlainYearMonthObject || isTemporalZonedDateTime(obj)) {
             errorBranch.enter(node);
@@ -3036,7 +3069,7 @@ public final class TemporalUtil {
     public static OffsetOption toTemporalOffset(JSDynamicObject options, TruffleString fallback, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
         TruffleString result = fallback;
         if (options != Undefined.instance) {
-            result = (TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffset, fallback);
+            result = (TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffsets, fallback);
         }
         return toOffsetOption(result, equalNode);
     }
@@ -3139,7 +3172,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    private static TruffleString formatISOTimeZoneOffsetString(long offsetNs) {
+    public static TruffleString formatISOTimeZoneOffsetString(long offsetNs) {
         long offsetNanoseconds = dtol(roundNumberToIncrement(offsetNs, 60_000_000_000L, RoundingMode.HALF_EXPAND));
         TruffleString sign = Strings.EMPTY_STRING;
         sign = (offsetNanoseconds >= 0) ? Strings.SYMBOL_PLUS : Strings.SYMBOL_MINUS;
@@ -3540,86 +3573,66 @@ public final class TemporalUtil {
     }
 
     // 12.1.38
-    public static Object resolveISOMonth(JSContext ctx, JSDynamicObject fields, JSToIntegerOrInfinityNode toIntegerOrInfinity, JSIdenticalNode identicalNode) {
+    public static void isoResolveMonth(JSContext ctx, JSDynamicObject fields, JSToIntegerOrInfinityNode toIntegerOrInfinity) {
         Object month = JSObject.get(fields, MONTH);
         Object monthCode = JSObject.get(fields, MONTH_CODE);
         if (monthCode == Undefined.instance) {
             if (month == Undefined.instance) {
                 throw Errors.createTypeError("No month or month code present.");
             }
-            return month;
+            return;
         }
-        assert monthCode instanceof TruffleString;
         int monthLength = Strings.length((TruffleString) monthCode);
         if (monthLength != 3) {
             throw Errors.createRangeError("Month code should be in 3 character code.");
         }
-        TruffleString numberPart = Strings.substring(ctx, (TruffleString) monthCode, 1);
-        double numberPart2 = JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(numberPart));
-
-        if (Double.isNaN(numberPart2)) {
-            throw Errors.createRangeError("The last character of the monthCode should be a number.");
+        if (Strings.charAt((TruffleString) monthCode, 0) != 'M') {
+            throw Errors.createRangeError("Month code should start with 'M'");
         }
-        if (numberPart2 < 1 || numberPart2 > 12) {
-            throw Errors.createRangeError("monthCode out of bounds");
+        TruffleString monthCodeDigits = Strings.substring(ctx, (TruffleString) monthCode, 1);
+        double monthCodeInteger = JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(monthCodeDigits));
+
+        if (Double.isNaN(monthCodeInteger) || monthCodeInteger < 1 || monthCodeInteger > 12) {
+            throw Errors.createRangeErrorFormat("Invalid month code: %s", null, monthCode);
         }
 
-        double m1 = (month == Undefined.instance) ? -1 : JSRuntime.doubleValue(toIntegerOrInfinity.executeNumber(month));
-
-        if (month != Undefined.instance && m1 != numberPart2) {
+        if (month != Undefined.instance && JSRuntime.doubleValue((Number) month) != monthCodeInteger) {
             throw Errors.createRangeError("Month does not equal the month code.");
         }
-        if (!identicalNode.executeBoolean(monthCode, buildISOMonthCode((int) numberPart2))) {
-            throw Errors.createRangeError("Not same value");
-        }
 
-        return (long) numberPart2;
+        createDataPropertyOrThrow(ctx, fields, MONTH, monthCodeInteger);
     }
 
-    public static ISODateRecord isoDateFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
-        assert isObject.executeBoolean(fields);
-        Overflow overflow = toTemporalOverflow(options, getOptionNode);
-        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listDMMCY, listYD);
-        Object year = JSObject.get(preparedFields, YEAR);
-        Object month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
-        Object day = JSObject.get(preparedFields, DAY);
-        return regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
-                        dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
+    @TruffleBoundary
+    public static ISODateRecord isoDateFromFields(JSDynamicObject fields, Overflow overflow) {
+        Number year = (Number) JSObject.get(fields, YEAR);
+        Number month = (Number) JSObject.get(fields, MONTH);
+        Number day = (Number) JSObject.get(fields, DAY);
+        return regulateISODate(dtoi(JSRuntime.doubleValue(year)), dtoi(JSRuntime.doubleValue(month)),
+                        dtoi(JSRuntime.doubleValue(day)), overflow);
     }
 
-    public static ISODateRecord isoYearMonthFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
-        assert isObject.executeBoolean(fields);
-        Overflow overflow = toTemporalOverflow(options, getOptionNode);
-        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listMMCY, listY);
-        Object year = JSObject.get(preparedFields, YEAR);
-        Object month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
-
-        ISOYearMonthRecord result = regulateISOYearMonth(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))),
-                        dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))), overflow);
+    public static ISODateRecord isoYearMonthFromFields(JSDynamicObject fields, Overflow overflow) {
+        Number year = (Number) JSObject.get(fields, YEAR);
+        Number month = (Number) JSObject.get(fields, MONTH);
+        ISOYearMonthRecord result = regulateISOYearMonth(dtoi(JSRuntime.doubleValue(year)),
+                        dtoi(JSRuntime.doubleValue(month)), overflow);
         return new ISODateRecord(result.year(), result.month(), 1);
     }
 
-    public static ISODateRecord isoMonthDayFromFields(JSDynamicObject fields, JSDynamicObject options, JSContext ctx, IsObjectNode isObject,
-                    TemporalGetOptionNode getOptionNode, JSToIntegerOrInfinityNode toIntOrInfinityNode, JSIdenticalNode identicalNode) {
-        assert isObject.executeBoolean(fields);
-        Overflow overflow = toTemporalOverflow(options, getOptionNode);
-        JSDynamicObject preparedFields = prepareTemporalFields(ctx, fields, listDMMCY, listD);
-        Object month = JSObject.get(preparedFields, MONTH);
-        Object monthCode = JSObject.get(preparedFields, MONTH_CODE);
-        Object year = JSObject.get(preparedFields, YEAR);
-        month = resolveISOMonth(ctx, preparedFields, toIntOrInfinityNode, identicalNode);
-        Object day = JSObject.get(preparedFields, DAY);
+    public static ISODateRecord isoMonthDayFromFields(JSDynamicObject fields, Overflow overflow) {
+        Number month = (Number) JSObject.get(fields, MONTH);
+        Number day = (Number) JSObject.get(fields, DAY);
+        Object year = JSObject.get(fields, YEAR);
         int referenceISOYear = 1972;
-        ISODateRecord result;
-        if (monthCode == Undefined.instance) {
-            result = regulateISODate(dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(year))), dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
-                            dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
+        int yearForRegulateISODate;
+        if (year == Undefined.instance) {
+            yearForRegulateISODate = referenceISOYear;
         } else {
-            result = regulateISODate(referenceISOYear, dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(month))),
-                            dtoi(JSRuntime.doubleValue(toIntOrInfinityNode.executeNumber(day))), overflow);
+            yearForRegulateISODate = dtoi(JSRuntime.doubleValue((Number) year));
         }
+        ISODateRecord result = regulateISODate(yearForRegulateISODate, dtoi(JSRuntime.doubleValue(month)),
+                        dtoi(JSRuntime.doubleValue(day)), overflow);
         return new ISODateRecord(referenceISOYear, result.month(), result.day());
     }
 

@@ -49,7 +49,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
@@ -89,7 +89,6 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
                     @Cached InlinedConditionProfile isPlainDateProfile,
                     @Cached IsObjectNode isObjectNode,
-                    @Cached JSToStringNode toStringNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
                     @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
@@ -123,17 +122,21 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listDMMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
             return dateFromFieldsNode.execute(calendarRec, fields, options);
-        }
-        JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(toStringNode.executeString(itemParam));
-        assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
-        TruffleString calendar = result.getCalendar();
-        if (calendar == null) {
-            calendar = TemporalConstants.ISO8601;
-        } else if (!TemporalUtil.isBuiltinCalendar(calendar)) {
+        } else if (itemParam instanceof TruffleString item) {
+            JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalDateString(item);
+            assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
+            TruffleString calendar = result.getCalendar();
+            if (calendar == null) {
+                calendar = TemporalConstants.ISO8601;
+            } else if (!TemporalUtil.isBuiltinCalendar(calendar)) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorCalendarNotSupported();
+            }
+            TemporalUtil.toTemporalOverflow(options, getOptionNode);
+            return JSTemporalPlainDate.create(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch);
+        } else {
             errorBranch.enter(this);
-            throw TemporalErrors.createRangeErrorCalendarNotSupported();
+            throw Errors.createTypeErrorNotAString(itemParam);
         }
-        TemporalUtil.toTemporalOverflow(options, getOptionNode);
-        return JSTemporalPlainDate.create(ctx, realm, result.getYear(), result.getMonth(), result.getDay(), calendar, this, errorBranch);
     }
 }

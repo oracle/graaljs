@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,15 +42,9 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
 import java.util.ArrayList;
@@ -89,7 +83,6 @@ import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
-import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -103,7 +96,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
@@ -121,6 +113,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthO
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
@@ -318,26 +311,25 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert calendar.getId().equals(ISO8601);
             IteratorRecord iter = getIteratorNode.execute(this, fieldsParam /* , sync */);
             List<TruffleString> fieldNames = new ArrayList<>();
-            Object next = Boolean.TRUE;
-            while (next != Boolean.FALSE) {
-                next = iteratorStep(iter);
-                if (next != Boolean.FALSE) {
-                    Object nextValue = getIteratorValue(next);
-                    if (!Strings.isTString(nextValue)) {
+            while (true) {
+                Object next = iteratorStep(iter);
+                if (next == Boolean.FALSE) {
+                    break;
+                }
+                Object nextValue = getIteratorValue(next);
+                if (nextValue instanceof TruffleString str) {
+                    if (Boundaries.listContains(fieldNames, str)) {
                         iteratorCloseAbrupt(iter.getIterator());
-                        throw Errors.createTypeError("string expected");
+                        throw Errors.createRangeErrorFormat("Duplicate field: %s", null, str);
                     }
-                    TruffleString str = JSRuntime.toString(nextValue);
-                    if (str != null && Boundaries.listContains(fieldNames, str)) {
+                    if (!(YEAR.equals(str) || MONTH.equals(str) || MONTH_CODE.equals(str) || DAY.equals(str))) {
                         iteratorCloseAbrupt(iter.getIterator());
-                        throw Errors.createRangeError("");
-                    }
-                    if (!(YEAR.equals(str) || MONTH.equals(str) || MONTH_CODE.equals(str) || DAY.equals(str) || HOUR.equals(str) ||
-                                    MINUTE.equals(str) || SECOND.equals(str) || MILLISECOND.equals(str) || MICROSECOND.equals(str) || NANOSECOND.equals(str))) {
-                        iteratorCloseAbrupt(iter.getIterator());
-                        throw Errors.createRangeError("");
+                        throw Errors.createRangeErrorFormat("Invalid field: %s", null, str);
                     }
                     fieldNames.add(str);
+                } else {
+                    iteratorCloseAbrupt(iter.getIterator());
+                    throw Errors.createTypeErrorNotAString(nextValue);
                 }
             }
             return JSRuntime.createArrayFromList(getContext(), getRealm(), fieldNames);
@@ -358,22 +350,23 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object dateFromFields(JSTemporalCalendarObject calendar, Object fields, Object optionsParam,
-                        @Cached("createSameValue()") JSIdenticalNode identicalNode,
+        protected Object dateFromFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object optionsParam,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             assert calendar.getId().equals(ISO8601);
-            if (!isObject(fields)) {
+            if (!isObject(fieldsParam)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            ISODateRecord result = TemporalUtil.isoDateFromFields((JSDynamicObject) fields, options, getContext(),
-                            isObjectNode, getOptionNode, toIntOrInfinityNode, identicalNode);
+            JSObject fields = TemporalUtil.prepareTemporalFields(getContext(), fieldsParam, TemporalUtil.listDMMCY, TemporalUtil.listYD);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
+            TemporalUtil.isoResolveMonth(getContext(), fields, toIntOrInfinityNode);
+            ISODateRecord result = TemporalUtil.isoDateFromFields(fields, overflow);
 
-            return JSTemporalPlainDate.create(getContext(), getRealm(), result.year(), result.month(), result.day(), calendar, this, errorBranch);
+            return JSTemporalPlainDate.create(getContext(), getRealm(), result.year(), result.month(), result.day(), calendar.getId(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -391,22 +384,24 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object yearMonthFromFields(JSTemporalCalendarObject calendar, Object fields, Object optionsParam,
-                        @Cached("createSameValue()") JSIdenticalNode identicalNode,
+        protected Object yearMonthFromFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object optionsParam,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             assert calendar.getId().equals(ISO8601);
-            if (!isObject(fields)) {
+            if (!isObject(fieldsParam)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            ISODateRecord result = TemporalUtil.isoYearMonthFromFields((JSDynamicObject) fields, options, getContext(),
-                            isObjectNode, getOptionNode, toIntOrInfinityNode, identicalNode);
+            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), fieldsParam, TemporalUtil.listMMCY, TemporalUtil.listY);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
+            TemporalUtil.isoResolveMonth(getContext(), fields, toIntOrInfinityNode);
+            ISODateRecord result = TemporalUtil.isoYearMonthFromFields(fields, overflow);
+
             return JSTemporalPlainYearMonth.create(getContext(), getRealm(),
-                            result.year(), result.month(), calendar, result.day(), this, errorBranch);
+                            result.year(), result.month(), calendar.getId(), result.day(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -424,22 +419,23 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected Object monthDayFromFields(JSTemporalCalendarObject calendar, Object fields, Object optionsParam,
-                        @Cached("createSameValue()") JSIdenticalNode identicalNode,
+        protected Object monthDayFromFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object optionsParam,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             assert calendar.getId().equals(ISO8601);
-            if (!isObject(fields)) {
+            if (!isObject(fieldsParam)) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorFieldsNotAnObject();
             }
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            ISODateRecord result = TemporalUtil.isoMonthDayFromFields((JSDynamicObject) fields, options, getContext(),
-                            isObjectNode, getOptionNode, toIntOrInfinityNode, identicalNode);
+            JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), fieldsParam, TemporalUtil.listDMMCY, TemporalUtil.listD);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
+            TemporalUtil.isoResolveMonth(getContext(), fields, toIntOrInfinityNode);
+            ISODateRecord result = TemporalUtil.isoMonthDayFromFields(fields, overflow);
             return JSTemporalPlainMonthDay.create(getContext(), getRealm(),
-                            result.month(), result.day(), calendar, result.year(), this, errorBranch);
+                            result.month(), result.day(), calendar.getId(), result.year(), this, errorBranch);
         }
 
         @SuppressWarnings("unused")
