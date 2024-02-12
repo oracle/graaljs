@@ -272,7 +272,8 @@ public final class TemporalUtil {
     public static final List<TruffleString> listTimeZone = List.of(TIME_ZONE);
     public static final List<TruffleString> listTimeZoneOffset = List.of(TIME_ZONE, OFFSET);
     public static final List<TruffleString> listRoundingMode = List.of(CEIL, FLOOR, EXPAND, TRUNC, HALF_FLOOR, HALF_CEIL, HALF_EXPAND, HALF_TRUNC, HALF_EVEN);
-    public static final List<TruffleString> listOffset = List.of(PREFER, USE, IGNORE, REJECT);
+    public static final List<TruffleString> listOffset = List.of(OFFSET);
+    public static final List<TruffleString> listOffsets = List.of(PREFER, USE, IGNORE, REJECT);
     public static final List<TruffleString> listDisambiguation = List.of(COMPATIBLE, EARLIER, LATER, REJECT);
 
     public static final TruffleString[] TIME_LIKE_PROPERTIES = new TruffleString[]{HOUR, MICROSECOND, MILLISECOND, MINUTE, NANOSECOND, SECOND};
@@ -3069,7 +3070,7 @@ public final class TemporalUtil {
     public static OffsetOption toTemporalOffset(JSDynamicObject options, TruffleString fallback, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
         TruffleString result = fallback;
         if (options != Undefined.instance) {
-            result = (TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffset, fallback);
+            result = (TruffleString) getOptionNode.execute(options, OFFSET, OptionType.STRING, listOffsets, fallback);
         }
         return toOffsetOption(result, equalNode);
     }
@@ -3172,7 +3173,7 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    private static TruffleString formatISOTimeZoneOffsetString(long offsetNs) {
+    public static TruffleString formatISOTimeZoneOffsetString(long offsetNs) {
         long offsetNanoseconds = dtol(roundNumberToIncrement(offsetNs, 60_000_000_000L, RoundingMode.HALF_EXPAND));
         TruffleString sign = Strings.EMPTY_STRING;
         sign = (offsetNanoseconds >= 0) ? Strings.SYMBOL_PLUS : Strings.SYMBOL_MINUS;
