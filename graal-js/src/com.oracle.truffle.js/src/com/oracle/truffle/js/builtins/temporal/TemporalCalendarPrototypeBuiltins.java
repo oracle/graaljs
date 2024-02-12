@@ -42,15 +42,9 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH_CODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEAR;
 
 import java.util.ArrayList;
@@ -103,7 +97,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.temporal.ISODateRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
@@ -319,26 +312,25 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert calendar.getId().equals(ISO8601);
             IteratorRecord iter = getIteratorNode.execute(this, fieldsParam /* , sync */);
             List<TruffleString> fieldNames = new ArrayList<>();
-            Object next = Boolean.TRUE;
-            while (next != Boolean.FALSE) {
-                next = iteratorStep(iter);
-                if (next != Boolean.FALSE) {
-                    Object nextValue = getIteratorValue(next);
-                    if (!Strings.isTString(nextValue)) {
+            while (true) {
+                Object next = iteratorStep(iter);
+                if (next == Boolean.FALSE) {
+                    break;
+                }
+                Object nextValue = getIteratorValue(next);
+                if (nextValue instanceof TruffleString str) {
+                    if (Boundaries.listContains(fieldNames, str)) {
                         iteratorCloseAbrupt(iter.getIterator());
-                        throw Errors.createTypeError("string expected");
+                        throw Errors.createRangeErrorFormat("Duplicate field: %s", null, str);
                     }
-                    TruffleString str = JSRuntime.toString(nextValue);
-                    if (str != null && Boundaries.listContains(fieldNames, str)) {
+                    if (!(YEAR.equals(str) || MONTH.equals(str) || MONTH_CODE.equals(str) || DAY.equals(str))) {
                         iteratorCloseAbrupt(iter.getIterator());
-                        throw Errors.createRangeError("");
-                    }
-                    if (!(YEAR.equals(str) || MONTH.equals(str) || MONTH_CODE.equals(str) || DAY.equals(str) || HOUR.equals(str) ||
-                                    MINUTE.equals(str) || SECOND.equals(str) || MILLISECOND.equals(str) || MICROSECOND.equals(str) || NANOSECOND.equals(str))) {
-                        iteratorCloseAbrupt(iter.getIterator());
-                        throw Errors.createRangeError("");
+                        throw Errors.createRangeErrorFormat("Invalid field: %s", null, str);
                     }
                     fieldNames.add(str);
+                } else {
+                    iteratorCloseAbrupt(iter.getIterator());
+                    throw Errors.createTypeErrorNotAString(nextValue);
                 }
             }
             return JSRuntime.createArrayFromList(getContext(), getRealm(), fieldNames);
