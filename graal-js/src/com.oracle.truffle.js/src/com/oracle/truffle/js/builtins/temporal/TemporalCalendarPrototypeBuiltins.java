@@ -83,7 +83,6 @@ import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
-import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
@@ -352,7 +351,6 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object dateFromFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object optionsParam,
-                        @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode,
                         @Cached InlinedBranchProfile errorBranch,
@@ -365,7 +363,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             JSObject fields = TemporalUtil.prepareTemporalFields(getContext(), fieldsParam, TemporalUtil.listDMMCY, TemporalUtil.listYD);
             Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
-            TemporalUtil.isoResolveMonth(getContext(), fields, toIntOrInfinityNode, identicalNode);
+            TemporalUtil.isoResolveMonth(getContext(), fields, toIntOrInfinityNode);
             ISODateRecord result = TemporalUtil.isoDateFromFields(fields, overflow);
 
             return JSTemporalPlainDate.create(getContext(), getRealm(), result.year(), result.month(), result.day(), calendar.getId(), this, errorBranch);
@@ -387,7 +385,6 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object yearMonthFromFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object optionsParam,
-                        @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode,
                         @Cached InlinedBranchProfile errorBranch,
@@ -400,7 +397,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), fieldsParam, TemporalUtil.listMMCY, TemporalUtil.listY);
             Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
-            TemporalUtil.isoResolveMonth(getContext(), fields, toIntOrInfinityNode, identicalNode);
+            TemporalUtil.isoResolveMonth(getContext(), fields, toIntOrInfinityNode);
             ISODateRecord result = TemporalUtil.isoYearMonthFromFields(fields, overflow);
 
             return JSTemporalPlainYearMonth.create(getContext(), getRealm(),
@@ -423,7 +420,6 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected Object monthDayFromFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object optionsParam,
-                        @Cached("createSameValue()") JSIdenticalNode identicalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached JSToIntegerOrInfinityNode toIntOrInfinityNode,
                         @Cached InlinedBranchProfile errorBranch,
@@ -436,7 +432,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), fieldsParam, TemporalUtil.listDMMCY, TemporalUtil.listD);
             Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
-            TemporalUtil.isoResolveMonth(getContext(), fields, toIntOrInfinityNode, identicalNode);
+            TemporalUtil.isoResolveMonth(getContext(), fields, toIntOrInfinityNode);
             ISODateRecord result = TemporalUtil.isoMonthDayFromFields(fields, overflow);
             return JSTemporalPlainMonthDay.create(getContext(), getRealm(),
                             result.month(), result.day(), calendar.getId(), result.year(), this, errorBranch);
