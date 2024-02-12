@@ -4258,6 +4258,10 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-11-28"
   }, {
+    "filePath" : "mjsunit/temporal/calendar-fields.js",
+    "status" : "FAIL",
+    "comment" : "Passes fields that are no longer valid to Calendar.prototype.fields()."
+  }, {
     "filePath" : "mjsunit/temporal/calendar-month-day-from-fields.js",
     "status" : "FAIL",
     "comment" : "Obsolete/off-spec test."
