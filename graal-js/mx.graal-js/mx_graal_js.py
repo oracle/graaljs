@@ -516,17 +516,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 '-H:+AuxiliaryEngineCache',
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
             ] if not mx.is_windows() else [],
-            language='js',
-            isolate_library_layout_distribution={
-                'name': 'JS_ISOLATE_LAYOUT',
-                'platforms': [
-                    'linux-amd64',
-                    'linux-aarch64',
-                    'darwin-amd64',
-                    'darwin-aarch64',
-                    'windows-amd64',
-                ],
-            },
+            language='js'
         )
     ],
     boot_jars=[],
