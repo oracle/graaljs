@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -3612,12 +3612,36 @@ public class Parser extends AbstractParser {
         ParserContextBlockNode switchBlock;
         SwitchNode switchStatement;
         try {
+            assert type == TokenType.SWITCH; // tested in caller.
+            next();
+
+            /*
+             * Note: Identifier references in the switch expression need to be resolved in the scope
+             * of the outer block, so we must parse the expression before pushing the switch scope.
+             */
+            expect(LPAREN);
+            int expressionLine = line;
+            Expression expression = expression(yield, await);
+            expect(RPAREN);
+
+            // Desugar expression to a synthetic let variable assignment in the outer block.
+            // This simplifies lexical scope analysis (the expression is outside the switch
+            // block).
+            // e.g.: let x = 1; switch (x) { case 0: let x = 2; } =>
+            // let x = 1; { let :switch = x; { let x; switch (:switch) { case 0: x = 2; } } }
+            if (useBlockScope()) {
+                IdentNode switchExprName = new IdentNode(Token.recast(expression.getToken(), IDENT), expression.getFinish(), lexer.stringIntern(SWITCH_BINDING_NAME));
+                VarNode varNode = new VarNode(expressionLine, Token.recast(expression.getToken(), LET), expression.getFinish(), switchExprName, expression, VarNode.IS_LET);
+                outerBlock.appendStatement(varNode);
+                declareVar(outerBlock.getScope(), varNode);
+                expression = switchExprName;
+            }
+
             // Block to capture variables declared inside the switch statement.
             switchBlock = newBlock(Scope.createSwitchBlock(lc.getCurrentScope()));
             switchBlock.setFlag(Block.IS_SYNTHETIC | Block.IS_SWITCH_BLOCK);
 
-            // SWITCH tested in caller.
-            next();
+            expect(LBRACE);
 
             // Create and add switch statement.
             final ParserContextSwitchNode switchNode = new ParserContextSwitchNode();
@@ -3628,26 +3652,6 @@ public class Parser extends AbstractParser {
             final ArrayList<CaseNode> cases = new ArrayList<>();
 
             try {
-                expect(LPAREN);
-                int expressionLine = line;
-                Expression expression = expression(yield, await);
-                expect(RPAREN);
-
-                expect(LBRACE);
-
-                // Desugar expression to a synthetic let variable assignment in the outer block.
-                // This simplifies lexical scope analysis (the expression is outside the switch
-                // block).
-                // e.g.: let x = 1; switch (x) { case 0: let x = 2; } =>
-                // let x = 1; { let :switch = x; { let x; switch (:switch) { case 0: x = 2; } } }
-                if (useBlockScope()) {
-                    IdentNode switchExprName = new IdentNode(Token.recast(expression.getToken(), IDENT), expression.getFinish(), lexer.stringIntern(SWITCH_BINDING_NAME));
-                    VarNode varNode = new VarNode(expressionLine, Token.recast(expression.getToken(), LET), expression.getFinish(), switchExprName, expression, VarNode.IS_LET);
-                    outerBlock.appendStatement(varNode);
-                    declareVar(outerBlock.getScope(), varNode);
-                    expression = switchExprName;
-                }
-
                 while (type != RBRACE) {
                     // Prepare for next case.
                     Expression caseExpression = null;
@@ -3686,6 +3690,7 @@ public class Parser extends AbstractParser {
                     cases.add(caseNode);
                 }
 
+                assert type == RBRACE;
                 next();
 
                 switchStatement = new SwitchNode(switchLine, switchToken, finish, expression, cases, defaultCaseIndex);
