@@ -1070,28 +1070,6 @@ public final class TemporalUtil {
         return result;
     }
 
-    @TruffleBoundary
-    public static JSObject preparePartialTemporalFields(JSContext ctx, JSDynamicObject fields, List<TruffleString> fieldNames) {
-        JSObject result = JSOrdinary.createWithNullPrototype(ctx);
-        boolean any = false;
-        for (TruffleString property : fieldNames) {
-            Object value = JSObject.get(fields, property);
-            assert value != null;
-            if (value != Undefined.instance) {
-                any = true;
-                if (temporalFieldConversion.containsKey(property)) {
-                    Function<Object, Object> conversion = temporalFieldConversion.get(property);
-                    value = conversion.apply(value);
-                }
-            }
-            createDataPropertyOrThrow(ctx, result, property, value);
-        }
-        if (!any) {
-            throw Errors.createTypeError("Given dateTime like object has no relevant properties.");
-        }
-        return result;
-    }
-
     public record ISOYearMonthRecord(int year, int month) {
     }
 
