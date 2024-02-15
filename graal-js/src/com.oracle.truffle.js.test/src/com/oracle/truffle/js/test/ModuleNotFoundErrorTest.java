@@ -47,6 +47,7 @@ import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
 import java.io.File;
+import java.util.List;
 
 import org.graalvm.polyglot.Context;
 import org.graalvm.polyglot.PolyglotException;
@@ -98,6 +99,37 @@ public class ModuleNotFoundErrorTest {
                 assertTrue(e.isGuestException());
                 assertThat(e.getMessage(), allOf(containsString("Cannot find module"), containsString("not-found.mjs")));
                 assertThat(e.getMessage(), allOf(containsString("imported from"), containsString("main.mjs")));
+            }
+        }
+    }
+
+    @Test
+    public void testModuleNotFoundErrorFromDynamicImport() {
+        String mainCode = """
+                        await import("./not-found.mjs");
+                        """;
+        Source fileSource = Source.newBuilder(JavaScriptLanguage.ID, new File("main.mjs")).content(mainCode).buildLiteral();
+        Source literalSource = Source.newBuilder(JavaScriptLanguage.ID, mainCode, "main.mjs").buildLiteral();
+        for (Source mainSource : List.of(fileSource, literalSource)) {
+            try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).build()) {
+                try {
+                    context.eval(mainSource);
+                    fail("should have thrown");
+                } catch (PolyglotException e) {
+                    assertTrue(e.isGuestException());
+                    assertThat(e.getMessage(), allOf(containsString("Cannot find module"), containsString("not-found.mjs")));
+                    assertThat(e.getMessage(), allOf(containsString("imported from"), containsString("main.mjs")));
+                }
+            }
+
+            try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.NONE).build()) {
+                try {
+                    context.eval(mainSource);
+                    fail("should have thrown");
+                } catch (PolyglotException e) {
+                    assertTrue(e.isGuestException());
+                    assertThat(e.getMessage(), containsString("not allowed"));
+                }
             }
         }
     }
