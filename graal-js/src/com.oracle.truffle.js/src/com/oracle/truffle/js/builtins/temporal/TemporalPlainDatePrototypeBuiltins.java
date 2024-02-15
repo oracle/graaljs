@@ -93,6 +93,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
@@ -356,29 +357,30 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached InlinedConditionProfile optionUndefined) {
             if (!isObject(temporalDateLike)) {
                 errorBranch.enter(this);
-                throw Errors.createTypeError("Object expected");
+                throw Errors.createTypeErrorNotAnObject(temporalDateLike, this);
             }
-            JSDynamicObject temporalDateLikeObject = TemporalUtil.toJSDynamicObject(temporalDateLike, this, errorBranch);
-            TemporalUtil.rejectTemporalCalendarType(temporalDateLikeObject, this, errorBranch);
-            Object calendarProperty = JSObject.get(temporalDateLikeObject, CALENDAR);
+            TemporalUtil.rejectTemporalCalendarType(temporalDateLike, this, errorBranch);
+            Object calendarProperty = JSRuntime.get(temporalDateLike, CALENDAR);
             if (calendarProperty != Undefined.instance) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorUnexpectedCalendar();
             }
-            Object timeZoneProperty = JSObject.get(temporalDateLikeObject, TIME_ZONE);
+            Object timeZoneProperty = JSRuntime.get(temporalDateLike, TIME_ZONE);
             if (timeZoneProperty != Undefined.instance) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
             }
             JSDynamicObject options = getOptionsObject(optParam, this, errorBranch, optionUndefined);
+
             Object calendarSlotValue = temporalDate.getCalendar();
             Object dateFromFieldsMethod = lookupDateFromFields.execute(calendarSlotValue);
             Object fieldsMethod = lookupFields.execute(calendarSlotValue);
             Object mergeFieldsMethod = lookupMergeFields.execute(calendarSlotValue);
             CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateFromFieldsAndFieldsAndMergeFields(calendarSlotValue, dateFromFieldsMethod, fieldsMethod, mergeFieldsMethod);
+
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, TemporalUtil.listDMMCY);
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), temporalDate, fieldNames, TemporalUtil.listEmpty);
-            JSDynamicObject partialDate = TemporalUtil.preparePartialTemporalFields(getContext(), temporalDateLikeObject, fieldNames);
+            JSDynamicObject partialDate = TemporalUtil.prepareTemporalFields(getContext(), temporalDateLike, fieldNames, null);
             fields = TemporalUtil.calendarMergeFields(getContext(), getRealm(), calendarRec, fields,
                             partialDate, this, errorBranch);
             fields = TemporalUtil.prepareTemporalFields(getContext(), fields, fieldNames, TemporalUtil.listEmpty);
