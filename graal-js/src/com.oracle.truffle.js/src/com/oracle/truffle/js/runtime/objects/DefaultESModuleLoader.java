@@ -96,7 +96,13 @@ public class DefaultESModuleLoader implements JSModuleLoader {
 
     @Override
     public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
-        String refPath = referrer == null ? null : referrer.getSource().getPath();
+        String refPath = null;
+        String refPathOrName = null;
+        if (referrer != null) {
+            Source referrerSource = referrer.getSource();
+            refPath = referrerSource.getPath();
+            refPathOrName = refPath != null ? refPath : referrerSource.getName();
+        }
         try {
             TruffleString specifierTS = moduleRequest.getSpecifier();
             String specifier = Strings.toJavaString(specifierTS);
@@ -132,7 +138,7 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             }
             return loadModuleFromUrl(referrer, moduleRequest, moduleFile, canonicalPath);
         } catch (FileSystemException fsex) {
-            throw createErrorFromFileSystemException(fsex, refPath);
+            throw createErrorFromFileSystemException(fsex, refPathOrName);
         } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
             throw Errors.createErrorFromException(e);
         }
