@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,7 +46,7 @@ import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.UserScriptException;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.builtins.JSPromiseObject;
 
@@ -79,9 +79,9 @@ public abstract class UnwrapPromiseNode extends JavaScriptBaseNode {
 
     @SuppressWarnings("unused")
     @Specialization(guards = "promiseState == REJECTED")
-    protected static Object rejected(JSPromiseObject promise, int promiseState, Object promiseResult) {
+    protected final Object rejected(JSPromiseObject promise, int promiseState, Object promiseResult) {
         assert promiseResult != null;
-        throw UserScriptException.create(promiseResult);
+        throw JSRuntime.getException(promiseResult, this);
     }
 
     @SuppressWarnings("unused")
