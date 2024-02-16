@@ -294,9 +294,7 @@ public class ImportCallNode extends JavaScriptNode {
         JobCallback importModuleDynamicallyHandler = realm.getAgent().hostMakeJobCallback(createImportModuleDynamicallyHandler(realm));
         if (context.isOptionTopLevelAwait()) {
             LoadImportedModuleRequest request = new LoadImportedModuleRequest(referencingScriptOrModule, moduleRequest, promiseCapability);
-            PromiseCapabilityRecord startModuleLoadCapability = newPromiseCapability();
-            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, importModuleDynamicallyHandler, true);
-            return promiseReactionJobNode.execute(startModuleLoad, request);
+            return promiseReactionJobNode.execute(PromiseReactionRecord.create(null, importModuleDynamicallyHandler, true), request);
         } else {
             LoadImportedModuleRequest request = new LoadImportedModuleRequest(referencingScriptOrModule, moduleRequest, null);
             return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, importModuleDynamicallyHandler, true), request);
