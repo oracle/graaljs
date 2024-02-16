@@ -63,6 +63,8 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 @ExportLibrary(InteropLibrary.class)
 public final class JSErrorObject extends JSNonProxyObject implements JSCopyableObject {
 
+    private GraalJSException exception;
+
     protected JSErrorObject(Shape shape, JSDynamicObject proto) {
         super(shape, proto);
     }
@@ -77,13 +79,17 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
     }
 
     public GraalJSException getException() {
-        return JSError.getException(this);
+        assert exception != null : this;
+        return exception;
     }
 
-    @SuppressWarnings("static-method")
+    public void setException(GraalJSException exception) {
+        this.exception = exception;
+    }
+
     @ExportMessage
     public boolean isException() {
-        return true;
+        return exception != null;
     }
 
     @SuppressWarnings("static-method")

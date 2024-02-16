@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -75,7 +76,6 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
 
     private InitErrorObjectNode(JSContext context, boolean defaultColumnNumber) {
         this.context = context;
-        this.setException = PropertySetNode.createSetHidden(JSError.EXCEPTION_PROPERTY_NAME, context);
         this.setFormattedStack = PropertySetNode.createSetHidden(JSError.FORMATTED_STACK_NAME, context);
         this.setMessage = JSObjectUtil.createDispatched(JSError.MESSAGE);
         this.defineStackProperty = DefineStackPropertyNode.create();
@@ -113,7 +113,7 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
             installErrorCause(errorObj, options);
         }
 
-        setException.setValue(errorObj, exception);
+        setException(errorObj, exception);
         // stack is not formatted until it is accessed
         setFormattedStack.setValue(errorObj, null);
         defineStackProperty.execute(errorObj);
@@ -124,6 +124,19 @@ public final class InitErrorObjectNode extends JavaScriptBaseNode {
             setColumnNumber.executeVoid(errorObj, defaultColumnNumber ? JSError.DEFAULT_COLUMN_NUMBER : topStackTraceElement.getColumnNumber());
         }
         return errorObj;
+    }
+
+    private void setException(JSObject errorObj, GraalJSException exception) {
+        if (errorObj instanceof JSErrorObject jsErrorObj) {
+            jsErrorObj.setException(exception);
+        } else {
+            // May be any JSObject when called by Error.captureStackTrace.
+            if (setException == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                this.setException = insert(PropertySetNode.createSetHidden(JSError.EXCEPTION_PROPERTY_NAME, context));
+            }
+            setException.setValue(errorObj, exception);
+        }
     }
 
     private void installErrorCause(JSObject errorObj, Object options) {

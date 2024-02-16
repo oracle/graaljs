@@ -563,7 +563,7 @@ public class Serializer {
         }
     }
 
-    private void writeJSError(JSDynamicObject error) {
+    private void writeJSError(JSErrorObject error) {
         writeTag(SerializationTag.ERROR);
         writeErrorTypeTag(error);
 
@@ -583,7 +583,7 @@ public class Serializer {
         writeTag(ErrorTag.END);
     }
 
-    private void writeErrorTypeTag(JSDynamicObject error) {
+    private void writeErrorTypeTag(JSErrorObject error) {
         Throwable exception = JSError.getException(error);
         JSErrorType errorType = JSErrorType.Error;
         if (exception instanceof JSException) {
