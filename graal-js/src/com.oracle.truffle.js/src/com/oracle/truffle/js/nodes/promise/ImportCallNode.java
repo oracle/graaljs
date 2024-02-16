@@ -311,7 +311,7 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private static JSFunctionData createImportModuleDynamicallyHandlerImpl(JSContext context) {
-        class ImportModuleDynamicallyRootNode extends JavaScriptRealmBoundaryRootNode {
+        class ImportModuleDynamicallyRootNode extends JavaScriptRealmBoundaryRootNode implements AsyncHandlerRootNode {
             @Child protected JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
 
             protected ImportModuleDynamicallyRootNode(JavaScriptLanguage lang) {
@@ -338,6 +338,14 @@ public class ImportCallNode extends JavaScriptNode {
                 // Evaluate has already been invoked on moduleRecord and successfully completed.
                 assert moduleRecord.hasBeenEvaluated();
                 return context.getEvaluator().getModuleNamespace(moduleRecord);
+            }
+
+            @Override
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction, Object argument) {
+                if (argument instanceof LoadImportedModuleRequest request) {
+                    return new AsyncStackTraceInfo(request.promiseCapability().getPromise(), null);
+                }
+                return new AsyncStackTraceInfo();
             }
         }
 

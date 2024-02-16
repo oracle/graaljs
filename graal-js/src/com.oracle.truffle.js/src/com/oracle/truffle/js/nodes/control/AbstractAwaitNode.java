@@ -376,11 +376,11 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         } while (nextPromise != null);
     }
 
-    public static List<TruffleStackTraceElement> findAsyncStackFramesFromHandler(JSFunctionObject handlerFunction) {
+    public static List<TruffleStackTraceElement> findAsyncStackFramesFromHandler(JSFunctionObject handlerFunction, Object argument) {
         List<TruffleStackTraceElement> stackTrace = new ArrayList<>(4);
         RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
         if (rootNode instanceof AsyncHandlerRootNode) {
-            AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction);
+            AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction, argument);
             JSDynamicObject promise = result.promise;
             if (promise != null) {
                 collectAsyncStackFramesFromPromise(promise, stackTrace);
