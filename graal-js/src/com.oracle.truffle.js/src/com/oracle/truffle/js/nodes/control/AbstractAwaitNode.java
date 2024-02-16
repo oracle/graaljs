@@ -299,7 +299,8 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
                 MaterializedFrame asyncContextFrame = (MaterializedFrame) JSObjectUtil.getHiddenProperty(handlerFunction, ASYNC_CONTEXT);
                 Node callNode = (Node) JSObjectUtil.getHiddenProperty(handlerFunction, AbstractAwaitNode.ASYNC_CALL_NODE);
                 TruffleStackTraceElement asyncStackTraceElement = TruffleStackTraceElement.create(callNode, asyncTarget, asyncContextFrame);
-                JSDynamicObject asyncPromise = ((AsyncRootNode) asyncTarget.getRootNode()).getAsyncFunctionPromise(asyncContextFrame);
+                Object generatorOrPromiseCapability = JSObjectUtil.getHiddenProperty(handlerFunction, AbstractAwaitNode.ASYNC_GENERATOR);
+                JSDynamicObject asyncPromise = ((AsyncRootNode) asyncTarget.getRootNode()).getAsyncFunctionPromise(asyncContextFrame, generatorOrPromiseCapability);
                 return new AsyncStackTraceInfo(asyncPromise, asyncStackTraceElement);
             }
             return new AsyncStackTraceInfo();

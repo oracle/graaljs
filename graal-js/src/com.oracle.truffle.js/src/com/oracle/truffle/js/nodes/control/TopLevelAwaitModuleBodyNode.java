@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.exception.AbstractTruffleException;
+import com.oracle.truffle.api.frame.Frame;
 import com.oracle.truffle.api.frame.MaterializedFrame;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.InstrumentableNode;
@@ -59,6 +60,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.objects.Completion;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
 import com.oracle.truffle.js.runtime.objects.PromiseCapabilityRecord;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
@@ -66,7 +68,7 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
-    public static final class TopLevelAwaitModuleRootNode extends AbstractFunctionRootNode {
+    public static final class TopLevelAwaitModuleRootNode extends AbstractFunctionRootNode implements AsyncRootNode {
 
         private final JSContext context;
 
@@ -139,6 +141,11 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
             }
             Object result = getErrorObjectNode.execute(e);
             callRejectNode.executeCall(JSArguments.createOneArg(Undefined.instance, promiseCapability.getReject(), result));
+        }
+
+        @Override
+        public JSDynamicObject getAsyncFunctionPromise(Frame asyncFrame, Object promiseCapability) {
+            return ((PromiseCapabilityRecord) promiseCapability).getPromise();
         }
     }
 
