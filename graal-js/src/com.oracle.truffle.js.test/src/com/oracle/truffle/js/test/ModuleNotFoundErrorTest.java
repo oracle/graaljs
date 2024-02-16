@@ -46,7 +46,9 @@ import static org.junit.Assert.assertThat;
 import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.fail;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 import org.graalvm.polyglot.Context;
@@ -130,6 +132,33 @@ public class ModuleNotFoundErrorTest {
                     assertTrue(e.isGuestException());
                     assertThat(e.getMessage(), containsString("not allowed"));
                 }
+            }
+        }
+    }
+
+    @Test
+    public void testAsyncStackTraceOfModuleNotFoundErrorFromDynamicImport() {
+        String mainCode = """
+                        async function caller() {
+                            await import("./not-found.mjs");
+                        }
+                        try {
+                            await caller();
+                        } catch (e) {
+                            console.log(e.stack);
+                        }
+                        """;
+        Source fileSource = Source.newBuilder(JavaScriptLanguage.ID, new File("main.mjs")).content(mainCode).buildLiteral();
+        Source literalSource = Source.newBuilder(JavaScriptLanguage.ID, mainCode, "main.mjs").buildLiteral();
+        for (Source mainSource : List.of(fileSource, literalSource)) {
+            ByteArrayOutputStream outs = new ByteArrayOutputStream();
+            try (Context context = JSTest.newContextBuilder().out(outs).allowIO(IOAccess.newBuilder().allowHostFileAccess(true).build()).build()) {
+                context.eval(mainSource);
+
+                String output = outs.toString(StandardCharsets.UTF_8);
+                assertThat(output, allOf(containsString("Cannot find module"), containsString("not-found.mjs")));
+                assertThat(output, allOf(containsString("imported from"), containsString("main.mjs")));
+                assertThat(output, allOf(containsString("at async caller"), containsString("main.mjs:2")));
             }
         }
     }
