@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.notExtensibl
 import static com.oracle.truffle.js.runtime.util.DefinePropertyUtil.reject;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import org.graalvm.collections.EconomicMap;
@@ -138,7 +137,7 @@ public final class JSDictionary extends JSNonProxy {
             }
             keys.add(key);
         }
-        Collections.sort(keys, JSRuntime::comparePropertyKeys);
+        keys.sort(JSRuntime::comparePropertyKeys);
         return keys;
     }
 
