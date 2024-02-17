@@ -64,6 +64,7 @@ import org.graalvm.shadowed.com.ibm.icu.text.NumberingSystem;
 import org.graalvm.shadowed.com.ibm.icu.util.Calendar;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -429,7 +430,7 @@ public final class IntlUtil {
     public static final TruffleString KEY_YEAR_NAME = Strings.constant(YEAR_NAME);
 
     // https://tc39.es/ecma402/#table-sanctioned-simple-unit-identifiers
-    private static final Set<String> SANCTIONED_SIMPLE_UNIT_IDENTIFIERS = new HashSet<>(Arrays.asList(new String[]{
+    private static final Set<String> SANCTIONED_SIMPLE_UNIT_IDENTIFIERS = Set.of(new String[]{
                     "acre",
                     "bit",
                     "byte",
@@ -475,7 +476,7 @@ public final class IntlUtil {
                     "week",
                     "yard",
                     "year"
-    }));
+    });
 
     public static Locale selectedLocale(JSContext ctx, String[] locales) {
         // We don't distinguish BestFitMatcher and LookupMatcher i.e.
