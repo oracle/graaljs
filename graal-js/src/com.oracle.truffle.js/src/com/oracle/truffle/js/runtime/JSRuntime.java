@@ -1297,10 +1297,6 @@ public final class JSRuntime {
         return toString(JSObject.toPrimitive(value, JSToPrimitiveNode.Hint.String));
     }
 
-    public static String numberToJavaString(Number number) {
-        return Strings.toJavaString(numberToString(number));
-    }
-
     public static TruffleString numberToString(Number number) {
         CompilerAsserts.neverPartOfCompilation();
         if (number instanceof Integer) {
@@ -1963,10 +1959,6 @@ public final class JSRuntime {
         return (TruffleString) value;
     }
 
-    public static boolean isStringClass(Class<?> clazz) {
-        return TruffleString.class.isAssignableFrom(clazz);
-    }
-
     public static Object nullToUndefined(Object value) {
         return value == null ? Undefined.instance : value;
     }
@@ -1981,11 +1973,6 @@ public final class JSRuntime {
 
     public static Object toJavaNull(Object value) {
         return value == Null.instance ? null : value;
-    }
-
-    @TruffleBoundary
-    public static Object jsObjectToJavaObject(Object obj) {
-        return toJavaNull(undefinedToNull(obj));
     }
 
     public static boolean isPropertyKey(Object key) {
@@ -2038,17 +2025,6 @@ public final class JSRuntime {
         if (number instanceof Integer) {
             return ((Integer) number).doubleValue();
         }
-        return doubleValueVirtual(number);
-    }
-
-    public static double doubleValue(Number number, BranchProfile profile) {
-        if (number instanceof Double) {
-            return ((Double) number).doubleValue();
-        }
-        if (number instanceof Integer) {
-            return ((Integer) number).doubleValue();
-        }
-        profile.enter();
         return doubleValueVirtual(number);
     }
 
