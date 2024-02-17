@@ -2893,7 +2893,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
-            Normalizer.Form useForm = null;
+            Normalizer.Form useForm;
             if (form == Undefined.instance) {
                 useForm = Normalizer.Form.NFC;
             } else {
