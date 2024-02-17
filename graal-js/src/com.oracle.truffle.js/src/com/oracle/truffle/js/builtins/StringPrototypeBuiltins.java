@@ -1908,10 +1908,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        public static JSStringToStringNode createStringToString(JSContext context) {
-            return JSStringToStringNodeGen.create(context, null, null);
-        }
-
         @Specialization
         protected TruffleString toStringTString(TruffleString thisStr) {
             return thisStr;
