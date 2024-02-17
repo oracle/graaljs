@@ -197,7 +197,7 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     @Override
     public void setTruncate() {
         CompilerAsserts.neverPartOfCompilation();
-        if (truncate == false) {
+        if (!truncate) {
             truncate = true;
             if (isInt) {
                 Truncatable.truncate(getOperand());
