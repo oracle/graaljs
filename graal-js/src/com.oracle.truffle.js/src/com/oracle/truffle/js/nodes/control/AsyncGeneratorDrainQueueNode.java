@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,6 @@ public class AsyncGeneratorDrainQueueNode extends AsyncGeneratorAwaitReturnNode 
         return new AsyncGeneratorDrainQueueNode(context);
     }
 
-    @SuppressWarnings("unchecked")
     public final void asyncGeneratorCompleteStepAndDrainQueue(VirtualFrame frame, JSAsyncGeneratorObject generator, Completion.Type resultType, Object resultValue) {
         ArrayDeque<AsyncGeneratorRequest> queue = generator.getAsyncGeneratorQueue();
         generator.setAsyncGeneratorState(JSFunction.AsyncGeneratorState.Completed);
