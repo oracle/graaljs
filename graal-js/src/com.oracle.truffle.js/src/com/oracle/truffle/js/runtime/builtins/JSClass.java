@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 
@@ -231,57 +230,14 @@ public abstract class JSClass {
     public abstract String toString();
 
     /**
-     * Follows 19.1.3.6 Object.prototype.toString(), basically: "[object " + [[Symbol.toStringTag]]
-     * + "]" or typically "[object Object]" (for non built-in types) if [[Symbol.toStringTag]] is
-     * not present.
-     * <p>
-     * For ES5, if follows 15.2.4.2 Object.prototype.toString(), basically: "[object " + [[Class]] +
-     * "]".
-     *
-     * @see #getBuiltinToStringTag(JSDynamicObject)
-     */
-    @TruffleBoundary
-    public TruffleString defaultToString(JSDynamicObject object) {
-        JSContext context = JSObject.getJSContext(object);
-        if (context.getEcmaScriptVersion() <= 5) {
-            return formatToString(getClassName(object));
-        }
-        TruffleString result = getToStringTag(object);
-        return formatToString(result);
-    }
-
-    protected TruffleString getToStringTag(JSDynamicObject object) {
-        TruffleString result = getBuiltinToStringTag(object);
-        if (JSRuntime.isObject(object)) {
-            Object toStringTag = JSObject.get(object, Symbol.SYMBOL_TO_STRING_TAG);
-            if (Strings.isTString(toStringTag)) {
-                result = JSRuntime.toStringIsString(toStringTag);
-            }
-        }
-        return result;
-    }
-
-    /**
-     * Returns builtinTag from step 14 of ES6+ 19.1.3.6. By default returns "Object".
+     * Returns builtinTag from step 14 of ES6+ 19.1.3.6. By default, returns "Object".
      *
      * @param object object to be used
-     * @return "Object" by default
-     * @see #defaultToString(JSDynamicObject)
+     * @return built-in toStringTag or "Object"
      */
     @TruffleBoundary
     public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
         return getClassName(object);
-    }
-
-    /**
-     * Formats {@link #defaultToString(JSDynamicObject)}, by default returns "[object ...]".
-     *
-     * @param object object to be used
-     * @return "[object ...]" by default
-     */
-    @TruffleBoundary
-    protected TruffleString formatToString(TruffleString object) {
-        return Strings.concatAll(Strings.BRACKET_OBJECT_SPC, object, Strings.BRACKET_CLOSE);
     }
 
     /**

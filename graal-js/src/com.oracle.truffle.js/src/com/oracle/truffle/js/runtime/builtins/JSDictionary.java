@@ -105,7 +105,7 @@ public final class JSDictionary extends JSNonProxy {
 
     @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return defaultToString(obj);
+        return obj.defaultToString();
     }
 
     /**

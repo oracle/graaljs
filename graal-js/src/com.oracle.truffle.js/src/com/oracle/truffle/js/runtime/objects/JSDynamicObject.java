@@ -259,15 +259,12 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
         if (context.getEcmaScriptVersion() <= 5) {
             return JSObjectUtil.formatToString(getClassName());
         }
-        TruffleString result = null;
+        TruffleString result = getBuiltinToStringTag();
         if (isObject()) {
             Object toStringTag = getValue(Symbol.SYMBOL_TO_STRING_TAG);
             if (Strings.isTString(toStringTag)) {
                 result = (TruffleString) toStringTag;
             }
-        }
-        if (result == null) {
-            result = getBuiltinToStringTag();
         }
         return JSObjectUtil.formatToString(result);
     }

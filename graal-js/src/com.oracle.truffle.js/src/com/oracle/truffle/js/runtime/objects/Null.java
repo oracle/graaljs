@@ -93,10 +93,5 @@ public final class Null {
         public TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
             return object == Undefined.instance ? DISPLAY_STRING_UNDEFINED : DISPLAY_STRING_NULL;
         }
-
-        @Override
-        public TruffleString defaultToString(JSDynamicObject thisObj) {
-            return thisObj == Undefined.instance ? Undefined.NAME : Null.NAME;
-        }
     }
 }

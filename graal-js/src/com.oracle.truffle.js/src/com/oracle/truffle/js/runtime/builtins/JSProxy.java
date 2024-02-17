@@ -603,7 +603,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return defaultToString(obj);
+            return obj.defaultToString();
         } else {
             Object target = getTarget(obj);
             Object handler = getHandler(obj);

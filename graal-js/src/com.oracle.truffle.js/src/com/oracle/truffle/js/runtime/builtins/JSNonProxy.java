@@ -594,7 +594,7 @@ public abstract class JSNonProxy extends JSClass {
     @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return defaultToString(obj);
+            return obj.defaultToString();
         } else {
             return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth, getClassName(obj));
         }

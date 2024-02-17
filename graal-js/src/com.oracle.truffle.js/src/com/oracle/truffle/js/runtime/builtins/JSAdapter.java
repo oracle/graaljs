@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -281,7 +281,7 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
 
     @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return defaultToString(object);
+        return object.defaultToString();
     }
 
     @Override
@@ -317,8 +317,8 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @TruffleBoundary
-    private JSException createTypeErrorNoSuchFunction(JSDynamicObject thisObj, Object key) {
-        return Errors.createTypeErrorFormat("%s has no such function \"%s\"", defaultToString(thisObj), key);
+    private static JSException createTypeErrorNoSuchFunction(JSDynamicObject thisObj, Object key) {
+        return Errors.createTypeErrorFormat("%s has no such function \"%s\"", thisObj.defaultToString(), key);
     }
 
     @TruffleBoundary

@@ -556,7 +556,7 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
 
     @TruffleBoundary
     public static TruffleString defaultToString(JSDynamicObject obj) {
-        return JSObject.getJSClass(obj).defaultToString(obj);
+        return obj.defaultToString();
     }
 
     /**
