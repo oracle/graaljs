@@ -1889,7 +1889,7 @@ public final class JSRuntime {
         } else if (property instanceof Double) {
             return isArrayIndex((double) property);
         } else if (Strings.isTString(property)) {
-            long idx = propertyNameToArrayIndex(toStringIsString(property), TruffleString.ReadCharUTF16Node.getUncached());
+            long idx = propertyNameToArrayIndex((TruffleString) property, TruffleString.ReadCharUTF16Node.getUncached());
             return isArrayIndex(idx);
         } else {
             return false;
@@ -1952,11 +1952,6 @@ public final class JSRuntime {
 
     public static boolean isJSPrimitive(Object value) {
         return isNumber(value) || value instanceof BigInt || value instanceof Boolean || Strings.isTString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol;
-    }
-
-    public static TruffleString toStringIsString(Object value) {
-        assert Strings.isTString(value);
-        return (TruffleString) value;
     }
 
     public static Object nullToUndefined(Object value) {

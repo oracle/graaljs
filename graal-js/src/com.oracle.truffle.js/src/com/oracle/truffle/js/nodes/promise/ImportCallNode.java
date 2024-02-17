@@ -210,7 +210,7 @@ public class ImportCallNode extends JavaScriptNode {
                         return rejectPromise(promiseCapability, ex);
                     }
                     if (Strings.isTString(value)) {
-                        attributes[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
+                        attributes[i] = Boundaries.mapEntry(key, (TruffleString) value);
                     } else {
                         // Read all values before rejecting the promise,
                         // we were supposed to do EnumerableOwnProperties(KEY+VALUE) above.

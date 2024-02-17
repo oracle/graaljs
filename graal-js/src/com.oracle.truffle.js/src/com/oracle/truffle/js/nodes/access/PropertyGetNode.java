@@ -1009,7 +1009,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            TruffleString thisStr = JSRuntime.toStringIsString(thisObj);
+            TruffleString thisStr = (TruffleString) thisObj;
             if (Strings.isTString(root.getKey())) {
                 Object boxedString = root.getRealm().getEnv().asBoxedGuestValue(Strings.toJavaString(thisStr));
                 try {

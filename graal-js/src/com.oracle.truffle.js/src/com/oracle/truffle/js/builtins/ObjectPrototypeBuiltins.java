@@ -288,7 +288,7 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             if (getContext().getEcmaScriptVersion() >= 6) {
                 Object toStringTag = getStringTagNode.getValue(thisObj);
                 if (Strings.isTString(toStringTag)) {
-                    return JSRuntime.toStringIsString(toStringTag);
+                    return (TruffleString) toStringTag;
                 }
             }
             return null;

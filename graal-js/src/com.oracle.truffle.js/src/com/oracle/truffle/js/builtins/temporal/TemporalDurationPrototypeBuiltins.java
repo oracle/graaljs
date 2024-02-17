@@ -421,7 +421,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSDynamicObject roundTo;
             if (roundToIsTString.profile(this, Strings.isTString(roundToParam))) {
                 roundTo = JSOrdinary.createWithNullPrototype(getContext());
-                JSRuntime.createDataPropertyOrThrow(roundTo, TemporalConstants.SMALLEST_UNIT, JSRuntime.toStringIsString(roundToParam));
+                JSRuntime.createDataPropertyOrThrow(roundTo, TemporalConstants.SMALLEST_UNIT, roundToParam);
             } else {
                 roundTo = getOptionsObject(roundToParam, this, errorBranch, optionUndefined);
             }
@@ -559,7 +559,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSDynamicObject totalOf;
             if (Strings.isTString(totalOfParam)) {
                 totalOf = JSOrdinary.createWithNullPrototype(getContext());
-                JSRuntime.createDataPropertyOrThrow(totalOf, TemporalConstants.UNIT, JSRuntime.toStringIsString(totalOfParam));
+                JSRuntime.createDataPropertyOrThrow(totalOf, TemporalConstants.UNIT, totalOfParam);
             } else {
                 totalOf = getOptionsObject(totalOfParam, this, errorBranch, optionUndefined);
             }
