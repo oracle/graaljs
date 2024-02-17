@@ -46,7 +46,6 @@ import java.util.Arrays;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Stream;
-import java.util.stream.StreamSupport;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -390,13 +389,12 @@ public abstract class ScriptArray {
     protected static final void traceArrayTransition(ScriptArray oldArray, ScriptArray newArray, long index, Object value) {
         String access = oldArray.getClass().getSimpleName() + " -> " + newArray.getClass().getSimpleName();
 
-        Stream<Node> nodeStream = null;
         List<FrameInstance> stackTrace = new ArrayList<>();
         Truffle.getRuntime().iterateFrames(frameInstance -> {
             stackTrace.add(frameInstance);
             return null;
         });
-        nodeStream = StreamSupport.stream(stackTrace.spliterator(), false).filter(fi -> fi.getCallNode() != null).map(fi -> fi.getCallNode());
+        Stream<Node> nodeStream = stackTrace.stream().map(fi -> fi.getCallNode()).filter(callNode -> callNode != null);
         int stackTraceLimit = JavaScriptLanguage.getCurrentLanguage().getJSContext().getLanguageOptions().stackTraceLimit();
         StackTraceElement[] array = nodeStream.filter(n -> n.getEncapsulatingSourceSection() != null).map(node -> {
             SourceSection callNodeSourceSection = node.getEncapsulatingSourceSection();
