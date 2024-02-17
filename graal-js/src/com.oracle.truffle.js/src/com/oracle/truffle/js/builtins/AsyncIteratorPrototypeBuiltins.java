@@ -57,7 +57,6 @@ import com.oracle.truffle.js.builtins.IteratorPrototypeBuiltins.IteratorMethodWi
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
-import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorFlattenableNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
@@ -1156,7 +1155,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             @Child private IteratorNextNode iteratorNextNode;
             @Child private AsyncIteratorAwaitNode<AsyncIteratorTakeArgs> awaitNode;
             @Child private AsyncIteratorAwaitNode<AsyncIteratorTakeArgs> awaitInnerResultNode;
-            @Child private CreateIterResultObjectNode createIterResultObjectNode;
             @Child private AsyncIteratorCloseNode asyncIteratorCloseNode;
 
             public AsyncIteratorTakeRootNode(JSContext context) {
@@ -1166,7 +1164,6 @@ public final class AsyncIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
                 this.awaitNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorTakeWithValue, AsyncIteratorTakeNode::createTakeWithValueFunctionImpl, false);
                 this.awaitInnerResultNode = AsyncIteratorAwaitNode.createGen(context, JSContext.BuiltinFunctionKey.AsyncIteratorGeneratorReturn,
                                 AsyncIteratorAwaitNode::createGeneratorReturnFunctionImpl, false);
-                this.createIterResultObjectNode = CreateIterResultObjectNode.create(context);
                 this.asyncIteratorCloseNode = AsyncIteratorCloseNode.create(context);
             }
 

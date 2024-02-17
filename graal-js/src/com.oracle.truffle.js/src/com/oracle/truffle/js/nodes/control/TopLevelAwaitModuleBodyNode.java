@@ -151,7 +151,6 @@ public final class TopLevelAwaitModuleBodyNode extends JavaScriptNode {
 
     private final JSContext context;
 
-    @Child private JSWriteFrameSlotNode writeAsyncResult;
     @Child private JSWriteFrameSlotNode writeAsyncContextNode;
     private final TopLevelAwaitModuleRootNode resumptionRootNode;
     @Child private volatile DirectCallNode asyncCallNode;

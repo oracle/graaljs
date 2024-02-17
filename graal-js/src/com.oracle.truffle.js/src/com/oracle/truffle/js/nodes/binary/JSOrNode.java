@@ -56,8 +56,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @NodeInfo(shortName = "||")
 public abstract class JSOrNode extends JSLogicalNode {
 
-    @Child private JSToBooleanNode toBooleanCast = JSToBooleanNode.create();
-
     JSOrNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
     }

@@ -76,9 +76,6 @@ import com.oracle.truffle.js.runtime.util.TemporalUtil;
  */
 public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
 
-    @Child private PropertyGetNode getMonthNode;
-    @Child private PropertyGetNode getMonthCodeNode;
-    @Child private PropertyGetNode getYearNode;
     @Child private PropertyGetNode getCalendarNode;
 
     protected ToTemporalMonthDayNode() {

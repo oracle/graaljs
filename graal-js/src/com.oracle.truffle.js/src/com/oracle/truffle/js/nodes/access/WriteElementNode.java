@@ -1738,7 +1738,6 @@ public class WriteElementNode extends JSTargetableNode {
 
     abstract static class ForeignObjectWriteElementTypeCacheNode extends GuardedWriteElementTypeCacheNode {
         @Child private InteropLibrary interop;
-        @Child private InteropLibrary keyInterop;
         @Child private InteropLibrary setterInterop;
         @Child private JSToPropertyKeyNode toPropertyKeyNode;
         @Child private ExportValueNode exportValue;
@@ -1748,7 +1747,6 @@ public class WriteElementNode extends JSTargetableNode {
             super();
             this.exportValue = ExportValueNode.create();
             this.interop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
-            this.keyInterop = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
         }
 
         @Specialization

@@ -53,7 +53,6 @@ import com.oracle.truffle.api.profiles.ConditionProfile;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ErrorStackTraceLimitNode;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.runtime.Errors;
@@ -69,7 +68,6 @@ import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 @NodeInfo(shortName = "throw")
 public class ThrowNode extends StatementNode {
     @Child private JavaScriptNode exceptionNode;
-    @Child private PropertyGetNode getErrorNode;
     @Child private InteropLibrary interopNode;
     @Child private ErrorStackTraceLimitNode stackTraceLimitNode;
     private final JSContext context;
