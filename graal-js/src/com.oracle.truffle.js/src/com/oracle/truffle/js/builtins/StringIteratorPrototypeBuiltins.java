@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -109,12 +109,11 @@ public final class StringIteratorPrototypeBuiltins extends JSBuiltinsContainer.S
         protected final JSObject doStringIterator(VirtualFrame frame, JSStringIteratorObject iterator,
                         @Cached TruffleString.FromCodePointNode fromCodePointNode,
                         @Cached TruffleString.SubstringByteIndexNode substringNode) {
-            Object iteratedString = iterator.getIteratedString();
-            if (iteratedString == null) {
+            TruffleString string = iterator.getIteratedString();
+            if (string == null) {
                 return createIterResultObjectNode.execute(frame, Undefined.instance, true);
             }
 
-            TruffleString string = (TruffleString) iteratedString;
             int index = iterator.getNextIndex();
             int length = Strings.length(string);
 
