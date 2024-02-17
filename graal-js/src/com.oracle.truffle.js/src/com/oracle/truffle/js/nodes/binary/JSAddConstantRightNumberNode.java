@@ -120,8 +120,6 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
         }
     }
 
-    public abstract Object execute(Object a);
-
     public Number getRightValue() {
         return isInt ? rightInt : rightDouble;
     }

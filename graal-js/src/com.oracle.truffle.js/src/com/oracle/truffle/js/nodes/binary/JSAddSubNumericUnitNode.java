@@ -85,8 +85,6 @@ public abstract class JSAddSubNumericUnitNode extends JSUnaryNode implements Tru
         return JSTags.createNodeObjectDescriptor("operator", isAddition ? "++" : "--");
     }
 
-    public abstract Object execute(Object a);
-
     @Specialization(rewriteOn = ArithmeticException.class)
     protected int doInt(int a) {
         if (truncate) {
