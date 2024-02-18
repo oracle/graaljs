@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,7 @@ import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.InvalidArrayIndexException;
@@ -58,6 +59,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.ListGetNode;
 import com.oracle.truffle.js.builtins.helper.ListSizeNode;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -79,53 +81,61 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
         this.context = context;
     }
 
+    @NeverDefault
     public static CopyDataPropertiesNode create(JSContext context) {
         return CopyDataPropertiesNodeGen.create(context);
     }
 
     public final Object execute(Object target, Object source) {
-        return executeImpl(target, source, null, false);
+        return executeImpl(target, source, null, false, null, false);
     }
 
-    public final Object execute(Object target, Object source, Object[] excludedItems) {
-        return executeImpl(target, source, excludedItems, true);
+    public final Object execute(Object target, Object source, Object[] excludedKeys) {
+        return executeImpl(target, source, excludedKeys, true, null, false);
     }
 
-    protected abstract Object executeImpl(Object target, Object source, Object[] excludedItems, boolean withExcluded);
+    public final Object execute(Object target, Object source, Object[] excludedKeys, Object[] excludedValues) {
+        return executeImpl(target, source, excludedKeys, true, excludedValues, true);
+    }
+
+    protected abstract Object executeImpl(Object target, Object source, Object[] excludedKeys, boolean withExcludedKeys, Object[] excludedValues, boolean withExcludedValues);
 
     @SuppressWarnings("unused")
     @Specialization(guards = "isNullOrUndefined(value)")
-    protected static JSDynamicObject doNullOrUndefined(JSDynamicObject target, Object value, Object[] excludedItems, boolean withExcluded) {
+    protected static JSDynamicObject doNullOrUndefined(JSDynamicObject target, Object value, Object[] excludedKeys, boolean withExcludedKeys, Object[] excludedValues, boolean withExcludedValues) {
         return target;
     }
 
     @Specialization
-    protected static JSDynamicObject copyDataProperties(JSDynamicObject target, JSObject source, Object[] excludedItems, boolean withExcluded,
+    protected static JSDynamicObject copyDataProperties(JSDynamicObject target, JSObject source, Object[] excludedKeys, boolean withExcludedKeys, Object[] excludedValues, boolean withExcludedValues,
                     @Cached("create(context)") ReadElementNode getNode,
                     @Cached("create(false)") JSGetOwnPropertyNode getOwnProperty,
                     @Cached ListSizeNode listSize,
                     @Cached ListGetNode listGet,
                     @Cached JSClassProfile classProfile,
-                    @Cached @Shared TruffleString.EqualNode equalsNode) {
+                    @Cached @Shared TruffleString.EqualNode equalsNode,
+                    @Cached("createSameValue()") @Shared JSIdenticalNode sameValueNode) {
         List<Object> ownPropertyKeys = JSObject.ownPropertyKeys(source, classProfile);
         int size = listSize.execute(ownPropertyKeys);
         for (int i = 0; i < size; i++) {
             Object nextKey = listGet.execute(ownPropertyKeys, i);
             assert JSRuntime.isPropertyKey(nextKey);
-            if (!isExcluded(withExcluded, excludedItems, nextKey, equalsNode)) {
+            if (!isKeyExcluded(withExcludedKeys, excludedKeys, nextKey, equalsNode)) {
                 PropertyDescriptor desc = getOwnProperty.execute(source, nextKey);
                 if (desc != null && desc.getEnumerable()) {
                     Object propValue = getNode.executeWithTargetAndIndex(source, nextKey);
-                    JSRuntime.createDataPropertyOrThrow(target, nextKey, propValue);
+                    if (!isValueExcluded(withExcludedValues, excludedValues, propValue, sameValueNode)) {
+                        JSRuntime.createDataPropertyOrThrow(target, nextKey, propValue);
+                    }
                 }
             }
         }
         return target;
     }
 
-    private static boolean isExcluded(boolean withExcluded, Object[] excludedKeys, Object key, TruffleString.EqualNode equalsNode) {
-        CompilerAsserts.partialEvaluationConstant(withExcluded);
-        if (withExcluded) {
+    private static boolean isKeyExcluded(boolean withExcludedKeys, Object[] excludedKeys, Object key, TruffleString.EqualNode equalsNode) {
+        CompilerAsserts.partialEvaluationConstant(withExcludedKeys);
+        if (withExcludedKeys) {
             for (Object e : excludedKeys) {
                 assert JSRuntime.isPropertyKey(e);
                 if (JSRuntime.propertyKeyEquals(equalsNode, e, key)) {
@@ -136,9 +146,21 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
         return false;
     }
 
+    private static boolean isValueExcluded(boolean withExcludedValues, Object[] excludedValues, Object propValue, JSIdenticalNode sameValueNode) {
+        CompilerAsserts.partialEvaluationConstant(withExcludedValues);
+        if (withExcludedValues) {
+            for (Object e : excludedValues) {
+                if (sameValueNode.executeBoolean(e, propValue)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     @InliningCutoff
     @Specialization(guards = {"!isJSDynamicObject(from)"}, limit = "InteropLibraryLimit")
-    protected final JSDynamicObject copyDataPropertiesForeign(JSDynamicObject target, Object from, Object[] excludedItems, boolean withExcluded,
+    protected final JSDynamicObject copyDataPropertiesForeign(JSDynamicObject target, Object from, Object[] excludedKeys, boolean withExcludedKeys, Object[] excludedValues, boolean withExcludedValues,
                     @CachedLibrary("from") InteropLibrary objInterop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary iteratorInterop,
                     @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary arrayInterop,
@@ -146,6 +168,7 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                     @Cached ImportValueNode importValue,
                     @Cached JSToStringNode toString,
                     @Cached @Shared TruffleString.EqualNode equalsNode,
+                    @Cached("createSameValue()") @Shared JSIdenticalNode sameValueNode,
                     @Cached TruffleString.SwitchEncodingNode switchEncodingNode,
                     @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         if (objInterop.isNull(from)) {
@@ -164,8 +187,11 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                     Object key = arrayInterop.readArrayElement(entry, 0);
                     Object value = arrayInterop.readArrayElement(entry, 1);
                     TruffleString stringKey = toString.executeString(importValue.executeWithTarget(key));
-                    if (!isExcluded(withExcluded, excludedItems, stringKey, equalsNode)) {
-                        JSRuntime.createDataPropertyOrThrow(target, stringKey, importValue.executeWithTarget(value));
+                    if (!isKeyExcluded(withExcludedKeys, excludedKeys, stringKey, equalsNode)) {
+                        Object propValue = importValue.executeWithTarget(value);
+                        if (!isValueExcluded(withExcludedValues, excludedValues, propValue, sameValueNode)) {
+                            JSRuntime.createDataPropertyOrThrow(target, stringKey, propValue);
+                        }
                     }
                 }
             } else if (objInterop.hasMembers(from)) {
@@ -175,9 +201,12 @@ public abstract class CopyDataPropertiesNode extends JavaScriptBaseNode {
                     Object key = arrayInterop.readArrayElement(members, i);
                     assert InteropLibrary.getUncached().isString(key);
                     TruffleString stringKey = Strings.interopAsTruffleString(key, stringInterop, switchEncodingNode);
-                    if (!isExcluded(withExcluded, excludedItems, stringKey, equalsNode)) {
+                    if (!isKeyExcluded(withExcludedKeys, excludedKeys, stringKey, equalsNode)) {
                         Object value = objInterop.readMember(from, Strings.toJavaString(toJavaStringNode, stringKey));
-                        JSRuntime.createDataPropertyOrThrow(target, stringKey, importValue.executeWithTarget(value));
+                        Object propValue = importValue.executeWithTarget(value);
+                        if (!isValueExcluded(withExcludedValues, excludedValues, propValue, sameValueNode)) {
+                            JSRuntime.createDataPropertyOrThrow(target, stringKey, propValue);
+                        }
                     }
                 }
             }
