@@ -60,7 +60,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
@@ -244,10 +243,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     }
 
     @Child private SpecializedNewObjectNode createAsyncGeneratorObject;
-    @Child private PropertySetNode setGeneratorState;
-    @Child private PropertySetNode setGeneratorContext;
-    @Child private PropertySetNode setGeneratorTarget;
-    @Child private PropertySetNode setGeneratorQueue;
 
     private final AsyncGeneratorRootNode resumptionRootNode;
     private final JSContext context;
