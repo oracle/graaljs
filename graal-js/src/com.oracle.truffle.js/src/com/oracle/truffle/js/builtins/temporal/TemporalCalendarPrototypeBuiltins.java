@@ -78,7 +78,6 @@ import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarWeekOfYearNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearMonthFromFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearNodeGen;
-import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
@@ -263,12 +262,11 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected JSDynamicObject mergeFields(JSTemporalCalendarObject calendar, Object fields, Object additionalFields,
                         @Cached JSToObjectNode toObject,
-                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
+                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties) {
             assert calendar.getId().equals(ISO8601);
             JSDynamicObject fieldsCopy = snapshotOwnProperties.snapshot(toObject.execute(fields), Null.instance, EMPTY, UNDEFINED_IN_ARRAY);
             JSDynamicObject additionalFieldsCopy = snapshotOwnProperties.snapshot(toObject.execute(additionalFields), Null.instance, EMPTY, UNDEFINED_IN_ARRAY);
-            return TemporalUtil.defaultMergeFields(getContext(), getRealm(), fieldsCopy, additionalFieldsCopy, namesNode);
+            return TemporalUtil.defaultMergeFields(getContext(), getRealm(), fieldsCopy, additionalFieldsCopy);
         }
 
         @SuppressWarnings("unused")

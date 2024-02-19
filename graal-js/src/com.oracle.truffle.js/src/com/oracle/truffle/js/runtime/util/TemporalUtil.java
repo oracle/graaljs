@@ -1743,25 +1743,23 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static JSDynamicObject defaultMergeFields(JSContext ctx, JSRealm realm, JSDynamicObject fields, JSDynamicObject additionalFields, EnumerableOwnPropertyNamesNode namesNode) {
+    public static JSDynamicObject defaultMergeFields(JSContext ctx, JSRealm realm, JSDynamicObject fields, JSDynamicObject additionalFields) {
         JSDynamicObject merged = JSOrdinary.create(ctx, realm, Null.instance);
-        UnmodifiableArrayList<? extends Object> originalKeys = namesNode.execute(fields);
+        List<Object> originalKeys = JSObject.ownPropertyKeys(fields);
         for (Object nextKey : originalKeys) {
             if (!MONTH.equals(nextKey) && !MONTH_CODE.equals(nextKey)) {
                 Object propValue = JSObject.get(fields, nextKey);
                 if (propValue != Undefined.instance) {
-                    // TODO: is JSRuntime.toString correct here?
-                    createDataPropertyOrThrow(ctx, merged, JSRuntime.toString(nextKey), propValue);
+                    createDataPropertyOrThrow(ctx, merged, nextKey, propValue);
                 }
             }
         }
         boolean hasMonthOrMonthCode = false;
-        UnmodifiableArrayList<? extends Object> newKeys = namesNode.execute(additionalFields);
+        List<Object> newKeys = JSObject.ownPropertyKeys(additionalFields);
         for (Object nextKey : newKeys) {
             Object propValue = JSObject.get(additionalFields, nextKey);
             if (propValue != Undefined.instance) {
-                // TODO: is JSRuntime.toString correct here?
-                createDataPropertyOrThrow(ctx, merged, JSRuntime.toString(nextKey), propValue);
+                createDataPropertyOrThrow(ctx, merged, nextKey, propValue);
                 if (MONTH.equals(nextKey) || MONTH_CODE.equals(nextKey)) {
                     hasMonthOrMonthCode = true;
                 }
@@ -1786,7 +1784,7 @@ public final class TemporalUtil {
         return merged;
     }
 
-    public static void createDataPropertyOrThrow(JSContext ctx, JSDynamicObject obj, TruffleString key, Object value) {
+    public static void createDataPropertyOrThrow(JSContext ctx, JSDynamicObject obj, Object key, Object value) {
         JSObjectUtil.defineDataProperty(ctx, obj, key, value, JSAttributes.configurableEnumerableWritable());
     }
 
