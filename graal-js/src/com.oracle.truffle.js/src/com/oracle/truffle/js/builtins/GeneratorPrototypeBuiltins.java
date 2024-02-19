@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.builtins.GeneratorPrototypeBuiltinsFactory.GeneratorResumeNodeGen;
-import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.function.InternalCallNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
@@ -105,8 +104,6 @@ public final class GeneratorPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
     public abstract static class GeneratorResumeNode extends JSBuiltinNode {
         private final Completion.Type resumeType;
-        @Child private PropertyGetNode getGeneratorTarget;
-        @Child private PropertyGetNode getGeneratorContext;
         @Child private InternalCallNode callNode;
 
         public GeneratorResumeNode(JSContext context, JSBuiltin builtin, Completion.Type resumeType) {

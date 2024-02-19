@@ -220,6 +220,7 @@ import com.oracle.truffle.js.runtime.builtins.JSDataViewObject;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSDateObject;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -1792,7 +1793,7 @@ public final class GraalJSAccess {
     }
 
     private Object exceptionCreate(JSRealm realm, JSErrorType errorType, Object message) {
-        JSDynamicObject error = JSError.create(errorType, realm, message);
+        JSErrorObject error = JSError.create(errorType, realm, message);
         assert JSError.getException(error) != null;
         return error;
     }
@@ -1802,8 +1803,8 @@ public final class GraalJSAccess {
     }
 
     private GraalJSException exceptionObjectToException(Object exceptionObject) {
-        if (JSDynamicObject.isJSDynamicObject(exceptionObject)) {
-            GraalJSException exception = JSError.getException((JSDynamicObject) exceptionObject);
+        if (exceptionObject instanceof JSObject jsObject) {
+            GraalJSException exception = JSError.getException(jsObject);
             if (exception != null) {
                 return exception;
             }

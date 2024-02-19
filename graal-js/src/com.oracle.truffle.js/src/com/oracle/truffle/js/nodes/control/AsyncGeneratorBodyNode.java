@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,6 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.JSReadFrameSlotNode;
 import com.oracle.truffle.js.nodes.access.JSWriteFrameSlotNode;
-import com.oracle.truffle.js.nodes.access.PropertySetNode;
 import com.oracle.truffle.js.nodes.access.ScopeFrameNode;
 import com.oracle.truffle.js.nodes.function.AbstractFunctionRootNode;
 import com.oracle.truffle.js.nodes.function.FunctionBodyNode;
@@ -206,11 +205,10 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
         }
 
         @Override
-        public JSDynamicObject getAsyncFunctionPromise(Frame asyncFrame) {
+        public JSDynamicObject getAsyncFunctionPromise(Frame asyncFrame, Object generatorObject) {
             Object[] initialState = (Object[]) readAsyncContext.execute((VirtualFrame) asyncFrame);
-            RootCallTarget resumeTarget = (RootCallTarget) initialState[AsyncRootNode.CALL_TARGET_INDEX];
-            assert resumeTarget.getRootNode() == this;
-            Object generatorObject = initialState[AsyncRootNode.GENERATOR_OBJECT_OR_PROMISE_CAPABILITY_INDEX];
+            assert ((RootCallTarget) initialState[AsyncRootNode.CALL_TARGET_INDEX]).getRootNode() == this;
+            assert initialState[AsyncRootNode.GENERATOR_OBJECT_OR_PROMISE_CAPABILITY_INDEX] == generatorObject;
             Object queue;
             if (generatorObject instanceof JSAsyncGeneratorObject asyncGeneratorObject &&
                             (queue = asyncGeneratorObject.getAsyncGeneratorQueue()) instanceof ArrayDeque<?> && ((ArrayDeque<?>) queue).size() == 1) {
@@ -245,10 +243,6 @@ public final class AsyncGeneratorBodyNode extends JavaScriptNode {
     }
 
     @Child private SpecializedNewObjectNode createAsyncGeneratorObject;
-    @Child private PropertySetNode setGeneratorState;
-    @Child private PropertySetNode setGeneratorContext;
-    @Child private PropertySetNode setGeneratorTarget;
-    @Child private PropertySetNode setGeneratorQueue;
 
     private final AsyncGeneratorRootNode resumptionRootNode;
     private final JSContext context;

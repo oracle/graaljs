@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,6 +76,7 @@ import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.JobCallback;
 import com.oracle.truffle.js.runtime.Strings;
@@ -244,7 +245,7 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         } else {
             assert result.isThrow();
             Object reason = result.getValue();
-            throw UserScriptException.create(reason, this, context.getLanguageOptions().stackTraceLimit());
+            throw JSRuntime.getException(reason, this);
         }
     }
 
@@ -298,7 +299,8 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
                 MaterializedFrame asyncContextFrame = (MaterializedFrame) JSObjectUtil.getHiddenProperty(handlerFunction, ASYNC_CONTEXT);
                 Node callNode = (Node) JSObjectUtil.getHiddenProperty(handlerFunction, AbstractAwaitNode.ASYNC_CALL_NODE);
                 TruffleStackTraceElement asyncStackTraceElement = TruffleStackTraceElement.create(callNode, asyncTarget, asyncContextFrame);
-                JSDynamicObject asyncPromise = ((AsyncRootNode) asyncTarget.getRootNode()).getAsyncFunctionPromise(asyncContextFrame);
+                Object generatorOrPromiseCapability = JSObjectUtil.getHiddenProperty(handlerFunction, AbstractAwaitNode.ASYNC_GENERATOR);
+                JSDynamicObject asyncPromise = ((AsyncRootNode) asyncTarget.getRootNode()).getAsyncFunctionPromise(asyncContextFrame, generatorOrPromiseCapability);
                 return new AsyncStackTraceInfo(asyncPromise, asyncStackTraceElement);
             }
             return new AsyncStackTraceInfo();
@@ -375,11 +377,11 @@ public abstract class AbstractAwaitNode extends JavaScriptNode implements Resuma
         } while (nextPromise != null);
     }
 
-    public static List<TruffleStackTraceElement> findAsyncStackFramesFromHandler(JSFunctionObject handlerFunction) {
+    public static List<TruffleStackTraceElement> findAsyncStackFramesFromHandler(JSFunctionObject handlerFunction, Object argument) {
         List<TruffleStackTraceElement> stackTrace = new ArrayList<>(4);
         RootNode rootNode = ((RootCallTarget) JSFunction.getCallTarget(handlerFunction)).getRootNode();
         if (rootNode instanceof AsyncHandlerRootNode) {
-            AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction);
+            AsyncStackTraceInfo result = ((AsyncHandlerRootNode) rootNode).getAsyncStackTraceInfo(handlerFunction, argument);
             JSDynamicObject promise = result.promise;
             if (promise != null) {
                 collectAsyncStackFramesFromPromise(promise, stackTrace);

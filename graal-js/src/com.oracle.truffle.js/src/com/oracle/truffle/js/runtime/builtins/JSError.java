@@ -108,7 +108,7 @@ public final class JSError extends JSNonProxy {
             Object value = JSObjectUtil.getHiddenProperty(store, FORMATTED_STACK_NAME);
             if (value == null) {
                 // stack not prepared yet
-                GraalJSException truffleException = getException(store);
+                GraalJSException truffleException = getException((JSObject) store);
                 if (truffleException == null) {
                     value = Undefined.instance;
                 } else {
@@ -251,15 +251,22 @@ public final class JSError extends JSNonProxy {
         setErrorProperty(context, errorObj, COLUMN_NUMBER_PROPERTY_NAME, columnNumber);
     }
 
-    public static GraalJSException getException(JSDynamicObject errorObj) {
+    public static GraalJSException getException(JSObject errorObj) {
+        if (errorObj instanceof JSErrorObject jsErrorObject) {
+            return jsErrorObject.getException();
+        }
         Object exception = JSDynamicObject.getOrNull(errorObj, EXCEPTION_PROPERTY_NAME);
         return exception instanceof GraalJSException ? (GraalJSException) exception : null;
     }
 
+    public static GraalJSException getException(JSErrorObject errorObj) {
+        return errorObj.getException();
+    }
+
     @TruffleBoundary
-    public static JSDynamicObject setException(JSRealm realm, JSDynamicObject errorObj, GraalJSException exception, boolean defaultColumnNumber) {
-        assert isJSError(errorObj);
-        defineStackProperty(errorObj, exception);
+    public static JSDynamicObject setException(JSRealm realm, JSErrorObject errorObj, GraalJSException exception, boolean defaultColumnNumber) {
+        errorObj.setException(exception);
+        defineStackProperty(errorObj);
         JSContext context = realm.getContext();
         if (context.isOptionNashornCompatibilityMode() && exception.getJSStackTrace().length > 0) {
             JSStackTraceElement topStackTraceElement = exception.getJSStackTrace()[0];
@@ -273,9 +280,8 @@ public final class JSError extends JSNonProxy {
         JSObjectUtil.defineDataProperty(context, errorObj, key, value, JSAttributes.getDefaultNotEnumerable());
     }
 
-    private static void defineStackProperty(JSDynamicObject errorObj, GraalJSException exception) {
-        JSObjectUtil.putHiddenProperty(errorObj, EXCEPTION_PROPERTY_NAME, exception);
-
+    private static void defineStackProperty(JSErrorObject errorObj) {
+        assert errorObj.getException() != null;
         // Error.stack is not formatted until it is accessed
         JSObjectUtil.putHiddenProperty(errorObj, FORMATTED_STACK_NAME, null);
         JSObjectUtil.defineProxyProperty(errorObj, JSError.STACK_NAME, JSError.STACK_PROXY, MESSAGE_ATTRIBUTES | JSProperty.PROXY);

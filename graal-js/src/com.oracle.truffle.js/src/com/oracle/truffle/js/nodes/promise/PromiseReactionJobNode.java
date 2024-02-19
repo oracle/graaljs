@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -227,8 +227,10 @@ public class PromiseReactionJobNode extends JavaScriptBaseNode {
             PromiseCapabilityRecord promiseCapability = reaction.getCapability();
             if (promiseCapability != null && !promiseCapability.isThrowaway()) {
                 return AwaitNode.findAsyncStackFramesFromPromise(promiseCapability.getPromise());
-            } else if (reaction.getHandler() != null && reaction.getHandler().callback() instanceof JSFunctionObject callbackFunction) {
-                return AwaitNode.findAsyncStackFramesFromHandler(callbackFunction);
+            }
+            Object argument = getArgument.getValue(functionObject);
+            if (reaction.getHandler() != null && reaction.getHandler().callback() instanceof JSFunctionObject callbackFunction) {
+                return AwaitNode.findAsyncStackFramesFromHandler(callbackFunction, argument);
             }
             return null;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,13 +57,11 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ControlFlowBranchTag;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.UserScriptException;
 import com.oracle.truffle.js.runtime.builtins.JSError;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 
 /**
  * 12.13 The throw Statement.
@@ -104,11 +102,11 @@ public class ThrowNode extends StatementNode {
     public Object execute(VirtualFrame frame) {
         Object exceptionObject = exceptionNode.execute(frame);
         if (isError.profile(JSError.isJSError(exceptionObject))) {
-            JSDynamicObject jsobject = (JSDynamicObject) exceptionObject;
+            JSErrorObject jsErrorObject = (JSErrorObject) exceptionObject;
             if (context.isOptionNashornCompatibilityMode()) {
-                setLineAndColumnNumber(jsobject);
+                setLineAndColumnNumber(jsErrorObject);
             }
-            throw getException(jsobject);
+            throw jsErrorObject.getException();
         } else {
             tryRethrowInterop(exceptionObject);
         }
@@ -130,16 +128,6 @@ public class ThrowNode extends StatementNode {
         }
     }
 
-    private GraalJSException getException(JSDynamicObject errorObj) {
-        if (getErrorNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            getErrorNode = insert(PropertyGetNode.createGetHidden(JSError.EXCEPTION_PROPERTY_NAME, JSObject.getJSContext(errorObj)));
-        }
-        Object exception = getErrorNode.getValue(errorObj);
-        return (GraalJSException) exception;
-
-    }
-
     private ErrorStackTraceLimitNode stackTraceLimitNode() {
         ErrorStackTraceLimitNode node = stackTraceLimitNode;
         if (node == null) {
@@ -150,7 +138,7 @@ public class ThrowNode extends StatementNode {
     }
 
     @TruffleBoundary
-    private void setLineAndColumnNumber(JSDynamicObject jsobject) {
+    private void setLineAndColumnNumber(JSErrorObject jsobject) {
         if (hasSourceSection()) {
             SourceSection sourceSection = getSourceSection();
             JSError.setLineNumber(context, jsobject, sourceSection.getStartLine());

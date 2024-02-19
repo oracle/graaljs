@@ -294,9 +294,7 @@ public class ImportCallNode extends JavaScriptNode {
         JobCallback importModuleDynamicallyHandler = realm.getAgent().hostMakeJobCallback(createImportModuleDynamicallyHandler(realm));
         if (context.isOptionTopLevelAwait()) {
             LoadImportedModuleRequest request = new LoadImportedModuleRequest(referencingScriptOrModule, moduleRequest, promiseCapability);
-            PromiseCapabilityRecord startModuleLoadCapability = newPromiseCapability();
-            PromiseReactionRecord startModuleLoad = PromiseReactionRecord.create(startModuleLoadCapability, importModuleDynamicallyHandler, true);
-            return promiseReactionJobNode.execute(startModuleLoad, request);
+            return promiseReactionJobNode.execute(PromiseReactionRecord.create(null, importModuleDynamicallyHandler, true), request);
         } else {
             LoadImportedModuleRequest request = new LoadImportedModuleRequest(referencingScriptOrModule, moduleRequest, null);
             return promiseReactionJobNode.execute(PromiseReactionRecord.create(promiseCapability, importModuleDynamicallyHandler, true), request);
@@ -313,7 +311,7 @@ public class ImportCallNode extends JavaScriptNode {
     }
 
     private static JSFunctionData createImportModuleDynamicallyHandlerImpl(JSContext context) {
-        class ImportModuleDynamicallyRootNode extends JavaScriptRealmBoundaryRootNode {
+        class ImportModuleDynamicallyRootNode extends JavaScriptRealmBoundaryRootNode implements AsyncHandlerRootNode {
             @Child protected JavaScriptNode argumentNode = AccessIndexedArgumentNode.create(0);
 
             protected ImportModuleDynamicallyRootNode(JavaScriptLanguage lang) {
@@ -341,6 +339,14 @@ public class ImportCallNode extends JavaScriptNode {
                 assert moduleRecord.hasBeenEvaluated();
                 return context.getEvaluator().getModuleNamespace(moduleRecord);
             }
+
+            @Override
+            public AsyncStackTraceInfo getAsyncStackTraceInfo(JSFunctionObject handlerFunction, Object argument) {
+                if (argument instanceof LoadImportedModuleRequest request) {
+                    return new AsyncStackTraceInfo(request.promiseCapability().getPromise(), null);
+                }
+                return new AsyncStackTraceInfo();
+            }
         }
 
         class TopLevelAwaitImportModuleDynamicallyRootNode extends ImportModuleDynamicallyRootNode {
@@ -359,30 +365,30 @@ public class ImportCallNode extends JavaScriptNode {
                 LoadImportedModuleRequest request = (LoadImportedModuleRequest) argumentNode.execute(frame);
                 ScriptOrModule referencingScriptOrModule = request.referencingScriptOrModule();
                 ModuleRequest moduleRequest = request.moduleRequest();
-                PromiseCapabilityRecord moduleLoadedCapability = request.promiseCapability();
+                PromiseCapabilityRecord importPromiseCapability = request.promiseCapability();
                 try {
                     JSRealm realm = getRealm();
                     assert realm == JSFunction.getRealm(JSFrameUtil.getFunctionObject(frame));
                     JSModuleRecord moduleRecord = context.getEvaluator().hostResolveImportedModule(context, referencingScriptOrModule, moduleRequest);
                     if (moduleRecord.hasTLA()) {
                         context.getEvaluator().moduleLinking(realm, moduleRecord);
-                        JSPromiseObject innerPromise = (JSPromiseObject) context.getEvaluator().moduleEvaluation(realm, moduleRecord);
+                        JSPromiseObject evaluatePromise = (JSPromiseObject) context.getEvaluator().moduleEvaluation(realm, moduleRecord);
                         JSDynamicObject resolve = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, false);
                         JSDynamicObject reject = createFinishDynamicImportCapabilityCallback(context, realm, moduleRecord, true);
-                        promiseThenNode.execute(innerPromise, resolve, reject, moduleLoadedCapability);
+                        promiseThenNode.execute(evaluatePromise, resolve, reject, importPromiseCapability);
                     } else {
                         Object result = finishDynamicImport(realm, moduleRecord, referencingScriptOrModule, moduleRequest);
                         if (moduleRecord.isAsyncEvaluation()) {
                             // Some module import started an async loading chain. The top-level
                             // capability will reject/resolve the dynamic import promise.
-                            PromiseCapabilityRecord topLevelCapability = moduleRecord.getTopLevelCapability();
-                            promiseThenNode.execute((JSPromiseObject) topLevelCapability.getPromise(), moduleLoadedCapability.getResolve(), moduleLoadedCapability.getReject(), null);
+                            JSPromiseObject evaluatePromise = (JSPromiseObject) moduleRecord.getTopLevelCapability().getPromise();
+                            promiseThenNode.execute(evaluatePromise, importPromiseCapability.getResolve(), importPromiseCapability.getReject(), null);
                         } else {
-                            callPromiseResolve.executeCall(JSArguments.create(Undefined.instance, moduleLoadedCapability.getResolve(), result));
+                            callPromiseResolve.executeCall(JSArguments.create(Undefined.instance, importPromiseCapability.getResolve(), result));
                         }
                     }
                 } catch (AbstractTruffleException ex) {
-                    rejectPromise(moduleLoadedCapability, ex);
+                    rejectPromise(importPromiseCapability, ex);
                 }
                 return Undefined.instance;
             }

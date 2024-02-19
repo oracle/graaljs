@@ -83,6 +83,7 @@ import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSBigInt;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
 import com.oracle.truffle.js.runtime.builtins.JSError;
+import com.oracle.truffle.js.runtime.builtins.JSErrorObject;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSMap;
@@ -2828,10 +2829,14 @@ public final class JSRuntime {
     }
 
     public static GraalJSException getException(Object errorObject) {
-        if (JSError.isJSError(errorObject)) {
-            return JSError.getException((JSDynamicObject) errorObject);
+        return getException(errorObject, null);
+    }
+
+    public static GraalJSException getException(Object errorObject, Node node) {
+        if (errorObject instanceof JSErrorObject jsErrorObject) {
+            return JSError.getException(jsErrorObject);
         } else {
-            return UserScriptException.create(errorObject);
+            return UserScriptException.create(errorObject, node, JavaScriptLanguage.get(node).getJSContext().getLanguageOptions().stackTraceLimit());
         }
     }
 

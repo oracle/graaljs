@@ -43,10 +43,11 @@ package com.oracle.truffle.js.runtime.objects;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.file.AccessDeniedException;
 import java.nio.file.FileSystemException;
+import java.nio.file.NoSuchFileException;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.TruffleFile;
@@ -55,6 +56,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
 
@@ -94,7 +96,13 @@ public class DefaultESModuleLoader implements JSModuleLoader {
 
     @Override
     public JSModuleRecord resolveImportedModule(ScriptOrModule referrer, ModuleRequest moduleRequest) {
-        String refPath = referrer == null ? null : referrer.getSource().getPath();
+        String refPath = null;
+        String refPathOrName = null;
+        if (referrer != null) {
+            Source referrerSource = referrer.getSource();
+            refPath = referrerSource.getPath();
+            refPathOrName = refPath != null ? refPath : referrerSource.getName();
+        }
         try {
             TruffleString specifierTS = moduleRequest.getSpecifier();
             String specifier = Strings.toJavaString(specifierTS);
@@ -130,22 +138,42 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             }
             return loadModuleFromUrl(referrer, moduleRequest, moduleFile, canonicalPath);
         } catch (FileSystemException fsex) {
-            String fileName = fsex.getFile();
-            if (Objects.equals(fsex.getMessage(), fileName)) {
-                String message;
-                if (realm.getContext().getLanguageOptions().testV8Mode()) {
-                    message = "d8: Error reading module from " + fileName;
-                } else {
-                    message = "Error reading: " + fileName;
-                }
-                throw Errors.createError(message);
-            } else {
-                // Use the original message when it doesn't seem useless
-                throw Errors.createErrorFromException(fsex);
-            }
+            throw createErrorFromFileSystemException(fsex, refPathOrName);
         } catch (IOException | SecurityException | UnsupportedOperationException | IllegalArgumentException e) {
             throw Errors.createErrorFromException(e);
         }
+    }
+
+    private JSException createErrorFromFileSystemException(FileSystemException fsex, String refPath) {
+        String fileName = fsex.getFile();
+        if (realm.getContext().getLanguageOptions().testV8Mode()) {
+            String message = "d8: Error reading module from " + fileName;
+            if (refPath != null) {
+                message += " imported by " + refPath;
+            }
+            return Errors.createError(message, fsex);
+        }
+        String reason = fsex.getReason();
+        String message = null;
+        if (reason == null) {
+            // Provide a more useful error message
+            if (fsex instanceof NoSuchFileException) {
+                message = "Cannot find module";
+            } else if (fsex instanceof AccessDeniedException) {
+                message = "Cannot access module";
+            }
+        }
+        if (message == null) {
+            message = "Error reading module";
+        }
+        message += " '" + fileName + "'";
+        if (refPath != null) {
+            message += " imported from " + refPath;
+        }
+        if (reason != null) {
+            message = ": " + reason;
+        }
+        return Errors.createError(message, fsex);
     }
 
     private boolean bareSpecifierDirectLookup(String specifier) {
