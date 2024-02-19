@@ -129,6 +129,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
@@ -3503,51 +3504,51 @@ public final class TemporalUtil {
     }
 
     public static Number calendarYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, YEAR);
+        return getterNode.executeInteger(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.YEAR);
     }
 
     public static Number calendarMonth(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, MONTH);
+        return getterNode.executeInteger(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.MONTH);
     }
 
     public static TruffleString calendarMonthCode(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.executeString(calendar, dateLike, MONTH_CODE);
+        return getterNode.executeString(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.MONTH_CODE);
     }
 
     public static Number calendarDay(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, DAY);
+        return getterNode.executeInteger(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAY);
     }
 
     public static Object calendarDayOfWeek(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.DAY_OF_WEEK);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAY_OF_WEEK);
     }
 
     public static Object calendarDayOfYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.DAY_OF_YEAR);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAY_OF_YEAR);
     }
 
     public static Object calendarWeekOfYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.WEEK_OF_YEAR);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.WEEK_OF_YEAR);
     }
 
     public static Object calendarDaysInWeek(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.DAYS_IN_WEEK);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAYS_IN_WEEK);
     }
 
     public static Object calendarDaysInMonth(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.DAYS_IN_MONTH);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAYS_IN_MONTH);
     }
 
     public static Object calendarDaysInYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.DAYS_IN_YEAR);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAYS_IN_YEAR);
     }
 
     public static Object calendarMonthsInYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.MONTHS_IN_YEAR);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.MONTHS_IN_YEAR);
     }
 
     public static Object calendarInLeapYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.IN_LEAP_YEAR);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.IN_LEAP_YEAR);
     }
 
     // 12.1.38
