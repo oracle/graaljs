@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -83,6 +84,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
                     @Cached InlinedConditionProfile isPlainDateProfile,
                     @Cached InlinedBranchProfile errorBranch,
+                    @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                     @Cached IsObjectNode isObjectNode,
                     @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
                     @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
@@ -95,17 +97,18 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
         Object calendar;
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
+        JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(options, Null.instance);
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             if (isPlainDateTimeProfile.profile(this, item instanceof JSTemporalPlainDateTimeObject)) {
                 return (JSTemporalPlainDateTimeObject) item;
             } else if (isZonedDateTimeProfile.profile(this, TemporalUtil.isTemporalZonedDateTime(item))) {
-                TemporalUtil.toTemporalOverflow(options, getOptionNode);
+                TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
                 var zdt = (JSTemporalZonedDateTimeObject) item;
                 var instant = JSTemporalInstant.create(ctx, realm, zdt.getNanoseconds());
                 var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(zdt.getTimeZone());
                 return TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, zdt.getCalendar());
             } else if (isPlainDateProfile.profile(this, item instanceof JSTemporalPlainDateObject)) {
-                TemporalUtil.toTemporalOverflow(options, getOptionNode);
+                TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
                 var date = (JSTemporalPlainDateObject) item;
                 return JSTemporalPlainDateTime.create(ctx, realm, date.getYear(), date.getMonth(), date.getDay(), 0, 0, 0, 0, 0, 0, date.getCalendar(), this, errorBranch);
             }
@@ -119,7 +122,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
             addFieldNames(fieldNames);
 
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listEmpty);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendarRec, fields, options, getOptionNode, dateFromFieldsNode);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendarRec, fields, resolvedOptions, getOptionNode, dateFromFieldsNode);
         } else if (item instanceof TruffleString string) {
             result = TemporalUtil.parseTemporalDateTimeString(string);
             assert TemporalUtil.isValidISODate(result.getYear(), result.getMonth(), result.getDay());
@@ -132,7 +135,7 @@ public abstract class ToTemporalDateTimeNode extends JavaScriptBaseNode {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorCalendarNotSupported();
             }
-            TemporalUtil.toTemporalOverflow(options, getOptionNode);
+            TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
         } else {
             errorBranch.enter(this);
             throw Errors.createTypeErrorNotAString(item);

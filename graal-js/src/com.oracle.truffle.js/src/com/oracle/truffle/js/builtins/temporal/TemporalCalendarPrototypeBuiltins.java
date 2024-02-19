@@ -88,6 +88,7 @@ import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
@@ -114,6 +115,8 @@ import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
@@ -250,19 +253,22 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class JSTemporalCalendarMergeFields extends JSTemporalBuiltinOperation {
+        private static final Object[] EMPTY = new Object[0];
+        private static final Object[] UNDEFINED_IN_ARRAY = new Object[]{Undefined.instance};
 
         protected JSTemporalCalendarMergeFields(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject mergeFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object additionalFieldsParam,
+        protected JSDynamicObject mergeFields(JSTemporalCalendarObject calendar, Object fields, Object additionalFields,
                         @Cached JSToObjectNode toObject,
+                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
             assert calendar.getId().equals(ISO8601);
-            JSDynamicObject fields = (JSDynamicObject) toObject.execute(fieldsParam);
-            JSDynamicObject additionalFields = (JSDynamicObject) toObject.execute(additionalFieldsParam);
-            return TemporalUtil.defaultMergeFields(getContext(), getRealm(), fields, additionalFields, namesNode);
+            JSDynamicObject fieldsCopy = snapshotOwnProperties.snapshot(toObject.execute(fields), Null.instance, EMPTY, UNDEFINED_IN_ARRAY);
+            JSDynamicObject additionalFieldsCopy = snapshotOwnProperties.snapshot(toObject.execute(additionalFields), Null.instance, EMPTY, UNDEFINED_IN_ARRAY);
+            return TemporalUtil.defaultMergeFields(getContext(), getRealm(), fieldsCopy, additionalFieldsCopy, namesNode);
         }
 
         @SuppressWarnings("unused")

@@ -62,6 +62,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -82,12 +83,13 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
     public abstract JSTemporalPlainDateObject execute(Object value, JSDynamicObject options);
 
     @Specialization
-    public JSTemporalPlainDateObject toTemporalDate(Object itemParam, JSDynamicObject options,
+    public JSTemporalPlainDateObject toTemporalDate(Object itemParam, JSDynamicObject optionsParam,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isPlainDateTimeProfile,
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
                     @Cached InlinedConditionProfile isPlainDateProfile,
+                    @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                     @Cached IsObjectNode isObjectNode,
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
@@ -97,7 +99,7 @@ public abstract class ToTemporalDateNode extends JavaScriptBaseNode {
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                     @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
         JSContext ctx = getLanguage().getJSContext();
-        assert options != null;
+        JSDynamicObject options = (optionsParam == Undefined.instance) ? optionsParam : snapshotOwnProperties.snapshot(optionsParam, Null.instance);
         JSRealm realm = getRealm();
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(itemParam))) {
             JSDynamicObject item = (JSDynamicObject) itemParam;
