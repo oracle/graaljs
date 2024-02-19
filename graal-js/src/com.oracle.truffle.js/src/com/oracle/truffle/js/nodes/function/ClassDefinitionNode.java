@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -67,13 +66,11 @@ import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -108,8 +105,6 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     @Child private SetFunctionNameNode setFunctionName;
     @Child private IsConstructorNode isConstructorNode;
     @Child private JSFunctionCallNode staticExtraInitializersCallNode;
-
-    @Child private DynamicObjectLibrary protoFlagsNode;
 
     private final JSContext context;
     private final TruffleString className;
@@ -222,8 +217,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             assert protoParent == Null.instance || JSRuntime.isObject(protoParent);
             proto = createPrototypeNode.execute(protoParent);
 
-            // Mark prototypes derived from Array.prototype.
-            handleArrayPrototype(proto, protoParent);
+            // Prototypes derived from Array.prototype should have been marked as such.
+            assert !JSShape.isArrayPrototypeOrDerivative(protoParent) || JSShape.isArrayPrototypeOrDerivative(proto);
 
             /*
              * Let constructorInfo be the result of performing DefineMethod for constructor with
@@ -269,21 +264,6 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         staticElementIndex,
                         stateSlot,
                         realm);
-    }
-
-    private void handleArrayPrototype(JSObject proto, JSDynamicObject protoParent) {
-        if (JSShape.isArrayPrototypeOrDerivative(protoParent)) {
-            markAsArrayPrototype(proto);
-        }
-    }
-
-    private void markAsArrayPrototype(JSObject proto) {
-        if (protoFlagsNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            protoFlagsNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
-        }
-        assert JSOrdinary.isJSOrdinaryObject(proto);
-        protoFlagsNode.setShapeFlags(proto, protoFlagsNode.getShapeFlags(proto) | JSShape.ARRAY_PROTOTYPE_FLAG);
     }
 
     private Object defineClassElements(VirtualFrame frame, JSObject proto, JSObject constructor, Object[] decorators, ClassElementDefinitionRecord[] instanceElements,
