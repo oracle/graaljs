@@ -78,6 +78,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
+import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
@@ -288,31 +289,21 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected JSTemporalPlainTimeObject with(JSTemporalPlainTimeObject temporalTime, Object temporalTimeLike, Object options,
+        protected JSTemporalPlainTimeObject with(JSTemporalPlainTimeObject temporalTime, Object temporalTimeLike, Object optionsParam,
+                        @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
                         @Cached JSToIntegerThrowOnInfinityNode toIntThrows,
                         @Cached JSToIntegerAsIntNode toInt,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
-            if (!isObject(temporalTimeLike)) {
+            if (!isPartialTemporalObjectNode.execute(temporalTimeLike)) {
                 errorBranch.enter(this);
-                throw Errors.createTypeError("Temporal.Time like object expected.");
+                throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
-            JSDynamicObject timeLikeObj = (JSDynamicObject) temporalTimeLike;
-            TemporalUtil.rejectTemporalCalendarType(timeLikeObj, this, errorBranch);
-            Object calendarProperty = JSObject.get(timeLikeObj, TemporalConstants.CALENDAR);
-            if (calendarProperty != Undefined.instance) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorUnexpectedCalendar();
-            }
-            Object timeZoneProperty = JSObject.get(timeLikeObj, TemporalConstants.TIME_ZONE);
-            if (timeZoneProperty != Undefined.instance) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
-            }
-            JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(timeLikeObj, isObjectNode, toIntThrows, getContext());
-            JSDynamicObject normalizedOptions = getOptionsObject(options, this, errorBranch, optionUndefined);
-            Overflow overflow = TemporalUtil.toTemporalOverflow(normalizedOptions, getOptionNode);
+
+            JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
+            Overflow overflow = TemporalUtil.toTemporalOverflow(options, getOptionNode);
+            JSDynamicObject partialTime = JSTemporalPlainTime.toPartialTime(temporalTimeLike, toIntThrows, getContext());
             int hour;
             int minute;
             int second;

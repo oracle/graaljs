@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,10 +47,10 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimeFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltins;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
@@ -140,15 +140,12 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
     // region Abstract methods
 
     // 4.5.3
-    public static JSDynamicObject toPartialTime(JSDynamicObject temporalTimeLike, IsObjectNode isObject, JSToIntegerThrowOnInfinityNode toInt, JSContext ctx) {
-        if (!isObject.executeBoolean(temporalTimeLike)) {
-            throw TemporalErrors.createTypeErrorTemporalPlainTimeExpected();
-        }
+    public static JSDynamicObject toPartialTime(Object temporalTimeLike, JSToIntegerThrowOnInfinityNode toInt, JSContext ctx) {
         JSRealm realm = JSRealm.get(null);
         JSDynamicObject result = JSOrdinary.create(ctx, realm);
         boolean any = false;
         for (TruffleString property : TemporalUtil.TIME_LIKE_PROPERTIES) {
-            Object value = JSObject.get(temporalTimeLike, property);
+            Object value = JSRuntime.get(temporalTimeLike, property);
             if (value != Undefined.instance) {
                 any = true;
                 value = toInt.executeDouble(value);

@@ -163,9 +163,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
@@ -1723,14 +1720,6 @@ public final class TemporalUtil {
             return true;
         }
         return Boundaries.equals(toCalendarIdentifier.executeString(one), toCalendarIdentifier.executeString(two));
-    }
-
-    public static void rejectTemporalCalendarType(Object obj, Node node, InlinedBranchProfile errorBranch) {
-        if (obj instanceof JSTemporalPlainDateObject || obj instanceof JSTemporalPlainDateTimeObject || obj instanceof JSTemporalPlainMonthDayObject ||
-                        obj instanceof JSTemporalPlainTimeObject || obj instanceof JSTemporalPlainYearMonthObject || isTemporalZonedDateTime(obj)) {
-            errorBranch.enter(node);
-            throw Errors.createTypeError("rejecting calendar types");
-        }
     }
 
     public static JSDynamicObject calendarMergeFields(JSContext ctx, JSRealm realm, CalendarMethodsRecord calendarRec, JSDynamicObject fields,

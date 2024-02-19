@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.OVERFLOW;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 
 import java.util.EnumSet;
@@ -77,6 +76,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
+import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
@@ -415,6 +415,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
 
         @Specialization
         protected JSTemporalPlainYearMonthObject with(JSTemporalPlainYearMonthObject yearMonth, Object temporalYearMonthLike, Object options,
+                        @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
                         @Cached("createMergeFields()") CalendarMethodsRecordLookupNode lookupMergeFields,
@@ -423,21 +424,11 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
-            if (!isObjectNode.executeBoolean(temporalYearMonthLike)) {
+            if (!isPartialTemporalObjectNode.execute(temporalYearMonthLike)) {
                 errorBranch.enter(this);
-                throw Errors.createTypeErrorNotAnObject(temporalYearMonthLike, this);
+                throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
-            TemporalUtil.rejectTemporalCalendarType(temporalYearMonthLike, this, errorBranch);
-            Object calendarProperty = JSRuntime.get(temporalYearMonthLike, CALENDAR);
-            if (calendarProperty != Undefined.instance) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorUnexpectedCalendar();
-            }
-            Object timezoneProperty = JSRuntime.get(temporalYearMonthLike, TIME_ZONE);
-            if (timezoneProperty != Undefined.instance) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
-            }
+
             JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
 
             Object calendarSlotValue = yearMonth.getCalendar();

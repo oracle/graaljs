@@ -44,7 +44,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoi;
 
@@ -89,6 +88,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
+import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalBalanceDateDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
@@ -613,6 +613,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         final JSTemporalPlainDateTimeObject with(JSTemporalPlainDateTimeObject dateTime, Object temporalDateTimeLike, Object options,
                         @Bind("this") Node node,
+                        @Cached IsPartialTemporalObjectNode isPartialTemporalObjectNode,
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
                         @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
@@ -628,22 +629,9 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
-            if (!isObject(temporalDateTimeLike)) {
+            if (!isPartialTemporalObjectNode.execute(temporalDateTimeLike)) {
                 errorBranch.enter(node);
-                throw Errors.createTypeErrorNotAnObject(temporalDateTimeLike, node);
-            }
-
-            // RejectTemporalLikeObject()
-            TemporalUtil.rejectTemporalCalendarType(temporalDateTimeLike, node, errorBranch);
-            Object calendarProperty = JSRuntime.get(temporalDateTimeLike, CALENDAR);
-            if (calendarProperty != Undefined.instance) {
-                errorBranch.enter(node);
-                throw TemporalErrors.createTypeErrorUnexpectedCalendar();
-            }
-            Object timeZoneProperty = JSRuntime.get(temporalDateTimeLike, TIME_ZONE);
-            if (timeZoneProperty != Undefined.instance) {
-                errorBranch.enter(node);
-                throw TemporalErrors.createTypeErrorUnexpectedTimeZone();
+                throw TemporalErrors.createTypeErrorPartialTemporalObjectExpected();
             }
 
             JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
