@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.intl;
 import java.util.MissingResourceException;
 
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
@@ -53,7 +54,6 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormatObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -106,6 +106,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
     @Child GetStringOptionNode getTimeStyleOption;
 
     @Child JSToStringNode toStringNode;
+    @Child TruffleString.ToJavaStringNode toJavaStringNode;
 
     private final BranchProfile errorBranch = BranchProfile.create();
 
@@ -144,6 +145,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.getTimeStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_TIME_STYLE, new String[]{IntlUtil.FULL, IntlUtil.LONG, IntlUtil.MEDIUM, IntlUtil.SHORT}, null);
 
         this.toStringNode = JSToStringNode.create();
+        this.toJavaStringNode = TruffleString.ToJavaStringNode.create();
     }
 
     public abstract JSDateTimeFormatObject executeInit(JSDateTimeFormatObject dateTimeFormatObj, Object locales, Object options);
@@ -247,7 +249,7 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         String tzId;
         if (timeZoneValue != Undefined.instance) {
             TruffleString nameTS = toStringNode.executeString(timeZoneValue);
-            String name = Strings.toJavaString(nameTS);
+            String name = toJavaStringNode.execute(nameTS);
             tzId = maybeParseAndFormatTimeZoneOffset(name);
             if (tzId == null) {
                 tzId = JSDateTimeFormat.canonicalizeTimeZoneName(name);
@@ -257,18 +259,13 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
                 }
                 timeZone = IntlUtil.getICUTimeZone(tzId, context);
             } else {
-                timeZone = TimeZone.getTimeZone(prependGMT(tzId));
+                timeZone = IntlUtil.getICUTimeZoneForOffset(tzId);
             }
         } else {
             timeZone = getRealm().getLocalTimeZone();
             tzId = timeZone.getID();
         }
         return new Pair<>(timeZone, tzId);
-    }
-
-    @TruffleBoundary
-    private static String prependGMT(String tzId) {
-        return "GMT" + tzId;
     }
 
     private static String maybeParseAndFormatTimeZoneOffset(String name) {
