@@ -43,10 +43,9 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -104,7 +103,6 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         return proxyGet.executeWithReceiver(target, receiver, index, defaultValue);
     }
 
-    @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     static Object doGeneric(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Bind("this") Node node,
