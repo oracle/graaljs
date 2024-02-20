@@ -62,13 +62,21 @@ public final class TemporalParser {
 
     private static final String patternDate = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTime = "^(\\d\\d)(:?(\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
-    private static final String patternCalendar = "^(\\[u-ca=([^\\]]*)\\])";
     private static final String patternCalendarName = "^(\\w*)$";
     private static final String patternTimeZoneBracketedAnnotation = "^(\\[!?([^\\]]*)\\])";
     private static final String patternTimeZoneNumericUTCOffset = "^([+\\-\\u2212])(\\d\\d):?((\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
     private static final String patternDateSpecYearMonth = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternDateSpecMonthDay = "^(?:\\-\\-)?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTimeZoneIANANameComponent = "^([A-Za-z_]+(/[A-Za-z\\-_]+)*)";
+    // LowercaseAlpha [a-z]
+    // AKeyLeadingChar [a-z_]
+    // AKeyChar [0-9a-z_-]
+    // AnnotationKey [a-z_][0-9a-z_-]*
+    // AnnotationValueComponent [A-Za-z0-9]+
+    // AnnotationValue [A-Za-z0-9]+(?:-[A-Za-z0-9]+)*
+    // AnnotationCriticalFlag !
+    // Annotation \[(!?)([a-z_][0-9a-z_-]*)=([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\]
+    private static final String patternAnnotation = "(\\[(!?)([a-z_][0-9a-z_-]*)=([A-Za-z0-9]+(?:-[A-Za-z0-9]+)*)\\])";
 
     private final JSContext context;
 
@@ -801,14 +809,37 @@ public final class TemporalParser {
     }
 
     private boolean parseCalendar() {
-        Matcher matcher = createMatch(patternCalendar, rest);
-        if (matcher.matches()) {
-            calendar = group(rest, matcher, 2);
-
-            move(matcher.end(1));
-            return true;
+        String foundCalendar = null;
+        boolean calendarWasCritical = false;
+        while (true) {
+            Matcher matcher = createMatch(patternAnnotation, rest);
+            if (matcher.matches()) {
+                String key = matcher.group(3);
+                boolean critical = !matcher.group(2).isEmpty();
+                if ("u-ca".equals(key)) {
+                    if (calendar == null) {
+                        foundCalendar = matcher.group(4).toLowerCase();
+                        calendar = group(rest, matcher, 4);
+                        calendarWasCritical = critical;
+                    } else {
+                        if (!"iso8601".equals(foundCalendar)) {
+                            return false;
+                        }
+                        if (critical || calendarWasCritical) {
+                            return false;
+                        }
+                    }
+                } else {
+                    if (critical) {
+                        return false;
+                    }
+                }
+                move(matcher.end(1));
+            } else {
+                break;
+            }
         }
-        return false;
+        return calendar != null;
     }
 
     private boolean parseTimeZone() {
