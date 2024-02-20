@@ -54,6 +54,7 @@ import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.DynamicObject;
 import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
@@ -63,6 +64,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
+import com.oracle.truffle.js.nodes.function.ClassDefinitionNode;
 import com.oracle.truffle.js.nodes.function.ClassElementDefinitionRecord;
 import com.oracle.truffle.js.nodes.function.FunctionNameHolder;
 import com.oracle.truffle.js.nodes.function.JSFunctionExpressionNode;
@@ -92,7 +94,7 @@ import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
-public class ObjectLiteralNode extends JavaScriptNode {
+public final class ObjectLiteralNode extends JavaScriptNode {
 
     @Override
     public boolean hasTag(Class<? extends Tag> tag) {
@@ -271,6 +273,30 @@ public class ObjectLiteralNode extends JavaScriptNode {
         }
 
         protected final void checkNoElementsAssumption(JSObject obj, Object key) {
+            Node parent = getParent();
+            boolean canHaveNoElementsAssumption;
+            if (parent instanceof ObjectLiteralNode objectLit) {
+                canHaveNoElementsAssumption = objectLit.objectCreateNode.seenArrayPrototype();
+            } else if (parent instanceof ClassDefinitionNode classDef) {
+                canHaveNoElementsAssumption = classDef.getCreatePrototypeNode().seenArrayPrototype();
+            } else {
+                canHaveNoElementsAssumption = true;
+            }
+            CompilerAsserts.partialEvaluationConstant(canHaveNoElementsAssumption);
+            if (!canHaveNoElementsAssumption) {
+                /*
+                 * The created object is not derived from Array.prototype, so there's no need to
+                 * check if the property key is an array index. Since the object creation is part of
+                 * the same compilation unit, if this changes, we can assume that the object
+                 * creation node will transfer to interpreter before we reach here.
+                 */
+                assert !JSShape.hasNoElementsAssumption(obj);
+                return;
+            }
+            actuallyCheckNoElementsAssumption(obj, key);
+        }
+
+        private void actuallyCheckNoElementsAssumption(JSObject obj, Object key) {
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, JSShape.hasNoElementsAssumption(obj))) {
                 if (key instanceof TruffleString name) {
                     var noPrototypeElementsAssumption = getJSContext().getArrayPrototypeNoElementsAssumption();

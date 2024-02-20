@@ -43,6 +43,7 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
@@ -109,6 +110,10 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
     protected abstract CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
 
+    public boolean seenArrayPrototype() {
+        return false;
+    }
+
     private static class CreateOrdinaryObjectNode extends CreateObjectNode {
         protected CreateOrdinaryObjectNode(JSContext context) {
             super(context);
@@ -148,6 +153,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         protected final JSClass jsclass;
 
         @Child private DynamicObjectLibrary protoFlagsNode;
+        @CompilationFinal private boolean seenArrayPrototype;
 
         protected CreateObjectWithCachedPrototypeNode(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
             super(context, prototypeExpression);
@@ -201,6 +207,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
             } else {
                 Shape derivedShape = JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
                 if (isOrdinaryObject() && JSShape.isArrayPrototypeOrDerivative(prototype)) {
+                    seenArrayPrototype = true;
                     derivedShape = Shape.newBuilder(derivedShape).shapeFlags(derivedShape.getFlags() | JSShape.ARRAY_PROTOTYPE_FLAG).build();
                 }
                 return derivedShape;
@@ -230,10 +237,18 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         private void markAsArrayPrototype(JSObject object) {
             if (protoFlagsNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
+                // Only used by member nodes that are guaranteed to be in the same compilation unit,
+                // so a transferToInterpreterAndInvalidate() should be sufficient for this flag.
+                seenArrayPrototype = true;
                 protoFlagsNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
             }
             assert JSOrdinary.isJSOrdinaryObject(object) : object;
             protoFlagsNode.setShapeFlags(object, protoFlagsNode.getShapeFlags(object) | JSShape.ARRAY_PROTOTYPE_FLAG);
+        }
+
+        @Override
+        public boolean seenArrayPrototype() {
+            return seenArrayPrototype;
         }
 
         @Override

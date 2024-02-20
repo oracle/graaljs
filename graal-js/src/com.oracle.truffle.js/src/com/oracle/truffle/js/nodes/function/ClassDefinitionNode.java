@@ -489,6 +489,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         ((FunctionNameHolder) constructorFunctionNode).setFunctionName(name);
     }
 
+    public CreateObjectNode.CreateObjectWithPrototypeNode getCreatePrototypeNode() {
+        return createPrototypeNode;
+    }
+
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new ClassDefinitionNode(context,
