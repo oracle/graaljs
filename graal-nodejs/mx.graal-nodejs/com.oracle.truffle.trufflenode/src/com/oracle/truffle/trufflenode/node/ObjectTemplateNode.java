@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -83,7 +84,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
     }
 
     @ExplodeLoop
-    public JSDynamicObject executeWithObject(VirtualFrame frame, JSDynamicObject object, JSRealm realm) {
+    public JSObject executeWithObject(VirtualFrame frame, JSObject object, JSRealm realm) {
         for (int i = 0; i < members.length; i++) {
             members[i].executeVoid(frame, object, realm);
         }

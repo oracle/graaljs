@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1250,14 +1250,14 @@ public class ObjectLiteralNode extends JavaScriptNode {
     }
 
     @Override
-    public JSDynamicObject execute(VirtualFrame frame) {
+    public JSObject execute(VirtualFrame frame) {
         JSRealm realm = getRealm();
-        JSDynamicObject ret = objectCreateNode.executeWithRealm(frame, realm);
+        JSObject ret = objectCreateNode.executeWithRealm(frame, realm);
         return executeWithObject(frame, ret, realm);
     }
 
     @ExplodeLoop
-    protected JSDynamicObject executeWithObject(VirtualFrame frame, JSDynamicObject ret, JSRealm realm) {
+    private JSObject executeWithObject(VirtualFrame frame, JSObject ret, JSRealm realm) {
         for (int i = 0; i < members.length; i++) {
             members[i].executeVoid(frame, ret, realm);
         }
