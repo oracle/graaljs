@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
@@ -86,11 +87,12 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
     public abstract JSTemporalPlainMonthDayObject execute(Object item, JSDynamicObject optParam);
 
     @Specialization
-    public JSTemporalPlainMonthDayObject toTemporalMonthDay(Object item, JSDynamicObject options,
+    public JSTemporalPlainMonthDayObject toTemporalMonthDay(Object item, JSDynamicObject optionsParam,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile returnPlainMonthDay,
                     @Cached InlinedConditionProfile getCalendarPath,
+                    @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                     @Cached IsObjectNode isObjectNode,
                     @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                     @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
@@ -100,6 +102,7 @@ public abstract class ToTemporalMonthDayNode extends JavaScriptBaseNode {
                     @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
+        JSDynamicObject options = (optionsParam == Undefined.instance) ? optionsParam : snapshotOwnProperties.snapshot(optionsParam, Null.instance);
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
             if (JSTemporalPlainMonthDay.isJSTemporalPlainMonthDay(itemObj)) {

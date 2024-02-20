@@ -66,6 +66,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -89,6 +90,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedConditionProfile isZonedDateTimeProfile,
+                    @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                     @Cached IsObjectNode isObjectNode,
                     @Cached("createDateFromFields()") CalendarMethodsRecordLookupNode lookupDateFromFields,
                     @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
@@ -105,6 +107,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
         Object calendar;
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
+        JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(options, Null.instance);
         OffsetBehaviour offsetBehaviour = OffsetBehaviour.OPTION;
         MatchBehaviour matchBehaviour = MatchBehaviour.MATCH_EXACTLY;
         TemporalUtil.Disambiguation disambiguation;
@@ -131,9 +134,9 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
             } else {
                 offsetString = (TruffleString) offsetStringObj;
             }
-            disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode, equalNode);
-            offsetOption = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode, equalNode);
-            result = TemporalUtil.interpretTemporalDateTimeFields(calendarRec, fields, options, getOptionNode, dateFromFieldsNode);
+            disambiguation = TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
+            offsetOption = TemporalUtil.toTemporalOffset(resolvedOptions, REJECT, getOptionNode, equalNode);
+            result = TemporalUtil.interpretTemporalDateTimeFields(calendarRec, fields, resolvedOptions, getOptionNode, dateFromFieldsNode);
         } else if (item instanceof TruffleString string) {
             ParseISODateTimeResult resultZDT = TemporalUtil.parseTemporalZonedDateTimeString(string);
             result = resultZDT;
@@ -162,9 +165,9 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                 throw TemporalErrors.createRangeErrorCalendarNotSupported();
             }
             matchBehaviour = MatchBehaviour.MATCH_MINUTES;
-            disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode, equalNode);
-            offsetOption = TemporalUtil.toTemporalOffset(options, REJECT, getOptionNode, equalNode);
-            TemporalUtil.toTemporalOverflow(options, getOptionNode);
+            disambiguation = TemporalUtil.toTemporalDisambiguation(resolvedOptions, getOptionNode, equalNode);
+            offsetOption = TemporalUtil.toTemporalOffset(resolvedOptions, REJECT, getOptionNode, equalNode);
+            TemporalUtil.toTemporalOverflow(resolvedOptions, getOptionNode);
         } else {
             errorBranch.enter(this);
             throw Errors.createTypeErrorNotAString(item);

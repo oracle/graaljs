@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -48,7 +49,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
@@ -56,58 +57,90 @@ import com.oracle.truffle.js.runtime.util.TemporalConstants;
  * Implementation of CalendarMethodsRecordLookup() operation.
  */
 public abstract class CalendarMethodsRecordLookupNode extends JavaScriptBaseNode {
-    protected final TruffleString key;
+    public enum Key {
+        DATE_ADD(TemporalConstants.DATE_ADD),
+        DATE_FROM_FIELDS(TemporalConstants.DATE_FROM_FIELDS),
+        DATE_UNTIL(TemporalConstants.DATE_UNTIL),
+        DAY(TemporalConstants.DAY),
+        FIELDS(TemporalConstants.FIELDS),
+        MERGE_FIELDS(TemporalConstants.MERGE_FIELDS),
+        MONTH_DAY_FROM_FIELDS(TemporalConstants.MONTH_DAY_FROM_FIELDS),
+        YEAR_MONTH_FROM_FIELDS(TemporalConstants.YEAR_MONTH_FROM_FIELDS),
+        YEAR(TemporalConstants.YEAR),
+        MONTH(TemporalConstants.MONTH),
+        MONTH_CODE(TemporalConstants.MONTH_CODE),
+        DAY_OF_WEEK(TemporalConstants.DAY_OF_WEEK),
+        DAY_OF_YEAR(TemporalConstants.DAY_OF_YEAR),
+        WEEK_OF_YEAR(TemporalConstants.WEEK_OF_YEAR),
+        DAYS_IN_WEEK(TemporalConstants.DAYS_IN_WEEK),
+        DAYS_IN_MONTH(TemporalConstants.DAYS_IN_MONTH),
+        DAYS_IN_YEAR(TemporalConstants.DAYS_IN_YEAR),
+        MONTHS_IN_YEAR(TemporalConstants.MONTHS_IN_YEAR),
+        IN_LEAP_YEAR(TemporalConstants.IN_LEAP_YEAR);
 
-    protected CalendarMethodsRecordLookupNode(TruffleString key) {
+        private final TruffleString propertyKey;
+
+        Key(TruffleString propertyKey) {
+            this.propertyKey = propertyKey;
+        }
+
+        TruffleString getPropertyKey() {
+            return propertyKey;
+        }
+    }
+
+    protected final Key key;
+
+    protected CalendarMethodsRecordLookupNode(Key key) {
         this.key = key;
     }
 
-    public TruffleString getKey() {
+    public Key getKey() {
         return key;
     }
 
     @NeverDefault
     public static CalendarMethodsRecordLookupNode createDateAdd() {
-        return create(TemporalConstants.DATE_ADD);
+        return create(Key.DATE_ADD);
     }
 
     @NeverDefault
     public static CalendarMethodsRecordLookupNode createDateFromFields() {
-        return create(TemporalConstants.DATE_FROM_FIELDS);
+        return create(Key.DATE_FROM_FIELDS);
     }
 
     @NeverDefault
     public static CalendarMethodsRecordLookupNode createDateUntil() {
-        return create(TemporalConstants.DATE_UNTIL);
+        return create(Key.DATE_UNTIL);
     }
 
     @NeverDefault
     public static CalendarMethodsRecordLookupNode createDay() {
-        return create(TemporalConstants.DAY);
+        return create(Key.DAY);
     }
 
     @NeverDefault
     public static CalendarMethodsRecordLookupNode createFields() {
-        return create(TemporalConstants.FIELDS);
+        return create(Key.FIELDS);
     }
 
     @NeverDefault
     public static CalendarMethodsRecordLookupNode createMergeFields() {
-        return create(TemporalConstants.MERGE_FIELDS);
+        return create(Key.MERGE_FIELDS);
     }
 
     @NeverDefault
     public static CalendarMethodsRecordLookupNode createMonthDayFromFields() {
-        return create(TemporalConstants.MONTH_DAY_FROM_FIELDS);
+        return create(Key.MONTH_DAY_FROM_FIELDS);
     }
 
     @NeverDefault
     public static CalendarMethodsRecordLookupNode createYearMonthFromFields() {
-        return create(TemporalConstants.YEAR_MONTH_FROM_FIELDS);
+        return create(Key.YEAR_MONTH_FROM_FIELDS);
     }
 
     @NeverDefault
-    public static CalendarMethodsRecordLookupNode create(TruffleString key) {
+    public static CalendarMethodsRecordLookupNode create(Key key) {
         return CalendarMethodsRecordLookupNodeGen.create(key);
     }
 
@@ -115,13 +148,34 @@ public abstract class CalendarMethodsRecordLookupNode extends JavaScriptBaseNode
 
     @Specialization
     protected Object lookup(@SuppressWarnings("unused") TruffleString receiver) {
-        // TODO: get these methods from JSRealm directly
-        return JSObject.get(getRealm().getTemporalCalendarPrototype(), key);
+        JSRealm realm = getRealm();
+        return switch (key) {
+            case DATE_ADD -> realm.getTemporalCalendarDateAddFunctionObject();
+            case DATE_FROM_FIELDS -> realm.getTemporalCalendarDateFromFieldsFunctionObject();
+            case DATE_UNTIL -> realm.getTemporalCalendarDateUntilFunctionObject();
+            case DAY -> realm.getTemporalCalendarDayFunctionObject();
+            case FIELDS -> realm.getTemporalCalendarFieldsFunctionObject();
+            case MERGE_FIELDS -> realm.getTemporalCalendarMergeFieldsFunctionObject();
+            case MONTH_DAY_FROM_FIELDS -> realm.getTemporalCalendarMonthDayFromFieldsFunctionObject();
+            case YEAR_MONTH_FROM_FIELDS -> realm.getTemporalCalendarYearMonthFromFieldsFunctionObject();
+            case YEAR -> realm.getTemporalCalendarYearFunctionObject();
+            case MONTH -> realm.getTemporalCalendarMonthFunctionObject();
+            case MONTH_CODE -> realm.getTemporalCalendarMonthCodeFunctionObject();
+            case DAY_OF_WEEK -> realm.getTemporalCalendarDayOfWeekFunctionObject();
+            case DAY_OF_YEAR -> realm.getTemporalCalendarDayOfYearFunctionObject();
+            case WEEK_OF_YEAR -> realm.getTemporalCalendarWeekOfYearFunctionObject();
+            case DAYS_IN_WEEK -> realm.getTemporalCalendarDaysInWeekFunctionObject();
+            case DAYS_IN_MONTH -> realm.getTemporalCalendarDaysInMonthFunctionObject();
+            case DAYS_IN_YEAR -> realm.getTemporalCalendarDaysInYearFunctionObject();
+            case MONTHS_IN_YEAR -> realm.getTemporalCalendarMonthsInYearFunctionObject();
+            case IN_LEAP_YEAR -> realm.getTemporalCalendarInLeapYearFunctionObject();
+            default -> throw CompilerDirectives.shouldNotReachHere(key.name());
+        };
     }
 
     @Specialization(guards = "!isString(receiver)")
     protected Object lookup(Object receiver,
-                    @Cached("create(getJSContext(), key)") GetMethodNode getMethod,
+                    @Cached("create(getJSContext(), key.getPropertyKey())") GetMethodNode getMethod,
                     @Cached InlinedBranchProfile errorBranch) {
         Object method = getMethod.executeWithTarget(receiver);
         if (method == Undefined.instance) {

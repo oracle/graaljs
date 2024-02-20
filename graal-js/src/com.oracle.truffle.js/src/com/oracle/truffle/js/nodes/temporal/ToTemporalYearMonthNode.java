@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonth;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
@@ -71,7 +72,8 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
     public abstract JSTemporalPlainYearMonthObject execute(Object value, JSDynamicObject options);
 
     @Specialization
-    public JSTemporalPlainYearMonthObject toTemporalYearMonth(Object item, JSDynamicObject options,
+    public JSTemporalPlainYearMonthObject toTemporalYearMonth(Object item, JSDynamicObject optionsParam,
+                    @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached IsObjectNode isObjectNode,
@@ -81,7 +83,7 @@ public abstract class ToTemporalYearMonthNode extends JavaScriptBaseNode {
                     @Cached("createYearMonthFromFields()") CalendarMethodsRecordLookupNode lookupYearMonthFromFields,
                     @Cached TemporalYearMonthFromFieldsNode yearMonthFromFieldsNode,
                     @Cached TemporalCalendarFieldsNode calendarFieldsNode) {
-        assert options != null;
+        JSDynamicObject options = (optionsParam == Undefined.instance) ? optionsParam : snapshotOwnProperties.snapshot(optionsParam, Null.instance);
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
             if (JSTemporalPlainYearMonth.isJSTemporalPlainYearMonth(itemObj)) {

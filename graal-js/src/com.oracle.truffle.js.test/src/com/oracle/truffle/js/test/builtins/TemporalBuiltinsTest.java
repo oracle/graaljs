@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -928,7 +928,7 @@ public class TemporalBuiltinsTest extends JSTest {
     @Test
     public void testInstantMultipleOffsets() {
         String code = "const epoch = new Temporal.Instant(0n);\n" +
-                        "const str = '1970-01-01T00:02:00.000000000+00:02[+00:01:30.987654321]';\n" +
+                        "const str = '1970-01-01T00:02:00.000000000+00:02[+00:01]';\n" +
                         "Temporal.Instant.compare(str, epoch) === 0;";
         testTrue(code);
     }

@@ -68,7 +68,7 @@ import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDaysInWeekNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarDaysInYearNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarFieldsNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarGetterNodeGen;
+import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarIDNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarInLeapYearNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMergeFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarMonthCodeNodeGen;
@@ -78,16 +78,15 @@ import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarWeekOfYearNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearMonthFromFieldsNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarPrototypeBuiltinsFactory.JSTemporalCalendarYearNodeGen;
-import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorStepNode;
 import com.oracle.truffle.js.nodes.access.IteratorValueNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
@@ -114,6 +113,8 @@ import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.objects.IteratorRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
+import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
@@ -177,7 +178,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             case id:
             case toString:
             case toJSON:
-                return JSTemporalCalendarGetterNodeGen.create(context, builtin, builtinEnum, args().withThis().createArgumentNodes(context));
+                return JSTemporalCalendarIDNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
 
             case mergeFields:
                 return JSTemporalCalendarMergeFieldsNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
@@ -221,26 +222,15 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         return null;
     }
 
-    public abstract static class JSTemporalCalendarGetterNode extends JSBuiltinNode {
+    public abstract static class JSTemporalCalendarIDNode extends JSBuiltinNode {
 
-        protected final TemporalCalendarPrototype property;
-
-        protected JSTemporalCalendarGetterNode(JSContext context, JSBuiltin builtin, TemporalCalendarPrototype property) {
+        protected JSTemporalCalendarIDNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.property = property;
         }
 
         @Specialization
-        protected Object id(JSTemporalCalendarObject calendar,
-                        @Cached JSToStringNode toStringNode) {
-            switch (property) {
-                case id:
-                case toString:
-                    return calendar.getId();
-                case toJSON:
-                    return toStringNode.executeString(calendar);
-            }
-            throw Errors.shouldNotReachHere();
+        protected Object id(JSTemporalCalendarObject calendar) {
+            return calendar.getId();
         }
 
         @Specialization(guards = "!isJSTemporalCalendar(thisObj)")
@@ -250,19 +240,21 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class JSTemporalCalendarMergeFields extends JSTemporalBuiltinOperation {
+        private static final Object[] EMPTY = new Object[0];
+        private static final Object[] UNDEFINED_IN_ARRAY = new Object[]{Undefined.instance};
 
         protected JSTemporalCalendarMergeFields(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
         }
 
         @Specialization
-        protected JSDynamicObject mergeFields(JSTemporalCalendarObject calendar, Object fieldsParam, Object additionalFieldsParam,
+        protected JSDynamicObject mergeFields(JSTemporalCalendarObject calendar, Object fields, Object additionalFields,
                         @Cached JSToObjectNode toObject,
-                        @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode) {
+                        @Cached SnapshotOwnPropertiesNode snapshotOwnProperties) {
             assert calendar.getId().equals(ISO8601);
-            JSDynamicObject fields = (JSDynamicObject) toObject.execute(fieldsParam);
-            JSDynamicObject additionalFields = (JSDynamicObject) toObject.execute(additionalFieldsParam);
-            return TemporalUtil.defaultMergeFields(getContext(), getRealm(), fields, additionalFields, namesNode);
+            JSDynamicObject fieldsCopy = snapshotOwnProperties.snapshot(toObject.execute(fields), Null.instance, EMPTY, UNDEFINED_IN_ARRAY);
+            JSDynamicObject additionalFieldsCopy = snapshotOwnProperties.snapshot(toObject.execute(additionalFields), Null.instance, EMPTY, UNDEFINED_IN_ARRAY);
+            return TemporalUtil.defaultMergeFields(getContext(), getRealm(), fieldsCopy, additionalFieldsCopy);
         }
 
         @SuppressWarnings("unused")

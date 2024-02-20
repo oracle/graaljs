@@ -129,6 +129,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
@@ -162,9 +163,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZone;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
@@ -181,6 +179,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class TemporalUtil {
@@ -1070,28 +1069,6 @@ public final class TemporalUtil {
         return result;
     }
 
-    @TruffleBoundary
-    public static JSObject preparePartialTemporalFields(JSContext ctx, JSDynamicObject fields, List<TruffleString> fieldNames) {
-        JSObject result = JSOrdinary.createWithNullPrototype(ctx);
-        boolean any = false;
-        for (TruffleString property : fieldNames) {
-            Object value = JSObject.get(fields, property);
-            assert value != null;
-            if (value != Undefined.instance) {
-                any = true;
-                if (temporalFieldConversion.containsKey(property)) {
-                    Function<Object, Object> conversion = temporalFieldConversion.get(property);
-                    value = conversion.apply(value);
-                }
-            }
-            createDataPropertyOrThrow(ctx, result, property, value);
-        }
-        if (!any) {
-            throw Errors.createTypeError("Given dateTime like object has no relevant properties.");
-        }
-        return result;
-    }
-
     public record ISOYearMonthRecord(int year, int month) {
     }
 
@@ -1746,14 +1723,6 @@ public final class TemporalUtil {
         return Boundaries.equals(toCalendarIdentifier.executeString(one), toCalendarIdentifier.executeString(two));
     }
 
-    public static void rejectTemporalCalendarType(Object obj, Node node, InlinedBranchProfile errorBranch) {
-        if (obj instanceof JSTemporalPlainDateObject || obj instanceof JSTemporalPlainDateTimeObject || obj instanceof JSTemporalPlainMonthDayObject ||
-                        obj instanceof JSTemporalPlainTimeObject || obj instanceof JSTemporalPlainYearMonthObject || isTemporalZonedDateTime(obj)) {
-            errorBranch.enter(node);
-            throw Errors.createTypeError("rejecting calendar types");
-        }
-    }
-
     public static JSDynamicObject calendarMergeFields(JSContext ctx, JSRealm realm, CalendarMethodsRecord calendarRec, JSDynamicObject fields,
                     JSDynamicObject additionalFields, Node node, InlinedBranchProfile errorBranch) {
         Object calendarSlotValue = calendarRec.receiver();
@@ -1774,25 +1743,23 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static JSDynamicObject defaultMergeFields(JSContext ctx, JSRealm realm, JSDynamicObject fields, JSDynamicObject additionalFields, EnumerableOwnPropertyNamesNode namesNode) {
-        JSDynamicObject merged = JSOrdinary.create(ctx, realm);
-        UnmodifiableArrayList<? extends Object> originalKeys = namesNode.execute(fields);
+    public static JSDynamicObject defaultMergeFields(JSContext ctx, JSRealm realm, JSDynamicObject fields, JSDynamicObject additionalFields) {
+        JSDynamicObject merged = JSOrdinary.create(ctx, realm, Null.instance);
+        List<Object> originalKeys = JSObject.ownPropertyKeys(fields);
         for (Object nextKey : originalKeys) {
             if (!MONTH.equals(nextKey) && !MONTH_CODE.equals(nextKey)) {
                 Object propValue = JSObject.get(fields, nextKey);
                 if (propValue != Undefined.instance) {
-                    // TODO: is JSRuntime.toString correct here?
-                    createDataPropertyOrThrow(ctx, merged, JSRuntime.toString(nextKey), propValue);
+                    createDataPropertyOrThrow(ctx, merged, nextKey, propValue);
                 }
             }
         }
         boolean hasMonthOrMonthCode = false;
-        UnmodifiableArrayList<? extends Object> newKeys = namesNode.execute(additionalFields);
+        List<Object> newKeys = JSObject.ownPropertyKeys(additionalFields);
         for (Object nextKey : newKeys) {
             Object propValue = JSObject.get(additionalFields, nextKey);
             if (propValue != Undefined.instance) {
-                // TODO: is JSRuntime.toString correct here?
-                createDataPropertyOrThrow(ctx, merged, JSRuntime.toString(nextKey), propValue);
+                createDataPropertyOrThrow(ctx, merged, nextKey, propValue);
                 if (MONTH.equals(nextKey) || MONTH_CODE.equals(nextKey)) {
                     hasMonthOrMonthCode = true;
                 }
@@ -1817,7 +1784,7 @@ public final class TemporalUtil {
         return merged;
     }
 
-    public static void createDataPropertyOrThrow(JSContext ctx, JSDynamicObject obj, TruffleString key, Object value) {
+    public static void createDataPropertyOrThrow(JSContext ctx, JSDynamicObject obj, Object key, Object value) {
         JSObjectUtil.defineDataProperty(ctx, obj, key, value, JSAttributes.configurableEnumerableWritable());
     }
 
@@ -3525,51 +3492,51 @@ public final class TemporalUtil {
     }
 
     public static Number calendarYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, YEAR);
+        return getterNode.executeInteger(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.YEAR);
     }
 
     public static Number calendarMonth(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, MONTH);
+        return getterNode.executeInteger(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.MONTH);
     }
 
     public static TruffleString calendarMonthCode(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.executeString(calendar, dateLike, MONTH_CODE);
+        return getterNode.executeString(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.MONTH_CODE);
     }
 
     public static Number calendarDay(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.executeInteger(calendar, dateLike, DAY);
+        return getterNode.executeInteger(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAY);
     }
 
     public static Object calendarDayOfWeek(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.DAY_OF_WEEK);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAY_OF_WEEK);
     }
 
     public static Object calendarDayOfYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.DAY_OF_YEAR);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAY_OF_YEAR);
     }
 
     public static Object calendarWeekOfYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.WEEK_OF_YEAR);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.WEEK_OF_YEAR);
     }
 
     public static Object calendarDaysInWeek(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.DAYS_IN_WEEK);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAYS_IN_WEEK);
     }
 
     public static Object calendarDaysInMonth(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.DAYS_IN_MONTH);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAYS_IN_MONTH);
     }
 
     public static Object calendarDaysInYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.DAYS_IN_YEAR);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAYS_IN_YEAR);
     }
 
     public static Object calendarMonthsInYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.MONTHS_IN_YEAR);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.MONTHS_IN_YEAR);
     }
 
     public static Object calendarInLeapYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
-        return getterNode.execute(calendar, dateLike, TemporalConstants.IN_LEAP_YEAR);
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.IN_LEAP_YEAR);
     }
 
     // 12.1.38

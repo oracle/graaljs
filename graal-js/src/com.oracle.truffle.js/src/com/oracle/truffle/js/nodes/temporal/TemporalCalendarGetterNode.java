@@ -67,30 +67,30 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
         this.callNode = JSFunctionCallNode.createCall();
     }
 
-    public abstract Object execute(Object calendar, JSDynamicObject dateLike, TruffleString name);
+    public abstract Object execute(Object calendar, JSDynamicObject dateLike, CalendarMethodsRecordLookupNode.Key key);
 
-    public final Number executeInteger(Object calendar, JSDynamicObject dateLike, TruffleString name) {
+    public final Number executeInteger(Object calendar, JSDynamicObject dateLike, CalendarMethodsRecordLookupNode.Key key) {
         if (toIntegerThrowOnInfinityNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toIntegerThrowOnInfinityNode = insert(JSToIntegerThrowOnInfinityNode.create());
         }
-        return (Number) toIntegerThrowOnInfinityNode.execute(execute(calendar, dateLike, name));
+        return (Number) toIntegerThrowOnInfinityNode.execute(execute(calendar, dateLike, key));
     }
 
-    public final TruffleString executeString(Object calendar, JSDynamicObject dateLike, TruffleString name) {
+    public final TruffleString executeString(Object calendar, JSDynamicObject dateLike, CalendarMethodsRecordLookupNode.Key key) {
         if (toStringNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toStringNode = insert(JSToStringNode.create());
         }
-        return toStringNode.executeString(execute(calendar, dateLike, name));
+        return toStringNode.executeString(execute(calendar, dateLike, key));
     }
 
     @Specialization
-    protected Object calendarGetter(Object calendarSlotValue, JSDynamicObject dateLike, TruffleString name,
+    protected Object calendarGetter(Object calendarSlotValue, JSDynamicObject dateLike, CalendarMethodsRecordLookupNode.Key key,
                     @Cached ToTemporalCalendarObjectNode toCalendarObject,
                     @Cached InlinedBranchProfile errorBranch) {
         Object calendar = toCalendarObject.execute(calendarSlotValue);
-        Object fn = getMethod(calendar, name);
+        Object fn = getMethod(calendar, key);
         Object result = callNode.executeCall(JSArguments.create(calendar, fn, dateLike));
 
         if (result == Undefined.instance) {
@@ -100,12 +100,12 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
         return result;
     }
 
-    private Object getMethod(Object calendar, TruffleString name) {
+    private Object getMethod(Object calendar, CalendarMethodsRecordLookupNode.Key key) {
         if (getMethodNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            this.getMethodNode = insert(CalendarMethodsRecordLookupNode.create(name));
+            this.getMethodNode = insert(CalendarMethodsRecordLookupNode.create(key));
         }
-        assert getMethodNode.getKey().equals(name);
+        assert getMethodNode.getKey() == key;
         return getMethodNode.execute(calendar);
     }
 }
