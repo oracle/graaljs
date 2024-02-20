@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -527,33 +527,14 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         defineConstructorMethodNode.getBlockScopeSlot());
     }
 
-    static class ClassDefinitionResumptionRecord {
-        final JSDynamicObject proto;
-        final JSObject constructor;
-        final ClassElementDefinitionRecord[] instanceElements;
-        final ClassElementDefinitionRecord[] staticElements;
-        final int instanceElementIndex;
-        final int staticElementIndex;
-        final int startIndex;
-        final Object[] decorators;
-
-        ClassDefinitionResumptionRecord(
-                        JSDynamicObject proto,
-                        JSObject constructor,
-                        ClassElementDefinitionRecord[] instanceFields,
-                        ClassElementDefinitionRecord[] staticElements,
-                        int instanceElementIndex,
-                        int staticElementIndex,
-                        Object[] decorators,
-                        int startIndex) {
-            this.proto = proto;
-            this.constructor = constructor;
-            this.instanceElements = instanceFields;
-            this.staticElements = staticElements;
-            this.instanceElementIndex = instanceElementIndex;
-            this.staticElementIndex = staticElementIndex;
-            this.startIndex = startIndex;
-            this.decorators = decorators;
-        }
+    private record ClassDefinitionResumptionRecord(
+                    JSDynamicObject proto,
+                    JSObject constructor,
+                    ClassElementDefinitionRecord[] instanceElements,
+                    ClassElementDefinitionRecord[] staticElements,
+                    int instanceElementIndex,
+                    int staticElementIndex,
+                    Object[] decorators,
+                    int startIndex) {
     }
 }
