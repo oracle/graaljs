@@ -65,7 +65,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSOrdinaryObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
@@ -168,7 +167,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
+        public void executeVoid(VirtualFrame frame, JSObject receiver, JSObject homeObject, JSRealm realm) {
             setNode.setValue(receiver, value);
         }
 
@@ -188,7 +187,7 @@ public class ObjectTemplateNode extends JavaScriptBaseNode {
         }
 
         @Override
-        public void executeVoid(VirtualFrame frame, JSDynamicObject receiver, JSDynamicObject homeObject, JSRealm realm) {
+        public void executeVoid(VirtualFrame frame, JSObject receiver, JSObject homeObject, JSRealm realm) {
             if (receiver instanceof JSOrdinaryObject.InternalFieldLayout) {
                 ((JSOrdinaryObject.InternalFieldLayout) receiver).setInternalFieldCount(value);
             } else {
