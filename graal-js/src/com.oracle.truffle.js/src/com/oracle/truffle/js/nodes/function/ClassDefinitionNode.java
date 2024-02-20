@@ -181,7 +181,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     private Object executeWithName(VirtualFrame frame, Object name, ClassDefinitionResumptionRecord resumptionRecord, int stateSlot) {
-        JSDynamicObject proto;
+        JSObject proto;
         JSObject constructor;
         Object[] decorators;
         ClassElementDefinitionRecord[] instanceElements;
@@ -271,13 +271,13 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         realm);
     }
 
-    private void handleArrayPrototype(JSDynamicObject proto, JSDynamicObject protoParent) {
+    private void handleArrayPrototype(JSObject proto, JSDynamicObject protoParent) {
         if (JSShape.isArrayPrototypeOrDerivative(protoParent)) {
             markAsArrayPrototype(proto);
         }
     }
 
-    private void markAsArrayPrototype(JSDynamicObject proto) {
+    private void markAsArrayPrototype(JSObject proto) {
         if (protoFlagsNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             protoFlagsNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
@@ -286,7 +286,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         protoFlagsNode.setShapeFlags(proto, protoFlagsNode.getShapeFlags(proto) | JSShape.ARRAY_PROTOTYPE_FLAG);
     }
 
-    private Object defineClassElements(VirtualFrame frame, JSDynamicObject proto, JSObject constructor, Object[] decorators, ClassElementDefinitionRecord[] instanceElements,
+    private Object defineClassElements(VirtualFrame frame, JSObject proto, JSObject constructor, Object[] decorators, ClassElementDefinitionRecord[] instanceElements,
                     ClassElementDefinitionRecord[] staticElements, int startIndex, int instanceElementIndex,
                     int staticElementIndex, int stateSlot, JSRealm realm) {
         initializeMembers(frame, proto, constructor,
@@ -352,8 +352,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                     SimpleArrayList<Object> instanceExtraInitializers,
                     SimpleArrayList<Object> staticExtraInitializers,
                     ClassElementDefinitionRecord[] staticElements,
-                    JSDynamicObject constructor,
-                    JSDynamicObject proto) {
+                    JSObject constructor,
+                    JSObject proto) {
         applyDecoratorsAndDefineMethods(frame, constructor, staticElements, staticExtraInitializers, true);
         applyDecoratorsAndDefineMethods(frame, proto, instanceElements, instanceExtraInitializers, false);
         applyDecoratorsToElements(frame, constructor, staticElements, staticExtraInitializers, true);
@@ -367,7 +367,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsAndDefineMethods(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
+    private void applyDecoratorsAndDefineMethods(VirtualFrame frame, JSObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
         if (elements == null) {
             return;
         }
@@ -390,7 +390,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsToElements(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
+    private void applyDecoratorsToElements(VirtualFrame frame, JSObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
         if (elements == null) {
             return;
         }
@@ -452,7 +452,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, JSDynamicObject proto, JSObject constructor, ClassElementDefinitionRecord[] instanceElements,
+    private void initializeMembers(VirtualFrame frame, JSObject proto, JSObject constructor, ClassElementDefinitionRecord[] instanceElements,
                     ClassElementDefinitionRecord[] staticElements, int startIndex, int instanceElementsIdx,
                     int staticElementIdx, int stateSlot, JSRealm realm) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
@@ -465,7 +465,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                 if (i >= startIndex) {
                     ObjectLiteralMemberNode memberNode = memberNodes[i];
                     boolean isStatic = memberNode.isStatic();
-                    JSDynamicObject homeObject = isStatic ? constructor : proto;
+                    JSObject homeObject = isStatic ? constructor : proto;
                     decorators = memberDecorators != null && memberDecorators[i] != null ? memberDecorators[i].execute(frame) : null;
                     ClassElementDefinitionRecord classElementDef = memberNode.evaluateClassElementDefinition(frame, homeObject, realm, decorators);
                     if (isStatic) {
@@ -528,7 +528,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     private record ClassDefinitionResumptionRecord(
-                    JSDynamicObject proto,
+                    JSObject proto,
                     JSObject constructor,
                     ClassElementDefinitionRecord[] instanceElements,
                     ClassElementDefinitionRecord[] staticElements,
