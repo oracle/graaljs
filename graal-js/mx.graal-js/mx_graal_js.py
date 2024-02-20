@@ -473,9 +473,9 @@ def run_javascript_basictests(js_binary):
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
     if register_project and register_distribution:
         isolate_build_options = ['-H:+AuxiliaryEngineCache', '-H:ReservedAuxiliaryImageBytes=2145482548'] if not mx.is_windows() else []
-        mx_truffle.register_polyglot_isolate_distributions(_suite, register_project, register_distribution,
-                                           'js', 'GRAALJS', 'com.oracle.truffle.js.isolate',
-                                           isolate_build_options)
+        mx_truffle.register_polyglot_isolate_distributions(_suite, register_project, register_distribution,'js',
+                                        'JS_COMMUNITY', 'GRAALJS',
+                                        'com.oracle.truffle.js.isolate', isolate_build_options)
 
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
