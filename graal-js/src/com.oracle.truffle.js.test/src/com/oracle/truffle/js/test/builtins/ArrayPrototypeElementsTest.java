@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,6 +64,25 @@ public class ArrayPrototypeElementsTest {
                         class MyArray extends Array {}
                         class OhMyArray extends MyArray {}
                         var myArray = new OhMyArray();
+                        """, """
+                        function MyArray() {
+                            return Reflect.construct(Array, arguments, MyArray);
+                        }
+                        MyArray.prototype = {
+                            __proto__: Array.prototype,
+                            constructor: MyArray,
+                        };
+                        Object.setPrototypeOf(MyArray, Array);
+                        var myArray = new MyArray();
+                        """, """
+                        function MyArray() {
+                            return Reflect.construct(Array, arguments, Object.getPrototypeOf(this).constructor);
+                        }
+                        MyArray.prototype = Object.create(Array.prototype, {
+                            constructor: { value: MyArray, configurable: true, writable: true }
+                        });
+                        Object.setPrototypeOf(MyArray, Array);
+                        var myArray = new MyArray();
                         """,
         }) {
             for (var invalidate : new String[]{
@@ -89,9 +108,9 @@ public class ArrayPrototypeElementsTest {
                             "Object.defineProperty(Object.prototype, '0', {get: () => 'oh no', configurable: true});",
             }) {
                 // skip not applicable test cases
-                if (!(allocate.contains("OhMyArray") && invalidate.contains("OhMyArray"))) {
+                if (invalidate.contains("OhMyArray") && !allocate.contains("OhMyArray")) {
                     continue;
-                } else if (!(allocate.contains("MyArray") && invalidate.contains("MyArray"))) {
+                } else if (invalidate.contains("MyArray") && !allocate.contains("MyArray")) {
                     continue;
                 }
 
