@@ -88,6 +88,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.js.runtime.objects.JSProperty;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -268,6 +269,18 @@ public class ObjectLiteralNode extends JavaScriptNode {
         @Override
         public void executeVoid(VirtualFrame frame, JSObject receiver, JSObject homeObject, JSRealm realm) {
         }
+
+        protected final void checkNoElementsAssumption(JSObject obj, Object key) {
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, JSShape.hasNoElementsAssumption(obj))) {
+                if (key instanceof TruffleString name) {
+                    var noPrototypeElementsAssumption = getJSContext().getArrayPrototypeNoElementsAssumption();
+                    if (noPrototypeElementsAssumption.isValid() && JSRuntime.isArrayIndexString(name)) {
+                        CompilerDirectives.transferToInterpreterAndInvalidate();
+                        noPrototypeElementsAssumption.invalidate("DefineOwnProperty on an Array prototype");
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -426,6 +439,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         private void executeWithGetterSetter(JSObject obj, Object key, Object getterV, Object setterV) {
             DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary();
+            checkNoElementsAssumption(obj, key);
             Accessor accessor = new Accessor(getterV, setterV);
             dynamicObjectLib.putWithFlags(obj, key, accessor, attributes | JSProperty.ACCESSOR);
         }
@@ -488,6 +502,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                 return;
             }
             DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary();
+            checkNoElementsAssumption(obj, key);
             dynamicObjectLib.putWithFlags(obj, key, value, attributes);
         }
 
@@ -558,6 +573,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
 
         private void execute(JSObject obj, Object getterV, Object setterV) {
             DynamicObjectLibrary dynamicObjectLib = dynamicObjectLibrary();
+            checkNoElementsAssumption(obj, name);
 
             Object getter = getterV;
             Object setter = setterV;
@@ -603,6 +619,7 @@ public class ObjectLiteralNode extends JavaScriptNode {
                         @CachedLibrary("receiver") DynamicObjectLibrary dynamicObject) {
             Object key = evaluateKey(frame);
             Object value = valueNode.execute(frame);
+            checkNoElementsAssumption(receiver, key);
             dynamicObject.putWithFlags(receiver, key, value, attributes | (JSRuntime.isPrivateSymbol(key) ? JSAttributes.NOT_ENUMERABLE : 0));
         }
 
