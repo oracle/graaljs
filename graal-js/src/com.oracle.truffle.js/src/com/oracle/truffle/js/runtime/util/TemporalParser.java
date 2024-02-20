@@ -63,7 +63,22 @@ public final class TemporalParser {
     private static final String patternDate = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternTime = "^(\\d\\d)(:?(\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
     private static final String patternCalendarName = "^(\\w*)$";
-    private static final String patternTimeZoneBracketedAnnotation = "^(\\[!?([^\\]]*)\\])";
+    // Hour 0[0-9]|1[0-9]|2[0-3]
+    // MinuteSecond [0-5][0-9]
+    // TimeSeparator :?
+    // TemporalSign [-+\u2212]
+    // UTCOffsetMinutePrecision/TimeZoneUTCOffsetName
+    // [-+\u2212](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?
+    // Alpha [A-Za-z]
+    // TZLeadingChar [A-Za-z._]
+    // TZChar [A-Za-z._0-9+-]
+    // TimeZoneIANANameComponent [A-Za-z._][A-Za-z._0-9+-]*
+    // TimeZoneIANAName [A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*
+    // TimeZoneIdentifier
+    // (?:[-+\u2212](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*)
+    // TimeZoneAnnotation
+    // [!?(?:[-+\u2212](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*)]
+    private static final String patternTimeZoneBracketedAnnotation = "(\\[!?((?:[-+\\u2212](?:0[0-9]|1[0-9]|2[0-3])(?::?[0-5][0-9])?)|(?:[A-Za-z._][A-Za-z._0-9+-]*(?:/[A-Za-z._][A-Za-z._0-9+-]*)*))\\])";
     private static final String patternTimeZoneNumericUTCOffset = "^([+\\-\\u2212])(\\d\\d):?((\\d\\d):?(?:(\\d\\d)(?:[\\.,]([\\d]*)?)?)?)?";
     private static final String patternDateSpecYearMonth = "^([+\\-\\u2212]\\d\\d\\d\\d\\d\\d|\\d\\d\\d\\d)[\\-]?(\\d\\d)";
     private static final String patternDateSpecMonthDay = "^(?:\\-\\-)?(\\d\\d)[\\-]?(\\d\\d)";
