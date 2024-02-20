@@ -404,8 +404,12 @@ public final class TemporalParser {
         if (!parseDate()) {
             return false;
         }
-        parseTimeSpecSeparator(true); // optional
-        parseTimeZone();
+
+        // optional
+        if (parseTimeSpecSeparator(false)) {
+            tryParseTimeZoneUTCOffset();
+        }
+        tryParseTimeZoneBracketedAnnotation();
 
         return true;
     }
