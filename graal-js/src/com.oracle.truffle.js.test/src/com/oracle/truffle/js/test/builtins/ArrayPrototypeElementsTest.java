@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,6 +49,8 @@ import org.graalvm.polyglot.Value;
 import org.junit.Test;
 
 import com.oracle.truffle.api.Assumption;
+import com.oracle.truffle.js.runtime.JSContextOptions;
+import com.oracle.truffle.js.test.JSTest;
 import com.oracle.truffle.js.test.TestHelper;
 
 public class ArrayPrototypeElementsTest {
@@ -64,6 +66,25 @@ public class ArrayPrototypeElementsTest {
                         class MyArray extends Array {}
                         class OhMyArray extends MyArray {}
                         var myArray = new OhMyArray();
+                        """, """
+                        function MyArray() {
+                            return Reflect.construct(Array, arguments, MyArray);
+                        }
+                        MyArray.prototype = {
+                            __proto__: Array.prototype,
+                            constructor: MyArray,
+                        };
+                        Object.setPrototypeOf(MyArray, Array);
+                        var myArray = new MyArray();
+                        """, """
+                        function MyArray() {
+                            return Reflect.construct(Array, arguments, Object.getPrototypeOf(this).constructor);
+                        }
+                        MyArray.prototype = Object.create(Array.prototype, {
+                            constructor: { value: MyArray, configurable: true, writable: true }
+                        });
+                        Object.setPrototypeOf(MyArray, Array);
+                        var myArray = new MyArray();
                         """,
         }) {
             for (var invalidate : new String[]{
@@ -89,9 +110,9 @@ public class ArrayPrototypeElementsTest {
                             "Object.defineProperty(Object.prototype, '0', {get: () => 'oh no', configurable: true});",
             }) {
                 // skip not applicable test cases
-                if (!(allocate.contains("OhMyArray") && invalidate.contains("OhMyArray"))) {
+                if (invalidate.contains("OhMyArray") && !allocate.contains("OhMyArray")) {
                     continue;
-                } else if (!(allocate.contains("MyArray") && invalidate.contains("MyArray"))) {
+                } else if (invalidate.contains("MyArray") && !allocate.contains("MyArray")) {
                     continue;
                 }
 
@@ -186,6 +207,114 @@ public class ArrayPrototypeElementsTest {
             context.eval(ID, testCase);
 
             assertEquals(expectValid, noElementsAssumption.isValid());
+        }
+    }
+
+    @Test
+    public void testLiteralArrayPrototypeElement() {
+        for (var allocate : new String[]{"""
+                        class MyArray extends Array {
+                            2() {}
+                        }
+                        var myArray = new MyArray();
+                        """, """
+                        class MyArray extends Array {
+                            get 2() { return 42; }
+                        }
+                        var myArray = new MyArray();
+                        """, """
+                        class MyArray extends Array {
+                            ["2".charAt(0)]() { return 42; }
+                        }
+                        var myArray = new MyArray();
+                        """, """
+                        class MyArray extends Array {
+                            get ["2".charAt(0)]() { return 42; }
+                        }
+                        var myArray = new MyArray();
+                        """, """
+                        class MyArray extends Array {
+                            accessor "2" = 42;
+                        }
+                        var myArray = new MyArray();
+                        """, """
+                        class MyArray extends Array {
+                            accessor ["2".charAt(0)] = 42;
+                        }
+                        var myArray = new MyArray();
+                        """, """
+                        function MyArray() {
+                            return Reflect.construct(Array, arguments, MyArray);
+                        }
+                        MyArray.prototype = {
+                            __proto__: Array.prototype,
+                            constructor: MyArray,
+                            2: 42,
+                        };
+                        Object.setPrototypeOf(MyArray, Array);
+                        var myArray = new MyArray();
+                        """, """
+                        function MyArray() {
+                            return Reflect.construct(Array, arguments, MyArray);
+                        }
+                        MyArray.prototype = {
+                            __proto__: Array.prototype,
+                            constructor: MyArray,
+                            ["2".charAt(0)]: 42,
+                        };
+                        Object.setPrototypeOf(MyArray, Array);
+                        var myArray = new MyArray();
+                        """, """
+                        function MyArray() {
+                            return Reflect.construct(Array, arguments, MyArray);
+                        }
+                        MyArray.prototype = {
+                            __proto__: Array.prototype,
+                            constructor: MyArray,
+                            get "2"() { return 42; }
+                        };
+                        Object.setPrototypeOf(MyArray, Array);
+                        var myArray = new MyArray();
+                        """, """
+                        function MyArray() {
+                            return Reflect.construct(Array, arguments, MyArray);
+                        }
+                        MyArray.prototype = {
+                            __proto__: Array.prototype,
+                            constructor: MyArray,
+                            get ["2".charAt(0)]() { return 42; }
+                        };
+                        Object.setPrototypeOf(MyArray, Array);
+                        var myArray = new MyArray();
+                        """, """
+                        function MyArray() {
+                            return Reflect.construct(Array, arguments, Object.getPrototypeOf(this).constructor);
+                        }
+                        MyArray.prototype = Object.create(Array.prototype, {
+                            constructor: { value: MyArray, configurable: true, writable: true },
+                            2: {value: 42, configurable: true, writable: true },
+                        });
+                        Object.setPrototypeOf(MyArray, Array);
+                        var myArray = new MyArray();
+                        """,
+        }) {
+            try (var helper = new TestHelper(JSTest.newContextBuilder().option(
+                            JSContextOptions.ECMASCRIPT_VERSION_NAME, JSContextOptions.ECMASCRIPT_VERSION_STAGING))) {
+                var context = helper.getPolyglotContext();
+
+                Assumption noElementsAssumption = helper.getJSContext().getArrayPrototypeNoElementsAssumption();
+                assertTrue(noElementsAssumption.isValid());
+
+                context.eval(ID, allocate);
+
+                assertFalse(allocate, noElementsAssumption.isValid());
+
+                assertTrue(allocate, context.eval(ID, "myArray instanceof MyArray").asBoolean());
+                assertTrue(allocate, context.eval(ID, "Array.isArray(myArray)").asBoolean());
+
+                assertFalse(allocate, context.eval(ID, "myArray[2]").isNull());
+                assertFalse(allocate, context.eval(ID, "Object.getOwnPropertyDescriptor(MyArray.prototype, 2)").isNull());
+            }
         }
     }
 }

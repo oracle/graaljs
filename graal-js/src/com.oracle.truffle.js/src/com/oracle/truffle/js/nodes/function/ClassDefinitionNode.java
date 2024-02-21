@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
-import com.oracle.truffle.api.object.DynamicObjectLibrary;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -67,13 +66,11 @@ import com.oracle.truffle.js.nodes.control.YieldException;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
-import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -108,8 +105,6 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     @Child private SetFunctionNameNode setFunctionName;
     @Child private IsConstructorNode isConstructorNode;
     @Child private JSFunctionCallNode staticExtraInitializersCallNode;
-
-    @Child private DynamicObjectLibrary protoFlagsNode;
 
     private final JSContext context;
     private final TruffleString className;
@@ -181,7 +176,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     private Object executeWithName(VirtualFrame frame, Object name, ClassDefinitionResumptionRecord resumptionRecord, int stateSlot) {
-        JSDynamicObject proto;
+        JSObject proto;
         JSObject constructor;
         Object[] decorators;
         ClassElementDefinitionRecord[] instanceElements;
@@ -222,8 +217,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
             assert protoParent == Null.instance || JSRuntime.isObject(protoParent);
             proto = createPrototypeNode.execute(protoParent);
 
-            // Mark prototypes derived from Array.prototype.
-            handleArrayPrototype(proto, protoParent);
+            // Prototypes derived from Array.prototype should have been marked as such.
+            assert !JSShape.isArrayPrototypeOrDerivative(protoParent) || JSShape.isArrayPrototypeOrDerivative(proto);
 
             /*
              * Let constructorInfo be the result of performing DefineMethod for constructor with
@@ -271,22 +266,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         realm);
     }
 
-    private void handleArrayPrototype(JSDynamicObject proto, JSDynamicObject protoParent) {
-        if (JSShape.isArrayPrototypeOrDerivative(protoParent)) {
-            markAsArrayPrototype(proto);
-        }
-    }
-
-    private void markAsArrayPrototype(JSDynamicObject proto) {
-        if (protoFlagsNode == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            protoFlagsNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
-        }
-        assert JSOrdinary.isJSOrdinaryObject(proto);
-        protoFlagsNode.setShapeFlags(proto, protoFlagsNode.getShapeFlags(proto) | JSShape.ARRAY_PROTOTYPE_FLAG);
-    }
-
-    private Object defineClassElements(VirtualFrame frame, JSDynamicObject proto, JSObject constructor, Object[] decorators, ClassElementDefinitionRecord[] instanceElements,
+    private Object defineClassElements(VirtualFrame frame, JSObject proto, JSObject constructor, Object[] decorators, ClassElementDefinitionRecord[] instanceElements,
                     ClassElementDefinitionRecord[] staticElements, int startIndex, int instanceElementIndex,
                     int staticElementIndex, int stateSlot, JSRealm realm) {
         initializeMembers(frame, proto, constructor,
@@ -352,8 +332,8 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                     SimpleArrayList<Object> instanceExtraInitializers,
                     SimpleArrayList<Object> staticExtraInitializers,
                     ClassElementDefinitionRecord[] staticElements,
-                    JSDynamicObject constructor,
-                    JSDynamicObject proto) {
+                    JSObject constructor,
+                    JSObject proto) {
         applyDecoratorsAndDefineMethods(frame, constructor, staticElements, staticExtraInitializers, true);
         applyDecoratorsAndDefineMethods(frame, proto, instanceElements, instanceExtraInitializers, false);
         applyDecoratorsToElements(frame, constructor, staticElements, staticExtraInitializers, true);
@@ -367,7 +347,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsAndDefineMethods(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
+    private void applyDecoratorsAndDefineMethods(VirtualFrame frame, JSObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
         if (elements == null) {
             return;
         }
@@ -390,7 +370,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void applyDecoratorsToElements(VirtualFrame frame, JSDynamicObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
+    private void applyDecoratorsToElements(VirtualFrame frame, JSObject homeObject, ClassElementDefinitionRecord[] elements, SimpleArrayList<Object> extraInitializers, boolean isStatic) {
         if (elements == null) {
             return;
         }
@@ -452,7 +432,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
     }
 
     @ExplodeLoop
-    private void initializeMembers(VirtualFrame frame, JSDynamicObject proto, JSObject constructor, ClassElementDefinitionRecord[] instanceElements,
+    private void initializeMembers(VirtualFrame frame, JSObject proto, JSObject constructor, ClassElementDefinitionRecord[] instanceElements,
                     ClassElementDefinitionRecord[] staticElements, int startIndex, int instanceElementsIdx,
                     int staticElementIdx, int stateSlot, JSRealm realm) {
         /* For each ClassElement e in order from NonConstructorMethodDefinitions of ClassBody */
@@ -465,7 +445,7 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                 if (i >= startIndex) {
                     ObjectLiteralMemberNode memberNode = memberNodes[i];
                     boolean isStatic = memberNode.isStatic();
-                    JSDynamicObject homeObject = isStatic ? constructor : proto;
+                    JSObject homeObject = isStatic ? constructor : proto;
                     decorators = memberDecorators != null && memberDecorators[i] != null ? memberDecorators[i].execute(frame) : null;
                     ClassElementDefinitionRecord classElementDef = memberNode.evaluateClassElementDefinition(frame, homeObject, realm, decorators);
                     if (isStatic) {
@@ -509,6 +489,10 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
         ((FunctionNameHolder) constructorFunctionNode).setFunctionName(name);
     }
 
+    public CreateObjectNode.CreateObjectWithPrototypeNode getCreatePrototypeNode() {
+        return createPrototypeNode;
+    }
+
     @Override
     protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
         return new ClassDefinitionNode(context,
@@ -527,33 +511,14 @@ public final class ClassDefinitionNode extends NamedEvaluationTargetNode impleme
                         defineConstructorMethodNode.getBlockScopeSlot());
     }
 
-    static class ClassDefinitionResumptionRecord {
-        final JSDynamicObject proto;
-        final JSObject constructor;
-        final ClassElementDefinitionRecord[] instanceElements;
-        final ClassElementDefinitionRecord[] staticElements;
-        final int instanceElementIndex;
-        final int staticElementIndex;
-        final int startIndex;
-        final Object[] decorators;
-
-        ClassDefinitionResumptionRecord(
-                        JSDynamicObject proto,
-                        JSObject constructor,
-                        ClassElementDefinitionRecord[] instanceFields,
-                        ClassElementDefinitionRecord[] staticElements,
-                        int instanceElementIndex,
-                        int staticElementIndex,
-                        Object[] decorators,
-                        int startIndex) {
-            this.proto = proto;
-            this.constructor = constructor;
-            this.instanceElements = instanceFields;
-            this.staticElements = staticElements;
-            this.instanceElementIndex = instanceElementIndex;
-            this.staticElementIndex = staticElementIndex;
-            this.startIndex = startIndex;
-            this.decorators = decorators;
-        }
+    private record ClassDefinitionResumptionRecord(
+                    JSObject proto,
+                    JSObject constructor,
+                    ClassElementDefinitionRecord[] instanceElements,
+                    ClassElementDefinitionRecord[] staticElements,
+                    int instanceElementIndex,
+                    int staticElementIndex,
+                    Object[] decorators,
+                    int startIndex) {
     }
 }

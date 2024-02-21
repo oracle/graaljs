@@ -42,6 +42,8 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Executed;
@@ -57,6 +59,7 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.CreateObjectNodeFactory.CreateObjectWithCachedPrototypeNodeGen;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Properties;
@@ -67,6 +70,7 @@ import com.oracle.truffle.js.runtime.builtins.JSPromise;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
+import com.oracle.truffle.js.runtime.objects.JSShape;
 import com.oracle.truffle.js.runtime.objects.Null;
 
 public abstract class CreateObjectNode extends JavaScriptBaseNode {
@@ -106,6 +110,10 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
     protected abstract CreateObjectNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
 
+    public boolean seenArrayPrototype() {
+        return false;
+    }
+
     private static class CreateOrdinaryObjectNode extends CreateObjectNode {
         protected CreateOrdinaryObjectNode(JSContext context) {
             super(context);
@@ -144,6 +152,9 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
     protected abstract static class CreateObjectWithCachedPrototypeNode extends CreateObjectWithPrototypeNode {
         protected final JSClass jsclass;
 
+        @Child private DynamicObjectLibrary protoFlagsNode;
+        @CompilationFinal private boolean seenArrayPrototype;
+
         protected CreateObjectWithCachedPrototypeNode(JSContext context, JavaScriptNode prototypeExpression, JSClass jsclass) {
             super(context, prototypeExpression);
             this.jsclass = jsclass;
@@ -172,6 +183,7 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
                         @CachedLibrary(limit = "3") @Shared DynamicObjectLibrary setProtoNode) {
             JSObject object = JSOrdinary.createWithoutPrototype(context, prototype);
             Properties.put(setProtoNode, object, JSObject.HIDDEN_PROTO, prototype);
+            handleArrayPrototype(object, prototype);
             return object;
         }
 
@@ -190,7 +202,16 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
 
         @NeverDefault
         final Shape getProtoChildShape(JSDynamicObject prototype) {
-            return prototype == Null.instance ? context.getEmptyShapeNullPrototype() : JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
+            if (prototype == Null.instance) {
+                return context.getEmptyShapeNullPrototype();
+            } else {
+                Shape derivedShape = JSObjectUtil.getProtoChildShape(prototype, jsclass, context);
+                if (isOrdinaryObject() && JSShape.isArrayPrototypeOrDerivative(prototype)) {
+                    seenArrayPrototype = true;
+                    derivedShape = Shape.newBuilder(derivedShape).shapeFlags(derivedShape.getFlags() | JSShape.ARRAY_PROTOTYPE_FLAG).build();
+                }
+                return derivedShape;
+            }
         }
 
         @Idempotent
@@ -201,6 +222,33 @@ public abstract class CreateObjectNode extends JavaScriptBaseNode {
         @Idempotent
         final boolean isPromiseObject() {
             return jsclass == JSPromise.INSTANCE;
+        }
+
+        /**
+         * Check if the prototype is (derived from) %Array.prototype%, and if so, mark the new
+         * object as a potential array prototype tracked by the no-prototype-elements assumption.
+         */
+        private void handleArrayPrototype(JSObject object, JSDynamicObject proto) {
+            if (JSShape.isArrayPrototypeOrDerivative(proto)) {
+                markAsArrayPrototype(object);
+            }
+        }
+
+        private void markAsArrayPrototype(JSObject object) {
+            if (protoFlagsNode == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                // Only used by member nodes that are guaranteed to be in the same compilation unit,
+                // so a transferToInterpreterAndInvalidate() should be sufficient for this flag.
+                seenArrayPrototype = true;
+                protoFlagsNode = insert(DynamicObjectLibrary.getFactory().createDispatched(JSConfig.PropertyCacheLimit));
+            }
+            assert JSOrdinary.isJSOrdinaryObject(object) : object;
+            protoFlagsNode.setShapeFlags(object, protoFlagsNode.getShapeFlags(object) | JSShape.ARRAY_PROTOTYPE_FLAG);
+        }
+
+        @Override
+        public boolean seenArrayPrototype() {
+            return seenArrayPrototype;
         }
 
         @Override
