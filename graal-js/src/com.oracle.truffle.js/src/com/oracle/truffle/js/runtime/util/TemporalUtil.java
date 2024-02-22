@@ -1124,26 +1124,61 @@ public final class TemporalUtil {
         return days + day;
     }
 
-    public static long toISOWeekOfYear(int year, int month, int day) {
-        long doy = toISODayOfYear(year, month, day);
-        long dow = toISODayOfWeek(year, month, day);
-        long doj = toISODayOfWeek(year, 1, 1);
+    // ToISOWeekOfYear(year, month, day).[[Week]]
+    public static long weekOfToISOWeekOfYear(int year, int month, int day) {
+        long wednesday = 3;
+        long thursday = 4;
+        long friday = 5;
+        long saturday = 6;
+        long daysInWeek = 7;
+        long maxWeekNumber = 53;
+        long dayOfYear = toISODayOfYear(year, month, day);
+        long dayOfWeek = toISODayOfWeek(year, month, day);
 
-        long week = Math.floorDiv(doy - dow + 10, 7);
+        long week = Math.floorDiv(dayOfYear + daysInWeek - dayOfWeek + wednesday, daysInWeek);
         if (week < 1) {
-            if (doj == 5 || (doj == 6 && isISOLeapYear(year - 1))) {
-                return 53;
+            long dayOfJan1st = toISODayOfWeek(year, 1, 1);
+            if (dayOfJan1st == friday || (dayOfJan1st == saturday && isISOLeapYear(year - 1))) {
+                return maxWeekNumber;
             } else {
-                return 52;
+                return maxWeekNumber - 1;
             }
         }
-        if (week == 53) {
-            if (isoDaysInYear(year) - doy < 4 - dow) {
+        if (week == maxWeekNumber) {
+            long daysInYear = isoDaysInYear(year);
+            long daysLaterInYear = daysInYear - dayOfYear;
+            long daysAfterThursday = thursday - dayOfWeek;
+            if (daysLaterInYear < daysAfterThursday) {
                 return 1;
             }
         }
 
         return week;
+    }
+
+    // ToISOWeekOfYear(year, month, day).[[Year]]
+    public static long yearOfToISOWeekOfYear(int year, int month, int day) {
+        long wednesday = 3;
+        long thursday = 4;
+        long daysInWeek = 7;
+        long maxWeekNumber = 53;
+        long dayOfYear = toISODayOfYear(year, month, day);
+        long dayOfWeek = toISODayOfWeek(year, month, day);
+
+        long week = Math.floorDiv(dayOfYear + daysInWeek - dayOfWeek + wednesday, daysInWeek);
+        if (week < 1) {
+            return year - 1;
+        }
+        if (week == maxWeekNumber) {
+            long daysInYear = isoDaysInYear(year);
+            long daysLaterInYear = daysInYear - dayOfYear;
+            long daysAfterThursday = thursday - dayOfWeek;
+            if (daysLaterInYear < daysAfterThursday) {
+                return year + 1;
+            }
+        }
+
+        return year;
     }
 
     public static boolean isISOLeapYear(int year) {
