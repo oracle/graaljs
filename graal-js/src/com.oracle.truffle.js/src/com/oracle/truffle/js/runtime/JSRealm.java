@@ -339,6 +339,7 @@ public class JSRealm {
     private final Object temporalCalendarDayOfWeekFunctionObject;
     private final Object temporalCalendarDayOfYearFunctionObject;
     private final Object temporalCalendarWeekOfYearFunctionObject;
+    private final Object temporalCalendarYearOfWeekFunctionObject;
     private final Object temporalCalendarDaysInWeekFunctionObject;
     private final Object temporalCalendarDaysInMonthFunctionObject;
     private final Object temporalCalendarDaysInYearFunctionObject;
@@ -1080,6 +1081,7 @@ public class JSRealm {
             this.temporalCalendarDayOfWeekFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAY_OF_WEEK);
             this.temporalCalendarDayOfYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAY_OF_YEAR);
             this.temporalCalendarWeekOfYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.WEEK_OF_YEAR);
+            this.temporalCalendarYearOfWeekFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.YEAR_OF_WEEK);
             this.temporalCalendarDaysInWeekFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAYS_IN_WEEK);
             this.temporalCalendarDaysInMonthFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAYS_IN_MONTH);
             this.temporalCalendarDaysInYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAYS_IN_YEAR);
@@ -1121,6 +1123,7 @@ public class JSRealm {
             this.temporalCalendarDayOfWeekFunctionObject = null;
             this.temporalCalendarDayOfYearFunctionObject = null;
             this.temporalCalendarWeekOfYearFunctionObject = null;
+            this.temporalCalendarYearOfWeekFunctionObject = null;
             this.temporalCalendarDaysInWeekFunctionObject = null;
             this.temporalCalendarDaysInMonthFunctionObject = null;
             this.temporalCalendarDaysInYearFunctionObject = null;
@@ -1734,6 +1737,10 @@ public class JSRealm {
 
     public Object getTemporalCalendarWeekOfYearFunctionObject() {
         return temporalCalendarWeekOfYearFunctionObject;
+    }
+
+    public Object getTemporalCalendarYearOfWeekFunctionObject() {
+        return temporalCalendarYearOfWeekFunctionObject;
     }
 
     public Object getTemporalCalendarDaysInWeekFunctionObject() {

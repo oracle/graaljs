@@ -142,6 +142,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         dayOfYear(0),
         dayOfWeek(0),
         weekOfYear(0),
+        yearOfWeek(0),
         daysInWeek(0),
         daysInMonth(0),
         daysInYear(0),
@@ -179,7 +180,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Override
         public boolean isGetter() {
-            return EnumSet.of(calendarId, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, daysInWeek, daysInMonth, daysInYear,
+            return EnumSet.of(calendarId, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, yearOfWeek, daysInWeek, daysInMonth, daysInYear,
                             monthsInYear, inLeapYear).contains(this);
         }
     }
@@ -196,6 +197,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             case dayOfYear:
             case dayOfWeek:
             case weekOfYear:
+            case yearOfWeek:
             case daysInWeek:
             case daysInMonth:
             case daysInYear:
@@ -283,6 +285,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                     return TemporalUtil.calendarMonthCode(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case weekOfYear:
                     return TemporalUtil.calendarWeekOfYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                case yearOfWeek:
+                    return TemporalUtil.calendarYearOfWeek(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case daysInWeek:
                     return TemporalUtil.calendarDaysInWeek(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case daysInMonth:

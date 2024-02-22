@@ -3554,6 +3554,10 @@ public final class TemporalUtil {
         return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.WEEK_OF_YEAR);
     }
 
+    public static Object calendarYearOfWeek(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.YEAR_OF_WEEK);
+    }
+
     public static Object calendarDaysInWeek(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
         return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.DAYS_IN_WEEK);
     }
