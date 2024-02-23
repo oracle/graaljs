@@ -183,6 +183,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         dayOfWeek(0),
         dayOfYear(0),
         weekOfYear(0),
+        yearOfWeek(0),
         hoursInDay(0),
         daysInWeek(0),
         daysInMonth(0),
@@ -257,6 +258,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             case dayOfWeek:
             case dayOfYear:
             case weekOfYear:
+            case yearOfWeek:
             case hoursInDay:
             case daysInWeek:
             case daysInMonth:
@@ -365,6 +367,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 case dayOfWeek:
                 case dayOfYear:
                 case weekOfYear:
+                case yearOfWeek:
                 case daysInWeek:
                 case daysInMonth:
                 case daysInYear:
@@ -466,6 +469,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                     return TemporalUtil.calendarDayOfYear(calendarGetterNode, calendar, tdt);
                 case weekOfYear:
                     return TemporalUtil.calendarWeekOfYear(calendarGetterNode, calendar, tdt);
+                case yearOfWeek:
+                    return TemporalUtil.calendarYearOfWeek(calendarGetterNode, calendar, tdt);
                 case daysInWeek:
                     return TemporalUtil.calendarDaysInWeek(calendarGetterNode, calendar, tdt);
                 case daysInMonth:
