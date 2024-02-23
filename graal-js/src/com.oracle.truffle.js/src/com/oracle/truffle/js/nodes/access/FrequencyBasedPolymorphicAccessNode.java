@@ -48,6 +48,7 @@ import java.util.concurrent.locks.Lock;
 
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -70,29 +71,14 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
      */
     private static final short MAX_SAMPLED_ACCESSES = 1000;
 
-    // Max size of ICs.
-    private static final int IC_GET_MAX_SIZE = 5;
-    private static final int IC_SET_MAX_SIZE = 3;
-
-    public static FrequencyBasedPropertyGetNode createFrequencyBasedPropertyGet(JSContext context) {
-        return FrequencyBasedPropertyGetNode.create(context);
-    }
-
-    public static FrequencyBasedPropertySetNode createFrequencyBasedPropertySet(JSContext context, boolean setOwn, boolean strict, boolean superProperty) {
-        return FrequencyBasedPropertySetNode.create(context, setOwn, strict, superProperty);
-    }
-
-    protected final JSContext context;
-
     private int totalHits;
     private short maxHitsPerKey;
-    private final int size;
+    private final short size;
     private Map<Object, HitsCount> hitsDistributionMap = new HashMap<>();
 
-    private FrequencyBasedPolymorphicAccessNode(JSContext context, int size) {
-        assert size > 0 && size <= Short.MAX_VALUE : size;
+    private FrequencyBasedPolymorphicAccessNode(short size) {
         this.size = size;
-        this.context = context;
+        this.hitsDistributionMap = size == 0 ? null : new HashMap<>();
     }
 
     protected abstract T[] getHighFrequencyNodes();
@@ -122,7 +108,7 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
 
             assert JSRuntime.isPropertyKey(key);
             HitsCount hitsCounter = hitsMap.computeIfAbsent(key, k -> new HitsCount());
-            int hits = hitsCounter.incrementAndGet();
+            short hits = hitsCounter.incrementAndGet();
             if (totalHitCount < MIN_SAMPLED_ACCESSES) {
                 // Only collect statistics until we have enough frequency data.
                 maxHitsPerKey = (short) Math.max(maxHitsPerKey, hits);
@@ -196,16 +182,23 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
         protected final boolean strict;
         protected final boolean superProperty;
 
+        private static final FrequencyBasedPropertySetNode DISABLED = new FrequencyBasedPropertySetNode(false, false, false, (short) 0);
+
+        @NeverDefault
         public static FrequencyBasedPropertySetNode create(JSContext context, boolean setOwn, boolean isStrict, boolean superProperty) {
-            return new FrequencyBasedPropertySetNode(context, setOwn, isStrict, superProperty);
+            short size = context.getLanguageOptions().frequencyBasedPropertyCacheLimit();
+            if (size == 0) {
+                return DISABLED;
+            }
+            return new FrequencyBasedPropertySetNode(setOwn, isStrict, superProperty, size);
         }
 
-        private FrequencyBasedPropertySetNode(JSContext context, boolean setOwn, boolean isStrict, boolean superProperty) {
-            super(context, IC_SET_MAX_SIZE);
+        private FrequencyBasedPropertySetNode(boolean setOwn, boolean isStrict, boolean superProperty, short size) {
+            super(size);
             this.setOwn = setOwn;
             this.strict = isStrict;
             this.superProperty = superProperty;
-            this.highFrequencyKeys = new PropertySetNode[IC_SET_MAX_SIZE];
+            this.highFrequencyKeys = new PropertySetNode[size];
         }
 
         @Override
@@ -216,7 +209,7 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
         @Override
         protected void setHighFrequencyNode(int position, Object key) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            highFrequencyKeys[position] = insert(PropertySetNode.createImpl(key, false, context, strict, setOwn, JSAttributes.getDefault(), false, superProperty));
+            highFrequencyKeys[position] = insert(PropertySetNode.createImpl(key, false, getJSContext(), strict, setOwn, JSAttributes.getDefault(), false, superProperty));
         }
 
         public boolean executeFastSet(JSDynamicObject target, Object key, Object value, Object receiver, TruffleString.EqualNode equalsNode) {
@@ -243,19 +236,31 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
             }
             return false;
         }
+
+        @Override
+        public boolean isAdoptable() {
+            return this != DISABLED;
+        }
     }
 
     public static final class FrequencyBasedPropertyGetNode extends FrequencyBasedPolymorphicAccessNode<PropertyGetNode> {
 
         @Children private PropertyGetNode[] highFrequencyKeys;
 
+        private static final FrequencyBasedPropertyGetNode DISABLED = new FrequencyBasedPropertyGetNode((short) 0);
+
+        @NeverDefault
         public static FrequencyBasedPropertyGetNode create(JSContext context) {
-            return new FrequencyBasedPropertyGetNode(context);
+            short size = context.getLanguageOptions().frequencyBasedPropertyCacheLimit();
+            if (size == 0) {
+                return DISABLED;
+            }
+            return new FrequencyBasedPropertyGetNode(size);
         }
 
-        private FrequencyBasedPropertyGetNode(JSContext context) {
-            super(context, IC_GET_MAX_SIZE);
-            this.highFrequencyKeys = new PropertyGetNode[IC_GET_MAX_SIZE];
+        private FrequencyBasedPropertyGetNode(short size) {
+            super(size);
+            this.highFrequencyKeys = new PropertyGetNode[size];
         }
 
         @Override
@@ -266,7 +271,7 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
         @Override
         protected void setHighFrequencyNode(int position, Object key) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            highFrequencyKeys[position] = insert(PropertyGetNode.create(key, context));
+            highFrequencyKeys[position] = insert(PropertyGetNode.create(key, getJSContext()));
         }
 
         public Object executeFastGet(Object key, Object target, TruffleString.EqualNode equalsNode) {
@@ -288,6 +293,11 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
                 }
             }
             return null;
+        }
+
+        @Override
+        public boolean isAdoptable() {
+            return this != DISABLED;
         }
     }
 }

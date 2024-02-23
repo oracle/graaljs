@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -670,6 +670,25 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> SCOPE_OPTIMIZATION = new OptionKey<>(true);
     @CompilationFinal private boolean scopeOptimization;
 
+    public static final String FREQUENCY_BASED_PROPERTY_CACHE_LIMIT_NAME = JS_OPTION_PREFIX + "frequency-based-property-cache-limit";
+    @Option(name = FREQUENCY_BASED_PROPERTY_CACHE_LIMIT_NAME, category = OptionCategory.INTERNAL, help = "Maximum size of high-frequency-key property cache.") //
+    public static final OptionKey<Integer> FREQUENCY_BASED_PROPERTY_CACHE_LIMIT = new OptionKey<>(5, integerRange(0, Short.MAX_VALUE));
+    @CompilationFinal private short frequencyBasedPropertyCacheLimit;
+
+    private static OptionType<Integer> integerRange(int min, int max) {
+        return new OptionType<>("Integer", sv -> {
+            try {
+                int iv = Integer.parseInt(sv);
+                if (iv < min || iv > max) {
+                    throw new NumberFormatException();
+                }
+                return iv;
+            } catch (NumberFormatException e) {
+                throw new IllegalArgumentException(String.format("Value \"%s\" is not an integer in the range [%d, %d].", sv, min, max));
+            }
+        });
+    }
+
     JSContextOptions(SandboxPolicy sandboxPolicy, OptionValues optionValues) {
         this.optionValues = optionValues;
         setOptionValues(sandboxPolicy, optionValues);
@@ -757,6 +776,7 @@ public final class JSContextOptions {
         this.temporal = readBooleanOption(TEMPORAL);
         this.propertyCacheLimit = readIntegerOption(PROPERTY_CACHE_LIMIT);
         this.functionCacheLimit = readIntegerOption(FUNCTION_CACHE_LIMIT);
+        this.frequencyBasedPropertyCacheLimit = (short) readIntegerOption(FREQUENCY_BASED_PROPERTY_CACHE_LIMIT);
         this.scopeOptimization = readBooleanOption(SCOPE_OPTIMIZATION);
         this.allowNarrowSpacesInDateFormat = ALLOW_NARROW_SPACES_IN_DATE_FORMAT.hasBeenSet(optionValues) ? readBooleanOption(ALLOW_NARROW_SPACES_IN_DATE_FORMAT) : !isV8CompatibilityMode();
         this.v8Intrinsics = readBooleanOption(V8_INTRINSICS);
@@ -1215,5 +1235,9 @@ public final class JSContextOptions {
 
     public boolean isV8Intrinsics() {
         return V8_INTRINSICS.getValue(optionValues);
+    }
+
+    public short getFrequencyBasedPropertyCacheLimit() {
+        return frequencyBasedPropertyCacheLimit;
     }
 }

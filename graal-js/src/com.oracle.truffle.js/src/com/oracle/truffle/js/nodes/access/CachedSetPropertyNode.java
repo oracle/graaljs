@@ -134,14 +134,13 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile getType,
                     @Cached @Shared("jsclassProf") JSClassProfile jsclassProfile,
                     @Cached InlinedConditionProfile highFrequency,
-                    @Cached("createFrequencyBasedPropertySet(context, setOwn, strict, superProperty)") FrequencyBasedPropertySetNode hotKey,
+                    @Cached("create(context, setOwn, strict, superProperty)") FrequencyBasedPropertySetNode hotKey,
                     @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(node, arrayIndex instanceof Long)) {
             long index = (long) arrayIndex;
             doArrayIndexLong(target, index, value, receiver, jsclassProfile.getJSClass(target));
         } else {
-            assert JSRuntime.isPropertyKey(arrayIndex);
             if (highFrequency.profile(node, hotKey.executeFastSet(target, arrayIndex, value, receiver, equalsNode))) {
                 return;
             }
