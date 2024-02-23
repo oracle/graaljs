@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,14 +58,18 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?>> extends JavaScriptBaseNode {
 
-    // Do not cache keys used less than this perc. of total accesses (interpreter only).
-    private static final int MIN_CACHING_PERC = 10;
-    // Do not sample more than this number of keys (interpreter only).
-    private static final int MAX_DISTRIBUTION_MAP_SIZE = 1024;
-    // Do not cache locations accessed less than this value (interpreter only).
-    private static final int MIN_KEYS_ACCESSES = 100;
-    // Compute distribution statistics every XX accesses (e.g., every 10 reads).
-    private static final int SAMPLE_EVERY = 10;
+    /**
+     * Do not start specializing until we've sampled at least this many times.
+     */
+    private static final short MIN_SAMPLED_ACCESSES = 100;
+    /**
+     * Stop profiling after this many total hits to ensure cache stability.
+     *
+     * Should not be much higher than the compilation threshold. Also bounds the size of
+     * {@link #hitsDistributionMap}.
+     */
+    private static final short MAX_SAMPLED_ACCESSES = 1000;
+
     // Max size of ICs.
     private static final int IC_GET_MAX_SIZE = 5;
     private static final int IC_SET_MAX_SIZE = 3;
@@ -81,77 +85,71 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
     protected final JSContext context;
 
     private int totalHits;
-    private final int[] topHits;
+    private short maxHitsPerKey;
+    private final int size;
     private Map<Object, HitsCount> hitsDistributionMap = new HashMap<>();
 
     private FrequencyBasedPolymorphicAccessNode(JSContext context, int size) {
+        assert size > 0 && size <= Short.MAX_VALUE : size;
+        this.size = size;
         this.context = context;
-        this.topHits = new int[size];
     }
 
     protected abstract T[] getHighFrequencyNodes();
 
     protected abstract void setHighFrequencyNode(int position, Object key);
 
-    protected void interpreterSample(Object key) {
+    protected final void interpreterSample(Object key) {
+        if (hitsDistributionMap == null) {
+            // already bailed out, no need to acquire the lock
+            return;
+        }
+        CompilerAsserts.neverPartOfCompilation();
         final Lock lock = getLock();
         lock.lock();
         try {
-            CompilerAsserts.neverPartOfCompilation();
-            assert JSRuntime.isPropertyKey(key);
-            if (hitsDistributionMap == null) {
-                return;
-            } else if (hitsDistributionMap.size() >= MAX_DISTRIBUTION_MAP_SIZE) {
-                // Bailout
-                hitsDistributionMap = null;
+            var hitsMap = hitsDistributionMap;
+            if (hitsMap == null) {
+                // already bailed out
                 return;
             }
-            totalHits++;
+            int totalHitCount = totalHits;
+            if (totalHitCount >= MAX_SAMPLED_ACCESSES) {
+                stopSampling();
+                return;
+            }
+            totalHits = totalHitCount + 1;
 
-            HitsCount hitsCounter = hitsDistributionMap.get(key);
-            if (hitsCounter == null) {
-                hitsCounter = new HitsCount();
-                hitsDistributionMap.put(key, hitsCounter);
-            }
+            assert JSRuntime.isPropertyKey(key);
+            HitsCount hitsCounter = hitsMap.computeIfAbsent(key, k -> new HitsCount());
             int hits = hitsCounter.incrementAndGet();
-            if (hits % SAMPLE_EVERY != 0 || totalHits < MIN_KEYS_ACCESSES) {
-                // Do not sample on every property access, and ignore keys and locations not used
-                // too often.
+            if (totalHitCount < MIN_SAMPLED_ACCESSES) {
+                // Only collect statistics until we have enough frequency data.
+                maxHitsPerKey = (short) Math.max(maxHitsPerKey, hits);
+                return;
+            } else if (totalHitCount == MIN_SAMPLED_ACCESSES && maxHitsPerKey <= 1) {
+                // If we still haven't ever seen a key twice until now, give up prematurely.
+                // Rationale: If we've already collected, say, 100 unique keys, chances are,
+                // we won't be seeing a high-frequency key any time soon either.
+                stopSampling();
                 return;
             }
-            for (int i = 0; i < topHits.length; i++) {
-                T[] highFrequencyNodes = getHighFrequencyNodes();
-                if (hits > topHits[i]) {
-                    if (highFrequencyNodes[i] == null) {
-                        // new IC entry
-                        setHighFrequencyNode(i, key);
-                        topHits[i] = hits;
-                        break;
-                    } else if (highFrequencyNodes[i].getKey().equals(key)) {
-                        // update IC entry at same position
-                        topHits[i] = hits;
-                        break;
-                    } else {
-                        // shift IC entries, and insert
-                        for (int j = topHits.length - 1; j > i; j--) {
-                            highFrequencyNodes[j] = highFrequencyNodes[j - 1];
-                            topHits[j] = topHits[j - 1];
+            if (!hitsCounter.isCached()) {
+                if (hits * (size + 1) > totalHitCount) {
+                    // Found a key with a frequency > 1/(size+1), e.g. size 5: >16.6%.
+                    // Consider it a high-frequency key and insert it to the cache.
+                    T[] highFrequencyNodes = getHighFrequencyNodes();
+                    for (int i = 0; i < highFrequencyNodes.length; i++) {
+                        if (highFrequencyNodes[i] == null) {
+                            hitsCounter.setCached();
+                            setHighFrequencyNode(i, key);
+                            if (i == highFrequencyNodes.length - 1) {
+                                // all cache slots are occupied now, so stop sampling already
+                                stopSampling();
+                            }
+                            return;
                         }
-                        setHighFrequencyNode(i, key);
-                        topHits[i] = hits;
-                        break;
                     }
-                }
-            }
-            // Remove IC entries that are executed less frequently if below % threshold.
-            for (int i = 0; i < topHits.length; i++) {
-                if (topHits[i] == 0) {
-                    break;
-                }
-                int perc = percentage(topHits[i]);
-                if (perc < MIN_CACHING_PERC) {
-                    topHits[i] = 0;
-                    getHighFrequencyNodes()[i] = null;
                 }
             }
         } finally {
@@ -159,19 +157,34 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
         }
     }
 
-    private int percentage(int hits) {
-        return (int) (((float) hits / (float) totalHits) * 100);
+    /** Stop sampling and clean up. */
+    private void stopSampling() {
+        CompilerAsserts.neverPartOfCompilation();
+        hitsDistributionMap = null;
     }
 
-    private static class HitsCount {
-        private int hits;
+    private static final class HitsCount {
+        private short hits;
+        private boolean cached;
 
         HitsCount() {
-            this.hits = 0;
         }
 
-        public int incrementAndGet() {
+        public short incrementAndGet() {
             return ++(this.hits);
+        }
+
+        public boolean isCached() {
+            return this.cached;
+        }
+
+        public void setCached() {
+            this.cached = true;
+        }
+
+        @Override
+        public String toString() {
+            return hits + (cached ? " [cached]" : "");
         }
     }
 
@@ -203,7 +216,6 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
         @Override
         protected void setHighFrequencyNode(int position, Object key) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            assert JSRuntime.isPropertyKey(key);
             highFrequencyKeys[position] = insert(PropertySetNode.createImpl(key, false, context, strict, setOwn, JSAttributes.getDefault(), false, superProperty));
         }
 
@@ -211,7 +223,6 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
             if (setOwn) {
                 return false;
             }
-            assert JSRuntime.isPropertyKey(key);
             if (CompilerDirectives.inInterpreter()) {
                 interpreterSample(key);
             }
@@ -221,7 +232,11 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
         @ExplodeLoop(kind = FULL_UNROLL_UNTIL_RETURN)
         private boolean compiledSet(JSDynamicObject target, Object key, Object value, Object receiver, TruffleString.EqualNode equalsNode) {
             for (PropertySetNode highFrequencyKey : highFrequencyKeys) {
-                if (highFrequencyKey != null && JSRuntime.propertyKeyEquals(equalsNode, highFrequencyKey.getKey(), key)) {
+                if (highFrequencyKey == null) {
+                    // subsequent slots must be null, too, since we fill in order and never remove.
+                    break;
+                }
+                if (JSRuntime.propertyKeyEquals(equalsNode, highFrequencyKey.getKey(), key)) {
                     highFrequencyKey.setValue(target, value, receiver);
                     return true;
                 }
@@ -251,7 +266,6 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
         @Override
         protected void setHighFrequencyNode(int position, Object key) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            assert JSRuntime.isPropertyKey(key);
             highFrequencyKeys[position] = insert(PropertyGetNode.create(key, context));
         }
 
@@ -265,7 +279,11 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
         @ExplodeLoop(kind = FULL_UNROLL_UNTIL_RETURN)
         private Object readFromCaches(Object key, Object target, TruffleString.EqualNode equalsNode) {
             for (PropertyGetNode highFrequencyKey : highFrequencyKeys) {
-                if (highFrequencyKey != null && JSRuntime.propertyKeyEquals(equalsNode, highFrequencyKey.getKey(), key)) {
+                if (highFrequencyKey == null) {
+                    // subsequent slots must be null, too, since we fill in order and never remove.
+                    break;
+                }
+                if (JSRuntime.propertyKeyEquals(equalsNode, highFrequencyKey.getKey(), key)) {
                     return highFrequencyKey.getValueOrDefault(target, null);
                 }
             }
