@@ -111,14 +111,13 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile getType,
                     @Cached @Shared JSClassProfile jsclassProfile,
                     @Cached InlinedConditionProfile highFrequency,
-                    @Cached("createFrequencyBasedPropertyGet(context)") FrequencyBasedPropertyGetNode hotKey,
+                    @Cached("create(context)") FrequencyBasedPropertyGetNode hotKey,
                     @Cached @Shared TruffleString.EqualNode equalsNode) {
         requireObjectCoercibleNode.executeVoid(target);
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(node, arrayIndex instanceof Long)) {
             return JSObject.getOrDefault(target, (long) arrayIndex, receiver, defaultValue, jsclassProfile, node);
         } else {
-            assert JSRuntime.isPropertyKey(arrayIndex);
             Object maybeRead = hotKey.executeFastGet(arrayIndex, target, receiver, equalsNode);
             if (highFrequency.profile(node, maybeRead != null)) {
                 return maybeRead;
