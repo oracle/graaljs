@@ -50,6 +50,7 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.nodes.ExplodeLoop;
+import com.oracle.truffle.api.nodes.NodeCost;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -229,6 +230,10 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
                     // subsequent slots must be null, too, since we fill in order and never remove.
                     break;
                 }
+                if (highFrequencyKey.getCost() == NodeCost.MEGAMORPHIC) {
+                    // ignore megamorphic cache nodes, they're not useful and bloat the code
+                    continue;
+                }
                 if (JSRuntime.propertyKeyEquals(equalsNode, highFrequencyKey.getKey(), key)) {
                     highFrequencyKey.setValue(target, value, receiver);
                     return true;
@@ -287,6 +292,10 @@ abstract class FrequencyBasedPolymorphicAccessNode<T extends PropertyCacheNode<?
                 if (highFrequencyKey == null) {
                     // subsequent slots must be null, too, since we fill in order and never remove.
                     break;
+                }
+                if (highFrequencyKey.getCost() == NodeCost.MEGAMORPHIC) {
+                    // ignore megamorphic cache nodes, they're not useful and bloat the code
+                    continue;
                 }
                 if (JSRuntime.propertyKeyEquals(equalsNode, highFrequencyKey.getKey(), key)) {
                     return highFrequencyKey.getValueOrDefault(target, receiver, null);
