@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,41 +40,47 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Implementation of the CreateTimeZoneMethodsRecord operation.
  */
+@ImportStatic(TemporalUtil.class)
 public abstract class CreateTimeZoneMethodsRecordNode extends JavaScriptBaseNode {
 
-    @Child private GetMethodNode getGetOffsetNanosecondsFor;
-    @Child private GetMethodNode getGetPossibleInstantsFor;
-
     protected CreateTimeZoneMethodsRecordNode() {
-        JSContext ctx = JavaScriptLanguage.get(null).getJSContext();
-        this.getGetOffsetNanosecondsFor = GetMethodNode.create(ctx, TemporalUtil.GET_OFFSET_NANOSECONDS_FOR);
-        this.getGetPossibleInstantsFor = GetMethodNode.create(ctx, TemporalUtil.GET_POSSIBLE_INSTANTS_FOR);
     }
 
-    public final TimeZoneMethodsRecord executeFull(JSDynamicObject timeZone) {
+    public final TimeZoneMethodsRecord executeFull(Object timeZone) {
         return execute(timeZone, true, true);
     }
 
-    public final TimeZoneMethodsRecord executeOnlyGetOffsetNanosecondsFor(JSDynamicObject timeZone) {
+    public final TimeZoneMethodsRecord executeOnlyGetOffsetNanosecondsFor(Object timeZone) {
         return execute(timeZone, true, false);
     }
 
-    protected abstract TimeZoneMethodsRecord execute(JSDynamicObject timeZone, boolean getOffsetNanosecondsFor, boolean getPossibleInstantsFor);
+    protected abstract TimeZoneMethodsRecord execute(Object timeZone, boolean getOffsetNanosecondsFor, boolean getPossibleInstantsFor);
 
     @Specialization
-    protected TimeZoneMethodsRecord toRelativeTemporalObject(JSDynamicObject timeZone, boolean getOffsetNanosecondsFor, boolean getPossibleInstantsFor) {
+    protected TimeZoneMethodsRecord doString(TruffleString timeZone, boolean getOffsetNanosecondsFor, boolean getPossibleInstantsFor) {
+        JSRealm realm = getRealm();
+        return new TimeZoneMethodsRecord(timeZone,
+                        getOffsetNanosecondsFor ? realm.getTemporalTimeZoneGetOffsetNanosecondsForFunctionObject() : null,
+                        getPossibleInstantsFor ? realm.getTemporalTimeZoneGetPossibleInstantsForFunctionObject() : null);
+    }
+
+    @Specialization(guards = "!isString(timeZone)")
+    protected TimeZoneMethodsRecord doNonString(Object timeZone, boolean getOffsetNanosecondsFor, boolean getPossibleInstantsFor,
+                    @Cached("create(getJSContext(), GET_OFFSET_NANOSECONDS_FOR)") GetMethodNode getGetOffsetNanosecondsFor,
+                    @Cached("create(getJSContext(), GET_POSSIBLE_INSTANTS_FOR)") GetMethodNode getGetPossibleInstantsFor) {
         return new TimeZoneMethodsRecord(timeZone,
                         getOffsetNanosecondsFor ? getGetOffsetNanosecondsFor.executeWithTarget(timeZone) : null,
                         getPossibleInstantsFor ? getGetPossibleInstantsFor.executeWithTarget(timeZone) : null);

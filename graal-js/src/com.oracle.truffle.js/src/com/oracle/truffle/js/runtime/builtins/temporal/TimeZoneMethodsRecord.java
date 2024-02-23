@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-
 /**
  * Time Zone Methods Record.
  *
@@ -53,7 +51,7 @@ public record TimeZoneMethodsRecord(
                  * A String or Object. The time zone object, or a string indicating a built-in time
                  * zone.
                  */
-                JSDynamicObject receiver,
+                Object receiver,
                 /**
                  * A function object or undefined. The time zone's getOffsetNanosecondsFor method.
                  * For a built-in time zone this is always
@@ -67,7 +65,7 @@ public record TimeZoneMethodsRecord(
                  */
                 Object getPossibleInstantsFor) {
 
-    public TimeZoneMethodsRecord(JSDynamicObject receiver, Object getOffsetNanosecondsFor) {
+    public TimeZoneMethodsRecord(Object receiver, Object getOffsetNanosecondsFor) {
         this(receiver, getOffsetNanosecondsFor, null);
     }
 }

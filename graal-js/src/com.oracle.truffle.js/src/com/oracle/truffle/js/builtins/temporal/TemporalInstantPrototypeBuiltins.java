@@ -78,7 +78,7 @@ import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -382,7 +382,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected TruffleString toString(JSTemporalInstantObject instant, Object optionsParam,
-                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
@@ -390,9 +390,9 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             Object timeZoneRaw = JSObject.get(options, TIME_ZONE);
-            JSDynamicObject timeZone = Undefined.instance;
+            Object timeZone = Undefined.instance;
             if (timeZoneRaw != Undefined.instance) {
-                timeZone = toTemporalTimeZone.execute(timeZoneRaw);
+                timeZone = toTimeZoneSlotValue.execute(timeZoneRaw);
             }
             JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode, equalNode);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
@@ -452,7 +452,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached("create(CALENDAR, getJSContext())") PropertyGetNode getCalendar,
                         @Cached("create(TIME_ZONE, getJSContext())") PropertyGetNode getTimeZone,
                         @Cached ToTemporalCalendarSlotValueNode toCalendarSlot,
-                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlot,
                         @Cached InlinedBranchProfile errorBranch) {
             if (!isObject(item)) {
                 errorBranch.enter(this);
@@ -469,7 +469,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 errorBranch.enter(this);
                 throw TemporalErrors.createTypeErrorTemporalTimeZoneExpected();
             }
-            JSDynamicObject timeZone = toTemporalTimeZone.execute(temporalTimeZoneLike);
+            Object timeZone = toTimeZoneSlot.execute(temporalTimeZoneLike);
             return JSTemporalZonedDateTime.create(getContext(), getRealm(), instant.getNanoseconds(), timeZone, calendar);
         }
 
@@ -488,7 +488,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSTemporalZonedDateTimeObject toZonedDateTimeISO(JSTemporalInstantObject instant, Object itemParam,
-                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
                         @Cached InlinedBranchProfile errorBranch) {
             Object item = itemParam;
             if (isObject(item)) {
@@ -498,7 +498,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                     item = timeZoneProperty;
                 }
             }
-            JSDynamicObject timeZone = toTemporalTimeZone.execute(item);
+            Object timeZone = toTimeZoneSlotValue.execute(item);
             JSRealm realm = getRealm();
             JSDynamicObject calendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
             return JSTemporalZonedDateTime.create(getContext(), realm, instant.getNanoseconds(), timeZone, calendar);

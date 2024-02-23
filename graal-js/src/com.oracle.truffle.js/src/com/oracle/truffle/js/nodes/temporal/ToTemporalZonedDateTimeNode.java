@@ -96,14 +96,14 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
                     @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
                     @Cached TruffleString.EqualNode equalNode,
                     @Cached TemporalGetOptionNode getOptionNode,
-                    @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
+                    @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
                     @Cached GetTemporalCalendarSlotValueWithISODefaultNode getCalendarSlotValueWithISODefault,
                     @Cached TemporalCalendarFieldsNode calendarFieldsNode,
                     @Cached TemporalCalendarDateFromFieldsNode dateFromFieldsNode,
                     @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
         JSTemporalDateTimeRecord result;
         TruffleString offsetString = null;
-        JSDynamicObject timeZone;
+        Object timeZone;
         Object calendar;
         JSContext ctx = getLanguage().getJSContext();
         JSRealm realm = getRealm();
@@ -127,7 +127,7 @@ public abstract class ToTemporalZonedDateTimeNode extends JavaScriptBaseNode {
 
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(ctx, item, fieldNames, TemporalUtil.listTimeZone);
             Object timeZoneObj = JSObject.get(fields, TIME_ZONE);
-            timeZone = toTemporalTimeZone.execute(timeZoneObj);
+            timeZone = toTimeZoneSlotValue.execute(timeZoneObj);
             Object offsetStringObj = JSObject.get(fields, OFFSET);
             if (offsetStringObj == Undefined.instance) {
                 offsetBehaviour = OffsetBehaviour.WALL;

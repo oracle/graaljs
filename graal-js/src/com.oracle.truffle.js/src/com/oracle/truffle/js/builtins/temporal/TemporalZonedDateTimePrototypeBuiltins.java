@@ -109,7 +109,8 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalZonedDateTimeNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
@@ -394,21 +395,23 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         private Object getterOffset(JSTemporalZonedDateTimeObject zdt, CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
-            JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), getRealm(), zdt.getNanoseconds());
-            JSDynamicObject timeZone = zdt.getTimeZone();
+            JSRealm realm = getRealm();
+            JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zdt.getNanoseconds());
+            Object timeZone = zdt.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(timeZone);
-            return TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZoneRec, instant);
+            return TemporalUtil.builtinTimeZoneGetOffsetStringFor(getContext(), realm, timeZoneRec, instant);
         }
 
         private Object getterOffsetNanoseconds(JSTemporalZonedDateTimeObject zdt, CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
-            JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), getRealm(), zdt.getNanoseconds());
-            JSDynamicObject timeZone = zdt.getTimeZone();
+            JSRealm realm = getRealm();
+            JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zdt.getNanoseconds());
+            Object timeZone = zdt.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(timeZone);
-            return TemporalUtil.getOffsetNanosecondsFor(timeZoneRec, instant);
+            return TemporalUtil.getOffsetNanosecondsFor(getContext(), realm, timeZoneRec, instant);
         }
 
         private Object getterHoursInDay(JSTemporalZonedDateTimeObject zdt, InlinedBranchProfile errorBranch, CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
-            JSDynamicObject timeZone = zdt.getTimeZone();
+            Object timeZone = zdt.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zdt.getNanoseconds());
@@ -436,7 +439,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         }
 
         private Object getterCalendarDetails(JSTemporalZonedDateTimeObject zdt, TemporalCalendarGetterNode calendarGetterNode, CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
-            JSDynamicObject timeZone = zdt.getTimeZone();
+            Object timeZone = zdt.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(timeZone);
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zdt.getNanoseconds());
@@ -593,12 +596,12 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             Object mergeFieldsMethod = lookupMergeFields.execute(calendarSlotValue);
             CalendarMethodsRecord calendarRec = CalendarMethodsRecord.forDateFromFieldsAndFieldsAndMergeFields(calendarSlotValue, dateFromFieldsMethod, fieldsMethod, mergeFieldsMethod);
 
-            JSDynamicObject timeZone = zonedDateTime.getTimeZone();
+            Object timeZone = zonedDateTime.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
 
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
-            long offsetNanoseconds = TemporalUtil.getOffsetNanosecondsFor(timeZoneRec, instant);
+            long offsetNanoseconds = TemporalUtil.getOffsetNanosecondsFor(getContext(), realm, timeZoneRec, instant);
             JSTemporalPlainDateTimeObject dateTime = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, instant, calendarRec.receiver(), offsetNanoseconds);
             List<TruffleString> fieldNames = calendarFieldsNode.execute(calendarRec, Boundaries.listEditableCopy(TemporalUtil.listDMMCY));
             JSDynamicObject fields = TemporalUtil.prepareTemporalFields(getContext(), dateTime, fieldNames, TemporalUtil.listEmpty);
@@ -668,7 +671,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             } else {
                 plainTime = toTemporalTime.execute(plainTimeLike, null);
             }
-            JSDynamicObject timeZone = zonedDateTime.getTimeZone();
+            Object timeZone = zonedDateTime.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
             Object calendar = zonedDateTime.getCalendar();
@@ -700,7 +703,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
             JSTemporalPlainDateObject plainDate = toTemporalDate.execute(plainDateLike);
-            JSDynamicObject timeZone = zonedDateTime.getTimeZone();
+            Object timeZone = zonedDateTime.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
@@ -728,8 +731,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         protected JSDynamicObject withTimeZone(JSTemporalZonedDateTimeObject zonedDateTime, Object timeZoneLike,
-                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone) {
-            JSDynamicObject timeZone = toTemporalTimeZone.execute(timeZoneLike);
+                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue) {
+            Object timeZone = toTimeZoneSlotValue.execute(timeZoneLike);
             return JSTemporalZonedDateTime.create(getContext(), getRealm(), zonedDateTime.getNanoseconds(), timeZone, zonedDateTime.getCalendar());
         }
 
@@ -780,7 +783,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
             JSTemporalDurationObject duration = toTemporalDurationNode.execute(temporalDurationLike);
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            JSDynamicObject timeZone = zonedDateTime.getTimeZone();
+            Object timeZone = zonedDateTime.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
             Object calendar = zonedDateTime.getCalendar();
             Object dateAddMethod = lookupDateAdd.execute(calendar);
@@ -820,7 +823,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier,
-                        @Cached JSToStringNode toStringNode,
+                        @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalDurationAddNode durationAddNode,
                         @Cached TemporalRoundDurationNode roundDurationNode,
@@ -853,7 +856,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                                 sign * result.milliseconds(), sign * result.microseconds(), sign * result.nanoseconds(), node, errorBranch);
             }
             var timeZone = zonedDateTime.getTimeZone();
-            if (!TemporalUtil.timeZoneEquals(timeZone, other.getTimeZone(), toStringNode)) {
+            if (!TemporalUtil.timeZoneEquals(timeZone, other.getTimeZone(), toTimeZoneIdentifier)) {
                 errorBranch.enter(node);
                 throw TemporalErrors.createRangeErrorIdenticalTimeZoneExpected();
             }
@@ -932,12 +935,12 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             }
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, isObjectNode, toNumber);
-            JSDynamicObject timeZone = zonedDateTime.getTimeZone();
+            Object timeZone = zonedDateTime.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
             JSRealm realm = getRealm();
             JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
             Object calendar = zonedDateTime.getCalendar();
-            long offsetNanoseconds = TemporalUtil.getOffsetNanosecondsFor(timeZoneRec, instant);
+            long offsetNanoseconds = TemporalUtil.getOffsetNanosecondsFor(getContext(), realm, timeZoneRec, instant);
             JSTemporalPlainDateTimeObject tdt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, instant, calendar, offsetNanoseconds);
             Object isoCalendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
             JSTemporalPlainDateTimeObject dtStart = JSTemporalPlainDateTime.create(getContext(), realm,
@@ -974,13 +977,13 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
         @Specialization
         protected boolean equals(JSTemporalZonedDateTimeObject thisZonedDateTime, Object otherParam,
                         @Cached ToTemporalZonedDateTimeNode toTemporalZonedDateTime,
-                        @Cached JSToStringNode toStringNode,
+                        @Cached ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier,
                         @Cached ToTemporalCalendarIdentifierNode toCalendarIdentifier) {
             JSTemporalZonedDateTimeObject otherZonedDateTime = toTemporalZonedDateTime.execute(otherParam, Undefined.instance);
             if (!thisZonedDateTime.getNanoseconds().equals(otherZonedDateTime.getNanoseconds())) {
                 return false;
             }
-            if (!TemporalUtil.timeZoneEquals(thisZonedDateTime.getTimeZone(), otherZonedDateTime.getTimeZone(), toStringNode)) {
+            if (!TemporalUtil.timeZoneEquals(thisZonedDateTime.getTimeZone(), otherZonedDateTime.getTimeZone(), toTimeZoneIdentifier)) {
                 return false;
             }
             return TemporalUtil.calendarEquals(thisZonedDateTime.getCalendar(), otherZonedDateTime.getCalendar(), toCalendarIdentifier);
@@ -1194,7 +1197,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             var timeZone = zdt.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(timeZone);
             JSTemporalPlainDateTimeObject dt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, timeZoneRec, instant, calendar);
-            TruffleString offset = TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZoneRec, instant);
+            TruffleString offset = TemporalUtil.builtinTimeZoneGetOffsetStringFor(getContext(), realm, timeZoneRec, instant);
 
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, CALENDAR, calendar);
             TemporalUtil.createDataPropertyOrThrow(getContext(), obj, TemporalConstants.ISO_DAY, dt.getDay());

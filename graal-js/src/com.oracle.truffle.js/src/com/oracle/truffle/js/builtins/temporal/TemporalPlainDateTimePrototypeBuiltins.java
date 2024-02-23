@@ -104,7 +104,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateTimeNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -128,7 +128,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPrecisionRecord;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
@@ -822,13 +821,13 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
 
         @Specialization
         final JSTemporalZonedDateTimeObject toZonedDateTime(JSTemporalPlainDateTimeObject dateTime, Object temporalTimeZoneLike, Object optionsParam,
-                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
-            JSTemporalTimeZoneObject timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.execute(temporalTimeZoneLike);
+            Object timeZone = toTimeZoneSlotValue.execute(temporalTimeZoneLike);
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             Disambiguation disambiguation = TemporalUtil.toTemporalDisambiguation(options, getOptionNode, equalNode);
 
