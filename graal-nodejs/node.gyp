@@ -29,6 +29,8 @@
     'node_lib_target_name%': 'libnode',
     'node_intermediate_lib_type%': 'static_library',
     'node_builtin_modules_path%': '',
+    'linked_module_files': [
+    ],
     # We list the deps/ files out instead of globbing them in js2c.py since we
     # only include a subset of all the files under these directories.
     # The lengths of their file names combined should not exceed the
@@ -36,6 +38,7 @@
     # See https://docs.microsoft.com/en-us/troubleshoot/windows-client/shell-experience/command-line-string-limitation
     'library_files': [
       '<@(node_library_files)',
+      '<@(linked_module_files)',
     ],
     'deps_files': [
       'deps/v8/tools/splaytree.mjs',
@@ -595,12 +598,14 @@
         'src/uv.cc',
         # headers to make for a more pleasant IDE experience
         'src/aliased_buffer.h',
+        'src/aliased_buffer-inl.h',
         'src/aliased_struct.h',
         'src/aliased_struct-inl.h',
         'src/async_wrap.h',
         'src/async_wrap-inl.h',
         'src/base_object.h',
         'src/base_object-inl.h',
+        'src/base_object_types.h',
         'src/base64.h',
         'src/base64-inl.h',
         'src/callback_queue.h',
@@ -989,6 +994,7 @@
             '<@(_outputs)',
             'config.gypi',
             '<@(deps_files)',
+            '<@(linked_module_files)',
           ],
         },
       ],

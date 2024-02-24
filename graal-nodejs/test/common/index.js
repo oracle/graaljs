@@ -56,7 +56,10 @@ const hasCrypto = Boolean(process.versions.openssl) &&
                   !process.env.NODE_SKIP_CRYPTO;
 
 const hasOpenSSL3 = hasCrypto &&
-    require('crypto').constants.OPENSSL_VERSION_NUMBER >= 805306368;
+    require('crypto').constants.OPENSSL_VERSION_NUMBER >= 0x30000000;
+
+const hasOpenSSL31 = hasCrypto &&
+    require('crypto').constants.OPENSSL_VERSION_NUMBER >= 0x30100000;
 
 const hasQuic = hasCrypto && !!process.config.variables.openssl_quic;
 
@@ -119,7 +122,6 @@ if (process.argv.length === 2 &&
 }
 
 const isWindows = process.platform === 'win32';
-const isAIX = process.platform === 'aix';
 const isSunOS = process.platform === 'sunos';
 const isFreeBSD = process.platform === 'freebsd';
 const isOpenBSD = process.platform === 'openbsd';
@@ -263,7 +265,7 @@ function platformTimeout(ms) {
   if (process.features.debug)
     ms = multipliers.two * ms;
 
-  if (isAIX)
+  if (exports.isAIX || exports.isIBMi)
     return multipliers.two * ms; // Default localhost speed is slower on AIX
 
   if (isPi)
@@ -900,10 +902,10 @@ const common = {
   hasIntl,
   hasCrypto,
   hasOpenSSL3,
+  hasOpenSSL31,
   hasQuic,
   hasMultiLocalhost,
   invalidArgTypeHelper,
-  isAIX,
   isAlive,
   isAsan,
   isDumbTerminal,
@@ -947,7 +949,14 @@ const common = {
 
   get hasIPv6() {
     const iFaces = require('os').networkInterfaces();
-    const re = isWindows ? /Loopback Pseudo-Interface/ : /lo/;
+    let re;
+    if (isWindows) {
+      re = /Loopback Pseudo-Interface/;
+    } else if (this.isIBMi) {
+      re = /\*LOOPBACK/;
+    } else {
+      re = /lo/;
+    }
     return Object.keys(iFaces).some((name) => {
       return re.test(name) &&
              iFaces[name].some(({ family }) => family === 'IPv6');
@@ -967,7 +976,12 @@ const common = {
   },
 
   // On IBMi, process.platform and os.platform() both return 'aix',
+  // when built with Python versions earlier than 3.9.
   // It is not enough to differentiate between IBMi and real AIX system.
+  get isAIX() {
+    return require('os').type() === 'AIX';
+  },
+
   get isIBMi() {
     return require('os').type() === 'OS400';
   },

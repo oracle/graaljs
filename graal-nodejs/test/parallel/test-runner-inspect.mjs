@@ -1,6 +1,6 @@
 import * as common from '../common/index.mjs';
-import * as tmpdir from '../common/tmpdir.js';
 import * as fixtures from '../common/fixtures.mjs';
+import tmpdir from '../common/tmpdir.js';
 import assert from 'node:assert';
 import path from 'node:path';
 import fs from 'node:fs/promises';
@@ -11,7 +11,11 @@ common.skipIfInspectorDisabled();
 tmpdir.refresh();
 
 {
-  const child = new NodeInstance(['--test', '--inspect-brk=0'], undefined, fixtures.path('test-runner/index.test.js'));
+  const child = new NodeInstance(
+    ['--test', '--inspect-brk=0'],
+    undefined,
+    fixtures.path('test-runner/default-behavior/index.test.js')
+  );
 
   let stdout = '';
   let stderr = '';

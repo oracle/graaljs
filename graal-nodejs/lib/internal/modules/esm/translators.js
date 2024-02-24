@@ -11,6 +11,7 @@ const {
   SafeArrayIterator,
   SafeMap,
   SafeSet,
+  StringPrototypeIncludes,
   StringPrototypeReplaceAll,
   StringPrototypeSlice,
   StringPrototypeStartsWith,
@@ -18,9 +19,13 @@ const {
   globalThis: { WebAssembly },
 } = primordials;
 
+/** @type {import('internal/util/types')} */
 let _TYPES = null;
+/**
+ * Lazily loads and returns the internal/util/types module.
+ */
 function lazyTypes() {
-  if (_TYPES !== null) return _TYPES;
+  if (_TYPES !== null) { return _TYPES; }
   return _TYPES = require('internal/util/types');
 }
 
@@ -30,15 +35,12 @@ const {
   hasEsmSyntax,
   loadBuiltinModule,
   stripBOM,
-} = require('internal/modules/cjs/helpers');
+} = require('internal/modules/helpers');
 const {
   Module: CJSModule,
   cjsParseCache,
 } = require('internal/modules/cjs/loader');
-const internalURLModule = require('internal/url');
-const createDynamicModule = require(
-  'internal/modules/esm/create_dynamic_module');
-const { fileURLToPath, URL } = require('url');
+const { fileURLToPath, URL } = require('internal/url');
 let debug = require('internal/util/debuglog').debuglog('esm', (fn) => {
   debug = fn;
 });
@@ -52,9 +54,14 @@ const moduleWrap = internalBinding('module_wrap');
 const { ModuleWrap } = moduleWrap;
 const asyncESM = require('internal/process/esm_loader');
 const { emitWarningSync } = require('internal/process/warning');
-const { TextDecoder } = require('internal/encoding');
 
+/** @type {import('deps/cjs-module-lexer/lexer.js').parse} */
 let cjsParse;
+/**
+ * Initializes the CommonJS module lexer parser.
+ * If WebAssembly is available, it uses the optimized version from the dist folder.
+ * Otherwise, it falls back to the JavaScript version from the lexer folder.
+ */
 async function initCJSParse() {
   if (typeof WebAssembly === 'undefined') {
     cjsParse = require('internal/deps/cjs-module-lexer/lexer').parse;
@@ -75,6 +82,14 @@ exports.translators = translators;
 exports.enrichCJSError = enrichCJSError;
 
 let DECODER = null;
+/**
+ * Asserts that the given body is a buffer source (either a string, array buffer, or typed array).
+ * Throws an error if the body is not a buffer source.
+ * @param {string | ArrayBufferView | ArrayBuffer} body - The body to check.
+ * @param {boolean} allowString - Whether or not to allow a string as a valid buffer source.
+ * @param {string} hookName - The name of the hook being called.
+ * @throws {ERR_INVALID_RETURN_PROPERTY_VALUE} If the body is not a buffer source.
+ */
 function assertBufferSource(body, allowString, hookName) {
   if (allowString && typeof body === 'string') {
     return;
@@ -91,13 +106,23 @@ function assertBufferSource(body, allowString, hookName) {
   );
 }
 
+/**
+ * Converts a buffer or buffer-like object to a string.
+ * @param {string | ArrayBuffer | ArrayBufferView} body - The buffer or buffer-like object to convert to a string.
+ * @returns {string} The resulting string.
+ */
 function stringify(body) {
-  if (typeof body === 'string') return body;
+  if (typeof body === 'string') { return body; }
   assertBufferSource(body, false, 'transformSource');
+  const { TextDecoder } = require('internal/encoding');
   DECODER = DECODER === null ? new TextDecoder() : DECODER;
   return DECODER.decode(body);
 }
 
+/**
+ * Converts a URL to a file path if the URL protocol is 'file:'.
+ * @param {string} url - The URL to convert.
+ */
 function errPath(url) {
   const parsed = new URL(url);
   if (parsed.protocol === 'file:') {
@@ -106,8 +131,16 @@ function errPath(url) {
   return url;
 }
 
-async function importModuleDynamically(specifier, { url }, assertions) {
-  return asyncESM.esmLoader.import(specifier, url, assertions);
+/**
+ * Dynamically imports a module using the ESM loader.
+ * @param {string} specifier - The module specifier to import.
+ * @param {object} options - An object containing options for the import.
+ * @param {string} options.url - The URL of the module requesting the import.
+ * @param {Record<string, string>} [attributes] - An object containing attributes for the import.
+ * @returns {Promise<import('internal/modules/esm/loader.js').ModuleExports>} The imported module.
+ */
+async function importModuleDynamically(specifier, { url }, attributes) {
+  return asyncESM.esmLoader.import(specifier, url, attributes);
 }
 
 // Strategy for loading a standard JavaScript module.
@@ -117,7 +150,8 @@ translators.set('module', async function moduleStrategy(url, source, isMain) {
   maybeCacheSourceMap(url, source);
   debug(`Translating StandardModule ${url}`);
   const module = new ModuleWrap(url, undefined, source, 0, 0);
-  moduleWrap.callbackMap.set(module, {
+  const { setCallbackForWrap } = require('internal/modules/esm/utils');
+  setCallbackForWrap(module, {
     initializeImportMeta: (meta, wrap) => this.importMetaInitialize(meta, { url }),
     importModuleDynamically,
   });
@@ -125,6 +159,7 @@ translators.set('module', async function moduleStrategy(url, source, isMain) {
 });
 
 /**
+ * Provide a more informative error for CommonJS imports.
  * @param {Error | any} err
  * @param {string} [content] Content of the file, if known.
  * @param {string} [filename] Useful only if `content` is unknown.
@@ -148,11 +183,9 @@ translators.set('commonjs', async function commonjsStrategy(url, source,
                                                             isMain) {
   debug(`Translating CJSModule ${url}`);
 
-  let filename = internalURLModule.fileURLToPath(new URL(url));
-  if (isWindows)
-    filename = StringPrototypeReplaceAll(filename, '/', '\\');
+  const filename = fileURLToPath(new URL(url));
 
-  if (!cjsParse) await initCJSParse();
+  if (!cjsParse) { await initCJSParse(); }
   const { module, exportNames } = cjsPreparseModuleExports(filename);
   const namesWithDefault = exportNames.has('default') ?
     [...exportNames] : ['default', ...exportNames];
@@ -175,8 +208,9 @@ translators.set('commonjs', async function commonjsStrategy(url, source,
 
     for (const exportName of exportNames) {
       if (!ObjectPrototypeHasOwnProperty(exports, exportName) ||
-          exportName === 'default')
+          exportName === 'default') {
         continue;
+      }
       // We might trigger a getter -> dont fail.
       let value;
       try {
@@ -190,12 +224,17 @@ translators.set('commonjs', async function commonjsStrategy(url, source,
   });
 });
 
+/**
+ * Pre-parses a CommonJS module's exports and re-exports.
+ * @param {string} filename - The filename of the module.
+ */
 function cjsPreparseModuleExports(filename) {
   let module = CJSModule._cache[filename];
   if (module) {
     const cached = cjsParseCache.get(module);
-    if (cached)
+    if (cached) {
       return { module, exportNames: cached.exportNames };
+    }
   }
   const loaded = Boolean(module);
   if (!loaded) {
@@ -240,8 +279,9 @@ function cjsPreparseModuleExports(filename) {
     if ((ext === '.js' || ext === '.cjs' || !CJSModule._extensions[ext]) &&
         isAbsolute(resolved)) {
       const { exportNames: reexportNames } = cjsPreparseModuleExports(resolved);
-      for (const name of reexportNames)
+      for (const name of reexportNames) {
         exportNames.add(name);
+      }
     }
   });
 
@@ -269,9 +309,12 @@ translators.set('json', async function jsonStrategy(url, source) {
   debug(`Loading JSONModule ${url}`);
   const pathname = StringPrototypeStartsWith(url, 'file:') ?
     fileURLToPath(url) : null;
+  const shouldCheckAndPopulateCJSModuleCache =
+    // We want to involve the CJS loader cache only for `file:` URL with no search query and no hash.
+    pathname && !StringPrototypeIncludes(url, '?') && !StringPrototypeIncludes(url, '#');
   let modulePath;
   let module;
-  if (pathname) {
+  if (shouldCheckAndPopulateCJSModuleCache) {
     modulePath = isWindows ?
       StringPrototypeReplaceAll(pathname, '/', '\\') : pathname;
     module = CJSModule._cache[modulePath];
@@ -283,7 +326,7 @@ translators.set('json', async function jsonStrategy(url, source) {
     }
   }
   source = stringify(source);
-  if (pathname) {
+  if (shouldCheckAndPopulateCJSModuleCache) {
     // A require call could have been called on the same file during loading and
     // that resolves synchronously. To make sure we always return the identical
     // export, we have to check again if the module already exists or not.
@@ -309,7 +352,7 @@ translators.set('json', async function jsonStrategy(url, source) {
     err.message = errPath(url) + ': ' + err.message;
     throw err;
   }
-  if (pathname) {
+  if (shouldCheckAndPopulateCJSModuleCache) {
     CJSModule._cache[modulePath] = module;
   }
   return new ModuleWrap(url, undefined, ['default'], function() {
@@ -341,9 +384,12 @@ translators.set('wasm', async function(url, source) {
     ArrayPrototypeMap(WebAssembly.Module.exports(compiled),
                       ({ name }) => name);
 
+  const createDynamicModule = require(
+    'internal/modules/esm/create_dynamic_module');
   return createDynamicModule(imports, exports, url, (reflect) => {
     const { exports } = new WebAssembly.Instance(compiled, reflect.imports);
-    for (const expt of ObjectKeys(exports))
+    for (const expt of ObjectKeys(exports)) {
       reflect.exports[expt].set(exports[expt]);
+    }
   }).module;
 });

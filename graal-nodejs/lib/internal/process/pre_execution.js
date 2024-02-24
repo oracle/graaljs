@@ -4,9 +4,7 @@ const {
   NumberParseInt,
   ObjectDefineProperties,
   ObjectDefineProperty,
-  ObjectGetOwnPropertyDescriptor,
   SafeMap,
-  SafeWeakMap,
   StringPrototypeStartsWith,
   Symbol,
   SymbolDispose,
@@ -16,13 +14,14 @@ const {
 
 const {
   getOptionValue,
-  getEmbedderOptions,
   refreshOptions,
 } = require('internal/options');
 const { reconnectZeroFillToggle } = require('internal/buffer');
 const {
   defineOperation,
   exposeInterface,
+  exposeLazyInterfaces,
+  defineReplaceableLazyAttribute,
   setupCoverageHooks,
 } = require('internal/util');
 
@@ -30,14 +29,15 @@ const {
   ERR_MANIFEST_ASSERT_INTEGRITY,
 } = require('internal/errors').codes;
 const assert = require('internal/assert');
-
 const {
-  addSerializeCallback,
-  isBuildingSnapshot,
-} = require('v8').startupSnapshot;
+  namespace: {
+    addSerializeCallback,
+    isBuildingSnapshot,
+  },
+} = require('internal/v8/startup_snapshot');
 
 function prepareMainThreadExecution(expandArgv1 = false, initializeModules = true) {
-  prepareExecution({
+  return prepareExecution({
     expandArgv1,
     initializeModules,
     isMainThread: true,
@@ -58,8 +58,8 @@ function prepareExecution(options) {
   refreshRuntimeOptions();
   reconnectZeroFillToggle();
 
-  // Patch the process object with legacy properties and normalizations
-  patchProcessObject(expandArgv1);
+  // Patch the process object and get the resolved main entry point.
+  const mainEntry = patchProcessObject(expandArgv1);
   setupTraceCategoryState();
   setupPerfHooks();
   setupInspectorHooks();
@@ -73,6 +73,7 @@ function prepareExecution(options) {
   initializeReport();
   initializeSourceMapsHandlers();
   initializeDeprecations();
+
   require('internal/dns/utils').initializeDns();
 
   setupSymbolDisposePolyfill();
@@ -112,21 +113,44 @@ function prepareExecution(options) {
   if (initializeModules) {
     setupUserModules();
   }
+
+  return mainEntry;
 }
 
 function setupSymbolDisposePolyfill() {
   // TODO(MoLow): Remove this polyfill once Symbol.dispose and Symbol.asyncDispose are available in V8.
   // eslint-disable-next-line node-core/prefer-primordials
-  Symbol.dispose ??= SymbolDispose;
+  if (typeof Symbol.dispose !== 'symbol') {
+    ObjectDefineProperty(Symbol, 'dispose', {
+      __proto__: null,
+      configurable: false,
+      enumerable: false,
+      value: SymbolDispose,
+      writable: false,
+    });
+  }
+
   // eslint-disable-next-line node-core/prefer-primordials
-  Symbol.asyncDispose ??= SymbolAsyncDispose;
+  if (typeof Symbol.asyncDispose !== 'symbol') {
+    ObjectDefineProperty(Symbol, 'asyncDispose', {
+      __proto__: null,
+      configurable: false,
+      enumerable: false,
+      value: SymbolAsyncDispose,
+      writable: false,
+    });
+  }
 }
 
-function setupUserModules() {
+function setupUserModules(isLoaderWorker = false) {
   initializeCJSLoader();
-  initializeESMLoader();
+  initializeESMLoader(isLoaderWorker);
   const CJSLoader = require('internal/modules/cjs/loader');
   assert(!CJSLoader.hasLoadedAnyUserCJSModule);
+  // Loader workers are responsible for doing this themselves.
+  if (isLoaderWorker) {
+    return;
+  }
   loadPreloadModules();
   // Need to be done after --require setup.
   initializeFrozenIntrinsics();
@@ -136,12 +160,20 @@ function refreshRuntimeOptions() {
   refreshOptions();
 }
 
+/**
+ * Patch the process object with legacy properties and normalizations.
+ * Replace `process.argv[0]` with `process.execPath`, preserving the original `argv[0]` value as `process.argv0`.
+ * Replace `process.argv[1]` with the resolved absolute file path of the entry point, if found.
+ * @param {boolean} expandArgv1 - Whether to replace `process.argv[1]` with the resolved absolute file path of
+ * the main entry point.
+ */
 function patchProcessObject(expandArgv1) {
   const binding = internalBinding('process_methods');
   binding.patchProcessObject(process);
 
   require('internal/process/per_thread').refreshHrtimeBuffer();
 
+  // Since we replace process.argv[0] below, preserve the original value in case the user needs it.
   ObjectDefineProperty(process, 'argv0', {
     __proto__: null,
     enumerable: true,
@@ -154,12 +186,17 @@ function patchProcessObject(expandArgv1) {
   process._exiting = false;
   process.argv[0] = process.execPath;
 
+  /** @type {string} */
+  let mainEntry;
+  // If requested, update process.argv[1] to replace whatever the user provided with the resolved absolute file path of
+  // the entry point.
   if (expandArgv1 && process.argv[1] &&
       !StringPrototypeStartsWith(process.argv[1], '-')) {
     // Expand process.argv[1] into a full path.
     const path = require('path');
     try {
-      process.argv[1] = path.resolve(process.argv[1]);
+      mainEntry = path.resolve(process.argv[1]);
+      process.argv[1] = mainEntry;
     } catch {
       // Continue regardless of error.
     }
@@ -193,6 +230,8 @@ function patchProcessObject(expandArgv1) {
       return fn.apply(self, args);
     }
   }
+
+  return mainEntry;
 }
 
 function addReadOnlyProcessAlias(name, option, enumerable = true) {
@@ -274,8 +313,9 @@ function setupFetch() {
   }
 
   // The WebAssembly Web API: https://webassembly.github.io/spec/web-api
-  const { wasmStreamingCallback } = require('internal/wasm_web_api');
-  internalBinding('wasm_web_api').setImplementation(wasmStreamingCallback);
+  internalBinding('wasm_web_api').setImplementation((streamState, source) => {
+    require('internal/wasm_web_api').wasmStreamingCallback(streamState, source);
+  });
   require('internal/graal/wasm');
 }
 
@@ -287,19 +327,14 @@ function setupWebCrypto() {
     return;
   }
 
-  let webcrypto;
-  ObjectDefineProperty(globalThis, 'crypto',
-                       { __proto__: null, ...ObjectGetOwnPropertyDescriptor({
-                         get crypto() {
-                           webcrypto ??= require('internal/crypto/webcrypto');
-                           return webcrypto.crypto;
-                         },
-                       }, 'crypto') });
   if (internalBinding('config').hasOpenSSL) {
-    webcrypto ??= require('internal/crypto/webcrypto');
-    exposeInterface(globalThis, 'Crypto', webcrypto.Crypto);
-    exposeInterface(globalThis, 'CryptoKey', webcrypto.CryptoKey);
-    exposeInterface(globalThis, 'SubtleCrypto', webcrypto.SubtleCrypto);
+    defineReplaceableLazyAttribute(
+      globalThis, 'internal/crypto/webcrypto', ['crypto'], false,
+    );
+    exposeLazyInterfaces(
+      globalThis, 'internal/crypto/webcrypto',
+      ['Crypto', 'CryptoKey', 'SubtleCrypto'],
+    );
   }
 }
 
@@ -338,12 +373,12 @@ function setupStacktracePrinterOnSigint() {
 }
 
 function initializeReport() {
-  const { report } = require('internal/process/report');
   ObjectDefineProperty(process, 'report', {
     __proto__: null,
     enumerable: true,
     configurable: true,
     get() {
+      const { report } = require('internal/process/report');
       return report;
     },
   });
@@ -352,15 +387,16 @@ function initializeReport() {
 function setupDebugEnv() {
   require('internal/util/debuglog').initializeDebugEnv(process.env.NODE_DEBUG);
   if (getOptionValue('--expose-internals')) {
-    require('internal/bootstrap/loaders').BuiltinModule.exposeInternals();
+    require('internal/bootstrap/realm').BuiltinModule.exposeInternals();
   }
 }
 
 // This has to be called after initializeReport() is called
 function initializeReportSignalHandlers() {
-  const { addSignalHandler } = require('internal/process/report');
-
-  addSignalHandler();
+  if (getOptionValue('--report-on-signal')) {
+    const { addSignalHandler } = require('internal/process/report');
+    addSignalHandler();
+  }
 }
 
 function initializeHeapSnapshotSignalHandlers() {
@@ -393,7 +429,6 @@ function setupTraceCategoryState() {
 }
 
 function setupPerfHooks() {
-  require('internal/perf/performance').refreshTimeOrigin();
   require('internal/perf/utils').refreshTimeOrigin();
 }
 
@@ -514,7 +549,7 @@ function readPolicyFromDisk() {
     // no bare specifiers for now
     let manifestURL;
     if (require('path').isAbsolute(experimentalPolicy)) {
-      manifestURL = new URL(`file://${experimentalPolicy}`);
+      manifestURL = pathToFileURL(experimentalPolicy);
     } else {
       const cwdURL = pathToFileURL(process.cwd());
       cwdURL.pathname += '/';
@@ -555,30 +590,13 @@ function readPolicyFromDisk() {
 }
 
 function initializeCJSLoader() {
-  const CJSLoader = require('internal/modules/cjs/loader');
-  if (!getEmbedderOptions().noGlobalSearchPaths) {
-    CJSLoader.Module._initPaths();
-  }
-  // TODO(joyeecheung): deprecate this in favor of a proper hook?
-  CJSLoader.Module.runMain =
-    require('internal/modules/run_main').executeUserEntryPoint;
+  const { initializeCJS } = require('internal/modules/cjs/loader');
+  initializeCJS();
 }
 
-function initializeESMLoader() {
-  // Create this WeakMap in js-land because V8 has no C++ API for WeakMap.
-  internalBinding('module_wrap').callbackMap = new SafeWeakMap();
-
-  if (getEmbedderOptions().shouldNotRegisterESMLoader) return;
-
-  const {
-    setImportModuleDynamicallyCallback,
-    setInitializeImportMetaObjectCallback,
-  } = internalBinding('module_wrap');
-  const esm = require('internal/process/esm_loader');
-  // Setup per-isolate callbacks that locate data or callbacks that we keep
-  // track of for different ESM modules.
-  setInitializeImportMetaObjectCallback(esm.initializeImportMetaObject);
-  setImportModuleDynamicallyCallback(esm.importModuleDynamicallyCallback);
+function initializeESMLoader(isLoaderWorker) {
+  const { initializeESM } = require('internal/modules/esm/utils');
+  initializeESM(isLoaderWorker);
 
   // Patch the vm module when --experimental-vm-modules is on.
   // Please update the comments in vm.js when this block changes.
@@ -594,11 +612,10 @@ function initializeESMLoader() {
 }
 
 function initializeSourceMapsHandlers() {
-  const { setSourceMapsEnabled, getSourceMapsEnabled } =
-    require('internal/source_map/source_map_cache');
-  process.setSourceMapsEnabled = setSourceMapsEnabled;
-  // Initialize the environment flag of source maps.
-  getSourceMapsEnabled();
+  const {
+    setSourceMapsEnabled,
+  } = require('internal/source_map/source_map_cache');
+  setSourceMapsEnabled(getOptionValue('--enable-source-maps'));
 }
 
 function initializeFrozenIntrinsics() {
@@ -631,4 +648,6 @@ module.exports = {
   prepareMainThreadExecution,
   prepareWorkerThreadExecution,
   markBootstrapComplete,
+  loadPreloadModules,
+  initializeFrozenIntrinsics,
 };

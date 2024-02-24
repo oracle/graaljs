@@ -31,6 +31,7 @@ const {
   JSONStringify,
   ObjectAssign,
   ObjectSetPrototypeOf,
+  ReflectApply,
   ReflectConstruct,
 } = primordials;
 
@@ -43,6 +44,7 @@ assertCrypto();
 const tls = require('tls');
 const { Agent: HttpAgent } = require('_http_agent');
 const {
+  httpServerPreClose,
   Server: HttpServer,
   setupConnectionsTracking,
   storeHTTPOptions,
@@ -86,8 +88,9 @@ function Server(opts, requestListener) {
 
   this.timeout = 0;
   this.maxHeadersCount = null;
-  setupConnectionsTracking(this);
+  this.on('listening', setupConnectionsTracking);
 }
+
 ObjectSetPrototypeOf(Server.prototype, tls.Server.prototype);
 ObjectSetPrototypeOf(Server, tls.Server);
 
@@ -96,6 +99,11 @@ Server.prototype.closeAllConnections = HttpServer.prototype.closeAllConnections;
 Server.prototype.closeIdleConnections = HttpServer.prototype.closeIdleConnections;
 
 Server.prototype.setTimeout = HttpServer.prototype.setTimeout;
+
+Server.prototype.close = function() {
+  httpServerPreClose(this);
+  ReflectApply(tls.Server.prototype.close, this, arguments);
+};
 
 /**
  * Creates a new `https.Server` instance.
