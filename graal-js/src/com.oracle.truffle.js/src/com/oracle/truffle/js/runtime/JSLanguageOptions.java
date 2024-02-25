@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -97,6 +97,7 @@ public record JSLanguageOptions(
                 boolean asyncStackTraces,
                 int propertyCacheLimit,
                 int functionCacheLimit,
+                short frequencyBasedPropertyCacheLimit,
                 boolean topLevelAwait,
                 boolean useUTCForLegacyDates,
                 boolean webAssembly,
@@ -195,6 +196,7 @@ public record JSLanguageOptions(
         boolean temporal = options.isTemporal();
         int propertyCacheLimit = options.getPropertyCacheLimit();
         int functionCacheLimit = options.getFunctionCacheLimit();
+        short frequencyBasedPropertyCacheLimit = options.getFrequencyBasedPropertyCacheLimit();
         boolean scopeOptimization = options.isScopeOptimization();
         boolean v8Intrinsics = options.isV8Intrinsics();
         boolean bigInt = options.isBigInt();
@@ -250,6 +252,7 @@ public record JSLanguageOptions(
                         asyncStackTraces,
                         propertyCacheLimit,
                         functionCacheLimit,
+                        frequencyBasedPropertyCacheLimit,
                         topLevelAwait,
                         useUTCForLegacyDates,
                         webAssembly,
