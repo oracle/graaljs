@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,10 +43,9 @@ package com.oracle.truffle.js.nodes.access;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.ReportPolymorphism;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -104,7 +103,6 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         return proxyGet.executeWithReceiver(target, receiver, index, defaultValue);
     }
 
-    @ReportPolymorphism.Megamorphic
     @Specialization(replaces = {"doCachedKey", "doArrayIndex", "doProxy"})
     static Object doGeneric(JSDynamicObject target, Object key, Object receiver, Object defaultValue,
                     @Bind("this") Node node,
@@ -113,14 +111,13 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
                     @Cached InlinedConditionProfile getType,
                     @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile,
                     @Cached InlinedConditionProfile highFrequency,
-                    @Cached("createFrequencyBasedPropertyGet(context)") FrequencyBasedPropertyGetNode hotKey,
+                    @Cached("create(context)") FrequencyBasedPropertyGetNode hotKey,
                     @Cached @Shared("strEq") TruffleString.EqualNode equalsNode) {
         requireObjectCoercibleNode.executeVoid(target);
         Object arrayIndex = toArrayIndexNode.execute(key);
         if (getType.profile(node, arrayIndex instanceof Long)) {
             return JSObject.getOrDefault(target, (long) arrayIndex, receiver, defaultValue, jsclassProfile, node);
         } else {
-            assert JSRuntime.isPropertyKey(arrayIndex);
             Object maybeRead = hotKey.executeFastGet(arrayIndex, target, equalsNode);
             if (highFrequency.profile(node, maybeRead != null)) {
                 return maybeRead;
