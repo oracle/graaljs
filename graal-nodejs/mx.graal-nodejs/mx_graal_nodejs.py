@@ -625,7 +625,10 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
         'Graal.js',
         'Graal.nodejs license files',
     ],
-    truffle_jars=['graal-nodejs:TRUFFLENODE'],
+    truffle_jars=[
+        'graal-nodejs:TRUFFLENODE',
+        *(['wasm:WASM'] if _is_wasm_available() else []),
+    ],
     support_distributions=[
         'graal-nodejs:TRUFFLENODE_GRAALVM_SUPPORT',
     ],
@@ -639,7 +642,10 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     library_configs=[
         mx_sdk_vm.LibraryConfig(
             destination='lib/<lib:graal-nodejs>',
-            jar_distributions=['graal-nodejs:TRUFFLENODE'],
+            jar_distributions=[
+                'graal-nodejs:TRUFFLENODE',
+                *(['wasm:WASM'] if _is_wasm_available() else []),
+            ],
             build_args=[
                 '--tool:all',
                 '--language:nodejs',
@@ -659,7 +665,6 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
     standalone_dependencies={
         'GraalVM license files': ('', ['GRAALVM-README.md']),
         'Graal.nodejs license files': ('', []),
-        **({'GraalWasm' : ('', ['LICENSE_WASM.txt', 'bin/<exe:wasm>', 'lib/<lib:wasmvm>'])} if _is_wasm_available() else {}),
     },
     standalone_dependencies_enterprise={
         'GraalVM enterprise license files': ('', ['GRAALVM-README.md']),
