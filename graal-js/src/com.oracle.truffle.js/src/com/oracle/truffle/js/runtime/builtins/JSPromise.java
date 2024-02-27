@@ -49,7 +49,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -140,14 +139,7 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
         promise.setPromiseState(promiseState);
     }
 
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        JSPromiseObject promiseObj = (JSPromiseObject) obj;
-        return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                        CLASS_NAME, new TruffleString[]{Strings.PROMISE_STATUS, Strings.PROMISE_VALUE}, new Object[]{getStatus(promiseObj), getPromiseResult(promiseObj)});
-    }
-
-    private static TruffleString getStatus(JSPromiseObject obj) {
+    public static TruffleString getStatus(JSPromiseObject obj) {
         if (isFulfilled(obj)) {
             return Strings.RESOLVED;
         } else if (isRejected(obj)) {

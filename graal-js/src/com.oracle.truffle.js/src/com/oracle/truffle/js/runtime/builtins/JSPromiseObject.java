@@ -40,8 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
@@ -104,6 +108,13 @@ public final class JSPromiseObject extends JSNonProxyObject {
     @Override
     public TruffleString getClassName() {
         return JSPromise.CLASS_NAME;
+    }
+
+    @TruffleBoundary
+    @Override
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return JSRuntime.objectToDisplayString(this, allowSideEffects, format, depth,
+                        JSPromise.CLASS_NAME, new TruffleString[]{Strings.PROMISE_STATUS, Strings.PROMISE_VALUE}, new Object[]{JSPromise.getStatus(this), JSPromise.getPromiseResult(this)});
     }
 
     public static JSPromiseObject create(Shape shape, JSDynamicObject proto, int promiseState) {

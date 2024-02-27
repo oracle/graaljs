@@ -52,6 +52,7 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
+import com.oracle.truffle.api.nodes.RootNode;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -66,6 +67,7 @@ import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.interop.InteropFunction;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -242,6 +244,26 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
             }
         }
         return false;
+    }
+
+    @Override
+    @TruffleBoundary
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        RootNode rn = ((RootCallTarget) JSFunction.getCallTarget(this)).getRootNode();
+        SourceSection ssect = rn.getSourceSection();
+        TruffleString source;
+        if (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) {
+            source = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(this), Strings.FUNCTION_NATIVE_CODE_BODY);
+        } else if (depth >= format.getMaxDepth()) {
+            source = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(this), Strings.FUNCTION_BODY_DOTS);
+        } else {
+            if (ssect.getCharacters().length() > 200) {
+                source = Strings.concat(Strings.fromJavaString(ssect.getCharacters().subSequence(0, 195).toString()), Strings.FUNCTION_BODY_OMITTED);
+            } else {
+                source = Strings.fromJavaString(ssect.getCharacters().toString());
+            }
+        }
+        return source;
     }
 
     public static JSFunctionObject create(Shape shape, JSDynamicObject proto, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {

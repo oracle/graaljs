@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
@@ -53,8 +54,12 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSCopyableObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
@@ -173,6 +178,29 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
         @Fallback
         public static TriState doOther(JSErrorObject receiver, Object other) {
             return TriState.UNDEFINED;
+        }
+    }
+
+    @TruffleBoundary
+    @Override
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
+            return super.toDisplayStringImpl(allowSideEffects, format, depth);
+        } else {
+            Object name = JSError.getPropertyWithoutSideEffect(this, JSError.NAME);
+            Object message = JSError.getPropertyWithoutSideEffect(this, JSError.MESSAGE);
+            TruffleString nameStr = name != null ? JSRuntime.toDisplayStringImpl(name, allowSideEffects, ToDisplayStringFormat.getDefaultFormat(), depth + 1, this) : JSError.CLASS_NAME;
+            TruffleString messageStr = message != null ? JSRuntime.toDisplayStringImpl(message, allowSideEffects, ToDisplayStringFormat.getDefaultFormat(), depth + 1, this) : Strings.EMPTY_STRING;
+            if (nameStr.isEmpty()) {
+                if (messageStr.isEmpty()) {
+                    return JSError.CLASS_NAME;
+                }
+                return messageStr;
+            } else if (Strings.isEmpty(messageStr)) {
+                return nameStr;
+            } else {
+                return Strings.concatAll(nameStr, Strings.COLON_SPACE, messageStr);
+            }
         }
     }
 

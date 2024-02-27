@@ -50,7 +50,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -129,11 +128,6 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     public static Object[] getImports(JSDynamicObject importer) {
         assert JavaImporter.isJavaImporter(importer);
         return ((JavaImporterObject) importer).getImports();
-    }
-
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return Strings.addBrackets(object.getClassName());
     }
 
     @Override

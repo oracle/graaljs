@@ -58,13 +58,11 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DateFunctionBuiltins;
 import com.oracle.truffle.js.builtins.DatePrototypeBuiltins;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -730,23 +728,6 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
             return instant.toEpochMilli();
         } catch (ArithmeticException e) {
             return Double.NaN;
-        }
-    }
-
-    @TruffleBoundary
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        double time = getTimeMillisField((JSDateObject) obj);
-        TruffleString formattedDate;
-        if (isTimeValid(time)) {
-            formattedDate = toISOStringIntl(time, JSRealm.get(null));
-        } else {
-            formattedDate = INVALID_DATE_STRING;
-        }
-        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return Strings.concatAll(Strings.BRACKET_DATE_SPC, formattedDate, Strings.BRACKET_CLOSE);
-        } else {
-            return formattedDate;
         }
     }
 

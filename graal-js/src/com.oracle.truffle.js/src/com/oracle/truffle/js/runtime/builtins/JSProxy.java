@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -570,21 +569,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     // internal methods
-
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return obj.defaultToString();
-        } else {
-            Object target = getTarget(obj);
-            Object handler = getHandler(obj);
-            return Strings.concatAll(Strings.PROXY_PAREN,
-                            JSRuntime.toDisplayStringInner(target, allowSideEffects, format, depth, obj),
-                            Strings.COMMA_SPC,
-                            JSRuntime.toDisplayStringInner(handler, allowSideEffects, format, depth, obj),
-                            Strings.PAREN_CLOSE);
-        }
-    }
 
     @Override
     public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {

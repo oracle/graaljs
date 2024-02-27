@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
@@ -61,6 +62,7 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 import com.oracle.truffle.js.runtime.objects.JSClassObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -183,6 +185,22 @@ public final class JSProxyObject extends JSClassObject {
     @Override
     public boolean preventExtensions(boolean doThrow) {
         return JSProxy.INSTANCE.preventExtensions(this, doThrow);
+    }
+
+    @TruffleBoundary
+    @Override
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
+            return defaultToString();
+        } else {
+            Object target = JSProxy.getTarget(this);
+            Object handler = JSProxy.getHandler(this);
+            return Strings.concatAll(Strings.PROXY_PAREN,
+                            JSRuntime.toDisplayStringInner(target, allowSideEffects, format, depth, this),
+                            Strings.COMMA_SPC,
+                            JSRuntime.toDisplayStringInner(handler, allowSideEffects, format, depth, this),
+                            Strings.PAREN_CLOSE);
+        }
     }
 
     @ExportLibrary(InteropLibrary.class)

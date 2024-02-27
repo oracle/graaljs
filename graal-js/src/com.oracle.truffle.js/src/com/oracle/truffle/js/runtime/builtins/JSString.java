@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -286,17 +285,6 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
-    }
-
-    @TruffleBoundary
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return Strings.concatAll(Strings.BRACKET_OPEN, CLASS_NAME, Strings.SPACE, getString(obj), Strings.BRACKET_CLOSE);
-        } else {
-            return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                            obj.getBuiltinToStringTag(), new TruffleString[]{Strings.PRIMITIVE_VALUE}, new Object[]{JSString.getString(obj)});
-        }
     }
 
     public static boolean isJSString(Object obj) {
