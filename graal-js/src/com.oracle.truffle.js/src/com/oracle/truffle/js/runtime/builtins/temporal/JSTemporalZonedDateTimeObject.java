@@ -56,8 +56,8 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 @ExportLibrary(InteropLibrary.class)
@@ -104,11 +104,13 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
 
     @TruffleBoundary
     private ZoneId getZoneIdIntl() {
-        if (timeZone instanceof JSTemporalTimeZoneObject tzObj) {
-            return tzObj.asTimeZone();
+        String id;
+        if (timeZone instanceof TruffleString string) {
+            id = string.toJavaStringUncached();
+        } else {
+            Object tzID = JSRuntime.get(timeZone, Strings.ID_PROPERTY_NAME);
+            id = JSRuntime.toJavaString(tzID);
         }
-        Object tzID = JSRuntime.get(timeZone, TemporalConstants.TIME_ZONE);
-        String id = ((TruffleString) tzID).toJavaStringUncached();
         ZoneId zoneId;
         try {
             zoneId = ZoneId.of(id);
