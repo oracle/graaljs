@@ -76,11 +76,6 @@ public final class JSSlowArray extends JSAbstractArray {
         return isInstance(obj, INSTANCE);
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
-    }
-
     @TruffleBoundary
     @Override
     public Object getOwnHelper(JSDynamicObject store, Object thisObj, long index, Node encapsulatingNode) {

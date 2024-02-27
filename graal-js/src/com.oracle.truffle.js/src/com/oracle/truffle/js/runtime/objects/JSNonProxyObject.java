@@ -46,8 +46,10 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 
@@ -111,5 +113,10 @@ public abstract class JSNonProxyObject extends JSClassObject {
             return JSNonProxy.setIntegrityLevelFast(this, freeze);
         }
         return super.setIntegrityLevel(freeze, doThrow);
+    }
+
+    @Override
+    public TruffleString getClassName() {
+        return Strings.UC_OBJECT;
     }
 }

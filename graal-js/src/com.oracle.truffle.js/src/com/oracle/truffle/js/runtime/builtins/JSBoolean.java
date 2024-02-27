@@ -117,11 +117,6 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
         return CLASS_NAME;
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
     @TruffleBoundary
     public static JSException noBooleanError() {
         throw Errors.createTypeError("not a Boolean object");

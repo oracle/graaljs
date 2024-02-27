@@ -70,11 +70,6 @@ public final class Null {
         }
 
         @Override
-        public TruffleString getClassName(JSDynamicObject object) {
-            return object == Undefined.instance ? Undefined.NAME : Null.NAME;
-        }
-
-        @Override
         public String toString() {
             return "null|undefined";
         }

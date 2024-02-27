@@ -48,7 +48,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
@@ -122,11 +121,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     private JSProxy() {
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
     }
 
     @Override

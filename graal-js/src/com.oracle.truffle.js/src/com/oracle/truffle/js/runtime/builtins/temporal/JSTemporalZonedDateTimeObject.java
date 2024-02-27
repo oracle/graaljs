@@ -141,4 +141,9 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
     LocalTime asTime() throws UnsupportedMessageException {
         return LocalTime.ofInstant(toInstant(), asTimeZone());
     }
+
+    @Override
+    public TruffleString getClassName() {
+        return JSTemporalZonedDateTime.TO_STRING_TAG;
+    }
 }

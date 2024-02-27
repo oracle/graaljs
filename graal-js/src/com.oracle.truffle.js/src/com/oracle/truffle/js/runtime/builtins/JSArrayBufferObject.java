@@ -533,6 +533,11 @@ public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
         public boolean isDetached() {
             return false;
         }
+
+        @Override
+        public TruffleString getClassName() {
+            return JSSharedArrayBuffer.CLASS_NAME;
+        }
     }
 
     /**

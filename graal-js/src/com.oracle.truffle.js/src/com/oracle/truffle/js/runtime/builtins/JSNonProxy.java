@@ -596,7 +596,7 @@ public abstract class JSNonProxy extends JSClass {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return obj.defaultToString();
         } else {
-            return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth, getClassName(obj));
+            return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth, obj.getClassName());
         }
     }
 

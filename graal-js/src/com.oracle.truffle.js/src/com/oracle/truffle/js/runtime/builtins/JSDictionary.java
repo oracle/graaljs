@@ -99,11 +99,6 @@ public final class JSDictionary extends JSNonProxy {
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return Strings.UC_OBJECT;
-    }
-
-    @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return obj.defaultToString();
     }

@@ -48,6 +48,7 @@ import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 @ExportLibrary(InteropLibrary.class)
@@ -139,5 +140,10 @@ public final class JSTemporalPlainDateTimeObject extends JSTemporalCalendarHolde
     @TruffleBoundary
     LocalDate asDate() {
         return LocalDate.of(year, month, day);
+    }
+
+    @Override
+    public TruffleString getClassName() {
+        return JSTemporalPlainDateTime.TO_STRING_TAG;
     }
 }

@@ -161,11 +161,6 @@ public final class JavaPackage extends JSNonProxy {
         return (!Strings.isEmpty(packageName)) ? Strings.concatAll(packageName, Strings.DOT, className) : className;
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
-    }
-
     @TruffleBoundary
     public static Object toPrimitiveString(JSDynamicObject obj) {
         return Strings.concatAll(Strings.BRACKET_OPEN, CLASS_NAME, Strings.SPACE, getPackageName(obj), Strings.BRACKET_CLOSE);

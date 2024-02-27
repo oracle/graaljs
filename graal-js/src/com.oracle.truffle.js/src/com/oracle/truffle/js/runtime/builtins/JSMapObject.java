@@ -51,6 +51,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.JSCollectionsNormalizeNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
@@ -70,6 +71,11 @@ public final class JSMapObject extends JSNonProxyObject {
 
     public JSHashMap getMap() {
         return map;
+    }
+
+    @Override
+    public TruffleString getClassName() {
+        return JSMap.CLASS_NAME;
     }
 
     @SuppressWarnings("static-method")

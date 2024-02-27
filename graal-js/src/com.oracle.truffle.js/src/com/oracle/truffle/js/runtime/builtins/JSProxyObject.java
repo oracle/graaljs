@@ -93,6 +93,11 @@ public final class JSProxyObject extends JSClassObject {
     }
 
     @Override
+    public TruffleString getClassName() {
+        return JSProxy.CLASS_NAME;
+    }
+
+    @Override
     public TruffleString getBuiltinToStringTag() {
         Object targetNonProxy = JSProxy.getTargetNonProxy(this);
         if (JSDynamicObject.isJSDynamicObject(targetNonProxy)) {

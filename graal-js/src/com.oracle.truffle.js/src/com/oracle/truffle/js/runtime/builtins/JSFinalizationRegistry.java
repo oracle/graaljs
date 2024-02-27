@@ -113,11 +113,6 @@ public final class JSFinalizationRegistry extends JSNonProxy implements JSConstr
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
-    @Override
     @TruffleBoundary
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return Strings.addBrackets(getClassName());

@@ -133,11 +133,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return TO_STRING_TAG;
-    }
-
-    @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
     }

@@ -49,7 +49,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -180,19 +179,6 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
     public static boolean isJSOrdinaryObject(JSDynamicObject obj) {
         return isInstance(obj, INSTANCE);
-    }
-
-    @Override
-    @TruffleBoundary
-    public TruffleString getClassName(JSDynamicObject object) {
-        JSContext context = JSObject.getJSContext(object);
-        if (context.getEcmaScriptVersion() <= 5) {
-            Object toStringTag = get(object, Symbol.SYMBOL_TO_STRING_TAG);
-            if (Strings.isTString(toStringTag)) {
-                return (TruffleString) toStringTag;
-            }
-        }
-        return CLASS_NAME;
     }
 
     @TruffleBoundary

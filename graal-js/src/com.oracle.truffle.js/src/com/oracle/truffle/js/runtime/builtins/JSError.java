@@ -436,11 +436,6 @@ public final class JSError extends JSNonProxy {
         return methodName;
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
-    }
-
     public static boolean isJSError(Object obj) {
         return obj instanceof JSErrorObject;
     }

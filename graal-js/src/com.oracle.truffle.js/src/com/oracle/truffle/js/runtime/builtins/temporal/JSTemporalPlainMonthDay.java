@@ -97,11 +97,6 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return TO_STRING_TAG;
-    }
-
-    @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
     }

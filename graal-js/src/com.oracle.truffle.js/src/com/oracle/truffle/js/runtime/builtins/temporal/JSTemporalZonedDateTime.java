@@ -86,11 +86,6 @@ public final class JSTemporalZonedDateTime extends JSNonProxy implements JSConst
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return TO_STRING_TAG;
-    }
-
-    @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
     }

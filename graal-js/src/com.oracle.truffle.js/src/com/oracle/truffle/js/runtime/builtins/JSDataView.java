@@ -110,11 +110,6 @@ public final class JSDataView extends JSNonProxy implements JSConstructorFactory
         return CLASS_NAME;
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
     public static boolean isJSDataView(Object obj) {
         return obj instanceof JSDataViewObject;
     }

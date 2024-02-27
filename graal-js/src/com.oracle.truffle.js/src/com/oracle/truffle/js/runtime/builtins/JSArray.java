@@ -200,11 +200,6 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
-    @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSContext ctx = realm.getContext();
 

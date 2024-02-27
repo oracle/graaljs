@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -75,11 +75,6 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
-    @Override
     public String toString() {
         return Strings.toJavaString(CLASS_NAME);
     }
@@ -138,7 +133,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
 
     @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return Strings.addBrackets(getClassName());
+        return Strings.addBrackets(object.getClassName());
     }
 
     @Override

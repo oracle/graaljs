@@ -84,11 +84,6 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
-    @Override
     public String toString() {
         return Strings.toJavaString(getClassName());
     }

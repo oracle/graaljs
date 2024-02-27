@@ -671,11 +671,6 @@ public final class JSFunction extends JSNonProxy {
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
-    }
-
-    @Override
     @TruffleBoundary
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         RootNode rn = ((RootCallTarget) JSFunction.getCallTarget(obj)).getRootNode();

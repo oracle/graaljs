@@ -115,11 +115,6 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
         return CLASS_NAME;
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
     @TruffleBoundary
     @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {

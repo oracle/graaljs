@@ -85,8 +85,4 @@ public final class JSRawJSON extends JSNonProxy {
         return initialShape;
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return JSOrdinary.CLASS_NAME;
-    }
 }

@@ -390,11 +390,6 @@ public final class JSArrayBufferView extends JSNonProxy {
         return new JSConstructor(taConstructor, taPrototype);
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return typedArrayGetName(object);
-    }
-
     public static boolean isJSArrayBufferView(Object obj) {
         return obj instanceof JSTypedArrayObject;
     }

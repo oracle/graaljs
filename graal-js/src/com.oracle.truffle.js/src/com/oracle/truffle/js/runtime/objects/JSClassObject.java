@@ -57,11 +57,6 @@ public abstract class JSClassObject extends JSObject {
     }
 
     @Override
-    public TruffleString getClassName() {
-        return getJSClass().getClassName(this);
-    }
-
-    @Override
     public JSDynamicObject getPrototypeOf() {
         return getJSClass().getPrototypeOf(this);
     }

@@ -214,17 +214,6 @@ public abstract class JSClass {
     @TruffleBoundary
     public abstract boolean hasOnlyShapeProperties(JSDynamicObject obj);
 
-    /**
-     * The [[Class]] internal property.
-     *
-     * For ES5, this is the second part of what Object.prototype.toString.call(myObj) returns, e.g.
-     * "[object Array]".
-     *
-     * @param object object to be used
-     */
-    @TruffleBoundary
-    public abstract TruffleString getClassName(JSDynamicObject object);
-
     @Override
     @TruffleBoundary
     public abstract String toString();

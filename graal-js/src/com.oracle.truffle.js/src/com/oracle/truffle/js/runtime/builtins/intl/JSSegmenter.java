@@ -163,11 +163,6 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
-    @Override
     public JSDynamicObject createPrototype(JSRealm realm, JSFunctionObject ctor) {
         JSObject segmenterPrototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(segmenterPrototype, ctor);

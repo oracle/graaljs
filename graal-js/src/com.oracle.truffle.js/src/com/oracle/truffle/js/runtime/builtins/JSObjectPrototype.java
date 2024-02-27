@@ -77,11 +77,6 @@ public final class JSObjectPrototype extends JSNonProxy {
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
-    }
-
-    @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return obj.defaultToString();
     }

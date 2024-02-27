@@ -104,11 +104,6 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
-    @Override
     @TruffleBoundary
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         return Strings.addBrackets(CLASS_NAME);

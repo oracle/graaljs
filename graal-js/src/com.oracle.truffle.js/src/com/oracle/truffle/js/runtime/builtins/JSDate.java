@@ -49,6 +49,7 @@ import org.graalvm.shadowed.com.ibm.icu.impl.Grego;
 import org.graalvm.shadowed.com.ibm.icu.text.DateFormat;
 import org.graalvm.shadowed.com.ibm.icu.util.GregorianCalendar;
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
@@ -121,11 +122,6 @@ public final class JSDate extends JSNonProxy implements JSConstructorFactory.Def
     @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
     }
 
     @Override
