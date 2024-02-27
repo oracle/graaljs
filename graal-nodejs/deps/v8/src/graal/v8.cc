@@ -1589,6 +1589,10 @@ namespace v8 {
         return reinterpret_cast<const GraalStackFrame*> (this)->GetScriptName();
     }
 
+    Local<String> StackFrame::GetScriptNameOrSourceURL() const {
+        return reinterpret_cast<const GraalStackFrame*> (this)->GetScriptName();
+    }
+
     bool StackFrame::IsEval() const {
         return reinterpret_cast<const GraalStackFrame*> (this)->IsEval();
     }
