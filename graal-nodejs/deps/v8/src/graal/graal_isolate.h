@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -226,6 +226,7 @@ enum GraalAccessMethod {
     isolate_enqueue_microtask,
     isolate_schedule_pause_on_next_statement,
     isolate_measure_memory,
+    isolate_set_task_runner,
     template_set,
     template_set_accessor_property,
     object_template_new,
@@ -827,6 +828,7 @@ private:
     void SetJNIField(GraalAccessField id, jobject holder_class, jobject field_name, const char* sig);
     void InitStackOverflowCheck(intptr_t stack_bottom);
     void RemoveCallback(std::vector<std::tuple<GCCallbackType, void*, void*>>&vector, void* callback);
+    void SetTaskRunner(std::shared_ptr<v8::TaskRunner> task_runner);
 
     GraalNumber* CachedNumber(int value);
     friend class GraalNumber;

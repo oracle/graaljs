@@ -455,6 +455,10 @@ public final class GraalJSAccess {
         return new GraalJSAccess(args);
     }
 
+    public void isolateSetTaskRunner(long taskRunnerPointer) {
+        agent.setTaskRunnerPointer(taskRunnerPointer);
+    }
+
     public Object undefinedInstance() {
         return Undefined.instance;
     }
