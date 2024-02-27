@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,38 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins.temporal;
+package com.oracle.truffle.js.nodes.temporal;
+
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Time Zone Methods Record.
- *
- * Field values may be null in case they have not been read, and therefore must not be used.
- * Conversely, fields that have been read must not be null. The receiver must never be null.
+ * Implementation of ToTemporalTimeZoneObject() operation.
  */
-public record TimeZoneMethodsRecord(
-                /**
-                 * A String or Object. The time zone object, or a string indicating a built-in time
-                 * zone.
-                 */
-                Object receiver,
-                /**
-                 * A function object or undefined. The time zone's getOffsetNanosecondsFor method.
-                 * For a built-in time zone this is always
-                 * %Temporal.TimeZone.prototype.getOffsetNanosecondsFor%.
-                 */
-                Object getOffsetNanosecondsFor,
-                /**
-                 * A function object or undefined. The time zone's getPossibleInstantsFor method.
-                 * For a built-in time zone this is always
-                 * %Temporal.TimeZone.prototype.getPossibleInstantsFor%.
-                 */
-                Object getPossibleInstantsFor) {
+public abstract class ToTemporalTimeZoneObjectNode extends JavaScriptBaseNode {
 
-    public TimeZoneMethodsRecord(Object receiver, Object getOffsetNanosecondsFor) {
-        this(receiver, getOffsetNanosecondsFor, null);
+    protected ToTemporalTimeZoneObjectNode() {
     }
+
+    @NeverDefault
+    public static ToTemporalTimeZoneObjectNode create() {
+        return ToTemporalTimeZoneObjectNodeGen.create();
+    }
+
+    public abstract Object execute(Object timeZoneSlotValue);
+
+    @Specialization
+    public Object toTemporalTimeZoneObject(Object timeZoneSlotValue,
+                    @Cached IsObjectNode isObjectNode) {
+        if (isObjectNode.executeBoolean(timeZoneSlotValue)) {
+            return timeZoneSlotValue;
+        }
+        return TemporalUtil.createTemporalTimeZone(getJSContext(), getRealm(), (TruffleString) timeZoneSlotValue);
+    }
+
 }

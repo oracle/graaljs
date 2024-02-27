@@ -137,7 +137,8 @@ import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
@@ -1124,26 +1125,61 @@ public final class TemporalUtil {
         return days + day;
     }
 
-    public static long toISOWeekOfYear(int year, int month, int day) {
-        long doy = toISODayOfYear(year, month, day);
-        long dow = toISODayOfWeek(year, month, day);
-        long doj = toISODayOfWeek(year, 1, 1);
+    // ToISOWeekOfYear(year, month, day).[[Week]]
+    public static long weekOfToISOWeekOfYear(int year, int month, int day) {
+        long wednesday = 3;
+        long thursday = 4;
+        long friday = 5;
+        long saturday = 6;
+        long daysInWeek = 7;
+        long maxWeekNumber = 53;
+        long dayOfYear = toISODayOfYear(year, month, day);
+        long dayOfWeek = toISODayOfWeek(year, month, day);
 
-        long week = Math.floorDiv(doy - dow + 10, 7);
+        long week = Math.floorDiv(dayOfYear + daysInWeek - dayOfWeek + wednesday, daysInWeek);
         if (week < 1) {
-            if (doj == 5 || (doj == 6 && isISOLeapYear(year - 1))) {
-                return 53;
+            long dayOfJan1st = toISODayOfWeek(year, 1, 1);
+            if (dayOfJan1st == friday || (dayOfJan1st == saturday && isISOLeapYear(year - 1))) {
+                return maxWeekNumber;
             } else {
-                return 52;
+                return maxWeekNumber - 1;
             }
         }
-        if (week == 53) {
-            if (isoDaysInYear(year) - doy < 4 - dow) {
+        if (week == maxWeekNumber) {
+            long daysInYear = isoDaysInYear(year);
+            long daysLaterInYear = daysInYear - dayOfYear;
+            long daysAfterThursday = thursday - dayOfWeek;
+            if (daysLaterInYear < daysAfterThursday) {
                 return 1;
             }
         }
 
         return week;
+    }
+
+    // ToISOWeekOfYear(year, month, day).[[Year]]
+    public static long yearOfToISOWeekOfYear(int year, int month, int day) {
+        long wednesday = 3;
+        long thursday = 4;
+        long daysInWeek = 7;
+        long maxWeekNumber = 53;
+        long dayOfYear = toISODayOfYear(year, month, day);
+        long dayOfWeek = toISODayOfWeek(year, month, day);
+
+        long week = Math.floorDiv(dayOfYear + daysInWeek - dayOfWeek + wednesday, daysInWeek);
+        if (week < 1) {
+            return year - 1;
+        }
+        if (week == maxWeekNumber) {
+            long daysInYear = isoDaysInYear(year);
+            long daysLaterInYear = daysInYear - dayOfYear;
+            long daysAfterThursday = thursday - dayOfWeek;
+            if (daysLaterInYear < daysAfterThursday) {
+                return year + 1;
+            }
+        }
+
+        return year;
     }
 
     public static boolean isISOLeapYear(int year) {
@@ -2741,23 +2777,23 @@ public final class TemporalUtil {
     }
 
     public static JSTemporalPlainDateTimeObject systemDateTime(Object temporalTimeZoneLike, Object calendarLike,
-                    JSContext ctx, JSRealm realm, ToTemporalCalendarSlotValueNode toCalendarSlotValue, ToTemporalTimeZoneNode toTemporalTimeZone) {
-        JSDynamicObject timeZone;
+                    JSContext ctx, JSRealm realm, ToTemporalCalendarSlotValueNode toCalendarSlotValue, ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue) {
+        Object timeZone;
         if (temporalTimeZoneLike == Undefined.instance) {
             timeZone = systemTimeZone(ctx, realm);
         } else {
-            timeZone = toTemporalTimeZone.execute(temporalTimeZoneLike);
+            timeZone = toTimeZoneSlotValue.execute(temporalTimeZoneLike);
         }
         Object calendar = toCalendarSlotValue.execute(calendarLike);
         JSTemporalInstantObject instant = systemInstant(ctx, realm);
-        var timeZoneRec = createTimeZoneMethodsRecordOnlyGetOffsetNanosecondsFor(timeZone);
+        var timeZoneRec = createTimeZoneMethodsRecordOnlyGetOffsetNanosecondsFor(realm, timeZone);
         return builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, calendar);
     }
 
     @TruffleBoundary
     public static JSTemporalPlainDateTimeObject builtinTimeZoneGetPlainDateTimeFor(JSContext ctx, JSRealm realm,
                     TimeZoneMethodsRecord timeZoneRec, JSTemporalInstantObject instant, Object calendar) {
-        long offsetNanoseconds = getOffsetNanosecondsFor(timeZoneRec, instant);
+        long offsetNanoseconds = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, instant);
         return builtinTimeZoneGetPlainDateTimeFor(ctx, realm, instant, calendar, offsetNanoseconds);
     }
 
@@ -2807,10 +2843,14 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static long getOffsetNanosecondsFor(TimeZoneMethodsRecord timeZoneRec, JSDynamicObject instant) {
+    public static long getOffsetNanosecondsFor(JSContext context, JSRealm realm, TimeZoneMethodsRecord timeZoneRec, JSDynamicObject instant) {
         assert timeZoneRec.getOffsetNanosecondsFor() != null;
         Object getOffsetNanosecondsFor = timeZoneRec.getOffsetNanosecondsFor();
-        Object offsetNanoseconds = JSRuntime.call(getOffsetNanosecondsFor, timeZoneRec.receiver(), new Object[]{instant});
+        Object receiver = timeZoneRec.receiver();
+        if (receiver instanceof TruffleString identifier) {
+            receiver = createTemporalTimeZone(context, realm, identifier);
+        }
+        Object offsetNanoseconds = JSRuntime.call(getOffsetNanosecondsFor, receiver, new Object[]{instant});
         if (!JSRuntime.isNumber(offsetNanoseconds)) {
             throw Errors.createTypeError("Number expected");
         }
@@ -2825,12 +2865,12 @@ public final class TemporalUtil {
     }
 
     public static JSTemporalZonedDateTimeObject systemZonedDateTime(Object temporalTimeZoneLike, Object calendarLike,
-                    JSContext ctx, JSRealm realm, ToTemporalCalendarSlotValueNode toCalendarSlotValue, ToTemporalTimeZoneNode toTemporalTimeZone) {
-        JSDynamicObject timeZone;
+                    JSContext ctx, JSRealm realm, ToTemporalCalendarSlotValueNode toCalendarSlotValue, ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue) {
+        Object timeZone;
         if (temporalTimeZoneLike == Undefined.instance) {
             timeZone = systemTimeZone(ctx, realm);
         } else {
-            timeZone = toTemporalTimeZone.execute(temporalTimeZoneLike);
+            timeZone = toTimeZoneSlotValue.execute(temporalTimeZoneLike);
         }
         Object calendar = toCalendarSlotValue.execute(calendarLike);
         BigInt ns = systemUTCEpochNanoseconds();
@@ -2916,14 +2956,13 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static TruffleString temporalInstantToString(JSContext ctx, JSRealm realm, JSTemporalInstantObject instant, JSDynamicObject timeZone, Object precision) {
-        JSDynamicObject outputTimeZone = timeZone;
+    public static TruffleString temporalInstantToString(JSContext ctx, JSRealm realm, JSTemporalInstantObject instant, Object timeZone, Object precision) {
+        Object outputTimeZone = timeZone;
         if (outputTimeZone == Undefined.instance) {
-            outputTimeZone = createTemporalTimeZone(ctx, realm, UTC);
+            outputTimeZone = UTC;
         }
-        JSDynamicObject isoCalendar = getISO8601Calendar(ctx, realm);
-        var timeZoneRec = createTimeZoneMethodsRecordOnlyGetOffsetNanosecondsFor(outputTimeZone);
-        JSTemporalPlainDateTimeObject dateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, isoCalendar);
+        var timeZoneRec = createTimeZoneMethodsRecordOnlyGetOffsetNanosecondsFor(realm, outputTimeZone);
+        JSTemporalPlainDateTimeObject dateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, TemporalConstants.ISO8601);
         TruffleString dateTimeString = JSTemporalPlainDateTime.temporalDateTimeToString(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                         dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), Undefined.instance,
                         precision, ShowCalendar.NEVER);
@@ -2931,18 +2970,24 @@ public final class TemporalUtil {
         if (timeZone == Undefined.instance) {
             timeZoneString = Strings.UC_Z;
         } else {
-            long offsetNs = getOffsetNanosecondsFor(timeZoneRec, instant);
+            long offsetNs = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, instant);
             timeZoneString = formatISOTimeZoneOffsetString(offsetNs);
         }
         return Strings.concat(dateTimeString, timeZoneString);
     }
 
-    public static TimeZoneMethodsRecord createTimeZoneMethodsRecordOnlyGetOffsetNanosecondsFor(JSDynamicObject outputTimeZone) {
-        return new TimeZoneMethodsRecord(outputTimeZone, JSObject.getMethod(outputTimeZone, GET_OFFSET_NANOSECONDS_FOR), null);
+    public static TimeZoneMethodsRecord createTimeZoneMethodsRecordOnlyGetOffsetNanosecondsFor(JSRealm realm, Object timeZone) {
+        Object getOffsetNanosecondsForMethod;
+        if (timeZone instanceof TruffleString) {
+            getOffsetNanosecondsForMethod = realm.getTemporalTimeZoneGetOffsetNanosecondsForFunctionObject();
+        } else {
+            getOffsetNanosecondsForMethod = JSRuntime.get(timeZone, GET_OFFSET_NANOSECONDS_FOR);
+        }
+        return new TimeZoneMethodsRecord(timeZone, getOffsetNanosecondsForMethod, null);
     }
 
-    public static TruffleString builtinTimeZoneGetOffsetStringFor(TimeZoneMethodsRecord timeZoneRec, JSDynamicObject instant) {
-        long offsetNanoseconds = getOffsetNanosecondsFor(timeZoneRec, instant);
+    public static TruffleString builtinTimeZoneGetOffsetStringFor(JSContext context, JSRealm realm, TimeZoneMethodsRecord timeZoneRec, JSDynamicObject instant) {
+        long offsetNanoseconds = getOffsetNanosecondsFor(context, realm, timeZoneRec, instant);
         return formatTimeZoneOffsetString(offsetNanoseconds);
     }
 
@@ -3111,11 +3156,11 @@ public final class TemporalUtil {
         RoundingMode roundingMode = roundingModeParam == RoundingMode.EMPTY ? RoundingMode.TRUNC : roundingModeParam;
 
         BigInt ns = roundTemporalInstant(zonedDateTime.getNanoseconds(), (long) increment, unit, roundingMode);
-        JSDynamicObject timeZone = zonedDateTime.getTimeZone();
+        Object timeZone = zonedDateTime.getTimeZone();
         JSTemporalInstantObject instant = JSTemporalInstant.create(ctx, realm, ns);
         JSTemporalCalendarObject isoCalendar = getISO8601Calendar(ctx, realm);
-        TimeZoneMethodsRecord timeZoneRec = createTimeZoneMethodsRecordOnlyGetOffsetNanosecondsFor(zonedDateTime.getTimeZone());
-        long offsetNanoseconds = getOffsetNanosecondsFor(timeZoneRec, instant);
+        TimeZoneMethodsRecord timeZoneRec = createTimeZoneMethodsRecordOnlyGetOffsetNanosecondsFor(realm, zonedDateTime.getTimeZone());
+        long offsetNanoseconds = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, instant);
         JSTemporalPlainDateTimeObject temporalDateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, realm, instant, isoCalendar, offsetNanoseconds);
         TruffleString dateTimeString = JSTemporalPlainDateTime.temporalDateTimeToString(temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(),
                         temporalDateTime.getHour(), temporalDateTime.getMinute(), temporalDateTime.getSecond(), temporalDateTime.getMillisecond(),
@@ -3199,7 +3244,7 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static JSTemporalInstantObject builtinTimeZoneGetInstantFor(JSContext ctx, JSRealm realm, TimeZoneMethodsRecord timeZoneRec, JSTemporalPlainDateTimeObject dateTime,
                     Disambiguation disambiguation) {
-        List<JSTemporalInstantObject> possibleInstants = getPossibleInstantsFor(timeZoneRec, dateTime);
+        List<JSTemporalInstantObject> possibleInstants = getPossibleInstantsFor(ctx, realm, timeZoneRec, dateTime);
         return disambiguatePossibleInstants(ctx, realm, possibleInstants, timeZoneRec, dateTime, disambiguation);
     }
 
@@ -3226,8 +3271,8 @@ public final class TemporalUtil {
                         dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond());
         JSTemporalInstantObject dayBefore = JSTemporalInstant.create(ctx, realm, new BigInt(epochNanoseconds.subtract(BI_8_64_13)));
         JSTemporalInstantObject dayAfter = JSTemporalInstant.create(ctx, realm, new BigInt(epochNanoseconds.add(BI_8_64_13)));
-        long offsetBefore = getOffsetNanosecondsFor(timeZoneRec, dayBefore);
-        long offsetAfter = getOffsetNanosecondsFor(timeZoneRec, dayAfter);
+        long offsetBefore = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, dayBefore);
+        long offsetAfter = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, dayAfter);
         long nanoseconds = offsetAfter - offsetBefore;
         if (Disambiguation.EARLIER == disambiguation) {
             TimeRecord earlierTime = addTimeDouble(
@@ -3240,7 +3285,7 @@ public final class TemporalUtil {
                             earlierDate.year(), earlierDate.month(), earlierDate.day(),
                             earlierTime.hour(), earlierTime.minute(), earlierTime.second(), earlierTime.millisecond(), earlierTime.microsecond(), earlierTime.nanosecond(),
                             dateTime.getCalendar(), null, InlinedBranchProfile.getUncached());
-            List<JSTemporalInstantObject> possibleInstants2 = getPossibleInstantsFor(timeZoneRec, earlierDateTime);
+            List<JSTemporalInstantObject> possibleInstants2 = getPossibleInstantsFor(ctx, realm, timeZoneRec, earlierDateTime);
             if (possibleInstants2.size() == 0) {
                 throw Errors.createRangeError("nothing found");
             }
@@ -3258,7 +3303,7 @@ public final class TemporalUtil {
                         laterTime.hour(), laterTime.minute(), laterTime.second(), laterTime.millisecond(), laterTime.microsecond(), laterTime.nanosecond(),
                         dateTime.getCalendar(), null, InlinedBranchProfile.getUncached());
 
-        List<JSTemporalInstantObject> possibleInstants2 = getPossibleInstantsFor(timeZoneRec, laterDateTime);
+        List<JSTemporalInstantObject> possibleInstants2 = getPossibleInstantsFor(ctx, realm, timeZoneRec, laterDateTime);
         n = possibleInstants2.size();
         if (n == 0) {
             throw Errors.createRangeError("nothing found");
@@ -3283,9 +3328,9 @@ public final class TemporalUtil {
         }
         assert offsetBehaviour == OffsetBehaviour.OPTION;
         assert OffsetOption.PREFER == offsetOption || OffsetOption.REJECT == offsetOption;
-        List<JSTemporalInstantObject> possibleInstants = getPossibleInstantsFor(timeZoneRec, dateTime);
+        List<JSTemporalInstantObject> possibleInstants = getPossibleInstantsFor(ctx, realm, timeZoneRec, dateTime);
         for (JSTemporalInstantObject candidate : possibleInstants) {
-            long candidateNanoseconds = getOffsetNanosecondsFor(timeZoneRec, candidate);
+            long candidateNanoseconds = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, candidate);
             if (candidateNanoseconds == offsetNs) {
                 return candidate.getNanoseconds();
             }
@@ -3347,12 +3392,12 @@ public final class TemporalUtil {
         return JSTemporalZonedDateTime.create(ctx, realm, intermediateNs, zdt.getTimeZone(), zdt.getCalendar());
     }
 
-    public static boolean timeZoneEquals(JSDynamicObject tz1, JSDynamicObject tz2, JSToStringNode toStringNode) {
+    public static boolean timeZoneEquals(Object tz1, Object tz2, ToTemporalTimeZoneIdentifierNode toTimeZoneIdentifier) {
         if (tz1 == tz2) {
             return true;
         }
-        TruffleString s1 = toStringNode.executeString(tz1);
-        TruffleString s2 = toStringNode.executeString(tz2);
+        TruffleString s1 = toTimeZoneIdentifier.executeString(tz1);
+        TruffleString s2 = toTimeZoneIdentifier.executeString(tz2);
         return Boundaries.equals(s1, s2);
     }
 
@@ -3379,9 +3424,13 @@ public final class TemporalUtil {
         throw Errors.createRangeError("cannot consolidate calendars");
     }
 
-    private static List<JSTemporalInstantObject> getPossibleInstantsFor(TimeZoneMethodsRecord timeZoneRec, JSDynamicObject dateTime) {
+    private static List<JSTemporalInstantObject> getPossibleInstantsFor(JSContext context, JSRealm realm, TimeZoneMethodsRecord timeZoneRec, JSDynamicObject dateTime) {
         assert timeZoneRec.getPossibleInstantsFor() != null;
-        JSDynamicObject possibleInstants = toDynamicObject(JSRuntime.call(timeZoneRec.getPossibleInstantsFor(), timeZoneRec.receiver(), new Object[]{dateTime}));
+        Object receiver = timeZoneRec.receiver();
+        if (receiver instanceof TruffleString identifier) {
+            receiver = createTemporalTimeZone(context, realm, identifier);
+        }
+        Object possibleInstants = JSRuntime.call(timeZoneRec.getPossibleInstantsFor(), receiver, new Object[]{dateTime});
         IteratorRecord iteratorRecord = JSRuntime.getIterator(possibleInstants);
         List<JSTemporalInstantObject> list = new ArrayList<>();
         Object next = true;
@@ -3517,6 +3566,10 @@ public final class TemporalUtil {
 
     public static Object calendarWeekOfYear(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
         return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.WEEK_OF_YEAR);
+    }
+
+    public static Object calendarYearOfWeek(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {
+        return getterNode.execute(calendar, dateLike, CalendarMethodsRecordLookupNode.Key.YEAR_OF_WEEK);
     }
 
     public static Object calendarDaysInWeek(TemporalCalendarGetterNode getterNode, Object calendar, JSDynamicObject dateLike) {

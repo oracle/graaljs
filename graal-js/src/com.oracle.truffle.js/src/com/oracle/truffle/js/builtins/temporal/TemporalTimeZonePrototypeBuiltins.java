@@ -234,7 +234,7 @@ public class TemporalTimeZonePrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
             JSDynamicObject instant = toTemporalInstantNode.execute(instantParam);
             var timeZoneRec = createTimeZoneMethodsRecord.executeOnlyGetOffsetNanosecondsFor(timeZone);
-            return TemporalUtil.builtinTimeZoneGetOffsetStringFor(timeZoneRec, instant);
+            return TemporalUtil.builtinTimeZoneGetOffsetStringFor(getContext(), getRealm(), timeZoneRec, instant);
         }
 
         @SuppressWarnings("unused")

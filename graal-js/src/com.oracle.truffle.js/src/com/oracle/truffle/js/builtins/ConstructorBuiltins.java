@@ -182,7 +182,7 @@ import com.oracle.truffle.js.nodes.intl.InitializeRelativeTimeFormatNode;
 import com.oracle.truffle.js.nodes.intl.InitializeSegmenterNode;
 import com.oracle.truffle.js.nodes.promise.PromiseResolveThenableNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.wasm.ExportByteSourceNode;
 import com.oracle.truffle.js.nodes.wasm.ToWebAssemblyIndexOrSizeNode;
@@ -1468,7 +1468,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Specialization
         protected JSDynamicObject constructTemporalZonedDateTime(JSDynamicObject newTarget, Object epochNanoseconds, Object timeZoneLike, Object calendarLike,
-                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
                         @Cached("createWithISO8601()") ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                         @Cached JSToBigIntNode toBigIntNode,
                         @Cached InlinedBranchProfile errorBranch) {
@@ -1477,7 +1477,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorInvalidNanoseconds();
             }
-            JSDynamicObject timeZone = toTemporalTimeZone.execute(timeZoneLike);
+            Object timeZone = toTimeZoneSlotValue.execute(timeZoneLike);
             Object calendar = toCalendarSlotValue.execute(calendarLike);
 
             JSRealm realm = getRealm();

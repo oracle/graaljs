@@ -43,28 +43,23 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Implementation of the Temporal calendarDay() et al operations.
  */
 public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
     @Child private CalendarMethodsRecordLookupNode getMethodNode;
-    @Child private JSFunctionCallNode callNode;
     @Child private JSToIntegerThrowOnInfinityNode toIntegerThrowOnInfinityNode;
     @Child private JSToStringNode toStringNode;
 
     protected TemporalCalendarGetterNode() {
-        this.callNode = JSFunctionCallNode.createCall();
     }
 
     public abstract Object execute(Object calendar, JSDynamicObject dateLike, CalendarMethodsRecordLookupNode.Key key);
@@ -88,16 +83,10 @@ public abstract class TemporalCalendarGetterNode extends JavaScriptBaseNode {
     @Specialization
     protected Object calendarGetter(Object calendarSlotValue, JSDynamicObject dateLike, CalendarMethodsRecordLookupNode.Key key,
                     @Cached ToTemporalCalendarObjectNode toCalendarObject,
-                    @Cached InlinedBranchProfile errorBranch) {
+                    @Cached("createCall()") JSFunctionCallNode callNode) {
         Object calendar = toCalendarObject.execute(calendarSlotValue);
-        Object fn = getMethod(calendar, key);
-        Object result = callNode.executeCall(JSArguments.create(calendar, fn, dateLike));
-
-        if (result == Undefined.instance) {
-            errorBranch.enter(this);
-            throw Errors.createRangeError("expected a value.");
-        }
-        return result;
+        Object fn = getMethod(calendarSlotValue, key);
+        return callNode.executeCall(JSArguments.create(calendar, fn, dateLike));
     }
 
     private Object getMethod(Object calendar, CalendarMethodsRecordLookupNode.Key key) {

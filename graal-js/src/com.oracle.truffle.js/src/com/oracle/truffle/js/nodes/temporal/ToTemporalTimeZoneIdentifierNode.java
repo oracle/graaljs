@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -38,34 +38,51 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.runtime.builtins.temporal;
+package com.oracle.truffle.js.nodes.temporal;
+
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.Strings;
 
 /**
- * Time Zone Methods Record.
- *
- * Field values may be null in case they have not been read, and therefore must not be used.
- * Conversely, fields that have been read must not be null. The receiver must never be null.
+ * Implementation of ToTemporalTimeZoneIdentifier() operation.
  */
-public record TimeZoneMethodsRecord(
-                /**
-                 * A String or Object. The time zone object, or a string indicating a built-in time
-                 * zone.
-                 */
-                Object receiver,
-                /**
-                 * A function object or undefined. The time zone's getOffsetNanosecondsFor method.
-                 * For a built-in time zone this is always
-                 * %Temporal.TimeZone.prototype.getOffsetNanosecondsFor%.
-                 */
-                Object getOffsetNanosecondsFor,
-                /**
-                 * A function object or undefined. The time zone's getPossibleInstantsFor method.
-                 * For a built-in time zone this is always
-                 * %Temporal.TimeZone.prototype.getPossibleInstantsFor%.
-                 */
-                Object getPossibleInstantsFor) {
+@ImportStatic(Strings.class)
+public abstract class ToTemporalTimeZoneIdentifierNode extends JavaScriptBaseNode {
 
-    public TimeZoneMethodsRecord(Object receiver, Object getOffsetNanosecondsFor) {
-        this(receiver, getOffsetNanosecondsFor, null);
+    protected ToTemporalTimeZoneIdentifierNode() {
     }
+
+    @NeverDefault
+    public static ToTemporalTimeZoneIdentifierNode create() {
+        return ToTemporalTimeZoneIdentifierNodeGen.create();
+    }
+
+    public abstract TruffleString executeString(Object timeZoneSlotValue);
+
+    @Specialization
+    public TruffleString doString(TruffleString timeZoneSlotValue) {
+        return timeZoneSlotValue;
+    }
+
+    @Specialization(guards = "!isString(timeZoneSlotValue)")
+    public TruffleString doNonString(Object timeZoneSlotValue,
+                    @Cached("create(ID_PROPERTY_NAME, getJSContext())") PropertyGetNode getIdNode,
+                    @Cached InlinedBranchProfile errorBranch) {
+        Object identifier = getIdNode.getValue(timeZoneSlotValue);
+        if (identifier instanceof TruffleString stringIdentifier) {
+            return stringIdentifier;
+        } else {
+            errorBranch.enter(this);
+            throw Errors.createTypeErrorNotAString(identifier);
+        }
+    }
+
 }

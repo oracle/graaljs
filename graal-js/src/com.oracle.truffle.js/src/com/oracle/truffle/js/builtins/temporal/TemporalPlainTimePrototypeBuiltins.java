@@ -85,7 +85,7 @@ import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -549,7 +549,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         @Specialization
         protected final JSTemporalZonedDateTimeObject toZonedDateTime(JSTemporalPlainTimeObject time, Object itemParam,
                         @Cached ToTemporalDateNode toTemporalDate,
-                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
             if (!JSRuntime.isObject(itemParam)) {
@@ -568,7 +568,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter(this);
                 throw Errors.createTypeError("TimeZone expected");
             }
-            JSDynamicObject timeZone = toTemporalTimeZone.execute(temporalTimeZoneLike);
+            Object timeZone = toTimeZoneSlotValue.execute(temporalTimeZoneLike);
             var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
 
             JSTemporalPlainDateTimeObject temporalDateTime = JSTemporalPlainDateTime.create(getContext(), getRealm(),

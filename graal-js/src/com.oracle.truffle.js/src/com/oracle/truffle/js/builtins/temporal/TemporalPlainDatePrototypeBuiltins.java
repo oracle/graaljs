@@ -91,7 +91,7 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
-import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -109,7 +109,6 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeOb
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainMonthDayObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainYearMonthObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -142,6 +141,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
         dayOfYear(0),
         dayOfWeek(0),
         weekOfYear(0),
+        yearOfWeek(0),
         daysInWeek(0),
         daysInMonth(0),
         daysInYear(0),
@@ -179,7 +179,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Override
         public boolean isGetter() {
-            return EnumSet.of(calendarId, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, daysInWeek, daysInMonth, daysInYear,
+            return EnumSet.of(calendarId, year, month, monthCode, day, dayOfYear, dayOfWeek, weekOfYear, yearOfWeek, daysInWeek, daysInMonth, daysInYear,
                             monthsInYear, inLeapYear).contains(this);
         }
     }
@@ -196,6 +196,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             case dayOfYear:
             case dayOfWeek:
             case weekOfYear:
+            case yearOfWeek:
             case daysInWeek:
             case daysInMonth:
             case daysInYear:
@@ -283,6 +284,8 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                     return TemporalUtil.calendarMonthCode(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case weekOfYear:
                     return TemporalUtil.calendarWeekOfYear(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
+                case yearOfWeek:
+                    return TemporalUtil.calendarYearOfWeek(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case daysInWeek:
                     return TemporalUtil.calendarDaysInWeek(calendarGetterNode, temporalDT.getCalendar(), temporalDT);
                 case daysInMonth:
@@ -679,24 +682,24 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached InlinedConditionProfile timeZoneIsUndefined,
                         @Cached InlinedConditionProfile timeIsUndefined,
                         @Cached ToTemporalTimeNode toTemporalTime,
-                        @Cached ToTemporalTimeZoneNode toTemporalTimeZone,
+                        @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
                         @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord,
                         @Cached InlinedBranchProfile errorBranch) {
-            JSTemporalTimeZoneObject timeZone;
+            Object timeZone;
             Object temporalTime;
             JSTemporalPlainDateTimeObject temporalDateTime;
             if (isObject(item)) {
                 JSDynamicObject itemObj = TemporalUtil.toJSDynamicObject(item, this, errorBranch);
                 Object timeZoneLike = JSObject.get(itemObj, TIME_ZONE);
                 if (timeZoneIsUndefined.profile(this, timeZoneLike == Undefined.instance)) {
-                    timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.execute(item);
+                    timeZone = toTimeZoneSlotValue.execute(item);
                     temporalTime = Undefined.instance;
                 } else {
-                    timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.execute(timeZoneLike);
+                    timeZone = toTimeZoneSlotValue.execute(timeZoneLike);
                     temporalTime = JSObject.get(itemObj, TemporalConstants.PLAIN_TIME);
                 }
             } else {
-                timeZone = (JSTemporalTimeZoneObject) toTemporalTimeZone.execute(item);
+                timeZone = toTimeZoneSlotValue.execute(item);
                 temporalTime = Undefined.instance;
             }
 

@@ -219,6 +219,7 @@ import com.oracle.truffle.js.runtime.util.StableContextOptionValue;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexCompiledRegexAccessor;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
@@ -339,11 +340,15 @@ public class JSRealm {
     private final Object temporalCalendarDayOfWeekFunctionObject;
     private final Object temporalCalendarDayOfYearFunctionObject;
     private final Object temporalCalendarWeekOfYearFunctionObject;
+    private final Object temporalCalendarYearOfWeekFunctionObject;
     private final Object temporalCalendarDaysInWeekFunctionObject;
     private final Object temporalCalendarDaysInMonthFunctionObject;
     private final Object temporalCalendarDaysInYearFunctionObject;
     private final Object temporalCalendarMonthsInYearFunctionObject;
     private final Object temporalCalendarInLeapYearFunctionObject;
+
+    private final Object temporalTimeZoneGetOffsetNanosecondsForFunctionObject;
+    private final Object temporalTimeZoneGetPossibleInstantsForFunctionObject;
 
     // ES6:
     private final JSFunctionObject symbolConstructor;
@@ -1080,11 +1085,15 @@ public class JSRealm {
             this.temporalCalendarDayOfWeekFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAY_OF_WEEK);
             this.temporalCalendarDayOfYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAY_OF_YEAR);
             this.temporalCalendarWeekOfYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.WEEK_OF_YEAR);
+            this.temporalCalendarYearOfWeekFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.YEAR_OF_WEEK);
             this.temporalCalendarDaysInWeekFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAYS_IN_WEEK);
             this.temporalCalendarDaysInMonthFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAYS_IN_MONTH);
             this.temporalCalendarDaysInYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.DAYS_IN_YEAR);
             this.temporalCalendarMonthsInYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.MONTHS_IN_YEAR);
             this.temporalCalendarInLeapYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.IN_LEAP_YEAR);
+
+            this.temporalTimeZoneGetOffsetNanosecondsForFunctionObject = JSDynamicObject.getOrNull(this.temporalTimeZonePrototype, TemporalUtil.GET_OFFSET_NANOSECONDS_FOR);
+            this.temporalTimeZoneGetPossibleInstantsForFunctionObject = JSDynamicObject.getOrNull(this.temporalTimeZonePrototype, TemporalUtil.GET_POSSIBLE_INSTANTS_FOR);
         } else {
             this.temporalPlainTimeConstructor = null;
             this.temporalPlainTimePrototype = null;
@@ -1121,11 +1130,15 @@ public class JSRealm {
             this.temporalCalendarDayOfWeekFunctionObject = null;
             this.temporalCalendarDayOfYearFunctionObject = null;
             this.temporalCalendarWeekOfYearFunctionObject = null;
+            this.temporalCalendarYearOfWeekFunctionObject = null;
             this.temporalCalendarDaysInWeekFunctionObject = null;
             this.temporalCalendarDaysInMonthFunctionObject = null;
             this.temporalCalendarDaysInYearFunctionObject = null;
             this.temporalCalendarMonthsInYearFunctionObject = null;
             this.temporalCalendarInLeapYearFunctionObject = null;
+
+            this.temporalTimeZoneGetOffsetNanosecondsForFunctionObject = null;
+            this.temporalTimeZoneGetPossibleInstantsForFunctionObject = null;
         }
 
         if (context.getLanguageOptions().shadowRealm()) {
@@ -1736,6 +1749,10 @@ public class JSRealm {
         return temporalCalendarWeekOfYearFunctionObject;
     }
 
+    public Object getTemporalCalendarYearOfWeekFunctionObject() {
+        return temporalCalendarYearOfWeekFunctionObject;
+    }
+
     public Object getTemporalCalendarDaysInWeekFunctionObject() {
         return temporalCalendarDaysInWeekFunctionObject;
     }
@@ -1754,6 +1771,14 @@ public class JSRealm {
 
     public Object getTemporalCalendarInLeapYearFunctionObject() {
         return temporalCalendarInLeapYearFunctionObject;
+    }
+
+    public Object getTemporalTimeZoneGetOffsetNanosecondsForFunctionObject() {
+        return temporalTimeZoneGetOffsetNanosecondsForFunctionObject;
+    }
+
+    public Object getTemporalTimeZoneGetPossibleInstantsForFunctionObject() {
+        return temporalTimeZoneGetPossibleInstantsForFunctionObject;
     }
 
     public final JSDynamicObject getForeignArrayPrototype() {

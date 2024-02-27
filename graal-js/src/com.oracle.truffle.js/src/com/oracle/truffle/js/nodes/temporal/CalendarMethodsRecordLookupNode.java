@@ -72,6 +72,7 @@ public abstract class CalendarMethodsRecordLookupNode extends JavaScriptBaseNode
         DAY_OF_WEEK(TemporalConstants.DAY_OF_WEEK),
         DAY_OF_YEAR(TemporalConstants.DAY_OF_YEAR),
         WEEK_OF_YEAR(TemporalConstants.WEEK_OF_YEAR),
+        YEAR_OF_WEEK(TemporalConstants.YEAR_OF_WEEK),
         DAYS_IN_WEEK(TemporalConstants.DAYS_IN_WEEK),
         DAYS_IN_MONTH(TemporalConstants.DAYS_IN_MONTH),
         DAYS_IN_YEAR(TemporalConstants.DAYS_IN_YEAR),
@@ -164,6 +165,7 @@ public abstract class CalendarMethodsRecordLookupNode extends JavaScriptBaseNode
             case DAY_OF_WEEK -> realm.getTemporalCalendarDayOfWeekFunctionObject();
             case DAY_OF_YEAR -> realm.getTemporalCalendarDayOfYearFunctionObject();
             case WEEK_OF_YEAR -> realm.getTemporalCalendarWeekOfYearFunctionObject();
+            case YEAR_OF_WEEK -> realm.getTemporalCalendarYearOfWeekFunctionObject();
             case DAYS_IN_WEEK -> realm.getTemporalCalendarDaysInWeekFunctionObject();
             case DAYS_IN_MONTH -> realm.getTemporalCalendarDaysInMonthFunctionObject();
             case DAYS_IN_YEAR -> realm.getTemporalCalendarDaysInYearFunctionObject();
