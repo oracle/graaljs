@@ -676,11 +676,6 @@ public abstract class JSNonProxy extends JSClass {
     }
 
     @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return Strings.UC_OBJECT;
-    }
-
-    @Override
     public boolean usesOrdinaryGetOwnProperty() {
         return true;
     }

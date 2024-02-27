@@ -441,11 +441,6 @@ public final class JSError extends JSNonProxy {
         return CLASS_NAME;
     }
 
-    @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
-    }
-
     public static boolean isJSError(Object obj) {
         return obj instanceof JSErrorObject;
     }

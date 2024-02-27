@@ -51,6 +51,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
 import com.oracle.truffle.js.nodes.access.WriteElementNode;
@@ -92,6 +93,16 @@ public final class JSArrayObject extends JSArrayBase implements JSCopyableObject
     protected JSObject copyWithoutProperties(Shape shape) {
         Object clonedArray = ((DynamicArray) getArrayType()).cloneArray(this);
         return new JSArrayObject(shape, getPrototypeOf(), getArrayType(), clonedArray, null, length, usedLength, indexOffset, arrayOffset, holeCount);
+    }
+
+    @Override
+    public TruffleString getClassName() {
+        return getBuiltinToStringTag();
+    }
+
+    @Override
+    public TruffleString getBuiltinToStringTag() {
+        return JSArray.CLASS_NAME;
     }
 
     @SuppressWarnings("unused")

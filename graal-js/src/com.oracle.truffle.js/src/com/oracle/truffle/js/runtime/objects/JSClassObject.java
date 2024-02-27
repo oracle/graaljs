@@ -161,9 +161,4 @@ public abstract class JSClassObject extends JSObject {
         return getJSClass().toDisplayStringImpl(this, allowSideEffects, format, depth);
     }
 
-    @Override
-    public TruffleString getBuiltinToStringTag() {
-        return getJSClass().getBuiltinToStringTag(this);
-    }
-
 }

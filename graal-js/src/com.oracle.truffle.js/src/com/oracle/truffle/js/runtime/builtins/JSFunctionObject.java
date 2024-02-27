@@ -117,13 +117,13 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     }
 
     @Override
-    public TruffleString getClassName() {
-        return JSFunction.INSTANCE.getClassName(this);
+    public final TruffleString getClassName() {
+        return getBuiltinToStringTag();
     }
 
     @Override
-    public TruffleString getBuiltinToStringTag() {
-        return JSFunction.INSTANCE.getBuiltinToStringTag(this);
+    public final TruffleString getBuiltinToStringTag() {
+        return JSFunction.CLASS_NAME;
     }
 
     @ExportMessage

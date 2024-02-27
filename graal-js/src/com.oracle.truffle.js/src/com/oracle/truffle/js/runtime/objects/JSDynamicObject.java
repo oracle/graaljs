@@ -270,15 +270,12 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     }
 
     /**
-     * Returns builtinTag from step 14 of ES6+ 19.1.3.6. By default returns "Object".
+     * Returns builtinTag as per Object.prototype.toString(). By default returns "Object".
      *
-     * @return "Object" by default
-     * @see #defaultToString()
+     * @return built-in toStringTag
      */
     @TruffleBoundary
-    public TruffleString getBuiltinToStringTag() {
-        return getClassName();
-    }
+    public abstract TruffleString getBuiltinToStringTag();
 
     /**
      * A more informative toString variant, mainly used for error messages.

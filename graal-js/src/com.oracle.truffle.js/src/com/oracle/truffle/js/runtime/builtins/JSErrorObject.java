@@ -51,6 +51,7 @@ import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -85,6 +86,16 @@ public final class JSErrorObject extends JSNonProxyObject implements JSCopyableO
 
     public void setException(GraalJSException exception) {
         this.exception = exception;
+    }
+
+    @Override
+    public TruffleString getClassName() {
+        return getBuiltinToStringTag();
+    }
+
+    @Override
+    public TruffleString getBuiltinToStringTag() {
+        return JSError.CLASS_NAME;
     }
 
     @ExportMessage

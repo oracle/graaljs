@@ -271,11 +271,6 @@ public abstract class JSAbstractArray extends JSNonProxy {
         return true;
     }
 
-    @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
-    }
-
     @TruffleBoundary
     @Override
     public final Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {

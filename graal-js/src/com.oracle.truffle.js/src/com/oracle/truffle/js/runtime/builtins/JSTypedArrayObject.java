@@ -54,7 +54,6 @@ import com.oracle.truffle.js.nodes.access.WriteElementNode;
 import com.oracle.truffle.js.nodes.interop.ExportValueNode;
 import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.interop.InteropArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -82,11 +81,6 @@ public final class JSTypedArrayObject extends JSArrayBufferViewBase {
     @Override
     public TruffleString getClassName() {
         return JSArrayBufferView.typedArrayGetName(this);
-    }
-
-    @Override
-    public TruffleString getBuiltinToStringTag() {
-        return Strings.UC_OBJECT;
     }
 
     @ExportMessage

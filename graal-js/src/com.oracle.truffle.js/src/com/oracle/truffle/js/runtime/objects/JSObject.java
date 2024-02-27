@@ -560,6 +560,16 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
     }
 
     /**
+     * Returns builtinTag as per Object.prototype.toString(). By default returns "Object".
+     *
+     * @return built-in toStringTag
+     */
+    @Override
+    public TruffleString getBuiltinToStringTag() {
+        return Strings.UC_OBJECT;
+    }
+
+    /**
      * ES2015 7.1.1 ToPrimitive in case an Object is passed.
      */
     @TruffleBoundary

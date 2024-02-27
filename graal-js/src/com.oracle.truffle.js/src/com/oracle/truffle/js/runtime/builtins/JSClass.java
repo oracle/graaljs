@@ -230,17 +230,6 @@ public abstract class JSClass {
     public abstract String toString();
 
     /**
-     * Returns builtinTag from step 14 of ES6+ 19.1.3.6. By default, returns "Object".
-     *
-     * @param object object to be used
-     * @return built-in toStringTag or "Object"
-     */
-    @TruffleBoundary
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
-    }
-
-    /**
      * A more informative toString variant, mainly used for error messages.
      *
      * @param format formatting parameters

@@ -106,6 +106,11 @@ public final class Nullish extends JSDynamicObject {
 
     @Override
     public TruffleString getClassName() {
+        return getBuiltinToStringTag();
+    }
+
+    @Override
+    public TruffleString getBuiltinToStringTag() {
         return this == Undefined.instance ? Undefined.NAME : Null.NAME;
     }
 

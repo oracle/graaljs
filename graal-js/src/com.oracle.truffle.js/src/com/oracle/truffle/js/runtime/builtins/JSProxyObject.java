@@ -60,6 +60,7 @@ import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 import com.oracle.truffle.js.runtime.objects.JSClassObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -89,6 +90,29 @@ public final class JSProxyObject extends JSClassObject {
     public void revoke(boolean isCallable, boolean isConstructor) {
         this.proxyHandler = Null.instance;
         this.proxyTarget = RevokedTarget.lookup(isCallable, isConstructor);
+    }
+
+    @Override
+    public TruffleString getBuiltinToStringTag() {
+        Object targetNonProxy = JSProxy.getTargetNonProxy(this);
+        if (JSDynamicObject.isJSDynamicObject(targetNonProxy)) {
+            if (JSArray.isJSArray(targetNonProxy)) {
+                return JSArray.CLASS_NAME;
+            } else if (JSFunction.isJSFunction(targetNonProxy)) {
+                return JSFunction.CLASS_NAME;
+            } else {
+                return Strings.UC_OBJECT;
+            }
+        } else {
+            InteropLibrary interop = InteropLibrary.getUncached(targetNonProxy);
+            if (interop.hasArrayElements(targetNonProxy)) {
+                return JSArray.CLASS_NAME;
+            } else if (interop.isExecutable(targetNonProxy) || interop.isInstantiable(targetNonProxy)) {
+                return JSFunction.CLASS_NAME;
+            } else {
+                return Strings.UC_OBJECT;
+            }
+        }
     }
 
     @ExportMessage

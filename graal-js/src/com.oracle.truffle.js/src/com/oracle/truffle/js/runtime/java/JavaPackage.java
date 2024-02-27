@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -164,11 +164,6 @@ public final class JavaPackage extends JSNonProxy {
     @Override
     public TruffleString getClassName(JSDynamicObject object) {
         return CLASS_NAME;
-    }
-
-    @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
     }
 
     @TruffleBoundary

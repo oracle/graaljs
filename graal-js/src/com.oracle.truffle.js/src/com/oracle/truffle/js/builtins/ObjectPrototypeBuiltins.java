@@ -84,7 +84,6 @@ import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.JSClass;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -383,14 +382,14 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @SuppressWarnings("unused")
         @Specialization(guards = {"cachedClass != null", "cachedClass.isInstance(object)"}, limit = "5")
         protected static TruffleString cached(JSObject object,
-                        @Cached("getJSClass(object)") JSClass cachedClass) {
-            return cachedClass.getBuiltinToStringTag(object);
+                        @Cached("object.getClass()") Class<? extends JSObject> cachedClass) {
+            return cachedClass.cast(object).getBuiltinToStringTag();
         }
 
         @TruffleBoundary
         @Specialization(replaces = "cached")
         protected static TruffleString uncached(JSObject object) {
-            return JSObject.getJSClass(object).getBuiltinToStringTag(object);
+            return object.getBuiltinToStringTag();
         }
     }
 

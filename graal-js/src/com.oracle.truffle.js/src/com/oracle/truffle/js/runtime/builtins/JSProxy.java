@@ -578,29 +578,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     // internal methods
 
     @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        Object targetNonProxy = getTargetNonProxy(object);
-        if (JSDynamicObject.isJSDynamicObject(targetNonProxy)) {
-            if (JSArray.isJSArray(targetNonProxy)) {
-                return JSArray.CLASS_NAME;
-            } else if (JSFunction.isJSFunction(targetNonProxy)) {
-                return JSFunction.CLASS_NAME;
-            } else {
-                return Strings.UC_OBJECT;
-            }
-        } else {
-            InteropLibrary interop = InteropLibrary.getUncached(targetNonProxy);
-            if (interop.hasArrayElements(targetNonProxy)) {
-                return JSArray.CLASS_NAME;
-            } else if (interop.isExecutable(targetNonProxy) || interop.isInstantiable(targetNonProxy)) {
-                return JSFunction.CLASS_NAME;
-            } else {
-                return Strings.UC_OBJECT;
-            }
-        }
-    }
-
-    @Override
     public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
         if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
             return obj.defaultToString();
