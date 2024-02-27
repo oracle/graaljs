@@ -63,7 +63,6 @@ public final class NIOBuffer extends JSNonProxy {
 
     public static final TruffleString NIO_BUFFER_MODULE_NAME = Strings.constant("node:internal/graal/buffer");
 
-    private static final TruffleString CLASS_NAME = Strings.constant("NIOBuffer");
     private static final TruffleString NIO_BUFFER_BUILTINS_INIT_FUNCTION = Strings.constant("NIOBufferBuiltinsInitFunction");
 
     private NIOBuffer() {

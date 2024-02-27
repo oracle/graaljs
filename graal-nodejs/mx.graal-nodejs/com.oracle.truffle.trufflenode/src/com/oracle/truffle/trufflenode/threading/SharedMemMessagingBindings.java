@@ -62,7 +62,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
  */
 public final class SharedMemMessagingBindings extends JSNonProxy {
 
-    private static final TruffleString CLASS_NAME = Strings.constant("SharedMemMessaging");
     private static final TruffleString SHARED_MEM_MESSAGING_INIT = Strings.constant("SharedMemMessagingInit");
 
     private static final SharedMemMessagingBindings INSTANCE = new SharedMemMessagingBindings();

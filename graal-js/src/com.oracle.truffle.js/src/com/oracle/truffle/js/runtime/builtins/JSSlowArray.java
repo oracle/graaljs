@@ -61,8 +61,6 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 public final class JSSlowArray extends JSAbstractArray {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("Array");
-
     public static final JSSlowArray INSTANCE = new JSSlowArray();
 
     private JSSlowArray() {
