@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import com.oracle.truffle.js.runtime.JSAgent;
 public class NodeJSAgent extends JSAgent {
 
     private Thread thread;
+    private long taskRunnerPointer;
 
     NodeJSAgent() {
         super(true);
@@ -58,9 +59,13 @@ public class NodeJSAgent extends JSAgent {
         return thread;
     }
 
+    void setTaskRunnerPointer(long taskRunnerPointer) {
+        this.taskRunnerPointer = taskRunnerPointer;
+    }
+
     @Override
     public void wake() {
-        // Not supported currently.
+        NativeAccess.postWakeUpTask(taskRunnerPointer);
     }
 
     @Override
