@@ -284,11 +284,10 @@ public final class ObjectPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         private TruffleString getToStringTag(JSObject thisObj) {
-            if (getContext().getEcmaScriptVersion() >= 6) {
-                Object toStringTag = getStringTagNode.getValue(thisObj);
-                if (Strings.isTString(toStringTag)) {
-                    return (TruffleString) toStringTag;
-                }
+            // Note: Also used in ES5 mode to override [[Class]] for Nashorn compatibility.
+            Object toStringTag = getStringTagNode.getValue(thisObj);
+            if (toStringTag instanceof TruffleString) {
+                return (TruffleString) toStringTag;
             }
             return null;
         }

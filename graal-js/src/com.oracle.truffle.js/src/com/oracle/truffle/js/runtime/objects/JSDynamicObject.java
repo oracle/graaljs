@@ -244,22 +244,20 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
     }
 
     /**
-     * Follows 19.1.3.6 Object.prototype.toString(), basically: "[object " + [[Symbol.toStringTag]]
-     * + "]" or typically "[object Object]" (for non built-in types) if [[Symbol.toStringTag]] is
-     * not present.
-     * <p>
-     * For ES5, if follows 15.2.4.2 Object.prototype.toString(), basically: "[object " + [[Class]] +
-     * "]".
+     * Returns the equivalent of Object.prototype.toString(), i.e., for ES2015+:
+     * {@code "[object " + toStringTag + "]"}, where toStringTag is either the value of the object's
+     * {@code Symbol.toStringTag} property, if present and a string value, or else, the builtinTag
+     * (default: "Object") according to Object.prototype.toString().
+     *
+     * For ES5, the [[Class]] internal property is used instead, i.e.:
+     * {@code "[object " + [[Class]] + "]"}, although in some cases we still use
+     * {@code Symbol.toStringTag} to override [[Class]] for Nashorn compatibility.
      *
      * @see #getBuiltinToStringTag()
      */
     @TruffleBoundary
     public TruffleString defaultToString() {
-        JSContext context = getJSContext();
-        if (context.getEcmaScriptVersion() <= 5) {
-            return JSObjectUtil.formatToString(getClassName());
-        }
-        TruffleString result = getBuiltinToStringTag();
+        TruffleString result = getJSContext().getEcmaScriptVersion() > 5 ? getBuiltinToStringTag() : getClassName();
         if (isObject()) {
             Object toStringTag = getValue(Symbol.SYMBOL_TO_STRING_TAG);
             if (Strings.isTString(toStringTag)) {
