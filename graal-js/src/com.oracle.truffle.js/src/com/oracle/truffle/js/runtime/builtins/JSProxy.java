@@ -122,11 +122,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     private JSProxy() {
     }
 
-    @Override
-    public String toString() {
-        return Strings.toJavaString(CLASS_NAME);
-    }
-
     public static JSProxyObject create(JSContext context, JSRealm realm, Object target, JSDynamicObject handler) {
         JSObjectFactory factory = context.getProxyFactory();
         return create(factory, realm, factory.getPrototype(realm), target, handler);

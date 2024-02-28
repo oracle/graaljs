@@ -82,11 +82,6 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
         return CLASS_NAME;
     }
 
-    @Override
-    public String toString() {
-        return Strings.toJavaString(getClassName());
-    }
-
     public static JSObject create(JSContext context, JSRealm realm, JSDynamicObject adaptee, JSDynamicObject overrides, JSDynamicObject protoOpt) {
         JSObjectFactory factory = context.getJSAdapterFactory();
         JSDynamicObject prototype = protoOpt != null ? protoOpt : factory.getPrototype(realm);

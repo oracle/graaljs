@@ -584,11 +584,6 @@ public abstract class JSNonProxy extends JSClass {
         return JSShape.isExtensible(thisObj.getShape());
     }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
-    }
-
     @TruffleBoundary
     @Override
     public final JSDynamicObject getPrototypeOf(JSDynamicObject thisObj) {

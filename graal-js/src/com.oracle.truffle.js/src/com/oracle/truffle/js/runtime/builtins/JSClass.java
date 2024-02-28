@@ -214,7 +214,9 @@ public abstract class JSClass {
 
     @Override
     @TruffleBoundary
-    public abstract String toString();
+    public String toString() {
+        return getClass().getSimpleName();
+    }
 
     public final boolean isInstance(JSDynamicObject object) {
         return isInstance(object, this);

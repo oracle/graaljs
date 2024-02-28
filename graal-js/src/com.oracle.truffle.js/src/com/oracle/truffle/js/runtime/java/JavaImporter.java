@@ -73,11 +73,6 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
         return CLASS_NAME;
     }
 
-    @Override
-    public String toString() {
-        return Strings.toJavaString(CLASS_NAME);
-    }
-
     public static JavaImporterObject create(JSContext context, JSRealm realm, Object[] value) {
         JSObjectFactory factory = context.getJavaImporterFactory();
         var proto = factory.getPrototype(realm);
