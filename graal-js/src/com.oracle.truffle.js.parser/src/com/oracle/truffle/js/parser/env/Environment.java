@@ -198,9 +198,9 @@ public abstract class Environment {
                 scopeLevel = 0;
             } else if (current instanceof BlockEnvironment && current.hasScopeFrame()) {
                 scopeLevel++;
-            } else if (current instanceof DebugEnvironment && name instanceof TruffleString) {
-                if (allowDebug && ((DebugEnvironment) current).hasMember((TruffleString) name)) {
-                    return new DebugVarRef((TruffleString) name, frameLevel);
+            } else if (current instanceof DebugEnvironment && name instanceof TruffleString nameStr) {
+                if (allowDebug && ((DebugEnvironment) current).hasMember(nameStr)) {
+                    return new DebugVarRef(nameStr, frameLevel);
                 }
             }
             current = current.getParent();
@@ -985,7 +985,7 @@ public abstract class Environment {
 
         private GlobalLexVarRef(Object name, boolean isConst, GlobalEnvironment globalEnv, boolean required, boolean checkTDZ) {
             super(name);
-            assert name instanceof TruffleString && !name.equals(Null.NAME) && !GlobalEnvironment.isGlobalObjectConstant((TruffleString) name) : name;
+            assert name instanceof TruffleString nameStr && !nameStr.equals(Null.NAME) && !GlobalEnvironment.isGlobalObjectConstant(nameStr) : name;
             this.isConst = isConst;
             this.required = required;
             this.checkTDZ = checkTDZ;

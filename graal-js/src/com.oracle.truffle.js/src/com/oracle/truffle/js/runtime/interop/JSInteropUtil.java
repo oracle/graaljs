@@ -362,8 +362,8 @@ public final class JSInteropUtil {
 
     @TruffleBoundary
     public static boolean hasProperty(Object obj, Object key) {
-        if (key instanceof TruffleString) {
-            return InteropLibrary.getUncached().isMemberExisting(obj, Strings.toJavaString((TruffleString) key));
+        if (key instanceof TruffleString name) {
+            return InteropLibrary.getUncached().isMemberExisting(obj, Strings.toJavaString(name));
         } else {
             return false;
         }

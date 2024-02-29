@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -149,8 +149,8 @@ final class ScopeMembers implements TruffleObject {
                         JSDynamicObject evalScope = (JSDynamicObject) targetFrame.getObject(slot);
                         DynamicObjectLibrary objLib = DynamicObjectLibrary.getUncached();
                         for (Object key : objLib.getKeyArray(evalScope)) {
-                            if (key instanceof TruffleString) {
-                                membersList.add(new Key((TruffleString) key, descNode));
+                            if (key instanceof TruffleString name) {
+                                membersList.add(new Key(name, descNode));
                             }
                         }
                     } else if (JSFrameUtil.isThisSlot(frameDescriptor, slot)) {

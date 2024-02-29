@@ -388,8 +388,8 @@ public class ReflectBuiltins extends JSBuiltinsContainer.SwitchEnum<ReflectBuilt
                         @Shared @Cached JSClassProfile jsclassProfile) {
             Object key = toPropertyKeyNode.execute(propertyKey);
             if (interop.hasMembers(target)) {
-                if (key instanceof TruffleString) {
-                    boolean result = interop.isMemberExisting(target, Strings.toJavaString(toJavaStringNode, (TruffleString) key));
+                if (key instanceof TruffleString name) {
+                    boolean result = interop.isMemberExisting(target, Strings.toJavaString(toJavaStringNode, name));
                     if (!result && getContext().getLanguageOptions().hasForeignObjectPrototype()) {
                         JSDynamicObject prototype = foreignObjectPrototypeNode.execute(target);
                         result = JSObject.hasProperty(prototype, key, jsclassProfile);

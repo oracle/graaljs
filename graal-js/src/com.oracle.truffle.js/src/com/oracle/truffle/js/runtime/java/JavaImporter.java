@@ -93,8 +93,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     @TruffleBoundary
     @Override
     public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
-        if (key instanceof TruffleString) {
-            TruffleString name = (TruffleString) key;
+        if (key instanceof TruffleString name) {
             Object[] imports = getImports(store);
             JSRealm realm = JSRealm.get(null);
             // Nashorn searches the imports from the last one

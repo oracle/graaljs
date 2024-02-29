@@ -941,10 +941,10 @@ public final class JSRuntime {
             return Null.NAME;
         } else if (value instanceof Boolean) {
             return booleanToString((Boolean) value);
-        } else if (value instanceof TruffleString) {
-            return format.quoteString() ? quote((TruffleString) value) : (TruffleString) value;
-        } else if (value instanceof String) {
-            return format.quoteString() ? quote(Strings.fromJavaString((String) value)) : Strings.fromJavaString((String) value);
+        } else if (value instanceof TruffleString str) {
+            return format.quoteString() ? quote(str) : str;
+        } else if (value instanceof String str) {
+            return format.quoteString() ? quote(Strings.fromJavaString(str)) : Strings.fromJavaString(str);
         } else if (JSObject.isJSObject(value)) {
             return ((JSObject) value).toDisplayStringImpl(allowSideEffects, format, depth);
         } else if (value instanceof Symbol) {

@@ -1899,8 +1899,7 @@ public final class TemporalUtil {
         JSDynamicObject merged = JSOrdinary.createWithNullPrototype(ctx);
         UnmodifiableArrayList<?> keys = namesNode.execute(options);
         for (Object nextKey : keys) {
-            if (nextKey instanceof TruffleString) {
-                TruffleString key = (TruffleString) nextKey;
+            if (nextKey instanceof TruffleString key) {
                 Object propValue = JSObject.get(options, key);
                 createDataPropertyOrThrow(ctx, merged, key, propValue);
             }

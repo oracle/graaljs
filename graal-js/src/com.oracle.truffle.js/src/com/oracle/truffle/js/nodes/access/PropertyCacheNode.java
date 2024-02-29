@@ -1112,7 +1112,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected static boolean alwaysUseStore(JSDynamicObject store, Object key) {
         return (key instanceof HiddenKey) || JSProxy.isJSProxy(store) ||
-                        (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString) && JSRuntime.canonicalNumericIndexString((TruffleString) key) != Undefined.instance);
+                        (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString indexStr) && JSRuntime.canonicalNumericIndexString(indexStr) != Undefined.instance);
     }
 
     protected final void deoptimize(CacheNode<?> stop) {
