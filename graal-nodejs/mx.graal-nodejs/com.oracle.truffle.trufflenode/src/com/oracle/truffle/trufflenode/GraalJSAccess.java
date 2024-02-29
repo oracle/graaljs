@@ -392,6 +392,7 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, "true");
             contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
             contextBuilder.option(JSContextOptions.CLASS_FIELDS_NAME, "true");
+            contextBuilder.option(JSContextOptions.ATOMICS_WAIT_ASYNC_NAME, "true");
             // Node.js does not have global load property
             contextBuilder.option(JSContextOptions.LOAD_NAME, "false");
             // Node.js provides its own console
