@@ -1041,7 +1041,7 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         protected static boolean isShortStringInt10(Object input, Object radix) {
-            return Strings.isTString(input) && Strings.length((TruffleString) input) < 15 && radix instanceof Integer && ((Integer) radix) == 10;
+            return input instanceof TruffleString inputStr && Strings.length(inputStr) < 15 && radix instanceof Integer radixInt && radixInt == 10;
         }
 
         @Specialization(guards = "!isShortStringInt10(input, radix0)")
@@ -1595,8 +1595,8 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         CompilerAsserts.neverPartOfCompilation();
         try {
             String path;
-            if (Strings.isTString(arg)) {
-                path = Strings.toJavaString((TruffleString) arg);
+            if (arg instanceof TruffleString str) {
+                path = Strings.toJavaString(str);
             } else {
                 // if arg is a java.io.File, invokes toString() (equivalent to getPath()).
                 path = JSRuntime.toJavaString(arg);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,16 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -64,6 +69,11 @@ public final class JSBooleanObject extends JSNonProxyObject {
 
     @Override
     public TruffleString getClassName() {
+        return getBuiltinToStringTag();
+    }
+
+    @Override
+    public TruffleString getBuiltinToStringTag() {
         return JSBoolean.CLASS_NAME;
     }
 
@@ -80,5 +90,17 @@ public final class JSBooleanObject extends JSNonProxyObject {
     @ExportMessage
     public boolean asBoolean() {
         return JSBoolean.valueOf(this);
+    }
+
+    @TruffleBoundary
+    @Override
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
+            return Strings.concatAll(Strings.BRACKET_BOOLEAN_SPC, Strings.fromBoolean(JSBoolean.valueOf(this)), Strings.BRACKET_CLOSE);
+        } else {
+            boolean primitiveValue = JSBoolean.valueOf(this);
+            return JSRuntime.objectToDisplayString(this, allowSideEffects, format, depth,
+                            getBuiltinToStringTag(), new TruffleString[]{Strings.PRIMITIVE_VALUE}, new Object[]{primitiveValue});
+        }
     }
 }

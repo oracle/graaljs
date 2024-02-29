@@ -991,8 +991,8 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
             Object key = root.getKey();
-            if (Strings.isTString(key)) {
-                return JavaPackage.getJavaClassOrConstructorOrSubPackage(root.getContext(), (JSDynamicObject) thisObj, (TruffleString) key);
+            if (key instanceof TruffleString propertyName) {
+                return JavaPackage.getJavaClassOrConstructorOrSubPackage(root.getContext(), (JSDynamicObject) thisObj, propertyName);
             } else {
                 return Undefined.instance;
             }
@@ -1009,11 +1009,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
         @Override
         protected Object getValue(Object thisObj, Object receiver, Object defaultValue, PropertyGetNode root, boolean guard) {
-            TruffleString thisStr = JSRuntime.toStringIsString(thisObj);
-            if (Strings.isTString(root.getKey())) {
+            TruffleString thisStr = (TruffleString) thisObj;
+            if (root.getKey() instanceof TruffleString propertyName) {
                 Object boxedString = root.getRealm().getEnv().asBoxedGuestValue(Strings.toJavaString(thisStr));
                 try {
-                    return interop.readMember(boxedString, Strings.toJavaString((TruffleString) root.getKey()));
+                    return interop.readMember(boxedString, Strings.toJavaString(propertyName));
                 } catch (UnknownIdentifierException | UnsupportedMessageException e) {
                 }
             }
@@ -1143,7 +1143,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         }
 
         private Object getImpl(Object thisObj, Object key, PropertyGetNode root) {
-            if (!(Strings.isTString(key))) {
+            if (!(key instanceof TruffleString propertyName)) {
                 return maybeGetFromPrototype(thisObj, key);
             }
             if (context.getLanguageOptions().hasForeignHashProperties() && interop.hasHashEntries(thisObj)) {
@@ -1161,7 +1161,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                     return result;
                 }
             }
-            String stringKey = Strings.toJavaString((TruffleString) key);
+            String stringKey = Strings.toJavaString(propertyName);
             if (optimistic) {
                 try {
                     return interop.readMember(thisObj, stringKey);

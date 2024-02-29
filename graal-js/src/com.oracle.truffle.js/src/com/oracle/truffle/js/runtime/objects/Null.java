@@ -44,7 +44,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.AbstractJSClass;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
 
@@ -70,11 +69,6 @@ public final class Null {
         }
 
         @Override
-        public TruffleString getClassName(JSDynamicObject object) {
-            return object == Undefined.instance ? Undefined.NAME : Null.NAME;
-        }
-
-        @Override
         public String toString() {
             return "null|undefined";
         }
@@ -87,16 +81,6 @@ public final class Null {
         @Override
         public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
             throw Errors.createTypeErrorCannotDeletePropertyOf(key, thisObj);
-        }
-
-        @Override
-        public TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-            return object == Undefined.instance ? DISPLAY_STRING_UNDEFINED : DISPLAY_STRING_NULL;
-        }
-
-        @Override
-        public TruffleString defaultToString(JSDynamicObject thisObj) {
-            return thisObj == Undefined.instance ? Undefined.NAME : Null.NAME;
         }
     }
 }

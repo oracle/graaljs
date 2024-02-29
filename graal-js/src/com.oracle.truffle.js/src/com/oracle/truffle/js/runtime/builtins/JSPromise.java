@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -111,11 +110,6 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
-    }
-
-    @Override
     public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         return JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
     }
@@ -145,14 +139,7 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
         promise.setPromiseState(promiseState);
     }
 
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        JSPromiseObject promiseObj = (JSPromiseObject) obj;
-        return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                        CLASS_NAME, new TruffleString[]{Strings.PROMISE_STATUS, Strings.PROMISE_VALUE}, new Object[]{getStatus(promiseObj), getPromiseResult(promiseObj)});
-    }
-
-    private static TruffleString getStatus(JSPromiseObject obj) {
+    public static TruffleString getStatus(JSPromiseObject obj) {
         if (isFulfilled(obj)) {
             return Strings.RESOLVED;
         } else if (isRejected(obj)) {

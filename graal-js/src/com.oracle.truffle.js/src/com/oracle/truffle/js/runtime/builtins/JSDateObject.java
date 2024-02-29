@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.ZoneId;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
@@ -51,7 +52,10 @@ import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -78,12 +82,12 @@ public final class JSDateObject extends JSNonProxyObject {
 
     @Override
     public TruffleString getClassName() {
-        return JSDate.CLASS_NAME;
+        return getBuiltinToStringTag();
     }
 
     @Override
     public TruffleString getBuiltinToStringTag() {
-        return getClassName();
+        return JSDate.CLASS_NAME;
     }
 
     @ExportMessage(name = "isDate")
@@ -120,6 +124,23 @@ public final class JSDateObject extends JSNonProxyObject {
             return JSRealm.get(self).getLocalTimeZoneId();
         } else {
             throw UnsupportedMessageException.create();
+        }
+    }
+
+    @TruffleBoundary
+    @Override
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        double time = JSDate.getTimeMillisField(this);
+        TruffleString formattedDate;
+        if (JSDate.isTimeValid(time)) {
+            formattedDate = JSDate.toISOStringIntl(time, JSRealm.get(null));
+        } else {
+            formattedDate = JSDate.INVALID_DATE_STRING;
+        }
+        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
+            return Strings.concatAll(Strings.BRACKET_DATE_SPC, formattedDate, Strings.BRACKET_CLOSE);
+        } else {
+            return formattedDate;
         }
     }
 }

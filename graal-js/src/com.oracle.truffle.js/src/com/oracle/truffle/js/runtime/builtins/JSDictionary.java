@@ -68,7 +68,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -96,16 +95,6 @@ public final class JSDictionary extends JSNonProxy {
 
     public static boolean isJSDictionaryObject(JSDynamicObject obj) {
         return isInstance(obj, INSTANCE);
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return Strings.UC_OBJECT;
-    }
-
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return defaultToString(obj);
     }
 
     /**
@@ -144,7 +133,7 @@ public final class JSDictionary extends JSNonProxy {
         List<Object> keys = ordinaryOwnPropertyKeysSlow(thisObj, strings, symbols);
         for (Object key : getHashMap(thisObj).getKeys()) {
             assert JSRuntime.isPropertyKey(key);
-            if ((!symbols && key instanceof Symbol) || (!strings && Strings.isTString(key))) {
+            if ((!symbols && key instanceof Symbol) || (!strings && key instanceof TruffleString)) {
                 continue;
             }
             keys.add(key);

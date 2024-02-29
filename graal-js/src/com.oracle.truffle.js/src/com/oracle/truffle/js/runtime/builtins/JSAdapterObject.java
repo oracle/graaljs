@@ -40,10 +40,13 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.library.ExportLibrary;
 import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 import com.oracle.truffle.js.runtime.objects.JSClassObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -87,5 +90,16 @@ public final class JSAdapterObject extends JSClassObject {
     @Override
     public boolean preventExtensions(boolean doThrow) {
         return JSAdapter.INSTANCE.preventExtensions(this, doThrow);
+    }
+
+    @Override
+    public TruffleString getClassName() {
+        return JSAdapter.CLASS_NAME;
+    }
+
+    @TruffleBoundary
+    @Override
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return defaultToString();
     }
 }

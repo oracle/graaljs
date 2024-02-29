@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -471,7 +471,7 @@ public abstract class JSConstantNode extends JavaScriptNode implements Repeatabl
     @TruffleBoundary
     public Map<String, Object> getDebugProperties() {
         Map<String, Object> map = super.getDebugProperties();
-        map.put("value", Strings.isTString(getValue()) ? JSRuntime.quote(Strings.toJavaString((TruffleString) getValue())) : getValue());
+        map.put("value", getValue() instanceof TruffleString strValue ? JSRuntime.quote(Strings.toJavaString(strValue)) : getValue());
         return map;
     }
 

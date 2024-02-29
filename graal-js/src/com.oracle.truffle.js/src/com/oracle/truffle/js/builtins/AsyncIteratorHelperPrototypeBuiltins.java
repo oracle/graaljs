@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,8 +82,6 @@ public class AsyncIteratorHelperPrototypeBuiltins extends JSBuiltinsContainer.Sw
     public static final JSBuiltinsContainer BUILTINS = new AsyncIteratorHelperPrototypeBuiltins();
 
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("AsyncIteratorHelper.prototype");
-
-    public static final TruffleString CLASS_NAME = Strings.constant("AsyncIteratorHelper");
 
     public static final TruffleString TO_STRING_TAG = Strings.constant("Async Iterator Helper");
 

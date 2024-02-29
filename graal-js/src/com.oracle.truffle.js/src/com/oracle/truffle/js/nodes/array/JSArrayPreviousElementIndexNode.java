@@ -44,16 +44,15 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
-import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedExactClassProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.JSHasPropertyNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -177,8 +176,8 @@ public abstract class JSArrayPreviousElementIndexNode extends JSArrayElementInde
             if (key == null) {
                 continue;
             }
-            if (Strings.isTString(key)) {
-                long candidate = JSRuntime.propertyNameToIntegerIndex((TruffleString) key);
+            if (key instanceof TruffleString indexStr) {
+                long candidate = JSRuntime.propertyNameToIntegerIndex(indexStr);
                 // no other length check necessary - current result is guarded by ToLength
                 if (candidate < currentIndex && candidate > result) {
                     result = candidate;

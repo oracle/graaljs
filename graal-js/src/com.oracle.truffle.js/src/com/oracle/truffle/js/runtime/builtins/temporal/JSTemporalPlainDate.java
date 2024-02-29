@@ -81,11 +81,6 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return TO_STRING_TAG;
-    }
-
-    @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
     }

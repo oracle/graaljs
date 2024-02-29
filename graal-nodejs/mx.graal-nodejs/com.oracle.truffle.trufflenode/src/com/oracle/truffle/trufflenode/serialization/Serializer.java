@@ -575,9 +575,9 @@ public class Serializer {
         }
 
         Object stack = JSObject.get(error, JSError.STACK_NAME);
-        if (stack instanceof TruffleString) {
+        if (stack instanceof TruffleString stackStr) {
             writeTag(ErrorTag.STACK);
-            writeString(JSRuntime.toStringIsString(stack));
+            writeString(stackStr);
         }
 
         writeTag(ErrorTag.END);

@@ -372,8 +372,8 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     }
 
     protected static boolean nameEquals(TruffleString.EqualNode strEq, ClassElementDefinitionRecord record, Object expected) {
-        if (record.getKey() instanceof TruffleString && expected instanceof TruffleString) {
-            return Strings.equals(strEq, (TruffleString) expected, (TruffleString) record.getKey());
+        if (record.getKey() instanceof TruffleString keyStr && expected instanceof TruffleString expectedStr) {
+            return Strings.equals(strEq, expectedStr, keyStr);
         }
         return false;
     }

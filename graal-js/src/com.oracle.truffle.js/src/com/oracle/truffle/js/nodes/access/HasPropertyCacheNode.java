@@ -299,8 +299,8 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
             } else {
                 assert JSRuntime.isForeignObject(thisObj);
                 Object key = root.getKey();
-                if (Strings.isTString(key)) {
-                    return interop.isMemberExisting(thisObj, Strings.toJavaString((TruffleString) key));
+                if (key instanceof TruffleString propertyName) {
+                    return interop.isMemberExisting(thisObj, Strings.toJavaString(propertyName));
                 } else {
                     return false;
                 }
@@ -320,8 +320,8 @@ public class HasPropertyCacheNode extends PropertyCacheNode<HasPropertyCacheNode
         protected boolean hasProperty(Object thisObj, HasPropertyCacheNode root) {
             assert JSRuntime.isForeignObject(thisObj);
             Object key = root.getKey();
-            if (Strings.isTString(key)) {
-                return interop.isMemberExisting(thisObj, Strings.toJavaString((TruffleString) key));
+            if (key instanceof TruffleString propertyName) {
+                return interop.isMemberExisting(thisObj, Strings.toJavaString(propertyName));
             } else {
                 return false;
             }

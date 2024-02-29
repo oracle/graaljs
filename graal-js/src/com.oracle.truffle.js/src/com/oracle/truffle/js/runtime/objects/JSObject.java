@@ -140,10 +140,10 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
     protected static String[] filterEnumerableNames(JSDynamicObject target, Iterable<Object> ownKeys, JSClass jsclass) {
         List<String> names = new ArrayList<>();
         for (Object obj : ownKeys) {
-            if (Strings.isTString(obj) && !JSRuntime.isArrayIndex(obj)) {
-                PropertyDescriptor desc = jsclass.getOwnProperty(target, obj);
+            if (obj instanceof TruffleString name && !JSRuntime.isArrayIndex(name)) {
+                PropertyDescriptor desc = jsclass.getOwnProperty(target, name);
                 if (desc != null && desc.getEnumerable()) {
-                    names.add(Strings.toJavaString((TruffleString) obj));
+                    names.add(Strings.toJavaString(name));
                 }
             }
         }
@@ -497,10 +497,10 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
         Iterable<Object> ownKeys = jsclass.ownPropertyKeys(thisObj);
         List<TruffleString> names = new ArrayList<>();
         for (Object obj : ownKeys) {
-            if (Strings.isTString(obj)) {
-                PropertyDescriptor desc = jsclass.getOwnProperty(thisObj, obj);
+            if (obj instanceof TruffleString name) {
+                PropertyDescriptor desc = jsclass.getOwnProperty(thisObj, name);
                 if (desc != null && desc.getEnumerable()) {
-                    names.add((TruffleString) obj);
+                    names.add(name);
                 }
             }
         }
@@ -556,7 +556,17 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
 
     @TruffleBoundary
     public static TruffleString defaultToString(JSDynamicObject obj) {
-        return JSObject.getJSClass(obj).defaultToString(obj);
+        return obj.defaultToString();
+    }
+
+    /**
+     * Returns builtinTag as per Object.prototype.toString(). By default returns "Object".
+     *
+     * @return built-in toStringTag
+     */
+    @Override
+    public TruffleString getBuiltinToStringTag() {
+        return Strings.UC_OBJECT;
     }
 
     /**
@@ -632,7 +642,7 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
      */
     @TruffleBoundary
     public static TruffleString getClassName(JSDynamicObject obj) {
-        return JSObject.getJSClass(obj).getClassName(obj);
+        return obj.getClassName();
     }
 
     @NeverDefault

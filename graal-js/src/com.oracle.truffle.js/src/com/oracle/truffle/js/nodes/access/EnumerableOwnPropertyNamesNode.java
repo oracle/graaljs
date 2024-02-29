@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,19 +130,19 @@ public abstract class EnumerableOwnPropertyNamesNode extends JavaScriptBaseNode 
             SimpleArrayList<Object> properties = new SimpleArrayList<>();
             for (int i = 0; i < ownKeysSize; i++) {
                 Object key = listGet.execute(ownKeys, i);
-                if (Strings.isTString(key)) {
-                    PropertyDescriptor desc = getOwnProperty(thisObj, key);
+                if (key instanceof TruffleString name) {
+                    PropertyDescriptor desc = getOwnProperty(thisObj, name);
                     if (desc != null && desc.getEnumerable()) {
                         Object element;
                         if (keys && !values) {
-                            element = key;
+                            element = name;
                         } else {
-                            Object value = (desc.isAccessorDescriptor() || isProxy) ? jsclass.get(thisObj, key) : desc.getValue();
+                            Object value = (desc.isAccessorDescriptor() || isProxy) ? jsclass.get(thisObj, name) : desc.getValue();
                             if (!keys && values) {
                                 element = value;
                             } else {
                                 assert keys && values;
-                                element = createKeyValuePair(key, value);
+                                element = createKeyValuePair(name, value);
                             }
                         }
                         properties.add(element, this, growProfile);

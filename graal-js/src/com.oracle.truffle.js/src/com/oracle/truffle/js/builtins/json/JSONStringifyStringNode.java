@@ -133,8 +133,8 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             append(builder, Null.NAME);
         } else if (value instanceof Boolean) {
             appendBoolean(builder, (boolean) value);
-        } else if (Strings.isTString(value)) {
-            jsonQuote(builder, (TruffleString) value);
+        } else if (value instanceof TruffleString str) {
+            jsonQuote(builder, str);
         } else if (JSRuntime.isNumber(value)) {
             appendNumber(builder, value);
         } else if (JSObject.isJSObject(value)) {

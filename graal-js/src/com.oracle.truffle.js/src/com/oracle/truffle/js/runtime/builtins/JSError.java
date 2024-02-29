@@ -51,7 +51,6 @@ import com.oracle.truffle.js.builtins.CallSitePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.ConstructorBuiltins;
 import com.oracle.truffle.js.builtins.ErrorFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ErrorPrototypeBuiltins;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.GraalJSException;
 import com.oracle.truffle.js.runtime.GraalJSException.JSStackTraceElement;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -62,7 +61,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.PrepareStackTraceCallback;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -164,9 +162,9 @@ public final class JSError extends JSNonProxy {
         if (message == Undefined.instance) {
             msg = null;
         } else {
-            assert Strings.isTString(message);
-            setMessage(obj, (TruffleString) message);
-            msg = Strings.toJavaString((TruffleString) message); // can only be String or undefined
+            TruffleString messageStr = (TruffleString) message;
+            setMessage(obj, messageStr);
+            msg = Strings.toJavaString(messageStr); // can only be String or undefined
         }
         setException(realm, obj, JSException.createCapture(errorType, msg, obj, realm), false);
         return obj;
@@ -436,44 +434,11 @@ public final class JSError extends JSNonProxy {
         return methodName;
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
-    }
-
-    @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
-    }
-
     public static boolean isJSError(Object obj) {
         return obj instanceof JSErrorObject;
     }
 
-    @TruffleBoundary
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return super.toDisplayStringImpl(obj, allowSideEffects, format, depth);
-        } else {
-            Object name = getPropertyWithoutSideEffect(obj, NAME);
-            Object message = getPropertyWithoutSideEffect(obj, MESSAGE);
-            TruffleString nameStr = name != null ? JSRuntime.toDisplayStringImpl(name, allowSideEffects, ToDisplayStringFormat.getDefaultFormat(), depth + 1, obj) : CLASS_NAME;
-            TruffleString messageStr = message != null ? JSRuntime.toDisplayStringImpl(message, allowSideEffects, ToDisplayStringFormat.getDefaultFormat(), depth + 1, obj) : Strings.EMPTY_STRING;
-            if (nameStr.isEmpty()) {
-                if (messageStr.isEmpty()) {
-                    return CLASS_NAME;
-                }
-                return messageStr;
-            } else if (Strings.isEmpty(messageStr)) {
-                return nameStr;
-            } else {
-                return Strings.concatAll(nameStr, Strings.COLON_SPACE, messageStr);
-            }
-        }
-    }
-
-    private static Object getPropertyWithoutSideEffect(JSDynamicObject obj, Object key) {
+    public static Object getPropertyWithoutSideEffect(JSDynamicObject obj, Object key) {
         assert JSRuntime.isPropertyKey(key);
         Object value = JSDynamicObject.getOrNull(obj, key);
         if (value == null) {

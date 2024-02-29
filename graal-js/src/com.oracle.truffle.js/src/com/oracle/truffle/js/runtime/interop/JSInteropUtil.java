@@ -182,11 +182,11 @@ public final class JSInteropUtil {
     }
 
     public static Object readMemberOrDefault(Object obj, Object member, Object defaultValue, InteropLibrary interop, ImportValueNode importValue) {
-        if (!Strings.isTString(member)) {
+        if (!(member instanceof TruffleString memberName)) {
             return defaultValue;
         }
         try {
-            return importValue.executeWithTarget(interop.readMember(obj, Strings.toJavaString((TruffleString) member)));
+            return importValue.executeWithTarget(interop.readMember(obj, Strings.toJavaString(memberName)));
         } catch (UnknownIdentifierException | UnsupportedMessageException e) {
             return defaultValue;
         }
@@ -263,11 +263,11 @@ public final class JSInteropUtil {
     }
 
     public static boolean writeMember(Object obj, Object member, Object value, InteropLibrary interop, ExportValueNode exportValue, boolean strict, Node originatingNode) {
-        if (!Strings.isTString(member)) {
+        if (!(member instanceof TruffleString memberName)) {
             return false;
         }
         try {
-            interop.writeMember(obj, Strings.toJavaString((TruffleString) member), exportValue.execute(value));
+            interop.writeMember(obj, Strings.toJavaString(memberName), exportValue.execute(value));
             return true;
         } catch (UnsupportedMessageException | UnknownIdentifierException | UnsupportedTypeException e) {
             if (strict) {
@@ -362,8 +362,8 @@ public final class JSInteropUtil {
 
     @TruffleBoundary
     public static boolean hasProperty(Object obj, Object key) {
-        if (key instanceof TruffleString) {
-            return InteropLibrary.getUncached().isMemberExisting(obj, Strings.toJavaString((TruffleString) key));
+        if (key instanceof TruffleString name) {
+            return InteropLibrary.getUncached().isMemberExisting(obj, Strings.toJavaString(name));
         } else {
             return false;
         }
@@ -384,8 +384,8 @@ public final class JSInteropUtil {
             }
         }
         if (interop.hasMembers(target)) {
-            if (Strings.isTString(propertyKey)) {
-                return deleteMember(target, (TruffleString) propertyKey, interop, strict);
+            if (propertyKey instanceof TruffleString memberName) {
+                return deleteMember(target, memberName, interop, strict);
             } else {
                 assert propertyKey instanceof Symbol;
                 return true;

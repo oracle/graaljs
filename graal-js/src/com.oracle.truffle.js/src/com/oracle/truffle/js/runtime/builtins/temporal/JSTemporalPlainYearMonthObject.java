@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
 public final class JSTemporalPlainYearMonthObject extends JSTemporalCalendarHolder {
@@ -67,5 +68,10 @@ public final class JSTemporalPlainYearMonthObject extends JSTemporalCalendarHold
 
     public int getDay() {
         return isoDay;
+    }
+
+    @Override
+    public TruffleString getClassName() {
+        return JSTemporalPlainYearMonth.TO_STRING_TAG;
     }
 }

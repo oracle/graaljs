@@ -44,8 +44,6 @@ import java.util.List;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
-import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 
 /**
  * Delegates methods to JSClass.
@@ -54,11 +52,6 @@ public abstract class JSClassObject extends JSObject {
 
     protected JSClassObject(Shape shape, JSDynamicObject proto) {
         super(shape, proto);
-    }
-
-    @Override
-    public TruffleString getClassName() {
-        return getJSClass().getClassName(this);
     }
 
     @Override
@@ -154,16 +147,6 @@ public abstract class JSClassObject extends JSObject {
     @Override
     public boolean hasOnlyShapeProperties() {
         return getJSClass().hasOnlyShapeProperties(this);
-    }
-
-    @Override
-    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return getJSClass().toDisplayStringImpl(this, allowSideEffects, format, depth);
-    }
-
-    @Override
-    public TruffleString getBuiltinToStringTag() {
-        return getJSClass().getBuiltinToStringTag(this);
     }
 
 }

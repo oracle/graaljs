@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,13 +64,13 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
 
         Object propertyValue = super.getHelper(store, thisObj, key, encapsulatingNode);
 
-        if (Strings.isTString(key) && allowJavaMembersFor(thisObj)) {
+        if (key instanceof TruffleString name && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
             if (context.isOptionNashornCompatibilityMode()) {
                 JSRealm realm = JSRealm.get(null);
                 if (realm.isJavaInteropEnabled()) {
                     if (propertyValue == null) {
-                        return getJavaProperty(thisObj, Strings.toJavaString((TruffleString) key), realm);
+                        return getJavaProperty(thisObj, Strings.toJavaString(name), realm);
                     }
                 }
             }
@@ -92,13 +92,13 @@ public abstract class JSPrimitive extends JSNonProxy implements PrototypeSupplie
     @TruffleBoundary
     @Override
     public Object getMethodHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
-        if (Strings.isTString(key) && allowJavaMembersFor(thisObj)) {
+        if (key instanceof TruffleString name && allowJavaMembersFor(thisObj)) {
             JSContext context = JSObject.getJSContext(store);
             if (context.isOptionNashornCompatibilityMode()) {
                 JSRealm realm = JSRealm.get(null);
                 if (realm.isJavaInteropEnabled()) {
                     if (hasOwnProperty(store, key)) {
-                        Object method = getJavaMethod(thisObj, Strings.toJavaString((TruffleString) key), realm);
+                        Object method = getJavaMethod(thisObj, Strings.toJavaString(name), realm);
                         if (method != null) {
                             return method;
                         }

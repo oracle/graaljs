@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,7 +67,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSErrorType;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
@@ -356,8 +355,8 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     private static TruffleFile getModuleResolutionEntryPath(JSDynamicObject currentRequire, JSRealm realm, TruffleLanguage.Env env) {
         if (JSDynamicObject.isJSDynamicObject(currentRequire)) {
             Object maybeFilename = JSObject.get(currentRequire, Strings.FILENAME_VAR_NAME);
-            if (Strings.isTString(maybeFilename)) {
-                String fileName = Strings.toJavaString(JSRuntime.toStringIsString(maybeFilename));
+            if (maybeFilename instanceof TruffleString str) {
+                String fileName = Strings.toJavaString(str);
                 if (isFile(env, fileName)) {
                     TruffleFile maybeParent = getParent(env, fileName);
                     if (maybeParent != null) {

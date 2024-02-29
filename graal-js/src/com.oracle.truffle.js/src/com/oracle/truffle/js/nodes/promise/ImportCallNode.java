@@ -209,8 +209,8 @@ public class ImportCallNode extends JavaScriptNode {
                     } catch (AbstractTruffleException ex) {
                         return rejectPromise(promiseCapability, ex);
                     }
-                    if (Strings.isTString(value)) {
-                        attributes[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
+                    if (value instanceof TruffleString valueStr) {
+                        attributes[i] = Boundaries.mapEntry(key, valueStr);
                     } else {
                         // Read all values before rejecting the promise,
                         // we were supposed to do EnumerableOwnProperties(KEY+VALUE) above.

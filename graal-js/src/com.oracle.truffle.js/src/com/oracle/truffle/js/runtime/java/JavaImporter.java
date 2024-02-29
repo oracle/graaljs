@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,7 +50,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -74,16 +73,6 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
         return CLASS_NAME;
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
-    @Override
-    public String toString() {
-        return Strings.toJavaString(CLASS_NAME);
-    }
-
     public static JavaImporterObject create(JSContext context, JSRealm realm, Object[] value) {
         JSObjectFactory factory = context.getJavaImporterFactory();
         var proto = factory.getPrototype(realm);
@@ -104,8 +93,7 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     @TruffleBoundary
     @Override
     public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
-        if (key instanceof TruffleString) {
-            TruffleString name = (TruffleString) key;
+        if (key instanceof TruffleString name) {
             Object[] imports = getImports(store);
             JSRealm realm = JSRealm.get(null);
             // Nashorn searches the imports from the last one
@@ -134,11 +122,6 @@ public final class JavaImporter extends JSNonProxy implements JSConstructorFacto
     public static Object[] getImports(JSDynamicObject importer) {
         assert JavaImporter.isJavaImporter(importer);
         return ((JavaImporterObject) importer).getImports();
-    }
-
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return Strings.addBrackets(getClassName());
     }
 
     @Override

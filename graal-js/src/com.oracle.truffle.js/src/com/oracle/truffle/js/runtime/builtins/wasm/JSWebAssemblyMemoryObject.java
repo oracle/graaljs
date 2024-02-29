@@ -44,6 +44,7 @@ import java.nio.ByteBuffer;
 
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -93,4 +94,8 @@ public final class JSWebAssemblyMemoryObject extends JSNonProxyObject {
         bufferObject = null;
     }
 
+    @Override
+    public TruffleString getClassName() {
+        return JSWebAssemblyMemory.WEB_ASSEMBLY_MEMORY;
+    }
 }

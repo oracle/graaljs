@@ -61,8 +61,6 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 public final class JSSlowArray extends JSAbstractArray {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("Array");
-
     public static final JSSlowArray INSTANCE = new JSSlowArray();
 
     private JSSlowArray() {
@@ -74,11 +72,6 @@ public final class JSSlowArray extends JSAbstractArray {
 
     public static boolean isJSSlowArray(JSDynamicObject obj) {
         return isInstance(obj, INSTANCE);
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
     }
 
     @TruffleBoundary
@@ -133,7 +126,6 @@ public final class JSSlowArray extends JSAbstractArray {
     @Override
     protected boolean defineOwnPropertyIndex(JSDynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
         CompilerAsserts.neverPartOfCompilation();
-        assert Strings.isTString(name);
         long index = JSRuntime.toUInt32(name);
         if (index >= getLength(thisObj)) {
             PropertyDescriptor desc = getOwnProperty(thisObj, LENGTH);

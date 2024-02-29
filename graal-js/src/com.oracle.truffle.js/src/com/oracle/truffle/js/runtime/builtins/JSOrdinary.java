@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,13 +44,9 @@ import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -180,29 +176,6 @@ public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
     public static boolean isJSOrdinaryObject(JSDynamicObject obj) {
         return isInstance(obj, INSTANCE);
-    }
-
-    @Override
-    @TruffleBoundary
-    public TruffleString getClassName(JSDynamicObject object) {
-        JSContext context = JSObject.getJSContext(object);
-        if (context.getEcmaScriptVersion() <= 5) {
-            Object toStringTag = get(object, Symbol.SYMBOL_TO_STRING_TAG);
-            if (Strings.isTString(toStringTag)) {
-                return JSRuntime.toStringIsString(toStringTag);
-            }
-        }
-        return CLASS_NAME;
-    }
-
-    @TruffleBoundary
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return defaultToString(obj);
-        } else {
-            return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth, null);
-        }
     }
 
     @TruffleBoundary

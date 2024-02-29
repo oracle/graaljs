@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -194,8 +194,7 @@ public final class JSFrameUtil {
 
     public static boolean isInternalIdentifier(Object identifier) {
         CompilerAsserts.neverPartOfCompilation();
-        if (identifier instanceof TruffleString) {
-            TruffleString name = (TruffleString) identifier;
+        if (identifier instanceof TruffleString name) {
             if (Strings.startsWith(name, Strings.COLON)) {
                 return true;
             } else if (Strings.startsWith(name, Strings.ANGLE_BRACKET_OPEN) && Strings.endsWith(name, Strings.ANGLE_BRACKET_CLOSE)) {
@@ -210,8 +209,7 @@ public final class JSFrameUtil {
 
     public static TruffleString getPublicName(Object identifier) {
         CompilerAsserts.neverPartOfCompilation();
-        if (identifier instanceof TruffleString) {
-            TruffleString name = (TruffleString) identifier;
+        if (identifier instanceof TruffleString name) {
             if (Strings.startsWith(name, Strings.COLON)) {
                 return Strings.lazySubstring(name, 1);
             } else if (Strings.startsWith(name, Strings.ANGLE_BRACKET_OPEN) && Strings.endsWith(name, Strings.ANGLE_BRACKET_CLOSE)) {

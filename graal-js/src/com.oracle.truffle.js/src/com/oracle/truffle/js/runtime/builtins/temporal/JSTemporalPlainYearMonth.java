@@ -104,11 +104,6 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
     }
 
     @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return TO_STRING_TAG;
-    }
-
-    @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
     }

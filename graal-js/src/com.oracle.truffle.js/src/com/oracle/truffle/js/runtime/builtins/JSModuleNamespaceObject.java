@@ -47,6 +47,8 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSRealm;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.ExportResolution;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSModuleRecord;
@@ -123,5 +125,11 @@ public final class JSModuleNamespaceObject extends JSNonProxyObject {
             }
         }
         return true;
+    }
+
+    @Override
+    @TruffleBoundary
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return Strings.addBrackets(JSModuleNamespace.CLASS_NAME);
     }
 }

@@ -1112,7 +1112,7 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     protected static boolean alwaysUseStore(JSDynamicObject store, Object key) {
         return (key instanceof HiddenKey) || JSProxy.isJSProxy(store) ||
-                        (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString) && JSRuntime.canonicalNumericIndexString((TruffleString) key) != Undefined.instance);
+                        (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString indexStr) && JSRuntime.canonicalNumericIndexString(indexStr) != Undefined.instance);
     }
 
     protected final void deoptimize(CacheNode<?> stop) {
@@ -1492,7 +1492,6 @@ public abstract class PropertyCacheNode<T extends PropertyCacheNode.CacheNode<T>
 
     @TruffleBoundary
     protected static TruffleString getAccessorKey(TruffleString getset, TruffleString key) {
-        assert Strings.isTString(key);
         if (Strings.length(key) > 0 && Character.isLetter(Strings.charAt(key, 0))) {
             return Strings.concatAll(getset, Strings.toUpperCase(Strings.lazySubstring(key, 0, 1), Locale.US), Strings.lazySubstring(key, 1));
         }

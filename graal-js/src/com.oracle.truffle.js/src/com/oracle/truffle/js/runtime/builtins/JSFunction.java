@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -82,7 +82,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -370,10 +369,10 @@ public final class JSFunction extends JSNonProxy {
     @TruffleBoundary
     private static TruffleString getFunctionName(JSDynamicObject thisFnObj) {
         Object name = JSObject.get(thisFnObj, NAME);
-        if (!Strings.isTString(name)) {
-            name = Strings.EMPTY_STRING;
+        if (!(name instanceof TruffleString nameStr)) {
+            return Strings.EMPTY_STRING;
         }
-        return (TruffleString) name;
+        return nameStr;
     }
 
     @TruffleBoundary
@@ -668,36 +667,6 @@ public final class JSFunction extends JSNonProxy {
         JSFunctionObject functionConstructor = realm.lookupFunction(ConstructorBuiltins.BUILTINS, CLASS_NAME);
         JSObjectUtil.putDataProperty(functionConstructor, JSObject.PROTOTYPE, realm.getFunctionPrototype(), JSAttributes.notConfigurableNotEnumerableNotWritable());
         return functionConstructor;
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
-    }
-
-    @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
-    }
-
-    @Override
-    @TruffleBoundary
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        RootNode rn = ((RootCallTarget) JSFunction.getCallTarget(obj)).getRootNode();
-        SourceSection ssect = rn.getSourceSection();
-        TruffleString source;
-        if (ssect == null || !ssect.isAvailable() || ssect.getSource().isInternal()) {
-            source = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(obj), Strings.FUNCTION_NATIVE_CODE_BODY);
-        } else if (depth >= format.getMaxDepth()) {
-            source = Strings.concatAll(Strings.FUNCTION_SPC, JSFunction.getName(obj), Strings.FUNCTION_BODY_DOTS);
-        } else {
-            if (ssect.getCharacters().length() > 200) {
-                source = Strings.concat(Strings.fromJavaString(ssect.getCharacters().subSequence(0, 195).toString()), Strings.FUNCTION_BODY_OMITTED);
-            } else {
-                source = Strings.fromJavaString(ssect.getCharacters().toString());
-            }
-        }
-        return source;
     }
 
     @Override

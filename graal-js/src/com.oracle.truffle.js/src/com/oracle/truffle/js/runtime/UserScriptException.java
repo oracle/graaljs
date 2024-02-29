@@ -160,13 +160,13 @@ public final class UserScriptException extends GraalJSException {
                     TruffleString name = JSFunction.getName((JSFunctionObject) constructor);
                     if (!Strings.isEmpty(name)) {
                         Object message = JSDynamicObject.getOrDefault(errorObj, JSError.MESSAGE, null);
-                        if (!Strings.isTString(message) && JSObject.getJSContext(errorObj).getLanguageOptions().testV8Mode()) {
+                        if (!(message instanceof TruffleString) && JSObject.getJSContext(errorObj).getLanguageOptions().testV8Mode()) {
                             // allow side-effect
                             // (MjsUnitAssertionError.prototype.message is a getter)
                             message = JSObject.get(errorObj, JSError.MESSAGE);
                         }
-                        if (Strings.isTString(message)) {
-                            return Strings.concatAll(name, Strings.COLON_SPACE, (TruffleString) message);
+                        if (message instanceof TruffleString messageStr) {
+                            return Strings.concatAll(name, Strings.COLON_SPACE, messageStr);
                         }
                         return name;
                     }

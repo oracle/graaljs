@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -54,7 +54,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -81,16 +80,6 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
-    @Override
-    public String toString() {
-        return Strings.toJavaString(getClassName());
     }
 
     public static JSObject create(JSContext context, JSRealm realm, JSDynamicObject adaptee, JSDynamicObject overrides, JSDynamicObject protoOpt) {
@@ -280,11 +269,6 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject object, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return defaultToString(object);
-    }
-
-    @Override
     public JSDynamicObject createPrototype(final JSRealm realm, JSFunctionObject ctor) {
         JSObject prototype = JSObjectUtil.createOrdinaryPrototypeObject(realm);
         JSObjectUtil.putConstructorProperty(prototype, ctor);
@@ -317,8 +301,8 @@ public final class JSAdapter extends AbstractJSClass implements JSConstructorFac
     }
 
     @TruffleBoundary
-    private JSException createTypeErrorNoSuchFunction(JSDynamicObject thisObj, Object key) {
-        return Errors.createTypeErrorFormat("%s has no such function \"%s\"", defaultToString(thisObj), key);
+    private static JSException createTypeErrorNoSuchFunction(JSDynamicObject thisObj, Object key) {
+        return Errors.createTypeErrorFormat("%s has no such function \"%s\"", thisObj.defaultToString(), key);
     }
 
     @TruffleBoundary

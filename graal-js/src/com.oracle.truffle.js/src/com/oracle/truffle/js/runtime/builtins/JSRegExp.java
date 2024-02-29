@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,7 +61,6 @@ import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.dyn.LazyRegexResultIndicesArray;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
@@ -80,7 +79,7 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexMaterializeResult;
 
 public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.Default, PrototypeSupplier {
 
-    private static final TruffleString BRACKET_REG_EXP_SPC = Strings.constant("[RegExp ");
+    static final TruffleString BRACKET_REG_EXP_SPC = Strings.constant("[RegExp ");
 
     public static final JSRegExp INSTANCE = new JSRegExp();
 
@@ -376,26 +375,6 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
-    @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
-    }
-
-    @Override
-    @TruffleBoundary
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return Strings.concatAll(BRACKET_REG_EXP_SPC, prototypeToString(obj), Strings.BRACKET_CLOSE);
-        } else {
-            return prototypeToString(obj);
-        }
     }
 
     @Override

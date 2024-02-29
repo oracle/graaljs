@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,13 +47,13 @@ import java.util.Locale;
 
 import org.graalvm.collections.EconomicMap;
 import org.graalvm.collections.UnmodifiableEconomicMap;
-
 import org.graalvm.shadowed.com.ibm.icu.text.DecimalFormat;
 import org.graalvm.shadowed.com.ibm.icu.text.DisplayContext;
 import org.graalvm.shadowed.com.ibm.icu.text.NumberFormat;
 import org.graalvm.shadowed.com.ibm.icu.text.RelativeDateTimeFormatter;
 import org.graalvm.shadowed.com.ibm.icu.text.RelativeDateTimeFormatter.RelativeDateTimeUnit;
 import org.graalvm.shadowed.com.ibm.icu.util.ULocale;
+
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
@@ -96,11 +96,6 @@ public final class JSRelativeTimeFormat extends JSNonProxy implements JSConstruc
     @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
     }
 
     @Override

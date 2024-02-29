@@ -876,7 +876,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         private boolean setValueImpl(Object thisObj, Object value, PropertySetNode root) {
             Object key = root.getKey();
             Object truffleObject = nullCheck(thisObj, key);
-            if (!Strings.isTString(key)) {
+            if (!(key instanceof TruffleString)) {
                 return false;
             }
             if (isLength && interop.hasArrayElements(thisObj)) {
@@ -1134,8 +1134,8 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
                 return new JSAdapterPropertySetNode(createJSClassCheck(thisObj, proto, depth));
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
                 return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, proto, depth), isStrict());
-            } else if (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString) && JSRuntime.canonicalNumericIndexString((TruffleString) key) != Undefined.instance) {
-                assert !JSArrayBufferView.isValidIntegerIndex((JSDynamicObject) store, (Number) JSRuntime.canonicalNumericIndexString((TruffleString) key));
+            } else if (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString indexStr) && JSRuntime.canonicalNumericIndexString(indexStr) != Undefined.instance) {
+                assert !JSArrayBufferView.isValidIntegerIndex((JSDynamicObject) store, (Number) JSRuntime.canonicalNumericIndexString(indexStr));
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false), false);
             } else if (!JSRuntime.isObject(thisJSObj)) {
                 return new TypeErrorPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, true));

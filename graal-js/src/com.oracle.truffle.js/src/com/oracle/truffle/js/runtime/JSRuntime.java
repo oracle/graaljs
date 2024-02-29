@@ -456,10 +456,10 @@ public final class JSRuntime {
             return Double.NaN;
         } else if (value == Null.instance) {
             return 0;
-        } else if (value instanceof Boolean) {
-            return booleanToNumber((Boolean) value);
-        } else if (Strings.isTString(value)) {
-            return stringToNumber((TruffleString) value);
+        } else if (value instanceof Boolean bool) {
+            return booleanToNumber(bool);
+        } else if (value instanceof TruffleString str) {
+            return stringToNumber(str);
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToNumber("a Symbol value");
         } else if (value instanceof BigInt bigInt) {
@@ -941,10 +941,10 @@ public final class JSRuntime {
             return Null.NAME;
         } else if (value instanceof Boolean) {
             return booleanToString((Boolean) value);
-        } else if (value instanceof TruffleString) {
-            return format.quoteString() ? quote((TruffleString) value) : (TruffleString) value;
-        } else if (value instanceof String) {
-            return format.quoteString() ? quote(Strings.fromJavaString((String) value)) : Strings.fromJavaString((String) value);
+        } else if (value instanceof TruffleString str) {
+            return format.quoteString() ? quote(str) : str;
+        } else if (value instanceof String str) {
+            return format.quoteString() ? quote(Strings.fromJavaString(str)) : Strings.fromJavaString(str);
         } else if (JSObject.isJSObject(value)) {
             return ((JSObject) value).toDisplayStringImpl(allowSideEffects, format, depth);
         } else if (value instanceof Symbol) {
@@ -1297,10 +1297,6 @@ public final class JSRuntime {
         return toString(JSObject.toPrimitive(value, JSToPrimitiveNode.Hint.String));
     }
 
-    public static String numberToJavaString(Number number) {
-        return Strings.toJavaString(numberToString(number));
-    }
-
     public static TruffleString numberToString(Number number) {
         CompilerAsserts.neverPartOfCompilation();
         if (number instanceof Integer) {
@@ -1319,8 +1315,8 @@ public final class JSRuntime {
     // No TruffleBoundary, we want this to partially evaluate.
     public static boolean propertyKeyEquals(TruffleString.EqualNode equalsNode, Object a, Object b) {
         assert isPropertyKey(a);
-        if (Strings.isTString(a)) {
-            if (Strings.isTString(b)) {
+        if (a instanceof TruffleString) {
+            if (b instanceof TruffleString) {
                 return Strings.equals(equalsNode, (TruffleString) a, (TruffleString) b);
             } else {
                 return false;
@@ -1745,7 +1741,7 @@ public final class JSRuntime {
     public static long parseArrayIndexIsIndexRaw(Object o) {
         assert isArrayIndex(o);
         assert Strings.isTString(o) || o instanceof Number;
-        return parseArrayIndexRaw(Strings.isTString(o) ? (TruffleString) o : Strings.fromNumber((Number) o), TruffleString.ReadCharUTF16Node.getUncached());
+        return parseArrayIndexRaw(o instanceof TruffleString str ? str : Strings.fromNumber((Number) o), TruffleString.ReadCharUTF16Node.getUncached());
     }
 
     /**
@@ -1892,8 +1888,8 @@ public final class JSRuntime {
             return isArrayIndex((long) property);
         } else if (property instanceof Double) {
             return isArrayIndex((double) property);
-        } else if (Strings.isTString(property)) {
-            long idx = propertyNameToArrayIndex(toStringIsString(property), TruffleString.ReadCharUTF16Node.getUncached());
+        } else if (property instanceof TruffleString propertyName) {
+            long idx = propertyNameToArrayIndex(propertyName, TruffleString.ReadCharUTF16Node.getUncached());
             return isArrayIndex(idx);
         } else {
             return false;
@@ -1930,7 +1926,7 @@ public final class JSRuntime {
     }
 
     public static long propertyKeyToArrayIndex(Object propertyKey) {
-        return Strings.isTString(propertyKey) ? propertyNameToArrayIndex((TruffleString) propertyKey, TruffleString.ReadCharUTF16Node.getUncached()) : INVALID_ARRAY_INDEX;
+        return propertyKey instanceof TruffleString propertyName ? propertyNameToArrayIndex(propertyName, TruffleString.ReadCharUTF16Node.getUncached()) : INVALID_ARRAY_INDEX;
     }
 
     @TruffleBoundary
@@ -1944,7 +1940,7 @@ public final class JSRuntime {
     }
 
     public static long propertyKeyToIntegerIndex(Object propertyKey) {
-        return Strings.isTString(propertyKey) ? propertyNameToIntegerIndex((TruffleString) propertyKey) : INVALID_INTEGER_INDEX;
+        return propertyKey instanceof TruffleString propertyName ? propertyNameToIntegerIndex(propertyName) : INVALID_INTEGER_INDEX;
     }
 
     /**
@@ -1956,15 +1952,6 @@ public final class JSRuntime {
 
     public static boolean isJSPrimitive(Object value) {
         return isNumber(value) || value instanceof BigInt || value instanceof Boolean || Strings.isTString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol;
-    }
-
-    public static TruffleString toStringIsString(Object value) {
-        assert Strings.isTString(value);
-        return (TruffleString) value;
-    }
-
-    public static boolean isStringClass(Class<?> clazz) {
-        return TruffleString.class.isAssignableFrom(clazz);
     }
 
     public static Object nullToUndefined(Object value) {
@@ -1981,11 +1968,6 @@ public final class JSRuntime {
 
     public static Object toJavaNull(Object value) {
         return value == Null.instance ? null : value;
-    }
-
-    @TruffleBoundary
-    public static Object jsObjectToJavaObject(Object obj) {
-        return toJavaNull(undefinedToNull(obj));
     }
 
     public static boolean isPropertyKey(Object key) {
@@ -2038,17 +2020,6 @@ public final class JSRuntime {
         if (number instanceof Integer) {
             return ((Integer) number).doubleValue();
         }
-        return doubleValueVirtual(number);
-    }
-
-    public static double doubleValue(Number number, BranchProfile profile) {
-        if (number instanceof Double) {
-            return ((Double) number).doubleValue();
-        }
-        if (number instanceof Integer) {
-            return ((Integer) number).doubleValue();
-        }
-        profile.enter();
         return doubleValueVirtual(number);
     }
 
@@ -2541,8 +2512,8 @@ public final class JSRuntime {
     public static TruffleString getConstructorName(JSDynamicObject receiver) {
         // Try @@toStringTag first
         Object toStringTag = getDataProperty(receiver, Symbol.SYMBOL_TO_STRING_TAG);
-        if (Strings.isTString(toStringTag)) {
-            return (TruffleString) toStringTag;
+        if (toStringTag instanceof TruffleString str) {
+            return str;
         }
 
         // Try function name of prototype.constructor

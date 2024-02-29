@@ -48,7 +48,6 @@ import java.util.Set;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
@@ -68,7 +67,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -122,16 +120,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     }
 
     private JSProxy() {
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
-    }
-
-    @Override
-    public String toString() {
-        return Strings.toJavaString(CLASS_NAME);
     }
 
     public static JSProxyObject create(JSContext context, JSRealm realm, Object target, JSDynamicObject handler) {
@@ -578,44 +566,6 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
     // internal methods
 
     @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        Object targetNonProxy = getTargetNonProxy(object);
-        if (JSDynamicObject.isJSDynamicObject(targetNonProxy)) {
-            if (JSArray.isJSArray(targetNonProxy)) {
-                return JSArray.CLASS_NAME;
-            } else if (JSFunction.isJSFunction(targetNonProxy)) {
-                return JSFunction.CLASS_NAME;
-            } else {
-                return Strings.UC_OBJECT;
-            }
-        } else {
-            InteropLibrary interop = InteropLibrary.getUncached(targetNonProxy);
-            if (interop.hasArrayElements(targetNonProxy)) {
-                return JSArray.CLASS_NAME;
-            } else if (interop.isExecutable(targetNonProxy) || interop.isInstantiable(targetNonProxy)) {
-                return JSFunction.CLASS_NAME;
-            } else {
-                return Strings.UC_OBJECT;
-            }
-        }
-    }
-
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return defaultToString(obj);
-        } else {
-            Object target = getTarget(obj);
-            Object handler = getHandler(obj);
-            return Strings.concatAll(Strings.PROXY_PAREN,
-                            JSRuntime.toDisplayStringInner(target, allowSideEffects, format, depth, obj),
-                            Strings.COMMA_SPC,
-                            JSRuntime.toDisplayStringInner(handler, allowSideEffects, format, depth, obj),
-                            Strings.PAREN_CLOSE);
-        }
-    }
-
-    @Override
     public Shape makeInitialShape(JSContext context, JSDynamicObject prototype) {
         Shape initialShape = JSObjectUtil.getProtoChildShape(prototype, INSTANCE, context);
         return initialShape;
@@ -809,8 +759,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.getOwnProperty((JSDynamicObject) target, key);
             } else {
-                if (Strings.isTString(key)) {
-                    return JSInteropUtil.getOwnProperty(target, (TruffleString) key);
+                if (key instanceof TruffleString name) {
+                    return JSInteropUtil.getOwnProperty(target, name);
                 } else {
                     assert key instanceof Symbol;
                     return null; // No symbols in foreign objects

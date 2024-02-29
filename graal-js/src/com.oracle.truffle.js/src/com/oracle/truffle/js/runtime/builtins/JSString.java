@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -59,7 +59,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -212,14 +211,14 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
             List<Object> list = new ArrayList<>(keyList.size());
             if (strings) {
                 keyList.forEach(k -> {
-                    if (Strings.isTString(k) && JSRuntime.isArrayIndexString((TruffleString) k)) {
+                    if (k instanceof TruffleString str && JSRuntime.isArrayIndexString(str)) {
                         assert JSRuntime.propertyKeyToArrayIndex(k) >= len;
                         list.add(k);
                     }
                 });
                 Collections.sort(list, JSRuntime::comparePropertyKeys);
                 keyList.forEach(k -> {
-                    if (Strings.isTString(k) && !JSRuntime.isArrayIndexString((TruffleString) k)) {
+                    if (k instanceof TruffleString str && !JSRuntime.isArrayIndexString(str)) {
                         list.add(k);
                     }
                 });
@@ -286,27 +285,6 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     @Override
     public TruffleString getClassName() {
         return CLASS_NAME;
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return getClassName();
-    }
-
-    @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
-    }
-
-    @TruffleBoundary
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return Strings.concatAll(Strings.BRACKET_OPEN, CLASS_NAME, Strings.SPACE, getString(obj), Strings.BRACKET_CLOSE);
-        } else {
-            return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth,
-                            getBuiltinToStringTag(obj), new TruffleString[]{Strings.PRIMITIVE_VALUE}, new Object[]{JSString.getString(obj)});
-        }
     }
 
     public static boolean isJSString(Object obj) {

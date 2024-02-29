@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -161,16 +161,6 @@ public final class JavaPackage extends JSNonProxy {
         return (!Strings.isEmpty(packageName)) ? Strings.concatAll(packageName, Strings.DOT, className) : className;
     }
 
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
-    }
-
-    @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return getClassName(object);
-    }
-
     @TruffleBoundary
     public static Object toPrimitiveString(JSDynamicObject obj) {
         return Strings.concatAll(Strings.BRACKET_OPEN, CLASS_NAME, Strings.SPACE, getPackageName(obj), Strings.BRACKET_CLOSE);
@@ -207,13 +197,13 @@ public final class JavaPackage extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public Object getHelper(JSDynamicObject store, Object thisObj, Object name, Node encapsulatingNode) {
-        Object propertyValue = super.getHelper(store, thisObj, name, encapsulatingNode);
+    public Object getHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+        Object propertyValue = super.getHelper(store, thisObj, key, encapsulatingNode);
         if (propertyValue != null) {
             return propertyValue;
         }
-        if (Strings.isTString(name)) {
-            return getJavaClassOrConstructorOrSubPackage(JSObject.getJSContext(store), store, (TruffleString) name);
+        if (key instanceof TruffleString name) {
+            return getJavaClassOrConstructorOrSubPackage(JSObject.getJSContext(store), store, name);
         } else {
             return null;
         }

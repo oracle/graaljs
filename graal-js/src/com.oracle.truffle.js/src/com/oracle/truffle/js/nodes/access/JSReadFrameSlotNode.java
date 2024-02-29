@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -122,8 +122,8 @@ public abstract class JSReadFrameSlotNode extends FrameSlotNode implements Repea
     @Override
     public String expressionToString() {
         Object ident = getIdentifier();
-        if (ident instanceof TruffleString) {
-            return Strings.toJavaString((TruffleString) ident);
+        if (ident instanceof TruffleString str) {
+            return Strings.toJavaString(str);
         }
         return null;
     }

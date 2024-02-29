@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -51,7 +51,6 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
@@ -63,7 +62,6 @@ import com.oracle.truffle.js.runtime.objects.Null;
  */
 public final class SharedMemMessagingBindings extends JSNonProxy {
 
-    private static final TruffleString CLASS_NAME = Strings.constant("SharedMemMessaging");
     private static final TruffleString SHARED_MEM_MESSAGING_INIT = Strings.constant("SharedMemMessagingInit");
 
     private static final SharedMemMessagingBindings INSTANCE = new SharedMemMessagingBindings();
@@ -79,11 +77,6 @@ public final class SharedMemMessagingBindings extends JSNonProxy {
         JSObject obj = new Instance(shape);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, BUILTINS);
         return obj;
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
     }
 
     @TruffleBoundary

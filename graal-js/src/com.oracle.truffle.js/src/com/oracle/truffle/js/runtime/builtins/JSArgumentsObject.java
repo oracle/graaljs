@@ -109,6 +109,11 @@ public class JSArgumentsObject extends JSArrayBase {
 
     @Override
     public final TruffleString getClassName() {
+        return getBuiltinToStringTag();
+    }
+
+    @Override
+    public final TruffleString getBuiltinToStringTag() {
         return JSArgumentsArray.CLASS_NAME;
     }
 

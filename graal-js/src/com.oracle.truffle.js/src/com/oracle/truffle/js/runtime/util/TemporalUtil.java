@@ -1252,11 +1252,10 @@ public final class TemporalUtil {
             next = JSRuntime.iteratorStep(iter);
             if (next != Boolean.FALSE) {
                 Object nextValue = JSRuntime.iteratorValue(next);
-                if (!Strings.isTString(nextValue)) {
+                if (!(nextValue instanceof TruffleString str)) {
                     JSRuntime.iteratorClose(iter.getIterator());
                     throw Errors.createTypeError("string expected");
                 }
-                TruffleString str = JSRuntime.toString(nextValue);
                 values.add(str);
             }
         }
@@ -1900,8 +1899,7 @@ public final class TemporalUtil {
         JSDynamicObject merged = JSOrdinary.createWithNullPrototype(ctx);
         UnmodifiableArrayList<?> keys = namesNode.execute(options);
         for (Object nextKey : keys) {
-            if (nextKey instanceof TruffleString) {
-                TruffleString key = (TruffleString) nextKey;
+            if (nextKey instanceof TruffleString key) {
                 Object propValue = JSObject.get(options, key);
                 createDataPropertyOrThrow(ctx, merged, key, propValue);
             }

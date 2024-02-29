@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,12 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 import com.oracle.truffle.js.runtime.objects.PromiseReactionRecord;
@@ -98,6 +103,18 @@ public final class JSPromiseObject extends JSNonProxyObject {
     public void clearPromiseReactions() {
         promiseFulfillReactions = null;
         promiseRejectReactions = null;
+    }
+
+    @Override
+    public TruffleString getClassName() {
+        return JSPromise.CLASS_NAME;
+    }
+
+    @TruffleBoundary
+    @Override
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return JSRuntime.objectToDisplayString(this, allowSideEffects, format, depth,
+                        JSPromise.CLASS_NAME, new TruffleString[]{Strings.PROMISE_STATUS, Strings.PROMISE_VALUE}, new Object[]{JSPromise.getStatus(this), JSPromise.getPromiseResult(this)});
     }
 
     public static JSPromiseObject create(Shape shape, JSDynamicObject proto, int promiseState) {

@@ -428,8 +428,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
             newNode = new ForeignInstantiateNode(skippedArgs, userArgumentCount - skippedArgs);
         } else if (JSGuards.isForeignObject(thisObject)) {
             Object propertyKey = getPropertyKey();
-            if (Strings.isTString(propertyKey)) {
-                newNode = new ForeignInvokeNode((TruffleString) propertyKey, userArgumentCount);
+            if (propertyKey instanceof TruffleString propertyName) {
+                newNode = new ForeignInvokeNode(propertyName, userArgumentCount);
             }
         }
         if (newNode == null) {

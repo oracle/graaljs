@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,6 @@ import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSNonProxy;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
@@ -64,7 +63,6 @@ public final class NIOBuffer extends JSNonProxy {
 
     public static final TruffleString NIO_BUFFER_MODULE_NAME = Strings.constant("node:internal/graal/buffer");
 
-    private static final TruffleString CLASS_NAME = Strings.constant("NIOBuffer");
     private static final TruffleString NIO_BUFFER_BUILTINS_INIT_FUNCTION = Strings.constant("NIOBufferBuiltinsInitFunction");
 
     private NIOBuffer() {
@@ -76,11 +74,6 @@ public final class NIOBuffer extends JSNonProxy {
         JSObject obj = JSOrdinary.createWithNullPrototype(context);
         JSObjectUtil.putFunctionsFromContainer(realm, obj, NIO_BUFFER_BUILTINS);
         return obj;
-    }
-
-    @Override
-    public TruffleString getClassName(JSDynamicObject object) {
-        return CLASS_NAME;
     }
 
     @TruffleBoundary

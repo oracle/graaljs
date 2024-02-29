@@ -50,7 +50,6 @@ import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -59,7 +58,6 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Properties;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
-import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.Accessor;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -196,7 +194,7 @@ public abstract class JSNonProxy extends JSClass {
         List<Object> keyList = thisObj.getShape().getKeyList();
         List<Object> list = new ArrayList<>(keyList.size());
         for (Object key : keyList) {
-            if ((!symbols && key instanceof Symbol) || (!strings && Strings.isTString(key))) {
+            if ((!symbols && key instanceof Symbol) || (!strings && key instanceof TruffleString)) {
                 continue;
             }
             list.add(key);
@@ -586,20 +584,6 @@ public abstract class JSNonProxy extends JSClass {
         return JSShape.isExtensible(thisObj.getShape());
     }
 
-    @Override
-    public String toString() {
-        return getClass().getSimpleName();
-    }
-
-    @Override
-    public TruffleString toDisplayStringImpl(JSDynamicObject obj, boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        if (JavaScriptLanguage.get(null).getJSContext().isOptionNashornCompatibilityMode()) {
-            return defaultToString(obj);
-        } else {
-            return JSRuntime.objectToDisplayString(obj, allowSideEffects, format, depth, getClassName(obj));
-        }
-    }
-
     @TruffleBoundary
     @Override
     public final JSDynamicObject getPrototypeOf(JSDynamicObject thisObj) {
@@ -673,11 +657,6 @@ public abstract class JSNonProxy extends JSClass {
 
     protected static JSDynamicObject createSymbolSpeciesGetterFunction(JSRealm realm) {
         return JSFunction.create(realm, realm.getContext().getSymbolSpeciesThisGetterFunctionData());
-    }
-
-    @Override
-    public TruffleString getBuiltinToStringTag(JSDynamicObject object) {
-        return Strings.UC_OBJECT;
     }
 
     @Override

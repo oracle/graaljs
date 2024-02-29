@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,8 +43,12 @@ package com.oracle.truffle.js.runtime.builtins;
 import java.lang.ref.ReferenceQueue;
 import java.util.List;
 
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JobCallback;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSNonProxyObject;
 
@@ -70,5 +74,16 @@ public final class JSFinalizationRegistryObject extends JSNonProxyObject {
 
     public ReferenceQueue<Object> getReferenceQueue() {
         return referenceQueue;
+    }
+
+    @Override
+    public TruffleString getClassName() {
+        return JSFinalizationRegistry.CLASS_NAME;
+    }
+
+    @Override
+    @TruffleBoundary
+    public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
+        return Strings.addBrackets(getClassName());
     }
 }
