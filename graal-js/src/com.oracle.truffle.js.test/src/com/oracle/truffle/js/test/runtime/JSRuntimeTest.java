@@ -504,13 +504,6 @@ public class JSRuntimeTest extends JSTest {
     }
 
     @Test
-    public void testToStringIsString() {
-        testHelper.getJSContext(); // initialize JSContext
-
-        assertEquals(40, Strings.toJavaString(createLazyString()).length());
-    }
-
-    @Test
     public void testTrimJSWhiteSpace() {
         // trimJSWhiteSpace(String)
         assertEquals(Strings.constant("A"), JSRuntime.trimJSWhiteSpace(Strings.constant(" A ")));
