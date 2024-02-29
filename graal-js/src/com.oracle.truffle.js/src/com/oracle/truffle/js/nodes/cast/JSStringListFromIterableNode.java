@@ -108,11 +108,11 @@ public abstract class JSStringListFromIterableNode extends JavaScriptBaseNode {
             if (!isFalse(next)) {
 
                 Object nextValue = iteratorValueNode.execute(next);
-                if (!Strings.isTString(nextValue)) {
+                if (!(nextValue instanceof TruffleString nextStr)) {
                     iteratorCloseNode.executeAbrupt(iteratorRecord.getIterator());
                     throw Errors.createTypeError("nonString value encountered!");
                 }
-                Boundaries.listAdd(list, Strings.toJavaString((TruffleString) nextValue));
+                Boundaries.listAdd(list, Strings.toJavaString(nextStr));
             }
         }
         return list;

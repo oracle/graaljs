@@ -211,14 +211,14 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
             List<Object> list = new ArrayList<>(keyList.size());
             if (strings) {
                 keyList.forEach(k -> {
-                    if (Strings.isTString(k) && JSRuntime.isArrayIndexString((TruffleString) k)) {
+                    if (k instanceof TruffleString str && JSRuntime.isArrayIndexString(str)) {
                         assert JSRuntime.propertyKeyToArrayIndex(k) >= len;
                         list.add(k);
                     }
                 });
                 Collections.sort(list, JSRuntime::comparePropertyKeys);
                 keyList.forEach(k -> {
-                    if (Strings.isTString(k) && !JSRuntime.isArrayIndexString((TruffleString) k)) {
+                    if (k instanceof TruffleString str && !JSRuntime.isArrayIndexString(str)) {
                         list.add(k);
                     }
                 });

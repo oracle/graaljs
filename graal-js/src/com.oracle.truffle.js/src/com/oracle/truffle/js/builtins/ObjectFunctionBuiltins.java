@@ -385,8 +385,8 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached ImportValueNode toJSType,
                         @Cached TruffleString.ReadCharUTF16Node charAtNode) {
             Object propertyKey = toPropertyKeyNode.execute(property);
-            if (Strings.isTString(propertyKey)) {
-                PropertyDescriptor desc = JSInteropUtil.getOwnProperty(thisObj, (TruffleString) propertyKey, interop, toJSType, charAtNode);
+            if (propertyKey instanceof TruffleString propertyName) {
+                PropertyDescriptor desc = JSInteropUtil.getOwnProperty(thisObj, propertyName, interop, toJSType, charAtNode);
                 if (desc != null) {
                     return fromPropertyDescriptorNode.execute(desc, getContext());
                 }

@@ -300,7 +300,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 long openSetLength = getOpenSetLength(openSet);
                 for (int i = 0; i < openSetLength; i++) {
                     Object element = readOpenSetElement(openSet, i);
-                    if (!(Strings.isTString(element)) || !Boundaries.economicSetContains(OperatorSet.ALL_OPERATORS, (TruffleString) element)) {
+                    if (!(element instanceof TruffleString str) || !Boundaries.economicSetContains(OperatorSet.ALL_OPERATORS, str)) {
                         throw Errors.createTypeError(Strings.toJavaString(Strings.concat(Strings.constant("unrecognized operator "), openOperatorToString(element))), this);
                     }
                     Boundaries.economicSetAdd(openOperators, (TruffleString) element);

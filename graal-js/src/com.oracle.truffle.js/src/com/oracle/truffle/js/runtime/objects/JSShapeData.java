@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,7 +52,6 @@ import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.util.DebugCounter;
 import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
@@ -91,8 +90,8 @@ public final class JSShapeData {
         enumerablePropertyListAllocCount.inc();
         List<TruffleString> ownProperties = new ArrayList<>();
         shape.getPropertyList().forEach(property -> {
-            if (JSProperty.isEnumerable(property) && Strings.isTString(property.getKey())) {
-                ownProperties.add((TruffleString) property.getKey());
+            if (JSProperty.isEnumerable(property) && property.getKey() instanceof TruffleString propertyName) {
+                ownProperties.add(propertyName);
             }
         });
         sortPropertyKeys(ownProperties);

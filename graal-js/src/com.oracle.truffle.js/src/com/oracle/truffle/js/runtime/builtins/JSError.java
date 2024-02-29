@@ -162,9 +162,9 @@ public final class JSError extends JSNonProxy {
         if (message == Undefined.instance) {
             msg = null;
         } else {
-            assert Strings.isTString(message);
-            setMessage(obj, (TruffleString) message);
-            msg = Strings.toJavaString((TruffleString) message); // can only be String or undefined
+            TruffleString messageStr = (TruffleString) message;
+            setMessage(obj, messageStr);
+            msg = Strings.toJavaString(messageStr); // can only be String or undefined
         }
         setException(realm, obj, JSException.createCapture(errorType, msg, obj, realm), false);
         return obj;

@@ -197,13 +197,13 @@ public final class JavaPackage extends JSNonProxy {
 
     @TruffleBoundary
     @Override
-    public Object getHelper(JSDynamicObject store, Object thisObj, Object name, Node encapsulatingNode) {
-        Object propertyValue = super.getHelper(store, thisObj, name, encapsulatingNode);
+    public Object getHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
+        Object propertyValue = super.getHelper(store, thisObj, key, encapsulatingNode);
         if (propertyValue != null) {
             return propertyValue;
         }
-        if (Strings.isTString(name)) {
-            return getJavaClassOrConstructorOrSubPackage(JSObject.getJSContext(store), store, (TruffleString) name);
+        if (key instanceof TruffleString name) {
+            return getJavaClassOrConstructorOrSubPackage(JSObject.getJSContext(store), store, name);
         } else {
             return null;
         }

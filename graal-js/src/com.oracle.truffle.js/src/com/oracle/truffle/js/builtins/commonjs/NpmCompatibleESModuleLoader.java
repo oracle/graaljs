@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -524,8 +524,8 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
         boolean hasTypeModule() {
             if (hasNonNullProperty(jsonObj, TYPE)) {
                 Object nameValue = JSObject.get(jsonObj, TYPE);
-                if (Strings.isTString(nameValue)) {
-                    return Strings.equals(MODULE, (TruffleString) nameValue);
+                if (nameValue instanceof TruffleString nameStr) {
+                    return Strings.equals(MODULE, nameStr);
                 }
             }
             return false;
@@ -561,8 +561,8 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             TruffleString packageName = Strings.fromJavaString(name);
             if (hasNonNullProperty(jsonObj, NAME)) {
                 Object nameValue = JSObject.get(jsonObj, NAME);
-                if (Strings.isTString(nameValue)) {
-                    return Strings.equals(packageName, (TruffleString) nameValue);
+                if (nameValue instanceof TruffleString nameStr) {
+                    return Strings.equals(packageName, nameStr);
                 }
             }
             return false;

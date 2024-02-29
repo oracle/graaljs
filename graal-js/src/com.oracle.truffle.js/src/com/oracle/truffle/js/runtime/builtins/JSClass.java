@@ -47,11 +47,11 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSShape;
@@ -197,7 +197,7 @@ public abstract class JSClass {
         }
         List<Object> names = new ArrayList<>();
         for (Object key : ownPropertyKeys) {
-            if ((!symbols && key instanceof Symbol) || (!strings && Strings.isTString(key))) {
+            if ((!symbols && key instanceof Symbol) || (!strings && key instanceof TruffleString)) {
                 continue;
             }
             names.add(key);

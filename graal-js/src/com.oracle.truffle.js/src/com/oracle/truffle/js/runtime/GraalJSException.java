@@ -711,8 +711,8 @@ public abstract class GraalJSException extends AbstractTruffleException {
             if (desc != null) {
                 if (desc.isDataDescriptor()) {
                     Object name = desc.getValue();
-                    if (Strings.isTString(name)) {
-                        return (TruffleString) name;
+                    if (name instanceof TruffleString nameStr) {
+                        return nameStr;
                     }
                 }
             }

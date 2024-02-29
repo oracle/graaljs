@@ -61,7 +61,6 @@ import com.oracle.truffle.api.utilities.TriState;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Properties;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.builtins.JSClass;
@@ -260,7 +259,7 @@ public abstract sealed class JSDynamicObject extends DynamicObject implements Tr
         TruffleString result = getJSContext().getEcmaScriptVersion() > 5 ? getBuiltinToStringTag() : getClassName();
         if (isObject()) {
             Object toStringTag = getValue(Symbol.SYMBOL_TO_STRING_TAG);
-            if (Strings.isTString(toStringTag)) {
+            if (toStringTag instanceof TruffleString) {
                 result = (TruffleString) toStringTag;
             }
         }

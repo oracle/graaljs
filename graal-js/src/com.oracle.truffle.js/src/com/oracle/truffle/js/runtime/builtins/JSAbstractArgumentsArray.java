@@ -183,7 +183,6 @@ public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
         }
 
         if (isIndexConnected) {
-            assert Strings.isTString(key) : key;
             definePropertyMapped(thisObj, (TruffleString) key, descriptor, index, oldValue, thisObj);
         }
         return true;

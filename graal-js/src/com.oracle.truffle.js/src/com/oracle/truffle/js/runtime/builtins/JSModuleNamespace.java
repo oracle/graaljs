@@ -139,10 +139,10 @@ public final class JSModuleNamespace extends JSNonProxy {
     @Override
     @TruffleBoundary
     public Object getOwnHelper(JSDynamicObject store, Object thisObj, Object key, Node encapsulatingNode) {
-        if (!Strings.isTString(key)) {
+        if (!(key instanceof TruffleString name)) {
             return super.getOwnHelper(store, thisObj, key, encapsulatingNode);
         }
-        ExportResolution binding = getExports(store).get((TruffleString) key);
+        ExportResolution binding = getExports(store).get(name);
         if (binding != null) {
             return getBindingValue(binding);
         } else {
@@ -174,19 +174,19 @@ public final class JSModuleNamespace extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean hasProperty(JSDynamicObject thisObj, Object key) {
-        if (!Strings.isTString(key)) {
+        if (!(key instanceof TruffleString name)) {
             return super.hasProperty(thisObj, key);
         }
-        return getExports(thisObj).containsKey((TruffleString) key);
+        return getExports(thisObj).containsKey(name);
     }
 
     @Override
     @TruffleBoundary
     public boolean hasOwnProperty(JSDynamicObject thisObj, Object key) {
-        if (!Strings.isTString(key)) {
+        if (!(key instanceof TruffleString name)) {
             return super.hasOwnProperty(thisObj, key);
         }
-        ExportResolution binding = getExports(thisObj).get((TruffleString) key);
+        ExportResolution binding = getExports(thisObj).get(name);
         if (binding != null) {
             // checks for uninitialized bindings
             getBindingValue(binding);
@@ -204,10 +204,10 @@ public final class JSModuleNamespace extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
-        if (!Strings.isTString(key)) {
+        if (!(key instanceof TruffleString name)) {
             return super.delete(thisObj, key, isStrict);
         }
-        if (getExports(thisObj).containsKey((TruffleString) key)) {
+        if (getExports(thisObj).containsKey(name)) {
             if (isStrict) {
                 throw Errors.createTypeErrorNotConfigurableProperty(key);
             } else {
@@ -226,7 +226,7 @@ public final class JSModuleNamespace extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor desc, boolean doThrow) {
-        if (!Strings.isTString(key)) {
+        if (!(key instanceof TruffleString)) {
             return super.defineOwnProperty(thisObj, key, desc, doThrow);
         }
         PropertyDescriptor current = getOwnProperty(thisObj, key);
@@ -240,10 +240,10 @@ public final class JSModuleNamespace extends JSNonProxy {
     @Override
     @TruffleBoundary
     public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
-        if (!Strings.isTString(key)) {
+        if (!(key instanceof TruffleString name)) {
             return super.getOwnProperty(thisObj, key);
         }
-        ExportResolution binding = getExports(thisObj).get((TruffleString) key);
+        ExportResolution binding = getExports(thisObj).get(name);
         if (binding != null) {
             Object value = getBindingValue(binding);
             return PropertyDescriptor.createData(value, true, true, false);

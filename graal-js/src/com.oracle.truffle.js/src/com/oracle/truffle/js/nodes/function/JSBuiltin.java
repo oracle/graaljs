@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -189,9 +189,8 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
     private static boolean isAllowedKey(Object key) {
         if (key instanceof Symbol) {
             return true;
-        } else if (Strings.isTString(key)) {
+        } else if (key instanceof TruffleString tsk) {
             // "get $_" is needed for JSRegExp
-            TruffleString tsk = (TruffleString) key;
             return !Strings.isEmpty(tsk) && (!Strings.endsWith(tsk, Strings.UNDERSCORE) || Strings.equals(tsk, Strings.$_)) && !Strings.startsWith(tsk, Strings.UNDERSCORE) ||
                             (Strings.startsWith(tsk, Strings.UNDERSCORE_2) && Strings.endsWith(tsk, Strings.UNDERSCORE_2));
         }

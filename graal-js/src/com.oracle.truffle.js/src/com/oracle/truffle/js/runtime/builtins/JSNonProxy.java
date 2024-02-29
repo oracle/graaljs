@@ -194,7 +194,7 @@ public abstract class JSNonProxy extends JSClass {
         List<Object> keyList = thisObj.getShape().getKeyList();
         List<Object> list = new ArrayList<>(keyList.size());
         for (Object key : keyList) {
-            if ((!symbols && key instanceof Symbol) || (!strings && Strings.isTString(key))) {
+            if ((!symbols && key instanceof Symbol) || (!strings && key instanceof TruffleString)) {
                 continue;
             }
             list.add(key);

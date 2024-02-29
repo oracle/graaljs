@@ -759,8 +759,8 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (JSDynamicObject.isJSDynamicObject(target)) {
                 return JSObject.getOwnProperty((JSDynamicObject) target, key);
             } else {
-                if (Strings.isTString(key)) {
-                    return JSInteropUtil.getOwnProperty(target, (TruffleString) key);
+                if (key instanceof TruffleString name) {
+                    return JSInteropUtil.getOwnProperty(target, name);
                 } else {
                     assert key instanceof Symbol;
                     return null; // No symbols in foreign objects

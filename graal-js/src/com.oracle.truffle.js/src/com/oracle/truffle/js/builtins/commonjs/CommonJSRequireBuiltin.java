@@ -355,8 +355,8 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
     private static TruffleFile getModuleResolutionEntryPath(JSDynamicObject currentRequire, JSRealm realm, TruffleLanguage.Env env) {
         if (JSDynamicObject.isJSDynamicObject(currentRequire)) {
             Object maybeFilename = JSObject.get(currentRequire, Strings.FILENAME_VAR_NAME);
-            if (Strings.isTString(maybeFilename)) {
-                String fileName = Strings.toJavaString((TruffleString) maybeFilename);
+            if (maybeFilename instanceof TruffleString str) {
+                String fileName = Strings.toJavaString(str);
                 if (isFile(env, fileName)) {
                     TruffleFile maybeParent = getParent(env, fileName);
                     if (maybeParent != null) {

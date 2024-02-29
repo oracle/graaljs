@@ -254,8 +254,8 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
         if (objIndex instanceof Long) {
             long index = (Long) objIndex;
             result = (index < 0) || (Strings.length(target) <= index);
-        } else if (Strings.isTString(objIndex)) {
-            result = !Strings.equals(equalsNode, JSString.LENGTH, (TruffleString) objIndex);
+        } else if (objIndex instanceof TruffleString propertyName) {
+            result = !Strings.equals(equalsNode, JSString.LENGTH, propertyName);
         } else {
             assert objIndex instanceof Symbol;
             result = true;
@@ -317,8 +317,8 @@ public abstract class DeletePropertyNode extends JSTargetableNode {
             }
         }
         if (interop.hasMembers(target)) {
-            if (Strings.isTString(propertyKey)) {
-                return JSInteropUtil.deleteMember(target, (TruffleString) propertyKey, interop, strict);
+            if (propertyKey instanceof TruffleString propertyName) {
+                return JSInteropUtil.deleteMember(target, propertyName, interop, strict);
             } else {
                 assert propertyKey instanceof Symbol;
                 return true;

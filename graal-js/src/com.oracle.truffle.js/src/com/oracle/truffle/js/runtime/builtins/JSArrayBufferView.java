@@ -135,8 +135,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public Object getHelper(JSDynamicObject store, Object receiver, Object key, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
-        if (Strings.isTString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
+        if (key instanceof TruffleString name) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString(name);
             if (numericIndex != Undefined.instance) {
                 return integerIndexedElementGet(store, numericIndex);
             }
@@ -148,8 +148,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public Object getOwnHelper(JSDynamicObject store, Object receiver, Object key, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
-        if (Strings.isTString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
+        if (key instanceof TruffleString name) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString(name);
             if (numericIndex != Undefined.instance) {
                 return integerIndexedElementGet(store, numericIndex);
             }
@@ -197,8 +197,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public boolean set(JSDynamicObject thisObj, Object key, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         assert JSRuntime.isPropertyKey(key);
-        if (Strings.isTString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
+        if (key instanceof TruffleString name) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString(name);
             if (numericIndex != Undefined.instance) {
                 if (thisObj == receiver) {
                     // IntegerIndexedElementSet
@@ -252,8 +252,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public boolean hasProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        if (Strings.isTString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
+        if (key instanceof TruffleString name) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString(name);
             if (numericIndex != Undefined.instance) {
                 return hasNumericIndex(thisObj, numericIndex);
             }
@@ -274,8 +274,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public boolean hasOwnProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        if (Strings.isTString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
+        if (key instanceof TruffleString name) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString(name);
             if (numericIndex != Undefined.instance) {
                 return hasNumericIndex(thisObj, numericIndex);
             }
@@ -427,8 +427,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public boolean defineOwnProperty(JSDynamicObject thisObj, Object key, PropertyDescriptor descriptor, boolean doThrow) {
         assert JSRuntime.isPropertyKey(key);
-        if (Strings.isTString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
+        if (key instanceof TruffleString name) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString(name);
             if (numericIndex != Undefined.instance) {
                 boolean success = defineOwnPropertyIndex(thisObj, (Number) numericIndex, descriptor);
                 if (doThrow && !success) {
@@ -475,8 +475,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public PropertyDescriptor getOwnProperty(JSDynamicObject thisObj, Object key) {
         assert JSRuntime.isPropertyKey(key);
-        if (Strings.isTString(key)) {
-            long numericIndex = JSRuntime.propertyKeyToIntegerIndex(key);
+        if (key instanceof TruffleString name) {
+            long numericIndex = JSRuntime.propertyKeyToIntegerIndex(name);
             if (numericIndex >= 0) {
                 Object value = getOwnHelper(thisObj, thisObj, numericIndex, null);
                 if (value == Undefined.instance) {
@@ -491,8 +491,8 @@ public final class JSArrayBufferView extends JSNonProxy {
     @Override
     public boolean delete(JSDynamicObject thisObj, Object key, boolean isStrict) {
         assert JSRuntime.isPropertyKey(key);
-        if (Strings.isTString(key)) {
-            Object numericIndex = JSRuntime.canonicalNumericIndexString((TruffleString) key);
+        if (key instanceof TruffleString name) {
+            Object numericIndex = JSRuntime.canonicalNumericIndexString(name);
             if (numericIndex != Undefined.instance) {
                 if (hasNumericIndex(thisObj, numericIndex)) {
                     if (isStrict) {

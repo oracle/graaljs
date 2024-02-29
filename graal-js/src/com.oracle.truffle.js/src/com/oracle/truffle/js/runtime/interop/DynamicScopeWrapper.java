@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -88,10 +88,10 @@ public final class DynamicScopeWrapper implements TruffleObject {
                     @CachedLibrary("this.scope") DynamicObjectLibrary access) {
         List<String> keys = new ArrayList<>();
         for (Object key : access.getKeyArray(scope)) {
-            if (Strings.isTString(key)) {
-                Object value = Properties.getOrDefault(access, scope, key, null);
+            if (key instanceof TruffleString name) {
+                Object value = Properties.getOrDefault(access, scope, name, null);
                 if (value != null && value != Dead.instance()) {
-                    keys.add(Strings.toJavaString((TruffleString) key));
+                    keys.add(Strings.toJavaString(name));
                 }
             }
         }

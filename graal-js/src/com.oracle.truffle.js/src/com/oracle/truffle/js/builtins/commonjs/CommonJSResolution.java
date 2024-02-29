@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,7 +60,6 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
@@ -264,10 +263,10 @@ public final class CommonJSResolution {
             JSDynamicObject jsonObj = loadJsonObject(packageJson, realm);
             if (JSDynamicObject.isJSDynamicObject(jsonObj)) {
                 Object main = JSObject.get(jsonObj, Strings.PACKAGE_JSON_MAIN_PROPERTY_NAME);
-                if (!Strings.isTString(main)) {
+                if (!(main instanceof TruffleString mainStr)) {
                     return loadIndex(modulePath);
                 }
-                TruffleFile module = joinPaths(modulePath, JSRuntime.safeToString(main).toJavaStringUncached());
+                TruffleFile module = joinPaths(modulePath, mainStr.toJavaStringUncached());
                 TruffleFile asFile = loadAsFile(realm.getEnv(), module);
                 if (asFile != null) {
                     return asFile;

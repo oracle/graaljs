@@ -444,7 +444,7 @@ public final class Errors {
 
     private static String keyToString(Object key) {
         assert JSRuntime.isPropertyKey(key);
-        return Strings.isTString(key) ? '"' + Strings.toJavaString((TruffleString) key) + '"' : key.toString();
+        return key instanceof TruffleString str ? '"' + Strings.toJavaString(str) + '"' : key.toString();
     }
 
     @TruffleBoundary

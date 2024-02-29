@@ -126,7 +126,6 @@ public final class JSSlowArray extends JSAbstractArray {
     @Override
     protected boolean defineOwnPropertyIndex(JSDynamicObject thisObj, TruffleString name, PropertyDescriptor descriptor, boolean doThrow) {
         CompilerAsserts.neverPartOfCompilation();
-        assert Strings.isTString(name);
         long index = JSRuntime.toUInt32(name);
         if (index >= getLength(thisObj)) {
             PropertyDescriptor desc = getOwnProperty(thisObj, LENGTH);

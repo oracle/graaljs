@@ -369,10 +369,10 @@ public final class JSFunction extends JSNonProxy {
     @TruffleBoundary
     private static TruffleString getFunctionName(JSDynamicObject thisFnObj) {
         Object name = JSObject.get(thisFnObj, NAME);
-        if (!Strings.isTString(name)) {
-            name = Strings.EMPTY_STRING;
+        if (!(name instanceof TruffleString nameStr)) {
+            return Strings.EMPTY_STRING;
         }
-        return (TruffleString) name;
+        return nameStr;
     }
 
     @TruffleBoundary

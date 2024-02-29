@@ -876,7 +876,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         private boolean setValueImpl(Object thisObj, Object value, PropertySetNode root) {
             Object key = root.getKey();
             Object truffleObject = nullCheck(thisObj, key);
-            if (!Strings.isTString(key)) {
+            if (!(key instanceof TruffleString)) {
                 return false;
             }
             if (isLength && interop.hasArrayElements(thisObj)) {

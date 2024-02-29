@@ -394,7 +394,7 @@ public final class JSObjectUtil {
 
     public static boolean isNoSuchPropertyOrMethod(Object key) {
         CompilerAsserts.neverPartOfCompilation();
-        return (Strings.isTString(key) && (Strings.equals(JSObject.NO_SUCH_PROPERTY_NAME, (TruffleString) key) || Strings.equals(JSObject.NO_SUCH_METHOD_NAME, (TruffleString) key)));
+        return (key instanceof TruffleString name && (Strings.equals(JSObject.NO_SUCH_PROPERTY_NAME, name) || Strings.equals(JSObject.NO_SUCH_METHOD_NAME, name)));
     }
 
     public static void putFunctionsFromContainer(JSRealm realm, JSDynamicObject thisObj, JSBuiltinsContainer container) {
