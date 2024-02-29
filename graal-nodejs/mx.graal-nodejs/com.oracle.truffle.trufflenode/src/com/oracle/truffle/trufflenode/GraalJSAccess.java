@@ -2657,8 +2657,8 @@ public final class GraalJSAccess {
         return Strings.fromJavaString("Uncaught " + ((Throwable) exception).getMessage());
     }
 
-    public Object stackTraceCurrentStackTrace() {
-        return GraalJSException.getJSStackTrace(null);
+    public Object stackTraceCurrentStackTrace(int frameLimit) {
+        return GraalJSException.getJSStackTrace(null, frameLimit);
     }
 
     public int stackFrameGetLineNumber(Object stackFrame) {

@@ -256,6 +256,11 @@ public abstract class GraalJSException extends AbstractTruffleException {
     @TruffleBoundary
     public static JSStackTraceElement[] getJSStackTrace(Node originatingNode) {
         int stackTraceLimit = JavaScriptLanguage.get(originatingNode).getJSContext().getLanguageOptions().stackTraceLimit();
+        return getJSStackTrace(originatingNode, stackTraceLimit);
+    }
+
+    @TruffleBoundary
+    public static JSStackTraceElement[] getJSStackTrace(Node originatingNode, int stackTraceLimit) {
         return UserScriptException.createCapture("", originatingNode, stackTraceLimit).getJSStackTrace();
     }
 
