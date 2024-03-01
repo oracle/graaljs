@@ -57,7 +57,7 @@ public abstract class SignNode extends MathOperation {
 
     @Specialization
     protected static double sign(double a) {
-        return a > 0 ? 1 : (a < 0 ? -1 : a); // could be -0
+        return Math.signum(a);
     }
 
     @Specialization
