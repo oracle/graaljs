@@ -549,6 +549,11 @@ public final class JSContextOptions {
     public static final OptionKey<Boolean> NEW_SET_METHODS = new OptionKey<>(false);
     @CompilationFinal private boolean newSetMethods;
 
+    public static final String ATOMICS_WAIT_ASYNC_NAME = JS_OPTION_PREFIX + "atomics-wait-async";
+    @Option(name = ATOMICS_WAIT_ASYNC_NAME, category = OptionCategory.EXPERT, help = "Enable Atomics.waitAsync.") //
+    public static final OptionKey<Boolean> ATOMICS_WAIT_ASYNC = new OptionKey<>(false);
+    @CompilationFinal private boolean atomicsWaitAsync;
+
     public static final String TEMPORAL_NAME = JS_OPTION_PREFIX + "temporal";
     @Option(name = TEMPORAL_NAME, category = OptionCategory.EXPERT, help = "Enable JavaScript Temporal API.") //
     public static final OptionKey<Boolean> TEMPORAL = new OptionKey<>(false);
@@ -765,6 +770,7 @@ public final class JSContextOptions {
         this.webAssembly = readBooleanOption(WEBASSEMBLY);
         this.unhandledRejectionsMode = readUnhandledRejectionsMode();
         this.newSetMethods = readBooleanOption(NEW_SET_METHODS);
+        this.atomicsWaitAsync = ATOMICS_WAIT_ASYNC.hasBeenSet(optionValues) ? readBooleanOption(ATOMICS_WAIT_ASYNC) : getEcmaScriptVersion() >= JSConfig.ECMAScript2024;
         this.asyncIteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && readBooleanOption(ASYNC_ITERATOR_HELPERS);
         this.iteratorHelpers = getEcmaScriptVersion() >= JSConfig.ECMAScript2018 && (this.asyncIteratorHelpers || readBooleanOption(ITERATOR_HELPERS));
         this.shadowRealm = getEcmaScriptVersion() >= JSConfig.ECMAScript2015 && readBooleanOption(SHADOW_REALM);
@@ -1157,6 +1163,10 @@ public final class JSContextOptions {
 
     public boolean isNewSetMethods() {
         return newSetMethods;
+    }
+
+    public boolean isAtomicsWaitAsync() {
+        return atomicsWaitAsync;
     }
 
     public boolean isIteratorHelpers() {

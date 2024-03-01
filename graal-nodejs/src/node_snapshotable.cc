@@ -102,6 +102,9 @@ std::ostream& operator<<(std::ostream& output,
 
 std::ostream& operator<<(std::ostream& output, const RealmSerializeInfo& i) {
   output << "{\n"
+         << "// -- builtins begins --\n"
+         << i.builtins << ",\n"
+         << "// -- builtins ends --\n"
          << "// -- persistent_values begins --\n"
          << i.persistent_values << ",\n"
          << "// -- persistent_values ends --\n"
@@ -115,9 +118,6 @@ std::ostream& operator<<(std::ostream& output, const RealmSerializeInfo& i) {
 
 std::ostream& operator<<(std::ostream& output, const EnvSerializeInfo& i) {
   output << "{\n"
-         << "// -- builtins begins --\n"
-         << i.builtins << ",\n"
-         << "// -- builtins ends --\n"
          << "// -- async_hooks begins --\n"
          << i.async_hooks << ",\n"
          << "// -- async_hooks ends --\n"
@@ -711,6 +711,7 @@ template <>
 RealmSerializeInfo SnapshotDeserializer::Read() {
   per_process::Debug(DebugCategory::MKSNAPSHOT, "Read<RealmSerializeInfo>()\n");
   RealmSerializeInfo result;
+  result.builtins = ReadVector<std::string>();
   result.persistent_values = ReadVector<PropInfo>();
   result.native_objects = ReadVector<PropInfo>();
   result.context = Read<SnapshotIndex>();
@@ -725,7 +726,8 @@ size_t SnapshotSerializer::Write(const RealmSerializeInfo& data) {
   }
 
   // Use += here to ensure order of evaluation.
-  size_t written_total = WriteVector<PropInfo>(data.persistent_values);
+  size_t written_total = WriteVector<std::string>(data.builtins);
+  written_total += WriteVector<PropInfo>(data.persistent_values);
   written_total += WriteVector<PropInfo>(data.native_objects);
   written_total += Write<SnapshotIndex>(data.context);
 
@@ -737,7 +739,6 @@ template <>
 EnvSerializeInfo SnapshotDeserializer::Read() {
   per_process::Debug(DebugCategory::MKSNAPSHOT, "Read<EnvSerializeInfo>()\n");
   EnvSerializeInfo result;
-  result.builtins = ReadVector<std::string>();
   result.async_hooks = Read<AsyncHooks::SerializeInfo>();
   result.tick_info = Read<TickInfo::SerializeInfo>();
   result.immediate_info = Read<ImmediateInfo::SerializeInfo>();
@@ -759,8 +760,7 @@ size_t SnapshotSerializer::Write(const EnvSerializeInfo& data) {
   }
 
   // Use += here to ensure order of evaluation.
-  size_t written_total = WriteVector<std::string>(data.builtins);
-  written_total += Write<AsyncHooks::SerializeInfo>(data.async_hooks);
+  size_t written_total = Write<AsyncHooks::SerializeInfo>(data.async_hooks);
   written_total += Write<TickInfo::SerializeInfo>(data.tick_info);
   written_total += Write<ImmediateInfo::SerializeInfo>(data.immediate_info);
   written_total += Write<AliasedBufferIndex>(data.timeout_info);
@@ -1039,10 +1039,10 @@ static const int v8_snapshot_blob_size = )"
   // -- v8_snapshot_blob_data begins --
   { v8_snapshot_blob_data, v8_snapshot_blob_size },
   // -- v8_snapshot_blob_data ends --
-  // -- isolate_data_indices begins --
+  // -- isolate_data_info begins --
 )" << data->isolate_data_info
      << R"(
-  // -- isolate_data_indices ends --
+  // -- isolate_data_info ends --
   ,
   // -- env_info begins --
 )" << data->env_info
@@ -1231,10 +1231,10 @@ int SnapshotBuilder::Generate(SnapshotData* out,
 
 #ifdef NODE_USE_NODE_CODE_CACHE
       // Regenerate all the code cache.
-      if (!builtins::BuiltinLoader::CompileAllBuiltins(main_context)) {
+      if (!env->builtin_loader()->CompileAllBuiltins(main_context)) {
         return UNCAUGHT_EXCEPTION_ERROR;
       }
-      builtins::BuiltinLoader::CopyCodeCache(&(out->code_cache));
+      env->builtin_loader()->CopyCodeCache(&(out->code_cache));
       for (const auto& item : out->code_cache) {
         std::string size_str = FormatSize(item.data.size());
         per_process::Debug(DebugCategory::MKSNAPSHOT,
@@ -1308,11 +1308,11 @@ SnapshotableObject::SnapshotableObject(Realm* realm,
                                        EmbedderObjectType type)
     : BaseObject(realm, wrap), type_(type) {}
 
-std::string_view SnapshotableObject::GetTypeName() const {
+std::string SnapshotableObject::GetTypeName() const {
   switch (type_) {
 #define V(PropertyName, NativeTypeName)                                        \
   case EmbedderObjectType::k_##PropertyName: {                                 \
-    return NativeTypeName::type_name.as_string_view();                         \
+    return #NativeTypeName;                                                    \
   }
     SERIALIZABLE_OBJECT_TYPES(V)
 #undef V
@@ -1353,7 +1353,7 @@ void DeserializeNodeInternalFields(Local<Object> holder,
     per_process::Debug(DebugCategory::MKSNAPSHOT,                              \
                        "Object %p is %s\n",                                    \
                        (*holder),                                              \
-                       NativeTypeName::type_name.as_string_view());            \
+                       #NativeTypeName);                                       \
     env_ptr->EnqueueDeserializeRequest(                                        \
         NativeTypeName::Deserialize,                                           \
         holder,                                                                \
@@ -1440,7 +1440,7 @@ void SerializeSnapshotableObjects(Realm* realm,
     }
     SnapshotableObject* ptr = static_cast<SnapshotableObject*>(obj);
 
-    std::string type_name{ptr->GetTypeName()};
+    std::string type_name = ptr->GetTypeName();
     per_process::Debug(DebugCategory::MKSNAPSHOT,
                        "Serialize snapshotable object %i (%p), "
                        "object=%p, type=%s\n",

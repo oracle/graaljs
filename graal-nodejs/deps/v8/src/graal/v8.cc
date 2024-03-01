@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1586,6 +1586,10 @@ namespace v8 {
     }
 
     Local<String> StackFrame::GetScriptName() const {
+        return reinterpret_cast<const GraalStackFrame*> (this)->GetScriptName();
+    }
+
+    Local<String> StackFrame::GetScriptNameOrSourceURL() const {
         return reinterpret_cast<const GraalStackFrame*> (this)->GetScriptName();
     }
 
@@ -3261,10 +3265,7 @@ namespace v8 {
 
     void Isolate::Initialize(Isolate* isolate, const CreateParams& params) {
         GraalIsolate::New(params, isolate);
-        // We don't need this reference (i.e. we don't use it) by now.
-        // Unfortunately, PerIsolatePlatformData::Shutdown()
-        // assumes that someone holds the reference (V8 does so).
-        reinterpret_cast<GraalIsolate*> (isolate)->task_runner_ = platform_->GetForegroundTaskRunner(isolate);
+        reinterpret_cast<GraalIsolate*> (isolate)->SetTaskRunner(platform_->GetForegroundTaskRunner(isolate));
     }
 
     internal::Address* Isolate::GetDataFromSnapshotOnce(size_t index) {

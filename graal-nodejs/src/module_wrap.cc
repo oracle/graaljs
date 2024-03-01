@@ -4,6 +4,7 @@
 #include "memory_tracker-inl.h"
 #include "node_contextify.h"
 #include "node_errors.h"
+#include "node_external_reference.h"
 #include "node_internals.h"
 #include "node_process-inl.h"
 #include "node_watchdog.h"
@@ -249,19 +250,19 @@ void ModuleWrap::New(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(that);
 }
 
-static Local<Object> createImportAssertionContainer(Environment* env,
-  Isolate* isolate, Local<FixedArray> raw_assertions) {
-  Local<Object> assertions =
-        Object::New(isolate, v8::Null(env->isolate()), nullptr, nullptr, 0);
-  for (int i = 0; i < raw_assertions->Length(); i += 3) {
-      assertions
-          ->Set(env->context(),
-                raw_assertions->Get(env->context(), i).As<String>(),
-                raw_assertions->Get(env->context(), i + 1).As<Value>())
-          .ToChecked();
+static Local<Object> createImportAttributesContainer(
+    Environment* env, Isolate* isolate, Local<FixedArray> raw_attributes) {
+  Local<Object> attributes =
+      Object::New(isolate, v8::Null(env->isolate()), nullptr, nullptr, 0);
+  for (int i = 0; i < raw_attributes->Length(); i += 3) {
+    attributes
+        ->Set(env->context(),
+              raw_attributes->Get(env->context(), i).As<String>(),
+              raw_attributes->Get(env->context(), i + 1).As<Value>())
+        .ToChecked();
   }
 
-  return assertions;
+  return attributes;
 }
 
 void ModuleWrap::Link(const FunctionCallbackInfo<Value>& args) {
@@ -297,13 +298,13 @@ void ModuleWrap::Link(const FunctionCallbackInfo<Value>& args) {
     Utf8Value specifier_utf8(env->isolate(), specifier);
     std::string specifier_std(*specifier_utf8, specifier_utf8.length());
 
-    Local<FixedArray> raw_assertions = module_request->GetImportAssertions();
-    Local<Object> assertions =
-      createImportAssertionContainer(env, isolate, raw_assertions);
+    Local<FixedArray> raw_attributes = module_request->GetImportAssertions();
+    Local<Object> attributes =
+        createImportAttributesContainer(env, isolate, raw_attributes);
 
     Local<Value> argv[] = {
         specifier,
-        assertions,
+        attributes,
     };
 
     MaybeLocal<Value> maybe_resolve_return_value =
@@ -499,7 +500,7 @@ void ModuleWrap::GetError(const FunctionCallbackInfo<Value>& args) {
 MaybeLocal<Module> ModuleWrap::ResolveModuleCallback(
     Local<Context> context,
     Local<String> specifier,
-    Local<FixedArray> import_assertions,
+    Local<FixedArray> import_attributes,
     Local<Module> referrer) {
   Environment* env = Environment::GetCurrent(context);
   if (env == nullptr) {
@@ -552,7 +553,7 @@ static MaybeLocal<Promise> ImportModuleDynamically(
     Local<v8::Data> host_defined_options,
     Local<Value> resource_name,
     Local<String> specifier,
-    Local<FixedArray> import_assertions) {
+    Local<FixedArray> import_attributes) {
   Isolate* isolate = context->GetIsolate();
   Environment* env = Environment::GetCurrent(context);
   if (env == nullptr) {
@@ -601,13 +602,13 @@ static MaybeLocal<Promise> ImportModuleDynamically(
     UNREACHABLE();
   }
 
-  Local<Object> assertions =
-    createImportAssertionContainer(env, isolate, import_assertions);
+  Local<Object> attributes =
+      createImportAttributesContainer(env, isolate, import_attributes);
 
   Local<Value> import_args[] = {
     object,
     Local<Value>(specifier),
-    assertions,
+    attributes,
   };
 
   Local<Value> result;
@@ -808,8 +809,27 @@ void ModuleWrap::Initialize(Local<Object> target,
 #undef V
 }
 
+void ModuleWrap::RegisterExternalReferences(
+    ExternalReferenceRegistry* registry) {
+  registry->Register(New);
+
+  registry->Register(Link);
+  registry->Register(Instantiate);
+  registry->Register(Evaluate);
+  registry->Register(SetSyntheticExport);
+  registry->Register(CreateCachedData);
+  registry->Register(GetNamespace);
+  registry->Register(GetStatus);
+  registry->Register(GetError);
+  registry->Register(GetStaticDependencySpecifiers);
+
+  registry->Register(SetImportModuleDynamicallyCallback);
+  registry->Register(SetInitializeImportMetaObjectCallback);
+}
 }  // namespace loader
 }  // namespace node
 
 NODE_BINDING_CONTEXT_AWARE_INTERNAL(module_wrap,
                                     node::loader::ModuleWrap::Initialize)
+NODE_BINDING_EXTERNAL_REFERENCE(
+    module_wrap, node::loader::ModuleWrap::RegisterExternalReferences)

@@ -5,6 +5,7 @@ const {
   PromiseResolve,
   SafeMap,
 } = primordials;
+const { getCallerLocation } = internalBinding('util');
 const {
   createHook,
   executionAsyncId,
@@ -18,11 +19,14 @@ const { kEmptyObject } = require('internal/util');
 const { kCancelledByParent, Test, Suite } = require('internal/test_runner/test');
 const {
   parseCommandLine,
+  reporterScope,
   setupTestReporters,
 } = require('internal/test_runner/utils');
 const { bigint: hrtime } = process.hrtime;
 
 const testResources = new SafeMap();
+
+testResources.set(reporterScope.asyncId(), reporterScope);
 
 function createTestTree(options = kEmptyObject) {
   return setup(new Test({ __proto__: null, ...options, name: '<root>' }));
@@ -37,9 +41,14 @@ function createProcessEventHandler(eventName, rootTest) {
       throw err;
     }
 
-    // Check if this error is coming from a test. If it is, fail the test.
     const test = testResources.get(executionAsyncId());
 
+    // Check if this error is coming from a reporter. If it is, throw it.
+    if (test === reporterScope) {
+      throw err;
+    }
+
+    // Check if this error is coming from a test. If it is, fail the test.
     if (!test || test.finished) {
       // If the test is already finished or the resource that created the error
       // is not mapped to a Test, report this as a top level diagnostic.
@@ -114,6 +123,7 @@ function setup(root) {
   const globalOptions = parseCommandLine();
 
   const hook = createHook({
+    __proto__: null,
     init(asyncId, type, triggerAsyncId, resource) {
       if (resource instanceof Test) {
         testResources.set(asyncId, resource);
@@ -138,8 +148,8 @@ function setup(root) {
   const rejectionHandler =
     createProcessEventHandler('unhandledRejection', root);
   const coverage = configureCoverage(root, globalOptions);
-  const exitHandler = async () => {
-    await root.run(new ERR_TEST_FAILURE(
+  const exitHandler = () => {
+    root.postRun(new ERR_TEST_FAILURE(
       'Promise resolution is still pending but the event loop has already resolved',
       kCancelledByParent));
 
@@ -148,8 +158,8 @@ function setup(root) {
     process.removeListener('uncaughtException', exceptionHandler);
   };
 
-  const terminationHandler = async () => {
-    await exitHandler();
+  const terminationHandler = () => {
+    exitHandler();
     process.exit();
   };
 
@@ -188,8 +198,10 @@ let reportersSetup;
 function getGlobalRoot() {
   if (!globalRoot) {
     globalRoot = createTestTree();
-    globalRoot.reporter.once('test:fail', () => {
-      process.exitCode = 1;
+    globalRoot.reporter.on('test:fail', (data) => {
+      if (data.todo === undefined || data.todo === false) {
+        process.exitCode = 1;
+      }
     });
     reportersSetup = setupTestReporters(globalRoot);
   }
@@ -212,9 +224,24 @@ function runInParentContext(Factory) {
     return PromiseResolve();
   }
 
-  const test = (name, options, fn) => run(name, options, fn);
+  const test = (name, options, fn) => {
+    const overrides = {
+      __proto__: null,
+      loc: getCallerLocation(),
+    };
+
+    return run(name, options, fn, overrides);
+  };
   ArrayPrototypeForEach(['skip', 'todo', 'only'], (keyword) => {
-    test[keyword] = (name, options, fn) => run(name, options, fn, { [keyword]: true });
+    test[keyword] = (name, options, fn) => {
+      const overrides = {
+        __proto__: null,
+        [keyword]: true,
+        loc: getCallerLocation(),
+      };
+
+      return run(name, options, fn, overrides);
+    };
   });
   return test;
 }
@@ -222,7 +249,13 @@ function runInParentContext(Factory) {
 function hook(hook) {
   return (fn, options) => {
     const parent = testResources.get(executionAsyncId()) || getGlobalRoot();
-    parent.createHook(hook, fn, options);
+    parent.createHook(hook, fn, {
+      __proto__: null,
+      ...options,
+      parent,
+      hookType: hook,
+      loc: getCallerLocation(),
+    });
   };
 }
 

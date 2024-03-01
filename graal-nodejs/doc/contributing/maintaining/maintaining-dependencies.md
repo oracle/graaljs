@@ -9,13 +9,13 @@ All dependencies are located within the `deps` directory.
 This a list of all the dependencies:
 
 * [acorn][]
-* [ada][]
+* [ada 2.7.2][]
 * [base64][]
 * [brotli][]
-* [c-ares][]
+* [c-ares 1.20.1][]
 * [cjs-module-lexer][]
 * [corepack][]
-* [googletest][]
+* [googletest 2dd1c13][]
 * [histogram][]
 * [icu-small][]
 * [llhttp][]
@@ -25,12 +25,12 @@ This a list of all the dependencies:
 * [npm][]
 * [openssl][]
 * [postject][]
-* [simdutf][]
-* [undici 5.26.3][]
+* [simdutf 3.2.18][]
+* [undici 5.26.4][]
 * [uv][]
-* [uvwasi][]
+* [uvwasi 0.0.19][]
 * [V8][]
-* [zlib][]
+* [zlib 1.2.13.1-motley-fef5869][]
 
 Any code which meets one or more of these conditions should
 be managed as a dependency:
@@ -148,7 +148,7 @@ The [acorn](https://github.com/acornjs/acorn) dependency is a JavaScript parser.
 [acorn-walk](https://github.com/acornjs/acorn/tree/master/acorn-walk) is
 an abstract syntax tree walker for the ESTree format.
 
-### ada
+### ada 2.7.2
 
 The [ada](https://github.com/ada-url/ada) dependency is a
 fast and spec-compliant URL parser written in C++.
@@ -165,7 +165,7 @@ length-delimited strings.
 The [brotli](https://github.com/google/brotli) dependency is
 used for the homonym generic-purpose lossless compression algorithm.
 
-### c-ares
+### c-ares 1.20.1
 
 The [c-ares](https://github.com/c-ares/c-ares) is a C library
 for asynchronous DNS requests.
@@ -187,7 +187,7 @@ In practical terms, Corepack will let you use Yarn and pnpm without having to
 install them - just like what currently happens with npm, which is shipped
 by Node.js by default.
 
-### googletest
+### googletest 2dd1c13
 
 The [googletest](https://github.com/google/googletest) dependency is Google’s
 C++ testing and mocking framework.
@@ -273,12 +273,12 @@ See [maintaining-openssl][] for more informations.
 The [postject](https://github.com/nodejs/postject) dependency is used for the
 [Single Executable strategic initiative](https://github.com/nodejs/single-executable).
 
-### simdutf
+### simdutf 3.2.18
 
 The [simdutf](https://github.com/simdutf/simdutf) dependency is
 a C++ library for fast UTF-8 decoding and encoding.
 
-### undici 5.26.3
+### undici 5.26.4
 
 The [undici](https://github.com/nodejs/undici) dependency is an HTTP/1.1 client,
 written from scratch for Node.js..
@@ -290,7 +290,7 @@ The [libuv](https://github.com/libuv/libuv) dependency is a
 multi-platform support library with a focus on asynchronous I/O.
 It was primarily developed for use by Node.js.
 
-### uvwasi
+### uvwasi 0.0.19
 
 The [uvwasi](https://github.com/nodejs/uvwasi) dependency implements
 the WASI system call API, so that WebAssembly runtimes can easily
@@ -304,7 +304,7 @@ See [maintaining-web-assembly][] for more informations.
 high-performance JavaScript and WebAssembly engine, written in C++.
 See [maintaining-V8][] for more informations.
 
-### zlib
+### zlib 1.2.13.1-motley-fef5869
 
 The [zlib](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/third_party/zlib)
 dependency lossless data-compression library,
@@ -312,14 +312,14 @@ it comes from the Chromium team's zlib fork which incorporated
 performance improvements not currently available in standard zlib.
 
 [acorn]: #acorn
-[ada]: #ada
+[ada 2.7.2]: #ada-272
 [base64]: #base64
 [brotli]: #brotli
-[c-ares]: #c-ares
+[c-ares 1.20.1]: #c-ares-1200
 [cjs-module-lexer]: #cjs-module-lexer
 [corepack]: #corepack
 [dependency-update-action]: ../../../.github/workflows/tools.yml
-[googletest]: #googletest
+[googletest 2dd1c13]: #googletest-2dd1c13
 [histogram]: #histogram
 [icu-small]: #icu-small
 [llhttp]: #llhttp
@@ -335,10 +335,10 @@ performance improvements not currently available in standard zlib.
 [npm]: #npm
 [openssl]: #openssl
 [postject]: #postject
-[simdutf]: #simdutf
-[undici 5.26.3]: #undici-5263
+[simdutf 3.2.18]: #simdutf-3218
+[undici 5.26.4]: #undici-5264
 [update-openssl-action]: ../../../.github/workflows/update-openssl.yml
 [uv]: #uv
-[uvwasi]: #uvwasi
+[uvwasi 0.0.19]: #uvwasi-0019
 [v8]: #v8
-[zlib]: #zlib
+[zlib 1.2.13.1-motley-fef5869]: #zlib-12131-motley-fef5869

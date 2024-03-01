@@ -39,10 +39,18 @@ const console = require('internal/console/global');
 const {
   codes: {
     ERR_INVALID_ARG_TYPE,
+    ERR_INVALID_ARG_VALUE,
     ERR_TEST_FAILURE,
+    ERR_OUT_OF_RANGE,
   },
 } = require('internal/errors');
-const { validateArray, validateBoolean, validateFunction } = require('internal/validators');
+const {
+  validateArray,
+  validateBoolean,
+  validateFunction,
+  validateObject,
+  validateInteger,
+} = require('internal/validators');
 const { getInspectPort, isUsingInspector, isInspectorMessage } = require('internal/util/inspector');
 const { isRegExp } = require('internal/util/types');
 const { kEmptyObject } = require('internal/util');
@@ -75,6 +83,8 @@ const kDiagnosticsFilterArgs = ['tests', 'suites', 'pass', 'fail', 'cancelled', 
 
 const kCanceledTests = new SafeSet()
   .add(kCancelledByParent).add(kAborted).add(kTestTimeoutFailure);
+
+let kResistStopPropagation;
 
 // TODO(cjihrig): Replace this with recursive readdir once it lands.
 function processPath(path, testFiles, options) {
@@ -124,7 +134,10 @@ function createTestFileList() {
     for (let i = 0; i < testPaths.length; i++) {
       const absolutePath = resolve(testPaths[i]);
 
-      processPath(absolutePath, testFiles, { userSupplied: true });
+      processPath(absolutePath, testFiles, {
+        __proto__: null,
+        userSupplied: true,
+      });
     }
   } catch (err) {
     if (err?.code === 'ENOENT') {
@@ -143,13 +156,16 @@ function filterExecArgv(arg, i, arr) {
   !ArrayPrototypeSome(kFilterArgValues, (p) => arg === p || (i > 0 && arr[i - 1] === p) || StringPrototypeStartsWith(arg, `${p}=`));
 }
 
-function getRunArgs({ path, inspectPort, testNamePatterns }) {
+function getRunArgs(path, { inspectPort, testNamePatterns, only }) {
   const argv = ArrayPrototypeFilter(process.execArgv, filterExecArgv);
   if (isUsingInspector()) {
     ArrayPrototypePush(argv, `--inspect-port=${getInspectPort(inspectPort)}`);
   }
-  if (testNamePatterns) {
+  if (testNamePatterns != null) {
     ArrayPrototypeForEach(testNamePatterns, (pattern) => ArrayPrototypePush(argv, `--test-name-pattern=${pattern}`));
+  }
+  if (only === true) {
+    ArrayPrototypePush(argv, '--test-only');
   }
   ArrayPrototypePush(argv, path);
 
@@ -169,6 +185,17 @@ class FileTest extends Test {
   #rawBufferSize = 0;
   #reportedChildren = 0;
   failedSubtests = false;
+
+  constructor(options) {
+    super(options);
+    this.loc ??= {
+      __proto__: null,
+      line: 1,
+      column: 1,
+      file: resolve(this.name),
+    };
+  }
+
   #skipReporting() {
     return this.#reportedChildren > 0 && (!this.error || this.error.failureType === kSubtestsFailed);
   }
@@ -334,21 +361,21 @@ class FileTest extends Test {
   }
 }
 
-function runTestFile(path, root, inspectPort, filesWatcher, testNamePatterns) {
+function runTestFile(path, filesWatcher, opts) {
   const watchMode = filesWatcher != null;
-  const subtest = root.createSubtest(FileTest, path, async (t) => {
-    const args = getRunArgs({ path, inspectPort, testNamePatterns });
+  const subtest = opts.root.createSubtest(FileTest, path, async (t) => {
+    const args = getRunArgs(path, opts);
     const stdio = ['pipe', 'pipe', 'pipe'];
-    const env = { ...process.env, NODE_TEST_CONTEXT: 'child-v8' };
+    const env = { __proto__: null, ...process.env, NODE_TEST_CONTEXT: 'child-v8' };
     if (watchMode) {
       stdio.push('ipc');
       env.WATCH_REPORT_DEPENDENCIES = '1';
     }
-    if (root.harness.shouldColorizeTestFiles) {
+    if (opts.root.harness.shouldColorizeTestFiles) {
       env.FORCE_COLOR = '1';
     }
 
-    const child = spawn(process.execPath, args, { signal: t.signal, encoding: 'utf8', env, stdio });
+    const child = spawn(process.execPath, args, { __proto__: null, signal: t.signal, encoding: 'utf8', env, stdio });
     if (watchMode) {
       filesWatcher.runningProcesses.set(path, child);
       filesWatcher.watcher.watchChildProcessModules(child, path);
@@ -365,7 +392,7 @@ function runTestFile(path, root, inspectPort, filesWatcher, testNamePatterns) {
       subtest.parseMessage(data);
     });
 
-    const rl = createInterface({ input: child.stderr });
+    const rl = createInterface({ __proto__: null, input: child.stderr });
     rl.on('line', (line) => {
       if (isInspectorMessage(line)) {
         process.stderr.write(line + '\n');
@@ -383,15 +410,15 @@ function runTestFile(path, root, inspectPort, filesWatcher, testNamePatterns) {
     });
 
     const { 0: { 0: code, 1: signal } } = await SafePromiseAll([
-      once(child, 'exit', { signal: t.signal }),
-      finished(child.stdout, { signal: t.signal }),
+      once(child, 'exit', { __proto__: null, signal: t.signal }),
+      finished(child.stdout, { __proto__: null, signal: t.signal }),
     ]);
 
     if (watchMode) {
       filesWatcher.runningProcesses.delete(path);
       filesWatcher.runningSubtests.delete(path);
       if (filesWatcher.runningSubtests.size === 0) {
-        root.reporter[kEmitMessage]('test:watch:drained');
+        opts.root.reporter[kEmitMessage]('test:watch:drained');
       }
     }
 
@@ -414,10 +441,10 @@ function runTestFile(path, root, inspectPort, filesWatcher, testNamePatterns) {
   return subtest.start();
 }
 
-function watchFiles(testFiles, root, inspectPort, signal, testNamePatterns) {
+function watchFiles(testFiles, opts) {
   const runningProcesses = new SafeMap();
   const runningSubtests = new SafeMap();
-  const watcher = new FilesWatcher({ throttle: 500, mode: 'filter', signal });
+  const watcher = new FilesWatcher({ __proto__: null, debounce: 200, mode: 'filter', signal: opts.signal });
   const filesWatcher = { __proto__: null, watcher, runningProcesses, runningSubtests };
 
   watcher.on('changed', ({ owners }) => {
@@ -433,15 +460,22 @@ function watchFiles(testFiles, root, inspectPort, signal, testNamePatterns) {
       }
       if (!runningSubtests.size) {
         // Reset the topLevel counter
-        root.harness.counters.topLevel = 0;
+        opts.root.harness.counters.topLevel = 0;
       }
       await runningSubtests.get(file);
-      runningSubtests.set(file, runTestFile(file, root, inspectPort, filesWatcher, testNamePatterns));
+      runningSubtests.set(file, runTestFile(file, filesWatcher, opts));
     }, undefined, (error) => {
       triggerUncaughtException(error, true /* fromPromise */);
     }));
   });
-  signal?.addEventListener('abort', () => root.postRun(), { __proto__: null, once: true });
+  if (opts.signal) {
+    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
+    opts.signal.addEventListener(
+      'abort',
+      () => opts.root.postRun(),
+      { __proto__: null, once: true, [kResistStopPropagation]: true },
+    );
+  }
 
   return filesWatcher;
 }
@@ -450,14 +484,33 @@ function run(options) {
   if (options === null || typeof options !== 'object') {
     options = kEmptyObject;
   }
-  let { testNamePatterns } = options;
-  const { concurrency, timeout, signal, files, inspectPort, watch, setup } = options;
+  let { testNamePatterns, shard } = options;
+  const { concurrency, timeout, signal, files, inspectPort, watch, setup, only } = options;
 
   if (files != null) {
     validateArray(files, 'options.files');
   }
   if (watch != null) {
     validateBoolean(watch, 'options.watch');
+  }
+  if (only != null) {
+    validateBoolean(only, 'options.only');
+  }
+  if (shard != null) {
+    validateObject(shard, 'options.shard');
+    // Avoid re-evaluating the shard object in case it's a getter
+    shard = { __proto__: null, index: shard.index, total: shard.total };
+
+    validateInteger(shard.total, 'options.shard.total', 1);
+    validateInteger(shard.index, 'options.shard.index');
+
+    if (shard.index <= 0 || shard.total < shard.index) {
+      throw new ERR_OUT_OF_RANGE('options.shard.index', `>= 1 && <= ${shard.total} ("options.shard.total")`, shard.index);
+    }
+
+    if (watch) {
+      throw new ERR_INVALID_ARG_VALUE('options.shard', watch, 'shards not supported with watch mode');
+    }
   }
   if (setup != null) {
     validateFunction(setup, 'options.setup');
@@ -479,19 +532,24 @@ function run(options) {
     });
   }
 
-  const root = createTestTree({ concurrency, timeout, signal });
-  const testFiles = files ?? createTestFileList();
+  const root = createTestTree({ __proto__: null, concurrency, timeout, signal });
+  let testFiles = files ?? createTestFileList();
+
+  if (shard) {
+    testFiles = ArrayPrototypeFilter(testFiles, (_, index) => index % shard.total === shard.index - 1);
+  }
 
   let postRun = () => root.postRun();
   let filesWatcher;
+  const opts = { __proto__: null, root, signal, inspectPort, testNamePatterns, only };
   if (watch) {
-    filesWatcher = watchFiles(testFiles, root, inspectPort, signal, testNamePatterns);
+    filesWatcher = watchFiles(testFiles, opts);
     postRun = undefined;
   }
   const runFiles = () => {
     root.harness.bootstrapComplete = true;
     return SafePromiseAllSettledReturnVoid(testFiles, (path) => {
-      const subtest = runTestFile(path, root, inspectPort, filesWatcher, testNamePatterns);
+      const subtest = runTestFile(path, filesWatcher, opts);
       filesWatcher?.runningSubtests.set(path, subtest);
       return subtest;
     });
