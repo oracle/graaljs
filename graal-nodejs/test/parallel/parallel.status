@@ -186,6 +186,7 @@ test-async-hooks-http-parser-destroy: SKIP
 test-async-local-storage-contexts: FAIL
 test-crypto-op-during-process-exit: SKIP
 test-crypto-sign-verify: FAIL
+test-diagnostics-channel-tracing-channel-promise-run-stores: FAIL
 test-domain-no-error-handler-abort-on-uncaught-0: FAIL
 test-domain-no-error-handler-abort-on-uncaught-1: FAIL
 test-domain-no-error-handler-abort-on-uncaught-2: FAIL
@@ -207,7 +208,9 @@ test-net-connect-memleak: FAIL
 test-promise-hook-exceptions: FAIL
 test-promise-hook-on-resolve: FAIL
 test-repl: FAIL
+test-runner-misc: FAIL
 test-runner-output: FAIL
+test-runner-reporters: FAIL
 test-runner-watch-mode: SKIP
 test-strace-openat-openssl: FAIL
 test-tls-connect-memleak: FAIL
