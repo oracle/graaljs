@@ -100,11 +100,11 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
                     @Cached @Shared IsCallableNode isCallable,
                     @Cached InlinedBranchProfile proxyBranch,
                     @Cached InlinedBranchProfile moduleNamespaceBranch) {
+        if ((query & READABLE) != 0) {
+            return true;
+        }
         if (JSProperty.isAccessor(property)) {
             Accessor accessor = (Accessor) Properties.getOrDefault(objectLibrary, target, tStringKey, null);
-            if ((query & READABLE) != 0 && accessor.hasGetter()) {
-                return true;
-            }
             if ((query & MODIFIABLE) != 0 && accessor.hasSetter()) {
                 return true;
             }
@@ -117,12 +117,8 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
             if ((query & REMOVABLE) != 0 && JSProperty.isConfigurable(property)) {
                 return true;
             }
-            return false;
         } else {
             assert JSProperty.isData(property);
-            if ((query & READABLE) != 0) {
-                return true;
-            }
             if ((query & MODIFIABLE) != 0 && JSProperty.isWritable(property)) {
                 return true;
             }
@@ -145,8 +141,8 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
             if ((query & REMOVABLE) != 0 && JSProperty.isConfigurable(property)) {
                 return true;
             }
-            return false;
         }
+        return false;
     }
 
     @Specialization(replaces = "cachedOwnProperty")
@@ -177,11 +173,10 @@ public abstract class KeyInfoNode extends JavaScriptBaseNode {
 
         boolean hasGet = desc.hasGet() && desc.getGet() != Undefined.instance;
         boolean hasSet = desc.hasSet() && desc.getSet() != Undefined.instance;
-        boolean readable = hasGet || !hasSet;
         boolean writable = hasSet || (!hasGet && desc.getIfHasWritable(true));
         boolean readSideEffects = isProxy || hasGet;
         boolean writeSideEffects = isProxy || hasSet;
-        if ((query & READABLE) != 0 && readable) {
+        if ((query & READABLE) != 0) {
             return true;
         }
         if ((query & MODIFIABLE) != 0 && writable) {
