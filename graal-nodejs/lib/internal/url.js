@@ -22,6 +22,7 @@ const {
   ReflectOwnKeys,
   RegExpPrototypeSymbolReplace,
   SafeMap,
+  SafeSet,
   SafeWeakMap,
   StringPrototypeCharAt,
   StringPrototypeCharCodeAt,
@@ -105,6 +106,40 @@ const searchParams = Symbol('query');
  * @type {WeakMap<URL,URLSearchParams>}
  */
 const internalSearchParams = new SafeWeakMap();
+
+// `unsafeProtocol`, `hostlessProtocol` and `slashedProtocol` is
+// deliberately moved to `internal/url` rather than `url`.
+// Workers does not bootstrap URL module. Therefore, `SafeSet`
+// is not initialized on bootstrap. This case breaks the
+// test-require-delete-array-iterator test.
+
+// Protocols that can allow "unsafe" and "unwise" chars.
+const unsafeProtocol = new SafeSet([
+  'javascript',
+  'javascript:',
+]);
+// Protocols that never have a hostname.
+const hostlessProtocol = new SafeSet([
+  'javascript',
+  'javascript:',
+]);
+// Protocols that always contain a // bit.
+const slashedProtocol = new SafeSet([
+  'http',
+  'http:',
+  'https',
+  'https:',
+  'ftp',
+  'ftp:',
+  'gopher',
+  'gopher:',
+  'file',
+  'file:',
+  'ws',
+  'ws:',
+  'wss',
+  'wss:',
+]);
 
 const updateActions = {
   kProtocol: 0,
@@ -623,6 +658,10 @@ function isURL(self) {
 
 class URL {
   constructor(input, base = undefined) {
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('url');
+    }
+
     // toUSVString is not needed.
     input = `${input}`;
     this[context] = new URLContext();
@@ -964,6 +1003,10 @@ class URL {
   }
 
   static canParse(url, base = undefined) {
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('url');
+    }
+
     url = `${url}`;
 
     if (base !== undefined) {
@@ -1453,37 +1496,39 @@ const backslashRegEx = /\\/g;
 const newlineRegEx = /\n/g;
 const carriageReturnRegEx = /\r/g;
 const tabRegEx = /\t/g;
+const questionRegex = /\?/g;
+const hashRegex = /#/g;
 
 function encodePathChars(filepath) {
-  if (StringPrototypeIncludes(filepath, '%'))
+  if (StringPrototypeIndexOf(filepath, '%') !== -1)
     filepath = RegExpPrototypeSymbolReplace(percentRegEx, filepath, '%25');
   // In posix, backslash is a valid character in paths:
-  if (!isWindows && StringPrototypeIncludes(filepath, '\\'))
+  if (!isWindows && StringPrototypeIndexOf(filepath, '\\') !== -1)
     filepath = RegExpPrototypeSymbolReplace(backslashRegEx, filepath, '%5C');
-  if (StringPrototypeIncludes(filepath, '\n'))
+  if (StringPrototypeIndexOf(filepath, '\n') !== -1)
     filepath = RegExpPrototypeSymbolReplace(newlineRegEx, filepath, '%0A');
-  if (StringPrototypeIncludes(filepath, '\r'))
+  if (StringPrototypeIndexOf(filepath, '\r') !== -1)
     filepath = RegExpPrototypeSymbolReplace(carriageReturnRegEx, filepath, '%0D');
-  if (StringPrototypeIncludes(filepath, '\t'))
+  if (StringPrototypeIndexOf(filepath, '\t') !== -1)
     filepath = RegExpPrototypeSymbolReplace(tabRegEx, filepath, '%09');
   return filepath;
 }
 
 function pathToFileURL(filepath) {
-  const outURL = new URL('file://');
   if (isWindows && StringPrototypeStartsWith(filepath, '\\\\')) {
+    const outURL = new URL('file://');
     // UNC path format: \\server\share\resource
     const hostnameEndIndex = StringPrototypeIndexOf(filepath, '\\', 2);
     if (hostnameEndIndex === -1) {
       throw new ERR_INVALID_ARG_VALUE(
-        'filepath',
+        'path',
         filepath,
         'Missing UNC resource path',
       );
     }
     if (hostnameEndIndex === 2) {
       throw new ERR_INVALID_ARG_VALUE(
-        'filepath',
+        'path',
         filepath,
         'Empty UNC servername',
       );
@@ -1492,18 +1537,29 @@ function pathToFileURL(filepath) {
     outURL.hostname = domainToASCII(hostname);
     outURL.pathname = encodePathChars(
       RegExpPrototypeSymbolReplace(backslashRegEx, StringPrototypeSlice(filepath, hostnameEndIndex), '/'));
-  } else {
-    let resolved = path.resolve(filepath);
-    // path.resolve strips trailing slashes so we must add them back
-    const filePathLast = StringPrototypeCharCodeAt(filepath,
-                                                   filepath.length - 1);
-    if ((filePathLast === CHAR_FORWARD_SLASH ||
-         (isWindows && filePathLast === CHAR_BACKWARD_SLASH)) &&
-        resolved[resolved.length - 1] !== path.sep)
-      resolved += '/';
-    outURL.pathname = encodePathChars(resolved);
+    return outURL;
   }
-  return outURL;
+  let resolved = path.resolve(filepath);
+  // path.resolve strips trailing slashes so we must add them back
+  const filePathLast = StringPrototypeCharCodeAt(filepath,
+                                                 filepath.length - 1);
+  if ((filePathLast === CHAR_FORWARD_SLASH ||
+       (isWindows && filePathLast === CHAR_BACKWARD_SLASH)) &&
+      resolved[resolved.length - 1] !== path.sep)
+    resolved += '/';
+
+  // Call encodePathChars first to avoid encoding % again for ? and #.
+  resolved = encodePathChars(resolved);
+
+  // Question and hash character should be included in pathname.
+  // Therefore, encoding is required to eliminate parsing them in different states.
+  // This is done as an optimization to not creating a URL instance and
+  // later triggering pathname setter, which impacts performance
+  if (StringPrototypeIndexOf(resolved, '?') !== -1)
+    resolved = RegExpPrototypeSymbolReplace(questionRegex, resolved, '%3F');
+  if (StringPrototypeIndexOf(resolved, '#') !== -1)
+    resolved = RegExpPrototypeSymbolReplace(hashRegex, resolved, '%23');
+  return new URL(`file://${resolved}`);
 }
 
 function toPathIfFileURL(fileURLOrPath) {
@@ -1526,4 +1582,7 @@ module.exports = {
   isURL,
 
   urlUpdateActions: updateActions,
+  unsafeProtocol,
+  hostlessProtocol,
+  slashedProtocol,
 };

@@ -63,6 +63,7 @@ const {
   toUSVString: _toUSVString,
 } = internalBinding('util');
 const { isNativeError } = internalBinding('types');
+const { getOptionValue } = require('internal/options');
 
 const noCrypto = !process.versions.openssl;
 
@@ -106,10 +107,52 @@ const codesWarned = new SafeSet();
 
 let validateString;
 
+function getDeprecationWarningEmitter(
+  code, msg, deprecated, useEmitSync,
+  shouldEmitWarning = () => true,
+) {
+  let warned = false;
+  return function() {
+    if (!warned && shouldEmitWarning()) {
+      warned = true;
+      if (code !== undefined) {
+        if (!codesWarned.has(code)) {
+          const emitWarning = useEmitSync ?
+            require('internal/process/warning').emitWarningSync :
+            process.emitWarning;
+          emitWarning(msg, 'DeprecationWarning', code, deprecated);
+          codesWarned.add(code);
+        }
+      } else {
+        process.emitWarning(msg, 'DeprecationWarning', deprecated);
+      }
+    }
+  };
+}
+
+function isPendingDeprecation() {
+  return getOptionValue('--pending-deprecation') &&
+    !getOptionValue('--no-deprecation');
+}
+
+// Internal deprecator for pending --pending-deprecation. This can be invoked
+// at snapshot building time as the warning permission is only queried at
+// run time.
+function pendingDeprecate(fn, msg, code) {
+  const emitDeprecationWarning = getDeprecationWarningEmitter(
+    code, msg, deprecated, false, isPendingDeprecation,
+  );
+  function deprecated(...args) {
+    emitDeprecationWarning();
+    return ReflectApply(fn, this, args);
+  }
+  return deprecated;
+}
+
 // Mark that a method should not be used.
 // Returns a modified function which warns once by default.
 // If --no-deprecation is set, then it is a no-op.
-function deprecate(fn, msg, code) {
+function deprecate(fn, msg, code, useEmitSync) {
   if (process.noDeprecation === true) {
     return fn;
   }
@@ -121,19 +164,12 @@ function deprecate(fn, msg, code) {
   if (code !== undefined)
     validateString(code, 'code');
 
-  let warned = false;
+  const emitDeprecationWarning = getDeprecationWarningEmitter(
+    code, msg, deprecated, useEmitSync,
+  );
+
   function deprecated(...args) {
-    if (!warned) {
-      warned = true;
-      if (code !== undefined) {
-        if (!codesWarned.has(code)) {
-          process.emitWarning(msg, 'DeprecationWarning', code, deprecated);
-          codesWarned.add(code);
-        }
-      } else {
-        process.emitWarning(msg, 'DeprecationWarning', deprecated);
-      }
-    }
+    emitDeprecationWarning();
     if (new.target) {
       return ReflectConstruct(fn, args, new.target);
     }
@@ -319,6 +355,36 @@ function getConstructorOf(obj) {
   }
 
   return null;
+}
+
+let cachedURL;
+let cachedCWD;
+
+/**
+ * Get the current working directory while accounting for the possibility that it has been deleted.
+ * `process.cwd()` can fail if the parent directory is deleted while the process runs.
+ * @returns {URL} The current working directory or the volume root if it cannot be determined.
+ */
+function getCWDURL() {
+  const { sep } = require('path');
+  const { pathToFileURL } = require('internal/url');
+
+  let cwd;
+
+  try {
+    // The implementation of `process.cwd()` already uses proper cache when it can.
+    // It's a relatively cheap call performance-wise for the most common use case.
+    cwd = process.cwd();
+  } catch {
+    cachedURL ??= pathToFileURL(sep);
+  }
+
+  if (cwd != null && cwd !== cachedCWD) {
+    cachedURL = pathToFileURL(cwd + sep);
+    cachedCWD = cwd;
+  }
+
+  return cachedURL;
 }
 
 function getSystemErrorName(err) {
@@ -509,6 +575,90 @@ function exposeInterface(target, name, interfaceObject) {
   });
 }
 
+function defineLazyProperties(target, id, keys, enumerable = true) {
+  const descriptors = { __proto__: null };
+  let mod;
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    let lazyLoadedValue;
+    function set(value) {
+      ObjectDefineProperty(target, key, {
+        __proto__: null,
+        writable: true,
+        value,
+      });
+    }
+    ObjectDefineProperty(set, 'name', {
+      __proto__: null,
+      value: `set ${key}`,
+    });
+    function get() {
+      mod ??= require(id);
+      if (lazyLoadedValue === undefined) {
+        lazyLoadedValue = mod[key];
+        set(lazyLoadedValue);
+      }
+      return lazyLoadedValue;
+    }
+    ObjectDefineProperty(get, 'name', {
+      __proto__: null,
+      value: `get ${key}`,
+    });
+    descriptors[key] = {
+      __proto__: null,
+      configurable: true,
+      enumerable,
+      get,
+      set,
+    };
+  }
+  ObjectDefineProperties(target, descriptors);
+}
+
+function defineReplaceableLazyAttribute(target, id, keys, writable = true) {
+  let mod;
+  for (let i = 0; i < keys.length; i++) {
+    const key = keys[i];
+    let value;
+    let setterCalled = false;
+
+    function get() {
+      if (setterCalled) {
+        return value;
+      }
+      mod ??= require(id);
+      value ??= mod[key];
+      return value;
+    }
+
+    ObjectDefineProperty(get, 'name', {
+      __proto__: null,
+      value: `get ${key}`,
+    });
+
+    function set(val) {
+      setterCalled = true;
+      value = val;
+    }
+    ObjectDefineProperty(set, 'name', {
+      __proto__: null,
+      value: `set ${key}`,
+    });
+
+    ObjectDefineProperty(target, key, {
+      __proto__: null,
+      enumerable: true,
+      configurable: true,
+      get,
+      set: writable ? set : undefined,
+    });
+  }
+}
+
+function exposeLazyInterfaces(target, id, keys) {
+  defineLazyProperties(target, id, keys, false);
+}
+
 let _DOMException;
 const lazyDOMExceptionClass = () => {
   _DOMException ??= internalBinding('messaging').DOMException;
@@ -607,6 +757,24 @@ function isArrayBufferDetached(value) {
   return false;
 }
 
+/**
+ * Helper function to lazy-load an initialize-once value.
+ * @template T Return value of initializer
+ * @param {()=>T} initializer Initializer of the lazily loaded value.
+ * @returns {()=>T}
+ */
+function getLazy(initializer) {
+  let value;
+  let initialized = false;
+  return function() {
+    if (initialized === false) {
+      value = initializer();
+      initialized = true;
+    }
+    return value;
+  };
+}
+
 // Setup user-facing NODE_V8_COVERAGE environment variable that writes
 // ScriptCoverage objects to a specified directory.
 function setupCoverageHooks(dir) {
@@ -629,6 +797,7 @@ function setupCoverageHooks(dir) {
 }
 
 module.exports = {
+  getLazy,
   assertCrypto,
   cachedResult,
   convertToValidSignal,
@@ -636,12 +805,16 @@ module.exports = {
   createDeferredPromise,
   decorateErrorStack,
   defineOperation,
+  defineLazyProperties,
+  defineReplaceableLazyAttribute,
   deprecate,
   emitExperimentalWarning,
   exposeInterface,
+  exposeLazyInterfaces,
   filterDuplicateStrings,
   filterOwnProperties,
   getConstructorOf,
+  getCWDURL,
   getInternalGlobal,
   getSystemErrorMap,
   getSystemErrorName,
@@ -678,4 +851,5 @@ module.exports = {
   kEmptyObject,
   kEnumerableProperty,
   setOwnProperty,
+  pendingDeprecate,
 };

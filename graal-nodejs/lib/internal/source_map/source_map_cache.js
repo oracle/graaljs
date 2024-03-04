@@ -23,19 +23,22 @@ const { Buffer } = require('buffer');
 let debug = require('internal/util/debuglog').debuglog('source_map', (fn) => {
   debug = fn;
 });
-const fs = require('fs');
-const { getOptionValue } = require('internal/options');
-const { IterableWeakMap } = require('internal/util/iterable_weak_map');
-const {
-  normalizeReferrerURL,
-} = require('internal/modules/cjs/helpers');
+
 const { validateBoolean } = require('internal/validators');
-const { setMaybeCacheGeneratedSourceMap } = internalBinding('errors');
+const {
+  setSourceMapsEnabled: setSourceMapsNative,
+  setPrepareStackTraceCallback,
+} = internalBinding('errors');
+const { getLazy } = require('internal/util');
 
 // Since the CJS module cache is mutable, which leads to memory leaks when
 // modules are deleted, we use a WeakMap so that the source map cache will
 // be purged automatically:
-const cjsSourceMapCache = new IterableWeakMap();
+const getCjsSourceMapCache = getLazy(() => {
+  const { IterableWeakMap } = require('internal/util/iterable_weak_map');
+  return new IterableWeakMap();
+});
+
 // The esm cache is not mutable, so we can use a Map without memory concerns:
 const esmSourceMapCache = new SafeMap();
 // The generated sources is not mutable, so we can use a Map without memory concerns:
@@ -45,24 +48,19 @@ const kSourceMappingURLMagicComment = /\/[*/]#\s+sourceMappingURL=(?<sourceMappi
 const kSourceURLMagicComment = /\/[*/]#\s+sourceURL=(?<sourceURL>[^\s]+)/g;
 
 const { fileURLToPath, pathToFileURL, URL } = require('internal/url');
+
 let SourceMap;
 
-let sourceMapsEnabled;
+// This is configured with --enable-source-maps during pre-execution.
+let sourceMapsEnabled = false;
 function getSourceMapsEnabled() {
-  if (sourceMapsEnabled === undefined) {
-    setSourceMapsEnabled(getOptionValue('--enable-source-maps'));
-  }
   return sourceMapsEnabled;
 }
 
 function setSourceMapsEnabled(val) {
   validateBoolean(val, 'val');
 
-  const {
-    setSourceMapsEnabled,
-    setPrepareStackTraceCallback,
-  } = internalBinding('errors');
-  setSourceMapsEnabled(val);
+  setSourceMapsNative(val);
   if (val) {
     const {
       prepareStackTrace,
@@ -115,6 +113,7 @@ function maybeCacheSourceMap(filename, content, cjsModuleInstance, isGeneratedSo
   const sourceMapsEnabled = getSourceMapsEnabled();
   if (!(process.env.NODE_V8_COVERAGE || sourceMapsEnabled)) return;
   try {
+    const { normalizeReferrerURL } = require('internal/modules/helpers');
     filename = normalizeReferrerURL(filename);
   } catch (err) {
     // This is most likely an invalid filename in sourceURL of [eval]-wrapper.
@@ -138,7 +137,7 @@ function maybeCacheSourceMap(filename, content, cjsModuleInstance, isGeneratedSo
   const data = dataFromUrl(filename, sourceMapURL);
   const url = data ? null : sourceMapURL;
   if (cjsModuleInstance) {
-    cjsSourceMapCache.set(cjsModuleInstance, {
+    getCjsSourceMapCache().set(cjsModuleInstance, {
       filename,
       lineLengths: lineLengths(content),
       data,
@@ -188,7 +187,6 @@ function maybeCacheGeneratedSourceMap(content) {
     debug(err);
   }
 }
-setMaybeCacheGeneratedSourceMap(maybeCacheGeneratedSourceMap);
 
 function dataFromUrl(sourceURL, sourceMappingURL) {
   try {
@@ -222,6 +220,7 @@ function lineLengths(content) {
 
 function sourceMapFromFile(mapURL) {
   try {
+    const fs = require('fs');
     const content = fs.readFileSync(fileURLToPath(mapURL), 'utf8');
     const data = JSONParse(content);
     return sourcesToAbsolute(mapURL, data);
@@ -291,7 +290,7 @@ function sourceMapCacheToObject() {
 }
 
 function appendCJSCache(obj) {
-  for (const value of cjsSourceMapCache) {
+  for (const value of getCjsSourceMapCache()) {
     obj[ObjectGetValueSafe(value, 'filename')] = {
       lineLengths: ObjectGetValueSafe(value, 'lineLengths'),
       data: ObjectGetValueSafe(value, 'data'),
@@ -309,7 +308,7 @@ function findSourceMap(sourceURL) {
   }
   let sourceMap = esmSourceMapCache.get(sourceURL) ?? generatedSourceMapCache.get(sourceURL);
   if (sourceMap === undefined) {
-    for (const value of cjsSourceMapCache) {
+    for (const value of getCjsSourceMapCache()) {
       const filename = ObjectGetValueSafe(value, 'filename');
       const cachedSourceURL = ObjectGetValueSafe(value, 'sourceURL');
       if (sourceURL === filename || sourceURL === cachedSourceURL) {
@@ -330,5 +329,6 @@ module.exports = {
   getSourceMapsEnabled,
   setSourceMapsEnabled,
   maybeCacheSourceMap,
+  maybeCacheGeneratedSourceMap,
   sourceMapCacheToObject,
 };

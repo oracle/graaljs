@@ -125,8 +125,8 @@ class Module {
       this[kWrap] = new ModuleWrap(identifier, context, sourceText,
                                    options.lineOffset, options.columnOffset,
                                    options.cachedData);
-
-      binding.callbackMap.set(this[kWrap], {
+      const { setCallbackForWrap } = require('internal/modules/esm/utils');
+      setCallbackForWrap(this[kWrap], {
         initializeImportMeta: options.initializeImportMeta,
         importModuleDynamically: options.importModuleDynamically ?
           importModuleDynamicallyWrap(options.importModuleDynamically) :
@@ -302,8 +302,8 @@ class SourceTextModule extends Module {
     this[kLink] = async (linker) => {
       this.#statusOverride = 'linking';
 
-      const promises = this[kWrap].link(async (identifier, assert) => {
-        const module = await linker(identifier, this, { assert });
+      const promises = this[kWrap].link(async (identifier, attributes) => {
+        const module = await linker(identifier, this, { attributes, assert: attributes });
         if (module[kWrap] === undefined) {
           throw new ERR_VM_MODULE_NOT_MODULE();
         }

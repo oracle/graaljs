@@ -12,12 +12,22 @@ let debug = require('internal/util/debuglog').debuglog('esm', (fn) => {
   debug = fn;
 });
 
+/**
+ * Creates an import statement for a given module path and index.
+ * @param {string} impt - The module path to import.
+ * @param {number} index - The index of the import statement.
+ */
 function createImport(impt, index) {
   const imptPath = JSONStringify(impt);
   return `import * as $import_${index} from ${imptPath};
 import.meta.imports[${imptPath}] = $import_${index};`;
 }
 
+/**
+ * Creates an export for a given module.
+ * @param {string} expt - The name of the export.
+ * @param {number} index - The index of the export statement.
+ */
 function createExport(expt, index) {
   const nameStringLit = JSONStringify(expt);
   return `let $export_${index};
@@ -28,6 +38,17 @@ import.meta.exports[${nameStringLit}] = {
 };`;
 }
 
+/**
+ * Creates a dynamic module with the given imports, exports, URL, and evaluate function.
+ * @param {string[]} imports - An array of imports.
+ * @param {string[]} exports - An array of exports.
+ * @param {string} [url=''] - The URL of the module.
+ * @param {(reflect: DynamicModuleReflect) => void} evaluate - The function to evaluate the module.
+ * @typedef {object} DynamicModuleReflect
+ * @property {string[]} imports - The imports of the module.
+ * @property {string[]} exports - The exports of the module.
+ * @property {(cb: (reflect: DynamicModuleReflect) => void) => void} onReady - Callback to evaluate the module.
+ */
 const createDynamicModule = (imports, exports, url = '', evaluate) => {
   debug('creating ESM facade for %s with exports: %j', url, exports);
   const source = `
@@ -35,23 +56,26 @@ ${ArrayPrototypeJoin(ArrayPrototypeMap(imports, createImport), '\n')}
 ${ArrayPrototypeJoin(ArrayPrototypeMap(exports, createExport), '\n')}
 import.meta.done();
 `;
-  const { ModuleWrap, callbackMap } = internalBinding('module_wrap');
+  const { ModuleWrap } = internalBinding('module_wrap');
   const m = new ModuleWrap(`${url}`, undefined, source, 0, 0);
 
   const readyfns = new SafeSet();
+  /** @type {DynamicModuleReflect} */
   const reflect = {
     exports: ObjectCreate(null),
     onReady: (cb) => { readyfns.add(cb); },
   };
 
-  if (imports.length)
-    reflect.imports = ObjectCreate(null);
-
-  callbackMap.set(m, {
+  if (imports.length) {
+    reflect.imports = { __proto__: null };
+  }
+  const { setCallbackForWrap } = require('internal/modules/esm/utils');
+  setCallbackForWrap(m, {
     initializeImportMeta: (meta, wrap) => {
       meta.exports = reflect.exports;
-      if (reflect.imports)
+      if (reflect.imports) {
         meta.imports = reflect.imports;
+      }
       meta.done = () => {
         evaluate(reflect);
         reflect.onReady = (cb) => cb(reflect);

@@ -408,7 +408,7 @@ class WPTRunner {
     this.resource = new ResourceLoader(path);
 
     this.flags = [];
-    this.dummyGlobalThisScript = null;
+    this.globalThisInitScripts = [];
     this.initScript = null;
 
     this.status = new StatusLoader(path);
@@ -463,17 +463,17 @@ class WPTRunner {
       initScript = `${initScript}\n\n//===\nglobalThis.location.search = "${locationSearchString}";`;
     }
 
-    if (initScript === null && this.dummyGlobalThisScript === null) {
-      return null;
-    }
-
-    if (initScript === null) {
-      return this.dummyGlobalThisScript;
-    } else if (this.dummyGlobalThisScript === null) {
+    if (this.globalThisInitScripts.length === null) {
       return initScript;
     }
 
-    return `${this.dummyGlobalThisScript}\n\n//===\n${initScript}`;
+    const globalThisInitScript = this.globalThisInitScripts.join('\n\n//===\n');
+
+    if (initScript === null) {
+      return globalThisInitScript;
+    }
+
+    return `${globalThisInitScript}\n\n//===\n${initScript}`;
   }
 
   /**
@@ -484,8 +484,10 @@ class WPTRunner {
   pretendGlobalThisAs(name) {
     switch (name) {
       case 'Window': {
-        this.dummyGlobalThisScript =
-          'global.Window = Object.getPrototypeOf(globalThis).constructor;';
+        this.globalThisInitScripts.push(
+          `global.Window = Object.getPrototypeOf(globalThis).constructor;
+          self.GLOBAL.isWorker = () => false;`);
+        this.loadLazyGlobals();
         break;
       }
 
@@ -497,6 +499,32 @@ class WPTRunner {
 
       default: throw new Error(`Invalid globalThis type ${name}.`);
     }
+  }
+
+  loadLazyGlobals() {
+    const lazyProperties = [
+      'DOMException',
+      'Performance', 'PerformanceEntry', 'PerformanceMark', 'PerformanceMeasure',
+      'PerformanceObserver', 'PerformanceObserverEntryList', 'PerformanceResourceTiming',
+      'Blob', 'atob', 'btoa',
+      'MessageChannel', 'MessagePort', 'MessageEvent',
+      'EventTarget', 'Event',
+      'AbortController', 'AbortSignal',
+      'performance',
+      'TransformStream', 'TransformStreamDefaultController',
+      'WritableStream', 'WritableStreamDefaultController', 'WritableStreamDefaultWriter',
+      'ReadableStream', 'ReadableStreamDefaultReader',
+      'ReadableStreamBYOBReader', 'ReadableStreamBYOBRequest',
+      'ReadableByteStreamController', 'ReadableStreamDefaultController',
+      'ByteLengthQueuingStrategy', 'CountQueuingStrategy',
+      'TextEncoderStream', 'TextDecoderStream',
+      'CompressionStream', 'DecompressionStream',
+    ];
+    if (Boolean(process.versions.openssl) && !process.env.NODE_SKIP_CRYPTO) {
+      lazyProperties.push('crypto');
+    }
+    const script = lazyProperties.map((name) => `globalThis.${name};`).join('\n');
+    this.globalThisInitScripts.push(script);
   }
 
   // TODO(joyeecheung): work with the upstream to port more tests in .html

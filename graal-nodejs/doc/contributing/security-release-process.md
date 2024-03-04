@@ -29,7 +29,7 @@ The current security stewards are documented in the main Node.js
 | NodeSource   | Juan            | 2022-Nov-04  |
 | RH and IBM   | Michael         | 2023-Feb-16  |
 | NearForm     | Rafael          | 2023-Jun-20  |
-| NearForm     | Rafael          |              |
+| NearForm     | Rafael          | 2023-Aug-09  |
 | Datadog      | Bryan           |              |
 | IBM          | Joe             |              |
 | Platformatic | Matteo          |              |
@@ -56,6 +56,8 @@ The current security stewards are documented in the main Node.js
   * [ ] pre-release: _**LINK TO PR**_
   * [ ] post-release: _**LINK TO PR**_
     * List vulnerabilities in order of descending severity
+    * Use the "summary" feature in HackerOne to sync post-release content
+      and CVE requests. Example [2038134](https://hackerone.com/bugs?subject=nodejs\&report_id=2038134)
     * Ask the HackerOne reporter if they would like to be credited on the
       security release blog page:
       ```text
@@ -70,8 +72,6 @@ The current security stewards are documented in the main Node.js
 
 ## Announcement (one week in advance of the planned release)
 
-* [ ] Verify that GitHub Actions are working as normal: <https://www.githubstatus.com/>.
-
 * [ ] Check that all vulnerabilities are ready for release integration:
   * PRs against all affected release lines or cherry-pick clean
   * Approved
@@ -81,6 +81,9 @@ The current security stewards are documented in the main Node.js
       between Security Releases.
   * Pass `make test`
   * Have CVEs
+    * Use the "summary" feature in HackerOne to create a description for the
+      CVE and the post release announcement.
+      Example [2038134](https://hackerone.com/bugs?subject=nodejs\&report_id=2038134)
     * Make sure that dependent libraries have CVEs for their issues. We should
       only create CVEs for vulnerabilities in Node.js itself. This is to avoid
       having duplicate CVEs for the same vulnerability.
@@ -117,7 +120,7 @@ The google groups UI does not support adding a CC, until we figure
 out a better way, forward the email you receive to
 `oss-security@lists.openwall.com` as a CC.
 
-* [ ] Create a new issue in [nodejs/tweet][]
+* [ ] Send a message to `#nodejs-social` in OpenJS Foundation slack
 
   ```text
   Security release pre-alert:

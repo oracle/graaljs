@@ -205,7 +205,7 @@ function lazyBuffer() {
 function isErrorStackTraceLimitWritable() {
   // Do no touch Error.stackTraceLimit as V8 would attempt to install
   // it again during deserialization.
-  if (require('v8').startupSnapshot.isBuildingSnapshot()) {
+  if (require('internal/v8/startup_snapshot').namespace.isBuildingSnapshot()) {
     return false;
   }
 
@@ -1177,12 +1177,17 @@ E('ERR_HTTP_SOCKET_ENCODING',
 E('ERR_HTTP_TRAILER_INVALID',
   'Trailers are invalid with this transfer encoding', Error);
 E('ERR_ILLEGAL_CONSTRUCTOR', 'Illegal constructor', TypeError);
+// TODO(aduh95): change the error to mention import attributes instead of import assertions.
 E('ERR_IMPORT_ASSERTION_TYPE_FAILED',
   'Module "%s" is not of type "%s"', TypeError);
+// TODO(aduh95): change the error to mention import attributes instead of import assertions.
 E('ERR_IMPORT_ASSERTION_TYPE_MISSING',
-  'Module "%s" needs an import assertion of type "%s"', TypeError);
+  'Module "%s" needs an import attribute of type "%s"', TypeError);
+// TODO(aduh95): change the error to mention import attributes instead of import assertions.
 E('ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED',
-  'Import assertion type "%s" is unsupported', TypeError);
+  'Import attribute type "%s" is unsupported', TypeError);
+E('ERR_IMPORT_ATTRIBUTE_UNSUPPORTED',
+  'Import attribute "%s" with value "%s" is not supported', TypeError);
 E('ERR_INCOMPATIBLE_OPTION_PAIR',
   'Option "%s" cannot be used in combination with option "%s"', TypeError);
 E('ERR_INPUT_TYPE_NOT_ALLOWED', '--input-type can only be used with string ' +
@@ -1453,8 +1458,12 @@ E('ERR_MISSING_ARGS',
     return `${msg} must be specified`;
   }, TypeError);
 E('ERR_MISSING_OPTION', '%s is required', TypeError);
-E('ERR_MODULE_NOT_FOUND', (path, base, type = 'package') => {
-  return `Cannot find ${type} '${path}' imported from ${base}`;
+E('ERR_MODULE_NOT_FOUND', function(path, base, exactUrl) {
+  if (exactUrl) {
+    lazyInternalUtil().setOwnProperty(this, 'url', `${exactUrl}`);
+  }
+  return `Cannot find ${
+    exactUrl ? 'module' : 'package'} '${path}' imported from ${base}`;
 }, Error);
 E('ERR_MULTIPLE_CALLBACK', 'Callback called multiple times', Error);
 E('ERR_NAPI_CONS_FUNCTION', 'Constructor must be a function', TypeError);
@@ -1542,7 +1551,7 @@ E('ERR_REQUIRE_ESM',
     msg += `\n${basename} is treated as an ES module file as it is a .js ` +
       'file whose nearest parent package.json contains "type": "module" ' +
       'which declares all .js files in that package scope as ES modules.' +
-      `\nInstead rename ${basename} to end in .cjs, change the requiring ` +
+      `\nInstead either rename ${basename} to end in .cjs, change the requiring ` +
       'code to use dynamic import() which is available in all CommonJS ' +
       'modules, or change "type": "module" to "type": "commonjs" in ' +
       `${packageJsonPath} to treat all .js files as CommonJS (using .mjs for ` +
@@ -1622,6 +1631,16 @@ E('ERR_TEST_FAILURE', function(error, failureType) {
   this.cause = error;
   return msg;
 }, Error);
+E('ERR_TLS_ALPN_CALLBACK_INVALID_RESULT', (value, protocols) => {
+  return `ALPN callback returned a value (${
+    value
+  }) that did not match any of the client's offered protocols (${
+    protocols.join(', ')
+  })`;
+}, TypeError);
+E('ERR_TLS_ALPN_CALLBACK_WITH_PROTOCOLS',
+  'The ALPNCallback and ALPNProtocols TLS options are mutually exclusive',
+  TypeError);
 E('ERR_TLS_CERT_ALTNAME_FORMAT', 'Invalid subject alternative name string',
   SyntaxError);
 E('ERR_TLS_CERT_ALTNAME_INVALID', function(reason, host, cert) {
@@ -1672,18 +1691,15 @@ E('ERR_UNHANDLED_ERROR',
 E('ERR_UNKNOWN_BUILTIN_MODULE', 'No such built-in module: %s', Error);
 E('ERR_UNKNOWN_CREDENTIAL', '%s identifier does not exist: %s', Error);
 E('ERR_UNKNOWN_ENCODING', 'Unknown encoding: %s', TypeError);
-E('ERR_UNKNOWN_FILE_EXTENSION', (ext, path, suggestion) => {
-  let msg = `Unknown file extension "${ext}" for ${path}`;
-  if (suggestion) {
-    msg += `. ${suggestion}`;
-  }
-  return msg;
-}, TypeError);
+E('ERR_UNKNOWN_FILE_EXTENSION', 'Unknown file extension "%s" for %s', TypeError);
 E('ERR_UNKNOWN_MODULE_FORMAT', 'Unknown module format: %s for URL %s',
   RangeError);
 E('ERR_UNKNOWN_SIGNAL', 'Unknown signal: %s', TypeError);
-E('ERR_UNSUPPORTED_DIR_IMPORT', "Directory import '%s' is not supported " +
-'resolving ES modules imported from %s', Error);
+E('ERR_UNSUPPORTED_DIR_IMPORT', function(path, base, exactUrl) {
+  lazyInternalUtil().setOwnProperty(this, 'url', exactUrl);
+  return `Directory import '${path}' is not supported ` +
+    `resolving ES modules imported from ${base}`;
+}, Error);
 E('ERR_UNSUPPORTED_ESM_URL_SCHEME', (url, supported) => {
   let msg = `Only URLs with a scheme in: ${formatList(supported)} are supported by the default ESM loader`;
   if (isWindows && url.protocol.length === 2) {
