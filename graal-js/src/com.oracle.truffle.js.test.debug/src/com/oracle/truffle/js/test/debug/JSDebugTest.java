@@ -1252,7 +1252,7 @@ public class JSDebugTest {
                 DebugValue justSet = person.getProperty("justSet");
                 assertFalse(justSet.hasReadSideEffects());
                 assertTrue(justSet.hasWriteSideEffects());
-                assertFalse(justSet.isReadable());
+                assertTrue(justSet.isReadable());
                 assertTrue(justSet.isWritable());
 
                 assertEquals(0, person.getProperty("numQueries").asInt());
