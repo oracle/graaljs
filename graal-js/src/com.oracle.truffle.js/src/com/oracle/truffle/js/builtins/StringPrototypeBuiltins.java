@@ -1160,7 +1160,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     int matchEnd = TRegexResultAccessor.captureGroupEnd(result, 0, parent, parent.getEndNode);
                     if (matchEnd - matchStart == 0 && matchStart == start) {
                         // Avoid empty splits when using a regex that matches the empty string.
-                        if (matchStart == Strings.length(input) - 1) {
+                        if (matchStart >= Strings.length(input) - 1) {
                             break;
                         }
                         result = parent.matchIgnoreLastIndex(regExp, input, start + 1);
