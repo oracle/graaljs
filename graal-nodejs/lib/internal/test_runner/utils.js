@@ -20,6 +20,7 @@ const {
   StringPrototypeSlice,
 } = primordials;
 
+const { AsyncResource } = require('async_hooks');
 const { basename, relative } = require('path');
 const { createWriteStream } = require('fs');
 const { pathToFileURL } = require('internal/url');
@@ -82,7 +83,7 @@ function createDeferredCallback() {
     resolve();
   };
 
-  return { promise, cb };
+  return { __proto__: null, promise, cb };
 }
 
 function isTestFailureError(err) {
@@ -116,6 +117,7 @@ const kBuiltinReporters = new SafeMap([
   ['spec', 'internal/test_runner/reporter/spec'],
   ['dot', 'internal/test_runner/reporter/dot'],
   ['tap', 'internal/test_runner/reporter/tap'],
+  ['junit', 'internal/test_runner/reporter/junit'],
 ]);
 
 const kDefaultReporter = process.stdout.isTTY ? 'spec' : 'tap';
@@ -168,15 +170,15 @@ async function getReportersMap(reporters, destinations, rootTest) {
   });
 }
 
-
-async function setupTestReporters(rootTest) {
+const reporterScope = new AsyncResource('TestReporterScope');
+const setupTestReporters = reporterScope.bind(async (rootTest) => {
   const { reporters, destinations } = parseCommandLine();
   const reportersMap = await getReportersMap(reporters, destinations, rootTest);
   for (let i = 0; i < reportersMap.length; i++) {
     const { reporter, destination } = reportersMap[i];
     compose(rootTest.reporter, reporter).pipe(destination);
   }
-}
+});
 
 let globalTestOptions;
 
@@ -419,6 +421,7 @@ module.exports = {
   isSupportedFileType,
   isTestFailureError,
   parseCommandLine,
+  reporterScope,
   setupTestReporters,
   getCoverageReport,
 };

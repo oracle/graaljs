@@ -850,7 +850,7 @@ added: v16.5.0
 
 * Returns: {WritableStreamDefaultWriter}
 
-Creates and creates a new writer instance that can be used to write
+Creates and returns a new writer instance that can be used to write
 data into the `WritableStream`.
 
 #### `writableStream.locked`
@@ -950,8 +950,8 @@ The amount of data required to fill the {WritableStream}'s queue.
 added: v16.5.0
 -->
 
-* type: A promise that is fulfilled with `undefined` when the
-  writer is ready to be used.
+* Type: {Promise} Fulfilled with `undefined` when the writer is ready
+  to be used.
 
 #### `writableStreamDefaultWriter.releaseLock()`
 
@@ -1172,13 +1172,13 @@ changes:
     description: This class is now exposed on the global object.
 -->
 
-#### `new ByteLengthQueuingStrategy(options)`
+#### `new ByteLengthQueuingStrategy(init)`
 
 <!-- YAML
 added: v16.5.0
 -->
 
-* `options` {Object}
+* `init` {Object}
   * `highWaterMark` {number}
 
 #### `byteLengthQueuingStrategy.highWaterMark`
@@ -1209,13 +1209,13 @@ changes:
     description: This class is now exposed on the global object.
 -->
 
-#### `new CountQueuingStrategy(options)`
+#### `new CountQueuingStrategy(init)`
 
 <!-- YAML
 added: v16.5.0
 -->
 
-* `options` {Object}
+* `init` {Object}
   * `highWaterMark` {number}
 
 #### `countQueuingStrategy.highWaterMark`

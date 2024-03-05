@@ -164,8 +164,12 @@ For information about the governance of the Node.js project, see
 
 * [aduh95](https://github.com/aduh95) -
   **Antoine du Hamel** <<duhamelantoine1995@gmail.com>> (he/him)
+* [anonrig](https://github.com/anonrig) -
+  **Yagiz Nizipli** <<yagiz@nizipli.com>> (he/him)
 * [apapirovski](https://github.com/apapirovski) -
   **Anatoli Papirovski** <<apapirovski@mac.com>> (he/him)
+* [benjamingr](https://github.com/benjamingr) -
+  **Benjamin Gruenbaum** <<benjamingr@gmail.com>>
 * [BridgeAR](https://github.com/BridgeAR) -
   **Ruben Bridgewater** <<ruben@bridgewater.de>> (he/him)
 * [cjihrig](https://github.com/cjihrig) -
@@ -202,8 +206,6 @@ For information about the governance of the Node.js project, see
   **Michaël Zasso** <<targos@protonmail.com>> (he/him)
 * [tniessen](https://github.com/tniessen) -
   **Tobias Nießen** <<tniessen@tnie.de>> (he/him)
-* [Trott](https://github.com/Trott) -
-  **Rich Trott** <<rtrott@gmail.com>> (he/him)
 
 #### TSC regular members
 
@@ -229,6 +231,8 @@ For information about the governance of the Node.js project, see
   **Rod Vagg** <<r@va.gg>>
 * [TimothyGu](https://github.com/TimothyGu) -
   **Tiancheng "Timothy" Gu** <<timothygu99@gmail.com>> (he/him)
+* [Trott](https://github.com/Trott) -
+  **Rich Trott** <<rtrott@gmail.com>> (he/him)
 
 <details>
 
@@ -383,8 +387,6 @@ For information about the governance of the Node.js project, see
   **Keyhan Vakil** <<kvakil@sylph.kvakil.me>>
 * [legendecas](https://github.com/legendecas) -
   **Chengzhong Wu** <<legendecas@gmail.com>> (he/him)
-* [Leko](https://github.com/Leko) -
-  **Shingo Inoue** <<leko.noor@gmail.com>> (he/him)
 * [linkgoron](https://github.com/linkgoron) -
   **Nitzan Uziely** <<linkgoron@gmail.com>>
 * [LiviaMedeiros](https://github.com/LiviaMedeiros) -
@@ -579,6 +581,8 @@ For information about the governance of the Node.js project, see
   **Kunal Pathak** <<kunal.pathak@microsoft.com>>
 * [lance](https://github.com/lance) -
   **Lance Ball** <<lball@redhat.com>> (he/him)
+* [Leko](https://github.com/Leko) -
+  **Shingo Inoue** <<leko.noor@gmail.com>> (he/him)
 * [lucamaraschi](https://github.com/lucamaraschi) -
   **Luca Maraschi** <<luca.maraschi@gmail.com>> (he/him)
 * [lundibundi](https://github.com/lundibundi) -

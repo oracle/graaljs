@@ -24,7 +24,7 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
-#include "aliased_buffer.h"
+#include "aliased_buffer-inl.h"
 #include "callback_queue-inl.h"
 #include "env.h"
 #include "node.h"
@@ -386,6 +386,10 @@ inline bool Environment::inside_should_not_abort_on_uncaught_scope() const {
 
 inline std::vector<double>* Environment::destroy_async_id_list() {
   return &destroy_async_id_list_;
+}
+
+inline builtins::BuiltinLoader* Environment::builtin_loader() {
+  return &builtin_loader_;
 }
 
 inline double Environment::new_async_id() {
@@ -778,6 +782,7 @@ void Environment::set_process_exit_handler(
 #undef VY
 #undef VP
 
+#define VM(PropertyName) V(PropertyName##_binding, v8::FunctionTemplate)
 #define V(PropertyName, TypeName)                                              \
   inline v8::Local<TypeName> IsolateData::PropertyName() const {               \
     return PropertyName##_.Get(isolate_);                                      \
@@ -786,7 +791,9 @@ void Environment::set_process_exit_handler(
     PropertyName##_.Set(isolate_, value);                                      \
   }
   PER_ISOLATE_TEMPLATE_PROPERTIES(V)
+  NODE_BINDINGS_WITH_PER_ISOLATE_INIT(VM)
 #undef V
+#undef VM
 
 #define VP(PropertyName, StringValue) V(v8::Private, PropertyName)
 #define VY(PropertyName, StringValue) V(v8::Symbol, PropertyName)

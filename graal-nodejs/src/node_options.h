@@ -117,7 +117,8 @@ class EnvironmentOptions : public Options {
   std::string experimental_specifier_resolution;
   bool experimental_wasm_modules = false;
   bool experimental_import_meta_resolve = false;
-  std::string module_type;
+  std::string input_type;  // Value of --input-type
+  std::string type;        // Value of --experimental-default-type
   std::string experimental_policy;
   std::string experimental_policy_integrity;
   bool has_policy_integrity_string = false;
@@ -155,12 +156,14 @@ class EnvironmentOptions : public Options {
   std::string redirect_warnings;
   std::string diagnostic_dir;
   bool test_runner = false;
+  uint64_t test_runner_concurrency = 0;
   bool test_runner_coverage = false;
   std::vector<std::string> test_name_pattern;
   std::vector<std::string> test_reporter;
   std::vector<std::string> test_reporter_destination;
   bool test_only = false;
   bool test_udp_no_try_send = false;
+  std::string test_shard;
   bool throw_deprecation = false;
   bool trace_atomics_wait = false;
   bool trace_deprecation = false;

@@ -1,8 +1,9 @@
 'use strict';
 
-const { ObjectDefineProperties } = primordials;
+const { ObjectDefineProperties, ReflectConstruct } = primordials;
 
 let dot;
+let junit;
 let spec;
 let tap;
 
@@ -17,13 +18,22 @@ ObjectDefineProperties(module.exports, {
       return dot;
     },
   },
-  spec: {
+  junit: {
     __proto__: null,
     configurable: true,
     enumerable: true,
     get() {
+      junit ??= require('internal/test_runner/reporter/junit');
+      return junit;
+    },
+  },
+  spec: {
+    __proto__: null,
+    configurable: true,
+    enumerable: true,
+    value: function value() {
       spec ??= require('internal/test_runner/reporter/spec');
-      return spec;
+      return ReflectConstruct(spec, arguments);
     },
   },
   tap: {

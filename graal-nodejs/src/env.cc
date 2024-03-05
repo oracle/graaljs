@@ -311,6 +311,7 @@ IsolateDataSerializeInfo IsolateData::Serialize(SnapshotCreator* creator) {
     info.primitive_values.push_back(creator->AddData(async_wrap_provider(i)));
 
   uint32_t id = 0;
+#define VM(PropertyName) V(PropertyName##_binding, FunctionTemplate)
 #define V(PropertyName, TypeName)                                              \
   do {                                                                         \
     Local<TypeName> field = PropertyName();                                    \
@@ -321,6 +322,7 @@ IsolateDataSerializeInfo IsolateData::Serialize(SnapshotCreator* creator) {
     id++;                                                                      \
   } while (0);
   PER_ISOLATE_TEMPLATE_PROPERTIES(V)
+  NODE_BINDINGS_WITH_PER_ISOLATE_INIT(VM)
 #undef V
 
   return info;
@@ -329,6 +331,11 @@ IsolateDataSerializeInfo IsolateData::Serialize(SnapshotCreator* creator) {
 void IsolateData::DeserializeProperties(const IsolateDataSerializeInfo* info) {
   size_t i = 0;
   HandleScope handle_scope(isolate_);
+
+  if (per_process::enabled_debug_list.enabled(DebugCategory::MKSNAPSHOT)) {
+    fprintf(stderr, "deserializing IsolateDataSerializeInfo...\n");
+    std::cerr << *info << "\n";
+  }
 
 #define VP(PropertyName, StringValue) V(Private, PropertyName)
 #define VY(PropertyName, StringValue) V(Symbol, PropertyName)
@@ -365,6 +372,7 @@ void IsolateData::DeserializeProperties(const IsolateDataSerializeInfo* info) {
   const std::vector<PropInfo>& values = info->template_values;
   i = 0;  // index to the array
   uint32_t id = 0;
+#define VM(PropertyName) V(PropertyName##_binding, FunctionTemplate)
 #define V(PropertyName, TypeName)                                              \
   do {                                                                         \
     if (values.size() > i && id == values[i].id) {                             \
@@ -385,6 +393,7 @@ void IsolateData::DeserializeProperties(const IsolateDataSerializeInfo* info) {
   } while (0);
 
   PER_ISOLATE_TEMPLATE_PROPERTIES(V);
+  NODE_BINDINGS_WITH_PER_ISOLATE_INIT(VM);
 #undef V
 }
 
@@ -451,12 +460,12 @@ void IsolateData::CreateProperties() {
   NODE_ASYNC_PROVIDER_TYPES(V)
 #undef V
 
-  // TODO(legendecas): eagerly create per isolate templates.
   Local<FunctionTemplate> templ = FunctionTemplate::New(isolate());
   templ->InstanceTemplate()->SetInternalFieldCount(
       BaseObject::kInternalFieldCount);
   templ->Inherit(BaseObject::GetConstructorTemplate(this));
   set_binding_data_ctor_template(templ);
+  binding::CreateInternalBindingTemplates(this);
 
   contextify::ContextifyContext::InitializeGlobalTemplates(this);
 }
@@ -538,7 +547,7 @@ void Environment::AssignToContext(Local<v8::Context> context,
   // Used to retrieve bindings
   context->SetAlignedPointerInEmbedderData(
       ContextEmbedderIndex::kBindingDataStoreIndex,
-      realm->binding_data_store());
+      realm != nullptr ? realm->binding_data_store() : nullptr);
 
   // ContextifyContexts will update this to a pointer to the native object.
   context->SetAlignedPointerInEmbedderData(
@@ -667,6 +676,15 @@ Environment::Environment(IsolateData* isolate_data,
       thread_id_(thread_id.id == static_cast<uint64_t>(-1)
                      ? AllocateEnvironmentThreadId().id
                      : thread_id.id) {
+#ifdef NODE_V8_SHARED_RO_HEAP
+  if (!is_main_thread()) {
+    CHECK_NOT_NULL(isolate_data->worker_context());
+    // TODO(addaleax): Adjust for the embedder API snapshot support changes
+    builtin_loader()->CopySourceAndCodeCacheReferenceFrom(
+        isolate_data->worker_context()->env()->builtin_loader());
+  }
+#endif
+
   // We'll be creating new objects so make sure we've entered the context.
   HandleScope handle_scope(isolate);
 
@@ -1580,29 +1598,12 @@ void Environment::PrintInfoForSnapshotIfDebug() {
   if (enabled_debug_list()->enabled(DebugCategory::MKSNAPSHOT)) {
     fprintf(stderr, "At the exit of the Environment:\n");
     principal_realm()->PrintInfoForSnapshot();
-    fprintf(stderr, "\nBuiltins without cache:\n");
-    for (const auto& s : builtins_without_cache) {
-      fprintf(stderr, "%s\n", s.c_str());
-    }
-    fprintf(stderr, "\nBuiltins with cache:\n");
-    for (const auto& s : builtins_with_cache) {
-      fprintf(stderr, "%s\n", s.c_str());
-    }
-    fprintf(stderr, "\nStatic bindings (need to be registered):\n");
-    for (const auto mod : internal_bindings) {
-      fprintf(stderr, "%s:%s\n", mod->nm_filename, mod->nm_modname);
-    }
   }
 }
 
 EnvSerializeInfo Environment::Serialize(SnapshotCreator* creator) {
   EnvSerializeInfo info;
   Local<Context> ctx = context();
-
-  // Currently all modules are compiled without cache in builtin snapshot
-  // builder.
-  info.builtins = std::vector<std::string>(builtins_without_cache.begin(),
-                                           builtins_without_cache.end());
 
   info.async_hooks = async_hooks_.Serialize(ctx, creator);
   info.immediate_info = immediate_info_.Serialize(ctx, creator);
@@ -1648,9 +1649,13 @@ void Environment::RunDeserializeRequests() {
 void Environment::DeserializeProperties(const EnvSerializeInfo* info) {
   Local<Context> ctx = context();
 
+  if (enabled_debug_list_.enabled(DebugCategory::MKSNAPSHOT)) {
+    fprintf(stderr, "deserializing EnvSerializeInfo...\n");
+    std::cerr << *info << "\n";
+  }
+
   RunDeserializeRequests();
 
-  builtins_in_snapshot = info->builtins;
   async_hooks_.Deserialize(ctx);
   immediate_info_.Deserialize(ctx);
   timeout_info_.Deserialize(ctx);
@@ -1661,11 +1666,6 @@ void Environment::DeserializeProperties(const EnvSerializeInfo* info) {
   should_abort_on_uncaught_toggle_.Deserialize(ctx);
 
   principal_realm_->DeserializeProperties(&info->principal_realm);
-
-  if (enabled_debug_list_.enabled(DebugCategory::MKSNAPSHOT)) {
-    fprintf(stderr, "deserializing...\n");
-    std::cerr << *info << "\n";
-  }
 }
 
 uint64_t GuessMemoryAvailableToTheProcess() {
@@ -1839,8 +1839,6 @@ void Environment::MemoryInfo(MemoryTracker* tracker) const {
   // Iteratable STLs have their own sizes subtracted from the parent
   // by default.
   tracker->TrackField("isolate_data", isolate_data_);
-  tracker->TrackField("builtins_with_cache", builtins_with_cache);
-  tracker->TrackField("builtins_without_cache", builtins_without_cache);
   tracker->TrackField("destroy_async_id_list", destroy_async_id_list_);
   tracker->TrackField("exec_argv", exec_argv_);
   tracker->TrackField("exiting", exiting_);

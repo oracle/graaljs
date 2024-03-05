@@ -4,6 +4,7 @@ const assert = require('assert');
 
 // Import of pure js (non-shared) deps for comparison
 const acorn = require('../../deps/acorn/acorn/package.json');
+const cjs_module_lexer = require('../../deps/cjs-module-lexer/package.json');
 
 const expected_keys = [
   'ares',
@@ -19,6 +20,8 @@ const expected_keys = [
   'acorn',
   'simdutf',
   'ada',
+  'cjs_module_lexer',
+  'base64',
 ];
 
 const hasUndici = process.config.variables.node_builtin_shareable_builtins.includes('deps/undici/undici.js');
@@ -58,7 +61,7 @@ assert.match(process.versions.brotli, commonTemplate);
 assert.match(process.versions.llhttp, commonTemplate);
 assert.match(process.versions.node, commonTemplate);
 assert.match(process.versions.uv, commonTemplate);
-assert.match(process.versions.zlib, /^\d+(?:\.\d+){2,3}(?:-.*)?$/);
+assert.match(process.versions.zlib, /^\d+(?:\.\d+){1,3}(?:-.*)?$/);
 
 if (hasUndici) {
   assert.match(process.versions.undici, commonTemplate);
@@ -69,15 +72,20 @@ assert.match(
   /^\d+\.\d+\.\d+(?:\.\d+)?-node\.\d+(?: \(candidate\))?$/
 );
 assert.match(process.versions.modules, /^\d+$/);
+assert.match(process.versions.cjs_module_lexer, commonTemplate);
 
 if (common.hasCrypto) {
-  const versionRegex = common.hasOpenSSL3 ?
-    // The following also matches a development version of OpenSSL 3.x which
-    // can be in the format '3.0.0-alpha4-dev'. This can be handy when building
-    // and linking against the main development branch of OpenSSL.
-    /^\d+\.\d+\.\d+(?:[-+][a-z0-9]+)*$/ :
-    /^\d+\.\d+\.\d+[a-z]?(\+quic)?(-fips)?$/;
-  assert.match(process.versions.openssl, versionRegex);
+  if (process.config.variables.node_shared_openssl) {
+    assert.ok(process.versions.openssl);
+  } else {
+    const versionRegex = common.hasOpenSSL3 ?
+      // The following also matches a development version of OpenSSL 3.x which
+      // can be in the format '3.0.0-alpha4-dev'. This can be handy when
+      // building and linking against the main development branch of OpenSSL.
+      /^\d+\.\d+\.\d+(?:[-+][a-z0-9]+)*$/ :
+      /^\d+\.\d+\.\d+[a-z]?(\+quic)?(-fips)?$/;
+    assert.match(process.versions.openssl, versionRegex);
+  }
 }
 
 for (let i = 0; i < expected_keys.length; i++) {
@@ -97,3 +105,5 @@ if (hasUndici) {
 
 const expectedAcornVersion = acorn.version;
 assert.strictEqual(process.versions.acorn, expectedAcornVersion);
+const expectedCjsModuleLexerVersion = cjs_module_lexer.version;
+assert.strictEqual(process.versions.cjs_module_lexer, expectedCjsModuleLexerVersion);

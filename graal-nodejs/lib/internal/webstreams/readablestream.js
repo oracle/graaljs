@@ -130,6 +130,8 @@ const {
   writableStreamDefaultWriterWrite,
 } = require('internal/webstreams/writablestream');
 
+const { Buffer } = require('buffer');
+
 const assert = require('internal/assert');
 
 const kCancel = Symbol('kCancel');
@@ -138,6 +140,7 @@ const kChunk = Symbol('kChunk');
 const kError = Symbol('kError');
 const kPull = Symbol('kPull');
 const kRelease = Symbol('kRelease');
+const kSkipThrow = Symbol('kSkipThrow');
 
 let releasedError;
 let releasingError;
@@ -670,8 +673,10 @@ TransferredReadableStream.prototype[kDeserialize] = () => {};
 class ReadableStreamBYOBRequest {
   [kType] = 'ReadableStreamBYOBRequest';
 
-  constructor() {
-    throw new ERR_ILLEGAL_CONSTRUCTOR();
+  constructor(skipThrowSymbol = undefined) {
+    if (skipThrowSymbol !== kSkipThrow) {
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
+    }
   }
 
   /**
@@ -753,17 +758,14 @@ ObjectDefineProperties(ReadableStreamBYOBRequest.prototype, {
 });
 
 function createReadableStreamBYOBRequest(controller, view) {
-  return ReflectConstruct(
-    function() {
-      this[kType] = 'ReadableStreamBYOBRequest';
-      this[kState] = {
-        controller,
-        view,
-      };
-    },
-    [],
-    ReadableStreamBYOBRequest,
-  );
+  const stream = new ReadableStreamBYOBRequest(kSkipThrow);
+
+  stream[kState] = {
+    controller,
+    view,
+  };
+
+  return stream;
 }
 
 class DefaultReadRequest {
@@ -1013,9 +1015,12 @@ ObjectDefineProperties(ReadableStreamBYOBReader.prototype, {
 
 class ReadableStreamDefaultController {
   [kType] = 'ReadableStreamDefaultController';
+  [kState] = {};
 
-  constructor() {
-    throw new ERR_ILLEGAL_CONSTRUCTOR();
+  constructor(skipThrowSymbol = undefined) {
+    if (skipThrowSymbol !== kSkipThrow) {
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
+    }
   }
 
   /**
@@ -1071,22 +1076,14 @@ ObjectDefineProperties(ReadableStreamDefaultController.prototype, {
   [SymbolToStringTag]: getNonWritablePropertyDescriptor(ReadableStreamDefaultController.name),
 });
 
-function createReadableStreamDefaultController() {
-  return ReflectConstruct(
-    function() {
-      this[kType] = 'ReadableStreamDefaultController';
-      this[kState] = {};
-    },
-    [],
-    ReadableStreamDefaultController,
-  );
-}
-
 class ReadableByteStreamController {
   [kType] = 'ReadableByteStreamController';
+  [kState] = {};
 
-  constructor() {
-    throw new ERR_ILLEGAL_CONSTRUCTOR();
+  constructor(skipThrowSymbol = undefined) {
+    if (skipThrowSymbol !== kSkipThrow) {
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
+    }
   }
 
   /**
@@ -1196,17 +1193,6 @@ ObjectDefineProperties(ReadableByteStreamController.prototype, {
   error: kEnumerableProperty,
   [SymbolToStringTag]: getNonWritablePropertyDescriptor(ReadableByteStreamController.name),
 });
-
-function createReadableByteStreamController() {
-  return ReflectConstruct(
-    function() {
-      this[kType] = 'ReadableByteStreamController';
-      this[kState] = {};
-    },
-    [],
-    ReadableByteStreamController,
-  );
-}
 
 function createTeeReadableStream(start, pull, cancel) {
   return ReflectConstruct(
@@ -1862,6 +1848,11 @@ function readableByteStreamControllerConvertPullIntoDescriptor(desc) {
     throw new ERR_INVALID_STATE.RangeError('The buffer size is invalid');
   assert(!(bytesFilled % elementSize));
   const transferredBuffer = transferArrayBuffer(buffer);
+
+  if (ctor === Buffer) {
+    return Buffer.from(transferredBuffer, byteOffset, bytesFilled / elementSize);
+  }
+
   return new ctor(transferredBuffer, byteOffset, bytesFilled / elementSize);
 }
 
@@ -2357,7 +2348,7 @@ function setupReadableStreamDefaultControllerFromSource(
   source,
   highWaterMark,
   sizeAlgorithm) {
-  const controller = createReadableStreamDefaultController();
+  const controller = new ReadableStreamDefaultController(kSkipThrow);
   const start = source?.start;
   const pull = source?.pull;
   const cancel = source?.cancel;
@@ -3155,7 +3146,7 @@ function setupReadableByteStreamControllerFromSource(
   stream,
   source,
   highWaterMark) {
-  const controller = createReadableByteStreamController();
+  const controller = new ReadableByteStreamController(kSkipThrow);
   const start = source?.start;
   const pull = source?.pull;
   const cancel = source?.cancel;

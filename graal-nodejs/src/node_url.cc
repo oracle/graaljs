@@ -95,6 +95,11 @@ void BindingData::DomainToUnicode(const FunctionCallbackInfo<Value>& args) {
   CHECK(args[0]->IsString());
 
   std::string input = Utf8Value(env->isolate(), args[0]).ToString();
+  if (input.empty()) {
+    return args.GetReturnValue().Set(
+        String::NewFromUtf8(env->isolate(), "").ToLocalChecked());
+  }
+
   // It is important to have an initial value that contains a special scheme.
   // Since it will change the implementation of `set_hostname` according to URL
   // spec.
@@ -163,7 +168,7 @@ void BindingData::Format(const FunctionCallbackInfo<Value>& args) {
     out->hash = std::nullopt;
   }
 
-  if (unicode) {
+  if (unicode && out->has_hostname()) {
     out->host = ada::idna::to_unicode(out->get_hostname());
   }
 
