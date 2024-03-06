@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2016, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2016, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,23 +46,23 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
 public class ImportSpecifierNode extends Node {
 
-    private final IdentNode identifier;
+    private final PropertyKey identifier;
 
     private final IdentNode bindingIdentifier;
 
-    public ImportSpecifierNode(final long token, final int start, final int finish, final IdentNode bindingIdentifier, final IdentNode identifier) {
+    public ImportSpecifierNode(final long token, final int start, final int finish, final IdentNode bindingIdentifier, final PropertyKey identifier) {
         super(token, start, finish);
         this.identifier = identifier;
         this.bindingIdentifier = bindingIdentifier;
     }
 
-    private ImportSpecifierNode(final ImportSpecifierNode node, final IdentNode bindingIdentifier, final IdentNode identifier) {
+    private ImportSpecifierNode(final ImportSpecifierNode node, final IdentNode bindingIdentifier, final PropertyKey identifier) {
         super(node);
         this.identifier = identifier;
         this.bindingIdentifier = bindingIdentifier;
     }
 
-    public IdentNode getIdentifier() {
+    public PropertyKey getIdentifier() {
         return identifier;
     }
 
@@ -70,25 +70,25 @@ public class ImportSpecifierNode extends Node {
         return bindingIdentifier;
     }
 
-    public ImportSpecifierNode setIdentifier(IdentNode identifier) {
+    public ImportSpecifierNode setIdentifier(PropertyKey identifier) {
         if (this.identifier == identifier) {
             return this;
         }
-        return new ImportSpecifierNode(this, identifier, bindingIdentifier);
+        return new ImportSpecifierNode(this, bindingIdentifier, identifier);
     }
 
     public ImportSpecifierNode setBindingIdentifier(IdentNode bindingIdentifier) {
         if (this.bindingIdentifier == bindingIdentifier) {
             return this;
         }
-        return new ImportSpecifierNode(this, identifier, bindingIdentifier);
+        return new ImportSpecifierNode(this, bindingIdentifier, identifier);
     }
 
     @Override
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterImportSpecifierNode(this)) {
-            IdentNode newIdentifier = identifier == null ? null
-                            : (IdentNode) identifier.accept(visitor);
+            PropertyKey newIdentifier = identifier == null ? null
+                            : (PropertyKey) ((Node) identifier).accept(visitor);
             return visitor.leaveImportSpecifierNode(
                             setBindingIdentifier((IdentNode) bindingIdentifier.accept(visitor)).setIdentifier(newIdentifier));
         }
@@ -104,7 +104,7 @@ public class ImportSpecifierNode extends Node {
     @Override
     public void toString(StringBuilder sb, boolean printType) {
         if (identifier != null) {
-            identifier.toString(sb, printType);
+            ((Node) identifier).toString(sb, printType);
             sb.append(" as ");
         }
         bindingIdentifier.toString(sb, printType);

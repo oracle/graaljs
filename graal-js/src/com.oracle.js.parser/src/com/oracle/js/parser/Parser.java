@@ -7130,7 +7130,7 @@ public class Parser extends AbstractParser {
      *     ImportsList , ImportSpecifier
      * ImportSpecifier :
      *     ImportedBinding
-     *     IdentifierName as ImportedBinding
+     *     ModuleExportName as ImportedBinding
      * ImportedBinding :
      *     BindingIdentifier
      * </pre>
@@ -7143,14 +7143,15 @@ public class Parser extends AbstractParser {
         while (type != RBRACE) {
             boolean bindingIdentifier = isBindingIdentifier();
             long nameToken = token;
-            IdentNode importName = getIdentifierName();
+            PropertyKey importedName = moduleExportName();
             if (type == AS) {
                 next();
                 IdentNode localName = importedBindingIdentifier();
-                importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
+                importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importedName));
                 declareImportBinding(localName);
-                importEntries.add(ImportEntry.importSpecifier(importName.getNameTS(), localName.getNameTS()));
+                importEntries.add(ImportEntry.importSpecifier(importedName.getPropertyNameTS(), localName.getNameTS()));
             } else if (bindingIdentifier) {
+                IdentNode importName = (IdentNode) importedName;
                 verifyIdent(importName, false, false);
                 verifyStrictIdent(importName, CONTEXT_IMPORTED_BINDING);
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, importName, null));
