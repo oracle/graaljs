@@ -178,31 +178,31 @@ public class ExportParserTest {
     public void testFromDefault() {
         String code = "export {default} from \"foo\";";
         ExportSpecifierNode specifier = testFromHelper(code);
-        assertEquals(ImportParserTest.DEFAULT, specifier.getIdentifier().getNameTS());
+        assertEquals(ImportParserTest.DEFAULT, specifier.getIdentifier().getPropertyNameTS());
     }
 
     @Test
     public void testFromNamedAsDefault() {
         String code = "export {foo as default} from \"foo\";";
         ExportSpecifierNode specifier = testFromHelper(code);
-        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getNameTS());
-        assertEquals(ImportParserTest.DEFAULT, specifier.getExportIdentifier().getNameTS());
+        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getPropertyNameTS());
+        assertEquals(ImportParserTest.DEFAULT, specifier.getExportIdentifier().getPropertyNameTS());
     }
 
     @Test
     public void testFromDefaultAsDefault() {
         String code = "export {default as default} from \"foo\";";
         ExportSpecifierNode specifier = testFromHelper(code);
-        assertEquals(ImportParserTest.DEFAULT, specifier.getIdentifier().getNameTS());
-        assertEquals(ImportParserTest.DEFAULT, specifier.getExportIdentifier().getNameTS());
+        assertEquals(ImportParserTest.DEFAULT, specifier.getIdentifier().getPropertyNameTS());
+        assertEquals(ImportParserTest.DEFAULT, specifier.getExportIdentifier().getPropertyNameTS());
     }
 
     @Test
     public void testFromNamedAsSpecifier() {
         String code = "export {foo as bar} from \"foo\";";
         ExportSpecifierNode specifier = testFromHelper(code);
-        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getNameTS());
-        assertEquals(ImportParserTest.BAR, specifier.getExportIdentifier().getNameTS());
+        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getPropertyNameTS());
+        assertEquals(ImportParserTest.BAR, specifier.getExportIdentifier().getPropertyNameTS());
     }
 
     @Test
@@ -218,18 +218,18 @@ public class ExportParserTest {
         assertEquals(2, specifiers.size());
 
         ExportSpecifierNode specifier = specifiers.get(0);
-        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getNameTS());
-        assertEquals(ImportParserTest.DEFAULT, specifier.getExportIdentifier().getNameTS());
+        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getPropertyNameTS());
+        assertEquals(ImportParserTest.DEFAULT, specifier.getExportIdentifier().getPropertyNameTS());
 
         specifier = specifiers.get(1);
-        assertEquals(ImportParserTest.BAR, specifier.getIdentifier().getNameTS());
+        assertEquals(ImportParserTest.BAR, specifier.getIdentifier().getPropertyNameTS());
     }
 
     @Test
     public void testFromSpecifier() {
         String code = "export {foo} from \"foo\";";
         ExportSpecifierNode specifier = testFromHelper(code);
-        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getNameTS());
+        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getPropertyNameTS());
     }
 
     @Test
@@ -245,10 +245,10 @@ public class ExportParserTest {
         assertEquals(2, specifiers.size());
 
         ExportSpecifierNode specifier = specifiers.get(0);
-        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getNameTS());
+        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getPropertyNameTS());
 
         specifier = specifiers.get(1);
-        assertEquals(ImportParserTest.BAR, specifier.getIdentifier().getNameTS());
+        assertEquals(ImportParserTest.BAR, specifier.getIdentifier().getPropertyNameTS());
     }
 
     @Test
@@ -286,16 +286,16 @@ public class ExportParserTest {
     public void testNamedAsDefault() {
         String code = "var foo; export {foo as default};";
         ExportSpecifierNode specifier = testNamedHelper(code);
-        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getNameTS());
-        assertEquals(ImportParserTest.DEFAULT, specifier.getExportIdentifier().getNameTS());
+        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getPropertyNameTS());
+        assertEquals(ImportParserTest.DEFAULT, specifier.getExportIdentifier().getPropertyNameTS());
     }
 
     @Test
     public void testNamedAsSpecifier() {
         String code = "var foo; export {foo as bar};";
         ExportSpecifierNode specifier = testNamedHelper(code);
-        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getNameTS());
-        assertEquals(ImportParserTest.BAR, specifier.getExportIdentifier().getNameTS());
+        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getPropertyNameTS());
+        assertEquals(ImportParserTest.BAR, specifier.getExportIdentifier().getPropertyNameTS());
     }
 
     @Test
@@ -309,11 +309,11 @@ public class ExportParserTest {
         assertEquals(2, specifiers.size());
 
         ExportSpecifierNode specifier = specifiers.get(0);
-        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getNameTS());
-        assertEquals(ImportParserTest.DEFAULT, specifier.getExportIdentifier().getNameTS());
+        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getPropertyNameTS());
+        assertEquals(ImportParserTest.DEFAULT, specifier.getExportIdentifier().getPropertyNameTS());
 
         specifier = specifiers.get(1);
-        assertEquals(ImportParserTest.BAR, specifier.getIdentifier().getNameTS());
+        assertEquals(ImportParserTest.BAR, specifier.getIdentifier().getPropertyNameTS());
     }
 
     @Test
@@ -331,7 +331,7 @@ public class ExportParserTest {
     public void testNamedSpecifier() {
         String code = "var foo; export {foo};";
         ExportSpecifierNode specifier = testNamedHelper(code);
-        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getNameTS());
+        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getPropertyNameTS());
     }
 
     @Test
@@ -345,10 +345,10 @@ public class ExportParserTest {
         assertEquals(2, specifiers.size());
 
         ExportSpecifierNode specifier = specifiers.get(0);
-        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getNameTS());
+        assertEquals(ImportParserTest.FOO, specifier.getIdentifier().getPropertyNameTS());
 
         specifier = specifiers.get(1);
-        assertEquals(ImportParserTest.BAR, specifier.getIdentifier().getNameTS());
+        assertEquals(ImportParserTest.BAR, specifier.getIdentifier().getPropertyNameTS());
     }
 
     @Test
