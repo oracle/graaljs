@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2015, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2015, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -147,10 +147,10 @@ class ParserContextModuleNode extends ParserContextBaseNode {
             if (export.getNamedExports() != null) {
                 assert export.getExportIdentifier() == null;
                 for (ExportSpecifierNode s : export.getNamedExports().getExportSpecifiers()) {
-                    TruffleString localName = s.getIdentifier().getNameTS();
+                    TruffleString localName = s.getIdentifier().getPropertyNameTS();
                     ExportEntry ee;
                     if (s.getExportIdentifier() != null) {
-                        ee = ExportEntry.exportSpecifier(s.getExportIdentifier().getNameTS(), localName);
+                        ee = ExportEntry.exportSpecifier(s.getExportIdentifier().getPropertyNameTS(), localName);
                     } else {
                         ee = ExportEntry.exportSpecifier(localName);
                     }
@@ -175,12 +175,12 @@ class ParserContextModuleNode extends ParserContextBaseNode {
                 if (export.getExportIdentifier() == null) {
                     addStarExportEntry(ExportEntry.exportStarFrom(moduleRequest));
                 } else {
-                    addIndirectExportEntry(exportToken, ExportEntry.exportStarAsNamespaceFrom(export.getExportIdentifier().getNameTS(), moduleRequest));
+                    addIndirectExportEntry(exportToken, ExportEntry.exportStarAsNamespaceFrom(export.getExportIdentifier().getPropertyNameTS(), moduleRequest));
                 }
             } else if (export.isDefault()) {
-                addLocalExportEntry(exportToken, ExportEntry.exportDefault(export.getExportIdentifier().getNameTS()));
+                addLocalExportEntry(exportToken, ExportEntry.exportDefault(export.getExportIdentifier().getPropertyNameTS()));
             } else {
-                addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(export.getExportIdentifier().getNameTS()));
+                addLocalExportEntry(exportToken, ExportEntry.exportSpecifier(export.getExportIdentifier().getPropertyNameTS()));
             }
         }
     }

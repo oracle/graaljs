@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -53,7 +53,7 @@ public class ExportNode extends Node {
 
     private final FromNode from;
 
-    private final IdentNode exportIdent;
+    private final PropertyKey exportIdent;
 
     private final VarNode var;
 
@@ -63,7 +63,7 @@ public class ExportNode extends Node {
 
     private final Map<TruffleString, TruffleString> assertions;
 
-    public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final FromNode from, Map<TruffleString, TruffleString> assertions) {
+    public ExportNode(final long token, final int start, final int finish, final PropertyKey ident, final FromNode from, Map<TruffleString, TruffleString> assertions) {
         this(token, start, finish, null, from, ident, null, null, false, assertions);
     }
 
@@ -71,16 +71,16 @@ public class ExportNode extends Node {
         this(token, start, finish, exportClause, from, null, null, null, false, assertions);
     }
 
-    public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final Expression expression, final boolean isDefault) {
+    public ExportNode(final long token, final int start, final int finish, final PropertyKey ident, final Expression expression, final boolean isDefault) {
         this(token, start, finish, null, null, ident, null, expression, isDefault, Map.of());
     }
 
-    public ExportNode(final long token, final int start, final int finish, final IdentNode ident, final VarNode var) {
+    public ExportNode(final long token, final int start, final int finish, final PropertyKey ident, final VarNode var) {
         this(token, start, finish, null, null, ident, var, null, false, Map.of());
     }
 
     private ExportNode(final long token, final int start, final int finish, final NamedExportsNode namedExports,
-                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, final boolean isDefault, Map<TruffleString, TruffleString> assertions) {
+                    final FromNode from, final PropertyKey exportIdent, final VarNode var, final Expression expression, final boolean isDefault, Map<TruffleString, TruffleString> assertions) {
         super(token, start, finish);
         this.namedExports = namedExports;
         this.from = from;
@@ -95,7 +95,7 @@ public class ExportNode extends Node {
     }
 
     private ExportNode(final ExportNode node, final NamedExportsNode namedExports,
-                    final FromNode from, final IdentNode exportIdent, final VarNode var, final Expression expression, Map<TruffleString, TruffleString> assertions) {
+                    final FromNode from, final PropertyKey exportIdent, final VarNode var, final Expression expression, Map<TruffleString, TruffleString> assertions) {
         super(node);
         this.isDefault = node.isDefault;
 
@@ -115,7 +115,7 @@ public class ExportNode extends Node {
         return from;
     }
 
-    public IdentNode getExportIdentifier() {
+    public PropertyKey getExportIdentifier() {
         return exportIdent;
     }
 
@@ -158,7 +158,7 @@ public class ExportNode extends Node {
             FromNode newFrom = from == null ? null : (FromNode) from.accept(visitor);
             VarNode newVar = var == null ? null : (VarNode) var.accept(visitor);
             Expression newExpression = expression == null ? null : (Expression) expression.accept(visitor);
-            IdentNode newIdent = (exportIdent == null || isDefault()) ? exportIdent : getIdent(newVar, newExpression);
+            PropertyKey newIdent = (exportIdent == null || isDefault()) ? exportIdent : getIdent(newVar, newExpression);
             ExportNode newNode = (this.namedExports == newExportClause && this.from == newFrom && this.exportIdent == newIdent && this.var == newVar && this.expression == newExpression)
                             ? this
                             : new ExportNode(this, namedExports, from, exportIdent, var, expression, assertions);
