@@ -76,10 +76,15 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                     node(commonArgs + ['-e', 'FormData'])
                     # run selected Node.js tests related to WebAssembly
                     wasm_tests = [
-                        join('parallel', 'test-fetch.mjs'),
-                        join('parallel', 'test-fetch-disabled.mjs'),
+                        join('es-module', 'test-esm-extensionless-esm-and-wasm.mjs'),
+                        join('es-module', 'test-esm-type-flag-loose-files.mjs'),
+                        join('es-module', 'test-esm-type-flag-package-scopes.mjs'),
+                        join('es-module', 'test-esm-wasm.mjs'),
+                        join('es-module', 'test-wasm-memory-out-of-bound.js'),
                         join('es-module', 'test-wasm-simple.js'),
                         join('es-module', 'test-wasm-web-api.js'),
+                        join('parallel', 'test-fetch.mjs'),
+                        join('parallel', 'test-fetch-disabled.mjs'),
                         join('parallel', 'test-whatwg-webstreams-transfer.js'),
                         join('parallel', 'test-worker-message-port-wasm-module.js')
                     ]
