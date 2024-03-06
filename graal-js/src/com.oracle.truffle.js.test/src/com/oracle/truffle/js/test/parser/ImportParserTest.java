@@ -129,7 +129,7 @@ public class ImportParserTest {
         assertEquals(1, specifiers.size());
         ImportSpecifierNode specifier = specifiers.get(0);
         assertEquals(FOO, specifier.getBindingIdentifier().getNameTS());
-        assertEquals(DEFAULT, specifier.getIdentifier().getNameTS());
+        assertEquals(DEFAULT, specifier.getIdentifier().getPropertyNameTS());
         FromNode from = importNode.getFrom();
         assertEquals(FOO, from.getModuleSpecifier().getValue());
     }
@@ -154,7 +154,7 @@ public class ImportParserTest {
         assertEquals(1, specifiers.size());
         ImportSpecifierNode specifier = specifiers.get(0);
         assertEquals(BAZ, specifier.getBindingIdentifier().getNameTS());
-        assertEquals(BAR, specifier.getIdentifier().getNameTS());
+        assertEquals(BAR, specifier.getIdentifier().getPropertyNameTS());
         FromNode from = importNode.getFrom();
         assertEquals(FOO, from.getModuleSpecifier().getValue());
     }
@@ -171,7 +171,7 @@ public class ImportParserTest {
 
         ImportSpecifierNode specifier = specifiers.get(0);
         assertEquals(BAZ, specifier.getBindingIdentifier().getNameTS());
-        assertEquals(BAR, specifier.getIdentifier().getNameTS());
+        assertEquals(BAR, specifier.getIdentifier().getPropertyNameTS());
 
         specifier = specifiers.get(1);
         assertEquals(XYZ, specifier.getBindingIdentifier().getNameTS());
