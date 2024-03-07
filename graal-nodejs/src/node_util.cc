@@ -31,6 +31,8 @@ using v8::PropertyFilter;
 using v8::Proxy;
 using v8::SKIP_STRINGS;
 using v8::SKIP_SYMBOLS;
+using v8::StackFrame;
+using v8::StackTrace;
 using v8::String;
 using v8::Uint32;
 using v8::Value;
@@ -135,6 +137,24 @@ static void GetProxyDetails(const FunctionCallbackInfo<Value>& args) {
 
     args.GetReturnValue().Set(ret);
   }
+}
+
+static void GetCallerLocation(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+  Local<StackTrace> trace = StackTrace::CurrentStackTrace(isolate, 2);
+
+  // This function is frame zero. The caller is frame one. If there aren't two
+  // stack frames, return undefined.
+  if (trace->GetFrameCount() != 2) {
+    return;
+  }
+
+  Local<StackFrame> frame = trace->GetFrame(isolate, 1);
+  Local<Value> ret[] = {Integer::New(isolate, frame->GetLineNumber()),
+                        Integer::New(isolate, frame->GetColumn()),
+                        frame->GetScriptNameOrSourceURL()};
+
+  args.GetReturnValue().Set(Array::New(args.GetIsolate(), ret, arraysize(ret)));
 }
 
 static void IsArrayBufferDetached(const FunctionCallbackInfo<Value>& args) {
@@ -262,18 +282,13 @@ void WeakReference::Get(const FunctionCallbackInfo<Value>& args) {
     args.GetReturnValue().Set(weak_ref->target_.Get(isolate));
 }
 
-void WeakReference::GetRef(const FunctionCallbackInfo<Value>& args) {
-  WeakReference* weak_ref = Unwrap<WeakReference>(args.Holder());
-  Isolate* isolate = args.GetIsolate();
-  args.GetReturnValue().Set(
-      v8::Number::New(isolate, weak_ref->reference_count_));
-}
-
 void WeakReference::IncRef(const FunctionCallbackInfo<Value>& args) {
   WeakReference* weak_ref = Unwrap<WeakReference>(args.Holder());
   weak_ref->reference_count_++;
   if (weak_ref->target_.IsEmpty()) return;
   if (weak_ref->reference_count_ == 1) weak_ref->target_.ClearWeak();
+  args.GetReturnValue().Set(
+      v8::Number::New(args.GetIsolate(), weak_ref->reference_count_));
 }
 
 void WeakReference::DecRef(const FunctionCallbackInfo<Value>& args) {
@@ -282,6 +297,8 @@ void WeakReference::DecRef(const FunctionCallbackInfo<Value>& args) {
   weak_ref->reference_count_--;
   if (weak_ref->target_.IsEmpty()) return;
   if (weak_ref->reference_count_ == 0) weak_ref->target_.SetWeak();
+  args.GetReturnValue().Set(
+      v8::Number::New(args.GetIsolate(), weak_ref->reference_count_));
 }
 
 static void GuessHandleType(const FunctionCallbackInfo<Value>& args) {
@@ -356,6 +373,7 @@ static void ToUSVString(const FunctionCallbackInfo<Value>& args) {
 void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(GetPromiseDetails);
   registry->Register(GetProxyDetails);
+  registry->Register(GetCallerLocation);
   registry->Register(IsArrayBufferDetached);
   registry->Register(PreviewEntries);
   registry->Register(GetOwnNonIndexProperties);
@@ -365,7 +383,6 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(ArrayBufferViewHasBuffer);
   registry->Register(WeakReference::New);
   registry->Register(WeakReference::Get);
-  registry->Register(WeakReference::GetRef);
   registry->Register(WeakReference::IncRef);
   registry->Register(WeakReference::DecRef);
   registry->Register(GuessHandleType);
@@ -431,6 +448,8 @@ void Initialize(Local<Object> target,
       context, target, "getPromiseDetails", GetPromiseDetails);
   SetMethodNoSideEffect(context, target, "getProxyDetails", GetProxyDetails);
   SetMethodNoSideEffect(
+      context, target, "getCallerLocation", GetCallerLocation);
+  SetMethodNoSideEffect(
       context, target, "isArrayBufferDetached", IsArrayBufferDetached);
   SetMethodNoSideEffect(context, target, "previewEntries", PreviewEntries);
   SetMethodNoSideEffect(
@@ -457,7 +476,6 @@ void Initialize(Local<Object> target,
       WeakReference::kInternalFieldCount);
   weak_ref->Inherit(BaseObject::GetConstructorTemplate(env));
   SetProtoMethod(isolate, weak_ref, "get", WeakReference::Get);
-  SetProtoMethod(isolate, weak_ref, "getRef", WeakReference::GetRef);
   SetProtoMethod(isolate, weak_ref, "incRef", WeakReference::IncRef);
   SetProtoMethod(isolate, weak_ref, "decRef", WeakReference::DecRef);
   SetConstructorFunction(context, target, "WeakReference", weak_ref);

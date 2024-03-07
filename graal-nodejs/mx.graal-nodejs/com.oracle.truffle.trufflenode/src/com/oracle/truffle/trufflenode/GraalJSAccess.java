@@ -391,6 +391,7 @@ public final class GraalJSAccess {
             contextBuilder.option(JSContextOptions.DIRECT_BYTE_BUFFER_NAME, "true");
             contextBuilder.option(JSContextOptions.V8_COMPATIBILITY_MODE_NAME, "true");
             contextBuilder.option(JSContextOptions.CLASS_FIELDS_NAME, "true");
+            contextBuilder.option(JSContextOptions.ATOMICS_WAIT_ASYNC_NAME, "true");
             // Node.js does not have global load property
             contextBuilder.option(JSContextOptions.LOAD_NAME, "false");
             // Node.js provides its own console
@@ -454,6 +455,10 @@ public final class GraalJSAccess {
     public static Object create(String[] args) throws Exception {
         Thread.currentThread().setContextClassLoader(ClassLoader.getSystemClassLoader());
         return new GraalJSAccess(args);
+    }
+
+    public void isolateSetTaskRunner(long taskRunnerPointer) {
+        agent.setTaskRunnerPointer(taskRunnerPointer);
     }
 
     public Object undefinedInstance() {
@@ -2641,8 +2646,8 @@ public final class GraalJSAccess {
         return Strings.fromJavaString("Uncaught " + ((Throwable) exception).getMessage());
     }
 
-    public Object stackTraceCurrentStackTrace() {
-        return GraalJSException.getJSStackTrace(null);
+    public Object stackTraceCurrentStackTrace(int frameLimit) {
+        return GraalJSException.getJSStackTrace(null, frameLimit);
     }
 
     public int stackFrameGetLineNumber(Object stackFrame) {

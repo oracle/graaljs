@@ -1,5 +1,5 @@
 #include "node_perf.h"
-#include "aliased_buffer.h"
+#include "aliased_buffer-inl.h"
 #include "env-inl.h"
 #include "histogram-inl.h"
 #include "memory_tracker-inl.h"
@@ -213,18 +213,6 @@ static void RemoveGarbageCollectionTracking(
 
   env->RemoveCleanupHook(GarbageCollectionCleanupHook, env);
   GarbageCollectionCleanupHook(env);
-}
-
-// Gets the name of a function
-inline Local<Value> GetName(Local<Function> fn) {
-  Local<Value> val = fn->GetDebugName();
-  if (val.IsEmpty() || val->IsUndefined()) {
-    Local<Value> boundFunction = fn->GetBoundFunction();
-    if (!boundFunction.IsEmpty() && !boundFunction->IsUndefined()) {
-      val = GetName(boundFunction.As<Function>());
-    }
-  }
-  return val;
 }
 
 // Notify a custom PerformanceEntry to observers

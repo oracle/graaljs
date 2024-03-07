@@ -55,7 +55,7 @@ def WrapModule(module_path, module_code):
     delimiter = u'\u237f' # "random" character (vertical line with middle dot)
     wrapped_module_code = delimiter + module_code + delimiter
     # see LookupAndCompile() in node_builtins.cc 
-    if module_path == join('lib', 'internal', 'bootstrap', 'loaders.js'):
+    if module_path == join('lib', 'internal', 'bootstrap', 'realm.js'):
         result = "(function (process, getLinkedBinding, getInternalBinding, primordials) {" + wrapped_module_code + "\n});"
     elif module_path.startswith(join('lib', 'internal', 'per_context')):
         result = "(function (exports, primordials) {" + wrapped_module_code + "\n});"

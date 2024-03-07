@@ -59,7 +59,6 @@ const {
   getStatsFromBinding,
   getValidatedPath,
   getValidMode,
-  nullCheck,
   preprocessSymlinkDestination,
   stringToFlags,
   stringToSymlinkType,
@@ -249,6 +248,9 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
   /**
    * @typedef {import('../webstreams/readablestream').ReadableStream
    * } ReadableStream
+   * @param {{
+   *   type?: string;
+   *   }} [options]
    * @returns {ReadableStream}
    */
   readableWebStream(options = kEmptyObject) {
@@ -274,17 +276,8 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
         this[kHandle],
         undefined,
         { ondone: () => this[kUnref]() });
-
-      const {
-        readableStreamCancel,
-      } = require('internal/webstreams/readablestream');
-      this[kRef]();
-      this.once('close', () => {
-        readableStreamCancel(readable);
-      });
     } else {
       const {
-        readableStreamCancel,
         ReadableStream,
       } = require('internal/webstreams/readablestream');
 
@@ -311,13 +304,15 @@ class FileHandle extends EventEmitterMixin(JSTransferable) {
           ondone();
         },
       });
-
-      this[kRef]();
-
-      this.once('close', () => {
-        readableStreamCancel(readable);
-      });
     }
+
+    const {
+      readableStreamCancel,
+    } = require('internal/webstreams/readablestream');
+    this[kRef]();
+    this.once('close', () => {
+      readableStreamCancel(readable);
+    });
 
     return readable;
   }
@@ -976,10 +971,17 @@ async function realpath(path, options) {
 async function mkdtemp(prefix, options) {
   options = getOptions(options);
 
-  validateString(prefix, 'prefix');
-  nullCheck(prefix);
+  prefix = getValidatedPath(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
-  return binding.mkdtemp(`${prefix}XXXXXX`, options.encoding, kUsePromises);
+
+  let path;
+  if (typeof prefix === 'string') {
+    path = `${prefix}XXXXXX`;
+  } else {
+    path = Buffer.concat([prefix, Buffer.from('XXXXXX')]);
+  }
+
+  return binding.mkdtemp(path, options.encoding, kUsePromises);
 }
 
 async function writeFile(path, data, options) {

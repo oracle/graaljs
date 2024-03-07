@@ -5,11 +5,11 @@ const {
   RegExpPrototypeExec,
   decodeURIComponent,
 } = primordials;
+const { kEmptyObject } = require('internal/util');
 
 const { defaultGetFormat } = require('internal/modules/esm/get_format');
-const { validateAssertions } = require('internal/modules/esm/assert');
+const { validateAttributes, emitImportAssertionWarning } = require('internal/modules/esm/assert');
 const { getOptionValue } = require('internal/options');
-const { fetchModule } = require('internal/modules/esm/fetch_module');
 
 // Do not eagerly grab .manifest, it may be in TDZ
 const policy = getOptionValue('--experimental-policy') ?
@@ -20,10 +20,10 @@ const experimentalNetworkImports =
 
 const { Buffer: { from: BufferFrom } } = require('buffer');
 
-const { readFile: readFileAsync } = require('internal/fs/promises').exports;
 const { URL } = require('internal/url');
 const {
   ERR_INVALID_URL,
+  ERR_UNKNOWN_MODULE_FORMAT,
   ERR_UNSUPPORTED_ESM_URL_SCHEME,
 } = require('internal/errors').codes;
 
@@ -39,6 +39,7 @@ async function getSource(url, context) {
   let responseURL = href;
   let source;
   if (protocol === 'file:') {
+    const { readFile: readFileAsync } = require('internal/fs/promises').exports;
     source = await readFileAsync(url);
   } else if (protocol === 'data:') {
     const match = RegExpPrototypeExec(DATA_URL_PATTERN, url.pathname);
@@ -51,6 +52,7 @@ async function getSource(url, context) {
     protocol === 'https:' ||
     protocol === 'http:'
   )) {
+    const { fetchModule } = require('internal/modules/esm/fetch_module');
     const res = await fetchModule(url, context);
     source = await res.body;
     responseURL = res.resolvedHREF;
@@ -74,13 +76,23 @@ async function getSource(url, context) {
  * @param {object} context
  * @returns {object}
  */
-async function defaultLoad(url, context) {
+async function defaultLoad(url, context = kEmptyObject) {
   let responseURL = url;
-  const { importAssertions } = context;
   let {
+    importAttributes,
     format,
     source,
   } = context;
+
+  if (importAttributes == null && !('importAttributes' in context) && 'importAssertions' in context) {
+    emitImportAssertionWarning();
+    importAttributes = context.importAssertions;
+    // Alias `importAssertions` to `importAttributes`
+    context = {
+      ...context,
+      importAttributes,
+    };
+  }
 
   const urlInstance = new URL(url);
 
@@ -88,7 +100,7 @@ async function defaultLoad(url, context) {
 
   format ??= await defaultGetFormat(urlInstance, context);
 
-  validateAssertions(url, format, importAssertions);
+  validateAttributes(url, format, importAttributes);
 
   if (
     format === 'builtin' ||
@@ -106,6 +118,7 @@ async function defaultLoad(url, context) {
     source,
   };
 }
+
 
 /**
  * throws an error if the protocol is not one of the protocols
@@ -137,6 +150,26 @@ function throwIfUnsupportedURLScheme(parsed, experimentalNetworkImports) {
   }
 }
 
+/**
+ * For a falsy `format` returned from `load`, throw an error.
+ * This could happen from either a custom user loader _or_ from the default loader, because the default loader tries to
+ * determine formats for data URLs.
+ * @param {string} url The resolved URL of the module
+ * @param {null | undefined | false | 0 | -0 | 0n | ''} format Falsy format returned from `load`
+ */
+function throwUnknownModuleFormat(url, format) {
+  const dataUrl = RegExpPrototypeExec(
+    /^data:([^/]+\/[^;,]+)(?:[^,]*?)(;base64)?,/,
+    url,
+  );
+
+  throw new ERR_UNKNOWN_MODULE_FORMAT(
+    dataUrl ? dataUrl[1] : format,
+    url);
+}
+
+
 module.exports = {
   defaultLoad,
+  throwUnknownModuleFormat,
 };

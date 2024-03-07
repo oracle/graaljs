@@ -493,14 +493,21 @@ function storeHTTPOptions(options) {
   }
 }
 
-function setupConnectionsTracking(server) {
+function setupConnectionsTracking() {
   // Start connection handling
-  server[kConnections] = new ConnectionsList();
+  if (!this[kConnections]) {
+    this[kConnections] = new ConnectionsList();
+  }
 
   // This checker is started without checking whether any headersTimeout or requestTimeout is non zero
   // otherwise it would not be started if such timeouts are modified after createServer.
-  server[kConnectionsCheckingInterval] =
-    setInterval(checkConnections.bind(server), server.connectionsCheckingInterval).unref();
+  this[kConnectionsCheckingInterval] =
+    setInterval(checkConnections.bind(this), this.connectionsCheckingInterval).unref();
+}
+
+function httpServerPreClose(server) {
+  server.closeIdleConnections();
+  clearInterval(server[kConnectionsCheckingInterval]);
 }
 
 function Server(options, requestListener) {
@@ -533,22 +540,27 @@ function Server(options, requestListener) {
   this.httpAllowHalfOpen = false;
 
   this.on('connection', connectionListener);
+  this.on('listening', setupConnectionsTracking);
 
   this.timeout = 0;
   this.maxHeadersCount = null;
   this.maxRequestsPerSocket = 0;
-  setupConnectionsTracking(this);
+
   this[kUniqueHeaders] = parseUniqueHeadersOption(options.uniqueHeaders);
 }
 ObjectSetPrototypeOf(Server.prototype, net.Server.prototype);
 ObjectSetPrototypeOf(Server, net.Server);
 
 Server.prototype.close = function() {
-  clearInterval(this[kConnectionsCheckingInterval]);
+  httpServerPreClose(this);
   ReflectApply(net.Server.prototype.close, this, arguments);
 };
 
 Server.prototype.closeAllConnections = function() {
+  if (!this[kConnections]) {
+    return;
+  }
+
   const connections = this[kConnections].all();
 
   for (let i = 0, l = connections.length; i < l; i++) {
@@ -557,6 +569,10 @@ Server.prototype.closeAllConnections = function() {
 };
 
 Server.prototype.closeIdleConnections = function() {
+  if (!this[kConnections]) {
+    return;
+  }
+
   const connections = this[kConnections].idle();
 
   for (let i = 0, l = connections.length; i < l; i++) {
@@ -830,6 +846,11 @@ const requestHeaderFieldsTooLargeResponse = Buffer.from(
   'Connection: close\r\n\r\n', 'ascii',
 );
 
+const requestChunkExtensionsTooLargeResponse = Buffer.from(
+  `HTTP/1.1 413 ${STATUS_CODES[413]}\r\n` +
+  'Connection: close\r\n\r\n', 'ascii',
+);
+
 function warnUnclosedSocket() {
   if (warnUnclosedSocket.emitted) {
     return;
@@ -864,6 +885,9 @@ function socketOnError(e) {
       switch (e.code) {
         case 'HPE_HEADER_OVERFLOW':
           response = requestHeaderFieldsTooLargeResponse;
+          break;
+        case 'HPE_CHUNK_EXTENSIONS_OVERFLOW':
+          response = requestChunkExtensionsTooLargeResponse;
           break;
         case 'ERR_HTTP_REQUEST_TIMEOUT':
           response = requestTimeoutResponse;
@@ -1179,4 +1203,6 @@ module.exports = {
   storeHTTPOptions,
   _connectionListener: connectionListener,
   kServerResponse,
+  httpServerPreClose,
+  kConnectionsCheckingInterval,
 };

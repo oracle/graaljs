@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -256,6 +256,11 @@ public abstract class GraalJSException extends AbstractTruffleException {
     @TruffleBoundary
     public static JSStackTraceElement[] getJSStackTrace(Node originatingNode) {
         int stackTraceLimit = JavaScriptLanguage.get(originatingNode).getJSContext().getLanguageOptions().stackTraceLimit();
+        return getJSStackTrace(originatingNode, stackTraceLimit);
+    }
+
+    @TruffleBoundary
+    public static JSStackTraceElement[] getJSStackTrace(Node originatingNode, int stackTraceLimit) {
         return UserScriptException.createCapture("", originatingNode, stackTraceLimit).getJSStackTrace();
     }
 

@@ -78,15 +78,15 @@ def _graal_nodejs_post_gate_runner(args, tasks):
                     node(commonArgs + ['-e', 'FormData'])
                     # run selected Node.js tests related to WebAssembly
                     wasm_tests = [
-                        'test-fetch.mjs',
-                        'test-fetch-disabled.mjs',
-                        'test-wasm-simple.js',
-                        'test-wasm-web-api.js',
-                        'test-whatwg-webstreams-transfer.js',
-                        'test-worker-message-port-wasm-module.js'
+                        join('parallel', 'test-fetch.mjs'),
+                        join('parallel', 'test-fetch-disabled.mjs'),
+                        join('es-module', 'test-wasm-simple.js'),
+                        join('es-module', 'test-wasm-web-api.js'),
+                        join('parallel', 'test-whatwg-webstreams-transfer.js'),
+                        join('parallel', 'test-worker-message-port-wasm-module.js')
                     ]
                     for test in wasm_tests:
-                        node(commonArgs + [join(_suite.dir, 'test', 'parallel', test)])
+                        node(commonArgs + [join(_suite.dir, 'test', test)])
                     _setEnvVar('NODE_OPTIONS', '')
                     _setEnvVar('NODE_POLYGLOT_OPTIONS', '')
 

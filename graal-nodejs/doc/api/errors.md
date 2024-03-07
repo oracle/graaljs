@@ -1762,7 +1762,8 @@ added:
   - v16.14.0
 -->
 
-An import assertion has failed, preventing the specified module to be imported.
+An import `type` attribute was provided, but the specified module is of a
+different type.
 
 <a id="ERR_IMPORT_ASSERTION_TYPE_MISSING"></a>
 
@@ -1774,7 +1775,7 @@ added:
   - v16.14.0
 -->
 
-An import assertion is missing, preventing the specified module to be imported.
+An import attribute is missing, preventing the specified module to be imported.
 
 <a id="ERR_IMPORT_ASSERTION_TYPE_UNSUPPORTED"></a>
 
@@ -1786,7 +1787,17 @@ added:
   - v16.14.0
 -->
 
-An import assertion is not supported by this version of Node.js.
+An import attribute is not supported by this version of Node.js.
+
+<a id="ERR_IMPORT_ATTRIBUTE_UNSUPPORTED"></a>
+
+### `ERR_IMPORT_ATTRIBUTE_UNSUPPORTED`
+
+<!-- YAML
+added: v18.19.0
+-->
+
+An import attribute is not supported by this version of Node.js.
 
 <a id="ERR_INCOMPATIBLE_OPTION_PAIR"></a>
 
@@ -2708,6 +2719,20 @@ This error represents a failed test. Additional information about the failure
 is available via the `cause` property. The `failureType` property specifies
 what the test was doing when the failure occurred.
 
+<a id="ERR_TLS_ALPN_CALLBACK_INVALID_RESULT"></a>
+
+### `ERR_TLS_ALPN_CALLBACK_INVALID_RESULT`
+
+This error is thrown when an `ALPNCallback` returns a value that is not in the
+list of ALPN protocols offered by the client.
+
+<a id="ERR_TLS_ALPN_CALLBACK_WITH_PROTOCOLS"></a>
+
+### `ERR_TLS_ALPN_CALLBACK_WITH_PROTOCOLS`
+
+This error is thrown when creating a `TLSServer` if the TLS options include
+both `ALPNProtocols` and `ALPNCallback`. These options are mutually exclusive.
+
 <a id="ERR_TLS_CERT_ALTNAME_FORMAT"></a>
 
 ### `ERR_TLS_CERT_ALTNAME_FORMAT`
@@ -3106,6 +3131,18 @@ Too much HTTP header data was received. In order to protect against malicious or
 malconfigured clients, if more than 8 KiB of HTTP header data is received then
 HTTP parsing will abort without a request or response object being created, and
 an `Error` with this code will be emitted.
+
+<a id="HPE_CHUNK_EXTENSIONS_OVERFLOW"></a>
+
+### `HPE_CHUNK_EXTENSIONS_OVERFLOW`
+
+<!-- YAML
+added: v18.19.1
+-->
+
+Too much data was received for a chunk extensions. In order to protect against
+malicious or malconfigured clients, if more than 16 KiB of data is received
+then an `Error` with this code will be emitted.
 
 <a id="HPE_UNEXPECTED_CONTENT_LENGTH"></a>
 

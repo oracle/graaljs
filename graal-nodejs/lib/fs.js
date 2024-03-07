@@ -87,6 +87,7 @@ const {
     custom: kCustomPromisifiedSymbol,
   },
   SideEffectFreeRegExpPrototypeExec,
+  defineLazyProperties,
 } = require('internal/util');
 const {
   constants: {
@@ -103,7 +104,6 @@ const {
   getValidatedPath,
   getValidMode,
   handleErrorFromBinding,
-  nullCheck,
   preprocessSymlinkDestination,
   Stats,
   getStatFsFromBinding,
@@ -126,11 +126,6 @@ const {
   warnOnNonPortableTemplate,
 } = require('internal/fs/utils');
 const {
-  Dir,
-  opendir,
-  opendirSync,
-} = require('internal/fs/dir');
-const {
   CHAR_FORWARD_SLASH,
   CHAR_BACKWARD_SLASH,
 } = require('internal/constants');
@@ -143,11 +138,7 @@ const {
   validateFunction,
   validateInteger,
   validateObject,
-  validateString,
 } = require('internal/validators');
-
-const watchers = require('internal/fs/watchers');
-const ReadFileContext = require('internal/fs/read_file_context');
 
 let truncateWarn = true;
 let fs;
@@ -160,6 +151,7 @@ let ReadStream;
 let WriteStream;
 let rimraf;
 let rimrafSync;
+let kResistStopPropagation;
 
 // These have to be separate because of how graceful-fs happens to do it's
 // monkeypatching.
@@ -391,6 +383,7 @@ function checkAborted(signal, callback) {
 function readFile(path, options, callback) {
   callback = maybeCallback(callback || options);
   options = getOptions(options, { flag: 'r' });
+  const ReadFileContext = require('internal/fs/read_file_context');
   const context = new ReadFileContext(callback, options.encoding);
   context.isUserFd = isFd(path); // File descriptor ownership
 
@@ -1404,14 +1397,12 @@ function mkdirSync(path, options) {
 /**
  * An iterative algorithm for reading the entire contents of the `basePath` directory.
  * This function does not validate `basePath` as a directory. It is passed directly to
- * `binding.readdir` after a `nullCheck`.
+ * `binding.readdir`.
  * @param {string} basePath
  * @param {{ encoding: string, withFileTypes: boolean }} options
  * @returns {string[] | Dirent[]}
  */
 function readdirSyncRecursive(basePath, options) {
-  nullCheck(basePath, 'path', true);
-
   const withFileTypes = Boolean(options.withFileTypes);
   const encoding = options.encoding;
 
@@ -1430,14 +1421,21 @@ function readdirSyncRecursive(basePath, options) {
     );
     handleErrorFromBinding(ctx);
 
-    for (let i = 0; i < readdirResult.length; i++) {
-      if (withFileTypes) {
+    if (withFileTypes) {
+      // Calling `readdir` with `withFileTypes=true`, the result is an array of arrays.
+      // The first array is the names, and the second array is the types.
+      // They are guaranteed to be the same length; hence, setting `length` to the length
+      // of the first array within the result.
+      const length = readdirResult[0].length;
+      for (let i = 0; i < length; i++) {
         const dirent = getDirent(path, readdirResult[0][i], readdirResult[1][i]);
         ArrayPrototypePush(readdirResults, dirent);
         if (dirent.isDirectory()) {
           ArrayPrototypePush(pathsQueue, pathModule.join(dirent.path, dirent.name));
         }
-      } else {
+      }
+    } else {
+      for (let i = 0; i < readdirResult.length; i++) {
         const resultPath = pathModule.join(path, readdirResult[i]);
         const relativeResultPath = pathModule.relative(basePath, resultPath);
         const stat = binding.internalModuleStat(resultPath);
@@ -2414,12 +2412,13 @@ function watch(filename, options, listener) {
   if (options.recursive === undefined) options.recursive = false;
   if (options.recursive && !(isOSX || isWindows))
     throw new ERR_FEATURE_UNAVAILABLE_ON_PLATFORM('watch recursively');
+
+  const watchers = require('internal/fs/watchers');
   const watcher = new watchers.FSWatcher();
   watcher[watchers.kFSWatchStart](filename,
                                   options.persistent,
                                   options.recursive,
                                   options.encoding);
-
   if (listener) {
     watcher.addListener('change', listener);
   }
@@ -2428,7 +2427,8 @@ function watch(filename, options, listener) {
       process.nextTick(() => watcher.close());
     } else {
       const listener = () => watcher.close();
-      options.signal.addEventListener('abort', listener);
+      kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
+      options.signal.addEventListener('abort', listener, { __proto__: null, [kResistStopPropagation]: true });
       watcher.once('close', () => {
         options.signal.removeEventListener('abort', listener);
       });
@@ -2477,7 +2477,7 @@ function watchFile(filename, options, listener) {
   validateFunction(listener, 'listener');
 
   stat = statWatchers.get(filename);
-
+  const watchers = require('internal/fs/watchers');
   if (stat === undefined) {
     stat = new watchers.StatWatcher(options.bigint);
     stat[watchers.kFSStatWatcherStart](filename,
@@ -2503,7 +2503,7 @@ function unwatchFile(filename, listener) {
   const stat = statWatchers.get(filename);
 
   if (stat === undefined) return;
-
+  const watchers = require('internal/fs/watchers');
   if (typeof listener === 'function') {
     const beforeListenerCount = stat.listenerCount('change');
     stat.removeListener('change', listener);
@@ -2880,7 +2880,7 @@ realpath.native = (path, options, callback) => {
 
 /**
  * Creates a unique temporary directory.
- * @param {string} prefix
+ * @param {string | Buffer | URL} prefix
  * @param {string | { encoding?: string; }} [options]
  * @param {(
  *   err?: Error,
@@ -2892,27 +2892,40 @@ function mkdtemp(prefix, options, callback) {
   callback = makeCallback(typeof options === 'function' ? options : callback);
   options = getOptions(options);
 
-  validateString(prefix, 'prefix');
-  nullCheck(prefix, 'prefix');
+  prefix = getValidatedPath(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
+
+  let path;
+  if (typeof prefix === 'string') {
+    path = `${prefix}XXXXXX`;
+  } else {
+    path = Buffer.concat([prefix, Buffer.from('XXXXXX')]);
+  }
+
   const req = new FSReqCallback();
   req.oncomplete = callback;
-  binding.mkdtemp(`${prefix}XXXXXX`, options.encoding, req);
+  binding.mkdtemp(path, options.encoding, req);
 }
 
 /**
  * Synchronously creates a unique temporary directory.
- * @param {string} prefix
+ * @param {string | Buffer | URL} prefix
  * @param {string | { encoding?: string; }} [options]
  * @returns {string}
  */
 function mkdtempSync(prefix, options) {
   options = getOptions(options);
 
-  validateString(prefix, 'prefix');
-  nullCheck(prefix, 'prefix');
+  prefix = getValidatedPath(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
-  const path = `${prefix}XXXXXX`;
+
+  let path;
+  if (typeof prefix === 'string') {
+    path = `${prefix}XXXXXX`;
+  } else {
+    path = Buffer.concat([prefix, Buffer.from('XXXXXX')]);
+  }
+
   const ctx = { path };
   const result = binding.mkdtemp(path, options.encoding,
                                  undefined, ctx);
@@ -3107,8 +3120,6 @@ module.exports = fs = {
   mkdtempSync,
   open,
   openSync,
-  opendir,
-  opendirSync,
   readdir,
   readdirSync,
   read,
@@ -3148,7 +3159,6 @@ module.exports = fs = {
   writeSync,
   writev,
   writevSync,
-  Dir,
   Dirent,
   Stats,
 
@@ -3193,6 +3203,12 @@ module.exports = fs = {
   // For tests
   _toUnixTimestamp: toUnixTimestamp,
 };
+
+defineLazyProperties(
+  fs,
+  'internal/fs/dir',
+  ['Dir', 'opendir', 'opendirSync'],
+);
 
 ObjectDefineProperties(fs, {
   F_OK: { __proto__: null, enumerable: true, value: F_OK || 0 },

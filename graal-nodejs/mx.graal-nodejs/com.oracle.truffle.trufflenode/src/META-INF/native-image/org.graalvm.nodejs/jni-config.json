@@ -111,6 +111,7 @@
       { "name": "isolateRequestInterrupt" },
       { "name": "isolateRunMicrotasks" },
       { "name": "isolateSchedulePauseOnNextStatement" },
+      { "name": "isolateSetTaskRunner" },
       { "name": "isolateTerminateExecution" },
       { "name": "isolateThrowException" },
       { "name": "isolateThrowStackOverflowError" },
@@ -361,7 +362,8 @@
       { "name": "syntheticModuleEvaluationSteps" },
       { "name": "getWasmModuleTransferId" },
       { "name": "getWasmModuleFromId" },
-      { "name": "notifyWasmStreamingCallback" }
+      { "name": "notifyWasmStreamingCallback" },
+      { "name": "postWakeUpTask" }
     ]
   },
   {

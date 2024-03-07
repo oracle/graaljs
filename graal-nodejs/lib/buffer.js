@@ -86,6 +86,7 @@ const {
   lazyDOMException,
   normalizeEncoding,
   kIsEncodingSymbol,
+  defineLazyProperties,
 } = require('internal/util');
 const {
   isAnyArrayBuffer,
@@ -128,15 +129,6 @@ const {
   addBufferPrototypeMethods,
   createUnsafeBuffer,
 } = require('internal/buffer');
-
-const {
-  Blob,
-  resolveObjectURL,
-} = require('internal/blob');
-
-const {
-  File,
-} = require('internal/file');
 
 FastBuffer.prototype.constructor = Buffer;
 Buffer.prototype = FastBuffer.prototype;
@@ -1385,9 +1377,6 @@ function isAscii(input) {
 }
 
 module.exports = {
-  Blob,
-  File,
-  resolveObjectURL,
   Buffer,
   SlowBuffer,
   transcode,
@@ -1416,3 +1405,14 @@ ObjectDefineProperties(module.exports, {
     set(val) { INSPECT_MAX_BYTES = val; },
   },
 });
+
+defineLazyProperties(
+  module.exports,
+  'internal/blob',
+  ['Blob', 'resolveObjectURL'],
+);
+defineLazyProperties(
+  module.exports,
+  'internal/file',
+  ['File'],
+);
