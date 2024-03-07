@@ -50,6 +50,7 @@ import java.util.Objects;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
@@ -68,7 +69,7 @@ public abstract class AbstractJSObjectArray extends AbstractWritableArray {
 
     @Override
     public final ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
-        assert index >= 0;
+        assert JSRuntime.isArrayIndex(index) : index;
         if (injectBranchProbability(FASTPATH_PROBABILITY, JSDynamicObject.isJSDynamicObject(value) && isSupported(object, index))) {
             setSupported(object, (int) index, (JSDynamicObject) value, null, SetSupportedProfileAccess.getUncached());
             return this;
