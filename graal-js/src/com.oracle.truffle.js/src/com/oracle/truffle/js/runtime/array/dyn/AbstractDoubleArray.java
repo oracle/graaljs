@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -67,7 +67,7 @@ public abstract class AbstractDoubleArray extends AbstractWritableArray {
 
     @Override
     public final ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
-        assert index >= 0;
+        assert JSRuntime.isArrayIndex(index) : index;
         if (injectBranchProbability(FASTPATH_PROBABILITY, (value instanceof Integer || value instanceof Double) && isSupported(object, (int) index))) {
             double doubleValue = JSRuntime.doubleValue((Number) value);
             assert !HolesDoubleArray.isHoleValue(doubleValue);
