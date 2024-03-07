@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -46,38 +46,38 @@ import com.oracle.js.parser.ir.visitor.TranslatorNodeVisitor;
 
 public class ExportSpecifierNode extends Node {
 
-    private final IdentNode identifier;
+    private final PropertyKey identifier;
 
-    private final IdentNode exportIdentifier;
+    private final PropertyKey exportIdentifier;
 
-    public ExportSpecifierNode(final long token, final int start, final int finish, final IdentNode identifier, final IdentNode exportIdentifier) {
+    public ExportSpecifierNode(final long token, final int start, final int finish, final PropertyKey identifier, final PropertyKey exportIdentifier) {
         super(token, start, finish);
         this.identifier = identifier;
         this.exportIdentifier = exportIdentifier;
     }
 
-    private ExportSpecifierNode(final ExportSpecifierNode node, final IdentNode identifier, final IdentNode exportIdentifier) {
+    private ExportSpecifierNode(final ExportSpecifierNode node, final PropertyKey identifier, final PropertyKey exportIdentifier) {
         super(node);
         this.identifier = identifier;
         this.exportIdentifier = exportIdentifier;
     }
 
-    public IdentNode getIdentifier() {
+    public PropertyKey getIdentifier() {
         return identifier;
     }
 
-    public IdentNode getExportIdentifier() {
+    public PropertyKey getExportIdentifier() {
         return exportIdentifier;
     }
 
-    public ExportSpecifierNode setIdentifier(IdentNode identifier) {
+    public ExportSpecifierNode setIdentifier(PropertyKey identifier) {
         if (this.identifier == identifier) {
             return this;
         }
         return new ExportSpecifierNode(this, identifier, exportIdentifier);
     }
 
-    public ExportSpecifierNode setExportIdentifier(IdentNode exportIdentifier) {
+    public ExportSpecifierNode setExportIdentifier(PropertyKey exportIdentifier) {
         if (this.exportIdentifier == exportIdentifier) {
             return this;
         }
@@ -87,10 +87,10 @@ public class ExportSpecifierNode extends Node {
     @Override
     public Node accept(NodeVisitor<? extends LexicalContext> visitor) {
         if (visitor.enterExportSpecifierNode(this)) {
-            IdentNode newExportIdentifier = exportIdentifier == null ? null
-                            : (IdentNode) exportIdentifier.accept(visitor);
+            PropertyKey newExportIdentifier = exportIdentifier == null ? null
+                            : (PropertyKey) ((Node) exportIdentifier).accept(visitor);
             return visitor.leaveExportSpecifierNode(
-                            setIdentifier((IdentNode) identifier.accept(visitor)).setExportIdentifier(newExportIdentifier));
+                            setIdentifier((PropertyKey) ((Node) identifier).accept(visitor)).setExportIdentifier(newExportIdentifier));
         }
 
         return this;
@@ -104,10 +104,10 @@ public class ExportSpecifierNode extends Node {
     @Override
     public void toString(StringBuilder sb, boolean printType) {
         if (identifier != null) {
-            identifier.toString(sb, printType);
+            ((Node) identifier).toString(sb, printType);
             sb.append(" as ");
         }
-        exportIdentifier.toString(sb, printType);
+        ((Node) exportIdentifier).toString(sb, printType);
     }
 
 }

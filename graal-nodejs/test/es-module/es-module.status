@@ -14,9 +14,6 @@ test-esm-cjs-exports                 : FAIL
 # 'Unexpected token }' verus ': expected'
 test-esm-invalid-pjson               : FAIL
 
-# Incorrect parsing of export { foo as "bar" };
-test-esm-loader-modulemap            : FAIL
-
 # Module doesn't see const variable created in global scope by a custom loader
 test-esm-loader-side-effect          : FAIL
 

@@ -7130,7 +7130,7 @@ public class Parser extends AbstractParser {
      *     ImportsList , ImportSpecifier
      * ImportSpecifier :
      *     ImportedBinding
-     *     IdentifierName as ImportedBinding
+     *     ModuleExportName as ImportedBinding
      * ImportedBinding :
      *     BindingIdentifier
      * </pre>
@@ -7143,14 +7143,15 @@ public class Parser extends AbstractParser {
         while (type != RBRACE) {
             boolean bindingIdentifier = isBindingIdentifier();
             long nameToken = token;
-            IdentNode importName = getIdentifierName();
+            PropertyKey importedName = moduleExportName();
             if (type == AS) {
                 next();
                 IdentNode localName = importedBindingIdentifier();
-                importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importName));
+                importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, importedName));
                 declareImportBinding(localName);
-                importEntries.add(ImportEntry.importSpecifier(importName.getNameTS(), localName.getNameTS()));
+                importEntries.add(ImportEntry.importSpecifier(importedName.getPropertyNameTS(), localName.getNameTS()));
             } else if (bindingIdentifier) {
+                IdentNode importName = (IdentNode) importedName;
                 verifyIdent(importName, false, false);
                 verifyStrictIdent(importName, CONTEXT_IMPORTED_BINDING);
                 importSpecifiers.add(new ImportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, importName, null));
@@ -7216,10 +7217,10 @@ public class Parser extends AbstractParser {
         switch (type) {
             case MUL: {
                 next();
-                IdentNode exportName = null;
+                PropertyKey exportName = null;
                 if (type == AS && isES2020()) {
                     next();
-                    exportName = getIdentifierName();
+                    exportName = moduleExportName();
                 }
                 FromNode from = fromClause();
                 if (env.importAttributes && ((type == WITH) || (type == ASSERT && last != EOL))) {
@@ -7241,6 +7242,12 @@ public class Parser extends AbstractParser {
                     }
                     TruffleString moduleRequest = from.getModuleSpecifier().getValue();
                     module.addModuleRequest(ModuleRequest.create(moduleRequest, attributes));
+                } else {
+                    for (ExportSpecifierNode export : exportClause.getExportSpecifiers()) {
+                        if (!(export.getIdentifier() instanceof IdentNode)) {
+                            throw error("ReferencedBindings of NamedExports cannot contain StringLiteral", ((Node) export.getIdentifier()).getToken());
+                        }
+                    }
                 }
                 module.addExport(new ExportNode(exportToken, Token.descPosition(exportToken), finish, exportClause, from, attributes));
                 endOfLine();
@@ -7334,6 +7341,29 @@ public class Parser extends AbstractParser {
     }
 
     /**
+     * Parse a module export name.
+     *
+     * <pre>
+     * ModuleExportName :
+     *     IdentifierName
+     *     StringLiteral
+     * </pre>
+     */
+    private PropertyKey moduleExportName() {
+        if (type == STRING || type == ESCSTRING) {
+            TruffleString name = (TruffleString) getValue();
+            long nameToken = token;
+            if (!TruffleString.IsValidNode.getUncached().execute(name, TruffleString.Encoding.UTF_16)) {
+                throw error("Malformed export name", nameToken);
+            }
+            next();
+            return LiteralNode.newInstance(nameToken, name);
+        } else {
+            return getIdentifierName();
+        }
+    }
+
+    /**
      * Parse a named exports clause.
      *
      * <pre>
@@ -7345,8 +7375,8 @@ public class Parser extends AbstractParser {
      *     ExportSpecifier
      *     ExportsList , ExportSpecifier
      * ExportSpecifier :
-     *     IdentifierName
-     *     IdentifierName as IdentifierName
+     *     ModuleExportName
+     *     ModuleExportName as ModuleExportName
      * </pre>
      *
      * @return a list of ExportSpecifiers
@@ -7360,8 +7390,9 @@ public class Parser extends AbstractParser {
         while (type != RBRACE) {
             long nameToken = token;
             TokenType nameType = type;
-            IdentNode localName = getIdentifierName();
-            if (isReservedWord(nameType) || (isEscapedIdent(localName) && (isReservedWordSequence(localName.getName()) || isFutureStrictName(localName)))) {
+            PropertyKey localName = moduleExportName();
+            if (isReservedWord(nameType) || (localName instanceof IdentNode && isEscapedIdent((IdentNode) localName) &&
+                            (isReservedWordSequence(localName.getPropertyName()) || isFutureStrictName((IdentNode) localName)))) {
                 // Reserved words are allowed iff the ExportClause is followed by a FromClause.
                 // Remember the first reserved word and throw an error if this is not the case.
                 if (reservedWordToken == 0L) {
@@ -7370,7 +7401,7 @@ public class Parser extends AbstractParser {
             }
             if (type == AS) {
                 next();
-                IdentNode exportName = getIdentifierName();
+                PropertyKey exportName = moduleExportName();
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, exportName));
             } else {
                 exports.add(new ExportSpecifierNode(nameToken, Token.descPosition(nameToken), finish, localName, null));

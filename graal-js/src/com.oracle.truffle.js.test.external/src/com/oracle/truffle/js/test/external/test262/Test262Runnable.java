@@ -186,6 +186,7 @@ public class Test262Runnable extends TestRunnable {
                     "__proto__",
                     "__setter__",
                     "align-detached-buffer-semantics-with-web-reality",
+                    "arbitrary-module-namespace-names",
                     "array-find-from-last",
                     "array-grouping",
                     "arraybuffer-transfer",
@@ -261,7 +262,6 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
-                    "arbitrary-module-namespace-names",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     });
