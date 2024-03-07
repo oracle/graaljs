@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,11 +55,13 @@ public final class Module {
 
     /**
      * The synthetic binding name assigned to export default declarations with unnamed expressions.
+     * The unpaired surrogate at the beginning ensures that they do not clash with named exports
+     * (which must be well formed).
      */
     public static final TruffleString DEFAULT_EXPORT_BINDING_NAME = ParserStrings.constant("*default*");
     public static final TruffleString DEFAULT_NAME = ParserStrings.constant("default");
-    public static final TruffleString STAR_NAME = ParserStrings.constant("*");
-    public static final TruffleString NAMESPACE_EXPORT_BINDING_NAME = ParserStrings.constant("*namespace*");
+    public static final TruffleString STAR_NAME = ParserStrings.constant("\uD800*");
+    public static final TruffleString NAMESPACE_EXPORT_BINDING_NAME = ParserStrings.constant("\uD800*namespace*");
 
     public static final class ExportEntry {
         private final TruffleString exportName;
