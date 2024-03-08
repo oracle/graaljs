@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,50 +40,36 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
-import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
-import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * Converts value to array index (0 <= x < 2^32-1) or {@link JSToPropertyKeyNode ToPropertyKey}.
+ * Converts value to array index or {@link JSRuntime#INVALID_ARRAY_INDEX}.
  */
 @ImportStatic({JSConfig.class, JSRuntime.class})
-public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
+public abstract class ToArrayIndexNoToPropertyKeyNode extends JavaScriptBaseNode {
     protected final boolean convertStringToIndex;
 
-    public abstract Object execute(Object value);
+    public abstract long executeLong(Object value);
 
-    public abstract long executeLong(Object operand) throws UnexpectedResultException;
-
-    protected ToArrayIndexNode(boolean convertStringToIndex) {
+    protected ToArrayIndexNoToPropertyKeyNode(boolean convertStringToIndex) {
         this.convertStringToIndex = convertStringToIndex;
     }
 
-    @NeverDefault
-    public static ToArrayIndexNode create() {
-        return ToArrayIndexNodeGen.create(true);
-    }
-
-    @NeverDefault
-    public static ToArrayIndexNode createNoStringToIndex() {
-        return ToArrayIndexNodeGen.create(false);
+    protected ToArrayIndexNoToPropertyKeyNode() {
+        this(true);
     }
 
     @Specialization(guards = "isIntArrayIndex(value)")
@@ -91,9 +77,19 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return value;
     }
 
+    @Specialization(guards = "!isIntArrayIndex(value)")
+    protected static long doIntegerNonArrayIndex(@SuppressWarnings("unused") int value) {
+        return JSRuntime.INVALID_ARRAY_INDEX;
+    }
+
     @Specialization(guards = "isLongArrayIndex(value)")
     protected static long doLong(long value) {
         return JSRuntime.castArrayIndex(value);
+    }
+
+    @Specialization(guards = "!isLongArrayIndex(value)")
+    protected static long doLongNonArrayIndex(@SuppressWarnings("unused") long value) {
+        return JSRuntime.INVALID_ARRAY_INDEX;
     }
 
     protected static boolean doubleIsIntIndex(double d) {
@@ -102,7 +98,7 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
 
     @Specialization(guards = "doubleIsIntIndex(value)")
     protected static long doDoubleAsIntIndex(double value) {
-        return (long) value;
+        return JSRuntime.castArrayIndex(value);
     }
 
     protected static boolean doubleIsUintIndex(double d) {
@@ -114,9 +110,9 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return JSRuntime.castArrayIndex(value);
     }
 
-    @Specialization
-    protected static Symbol doSymbol(Symbol value) {
-        return value;
+    @Specialization(guards = "!doubleIsUintIndex(value)")
+    protected static long doDoubleNonArrayIndex(@SuppressWarnings("unused") double value) {
+        return JSRuntime.INVALID_ARRAY_INDEX;
     }
 
     @Specialization(guards = "isBigIntArrayIndex(value)")
@@ -124,68 +120,51 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return value.longValue();
     }
 
+    @Specialization
+    protected static long doBigIntNonArrayIndex(@SuppressWarnings("unused") BigInt value) {
+        return JSRuntime.INVALID_ARRAY_INDEX;
+    }
+
     @Specialization(guards = {"convertStringToIndex", "arrayIndexLengthInRange(index)"})
-    protected final Object convertFromString(TruffleString index,
-                    @Cached InlinedConditionProfile startsWithDigitBranch,
+    protected static long convertFromString(TruffleString index,
+                    @Bind("this") Node node,
+                    @Cached TruffleString.ReadCharUTF16Node stringReadNode,
+                    @Cached InlinedBranchProfile startsWithDigitBranch,
                     @Cached InlinedBranchProfile isArrayIndexBranch,
-                    @Cached TruffleString.ReadCharUTF16Node stringReadNode) {
-        if (startsWithDigitBranch.profile(this, JSRuntime.isAsciiDigit(Strings.charAt(stringReadNode, index, 0)))) {
+                    @Cached InlinedBranchProfile invalidArrayIndexBranch) {
+        if (JSRuntime.isAsciiDigit(Strings.charAt(stringReadNode, index, 0))) {
+            startsWithDigitBranch.enter(node);
             long longValue = JSRuntime.parseArrayIndexRaw(index, stringReadNode);
             if (JSRuntime.isArrayIndex(longValue)) {
-                isArrayIndexBranch.enter(this);
+                isArrayIndexBranch.enter(node);
                 return JSRuntime.castArrayIndex(longValue);
             }
         }
-        return index;
+        invalidArrayIndexBranch.enter(node);
+        return JSRuntime.INVALID_ARRAY_INDEX;
     }
 
     @Specialization(guards = {"!convertStringToIndex || !arrayIndexLengthInRange(index)"})
-    protected static TruffleString convertFromStringNotInRange(TruffleString index) {
-        return index;
+    protected static long convertFromStringNotInRange(@SuppressWarnings("unused") TruffleString index) {
+        return JSRuntime.INVALID_ARRAY_INDEX;
     }
 
     protected static boolean notArrayIndex(Object o) {
-        return !((o instanceof Integer && JSGuards.isIntArrayIndex((int) o)) ||
-                        (o instanceof Double && doubleIsUintIndex((double) o)) ||
-                        (o instanceof Long && JSGuards.isLongArrayIndex((long) o)) ||
-                        (o instanceof BigInt && JSGuards.isBigIntArrayIndex((BigInt) o)) ||
-                        o instanceof TruffleString ||
-                        o instanceof Symbol);
+        return !(o instanceof Integer ||
+                        o instanceof Double ||
+                        o instanceof Long ||
+                        o instanceof BigInt ||
+                        o instanceof TruffleString);
     }
 
-    @Specialization(guards = {"notArrayIndex(value)", "index >= 0"}, limit = "InteropLibraryLimit")
-    protected static long doInteropArrayIndex(@SuppressWarnings("unused") Object value,
-                    @CachedLibrary("value") @SuppressWarnings("unused") InteropLibrary interop,
-                    @Bind("toArrayIndex(value, interop)") long index) {
-        return index;
-    }
-
-    @InliningCutoff
-    @Specialization(guards = {"notArrayIndex(value)", "toArrayIndex(value, interop) < 0"}, limit = "InteropLibraryLimit")
-    protected final Object doNonArrayIndex(Object value,
-                    @CachedLibrary("value") @SuppressWarnings("unused") InteropLibrary interop,
-                    @Cached JSToPropertyKeyNode toPropertyKey,
-                    @Cached ToArrayIndexNoToPropertyKeyNode propertyKeyToArrayIndex) {
-        Object propertyKey = toPropertyKey.execute(value);
-        if (convertStringToIndex) {
-            long arrayIndex = propertyKeyToArrayIndex.executeLong(propertyKey);
-            if (JSRuntime.isArrayIndex(arrayIndex)) {
-                return arrayIndex;
-            }
+    @Specialization(guards = {"notArrayIndex(value)"}, limit = "InteropLibraryLimit")
+    protected static long doNonArrayIndex(Object value,
+                    @CachedLibrary("value") @SuppressWarnings("unused") InteropLibrary interop) {
+        long index = ToArrayIndexNode.toArrayIndex(value, interop);
+        if (index >= 0) {
+            return JSRuntime.castArrayIndex(index);
+        } else {
+            return JSRuntime.INVALID_ARRAY_INDEX;
         }
-        return propertyKey;
-    }
-
-    static long toArrayIndex(Object value, InteropLibrary interop) {
-        if (interop.fitsInLong(value)) {
-            try {
-                long index = interop.asLong(value);
-                if (JSRuntime.isArrayIndex(index)) {
-                    return JSRuntime.castArrayIndex(index);
-                }
-            } catch (UnsupportedMessageException iex) {
-            }
-        }
-        return JSRuntime.INVALID_ARRAY_INDEX;
     }
 }
