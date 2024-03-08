@@ -89,10 +89,11 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
+    @SuppressWarnings("truffle-static-method")
     @Specialization(guards = {"!isJSProxy(target)", "isArrayIndex(index)"}, replaces = {"doIntIndex"}, limit = "1")
     Object doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object receiver, Object defaultValue,
                     @Cached @SuppressWarnings("unused") ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
-                    @Bind("toArrayIndexNode.executeLong(key)") long index,
+                    @Bind("toArrayIndexNode.executeLong(this, key)") long index,
                     @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }

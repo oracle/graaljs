@@ -1610,7 +1610,7 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
                         @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             TruffleString string = (TruffleString) target;
-            long longIndex = toArrayIndexNode.executeLong(index);
+            long longIndex = toArrayIndexNode.executeLong(this, index);
             if (isIndexProfile.profile(this, JSRuntime.isArrayIndex(longIndex))) {
                 if (isImmutable.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
                     // cannot set characters of immutable strings

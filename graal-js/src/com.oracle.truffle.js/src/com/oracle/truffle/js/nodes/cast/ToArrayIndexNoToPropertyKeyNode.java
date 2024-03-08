@@ -40,8 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
@@ -58,18 +59,14 @@ import com.oracle.truffle.js.runtime.Strings;
 /**
  * Converts value to array index or {@link JSRuntime#INVALID_ARRAY_INDEX}.
  */
+@GenerateInline
+@GenerateCached(false)
 @ImportStatic({JSConfig.class, JSRuntime.class})
 public abstract class ToArrayIndexNoToPropertyKeyNode extends JavaScriptBaseNode {
-    protected final boolean convertStringToIndex;
 
-    public abstract long executeLong(Object value);
-
-    protected ToArrayIndexNoToPropertyKeyNode(boolean convertStringToIndex) {
-        this.convertStringToIndex = convertStringToIndex;
-    }
+    public abstract long executeLong(Node node, Object value);
 
     protected ToArrayIndexNoToPropertyKeyNode() {
-        this(true);
     }
 
     @Specialization(guards = "isIntArrayIndex(value)")
@@ -125,9 +122,9 @@ public abstract class ToArrayIndexNoToPropertyKeyNode extends JavaScriptBaseNode
         return JSRuntime.INVALID_ARRAY_INDEX;
     }
 
-    @Specialization(guards = {"convertStringToIndex", "arrayIndexLengthInRange(index)"})
-    protected static long convertFromString(TruffleString index,
-                    @Bind("this") Node node,
+    @SuppressWarnings("truffle-inlining")
+    @Specialization(guards = {"arrayIndexLengthInRange(index)"})
+    protected static long convertFromString(Node node, TruffleString index,
                     @Cached TruffleString.ReadCharUTF16Node stringReadNode,
                     @Cached InlinedBranchProfile startsWithDigitBranch,
                     @Cached InlinedBranchProfile isArrayIndexBranch,
@@ -144,7 +141,7 @@ public abstract class ToArrayIndexNoToPropertyKeyNode extends JavaScriptBaseNode
         return JSRuntime.INVALID_ARRAY_INDEX;
     }
 
-    @Specialization(guards = {"!convertStringToIndex || !arrayIndexLengthInRange(index)"})
+    @Specialization(guards = {"!arrayIndexLengthInRange(index)"})
     protected static long convertFromStringNotInRange(@SuppressWarnings("unused") TruffleString index) {
         return JSRuntime.INVALID_ARRAY_INDEX;
     }
