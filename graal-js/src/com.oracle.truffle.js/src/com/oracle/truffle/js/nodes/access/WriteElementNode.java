@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
@@ -1606,19 +1605,16 @@ public class WriteElementNode extends JSTargetableNode {
         @Specialization(replaces = {"doStringIntegerIndex"})
         protected void doString(Object target, Object index, Object value, Object receiver, WriteElementNode root,
                         @Cached @Shared InlinedConditionProfile isImmutable,
-                        @Cached @Exclusive InlinedConditionProfile isIndexProfile,
                         @Cached ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
                         @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             TruffleString string = (TruffleString) target;
             long longIndex = toArrayIndexNode.executeLong(this, index);
-            if (isIndexProfile.profile(this, JSRuntime.isArrayIndex(longIndex))) {
-                if (isImmutable.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
-                    // cannot set characters of immutable strings
-                    if (root.isStrict) {
-                        throw Errors.createTypeErrorNotWritableIndex(longIndex, string, this);
-                    }
-                    return;
+            if (isImmutable.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
+                // cannot set characters of immutable strings
+                if (root.isStrict) {
+                    throw Errors.createTypeErrorNotWritableIndex(longIndex, string, this);
                 }
+                return;
             }
             Object propertyKey = indexToPropertyKeyNode.execute(index);
             JSObject.setWithReceiver(JSString.create(root.context, getRealm(), string), propertyKey, value, receiver, root.isStrict, classProfile, root);

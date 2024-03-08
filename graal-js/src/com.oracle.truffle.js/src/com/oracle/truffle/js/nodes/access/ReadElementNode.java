@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
@@ -1311,16 +1310,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Specialization
         protected Object doString(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached @Exclusive InlinedConditionProfile arrayIndexIf,
                         @Cached @Shared InlinedConditionProfile stringIndexInBounds,
                         @Cached ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
                         @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             TruffleString string = (TruffleString) target;
             long longIndex = toArrayIndexNode.executeLong(this, index);
-            if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(longIndex))) {
-                if (stringIndexInBounds.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
-                    return Strings.substring(root.context, substringByteIndexNode, string, (int) longIndex, 1);
-                }
+            if (stringIndexInBounds.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
+                return Strings.substring(root.context, substringByteIndexNode, string, (int) longIndex, 1);
             }
             return doStringOOB(string, index, receiver, defaultValue, root, indexToPropertyKeyNode);
         }
