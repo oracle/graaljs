@@ -1316,7 +1316,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         @Cached ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
                         @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             TruffleString string = (TruffleString) target;
-            long longIndex = toArrayIndexNode.executeLong(index);
+            long longIndex = toArrayIndexNode.executeLong(this, index);
             if (arrayIndexIf.profile(this, JSRuntime.isArrayIndex(longIndex))) {
                 if (stringIndexInBounds.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
                     return Strings.substring(root.context, substringByteIndexNode, string, (int) longIndex, 1);

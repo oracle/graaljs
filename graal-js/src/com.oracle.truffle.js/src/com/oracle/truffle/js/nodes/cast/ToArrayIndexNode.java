@@ -49,6 +49,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -160,15 +161,17 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return index;
     }
 
+    @SuppressWarnings("truffle-static-method")
     @InliningCutoff
     @Specialization(guards = {"notArrayIndex(value)", "toArrayIndex(value, interop) < 0"}, limit = "InteropLibraryLimit")
     protected final Object doNonArrayIndex(Object value,
+                    @Bind("this") Node node,
                     @CachedLibrary("value") @SuppressWarnings("unused") InteropLibrary interop,
                     @Cached JSToPropertyKeyNode toPropertyKey,
                     @Cached ToArrayIndexNoToPropertyKeyNode propertyKeyToArrayIndex) {
         Object propertyKey = toPropertyKey.execute(value);
         if (convertStringToIndex) {
-            long arrayIndex = propertyKeyToArrayIndex.executeLong(propertyKey);
+            long arrayIndex = propertyKeyToArrayIndex.executeLong(node, propertyKey);
             if (JSRuntime.isArrayIndex(arrayIndex)) {
                 return arrayIndex;
             }
