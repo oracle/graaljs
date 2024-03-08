@@ -48,7 +48,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
@@ -101,6 +100,7 @@ import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.TypedIntArrayRe
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.Uint32ArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.access.ReadElementNodeFactory.WritableArrayReadElementCacheNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayIndexNoToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.ReadElementTag;
@@ -1286,11 +1286,9 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
     abstract static class StringReadElementTypeCacheNode extends ToPropertyKeyCachedReadElementTypeCacheNode {
 
-        @Child private ToArrayIndexNode toArrayIndexNode;
         @Child private TruffleString.SubstringByteIndexNode substringByteIndexNode;
 
         StringReadElementTypeCacheNode() {
-            this.toArrayIndexNode = ToArrayIndexNode.createNoToPropertyKey();
             this.substringByteIndexNode = TruffleString.SubstringByteIndexNode.create();
         }
 
@@ -1312,16 +1310,13 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
 
         @Specialization
         protected Object doString(Object target, Object index, Object receiver, Object defaultValue, ReadElementNode root,
-                        @Cached @Exclusive InlinedConditionProfile arrayIndexIf,
                         @Cached @Shared InlinedConditionProfile stringIndexInBounds,
+                        @Cached ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
                         @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             TruffleString string = (TruffleString) target;
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (arrayIndexIf.profile(this, convertedIndex instanceof Long)) {
-                int intIndex = ((Long) convertedIndex).intValue();
-                if (stringIndexInBounds.profile(this, intIndex >= 0 && intIndex < Strings.length(string))) {
-                    return Strings.substring(root.context, substringByteIndexNode, string, intIndex, 1);
-                }
+            long longIndex = toArrayIndexNode.executeLong(this, index);
+            if (stringIndexInBounds.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
+                return Strings.substring(root.context, substringByteIndexNode, string, (int) longIndex, 1);
             }
             return doStringOOB(string, index, receiver, defaultValue, root, indexToPropertyKeyNode);
         }

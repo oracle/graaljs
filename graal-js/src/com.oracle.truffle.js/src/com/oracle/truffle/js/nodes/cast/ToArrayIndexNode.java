@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -50,6 +49,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
@@ -63,40 +63,28 @@ import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.Symbol;
 
 /**
- * Converts value to array index according to ES5 15.4 Array Objects.
+ * Converts value to array index (0 <= x < 2^32-1) or {@link JSToPropertyKeyNode ToPropertyKey}.
  */
 @ImportStatic({JSConfig.class, JSRuntime.class})
 public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
-    protected final boolean convertToPropertyKey;
     protected final boolean convertStringToIndex;
 
     public abstract Object execute(Object value);
 
     public abstract long executeLong(Object operand) throws UnexpectedResultException;
 
-    @SuppressWarnings("static-method")
-    public final boolean isResultArrayIndex(Object result) {
-        return result instanceof Long;
-    }
-
-    protected ToArrayIndexNode(boolean convertToPropertyKey, boolean convertStringToIndex) {
-        this.convertToPropertyKey = convertToPropertyKey;
+    protected ToArrayIndexNode(boolean convertStringToIndex) {
         this.convertStringToIndex = convertStringToIndex;
     }
 
     @NeverDefault
     public static ToArrayIndexNode create() {
-        return ToArrayIndexNodeGen.create(true, true);
-    }
-
-    @NeverDefault
-    public static ToArrayIndexNode createNoToPropertyKey() {
-        return ToArrayIndexNodeGen.create(false, true);
+        return ToArrayIndexNodeGen.create(true);
     }
 
     @NeverDefault
     public static ToArrayIndexNode createNoStringToIndex() {
-        return ToArrayIndexNodeGen.create(true, false);
+        return ToArrayIndexNodeGen.create(false);
     }
 
     @Specialization(guards = "isIntArrayIndex(value)")
@@ -173,23 +161,22 @@ public abstract class ToArrayIndexNode extends JavaScriptBaseNode {
         return index;
     }
 
+    @SuppressWarnings("truffle-static-method")
     @InliningCutoff
     @Specialization(guards = {"notArrayIndex(value)", "toArrayIndex(value, interop) < 0"}, limit = "InteropLibraryLimit")
     protected final Object doNonArrayIndex(Object value,
+                    @Bind("this") Node node,
                     @CachedLibrary("value") @SuppressWarnings("unused") InteropLibrary interop,
                     @Cached JSToPropertyKeyNode toPropertyKey,
-                    @Cached("createNoToPropertyKey()") ToArrayIndexNode recursive) {
-        CompilerAsserts.partialEvaluationConstant(convertToPropertyKey);
-        if (convertToPropertyKey) {
-            Object propertyKey = toPropertyKey.execute(value);
-            if (convertStringToIndex) {
-                return recursive.execute(propertyKey);
-            } else {
-                return propertyKey;
+                    @Cached ToArrayIndexNoToPropertyKeyNode propertyKeyToArrayIndex) {
+        Object propertyKey = toPropertyKey.execute(value);
+        if (convertStringToIndex) {
+            long arrayIndex = propertyKeyToArrayIndex.executeLong(node, propertyKey);
+            if (JSRuntime.isArrayIndex(arrayIndex)) {
+                return arrayIndex;
             }
-        } else {
-            return value;
         }
+        return propertyKey;
     }
 
     static long toArrayIndex(Object value, InteropLibrary interop) {
