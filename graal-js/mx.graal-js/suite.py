@@ -462,6 +462,10 @@ suite = {
           "com.oracle.truffle.js.runtime.objects to org.graalvm.nodejs",
           "com.oracle.truffle.js.runtime.util to org.graalvm.nodejs",
         ],
+        "requires": [
+          "org.graalvm.collections",
+          "org.graalvm.nativeimage",
+        ],
       },
       "subDir" : "src",
       "dependencies" : [
@@ -513,6 +517,9 @@ suite = {
         "exports" : [
             "com.oracle.truffle.js.shell to org.graalvm.launcher",
         ],
+        "requires": [
+          "org.graalvm.polyglot",
+        ],
       },
       "subDir" : "src",
       "dependencies" : ["com.oracle.truffle.js.shell"],
@@ -533,7 +540,10 @@ suite = {
     "GRAALJS_SCRIPTENGINE" : {
       "moduleInfo" : {
         "name" : "org.graalvm.js.scriptengine",
-        "requires" : ["java.scripting"],
+        "requires" : [
+          "java.scripting",
+          "org.graalvm.collections",
+        ],
         "exports" : [
           "com.oracle.truffle.js.scriptengine",
         ],
@@ -567,6 +577,10 @@ suite = {
         "name" : "com.oracle.truffle.js.snapshot",
         "exports" : [
           "com.oracle.truffle.js.snapshot",
+        ],
+        "requires": [
+          "org.graalvm.polyglot",
+          "org.graalvm.truffle",
         ],
       },
       "subDir" : "src",
@@ -613,6 +627,10 @@ suite = {
           # see jdk.internal.loader.BuiltinClassLoader#isOpen
           "com.oracle.truffle.js.test.nashorn",
           "com.oracle.truffle.js.test.external.suite to com.fasterxml.jackson.databind",
+        ],
+        "requires": [
+          "org.graalvm.collections",
+          "org.graalvm.truffle",
         ],
       },
       "dependencies" : [

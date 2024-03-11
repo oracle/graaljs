@@ -124,6 +124,9 @@ suite = {
         "name" : "org.graalvm.nodejs",
         "requires" : [
           "org.graalvm.launcher",
+          "org.graalvm.collections",
+          "org.graalvm.polyglot",
+          "org.graalvm.truffle",
         ],
       },
       "subdir" : "mx.graal-nodejs",
@@ -187,6 +190,11 @@ suite = {
     "TRUFFLENODE_TEST" : {
       "moduleInfo" : {
         "name" : "com.oracle.truffle.trufflenode.test",
+        "requires": [
+          "org.graalvm.js",
+          "org.graalvm.polyglot",
+          "org.graalvm.truffle",
+        ],
       },
       "subdir" : "mx.graal-nodejs",
       "dependencies" : ["com.oracle.truffle.trufflenode.test"],
