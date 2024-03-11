@@ -489,16 +489,15 @@ suite = {
       "useModulePath": True,
     },
 
-    "JS_COMMUNITY" : {
-      "type":"pom",
-      "runtimeDependencies" : [
+    "JS_COMMUNITY": {
+      "type": "pom",
+      "runtimeDependencies": [
         "GRAALJS",
         "truffle:TRUFFLE_RUNTIME",
       ],
-      "description" : "Graal JavaScript engine.",
-      "maven" : {
-        "groupId": "org.graalvm.polyglot",
-        "artifactId" : "js-community",
+      "description": "Graal JavaScript engine.",
+      "maven": {
+        "artifactId": "js-community",
         "tag": ["default", "public"],
       },
       "license": [
