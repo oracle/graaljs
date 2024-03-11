@@ -3611,11 +3611,14 @@ public class Parser extends AbstractParser {
                 expression = switchExprName;
             }
 
+            expectDontAdvance(LBRACE);
+
             // Block to capture variables declared inside the switch statement.
             switchBlock = newBlock(Scope.createSwitchBlock(lc.getCurrentScope()));
             switchBlock.setFlag(Block.IS_SYNTHETIC | Block.IS_SWITCH_BLOCK);
 
-            expect(LBRACE);
+            assert type == LBRACE;
+            next();
 
             // Create and add switch statement.
             final ParserContextSwitchNode switchNode = new ParserContextSwitchNode();
