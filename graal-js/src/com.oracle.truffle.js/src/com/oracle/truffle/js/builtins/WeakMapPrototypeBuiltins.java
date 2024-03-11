@@ -129,14 +129,8 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        protected static Object getInvertedMap(Object key, DynamicObjectLibrary library) {
-            if (key instanceof JSObject) {
-                return library.getOrDefault((JSObject) key, WeakMap.INVERTED_WEAK_MAP_KEY, null);
-            } else if (key instanceof Symbol) {
-                return ((Symbol) key).getInvertedMap();
-            } else {
-                return null;
-            }
+        protected static Object getInvertedMap(JSObject key, DynamicObjectLibrary library) {
+            return library.getOrDefault(key, WeakMap.INVERTED_WEAK_MAP_KEY, null);
         }
 
         @SuppressWarnings("unchecked")
@@ -156,15 +150,26 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
-        protected boolean delete(JSWeakMapObject thisObj, Object key,
-                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
+        @Specialization
+        protected boolean deleteJSObject(JSWeakMapObject thisObj, JSObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
-                        @Cached InlinedConditionProfile hasInvertedProfile) {
+                        @Cached @Shared InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) thisObj.getWeakHashMap();
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
+                return Boundaries.mapRemove(invertedMap, map) != null;
+            }
+            return false;
+        }
+
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
+        protected boolean deleteSymbol(JSWeakMapObject thisObj, Symbol key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
+                        @Cached @Shared InlinedConditionProfile hasInvertedProfile) {
+            WeakMap map = (WeakMap) thisObj.getWeakHashMap();
+            Map<WeakMap, Object> invertedMap = key.getInvertedMap();
+            if (hasInvertedProfile.profile(this, invertedMap != null)) {
                 return Boundaries.mapRemove(invertedMap, map) != null;
             }
             return false;
@@ -194,16 +199,30 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
-        protected Object get(JSWeakMapObject thisObj, Object key,
-                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
+        @Specialization
+        protected Object getJSObject(JSWeakMapObject thisObj, JSObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
-                        @Cached InlinedConditionProfile hasInvertedProfile) {
+                        @Cached @Shared InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) thisObj.getWeakHashMap();
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 Object value = mapGet(invertedMap, map);
+                if (value != null) {
+                    return value;
+                }
+            }
+            return Undefined.instance;
+        }
+
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
+        protected Object getSymbol(JSWeakMapObject thisObj, Symbol key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
+                        @Cached @Shared InlinedConditionProfile hasInvertedProfile) {
+            WeakMap map = (WeakMap) thisObj.getWeakHashMap();
+            Map<WeakMap, Object> invertedMap = key.getInvertedMap();
+            if (hasInvertedProfile.profile(this, invertedMap != null)) {
+                Object value = Boundaries.mapGet(invertedMap, map);
                 if (value != null) {
                     return value;
                 }
@@ -240,12 +259,11 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
-        protected Object set(JSWeakMapObject thisObj, Object key, Object value,
-                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
+        @Specialization
+        protected Object setJSObject(JSWeakMapObject thisObj, JSObject key, Object value,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedSetter,
-                        @Cached InlinedConditionProfile hasInvertedProfile) {
+                        @Cached @Shared InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) thisObj.getWeakHashMap();
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(this, inverted != null)) {
@@ -253,11 +271,22 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
                 mapPut(invertedMap, map, value);
             } else {
                 Map<WeakMap, Object> newInvertedMap = map.newInvertedMapWithEntry(key, value);
-                if (key instanceof JSObject) {
-                    invertedSetter.put((JSObject) key, WeakMap.INVERTED_WEAK_MAP_KEY, newInvertedMap);
-                } else if (key instanceof Symbol) {
-                    ((Symbol) key).setInvertedMap(newInvertedMap);
-                }
+                invertedSetter.put(key, WeakMap.INVERTED_WEAK_MAP_KEY, newInvertedMap);
+            }
+            return thisObj;
+        }
+
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
+        protected Object setSymbol(JSWeakMapObject thisObj, Symbol key, Object value,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
+                        @Cached @Shared InlinedConditionProfile hasInvertedProfile) {
+            WeakMap map = (WeakMap) thisObj.getWeakHashMap();
+            Map<WeakMap, Object> invertedMap = key.getInvertedMap();
+            if (hasInvertedProfile.profile(this, invertedMap != null)) {
+                Boundaries.mapPut(invertedMap, map, value);
+            } else {
+                Map<WeakMap, Object> newInvertedMap = map.newInvertedMapWithEntry(key, value);
+                key.setInvertedMap(newInvertedMap);
             }
             return thisObj;
         }
@@ -291,16 +320,27 @@ public final class WeakMapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEn
             super(context, builtin);
         }
 
-        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
-        protected boolean has(JSWeakMapObject thisObj, Object key,
-                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
+        @Specialization
+        protected boolean hasJSObject(JSWeakMapObject thisObj, JSObject key,
                         @CachedLibrary(limit = "PropertyCacheLimit") DynamicObjectLibrary invertedGetter,
-                        @Cached InlinedConditionProfile hasInvertedProfile) {
+                        @Cached @Shared InlinedConditionProfile hasInvertedProfile) {
             WeakMap map = (WeakMap) thisObj.getWeakHashMap();
             Object inverted = getInvertedMap(key, invertedGetter);
             if (hasInvertedProfile.profile(this, inverted != null)) {
                 WeakHashMap<WeakMap, Object> invertedMap = castWeakHashMap(inverted);
                 return mapHas(invertedMap, map);
+            }
+            return false;
+        }
+
+        @Specialization(guards = {"canBeHeldWeakly.execute(this, key)"})
+        protected boolean hasSymbol(JSWeakMapObject thisObj, Symbol key,
+                        @Cached @Shared @SuppressWarnings("unused") CanBeHeldWeaklyNode canBeHeldWeakly,
+                        @Cached @Shared InlinedConditionProfile hasInvertedProfile) {
+            WeakMap map = (WeakMap) thisObj.getWeakHashMap();
+            Map<WeakMap, Object> invertedMap = key.getInvertedMap();
+            if (hasInvertedProfile.profile(this, invertedMap != null)) {
+                return Boundaries.mapContainsKey(invertedMap, map);
             }
             return false;
         }
