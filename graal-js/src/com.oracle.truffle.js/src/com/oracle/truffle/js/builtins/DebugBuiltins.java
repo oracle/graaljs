@@ -511,7 +511,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                         @Cached TruffleString.CompareCharsUTF16Node compareNode) {
             TruffleString str1 = JSRuntime.toString(a);
             TruffleString str2 = JSRuntime.toString(b);
-            return Integer.signum(Strings.compareTo(compareNode, str1, str2));
+            return Strings.compareTo(compareNode, str1, str2);
         }
     }
 
