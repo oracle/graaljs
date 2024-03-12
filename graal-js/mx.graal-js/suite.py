@@ -52,26 +52,26 @@ suite = {
   "libraries" : {
     "NETBEANS_PROFILER" : {
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/org-netbeans-lib-profiler-8.2-201609300101.jar"],
-      "sha1" : "4b52bd03014f6d080ef0528865c1ee50621e35c6",
+      "digest" : "sha512:8238c5985036cdcd6a361426cfe0b980709ed4e73a46aa18fce16acf029ada23fa18a18edc54fb444fffba33f498a8582f499c0229e849c475621758c463a632",
     },
 
     "TESTNASHORN" : {
-      "sha1" : "1a31d35e485247e0edf2738a248e1bc2b97f1054",
+      "digest" : "sha512:0ccae1ea92fd8bd24ebedb0d0f77d3a81c6afb079a1a294adc296bd12d6b2c5e079b3e959cc0acb8b35b6b81a906a42f6d7a2338a6e4d33306fcfdc5fa2d462d",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testnashorn-e118c818dbf8.tar.bz2"],
     },
 
     "TESTNASHORN_EXTERNAL" : {
-      "sha1" : "3e3edc251d800bc74f28c78f75844c7086cb5216",
+      "digest" : "sha512:6d0ed48fd95fdd3d8e1ee5ff640dfc651438a60ac4896140d158c621963df8881af8b98dc2366605e58a218d19e87a99af21349a72ae44f805a0fc09b0018ab7",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/testnashorn-external-0f91116bb4bd.tar.bz2"],
     },
 
     "NASHORN_INTERNAL_TESTS" : {
-      "sha1" : "b5840706cc8ce639fcafeab1bc61da2d8aa37afd",
+      "digest" : "sha512:98eed94eabf90e4642bb0c5c2f1f025790879a03e61794c7559367cd6d9942afad32e2a24236413074b1940526ada592bb26237159332197c9d7fc6d0a5ecd7a",
       "urls" : ["https://lafo.ssw.uni-linz.ac.at/pub/graal-external-deps/truffle/js/nashorn-internal-tests-700f5e3f5ff2.jar"],
     },
 
     "JACKSON_CORE" : {
-      "sha1" : "a6fe1836469a69b3ff66037c324d75fc66ef137c",
+      "digest" : "sha512:a8a3ddf5c8a732fc3810f9c113d88fd59bf613d15dbf9d3e24dd196b2b8c2195f4088375e3d03906f2629e62983fef3267b5478abd5ab1df733ec58cd00efae6",
       "maven" : {
         "groupId" : "com.fasterxml.jackson.core",
         "artifactId" : "jackson-core",
@@ -81,7 +81,7 @@ suite = {
     },
 
     "JACKSON_ANNOTATIONS" : {
-      "sha1" : "4724a65ac8e8d156a24898d50fd5dbd3642870b8",
+      "digest" : "sha512:c9ffb4cf3e409921bca1fa6126ca8746c611042ac3fcf0e4f991d23d12b20ef0946ef1421d991ae8ed86012059df4e08fb776d96db6d13147c2ec85e22254537",
       "maven" : {
         "groupId" : "com.fasterxml.jackson.core",
         "artifactId" : "jackson-annotations",
@@ -91,7 +91,7 @@ suite = {
     },
 
     "JACKSON_DATABIND" : {
-      "sha1" : "9353b021f10c307c00328f52090de2bdb4b6ff9c",
+      "digest" : "sha512:edf622f3d2bb2cdf308875e467f28eafdd581c6ad47992a2b49a2c803b597c7fe4330c8f887687599c8a6a529d8b11054f8b354b7ddddd2bf904ef347d4f1cd2",
       "maven" : {
         "groupId" : "com.fasterxml.jackson.core",
         "artifactId" : "jackson-databind",
