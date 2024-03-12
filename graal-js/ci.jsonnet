@@ -60,8 +60,8 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['mx', 'build'],
       ['mx', '-v', 'maven-deploy', '--suppress-javadoc', '--validate', 'full', '--licenses', 'UPL,MIT', '--dry-run', 'ossrh', 'https://this-is-only-a-test'],
-      ['mx', '--dynamicimports', '/tools,/compiler', 'build'],
-      ['mx', '--dynamicimports', '/tools,/regex,/compiler,/truffle,/sdk', 'maven-deploy', '--suppress-javadoc', '--all-suites', '--all-distribution-types', '--version-string', 'GATE'],
+      ['mx', '-p', '../../graal/vm', '--dynamicimports', '/tools,/compiler,/graal-js', 'build'],
+      ['mx', '-p', '../../graal/vm', '--dynamicimports', '/tools,/regex,/compiler,/truffle,/sdk,/graal-js', 'maven-deploy', '--suppress-javadoc', '--all-suites', '--version-string', 'GATE'],
       ['cd', 'test/maven-demo'],
       ['mvn', '-Dgraalvm.version=GATE', '--batch-mode', 'package'],
       ['mvn', '-Dgraalvm.version=GATE', '--batch-mode', 'exec:exec'],
