@@ -550,7 +550,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
             copyTypedArrayElementsDistinctBuffers(targetBuffer, sourceBuffer, targetArray, sourceArray, offset, targetByteOffset, sourceLen, srcByteIndex);
         }
 
-        @SuppressWarnings("unchecked")
         private void copyTypedArrayElementsDistinctBuffers(JSArrayBufferObject targetBuffer, JSArrayBufferObject sourceBuffer, TypedArray targetType, TypedArray sourceType,
                         int targetOffset, int targetByteOffset, int sourceLength, int sourceByteIndex) {
             int targetElementSize = targetType.bytesPerElement();

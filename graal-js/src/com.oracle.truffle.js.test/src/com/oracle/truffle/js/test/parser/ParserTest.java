@@ -94,4 +94,46 @@ public class ParserTest {
         Assert.fail();
     }
 
+    /**
+     * Regression test for parsing switch statement with missing LBRACE. Should result in
+     * SyntaxError but not trigger any assertion or internal errors.
+     */
+    @Test
+    public void testIncompleteSwitch1() {
+        try (Context ctx = JSTest.newContextBuilder().build()) {
+            org.graalvm.polyglot.Source incompleteSource = org.graalvm.polyglot.Source.newBuilder("js", """
+                            function bad() {
+                                switch (42) ;
+                            }
+                            bad();
+                            """, "test").buildLiteral();
+            ctx.eval(incompleteSource);
+            Assert.fail("should have thrown SyntaxError");
+        } catch (PolyglotException e) {
+            if (e.isInternalError()) {
+                throw e;
+            } else {
+                Assert.assertTrue("SyntaxError", e.isSyntaxError());
+            }
+        }
+    }
+
+    @Test
+    public void testIncompleteSwitch2() {
+        try (Context ctx = JSTest.newContextBuilder().build()) {
+            org.graalvm.polyglot.Source incompleteSource = org.graalvm.polyglot.Source.newBuilder("js", """
+                            function bad() {
+                                switch (42)
+                            """, "test").buildLiteral();
+            ctx.eval(incompleteSource);
+            Assert.fail("should have thrown SyntaxError");
+        } catch (PolyglotException e) {
+            if (e.isInternalError()) {
+                throw e;
+            } else {
+                Assert.assertTrue("SyntaxError", e.isSyntaxError());
+                Assert.assertTrue("incomplete source", e.isIncompleteSource());
+            }
+        }
+    }
 }

@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.objects;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -100,12 +99,12 @@ public final class JSShapeData {
 
     private static void sortProperties(List<Property> ownProperties) {
         CompilerAsserts.neverPartOfCompilation();
-        Collections.sort(ownProperties, (o1, o2) -> JSRuntime.comparePropertyKeys(o1.getKey(), o2.getKey()));
+        ownProperties.sort((o1, o2) -> JSRuntime.comparePropertyKeys(o1.getKey(), o2.getKey()));
     }
 
     private static void sortPropertyKeys(List<? extends Object> ownProperties) {
         CompilerAsserts.neverPartOfCompilation();
-        Collections.sort(ownProperties, JSRuntime::comparePropertyKeys);
+        ownProperties.sort(JSRuntime::comparePropertyKeys);
     }
 
     private static JSShapeData getShapeData(Shape shape) {

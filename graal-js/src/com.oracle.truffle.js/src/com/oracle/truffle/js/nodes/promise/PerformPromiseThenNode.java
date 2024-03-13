@@ -80,7 +80,6 @@ public abstract class PerformPromiseThenNode extends JavaScriptBaseNode {
 
     public abstract JSDynamicObject execute(JSPromiseObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability);
 
-    @SuppressWarnings("unchecked")
     @Specialization
     protected JSDynamicObject promiseThen(JSPromiseObject promise, Object onFulfilled, Object onRejected, PromiseCapabilityRecord resultCapability,
                     @Cached InlinedConditionProfile pendingProf,

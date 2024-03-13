@@ -1254,7 +1254,7 @@ public final class JSContextOptions {
     }
 
     public boolean isV8Intrinsics() {
-        return V8_INTRINSICS.getValue(optionValues);
+        return v8Intrinsics;
     }
 
     public short getFrequencyBasedPropertyCacheLimit() {

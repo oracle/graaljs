@@ -311,7 +311,7 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
 
     @TruffleBoundary
     public static boolean setLength(JSDynamicObject store, Object value, Node originatingNode) {
-        long arrLength = 0;
+        long arrLength;
         if (value instanceof Integer && (int) value >= 0) {
             arrLength = (int) value;
         } else {

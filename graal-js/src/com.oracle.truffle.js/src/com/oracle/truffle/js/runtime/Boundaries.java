@@ -78,11 +78,6 @@ public final class Boundaries {
         return a.equals(b);
     }
 
-    @TruffleBoundary
-    public static <K, V> Set<Map.Entry<K, V>> mapEntrySet(Map<K, V> map) {
-        return map.entrySet();
-    }
-
     @TruffleBoundary(allowInlining = true)
     public static <K, V> Map.Entry<K, V> mapEntry(K key, V value) {
         return Map.entry(key, value);

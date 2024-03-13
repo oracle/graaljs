@@ -106,8 +106,6 @@ import java.time.ZonedDateTime;
 import java.time.zone.ZoneOffsetTransition;
 import java.time.zone.ZoneRules;
 import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalLong;
@@ -1020,13 +1018,7 @@ public final class TemporalUtil {
         JSObject result = JSOrdinary.createWithNullPrototype(ctx);
         boolean any = false;
         List<TruffleString> sortedFieldNames = new ArrayList<>(fieldNames);
-        TruffleString.CompareCharsUTF16Node compareNode = TruffleString.CompareCharsUTF16Node.getUncached();
-        Collections.sort(sortedFieldNames, new Comparator<>() {
-            @Override
-            public int compare(TruffleString o1, TruffleString o2) {
-                return Strings.compareTo(compareNode, o1, o2);
-            }
-        });
+        sortedFieldNames.sort(Strings::compareTo);
 
         TruffleString previousProperty = null;
         for (TruffleString property : sortedFieldNames) {

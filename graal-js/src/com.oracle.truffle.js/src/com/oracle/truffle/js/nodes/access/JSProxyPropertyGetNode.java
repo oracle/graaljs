@@ -53,7 +53,6 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.binary.JSIdenticalNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
-import com.oracle.truffle.js.nodes.interop.ForeignObjectPrototypeNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -75,7 +74,6 @@ public abstract class JSProxyPropertyGetNode extends JavaScriptBaseNode {
     @Child private JSFunctionCallNode callNode;
     @Child private JSGetOwnPropertyNode getOwnPropertyNode;
     @Child private JSIdenticalNode sameValueNode;
-    @Child private ForeignObjectPrototypeNode foreignObjectPrototypeNode;
 
     protected JSProxyPropertyGetNode(JSContext context) {
         this.callNode = JSFunctionCallNode.createCall();

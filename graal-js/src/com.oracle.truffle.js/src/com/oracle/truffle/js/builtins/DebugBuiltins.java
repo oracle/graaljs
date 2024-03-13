@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -511,14 +511,7 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
                         @Cached TruffleString.CompareCharsUTF16Node compareNode) {
             TruffleString str1 = JSRuntime.toString(a);
             TruffleString str2 = JSRuntime.toString(b);
-            int result = Strings.compareTo(compareNode, str1, str2);
-            if (result == 0) {
-                return 0;
-            } else if (result < 0) {
-                return -1;
-            } else {
-                return 1;
-            }
+            return Strings.compareTo(compareNode, str1, str2);
         }
     }
 
@@ -536,8 +529,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             this.arrayType = ValueProfile.createClassProfile();
             this.isArray = ConditionProfile.create();
         }
-
-        public abstract boolean executeBoolean(Object object);
 
         @Specialization
         protected boolean isHolesArray(Object arr) {

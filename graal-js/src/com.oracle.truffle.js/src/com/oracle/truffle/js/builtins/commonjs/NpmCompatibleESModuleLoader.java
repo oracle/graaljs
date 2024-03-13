@@ -270,7 +270,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
             return resolved;
         }
         // 6. Let format be undefined.
-        Format format = null;
+        Format format;
         // 7. If resolved is a "file:" URL, then
         if (isFileURI(resolved)) {
             // 7.1 If resolvedURL contains any percent encodings of "/" or "\" ("%2f" and "%5C"
@@ -353,7 +353,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
      */
     private URI packageResolve(String packageSpecifier, URI parentURL, TruffleLanguage.Env env) {
         // 1. Let packageName be undefined.
-        String packageName = null;
+        String packageName;
         // 2. If packageSpecifier is an empty string, then
         if (packageSpecifier.isEmpty()) {
             // Throw an Invalid Module Specifier error.

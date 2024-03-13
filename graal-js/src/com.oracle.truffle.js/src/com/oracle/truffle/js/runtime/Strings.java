@@ -962,7 +962,7 @@ public final class Strings {
     }
 
     public static TruffleStringBuilderUTF16 builderCreate(int capacity) {
-        return TruffleStringBuilder.createUTF16(capacity << 1);
+        return TruffleStringBuilder.createUTF16(capacity);
     }
 
     public static void builderAppend(TruffleStringBuilderUTF16 sb, char chr) {

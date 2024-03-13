@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,10 +44,6 @@ package com.oracle.js.parser;
 import java.io.IOException;
 import java.io.Reader;
 import java.net.URL;
-import java.nio.charset.StandardCharsets;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Base64;
 import java.util.Objects;
 
 /**
@@ -74,9 +70,6 @@ public final class Source {
 
     /** Cached hash code */
     private int hash;
-
-    /** Base64-encoded SHA1 digest of this source object */
-    private volatile byte[] digest;
 
     /** source URL set via //@ sourceURL or //# sourceURL directive */
     private String explicitURL;
@@ -436,40 +429,6 @@ public final class Source {
         }
 
         return sb.toString();
-    }
-
-    /**
-     * Get a Base64-encoded SHA1 digest for this source.
-     *
-     * @return a Base64-encoded SHA1 digest for this source
-     */
-    public String getDigest() {
-        return new String(getDigestBytes(), StandardCharsets.US_ASCII);
-    }
-
-    private byte[] getDigestBytes() {
-        byte[] ldigest = digest;
-        if (ldigest == null) {
-            final byte[] bytes = data().getBytes(StandardCharsets.UTF_16LE);
-            try {
-                final MessageDigest md = MessageDigest.getInstance("SHA-1");
-                if (name != null) {
-                    md.update(name.getBytes(StandardCharsets.UTF_8));
-                }
-                if (base != null) {
-                    md.update(base.getBytes(StandardCharsets.UTF_8));
-                }
-                if (getURL() != null) {
-                    md.update(getURL().toString().getBytes(StandardCharsets.UTF_8));
-                }
-                // Message digest to file name encoder
-                Base64.Encoder base64 = Base64.getUrlEncoder().withoutPadding();
-                digest = ldigest = base64.encode(md.digest(bytes));
-            } catch (final NoSuchAlgorithmException e) {
-                throw new RuntimeException(e);
-            }
-        }
-        return ldigest;
     }
 
     // fake directory like name

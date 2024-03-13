@@ -111,8 +111,6 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
         }
     }
 
-    public abstract Object execute(Object a);
-
     public Number getLeftValue() {
         return isInt ? leftInt : leftDouble;
     }
@@ -188,7 +186,7 @@ public abstract class JSAddConstantLeftNumberNode extends JSUnaryNode implements
     @Override
     public void setTruncate() {
         CompilerAsserts.neverPartOfCompilation();
-        if (truncate == false) {
+        if (!truncate) {
             truncate = true;
             if (isInt) {
                 Truncatable.truncate(getOperand());

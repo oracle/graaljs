@@ -74,7 +74,6 @@ public class AsyncGeneratorEnqueueNode extends JavaScriptBaseNode {
         return new AsyncGeneratorEnqueueNode(context);
     }
 
-    @SuppressWarnings("unchecked")
     public Object execute(VirtualFrame frame, Object generator, Completion completion) {
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
         if (!(generator instanceof JSAsyncGeneratorObject asyncGeneratorObject) || asyncGeneratorObject.hasGeneratorBrand()) {

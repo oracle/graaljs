@@ -1076,7 +1076,7 @@ public final class JSRuntime {
                 Strings.builderAppend(sb, Strings.fromObject(key));
                 Strings.builderAppend(sb, ": ");
             }
-            TruffleString valueStr = null;
+            TruffleString valueStr;
             if (desc.isDataDescriptor()) {
                 Object value = desc.getValue();
                 valueStr = toDisplayStringInner(value, allowSideEffects, format, depth, obj);

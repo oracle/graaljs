@@ -64,7 +64,6 @@ import com.oracle.truffle.js.nodes.access.AsyncIteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.CreateAsyncFromSyncIteratorNode;
 import com.oracle.truffle.js.nodes.access.GetIteratorFromMethodNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
-import com.oracle.truffle.js.nodes.access.IsArrayNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.IteratorCloseNode;
 import com.oracle.truffle.js.nodes.access.IteratorCompleteNode;
@@ -226,15 +225,11 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
         @Child private IteratorStepNode iteratorStepNode;
         @Child private GetMethodNode getIteratorMethodNode;
         @Child private JSGetLengthNode getSourceLengthNode;
-        @Child private IsArrayNode isFastArrayNode;
-        @Child private WriteElementNode createDataPropertyOrThrowNode;
         private final ConditionProfile isIterable = ConditionProfile.create();
 
         public JSArrayFromNode(JSContext context, JSBuiltin builtin, boolean isTypedArray) {
             super(context, builtin, isTypedArray);
             this.getIteratorMethodNode = GetMethodNode.create(context, Symbol.SYMBOL_ITERATOR);
-            this.isFastArrayNode = isTypedArrayImplementation ? null : IsArrayNode.createIsFastArray();
-            this.createDataPropertyOrThrowNode = WriteElementNode.create(context, THROW_ERROR, true);
         }
 
         protected void iteratorCloseAbrupt(Object iterator) {

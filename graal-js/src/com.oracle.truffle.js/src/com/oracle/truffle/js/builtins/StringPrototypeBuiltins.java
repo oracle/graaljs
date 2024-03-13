@@ -1908,10 +1908,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        public static JSStringToStringNode createStringToString(JSContext context) {
-            return JSStringToStringNodeGen.create(context, null, null);
-        }
-
         @Specialization
         protected TruffleString toStringTString(TruffleString thisStr) {
             return thisStr;
@@ -2897,7 +2893,7 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached TruffleString.FromJavaStringNode fromJavaStringNode) {
             requireObjectCoercible(thisObj);
             TruffleString thisStr = toString(thisObj);
-            Normalizer.Form useForm = null;
+            Normalizer.Form useForm;
             if (form == Undefined.instance) {
                 useForm = Normalizer.Form.NFC;
             } else {

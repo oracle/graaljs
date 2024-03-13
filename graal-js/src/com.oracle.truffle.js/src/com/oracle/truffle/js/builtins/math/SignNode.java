@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -52,12 +52,12 @@ public abstract class SignNode extends MathOperation {
 
     @Specialization
     protected static int sign(int a) {
-        return a > 0 ? 1 : (a < 0 ? -1 : 0);
+        return Integer.signum(a);
     }
 
     @Specialization
     protected static double sign(double a) {
-        return a > 0 ? 1 : (a < 0 ? -1 : a); // could be -0
+        return Math.signum(a);
     }
 
     @Specialization

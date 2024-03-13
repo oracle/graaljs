@@ -138,7 +138,7 @@ public final class JSSegmenter extends JSNonProxy implements JSConstructorFactor
             }
         };
 
-        private String name;
+        private final String name;
 
         Granularity(String name) {
             this.name = name;

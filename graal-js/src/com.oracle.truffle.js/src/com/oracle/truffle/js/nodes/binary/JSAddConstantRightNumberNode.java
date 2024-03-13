@@ -120,8 +120,6 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
         }
     }
 
-    public abstract Object execute(Object a);
-
     public Number getRightValue() {
         return isInt ? rightInt : rightDouble;
     }
@@ -197,7 +195,7 @@ public abstract class JSAddConstantRightNumberNode extends JSUnaryNode implement
     @Override
     public void setTruncate() {
         CompilerAsserts.neverPartOfCompilation();
-        if (truncate == false) {
+        if (!truncate) {
             truncate = true;
             if (isInt) {
                 Truncatable.truncate(getOperand());

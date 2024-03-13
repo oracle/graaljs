@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,13 +80,7 @@ public class GlobalCommonJSRequireBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return CommonJSRequireBuiltinNodeGen.create(context, builtin, args().function().fixedArgs(1).createArgumentNodes(context));
             case resolve:
                 return CommonJSResolveBuiltinNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-            case dirnameGetter:
-                return CommonJSModuleGetterBuiltinNodeGen.create(context, builtin, builtinEnum, args().fixedArgs(0).createArgumentNodes(context));
-            case filenameGetter:
-                return CommonJSModuleGetterBuiltinNodeGen.create(context, builtin, builtinEnum, args().fixedArgs(0).createArgumentNodes(context));
-            case globalExportsGetter:
-                return CommonJSModuleGetterBuiltinNodeGen.create(context, builtin, builtinEnum, args().fixedArgs(0).createArgumentNodes(context));
-            case globalModuleGetter:
+            case dirnameGetter, filenameGetter, globalExportsGetter, globalModuleGetter:
                 return CommonJSModuleGetterBuiltinNodeGen.create(context, builtin, builtinEnum, args().fixedArgs(0).createArgumentNodes(context));
         }
         return null;

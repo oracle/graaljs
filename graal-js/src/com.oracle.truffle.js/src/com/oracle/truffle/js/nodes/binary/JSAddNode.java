@@ -268,7 +268,7 @@ public abstract class JSAddNode extends JSBinaryNode implements Truncatable {
     @Override
     public void setTruncate() {
         CompilerAsserts.neverPartOfCompilation();
-        if (truncate == false) {
+        if (!truncate) {
             truncate = true;
         }
     }

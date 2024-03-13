@@ -479,7 +479,7 @@ public abstract class JSAbstractArray extends JSNonProxy {
                 });
                 int after = list.size();
                 if (after != before) {
-                    Collections.sort(list, (o1, o2) -> {
+                    list.sort((o1, o2) -> {
                         return Long.compare(JSRuntime.propertyKeyToArrayIndex(o1), JSRuntime.propertyKeyToArrayIndex(o2));
                     });
                 }

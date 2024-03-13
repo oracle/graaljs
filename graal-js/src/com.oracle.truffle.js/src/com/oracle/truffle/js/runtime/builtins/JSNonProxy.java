@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerAsserts;
@@ -199,7 +198,7 @@ public abstract class JSNonProxy extends JSClass {
             }
             list.add(key);
         }
-        Collections.sort(list, JSRuntime::comparePropertyKeys);
+        list.sort(JSRuntime::comparePropertyKeys);
         return list;
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -254,11 +254,9 @@ public final class ConsoleBuiltins extends JSBuiltinsContainer.SwitchEnum<Consol
     public abstract static class JSConsoleGroupNode extends JSConsoleOperation {
 
         @Child private JSGlobalPrintNode printNode;
-        @Child private JSToStringNode toStringNode;
 
         public JSConsoleGroupNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            toStringNode = JSToStringNode.create();
             printNode = JSGlobalPrintNodeGen.create(context, null, false, false, null);
         }
 
