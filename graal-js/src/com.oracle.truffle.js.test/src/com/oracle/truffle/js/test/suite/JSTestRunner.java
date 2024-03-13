@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -200,10 +200,6 @@ public final class JSTestRunner extends ParentRunner<TestCase> {
                 // when not expected by test or when test expects v8 mode
                 return;
             }
-
-            options.putIfAbsent(JSContextOptions.DEBUG_BUILTIN_NAME, "true");
-            options.putIfAbsent(JSContextOptions.SHARED_ARRAY_BUFFER_NAME, "true");
-            options.putIfAbsent(JSContextOptions.INTL_402_NAME, "true");
 
             String[] args = parseArgs(sourceLines);
             // allowHostAccess, allowIO, allowHostReflection
