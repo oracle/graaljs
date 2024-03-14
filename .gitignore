@@ -1,2 +1,4 @@
 /graal-js/lib
 /graal-js/mxbuild
+# Intellij project files
+*.iml

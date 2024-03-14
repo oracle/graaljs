@@ -26,11 +26,15 @@
 #
 # ----------------------------------------------------------------------------------------------------
 
-import os, shutil, tarfile, tempfile
+import os
+import shutil
+import tarfile
+import tempfile
 from os.path import join, exists, getmtime
 
 import mx_graal_js_benchmark
 import mx, mx_sdk, mx_urlrewrites
+import mx_util
 import mx_truffle
 from mx_gate import Tags, Task, add_gate_runner, prepend_gate_runner
 
@@ -301,7 +305,7 @@ def _fetch_test_suite(dest, library_names):
         if exists(dest):
             mx.logv('Deleting the old test directory {}'.format(dest))
             shutil.rmtree(dest)
-            mx.ensure_dir_exists(dest)
+            mx_util.ensure_dir_exists(dest)
         for _lib_name in library_names:
             with tarfile.open(_get_lib_path(_lib_name), 'r') as _tar:
                 _tar.extractall(dest)
@@ -365,10 +369,10 @@ def _fetch_test262():
     """clones/updates test262 test-suite"""
     _location = join(_suite.dir, 'lib', 'test262')
     _clone = False
-    if not mx.isdir(_location):
+    if not os.path.isdir(_location):
         _clone = True
     else:
-        if not mx.isdir(join(_location, '.git')):
+        if not os.path.isdir(join(_location, '.git')):
             # Not a git repository, an old version of the test-suite extracted from an archive most likely.
             shutil.rmtree(_location)
             _clone = True
@@ -411,10 +415,10 @@ def _fetch_testv8():
     """clones/updates testv8 test-suite"""
     _location = join(_suite.dir, 'lib', 'testv8')
     _clone = False
-    if not mx.isdir(_location):
+    if not os.path.isdir(_location):
         _clone = True
     else:
-        if not mx.isdir(join(_location, '.git')):
+        if not os.path.isdir(join(_location, '.git')):
             # Not a git repository, an old version of the test-suite extracted from an archive most likely.
             shutil.rmtree(_location)
             _clone = True
