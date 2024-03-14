@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -838,6 +838,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::isolate_enqueue_microtask, "isolateEnqueueMicrotask", "(Ljava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::isolate_schedule_pause_on_next_statement, "isolateSchedulePauseOnNextStatement", "()V")
     ACCESS_METHOD(GraalAccessMethod::isolate_measure_memory, "isolateMeasureMemory", "(Ljava/lang/Object;Z)V")
+    ACCESS_METHOD(GraalAccessMethod::isolate_set_task_runner, "isolateSetTaskRunner", "(J)V")
     ACCESS_METHOD(GraalAccessMethod::template_set, "templateSet", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -894,7 +895,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::message_get_start_position, "messageGetStartPosition", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::message_get_end_position, "messageGetEndPosition", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::message_get, "messageGet", "(Ljava/lang/Object;)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::stack_trace_current_stack_trace, "stackTraceCurrentStackTrace", "()Ljava/lang/Object;")
+    ACCESS_METHOD(GraalAccessMethod::stack_trace_current_stack_trace, "stackTraceCurrentStackTrace", "(I)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::stack_frame_get_line_number, "stackFrameGetLineNumber", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::stack_frame_get_column, "stackFrameGetColumn", "(Ljava/lang/Object;)I")
     ACCESS_METHOD(GraalAccessMethod::stack_frame_get_script_name, "stackFrameGetScriptName", "(Ljava/lang/Object;)Ljava/lang/Object;")
@@ -1628,4 +1629,9 @@ void GraalIsolate::JSExecutionViolation(JSExecutionAction action) {
     } else {
         ReportAPIFailure("DisallowJavascriptExecutionScope", "Illegal operation.");
     }
+}
+
+void GraalIsolate::SetTaskRunner(std::shared_ptr<v8::TaskRunner> task_runner) {
+    this->task_runner_ = task_runner;
+    JNI_CALL_VOID(this, GraalAccessMethod::isolate_set_task_runner, (jlong) task_runner.get());
 }

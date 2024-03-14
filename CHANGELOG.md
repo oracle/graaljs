@@ -5,6 +5,9 @@ The main focus is on user-observable behavior of the engine.
 Changelog may include unreleased versions.
 See [release calendar](https://www.graalvm.org/release-calendar/) for release dates.
 
+## Version 24.0.1
+* Updated Node.js to version 18.19.1.
+
 ## Version 24.0.0
 * Implemented the [WebAssembly threads](https://github.com/WebAssembly/threads) proposal.
 * Implemented the [Promise.withResolvers](https://github.com/tc39/proposal-promise-with-resolvers) proposal. It is available in ECMAScript staging mode (`--js.ecmascript-version=staging`).

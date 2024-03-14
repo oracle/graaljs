@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -126,6 +126,7 @@ static const JNINativeMethod callbacks[] = {
     CALLBACK("syntheticModuleEvaluationSteps", "(JLjava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;", &GraalSyntheticModuleEvaluationSteps),
     CALLBACK("executeInterruptCallback", "(JJ)V", &GraalExecuteInterruptCallback),
     CALLBACK("notifyWasmStreamingCallback", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;)V", &GraalNotifyWasmStreamingCallback),
+    CALLBACK("postWakeUpTask", "(J)V", &GraalPostWakeUpTask),
  };
 
 static const int CALLBACK_COUNT = sizeof(callbacks) / sizeof(*callbacks);
@@ -918,4 +919,15 @@ void GraalNotifyWasmStreamingCallback(JNIEnv* env, jclass nativeAccess, jobject 
 
     GraalFunctionCallbackInfo info(callbackArgs);
     callback(info);
+}
+
+class WakeUpTask : public v8::Task {
+public:
+    WakeUpTask() {};
+    void Run() {};
+};
+
+void GraalPostWakeUpTask(JNIEnv* env, jclass nativeAccess, jlong taskRunnerPointer) {
+    std::unique_ptr<WakeUpTask> task = std::make_unique<WakeUpTask>();
+    reinterpret_cast<v8::TaskRunner*> (taskRunnerPointer)->PostNonNestableTask(std::move(task));
 }

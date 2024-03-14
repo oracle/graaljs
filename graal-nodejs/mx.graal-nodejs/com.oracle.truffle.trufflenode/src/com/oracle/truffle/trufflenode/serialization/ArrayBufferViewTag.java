@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,6 +55,8 @@ public enum ArrayBufferViewTag {
     UINT32_ARRAY('D', TypedArrayFactory.Uint32Array), // kUint32Array
     FLOAT32_ARRAY('f', TypedArrayFactory.Float32Array), // kFloat32Array
     FLOAT64_ARRAY('F', TypedArrayFactory.Float64Array), // kFloat64Array
+    BIGINT64_ARRAY('q', TypedArrayFactory.BigInt64Array), // kBigInt64Array
+    BIGUINT64_ARRAY('Q', TypedArrayFactory.BigUint64Array), // kBigUint64Array
     DATA_VIEW('?', null); // kDataView
 
     private final byte tag;

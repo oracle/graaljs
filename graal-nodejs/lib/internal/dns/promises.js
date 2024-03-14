@@ -46,7 +46,6 @@ const {
   CANCELLED,
 } = dnsErrorCodes;
 const { codes, dnsException } = require('internal/errors');
-const { toASCII } = require('internal/idna');
 const { isIP } = require('internal/net');
 const {
   getaddrinfo,
@@ -114,6 +113,19 @@ function onlookupall(err, addresses) {
   }
 }
 
+/**
+ * Creates a promise that resolves with the IP address of the given hostname.
+ * @param {0 | 4 | 6} family - The IP address family (4 or 6, or 0 for both).
+ * @param {string} hostname - The hostname to resolve.
+ * @param {boolean} all - Whether to resolve with all IP addresses for the hostname.
+ * @param {number} hints - One or more supported getaddrinfo flags (supply multiple via
+ * bitwise OR).
+ * @param {boolean} verbatim - Whether to use the hostname verbatim.
+ * @returns {Promise<DNSLookupResult | DNSLookupResult[]>} The IP address(es) of the hostname.
+ * @typedef {object} DNSLookupResult
+ * @property {string} address - The IP address.
+ * @property {0 | 4 | 6} family - The IP address type. 4 for IPv4 or 6 for IPv6, or 0 (for both).
+ */
 function createLookupPromise(family, hostname, all, hints, verbatim) {
   return new Promise((resolve, reject) => {
     if (!hostname) {
@@ -138,7 +150,7 @@ function createLookupPromise(family, hostname, all, hints, verbatim) {
     req.resolve = resolve;
     req.reject = reject;
 
-    const err = getaddrinfo(req, toASCII(hostname), family, hints, verbatim);
+    const err = getaddrinfo(req, hostname, family, hints, verbatim);
 
     if (err) {
       reject(dnsException(err, 'getaddrinfo', hostname));
@@ -155,6 +167,17 @@ function createLookupPromise(family, hostname, all, hints, verbatim) {
 }
 
 const validFamilies = [0, 4, 6];
+/**
+ * Get the IP address for a given hostname.
+ * @param {string} hostname - The hostname to resolve (ex. 'nodejs.org').
+ * @param {object} [options] - Optional settings.
+ * @param {boolean} [options.all=false] - Whether to return all or just the first resolved address.
+ * @param {0 | 4 | 6} [options.family=0] - The record family. Must be 4, 6, or 0 (for both).
+ * @param {number} [options.hints] - One or more supported getaddrinfo flags (supply multiple via
+ * bitwise OR).
+ * @param {boolean} [options.verbatim=false] - Return results in same order DNS resolved them;
+ * otherwise IPv4 then IPv6. New code should supply `true`.
+ */
 function lookup(hostname, options) {
   let hints = 0;
   let family = 0;
@@ -274,7 +297,7 @@ function createResolverPromise(resolver, bindingName, hostname, ttl) {
     req.reject = reject;
     req.ttl = ttl;
 
-    const err = resolver._handle[bindingName](req, toASCII(hostname));
+    const err = resolver._handle[bindingName](req, hostname);
 
     if (err)
       reject(dnsException(err, bindingName, hostname));

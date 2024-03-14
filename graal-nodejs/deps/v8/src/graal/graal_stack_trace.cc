@@ -61,7 +61,7 @@ v8::Local<v8::StackFrame> GraalStackTrace::GetFrame(uint32_t index) const {
 
 v8::Local<v8::StackTrace> GraalStackTrace::CurrentStackTrace(v8::Isolate* isolate, int frame_limit, v8::StackTrace::StackTraceOptions options) {
     GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-    JNI_CALL(jobject, java_stack_trace, graal_isolate, GraalAccessMethod::stack_trace_current_stack_trace, Object);
+    JNI_CALL(jobject, java_stack_trace, graal_isolate, GraalAccessMethod::stack_trace_current_stack_trace, Object, (jint) frame_limit);
     GraalStackTrace* graal_stack_trace = new GraalStackTrace(graal_isolate, java_stack_trace);
     return reinterpret_cast<v8::StackTrace*> (graal_stack_trace);
 }

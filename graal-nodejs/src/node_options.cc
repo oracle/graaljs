@@ -114,9 +114,16 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors,
     errors->push_back("--policy-integrity cannot be empty");
   }
 
-  if (!module_type.empty()) {
-    if (module_type != "commonjs" && module_type != "module") {
+  if (!input_type.empty()) {
+    if (input_type != "commonjs" && input_type != "module") {
       errors->push_back("--input-type must be \"module\" or \"commonjs\"");
+    }
+  }
+
+  if (!type.empty()) {
+    if (type != "commonjs" && type != "module") {
+      errors->push_back("--experimental-default-type must be "
+                        "\"module\" or \"commonjs\"");
     }
   }
 
@@ -181,7 +188,7 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors,
     } else if (force_repl) {
       errors->push_back("either --watch or --interactive "
                         "can be used, not both");
-    } else if (argv->size() < 1 || (*argv)[1].empty()) {
+    } else if (!test_runner && (argv->size() < 1 || (*argv)[1].empty())) {
       errors->push_back("--watch requires specifying a file");
     }
 
@@ -400,7 +407,7 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::experimental_wasm_modules,
             kAllowedInEnvvar);
   AddOption("--experimental-import-meta-resolve",
-            "experimental ES Module import.meta.resolve() support",
+            "experimental ES Module import.meta.resolve() parentURL support",
             &EnvironmentOptions::experimental_import_meta_resolve,
             kAllowedInEnvvar);
   AddOption("--experimental-policy",
@@ -452,7 +459,7 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             kAllowedInEnvvar);
   AddOption("--input-type",
             "set module type for string input",
-            &EnvironmentOptions::module_type,
+            &EnvironmentOptions::input_type,
             kAllowedInEnvvar);
   AddOption("--experimental-specifier-resolution",
             "Select extension resolution algorithm for es modules; "
@@ -564,6 +571,9 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--test",
             "launch test runner on startup",
             &EnvironmentOptions::test_runner);
+  AddOption("--test-concurrency",
+            "specify test runner concurrency",
+            &EnvironmentOptions::test_runner_concurrency);
   AddOption("--experimental-test-coverage",
             "enable code coverage in the test runner",
             &EnvironmentOptions::test_runner_coverage);
@@ -581,6 +591,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--test-only",
             "run tests with 'only' option set",
             &EnvironmentOptions::test_only,
+            kAllowedInEnvvar);
+  AddOption("--test-shard",
+            "run test at specific shard",
+            &EnvironmentOptions::test_shard,
             kAllowedInEnvvar);
   AddOption("--test-udp-no-try-send", "",  // For testing only.
             &EnvironmentOptions::test_udp_no_try_send);
@@ -616,6 +630,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--trace-warnings",
             "show stack traces on process warnings",
             &EnvironmentOptions::trace_warnings,
+            kAllowedInEnvvar);
+  AddOption("--experimental-default-type",
+            "set module system to use by default",
+            &EnvironmentOptions::type,
             kAllowedInEnvvar);
   AddOption("--extra-info-on-fatal-exception",
             "hide extra information on fatal exception that causes exit",

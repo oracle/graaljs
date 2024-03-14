@@ -11,6 +11,7 @@
 namespace node {
 
 class Environment;
+class ExternalReferenceRegistry;
 
 namespace contextify {
 class ContextifyContext;
@@ -44,6 +45,7 @@ class ModuleWrap : public BaseObject {
                          v8::Local<v8::Value> unused,
                          v8::Local<v8::Context> context,
                          void* priv);
+  static void RegisterExternalReferences(ExternalReferenceRegistry* registry);
   static void HostInitializeImportMetaObjectCallback(
       v8::Local<v8::Context> context,
       v8::Local<v8::Module> module,
@@ -96,7 +98,7 @@ class ModuleWrap : public BaseObject {
   static v8::MaybeLocal<v8::Module> ResolveModuleCallback(
       v8::Local<v8::Context> context,
       v8::Local<v8::String> specifier,
-      v8::Local<v8::FixedArray> import_assertions,
+      v8::Local<v8::FixedArray> import_attributes,
       v8::Local<v8::Module> referrer);
   static ModuleWrap* GetFromModule(node::Environment*, v8::Local<v8::Module>);
 

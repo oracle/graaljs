@@ -25,14 +25,16 @@ For more info about `node inspect`, see the [debugger][] documentation.
 
 The program entry point is a specifier-like string. If the string is not an
 absolute path, it's resolved as a relative path from the current working
-directory. That path is then resolved by [CommonJS][] module loader. If no
-corresponding file is found, an error is thrown.
+directory. That path is then resolved by [CommonJS][] module loader, or by the
+[ES module loader][Modules loaders] if [`--experimental-default-type=module`][]
+is passed. If no corresponding file is found, an error is thrown.
 
-If a file is found, its path will be passed to the [ECMAScript module loader][]
-under any of the following conditions:
+If a file is found, its path will be passed to the
+[ES module loader][Modules loaders] under any of the following conditions:
 
 * The program was started with a command-line flag that forces the entry
-  point to be loaded with ECMAScript module loader.
+  point to be loaded with ECMAScript module loader, such as `--import` or
+  [`--experimental-default-type=module`][].
 * The file has an `.mjs` extension.
 * The file does not have a `.cjs` extension, and the nearest parent
   `package.json` file contains a top-level [`"type"`][] field with a value of
@@ -43,10 +45,11 @@ Otherwise, the file is loaded using the CommonJS module loader. See
 
 ### ECMAScript modules loader entry point caveat
 
-When loading [ECMAScript module loader][] loads the program entry point, the `node`
-command will only accept as input only files with `.js`, `.mjs`, or `.cjs`
-extensions; and with `.wasm` extensions when
-[`--experimental-wasm-modules`][] is enabled.
+When loading, the [ES module loader][Modules loaders] loads the program
+entry point, the `node` command will accept as input only files with `.js`,
+`.mjs`, or `.cjs` extensions; with `.wasm` extensions when
+[`--experimental-wasm-modules`][] is enabled; and with no extension when
+[`--experimental-default-type=module`][] is passed.
 
 ## Options
 
@@ -366,15 +369,54 @@ added: v17.6.0
 
 Expose the [Web Crypto API][] on the global scope.
 
+### `--experimental-default-type=type`
+
+<!-- YAML
+added:
+  - v18.19.0
+-->
+
+> Stability: 1.0 - Early development
+
+Define which module system, `module` or `commonjs`, to use for the following:
+
+* String input provided via `--eval` or STDIN, if `--input-type` is unspecified.
+
+* Files ending in `.js` or with no extension, if there is no `package.json` file
+  present in the same folder or any parent folder.
+
+* Files ending in `.js` or with no extension, if the nearest parent
+  `package.json` field lacks a `"type"` field; unless the `package.json` folder
+  or any parent folder is inside a `node_modules` folder.
+
+In other words, `--experimental-default-type=module` flips all the places where
+Node.js currently defaults to CommonJS to instead default to ECMAScript modules,
+with the exception of folders and subfolders below `node_modules`, for backward
+compatibility.
+
+Under `--experimental-default-type=module` and `--experimental-wasm-modules`,
+files with no extension will be treated as WebAssembly if they begin with the
+WebAssembly magic number (`\0asm`); otherwise they will be treated as ES module
+JavaScript.
+
 ### `--experimental-import-meta-resolve`
 
 <!-- YAML
 added:
   - v13.9.0
   - v12.16.2
+changes:
+  - version: v18.19.0
+    pr-url: https://github.com/nodejs/node/pull/49028
+    description: synchronous import.meta.resolve made available by default, with
+                 the flag retained for enabling the experimental second argument
+                 as previously supported.
 -->
 
-Enable experimental `import.meta.resolve()` support.
+Enable experimental `import.meta.resolve()` parent URL support, which allows
+passing a second `parentURL` argument for contextual resolution.
+
+Previously gated the entire `import.meta.resolve` feature.
 
 ### `--experimental-loader=module`
 
@@ -387,7 +429,11 @@ changes:
                  `--experimental-loader`.
 -->
 
-Specify the `module` of a custom experimental [ECMAScript module loader][].
+> This flag is discouraged and may be removed in a future version of Node.js.
+> Please use
+> [`--import` with `register()`][module customization hooks: enabling] instead.
+
+Specify the `module` containing exported [module customization hooks][].
 `module` may be any string accepted as an [`import` specifier][].
 
 ### `--experimental-network-imports`
@@ -1252,6 +1298,15 @@ Starts the Node.js command line test runner. This flag cannot be combined with
 See the documentation on [running tests from the command line][]
 for more details.
 
+### `--test-concurrency`
+
+<!-- YAML
+added: v18.19.0
+-->
+
+The maximum number of test files that the test runner CLI will execute
+concurrently. The default value is `os.availableParallelism() - 1`.
+
 ### `--test-name-pattern`
 
 <!-- YAML
@@ -1288,6 +1343,27 @@ added: v18.0.0
 
 Configures the test runner to only execute top level tests that have the `only`
 option set.
+
+### `--test-shard`
+
+<!-- YAML
+added: v18.19.0
+-->
+
+Test suite shard to execute in a format of `<index>/<total>`, where
+
+`index` is a positive integer, index of divided parts
+`total` is a positive integer, total of divided part
+This command will divide all tests files into `total` equal parts,
+and will run only those that happen to be in an `index` part.
+
+For example, to split your tests suite into three parts, use this:
+
+```bash
+node --test --test-shard=1/3
+node --test --test-shard=2/3
+node --test --test-shard=3/3
+```
 
 ### `--throw-deprecation`
 
@@ -1889,6 +1965,7 @@ Node.js options that are allowed are:
 * `--enable-network-family-autoselection`
 * `--enable-source-maps`
 * `--experimental-abortcontroller`
+* `--experimental-default-type`
 * `--experimental-global-customevent`
 * `--experimental-global-webcrypto`
 * `--experimental-import-meta-resolve`
@@ -1955,6 +2032,7 @@ Node.js options that are allowed are:
 * `--test-only`
 * `--test-reporter-destination`
 * `--test-reporter`
+* `--test-shard`
 * `--throw-deprecation`
 * `--title`
 * `--tls-cipher-list`
@@ -2338,8 +2416,9 @@ done
 [CommonJS module]: modules.md
 [CustomEvent Web API]: https://dom.spec.whatwg.org/#customevent
 [ECMAScript module]: esm.md#modules-ecmascript-modules
-[ECMAScript module loader]: esm.md#loaders
 [Fetch API]: https://developer.mozilla.org/en-US/docs/Web/API/Fetch_API
+[Module customization hooks]: module.md#customization-hooks
+[Module customization hooks: enabling]: module.md#enabling
 [Modules loaders]: packages.md#modules-loaders
 [Node.js issue tracker]: https://github.com/nodejs/node/issues
 [OSSL_PROVIDER-legacy]: https://www.openssl.org/docs/man3.0/man7/OSSL_PROVIDER-legacy.html
@@ -2353,6 +2432,7 @@ done
 [`"type"`]: packages.md#type
 [`--cpu-prof-dir`]: #--cpu-prof-dir
 [`--diagnostic-dir`]: #--diagnostic-dirdirectory
+[`--experimental-default-type=module`]: #--experimental-default-typetype
 [`--experimental-wasm-modules`]: #--experimental-wasm-modules
 [`--heap-prof-dir`]: #--heap-prof-dir
 [`--import`]: #--importmodule

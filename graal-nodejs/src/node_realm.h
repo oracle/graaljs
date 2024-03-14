@@ -13,6 +13,7 @@
 namespace node {
 
 struct RealmSerializeInfo {
+  std::vector<std::string> builtins;
   std::vector<PropInfo> persistent_values;
   std::vector<PropInfo> native_objects;
 
@@ -20,9 +21,9 @@ struct RealmSerializeInfo {
   friend std::ostream& operator<<(std::ostream& o, const RealmSerializeInfo& i);
 };
 
-using BindingDataStore = std::unordered_map<FastStringKey,
-                                            BaseObjectPtr<BaseObject>,
-                                            FastStringKey::Hash>;
+using BindingDataStore = std::array<BaseObjectPtr<BaseObject>,
+                     static_cast<size_t>(
+                         BindingDataType::kBindingDataTypeCount)>;
 
 /**
  * node::Realm is a container for a set of JavaScript objects and functions
@@ -67,9 +68,7 @@ class Realm : public MemoryRetainer {
   RealmSerializeInfo Serialize(v8::SnapshotCreator* creator);
   void DeserializeProperties(const RealmSerializeInfo* info);
 
-  v8::MaybeLocal<v8::Value> ExecuteBootstrapper(
-      const char* id, std::vector<v8::Local<v8::Value>>* arguments);
-  v8::MaybeLocal<v8::Value> BootstrapInternalLoaders();
+  v8::MaybeLocal<v8::Value> ExecuteBootstrapper(const char* id);
   v8::MaybeLocal<v8::Value> BootstrapNode();
   v8::MaybeLocal<v8::Value> RunBootstrapping();
 
@@ -119,6 +118,13 @@ class Realm : public MemoryRetainer {
   inline void set_##PropertyName(v8::Local<TypeName> value);
   PER_REALM_STRONG_PERSISTENT_VALUES(V)
 #undef V
+
+  std::set<struct node_module*> internal_bindings;
+  std::set<std::string> builtins_with_cache;
+  std::set<std::string> builtins_without_cache;
+  // This is only filled during deserialization. We use a vector since
+  // it's only used for tests.
+  std::vector<std::string> builtins_in_snapshot;
 
  private:
   void InitializeContext(v8::Local<v8::Context> context,

@@ -5,7 +5,6 @@ const {
   ArrayPrototypePush,
   ArrayPrototypeSome,
   FunctionPrototype,
-  ObjectCreate,
   ObjectSetPrototypeOf,
   PromiseResolve,
   PromisePrototypeThen,
@@ -22,7 +21,7 @@ const {
 
 const { ModuleWrap } = internalBinding('module_wrap');
 
-const { decorateErrorStack } = require('internal/util');
+const { decorateErrorStack, kEmptyObject } = require('internal/util');
 const {
   getSourceMapsEnabled,
 } = require('internal/source_map/source_map_cache');
@@ -51,10 +50,10 @@ const isCommonJSGlobalLikeNotDefinedError = (errorMessage) =>
 class ModuleJob {
   // `loader` is the Loader instance used for loading dependencies.
   // `moduleProvider` is a function
-  constructor(loader, url, importAssertions = ObjectCreate(null),
+  constructor(loader, url, importAttributes = { __proto__: null },
               moduleProvider, isMain, inspectBrk) {
     this.loader = loader;
-    this.importAssertions = importAssertions;
+    this.importAttributes = importAttributes;
     this.isMain = isMain;
     this.inspectBrk = inspectBrk;
 
@@ -73,15 +72,15 @@ class ModuleJob {
       // so that circular dependencies can't cause a deadlock by two of
       // these `link` callbacks depending on each other.
       const dependencyJobs = [];
-      const promises = this.module.link(async (specifier, assertions) => {
-        const jobPromise = this.loader.getModuleJob(specifier, url, assertions);
-        ArrayPrototypePush(dependencyJobs, jobPromise);
-        const job = await jobPromise;
+      const promises = this.module.link(async (specifier, attributes) => {
+        const job = await this.loader.getModuleJob(specifier, url, attributes);
+        ArrayPrototypePush(dependencyJobs, job);
         return job.modulePromise;
       });
 
-      if (promises !== undefined)
+      if (promises !== undefined) {
         await SafePromiseAllReturnVoid(promises);
+      }
 
       return SafePromiseAllReturnArrayLike(dependencyJobs);
     };
@@ -142,12 +141,14 @@ class ModuleJob {
           /module '(.*)' does not provide an export named '(.+)'/,
           e.message);
         const { url: childFileURL } = await this.loader.resolve(
-          childSpecifier, parentFileUrl,
+          childSpecifier,
+          parentFileUrl,
+          kEmptyObject,
         );
         let format;
         try {
           // This might throw for non-CommonJS modules because we aren't passing
-          // in the import assertions and some formats require them; but we only
+          // in the import attributes and some formats require them; but we only
           // care about CommonJS for the purposes of this error message.
           ({ format } =
             await this.loader.load(childFileURL));
