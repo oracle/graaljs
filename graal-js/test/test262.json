@@ -14,6 +14,18 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
+    "filePath" : "annexB/language/comments/single-line-html-close-first-line-1.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "annexB/language/comments/single-line-html-close-first-line-2.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "annexB/language/comments/single-line-html-close-first-line-3.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "annexB/language/function-code/block-decl-func-skip-arguments.js",
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."
@@ -1847,6 +1859,18 @@
     "filePath" : "built-ins/String/prototype/toLowerCase/special_casing_conditional.js",
     "status" : "FAIL"
   }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/dateAdd/argument-duration-max.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Calendar/prototype/dateAdd/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/compare/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/compare/instances-identical.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -1854,6 +1878,10 @@
     "filePath" : "built-ins/Temporal/Duration/compare/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-plaindate-add24hourdaystonormalizedtimeduration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/compare/relativeto-propertybag-builtin-calendar-no-array-iteration.js",
     "status" : "FAIL",
@@ -1866,6 +1894,14 @@
     "filePath" : "built-ins/Temporal/Duration/compare/relativeto-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-propertybag-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/compare/relativeto-propertybag-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/compare/relativeto-propertybag-timezone-string-datetime.js",
     "status" : "FAIL",
@@ -1883,9 +1919,25 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/from/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/from/argument-non-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/argument-duration-precision-exact-numerical-values.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/add/argument-not-object.js",
     "status" : "FAIL",
@@ -1895,25 +1947,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/days-is-number-max-value-with-zoneddatetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/days-is-number-max-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/add/nanoseconds-is-number-max-safe-integer.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/nanoseconds-is-number-max-value-1.js",
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/normalized-time-duration-to-days-loop-arbitrarily.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/nanoseconds-is-number-max-value-2.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/add/order-of-operations.js",
     "status" : "FAIL",
@@ -1935,6 +1975,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-propertybag-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-propertybag-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-propertybag-timezone-string-datetime.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -1955,9 +2003,17 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-zoneddatetime-nanoseconds-to-days-range-errors.js",
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/relativeto-zoneddatetime-normalized-time-duration-to-days-range-errors.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-01-17"
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/result-out-of-range-1.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/add/result-out-of-range-2.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/calendar-dateuntil-called-with-singular-largestunit.js",
     "status" : "FAIL",
@@ -1967,13 +2023,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/number-max-value-too-large.js",
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/normalized-time-duration-to-days-loop-arbitrarily.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/out-of-range-when-converting-from-normalized-duration.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/precision-exact-in-round-duration.js",
     "status" : "FAIL",
@@ -1990,6 +2050,14 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-propertybag-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-propertybag-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-propertybag-timezone-string-datetime.js",
     "status" : "FAIL",
@@ -2010,6 +2078,14 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-sub-minute-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-zoneddatetime-normalized-time-duration-to-days-range-errors.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/round/result-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/round-negative-result.js",
     "status" : "FAIL",
@@ -2063,6 +2139,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/argument-duration-precision-exact-numerical-values.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/argument-not-object.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -2071,25 +2155,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/days-is-number-max-value-with-zoneddatetime.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/days-is-number-max-value.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/nanoseconds-is-number-max-safe-integer.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/nanoseconds-is-number-max-value-1.js",
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/normalized-time-duration-to-days-loop-arbitrarily.js",
     "status" : "FAIL",
-    "comment" : "new failures 2022-08-08"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/nanoseconds-is-number-max-value-2.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/order-of-operations.js",
     "status" : "FAIL",
@@ -2111,6 +2183,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-propertybag-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-propertybag-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-propertybag-timezone-string-datetime.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -2131,9 +2211,17 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-zoneddatetime-nanoseconds-to-days-range-errors.js",
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/relativeto-zoneddatetime-normalized-time-duration-to-days-range-errors.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-01-17"
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/result-out-of-range-1.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/result-out-of-range-2.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/toString/fractionalseconddigits-non-integer.js",
     "status" : "FAIL",
@@ -2147,6 +2235,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/toString/throws-when-rounded-duration-is-invalid.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/balance-negative-result.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -2155,9 +2247,33 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/normalized-time-duration-to-days-loop-arbitrarily.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-3.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-4.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-6.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/precision-exact-mathematical-values-7.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-plaindate-add24hourdaystonormalizedtimeduration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-builtin-calendar-no-array-iteration.js",
     "status" : "FAIL",
@@ -2170,6 +2286,14 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-propertybag-timezone-string-datetime.js",
     "status" : "FAIL",
@@ -2190,6 +2314,10 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-sub-minute-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-zoneddatetime-normalized-time-duration-to-days-range-errors.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-zoneddatetime-with-fractional-days-different-sign.js",
     "status" : "FAIL",
@@ -2539,6 +2667,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/add/argument-duration-max.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/add/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/add/argument-not-object.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -2622,6 +2758,18 @@
     "filePath" : "built-ins/Temporal/PlainDate/prototype/since/roundingincrement-out-of-range.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-02-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/wrapping-at-end-of-month.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/subtract/argument-duration-max.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/subtract/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/subtract/argument-not-object.js",
     "status" : "FAIL",
@@ -2707,9 +2855,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/getpossibleinstantsfor-called-with-iso8601-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-23"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/toZonedDateTime/timezone-getpossibleinstantsfor.js",
     "status" : "FAIL",
@@ -2742,6 +2898,10 @@
     "filePath" : "built-ins/Temporal/PlainDate/prototype/until/roundingincrement-out-of-range.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-02-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/wrapping-at-end-of-month.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/weekOfYear/validate-calendar-value.js",
     "status" : "FAIL",
@@ -2786,6 +2946,14 @@
     "filePath" : "built-ins/Temporal/PlainDateTime/from/overflow-wrong-type.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/add/argument-duration-max.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/add/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/add/argument-not-object.js",
     "status" : "FAIL",
@@ -2923,6 +3091,18 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/since/wrapping-at-end-of-month.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/subtract/argument-duration-max.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/subtract/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/subtract/argument-not-object.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -2971,9 +3151,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
   }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/getpossibleinstantsfor-called-with-iso8601-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-23"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/toZonedDateTime/invalid-instant.js",
     "status" : "FAIL",
@@ -3014,6 +3202,10 @@
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainDateTime/prototype/until/wrapping-at-end-of-month.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/PlainDateTime/prototype/weekOfYear/validate-calendar-value.js",
     "status" : "FAIL",
@@ -3227,6 +3419,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/add/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/add/argument-not-object.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -3236,14 +3432,6 @@
     "comment" : "new failures 2022-08-08"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/add/precision-exact-mathematical-values-1.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/add/precision-exact-mathematical-values-2.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/add/precision-exact-mathematical-values-3.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
@@ -3295,6 +3483,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-12-12"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/subtract/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/subtract/argument-not-object.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -3304,14 +3496,6 @@
     "comment" : "new failures 2022-08-08"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/subtract/precision-exact-mathematical-values-1.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/subtract/precision-exact-mathematical-values-2.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/subtract/precision-exact-mathematical-values-3.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
@@ -3339,9 +3523,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/getpossibleinstantsfor-called-with-iso8601-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-23"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/toZonedDateTime/timezone-string-datetime.js",
     "status" : "FAIL",
@@ -3390,6 +3582,14 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/from/calendar-temporal-object.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/argument-duration-max.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/add/argument-not-object.js",
     "status" : "FAIL",
@@ -3478,6 +3678,14 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/roundingincrement-out-of-range.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-02-13"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/argument-duration-max.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/argument-not-object.js",
     "status" : "FAIL",
@@ -3667,9 +3875,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getInstantFor/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getInstantFor/getpossibleinstantsfor-called-with-iso8601-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-23"
+  }, {
+    "filePath" : "built-ins/Temporal/TimeZone/prototype/getInstantFor/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/TimeZone/prototype/getNextTransition/argument-string-calendar-annotation.js",
     "status" : "FAIL",
@@ -3819,6 +4035,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-propertybag-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-propertybag-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/compare/argument-propertybag-timezone-string-datetime.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -3854,6 +4078,14 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-propertybag-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-propertybag-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/argument-propertybag-timezone-string-datetime.js",
     "status" : "FAIL",
@@ -3894,6 +4126,14 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/from/zoneddatetime-string.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/add/argument-duration-max.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/add/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/add/argument-not-object.js",
     "status" : "FAIL",
@@ -3946,6 +4186,14 @@
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-propertybag-invalid-offset-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-propertybag-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-propertybag-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/equals/argument-propertybag-timezone-normalize-offset-strings.js",
     "status" : "FAIL",
@@ -4027,9 +4275,21 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/hoursInDay/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/hoursInDay/getpossibleinstantsfor-called-with-iso8601-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-23"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/hoursInDay/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/hoursInDay/precision-exact-mathematical-values-2.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/hoursInDay/precision-exact-mathematical-values.js",
     "status" : "FAIL",
@@ -4051,9 +4311,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/getpossibleinstantsfor-called-with-iso8601-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-23"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/round/order-of-operations.js",
     "status" : "FAIL",
@@ -4111,6 +4379,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/argument-propertybag-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/argument-propertybag-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/argument-propertybag-timezone-string-datetime.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -4131,9 +4407,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/nanoseconds-to-days-range-errors.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/date-and-time-durations-opposite-signs.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-01-17"
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/normalized-time-duration-to-days-loop-arbitrarily.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/normalized-time-duration-to-days-range-errors.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/order-of-operations.js",
     "status" : "FAIL",
@@ -4167,17 +4451,37 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/wrapping-at-end-of-month.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/zoneddatetime-string.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/startOfDay/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/startOfDay/getpossibleinstantsfor-called-with-iso8601-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-23"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/startOfDay/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/startOfDay/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/subtract/argument-duration-max.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/subtract/argument-duration-out-of-range.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/subtract/argument-not-object.js",
     "status" : "FAIL",
@@ -4263,6 +4567,14 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-propertybag-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-propertybag-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/argument-propertybag-timezone-string-datetime.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -4283,9 +4595,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/nanoseconds-to-days-range-errors.js",
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/date-and-time-durations-opposite-signs.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-01-17"
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/normalized-time-duration-to-days-loop-arbitrarily.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/normalized-time-duration-to-days-range-errors.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/order-of-operations.js",
     "status" : "FAIL",
@@ -4311,6 +4631,10 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/wrapping-at-end-of-month.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/zoneddatetime-string.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
@@ -4327,9 +4651,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/getpossibleinstantsfor-called-with-iso8601-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-23"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/with/offset-property-invalid-string.js",
     "status" : "FAIL",
@@ -4359,9 +4691,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainDate/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainDate/getpossibleinstantsfor-called-with-iso8601-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-23"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainDate/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/argument-number.js",
     "status" : "FAIL",
@@ -4383,9 +4723,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/getoffsetnanosecondsfor-out-of-range-forward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/getpossibleinstantsfor-called-with-iso8601-calendar.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-23"
+  }, {
+    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withPlainTime/getpossibleinstantsfor-out-of-range-backward-offset-shift.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/withTimeZone/timezone-string-datetime.js",
     "status" : "FAIL",
@@ -4494,9 +4842,17 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/DateTimeFormat/prototype/resolvedOptions/hourCycle-default.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "intl402/DateTimeFormat/timezone-case-insensitive.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "intl402/DateTimeFormat/timezone-legacy-non-iana.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/DateTimeFormat/timezone-not-canonicalized.js",
     "status" : "FAIL",
@@ -4906,9 +5262,17 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/weekOfYear/gregory-iso-weekofyear.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/weekOfYear/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/weekOfYear/non-iso-week-of-year.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/year/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -4930,9 +5294,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-03-10"
   }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/yearOfWeek/gregory-iso-weekofyear.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "intl402/Temporal/Calendar/prototype/yearOfWeek/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
+  }, {
+    "filePath" : "intl402/Temporal/Calendar/prototype/yearOfWeek/non-iso-week-of-year.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/Temporal/Duration/prototype/add/relativeto-infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -5070,9 +5442,25 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/weekOfYear/gregory-iso-weekofyear.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/weekOfYear/non-iso-week-of-year.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "intl402/Temporal/PlainDate/prototype/with/cross-era-boundary.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-03-10"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/yearOfWeek/gregory-iso-weekofyear.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDate/prototype/yearOfWeek/non-iso-week-of-year.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/Temporal/PlainDateTime/compare/infinity-throws-rangeerror.js",
     "status" : "FAIL",
@@ -5138,6 +5526,14 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/weekOfYear/gregory-iso-weekofyear.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/weekOfYear/non-iso-week-of-year.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/withPlainDate/argument-plaindate-calendar-noniso.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
@@ -5165,6 +5561,14 @@
     "filePath" : "intl402/Temporal/PlainDateTime/prototype/withPlainDate/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/yearOfWeek/gregory-iso-weekofyear.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "intl402/Temporal/PlainDateTime/prototype/yearOfWeek/non-iso-week-of-year.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/Temporal/PlainMonthDay/from/fields-missing-properties.js",
     "status" : "FAIL",
@@ -5322,9 +5726,17 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
+    "filePath" : "intl402/Temporal/TimeZone/from/timezone-string-legacy-non-iana.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "intl402/Temporal/TimeZone/iana-legacy-names.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "intl402/Temporal/TimeZone/legacy-non-iana.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "intl402/Temporal/TimeZone/links-africa.js",
     "status" : "FAIL",
@@ -5522,6 +5934,14 @@
     "status" : "FAIL",
     "comment" : "Temporal failures"
   }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/weekOfYear/gregory-iso-weekofyear.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/weekOfYear/non-iso-week-of-year.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/with/offset-property-sub-minute.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -5529,6 +5949,14 @@
     "filePath" : "intl402/Temporal/ZonedDateTime/prototype/withPlainDate/infinity-throws-rangeerror.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/yearOfWeek/gregory-iso-weekofyear.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
+  }, {
+    "filePath" : "intl402/Temporal/ZonedDateTime/prototype/yearOfWeek/non-iso-week-of-year.js",
+    "status" : "FAIL",
+    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "language/comments/S7.4_A5.js",
     "status" : "PASS",
@@ -5691,10 +6119,6 @@
     "comment" : "Long-running in compile mode"
   }, {
     "filePath" : "staging/Temporal/Duration/old/add.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/Duration/old/limits.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
