@@ -468,7 +468,7 @@ public class Parser extends AbstractParser {
      */
     private void prepareLexer(final int startPos, final int len) {
         stream = new TokenStream();
-        lexer = new Lexer(source, startPos, len, stream, scripting, env.ecmaScriptVersion, shebang, isModule, reparsedFunction != null, allowBigInt);
+        lexer = new Lexer(source, startPos, len, stream, scripting, env.ecmaScriptVersion, shebang, isModule, reparsedFunction != null, allowBigInt, env.annexB);
         lexer.line = lexer.pendingLine = lineOffset + 1;
         line = lineOffset;
     }
@@ -603,7 +603,7 @@ public class Parser extends AbstractParser {
     public void parseFormalParameterList() {
         try {
             stream = new TokenStream();
-            lexer = new Lexer(source, stream, scripting, env.ecmaScriptVersion, shebang, isModule, allowBigInt);
+            lexer = new Lexer(source, stream, scripting, env.ecmaScriptVersion, shebang, isModule, allowBigInt, env.annexB);
 
             scanFirstToken();
 
@@ -625,7 +625,7 @@ public class Parser extends AbstractParser {
     public FunctionNode parseFunctionBody(boolean generator, boolean async) {
         try {
             stream = new TokenStream();
-            lexer = new Lexer(source, stream, scripting, env.ecmaScriptVersion, shebang, isModule, allowBigInt);
+            lexer = new Lexer(source, stream, scripting, env.ecmaScriptVersion, shebang, isModule, allowBigInt, env.annexB);
             final int functionLine = line;
 
             scanFirstToken();
@@ -5814,7 +5814,7 @@ public class Parser extends AbstractParser {
         }
 
         stream.reset();
-        lexer = parserState.createLexer(source, lexer, stream, scripting, env.ecmaScriptVersion, shebang, isModule, allowBigInt);
+        lexer = parserState.createLexer(source, lexer, stream, scripting, env.ecmaScriptVersion, shebang, isModule, allowBigInt, env.annexB);
         line = parserState.line;
         linePosition = parserState.linePosition;
         // Doesn't really matter, but it's safe to treat it as if there were a semicolon before
@@ -5841,8 +5841,8 @@ public class Parser extends AbstractParser {
         }
 
         Lexer createLexer(final Source source, final Lexer lexer, final TokenStream stream,
-                        final boolean scripting, final int ecmaScriptVersion, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
-            final Lexer newLexer = new Lexer(source, position, lexer.limit - position, stream, scripting, ecmaScriptVersion, shebang, isModule, true, allowBigInt);
+                        final boolean scripting, final int ecmaScriptVersion, final boolean shebang, final boolean isModule, final boolean allowBigInt, final boolean annexB) {
+            final Lexer newLexer = new Lexer(source, position, lexer.limit - position, stream, scripting, ecmaScriptVersion, shebang, isModule, true, allowBigInt, annexB);
             newLexer.restoreState(new Lexer.State(position, Integer.MAX_VALUE, line, -1, linePosition, SEMICOLON));
             return newLexer;
         }

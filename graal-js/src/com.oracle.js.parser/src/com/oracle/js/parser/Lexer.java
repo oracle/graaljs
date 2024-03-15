@@ -118,6 +118,9 @@ public final class Lexer extends Scanner implements StringPool {
     /** True if BigInts are supported. */
     private final boolean allowBigInt;
 
+    /** True if Annex B Web Compatibility extensions are enabled. */
+    private final boolean annexB;
+
     /** Pending new line number and position. */
     int pendingLine;
 
@@ -146,8 +149,9 @@ public final class Lexer extends Scanner implements StringPool {
      * @param shebang do we support shebang
      * @param isModule are we in module
      */
-    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final int ecmaScriptVersion, final boolean shebang, final boolean isModule, final boolean allowBigInt) {
-        this(source, 0, source.getLength(), stream, scripting, ecmaScriptVersion, shebang, isModule, false, allowBigInt);
+    public Lexer(final Source source, final TokenStream stream, final boolean scripting, final int ecmaScriptVersion, final boolean shebang, final boolean isModule, final boolean allowBigInt,
+                    final boolean annexB) {
+        this(source, 0, source.getLength(), stream, scripting, ecmaScriptVersion, shebang, isModule, false, allowBigInt, annexB);
     }
 
     /**
@@ -167,7 +171,7 @@ public final class Lexer extends Scanner implements StringPool {
      *            the function bodies.
      */
     public Lexer(final Source source, final int start, final int len, final TokenStream stream, final boolean scripting, final int ecmaScriptVersion, final boolean shebang, final boolean isModule,
-                    final boolean pauseOnFunctionBody, final boolean allowBigInt) {
+                    final boolean pauseOnFunctionBody, final boolean allowBigInt, final boolean annexB) {
         super(source.getContent(), 1, start, len);
         this.source = source;
         this.stream = stream;
@@ -177,6 +181,7 @@ public final class Lexer extends Scanner implements StringPool {
         this.nested = false;
         this.isModule = isModule;
         this.allowBigInt = allowBigInt;
+        this.annexB = annexB;
         this.pendingLine = 1;
         this.last = EOL;
 
@@ -195,6 +200,7 @@ public final class Lexer extends Scanner implements StringPool {
         nested = true;
         isModule = lexer.isModule;
         allowBigInt = lexer.allowBigInt;
+        annexB = lexer.annexB;
 
         pendingLine = state.pendingLine;
         linePosition = state.linePosition;
@@ -1799,7 +1805,7 @@ public final class Lexer extends Scanner implements StringPool {
                 if (ch0 == '<' && ch1 == '!' && ch2 == '-' && ch3 == '-') {
                     skipSingleLineHTMLOpenComment();
                     continue;
-                } else if (ch0 == '-' && ch1 == '-' && ch2 == '>' && seenEOL() && linePosition > 0) {
+                } else if (ch0 == '-' && ch1 == '-' && ch2 == '>' && seenEOL() && (annexB || linePosition > 0)) {
                     skipSingleLineHTMLCloseComment();
                     continue;
                 }
