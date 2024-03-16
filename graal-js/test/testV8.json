@@ -2199,7 +2199,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-10309.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -2234,14 +2234,14 @@
     "filePath" : "mjsunit/regress/wasm/regress-1054466.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1065599.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -2255,7 +2255,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1070078.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -2281,14 +2281,14 @@
     "filePath" : "mjsunit/regress/wasm/regress-1081030.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-10831.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -2314,14 +2314,14 @@
     "filePath" : "mjsunit/regress/wasm/regress-1111522.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1112124.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -2334,7 +2334,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1116019.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -2348,7 +2348,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1124885.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -2400,7 +2400,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1161555.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -2531,7 +2531,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1242689.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-08-10"
   }, {
@@ -2553,6 +2553,13 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/regress/wasm/regress-1254675.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "This test should only be run on configurations that don't support Wasm SIMD."
+  }, {
     "filePath" : "mjsunit/regress/wasm/regress-1255354.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2569,7 +2576,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1264462.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-08-10"
   }, {
@@ -2617,7 +2624,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1289678.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-08-10"
   }, {
@@ -2707,7 +2714,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-13732.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "new failures 2023-10-09"
   }, {
@@ -2889,7 +2896,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-1443218.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "new failures 2023-10-09"
   }, {
@@ -3997,7 +4004,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1338980.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-08-10"
   }, {
@@ -4023,14 +4030,14 @@
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1355070.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1356718.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -5553,7 +5560,7 @@
     "filePath" : "mjsunit/wasm/liftoff-simd-params.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -5703,7 +5710,7 @@
     "filePath" : "mjsunit/wasm/multi-value-simd.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
@@ -5890,28 +5897,28 @@
     "filePath" : "mjsunit/wasm/simd-call.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
     "filePath" : "mjsunit/wasm/simd-errors.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
     "filePath" : "mjsunit/wasm/simd-globals.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
   }, {
     "filePath" : "mjsunit/wasm/simd-i64x2-mul.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/single-threaded-compilation.js",
