@@ -262,6 +262,7 @@ public class Test262Runnable extends TestRunnable {
     private static final Set<String> UNSUPPORTED_FEATURES = featureSet(new String[]{
                     "Intl.DurationFormat",
                     "IsHTMLDDA",
+                    "regexp-modifiers",
                     "resizable-arraybuffer",
                     "tail-call-optimization",
     });

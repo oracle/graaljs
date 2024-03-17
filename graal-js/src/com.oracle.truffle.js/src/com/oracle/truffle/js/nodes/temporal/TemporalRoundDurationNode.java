@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -64,7 +64,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.MoveRelativeDateResult;
-import com.oracle.truffle.js.runtime.builtins.temporal.NanosecondsToDaysResult;
+import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedTimeDurationToDaysResult;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
@@ -145,7 +145,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
             if (zonedRelativeTo != null) {
                 intermediate = TemporalUtil.moveRelativeZonedDateTime(ctx, realm, zonedRelativeTo, calendarRec, timeZoneRec, dtol(years), dtol(months), dtol(weeks), dtol(days),
                                 precalculatedPlainDateTime);
-                NanosecondsToDaysResult result = TemporalUtil.nanosecondsToDays(ctx, realm, totalNs, intermediate, timeZoneRec);
+                NormalizedTimeDurationToDaysResult result = TemporalUtil.normalizedTimeDurationToDays(ctx, realm, totalNs, intermediate, timeZoneRec);
                 days = calculateDays(days, result);
             } else {
                 days = days + nanoseconds / TemporalUtil.NS_PER_DAY;
@@ -407,7 +407,7 @@ public abstract class TemporalRoundDurationNode extends JavaScriptBaseNode {
     }
 
     @TruffleBoundary
-    private static double calculateDays(double days, NanosecondsToDaysResult result) {
-        return days + TemporalUtil.bitod(result.days().add(result.nanoseconds().divide(result.dayLength().abs())));
+    private static double calculateDays(double days, NormalizedTimeDurationToDaysResult result) {
+        return days + TemporalUtil.bitod(result.days().add(result.remainder().divide(result.dayLength().abs())));
     }
 }
