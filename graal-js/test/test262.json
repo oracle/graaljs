@@ -1939,10 +1939,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/add/normalized-time-duration-to-days-loop-arbitrarily.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/add/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-12-12"
@@ -2011,10 +2007,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/normalized-time-duration-to-days-loop-arbitrarily.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2066,10 +2058,6 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-sub-minute-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/round/relativeto-zoneddatetime-normalized-time-duration-to-days-range-errors.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/round/result-out-of-range.js",
     "status" : "FAIL",
@@ -2146,10 +2134,6 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/nanoseconds-is-number-max-safe-integer.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/subtract/normalized-time-duration-to-days-loop-arbitrarily.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/subtract/order-of-operations.js",
     "status" : "FAIL",
@@ -2235,10 +2219,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/normalized-time-duration-to-days-loop-arbitrarily.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/order-of-operations.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
@@ -2302,10 +2282,6 @@
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-sub-minute-offset.js",
     "status" : "FAIL",
     "comment" : "Temporal failures"
-  }, {
-    "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-zoneddatetime-normalized-time-duration-to-days-range-errors.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
   }, {
     "filePath" : "built-ins/Temporal/Duration/prototype/total/relativeto-zoneddatetime-with-fractional-days-different-sign.js",
     "status" : "FAIL",
@@ -4399,10 +4375,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/normalized-time-duration-to-days-loop-arbitrarily.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/normalized-time-duration-to-days-range-errors.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -4584,10 +4556,6 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/date-and-time-durations-opposite-signs.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-03-15"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/until/normalized-time-duration-to-days-loop-arbitrarily.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
   }, {
@@ -6106,15 +6074,7 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "staging/Temporal/Duration/old/add.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
     "filePath" : "staging/Temporal/Duration/old/round.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/Duration/old/subtract.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
@@ -6187,10 +6147,6 @@
     "comment" : "new failures 2023-11-17"
   }, {
     "filePath" : "staging/Temporal/ZonedDateTime/old/property-bags.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-11-17"
-  }, {
-    "filePath" : "staging/Temporal/ZonedDateTime/old/reversibility-of-differences.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-17"
   }, {
