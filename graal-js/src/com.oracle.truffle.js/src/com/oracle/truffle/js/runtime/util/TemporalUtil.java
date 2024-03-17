@@ -168,7 +168,7 @@ import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTime;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalZonedDateTimeObject;
-import com.oracle.truffle.js.runtime.builtins.temporal.NanosecondsToDaysResult;
+import com.oracle.truffle.js.runtime.builtins.temporal.NormalizedTimeDurationToDaysResult;
 import com.oracle.truffle.js.runtime.builtins.temporal.ParseISODateTimeResult;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeDurationRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeRecord;
@@ -2194,13 +2194,13 @@ public final class TemporalUtil {
                     JSTemporalCalendarObject iso8601Calendar = getISO8601Calendar(context, realm);
                     precalculatedPlainDateTime = builtinTimeZoneGetPlainDateTimeFor(context, realm, timeZoneRec, startInstant, iso8601Calendar);
                 }
-                var result = nanosecondsToDays(context, realm, nanosecondsToBalance, zonedRelativeTo, timeZoneRec, precalculatedPlainDateTime);
+                var result = normalizedTimeDurationToDays(context, realm, nanosecondsToBalance, zonedRelativeTo, timeZoneRec, precalculatedPlainDateTime);
                 balancedDays = result.days().doubleValue();
                 if (Double.isInfinite(balancedDays)) {
                     // If days is not finite, return positive/negative overflow.
                     return new TimeDurationRecord(balancedDays, 0, 0, 0, 0, 0, 0);
                 }
-                nanosecondsToBalance = BigInt.fromBigInteger(result.nanoseconds());
+                nanosecondsToBalance = BigInt.fromBigInteger(result.remainder());
                 largestTimeUnit = Unit.HOUR;
             }
             default -> {
@@ -2258,8 +2258,8 @@ public final class TemporalUtil {
                         0, 0, precalculatedPlainDateTime);
         BigInt timeRemainderNs = ns2.subtract(intermediateNs);
         JSTemporalZonedDateTimeObject intermediate = JSTemporalZonedDateTime.create(ctx, realm, intermediateNs, timeZoneRec.receiver(), calendarRec.receiver());
-        NanosecondsToDaysResult result = nanosecondsToDays(ctx, realm, timeRemainderNs, intermediate, timeZoneRec);
-        TimeDurationRecord timeDifference = balanceTimeDuration(BigInt.fromBigInteger(result.nanoseconds()), Unit.HOUR);
+        NormalizedTimeDurationToDaysResult result = normalizedTimeDurationToDays(ctx, realm, timeRemainderNs, intermediate, timeZoneRec);
+        TimeDurationRecord timeDifference = balanceTimeDuration(BigInt.fromBigInteger(result.remainder()), Unit.HOUR);
 
         return JSTemporalDurationRecord.createWeeks(dateDifference.getYears(), dateDifference.getMonths(), dateDifference.getWeeks(), bitod(result.days()), timeDifference.hours(),
                         timeDifference.minutes(), timeDifference.seconds(), timeDifference.milliseconds(), timeDifference.microseconds(), timeDifference.nanoseconds());
@@ -2398,20 +2398,20 @@ public final class TemporalUtil {
         return part1.add(part2).add(part3).add(BigDecimal.valueOf(seconds)).doubleValue();
     }
 
-    public static NanosecondsToDaysResult nanosecondsToDays(JSContext ctx, JSRealm realm, BigInt nanoseconds, JSTemporalZonedDateTimeObject zonedRelativeTo,
+    public static NormalizedTimeDurationToDaysResult normalizedTimeDurationToDays(JSContext ctx, JSRealm realm, BigInt nanoseconds, JSTemporalZonedDateTimeObject zonedRelativeTo,
                     TimeZoneMethodsRecord timeZoneRec) {
-        return nanosecondsToDays(ctx, realm, nanoseconds, zonedRelativeTo, timeZoneRec, null);
+        return normalizedTimeDurationToDays(ctx, realm, nanoseconds, zonedRelativeTo, timeZoneRec, null);
     }
 
     @TruffleBoundary
-    public static NanosecondsToDaysResult nanosecondsToDays(JSContext ctx, JSRealm realm, BigInt norm, JSTemporalZonedDateTimeObject zonedRelativeTo,
+    public static NormalizedTimeDurationToDaysResult normalizedTimeDurationToDays(JSContext ctx, JSRealm realm, BigInt norm, JSTemporalZonedDateTimeObject zonedRelativeTo,
                     TimeZoneMethodsRecord timeZoneRec, JSTemporalPlainDateTimeObject precalculatedPlainDateTimeOpt) {
         BigInteger nanoseconds = norm.bigIntegerValue();
         int sign = nanoseconds.signum();
         BigInteger signBI = BigInteger.valueOf(sign);
         BigInteger dayLengthNs = BI_8_64_13;
         if (sign == 0) {
-            return new NanosecondsToDaysResult(BigInteger.ZERO, BigInteger.ZERO, dayLengthNs);
+            return new NormalizedTimeDurationToDaysResult(BigInteger.ZERO, BigInteger.ZERO, dayLengthNs);
         }
         BigInt startNs = zonedRelativeTo.getNanoseconds();
         JSTemporalInstantObject startInstant = JSTemporalInstant.create(ctx, realm, startNs);
@@ -2468,7 +2468,7 @@ public final class TemporalUtil {
         if (dayLengthNs.compareTo(BI_2_POW_53) >= 0) {
             throw Errors.createRangeError("Day length out of range");
         }
-        return new NanosecondsToDaysResult(BigInteger.valueOf(days), nanoseconds, dayLengthNs.abs());
+        return new NormalizedTimeDurationToDaysResult(BigInteger.valueOf(days), nanoseconds, dayLengthNs.abs());
     }
 
     public record AddDaysToZonedDateTimeResult(BigInt epochNanoseconds, JSTemporalInstantObject instant, JSTemporalPlainDateTimeObject dateTime) {
