@@ -2950,7 +2950,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         private Comparator<Object> getDefaultComparator(Object thisObj) {
-            return SortComparator.getDefaultComparator(thisObj, isTypedArrayImplementation);
+            return SortComparator.getDefaultComparator(getContext(), thisObj, isTypedArrayImplementation);
         }
 
         /**

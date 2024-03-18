@@ -44,6 +44,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 
 import java.util.Comparator;
 
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractDoubleArray;
@@ -101,11 +102,11 @@ public class SortComparator implements Comparator<Object> {
         }
     }
 
-    public static Comparator<Object> getDefaultComparator(Object thisObj, boolean isTypedArrayImplementation) {
+    public static Comparator<Object> getDefaultComparator(JSContext context, Object thisObj, boolean isTypedArrayImplementation) {
         if (isTypedArrayImplementation) {
             return null; // use Comparable.compareTo (equivalent to Comparator.naturalOrder())
         } else {
-            if (JSArray.isJSFastArray(thisObj)) {
+            if (context.getArrayPrototypeNoElementsAssumption().isValid() && JSArray.isJSFastArray(thisObj)) {
                 ScriptArray array = arrayGetArrayType((JSDynamicObject) thisObj);
                 if (array instanceof AbstractIntArray || array instanceof ConstantByteArray || array instanceof ConstantIntArray) {
                     return JSArray.DEFAULT_JSARRAY_INTEGER_COMPARATOR;
