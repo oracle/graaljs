@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetArr
 
 import java.util.Comparator;
 
+import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.array.dyn.AbstractDoubleArray;
@@ -101,11 +102,11 @@ public class SortComparator implements Comparator<Object> {
         }
     }
 
-    public static Comparator<Object> getDefaultComparator(Object thisObj, boolean isTypedArrayImplementation) {
+    public static Comparator<Object> getDefaultComparator(JSContext context, Object thisObj, boolean isTypedArrayImplementation) {
         if (isTypedArrayImplementation) {
             return null; // use Comparable.compareTo (equivalent to Comparator.naturalOrder())
         } else {
-            if (JSArray.isJSArray(thisObj)) {
+            if (context.getArrayPrototypeNoElementsAssumption().isValid() && JSArray.isJSFastArray(thisObj)) {
                 ScriptArray array = arrayGetArrayType((JSDynamicObject) thisObj);
                 if (array instanceof AbstractIntArray || array instanceof ConstantByteArray || array instanceof ConstantIntArray) {
                     return JSArray.DEFAULT_JSARRAY_INTEGER_COMPARATOR;
