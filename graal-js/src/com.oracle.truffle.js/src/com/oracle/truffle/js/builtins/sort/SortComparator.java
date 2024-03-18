@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,7 +105,7 @@ public class SortComparator implements Comparator<Object> {
         if (isTypedArrayImplementation) {
             return null; // use Comparable.compareTo (equivalent to Comparator.naturalOrder())
         } else {
-            if (JSArray.isJSArray(thisObj)) {
+            if (JSArray.isJSFastArray(thisObj)) {
                 ScriptArray array = arrayGetArrayType((JSDynamicObject) thisObj);
                 if (array instanceof AbstractIntArray || array instanceof ConstantByteArray || array instanceof ConstantIntArray) {
                     return JSArray.DEFAULT_JSARRAY_INTEGER_COMPARATOR;
