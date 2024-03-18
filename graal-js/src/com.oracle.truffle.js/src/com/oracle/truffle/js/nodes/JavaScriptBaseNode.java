@@ -44,7 +44,6 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.GenerateInline;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.Introspectable;
 import com.oracle.truffle.api.dsl.TypeSystemReference;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
@@ -57,7 +56,6 @@ import com.oracle.truffle.js.runtime.JSRealm;
 @NodeInfo(language = "JavaScript", description = "The abstract base node for all JavaScript nodes")
 @GenerateInline(value = false, inherit = true)
 @ImportStatic(JSGuards.class)
-@Introspectable
 public abstract class JavaScriptBaseNode extends Node {
 
     public JavaScriptBaseNode() {
