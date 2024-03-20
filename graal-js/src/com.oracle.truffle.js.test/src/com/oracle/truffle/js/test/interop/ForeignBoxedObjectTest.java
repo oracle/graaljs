@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -41,8 +41,9 @@
 package com.oracle.truffle.js.test.interop;
 
 import static com.oracle.truffle.js.lang.JavaScriptLanguage.ID;
-import static org.junit.Assert.assertTrue;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertTrue;
 
 import org.graalvm.polyglot.Context;
 import org.junit.Test;
@@ -62,6 +63,7 @@ public class ForeignBoxedObjectTest {
             assertTrue(context.eval(ID, "Object.getPrototypeOf(Object.create(obj)) === null").asBoolean());
             assertTrue(context.eval(ID, "try { obj.foo; false; } catch (e) { e instanceof TypeError }").asBoolean());
             assertTrue(context.eval(ID, "try { obj.foo(); false; } catch (e) { e instanceof TypeError }").asBoolean());
+            assertFalse(context.eval(ID, "obj instanceof Object").asBoolean());
         }
     }
 
@@ -76,6 +78,7 @@ public class ForeignBoxedObjectTest {
             assertEquals("foo", context.eval(ID, "obj.valueOf()").asString());
             assertEquals("foo", context.eval(ID, "obj['valueOf']()").asString());
             assertTrue(context.eval(ID, "obj.includes('o')").asBoolean());
+            assertFalse(context.eval(ID, "obj instanceof Object").asBoolean());
         }
     }
 
@@ -95,6 +98,7 @@ public class ForeignBoxedObjectTest {
             assertEquals("42", context.eval(ID, "obj.toString()").asString());
             assertEquals(42, context.eval(ID, "obj.valueOf()").asInt());
             assertEquals(42, context.eval(ID, "obj['valueOf']()").asInt());
+            assertFalse(context.eval(ID, "obj instanceof Object").asBoolean());
         }
     }
 
@@ -108,6 +112,7 @@ public class ForeignBoxedObjectTest {
             assertTrue(context.eval(ID, "obj.valueOf()").asBoolean());
             assertTrue(context.eval(ID, "obj['valueOf']()").asBoolean());
             assertEquals("true", context.eval(ID, "obj.toString()").asString());
+            assertFalse(context.eval(ID, "obj instanceof Object").asBoolean());
         }
     }
 
