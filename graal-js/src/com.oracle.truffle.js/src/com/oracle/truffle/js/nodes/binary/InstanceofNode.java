@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,6 +66,7 @@ import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.IsBoundFunctionCacheNodeGen;
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.OrdinaryHasInstanceNodeGen;
@@ -247,18 +248,22 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
         protected boolean doForeignObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right,
+                        @Cached @Shared IsObjectNode isAnyObjectNode,
                         @Cached @Shared("foreignPrototypeNode") ForeignObjectPrototypeNode getForeignPrototypeNode,
                         @Cached @Shared("invalidPrototypeBranch") InlinedBranchProfile invalidPrototypeBranch,
                         @Cached("create(context)") @Shared("ordinaryHasInstance") OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
             if (context.isOptionForeignObjectPrototype()) {
-                return foreignObjectIntl(left, right, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
+                return foreignObjectIntl(left, right, isAnyObjectNode, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
             } else {
                 return false;
             }
         }
 
-        private boolean foreignObjectIntl(Object left, JSDynamicObject right, ForeignObjectPrototypeNode getForeignPrototypeNode, InlinedBranchProfile invalidPrototypeBranch,
-                        OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
+        private boolean foreignObjectIntl(Object left, JSDynamicObject right, IsObjectNode isObjectNode, ForeignObjectPrototypeNode getForeignPrototypeNode,
+                        InlinedBranchProfile invalidPrototypeBranch, OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
+            if (!isObjectNode.executeBoolean(left)) {
+                return false;
+            }
             Object rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
             Object foreignProto = getForeignPrototypeNode.execute(left);
             if (foreignProto == rightProto) {
@@ -274,10 +279,11 @@ public abstract class InstanceofNode extends JSBinaryNode {
 
         @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSProxy(right)", "isCallableProxy(right)"})
         protected boolean doNotAnObjectProxyForeign(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right,
+                        @Cached @Shared IsObjectNode isAnyObjectNode,
                         @Cached @Shared("foreignPrototypeNode") ForeignObjectPrototypeNode getForeignPrototypeNode,
                         @Cached @Shared("invalidPrototypeBranch") InlinedBranchProfile invalidPrototypeBranch,
                         @Cached("create(context)") @Shared("ordinaryHasInstance") OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
-            return doForeignObject(left, right, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
+            return doForeignObject(left, right, isAnyObjectNode, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
         }
 
         @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "isJSProxy(right)", "isCallableProxy(right)"})
