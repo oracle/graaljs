@@ -250,20 +250,27 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         if (timeZoneValue != Undefined.instance) {
             TruffleString nameTS = toStringNode.executeString(timeZoneValue);
             String name = toJavaStringNode.execute(nameTS);
-            tzId = maybeParseAndFormatTimeZoneOffset(name);
-            if (tzId == null) {
-                tzId = JSDateTimeFormat.canonicalizeTimeZoneName(name);
-                if (tzId == null) {
-                    errorBranch.enter();
-                    throw Errors.createRangeErrorInvalidTimeZone(nameTS);
-                }
-                timeZone = IntlUtil.getICUTimeZone(tzId, context);
-            } else {
-                timeZone = IntlUtil.getICUTimeZoneForOffset(tzId);
-            }
+            return parseAndGetICUTimeZone(name);
         } else {
             timeZone = getRealm().getLocalTimeZone();
             tzId = timeZone.getID();
+            return new Pair<>(timeZone, tzId);
+        }
+    }
+
+    @TruffleBoundary
+    private Pair<TimeZone, String> parseAndGetICUTimeZone(String name) {
+        TimeZone timeZone;
+        String tzId;
+        tzId = maybeParseAndFormatTimeZoneOffset(name);
+        if (tzId == null) {
+            tzId = JSDateTimeFormat.canonicalizeTimeZoneName(name);
+            if (tzId == null) {
+                throw Errors.createRangeErrorInvalidTimeZone(name);
+            }
+            timeZone = IntlUtil.getICUTimeZone(tzId, context);
+        } else {
+            timeZone = IntlUtil.getICUTimeZoneForOffset(tzId);
         }
         return new Pair<>(timeZone, tzId);
     }
