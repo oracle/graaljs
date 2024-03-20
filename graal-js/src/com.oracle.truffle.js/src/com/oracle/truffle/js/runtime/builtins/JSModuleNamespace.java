@@ -80,7 +80,7 @@ public final class JSModuleNamespace extends JSNonProxy {
 
     public static final JSModuleNamespace INSTANCE = new JSModuleNamespace();
 
-    public static final TruffleString CLASS_NAME = Strings.constant("Module");
+    public static final TruffleString CLASS_NAME = Strings.UC_MODULE;
 
     private JSModuleNamespace() {
     }

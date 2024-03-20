@@ -229,10 +229,9 @@ public class JSRealm {
     public static final TruffleString POLYGLOT_CLASS_NAME = Strings.constant("Polyglot");
     // used for non-public properties of Polyglot
     public static final TruffleString REFLECT_CLASS_NAME = Strings.constant("Reflect");
-    public static final TruffleString SHARED_ARRAY_BUFFER_CLASS_NAME = Strings.constant("SharedArrayBuffer");
     public static final TruffleString ATOMICS_CLASS_NAME = Strings.constant("Atomics");
     public static final TruffleString REALM_BUILTIN_CLASS_NAME = Strings.constant("Realm");
-    public static final TruffleString ARGUMENTS_NAME = Strings.constant("arguments");
+    public static final TruffleString ARGUMENTS_NAME = Strings.ARGUMENTS;
     public static final TruffleString JAVA_CLASS_NAME = Strings.constant("Java");
     public static final TruffleString JAVA_CLASS_NAME_NASHORN_COMPAT = Strings.constant("JavaNashornCompat");
     public static final TruffleString PERFORMANCE_CLASS_NAME = Strings.constant("performance");
@@ -2041,7 +2040,7 @@ public class JSRealm {
         JSObjectUtil.putFunctionsFromContainer(this, global, GlobalBuiltins.GLOBAL_FUNCTIONS);
 
         this.evalFunctionObject = JSObject.get(global, JSGlobal.EVAL_NAME);
-        JSDynamicObject jsonBuiltin = (JSDynamicObject) JSObject.get(global, Strings.CAPS_JSON);
+        JSDynamicObject jsonBuiltin = (JSDynamicObject) JSObject.get(global, JSON.CLASS_NAME);
         this.jsonParseFunctionObject = JSObject.get(jsonBuiltin, Strings.PARSE);
 
         boolean webassembly = getContextOptions().isWebAssembly();
@@ -2132,7 +2131,7 @@ public class JSRealm {
         }
 
         if (context.isOptionSharedArrayBuffer()) {
-            putGlobalProperty(SHARED_ARRAY_BUFFER_CLASS_NAME, getSharedArrayBufferConstructor());
+            putGlobalProperty(JSSharedArrayBuffer.CLASS_NAME, getSharedArrayBufferConstructor());
         }
         if (getContextOptions().isAtomics()) {
             putGlobalProperty(ATOMICS_CLASS_NAME, createAtomics());
@@ -2605,7 +2604,7 @@ public class JSRealm {
             putGlobalProperty(Strings.$_OPTIONS, optionsObj, JSAttributes.configurableNotEnumerableWritable());
 
             // $ARG
-            JSDynamicObject arguments = JSArray.createConstant(context, this, Strings.constantArray(getEnv().getApplicationArguments()));
+            JSDynamicObject arguments = JSArray.createConstant(context, this, Strings.fromJavaStringArray(getEnv().getApplicationArguments()));
 
             putGlobalProperty(Strings.$_ARG, arguments, JSAttributes.configurableNotEnumerableWritable());
 
@@ -2633,7 +2632,7 @@ public class JSRealm {
     public void setRealmBuiltinObject(JSDynamicObject realmBuiltinObject) {
         if (this.realmBuiltinObject == null && realmBuiltinObject != null) {
             this.realmBuiltinObject = realmBuiltinObject;
-            putGlobalProperty(Strings.UC_REALM, realmBuiltinObject);
+            putGlobalProperty(REALM_BUILTIN_CLASS_NAME, realmBuiltinObject);
         }
     }
 
@@ -2668,32 +2667,32 @@ public class JSRealm {
         if (context.isOptionRegexpStaticResult()) {
             if (context.isOptionNashornCompatibilityMode()) {
                 putRegExpStaticPropertyAccessor(null, Strings.INPUT);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpMultiLine, Strings.MULTILINE);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastMatch, Strings.LAST_MATCH);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastParen, Strings.LAST_PAREN);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLeftContext, Strings.LEFT_CONTEXT);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpRightContext, Strings.RIGHT_CONTEXT);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpMultiLine, JSRegExp.MULTILINE);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastMatch, JSRegExp.LAST_MATCH);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastParen, JSRegExp.LAST_PAREN);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLeftContext, JSRegExp.LEFT_CONTEXT);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpRightContext, JSRegExp.RIGHT_CONTEXT);
             } else {
                 putRegExpStaticPropertyAccessor(null, Strings.INPUT);
-                putRegExpStaticPropertyAccessor(null, Strings.INPUT, Strings.$_);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastMatch, Strings.LAST_MATCH);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastMatch, Strings.LAST_MATCH, Strings.$_AMPERSAND);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastParen, Strings.LAST_PAREN);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastParen, Strings.LAST_PAREN, Strings.$_PLUS);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLeftContext, Strings.LEFT_CONTEXT);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLeftContext, Strings.LEFT_CONTEXT, Strings.$_BACKTICK);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpRightContext, Strings.RIGHT_CONTEXT);
-                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpRightContext, Strings.RIGHT_CONTEXT, Strings.$_SQUOT);
+                putRegExpStaticPropertyAccessor(null, Strings.INPUT, JSRegExp.$_);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastMatch, JSRegExp.LAST_MATCH);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastMatch, JSRegExp.LAST_MATCH, JSRegExp.$_AMPERSAND);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastParen, JSRegExp.LAST_PAREN);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLastParen, JSRegExp.LAST_PAREN, JSRegExp.$_PLUS);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLeftContext, JSRegExp.LEFT_CONTEXT);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpLeftContext, JSRegExp.LEFT_CONTEXT, JSRegExp.$_BACKTICK);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpRightContext, JSRegExp.RIGHT_CONTEXT);
+                putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExpRightContext, JSRegExp.RIGHT_CONTEXT, JSRegExp.$_SQUOT);
             }
-            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$1, Strings.$_1);
-            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$2, Strings.$_2);
-            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$3, Strings.$_3);
-            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$4, Strings.$_4);
-            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$5, Strings.$_5);
-            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$6, Strings.$_6);
-            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$7, Strings.$_7);
-            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$8, Strings.$_8);
-            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$9, Strings.$_9);
+            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$1, JSRegExp.$_1);
+            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$2, JSRegExp.$_2);
+            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$3, JSRegExp.$_3);
+            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$4, JSRegExp.$_4);
+            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$5, JSRegExp.$_5);
+            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$6, JSRegExp.$_6);
+            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$7, JSRegExp.$_7);
+            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$8, JSRegExp.$_8);
+            putRegExpStaticPropertyAccessor(BuiltinFunctionKey.RegExp$9, JSRegExp.$_9);
         }
     }
 
@@ -2709,7 +2708,7 @@ public class JSRealm {
         JSDynamicObject setter;
         JSBuiltin setterBuiltin = pair.getRight();
         if (setterBuiltin != null) {
-            assert Strings.equals(propertyName, Strings.INPUT) || Strings.equals(propertyName, Strings.$_);
+            assert Strings.equals(propertyName, Strings.INPUT) || Strings.equals(propertyName, JSRegExp.$_);
             setter = JSFunction.create(this, setterBuiltin.createFunctionData(context));
         } else if (context.isOptionV8CompatibilityMode()) {
             // set empty setter for V8 compatibility, see testv8/mjsunit/regress/regress-5566.js
@@ -3122,7 +3121,7 @@ public class JSRealm {
         v8RealmCurrent = realm;
     }
 
-    private static final TruffleString REALM_SHARED_NAME = Strings.constant("shared");
+    private static final TruffleString REALM_SHARED_NAME = Strings.SHARED;
     private static final PropertyProxy REALM_SHARED_PROXY = new RealmSharedPropertyProxy();
 
     public void registerCustomEsmPathMappingCallback(Object callback) {

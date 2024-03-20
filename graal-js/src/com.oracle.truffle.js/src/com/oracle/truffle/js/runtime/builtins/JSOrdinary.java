@@ -60,8 +60,8 @@ import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
  */
 public final class JSOrdinary extends JSNonProxy implements PrototypeSupplier {
 
-    public static final TruffleString TYPE_NAME = Strings.constant("object");
-    public static final TruffleString CLASS_NAME = Strings.constant("Object");
+    public static final TruffleString TYPE_NAME = Strings.OBJECT;
+    public static final TruffleString CLASS_NAME = Strings.UC_OBJECT;
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Object.prototype");
 
     public static final JSOrdinary INSTANCE = new JSOrdinary();

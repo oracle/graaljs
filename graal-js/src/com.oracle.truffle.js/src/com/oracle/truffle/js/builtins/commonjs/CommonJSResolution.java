@@ -209,15 +209,15 @@ public final class CommonJSResolution {
         if (fileExists(modulePath)) {
             return modulePath;
         }
-        TruffleFile moduleJs = env.getPublicTruffleFile(modulePath.toString() + Strings.JS_EXT);
+        TruffleFile moduleJs = env.getPublicTruffleFile(modulePath.toString() + JS_EXT);
         if (fileExists(moduleJs)) {
             return moduleJs;
         }
-        TruffleFile moduleJson = env.getPublicTruffleFile(modulePath.toString() + Strings.JSON_EXT);
+        TruffleFile moduleJson = env.getPublicTruffleFile(modulePath.toString() + JSON_EXT);
         if (fileExists(moduleJson)) {
             return moduleJson;
         }
-        if (fileExists(env.getPublicTruffleFile(modulePath.toString() + Strings.NODE_EXT))) {
+        if (fileExists(env.getPublicTruffleFile(modulePath.toString() + NODE_EXT))) {
             // .node files not supported.
             return null;
         }

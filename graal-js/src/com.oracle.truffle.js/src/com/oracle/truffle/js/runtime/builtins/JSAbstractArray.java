@@ -77,7 +77,7 @@ import com.oracle.truffle.js.runtime.util.IteratorUtil;
 
 public abstract class JSAbstractArray extends JSNonProxy {
 
-    public static final TruffleString LENGTH = Strings.constant("length");
+    public static final TruffleString LENGTH = Strings.LENGTH;
 
     protected static final String ARRAY_LENGTH_NOT_WRITABLE = "array length is not writable";
     private static final String LENGTH_PROPERTY_NOT_WRITABLE = "length property not writable";

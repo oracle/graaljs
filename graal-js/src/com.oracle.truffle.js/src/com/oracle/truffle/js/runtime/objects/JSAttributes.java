@@ -47,9 +47,9 @@ public final class JSAttributes {
     /**
      * ES5 8.6.1 Property Attributes.
      */
-    public static final TruffleString VALUE = Strings.constant("value");
-    public static final TruffleString GET = Strings.constant("get");
-    public static final TruffleString SET = Strings.constant("set");
+    public static final TruffleString VALUE = Strings.VALUE;
+    public static final TruffleString GET = Strings.GET;
+    public static final TruffleString SET = Strings.SET;
     public static final TruffleString WRITABLE = Strings.constant("writable");
     public static final TruffleString ENUMERABLE = Strings.constant("enumerable");
     public static final TruffleString CONFIGURABLE = Strings.constant("configurable");

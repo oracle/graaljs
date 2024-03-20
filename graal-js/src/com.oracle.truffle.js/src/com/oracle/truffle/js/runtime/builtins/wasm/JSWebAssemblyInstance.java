@@ -85,6 +85,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
 
     public static final TruffleString CLASS_NAME = Strings.constant("Instance");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Instance.prototype");
+    private static final TruffleString MUT = Strings.constant("mut");
 
     public static final TruffleString WEB_ASSEMBLY_INSTANCE = Strings.constant("WebAssembly.Instance");
 
@@ -154,7 +155,7 @@ public final class JSWebAssemblyInstance extends JSNonProxy implements JSConstru
                     TruffleString type = asTString(exportInterop.readMember(exportInfo, "type"));
                     int sepIndex = Strings.indexOf(type, ' ');
                     final TruffleString valueType = Strings.substring(context, type, 0, sepIndex);
-                    final boolean mutable = Strings.regionEquals(type, sepIndex + 1, Strings.constant("mut"), 0, 3);
+                    final boolean mutable = Strings.regionEquals(type, sepIndex + 1, MUT, 0, 3);
                     value = JSWebAssemblyGlobal.create(context, realm, externval, valueType, mutable);
                 } else if (Strings.MEMORY.equals(externtype)) {
                     TruffleString type = asTString(exportInterop.readMember(exportInfo, "type"));

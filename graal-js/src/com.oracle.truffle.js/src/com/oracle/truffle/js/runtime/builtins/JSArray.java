@@ -82,7 +82,7 @@ import com.oracle.truffle.js.runtime.objects.PropertyProxy;
 
 public final class JSArray extends JSAbstractArray implements JSConstructorFactory.Default.WithFunctionsAndSpecies, PrototypeSupplier {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("Array");
+    public static final TruffleString CLASS_NAME = Strings.UC_ARRAY;
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("Array.prototype");
 
     public static final JSArray INSTANCE = new JSArray();

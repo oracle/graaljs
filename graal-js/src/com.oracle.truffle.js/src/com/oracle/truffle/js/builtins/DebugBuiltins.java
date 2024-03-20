@@ -129,8 +129,6 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
 
     public static final TruffleString NOT_AN_ARRAY = Strings.constant("NOT_AN_ARRAY");
     public static final TruffleString NOT_AN_OBJECT = Strings.constant("not_an_object");
-    public static final TruffleString ASYNC_GENERATOR = Strings.constant("Async Generator");
-    public static final TruffleString GENERATOR = Strings.constant("Generator");
 
     public static final JSBuiltinsContainer BUILTINS = new DebugBuiltins();
 
@@ -284,9 +282,9 @@ public final class DebugBuiltins extends JSBuiltinsContainer.SwitchEnum<DebugBui
             } else if (JSDynamicObject.isJSDynamicObject(obj)) {
                 JSDynamicObject jsObj = (JSDynamicObject) obj;
                 if (jsObj instanceof JSGeneratorObject) {
-                    return GENERATOR;
+                    return JSFunction.GENERATOR_NAME;
                 } else if (jsObj instanceof JSAsyncGeneratorObject) {
-                    return ASYNC_GENERATOR;
+                    return JSFunction.ASYNC_GENERATOR_NAME;
                 } else if (JSProxy.isJSProxy(jsObj)) {
                     return clazz(JSProxy.getTarget(jsObj));
                 }

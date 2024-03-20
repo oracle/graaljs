@@ -130,10 +130,6 @@ public final class JSRuntime {
     public static final long MAX_BIG_INT_EXPONENT = Integer.MAX_VALUE;
     public static final long INVALID_SAFE_INTEGER = Long.MIN_VALUE;
 
-    public static final TruffleString VALUE = Strings.constant("value");
-    public static final TruffleString DONE = Strings.constant("done");
-    public static final TruffleString NEXT = Strings.constant("next");
-
     public static final HiddenKey ENUMERATE_ITERATOR_ID = new HiddenKey("EnumerateIterator");
 
     public static final int ITERATION_KIND_KEY = 1 << 0;
@@ -2726,24 +2722,24 @@ public final class JSRuntime {
             char ch = Strings.charAt(value, i);
             if (ch < ' ') {
                 if (ch == '\b') {
-                    Strings.builderAppend(builder, Strings.ESCAPE_B);
+                    Strings.builderAppend(builder, Strings.BACKSLASH_B);
                 } else if (ch == '\f') {
-                    Strings.builderAppend(builder, Strings.ESCAPE_F);
+                    Strings.builderAppend(builder, Strings.BACKSLASH_F);
                 } else if (ch == '\n') {
-                    Strings.builderAppend(builder, Strings.ESCAPE_N);
+                    Strings.builderAppend(builder, Strings.BACKSLASH_N);
                 } else if (ch == '\r') {
-                    Strings.builderAppend(builder, Strings.ESCAPE_R);
+                    Strings.builderAppend(builder, Strings.BACKSLASH_R);
                 } else if (ch == '\t') {
-                    Strings.builderAppend(builder, Strings.ESCAPE_T);
+                    Strings.builderAppend(builder, Strings.BACKSLASH_T);
                 } else {
-                    Strings.builderAppend(builder, Strings.ESCAPE_U_00);
+                    Strings.builderAppend(builder, Strings.BACKSLASH_U00);
                     Strings.builderAppend(builder, Character.forDigit((ch & 0xF0) >> 4, 16));
                     Strings.builderAppend(builder, Character.forDigit((ch & 0x0F), 16));
                 }
             } else if (ch == '\\') {
-                Strings.builderAppend(builder, Strings.ESCAPE_BACKSLASH);
+                Strings.builderAppend(builder, Strings.BACKSLASH_BACKSLASH);
             } else if (ch == '"') {
-                Strings.builderAppend(builder, Strings.ESCAPE_QUOTE);
+                Strings.builderAppend(builder, Strings.BACKSLASH_DOUBLE_QUOTE);
             } else {
                 Strings.builderAppend(builder, ch);
             }
@@ -2833,7 +2829,7 @@ public final class JSRuntime {
         }
         Object iterator = call(method, iteratedObject, new Object[]{});
         if (IsObjectNode.getUncached().executeBoolean(iterator)) {
-            return IteratorRecord.create(iterator, get(iterator, NEXT), false);
+            return IteratorRecord.create(iterator, get(iterator, Strings.NEXT), false);
         } else {
             throw Errors.createTypeErrorNotAnObject(iterator);
         }
@@ -2846,7 +2842,7 @@ public final class JSRuntime {
         if (!IsObjectNode.getUncached().executeBoolean(result)) {
             throw Errors.createTypeErrorIteratorResultNotObject(result, null);
         }
-        boolean done = toBoolean(get(result, DONE));
+        boolean done = toBoolean(get(result, Strings.DONE));
         if (done) {
             return false;
         }
@@ -2854,7 +2850,7 @@ public final class JSRuntime {
     }
 
     public static Object iteratorValue(Object iterator) {
-        return get(iterator, VALUE);
+        return get(iterator, Strings.VALUE);
     }
 
     public static void iteratorClose(Object iterator) {

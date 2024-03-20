@@ -112,7 +112,7 @@ public final class TemporalConstants {
     public static final TruffleString JAPANESE = Strings.constant("japanese");
 
     public static final TruffleString CONSTRAIN = Strings.constant("constrain");
-    public static final TruffleString REJECT = Strings.constant("reject");
+    public static final TruffleString REJECT = Strings.REJECT;
     public static final TruffleString PREFER = Strings.constant("prefer");
     public static final TruffleString USE = Strings.constant("ure");
     public static final TruffleString IGNORE = Strings.constant("ignore");

@@ -103,7 +103,7 @@ public final class JSFunction extends JSNonProxy {
     public static final TruffleString ASYNC_GENERATOR_FUNCTION_NAME = Strings.constant("AsyncGeneratorFunction");
     public static final TruffleString ASYNC_GENERATOR_NAME = Strings.constant("AsyncGenerator");
     public static final TruffleString ENUMERATE_ITERATOR_PROTOTYPE_NAME = Strings.constant("[[Enumerate]].prototype");
-    public static final TruffleString CALLER = Strings.constant("caller");
+    public static final TruffleString CALLER = Strings.CALLER;
     public static final TruffleString ARGUMENTS = Strings.ARGUMENTS;
     public static final TruffleString LENGTH = Strings.LENGTH;
     public static final TruffleString NAME = Strings.NAME;

@@ -60,7 +60,6 @@ import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.array.ByteArrayAccess;
 import com.oracle.truffle.js.runtime.array.ByteBufferAccess;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -70,15 +69,13 @@ import com.oracle.truffle.js.runtime.util.DirectByteBufferHelper;
 
 public abstract sealed class JSArrayBufferObject extends JSNonProxyObject {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("ArrayBuffer");
-
     protected JSArrayBufferObject(Shape shape, JSDynamicObject proto) {
         super(shape, proto);
     }
 
     @Override
     public TruffleString getClassName() {
-        return CLASS_NAME;
+        return JSArrayBuffer.CLASS_NAME;
     }
 
     public abstract int getByteLength();

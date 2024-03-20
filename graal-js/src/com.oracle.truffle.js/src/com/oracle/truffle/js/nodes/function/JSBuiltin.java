@@ -55,6 +55,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.Builtin;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionData;
+import com.oracle.truffle.js.runtime.builtins.JSRegExp;
 import com.oracle.truffle.js.runtime.objects.JSAttributes;
 
 public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitializer {
@@ -191,7 +192,9 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
             return true;
         } else if (key instanceof TruffleString tsk) {
             // "get $_" is needed for JSRegExp
-            return !Strings.isEmpty(tsk) && (!Strings.endsWith(tsk, Strings.UNDERSCORE) || Strings.equals(tsk, Strings.$_)) && !Strings.startsWith(tsk, Strings.UNDERSCORE) ||
+            return !Strings.isEmpty(tsk) &&
+                            (!Strings.endsWith(tsk, Strings.UNDERSCORE) || Strings.equals(tsk, JSRegExp.$_)) &&
+                            !Strings.startsWith(tsk, Strings.UNDERSCORE) ||
                             (Strings.startsWith(tsk, Strings.UNDERSCORE_2) && Strings.endsWith(tsk, Strings.UNDERSCORE_2));
         }
         return false;

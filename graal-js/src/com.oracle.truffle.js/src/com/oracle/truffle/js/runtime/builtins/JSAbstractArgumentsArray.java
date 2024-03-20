@@ -58,8 +58,8 @@ import com.oracle.truffle.js.runtime.util.DefinePropertyUtil;
 
 public abstract class JSAbstractArgumentsArray extends JSAbstractArray {
 
-    public static final TruffleString CALLEE = Strings.constant("callee");
-    public static final TruffleString CALLER = Strings.constant("caller");
+    public static final TruffleString CALLEE = Strings.CALLEE;
+    public static final TruffleString CALLER = Strings.CALLER;
     protected static final TruffleString CLASS_NAME = Strings.constant("Arguments");
 
     @TruffleBoundary

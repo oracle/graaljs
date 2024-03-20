@@ -55,8 +55,8 @@ import com.oracle.truffle.js.runtime.objects.Null;
 
 public final class JSGlobal extends JSNonProxy {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("global");
-    public static final TruffleString EVAL_NAME = Strings.constant("eval");
+    public static final TruffleString CLASS_NAME = Strings.GLOBAL;
+    public static final TruffleString EVAL_NAME = Strings.EVAL;
 
     public static final JSGlobal INSTANCE = new JSGlobal();
 
