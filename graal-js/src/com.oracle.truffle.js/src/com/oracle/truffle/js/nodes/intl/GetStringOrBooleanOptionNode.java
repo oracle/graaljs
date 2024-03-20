@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,7 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
+
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -50,42 +53,37 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Set;
 
 /**
  * GetStringOrBooleanOption() operation.
  */
 public abstract class GetStringOrBooleanOptionNode extends JavaScriptBaseNode {
-    private final Set<String> values;
+    private final List<String> values;
     private final Object trueValue;
     private final Object falsyValue;
     private final Object fallback;
     @Child PropertyGetNode propertyGetNode;
-    @Child JSToStringNode toStringNode;
-    @Child JSToBooleanNode toBooleanNode;
 
-    protected GetStringOrBooleanOptionNode(JSContext context, TruffleString property, String[] values, Object trueValue, Object falsyValue, Object fallback) {
-        this.values = new HashSet<>(Arrays.asList(values));
+    protected GetStringOrBooleanOptionNode(JSContext context, TruffleString property, List<String> values, Object trueValue, Object falsyValue, Object fallback) {
+        this.values = values;
         this.trueValue = trueValue;
         this.falsyValue = falsyValue;
         this.fallback = fallback;
         this.propertyGetNode = PropertyGetNode.create(property, false, context);
-        this.toStringNode = JSToStringNode.create();
-        this.toBooleanNode = JSToBooleanNode.create();
     }
 
     public abstract Object executeValue(Object options);
 
-    public static GetStringOrBooleanOptionNode create(JSContext context, TruffleString property, String[] values, Object trueValue, Object falsyValue, Object fallback) {
+    public static GetStringOrBooleanOptionNode create(JSContext context, TruffleString property, List<String> values, Object trueValue, Object falsyValue, Object fallback) {
         return GetStringOrBooleanOptionNodeGen.create(context, property, values, trueValue, falsyValue, fallback);
     }
 
     @Specialization
-    public Object getOption(Object options) {
+    public Object getOption(Object options,
+                    @Cached(inline = true) JSToBooleanNode toBooleanNode,
+                    @Cached JSToStringNode toStringNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         Object value = propertyGetNode.getValue(options);
         if (value == Undefined.instance) {
             return fallback;
@@ -93,18 +91,17 @@ public abstract class GetStringOrBooleanOptionNode extends JavaScriptBaseNode {
         if (value == Boolean.TRUE) {
             return trueValue;
         }
-        boolean valueBoolean = toBooleanNode.executeBoolean(value);
+        boolean valueBoolean = toBooleanNode.executeBoolean(this, value);
         if (propertyGetNode.getContext().getEcmaScriptVersion() < JSConfig.ECMAScript2023) {
             return valueBoolean ? trueValue : falsyValue;
         }
         if (!valueBoolean) {
             return falsyValue;
         }
-        TruffleString valueTS = toStringNode.executeString(value);
-        if (Strings.equals(Strings.TRUE, valueTS) || Strings.equals(Strings.FALSE, valueTS)) {
+        String stringValue = toJavaStringNode.execute(toStringNode.executeString(value));
+        if ("true".equals(stringValue) || "false".equals(stringValue)) {
             return fallback;
         }
-        String stringValue = Strings.toJavaString(valueTS);
         checkIfAllowed(stringValue);
         return stringValue;
     }

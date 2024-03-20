@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,6 +53,8 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSListFormatObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
+
+    private static final List<String> TYPE_OPTION_VALUES = List.of(IntlUtil.CONJUNCTION, IntlUtil.DISJUNCTION, IntlUtil.UNIT);
 
     private final JSContext context;
 
@@ -68,10 +71,9 @@ public abstract class InitializeListFormatNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.getOptionsObjectNode = GetOptionsObjectNodeGen.create(context);
-        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.KEY_TYPE, new String[]{IntlUtil.CONJUNCTION, IntlUtil.DISJUNCTION, IntlUtil.UNIT}, IntlUtil.CONJUNCTION);
-        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, new String[]{IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW}, IntlUtil.LONG);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER,
-                        new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.KEY_TYPE, TYPE_OPTION_VALUES, IntlUtil.CONJUNCTION);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, GetStringOptionNode.LONG_SHORT_NARROW_OPTION_VALUES, IntlUtil.LONG);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
     }
 
     public abstract JSListFormatObject executeInit(JSListFormatObject listFormatObj, Object locales, Object options);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,6 +56,9 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  * https://tc39.github.io/ecma402/#sec-initializecollator
  */
 public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
+
+    private static final List<String> USAGE_OPTION_VALUES = List.of(IntlUtil.SORT, IntlUtil.SEARCH);
+    private static final List<String> SENSITIVITY_OPTION_VALUES = List.of(IntlUtil.BASE, IntlUtil.ACCENT, IntlUtil.CASE, IntlUtil.VARIANT);
 
     private final JSContext context;
 
@@ -74,12 +78,12 @@ public abstract class InitializeCollatorNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
-        this.getUsageOption = GetStringOptionNode.create(context, IntlUtil.KEY_USAGE, new String[]{IntlUtil.SORT, IntlUtil.SEARCH}, IntlUtil.SORT);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getUsageOption = GetStringOptionNode.create(context, IntlUtil.KEY_USAGE, USAGE_OPTION_VALUES, IntlUtil.SORT);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
         this.getCollationOption = GetStringOptionNode.create(context, IntlUtil.KEY_COLLATION, null, null);
         this.getNumericOption = GetBooleanOptionNode.create(context, IntlUtil.KEY_NUMERIC, null);
-        this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.KEY_CASE_FIRST, new String[]{IntlUtil.UPPER, IntlUtil.LOWER, IntlUtil.FALSE}, null);
-        this.getSensitivityOption = GetStringOptionNode.create(context, IntlUtil.KEY_SENSITIVITY, new String[]{IntlUtil.BASE, IntlUtil.ACCENT, IntlUtil.CASE, IntlUtil.VARIANT}, null);
+        this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.KEY_CASE_FIRST, GetStringOptionNode.CASE_FIRST_OPTION_VALUES, null);
+        this.getSensitivityOption = GetStringOptionNode.create(context, IntlUtil.KEY_SENSITIVITY, SENSITIVITY_OPTION_VALUES, null);
         this.getIgnorePunctuationOption = GetBooleanOptionNode.create(context, IntlUtil.KEY_IGNORE_PUNCTUATION, false);
     }
 

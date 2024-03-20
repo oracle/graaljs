@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,10 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
-import java.util.Arrays;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -51,57 +51,53 @@ import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class GetStringOptionNode extends JavaScriptBaseNode {
+
+    public static final List<String> LOCALE_MATCHER_OPTION_VALUES = List.of(IntlUtil.BEST_FIT, IntlUtil.LOOKUP);
+    public static final List<String> HOUR_CYCLE_OPTION_VALUES = List.of(IntlUtil.H11, IntlUtil.H12, IntlUtil.H23, IntlUtil.H24);
+    public static final List<String> NARROW_SHORT_LONG_OPTION_VALUES = List.of(IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG);
+    public static final List<String> LONG_SHORT_NARROW_OPTION_VALUES = List.of(IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW);
+    public static final List<String> CASE_FIRST_OPTION_VALUES = List.of(IntlUtil.UPPER, IntlUtil.LOWER, IntlUtil.FALSE);
 
     private final List<String> validValues;
     private final String fallback;
     @Child PropertyGetNode propertyGetNode;
 
-    @Child JSToStringNode toStringNode = JSToStringNode.create();
-
-    protected GetStringOptionNode(JSContext context, TruffleString property, String[] values, String fallback) {
-        this.validValues = values != null ? Arrays.asList(values) : null;
+    protected GetStringOptionNode(JSContext context, TruffleString property, List<String> values, String fallback) {
+        this.validValues = values;
         this.fallback = fallback;
         this.propertyGetNode = PropertyGetNode.create(property, false, context);
     }
 
     public abstract String executeValue(Object options);
 
-    public static GetStringOptionNode create(JSContext context, TruffleString property, String[] values, String fallback) {
+    public static GetStringOptionNode create(JSContext context, TruffleString property, List<String> values, String fallback) {
         return GetStringOptionNodeGen.create(context, property, values, fallback);
-    }
-
-    protected String makeFinalSelection(String value) {
-        if (validValues == null) {
-            return value;
-        } else {
-            ensureSelectedValueIsValid(value);
-        }
-        return value;
     }
 
     @TruffleBoundary
     private void ensureSelectedValueIsValid(String value) {
-        // TODO
         if (!validValues.contains(value)) {
             throw Errors.createRangeError(String.format("invalid option %s found where only %s is allowed", value, validValues.toString()));
         }
     }
 
     @Specialization
-    public String getOption(Object options) {
+    public String getOption(Object options,
+                    @Cached JSToStringNode toStringNode,
+                    @Cached TruffleString.ToJavaStringNode toJavaStringNode) {
         Object propertyValue = propertyGetNode.getValue(options);
         if (propertyValue == Undefined.instance) {
             return fallback;
         }
-        return makeFinalSelection(Strings.toJavaString(toOptionType(propertyValue)));
-    }
-
-    protected TruffleString toOptionType(Object propertyValue) {
-        return toStringNode.executeString(propertyValue);
+        String value = toJavaStringNode.execute(toStringNode.executeString(propertyValue));
+        if (validValues != null) {
+            ensureSelectedValueIsValid(value);
+        }
+        return value;
     }
 
 }

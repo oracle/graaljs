@@ -268,7 +268,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         } else if (IntlUtil.AUTO.equals(useGrouping)) {
             strategy = NumberFormatter.GroupingStrategy.AUTO;
         } else {
-            assert IntlUtil.ALWAYS.equals(useGrouping);
+            assert IntlUtil.ALWAYS.equals(useGrouping) : useGrouping;
             strategy = NumberFormatter.GroupingStrategy.ON_ALIGNED;
         }
         return strategy;
@@ -1050,6 +1050,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         }
 
         public void setGroupingUsed(Object useGrouping) {
+            assert useGrouping instanceof Boolean || useGrouping instanceof String : useGrouping;
             this.useGrouping = useGrouping;
         }
 

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
 import java.util.MissingResourceException;
 
 import org.graalvm.shadowed.com.ibm.icu.util.TimeZone;
@@ -64,6 +65,18 @@ import com.oracle.truffle.js.runtime.util.Pair;
  * https://tc39.github.io/ecma402/#sec-initializedatetimeformat
  */
 public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
+
+    public static final List<String> FORMAT_MATCHER_OPTION_VALUES = List.of(IntlUtil.BASIC, IntlUtil.BEST_FIT);
+    /** Valid option values for year, day, hour, minute, second. */
+    public static final List<String> TWO_DIGIT_NUMERIC_OPTION_VALUES = List.of(IntlUtil._2_DIGIT, IntlUtil.NUMERIC);
+    public static final List<String> DAY_OPTION_VALUES = List.of(IntlUtil._2_DIGIT, IntlUtil.NUMERIC, IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG);
+    /** Valid option values for dateStyle and timeStyle. */
+    public static final List<String> DATE_TIME_STYLE_OPTION_VALUES = List.of(IntlUtil.FULL, IntlUtil.LONG, IntlUtil.MEDIUM, IntlUtil.SHORT);
+
+    public static final List<String> TIME_ZONE_NAME_OPTION_VALUES = List.of(IntlUtil.SHORT, IntlUtil.LONG);
+    public static final List<String> TIME_ZONE_NAME_OPTION_VALUES_ES2022 = List.of(IntlUtil.SHORT, IntlUtil.LONG,
+                    IntlUtil.SHORT_OFFSET, IntlUtil.LONG_OFFSET, IntlUtil.SHORT_GENERIC, IntlUtil.LONG_GENERIC);
+
     public enum Required {
         DATE,
         TIME,
@@ -123,26 +136,26 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
         this.getTimeZoneNode = PropertyGetNode.create(IntlUtil.KEY_TIME_ZONE, context);
 
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
-        this.getFormatMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_FORMAT_MATCHER, new String[]{IntlUtil.BASIC, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
-        this.getHourCycleOption = GetStringOptionNode.create(context, IntlUtil.KEY_HOUR_CYCLE, new String[]{IntlUtil.H11, IntlUtil.H12, IntlUtil.H23, IntlUtil.H24}, null);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
+        this.getFormatMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_FORMAT_MATCHER, FORMAT_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
+        this.getHourCycleOption = GetStringOptionNode.create(context, IntlUtil.KEY_HOUR_CYCLE, GetStringOptionNode.HOUR_CYCLE_OPTION_VALUES, null);
         this.getCalendarOption = GetStringOptionNode.create(context, IntlUtil.KEY_CALENDAR, null, null);
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);
         this.getHour12Option = GetBooleanOptionNode.create(context, IntlUtil.KEY_HOUR12, null);
 
-        this.getWeekdayOption = GetStringOptionNode.create(context, IntlUtil.KEY_WEEKDAY, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, null);
-        this.getEraOption = GetStringOptionNode.create(context, IntlUtil.KEY_ERA, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, null);
-        this.getYearOption = GetStringOptionNode.create(context, IntlUtil.KEY_YEAR, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
-        this.getMonthOption = GetStringOptionNode.create(context, IntlUtil.KEY_MONTH, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC, IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, null);
-        this.getDayOption = GetStringOptionNode.create(context, IntlUtil.KEY_DAY, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
-        this.getDayPeriodOption = GetStringOptionNode.create(context, IntlUtil.KEY_DAY_PERIOD, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, null);
-        this.getHourOption = GetStringOptionNode.create(context, IntlUtil.KEY_HOUR, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
-        this.getMinuteOption = GetStringOptionNode.create(context, IntlUtil.KEY_MINUTE, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
-        this.getSecondOption = GetStringOptionNode.create(context, IntlUtil.KEY_SECOND, new String[]{IntlUtil._2_DIGIT, IntlUtil.NUMERIC}, null);
+        this.getWeekdayOption = GetStringOptionNode.create(context, IntlUtil.KEY_WEEKDAY, GetStringOptionNode.NARROW_SHORT_LONG_OPTION_VALUES, null);
+        this.getEraOption = GetStringOptionNode.create(context, IntlUtil.KEY_ERA, GetStringOptionNode.NARROW_SHORT_LONG_OPTION_VALUES, null);
+        this.getYearOption = GetStringOptionNode.create(context, IntlUtil.KEY_YEAR, TWO_DIGIT_NUMERIC_OPTION_VALUES, null);
+        this.getMonthOption = GetStringOptionNode.create(context, IntlUtil.KEY_MONTH, DAY_OPTION_VALUES, null);
+        this.getDayOption = GetStringOptionNode.create(context, IntlUtil.KEY_DAY, TWO_DIGIT_NUMERIC_OPTION_VALUES, null);
+        this.getDayPeriodOption = GetStringOptionNode.create(context, IntlUtil.KEY_DAY_PERIOD, GetStringOptionNode.NARROW_SHORT_LONG_OPTION_VALUES, null);
+        this.getHourOption = GetStringOptionNode.create(context, IntlUtil.KEY_HOUR, TWO_DIGIT_NUMERIC_OPTION_VALUES, null);
+        this.getMinuteOption = GetStringOptionNode.create(context, IntlUtil.KEY_MINUTE, TWO_DIGIT_NUMERIC_OPTION_VALUES, null);
+        this.getSecondOption = GetStringOptionNode.create(context, IntlUtil.KEY_SECOND, TWO_DIGIT_NUMERIC_OPTION_VALUES, null);
         this.getFractionalSecondDigitsOption = GetNumberOptionNode.create(context, IntlUtil.KEY_FRACTIONAL_SECOND_DIGITS);
         this.getTimeZoneNameOption = GetStringOptionNode.create(context, IntlUtil.KEY_TIME_ZONE_NAME, timeZoneNameOptions(context), null);
-        this.getDateStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_DATE_STYLE, new String[]{IntlUtil.FULL, IntlUtil.LONG, IntlUtil.MEDIUM, IntlUtil.SHORT}, null);
-        this.getTimeStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_TIME_STYLE, new String[]{IntlUtil.FULL, IntlUtil.LONG, IntlUtil.MEDIUM, IntlUtil.SHORT}, null);
+        this.getDateStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_DATE_STYLE, DATE_TIME_STYLE_OPTION_VALUES, null);
+        this.getTimeStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_TIME_STYLE, DATE_TIME_STYLE_OPTION_VALUES, null);
 
         this.toStringNode = JSToStringNode.create();
         this.toJavaStringNode = TruffleString.ToJavaStringNode.create();
@@ -348,11 +361,11 @@ public abstract class InitializeDateTimeFormatNode extends JavaScriptBaseNode {
         return (valueStr.length() == 1) ? ("0" + valueStr) : valueStr;
     }
 
-    private static String[] timeZoneNameOptions(JSContext context) {
+    private static List<String> timeZoneNameOptions(JSContext context) {
         if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2022) {
-            return new String[]{IntlUtil.SHORT, IntlUtil.LONG, IntlUtil.SHORT_OFFSET, IntlUtil.LONG_OFFSET, IntlUtil.SHORT_GENERIC, IntlUtil.LONG_GENERIC};
+            return TIME_ZONE_NAME_OPTION_VALUES_ES2022;
         } else {
-            return new String[]{IntlUtil.SHORT, IntlUtil.LONG};
+            return TIME_ZONE_NAME_OPTION_VALUES;
         }
     }
 

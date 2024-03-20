@@ -133,7 +133,6 @@ public final class IntlUtil {
     public static final String FORMAT_MATCHER = "formatMatcher";
     public static final String FRACTIONAL_SECOND_DIGITS = "fractionalSecondDigits";
     public static final String FRACTION_DIGITS = "fractionDigits";
-    public static final String FRI = "fri";
     public static final String FULL = "full";
     public static final String GRANULARITY = "granularity";
     public static final String GRAPHEME = "grapheme";
@@ -179,7 +178,6 @@ public final class IntlUtil {
     public static final String MINIMUM_SIGNIFICANT_DIGITS = "minimumSignificantDigits";
     public static final String MINUS_SIGN = "minusSign";
     public static final String MINUTE = "minute";
-    public static final String MON = "mon";
     public static final String MONTH = "month";
     public static final String MORE_PRECISION = "morePrecision";
     public static final String NAME = "name";
@@ -207,7 +205,6 @@ public final class IntlUtil {
     public static final String ROUNDING_MODE = "roundingMode";
     public static final String ROUNDING_PRIORITY = "roundingPriority";
     public static final String RTL = "rtl";
-    public static final String SAT = "sat";
     public static final String SCIENTIFIC = "scientific";
     public static final String SCRIPT = "script";
     public static final String SEARCH = "search";
@@ -231,18 +228,15 @@ public final class IntlUtil {
     public static final String STRICT = "strict";
     public static final String STRIP_IF_INTEGER = "stripIfInteger";
     public static final String STYLE = "style";
-    public static final String SUN = "sun";
     public static final String SYMBOL = "symbol";
     public static final String TERM = "term";
     public static final String TEXT_INFO = "textInfo";
-    public static final String THU = "thu";
     public static final String TIME_STYLE = "timeStyle";
     public static final String TIME_ZONE = "timeZone";
     public static final String TIME_ZONES = "timeZones";
     public static final String TIME_ZONE_NAME = "timeZoneName";
     public static final String TRAILING_ZERO_DISPLAY = "trailingZeroDisplay";
     public static final String TRUNC = "trunc";
-    public static final String TUE = "tue";
     public static final String TYPE = "type";
     public static final String UND = "und";
     public static final String UNIT = "unit";
@@ -254,7 +248,6 @@ public final class IntlUtil {
     public static final String USE_GROUPING = "useGrouping";
     public static final String VALUE = "value";
     public static final String VARIANT = "variant";
-    public static final String WED = "wed";
     public static final String WORD = "word";
     public static final String WEEKDAY = "weekday";
     public static final String WEEKEND = "weekend";
@@ -1091,23 +1084,6 @@ public final class IntlUtil {
             source = IntlUtil.SHARED;
         }
         return source;
-    }
-
-    public static int weekDayToNumber(String fw) {
-        if (fw == null) {
-            return -1;
-        } else {
-            return switch (fw) {
-                case MON -> 1;
-                case TUE -> 2;
-                case WED -> 3;
-                case THU -> 4;
-                case FRI -> 5;
-                case SAT -> 6;
-                case SUN -> 7;
-                default -> throw Errors.shouldNotReachHere(fw);
-            };
-        }
     }
 
 }

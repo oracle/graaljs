@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,6 +56,8 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  * https://tc39.github.io/ecma402/#sec-initializepluralrules
  */
 public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
+
+    private static final List<String> TYPE_OPTION_VALUES = List.of(IntlUtil.CARDINAL, IntlUtil.ORDINAL);
 
     private final JSContext context;
 
@@ -72,8 +75,8 @@ public abstract class InitializePluralRulesNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
-        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.KEY_TYPE, new String[]{IntlUtil.CARDINAL, IntlUtil.ORDINAL}, IntlUtil.CARDINAL);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
+        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.KEY_TYPE, TYPE_OPTION_VALUES, IntlUtil.CARDINAL);
         this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }
 

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.MissingResourceException;
 
@@ -59,6 +60,19 @@ import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
+
+    private static final String MON = "mon";
+    private static final String TUE = "tue";
+    private static final String WED = "wed";
+    private static final String THU = "thu";
+    private static final String FRI = "fri";
+    private static final String SAT = "sat";
+    private static final String SUN = "sun";
+
+    private static final List<String> FIRST_DAY_OF_WEEK_OPTION_VALUES = List.of(
+                    MON, TUE, WED, THU, FRI, SAT, SUN,
+                    "0", "1", "2", "3", "4", "5", "6", "7");
+
     @Child CoerceOptionsToObjectNode coerceOptionsToObjectNode;
     @Child GetStringOptionNode getLanguageOption;
     @Child GetStringOptionNode getScriptOption;
@@ -79,10 +93,9 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
         this.getRegionOption = GetStringOptionNode.create(context, IntlUtil.KEY_REGION, null, null);
         this.getCalendarOption = GetStringOptionNode.create(context, IntlUtil.KEY_CALENDAR, null, null);
         this.getCollationOption = GetStringOptionNode.create(context, IntlUtil.KEY_COLLATION, null, null);
-        this.getFirstDayOfWeekOption = GetStringOptionNode.create(context, IntlUtil.KEY_FIRST_DAY_OF_WEEK,
-                        new String[]{IntlUtil.MON, IntlUtil.TUE, IntlUtil.WED, IntlUtil.THU, IntlUtil.FRI, IntlUtil.SAT, IntlUtil.SUN, "0", "1", "2", "3", "4", "5", "6", "7"}, null);
-        this.getHourCycleOption = GetStringOptionNode.create(context, IntlUtil.KEY_HOUR_CYCLE, new String[]{IntlUtil.H11, IntlUtil.H12, IntlUtil.H23, IntlUtil.H24}, null);
-        this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.KEY_CASE_FIRST, new String[]{IntlUtil.UPPER, IntlUtil.LOWER, IntlUtil.FALSE}, null);
+        this.getFirstDayOfWeekOption = GetStringOptionNode.create(context, IntlUtil.KEY_FIRST_DAY_OF_WEEK, FIRST_DAY_OF_WEEK_OPTION_VALUES, null);
+        this.getHourCycleOption = GetStringOptionNode.create(context, IntlUtil.KEY_HOUR_CYCLE, GetStringOptionNode.HOUR_CYCLE_OPTION_VALUES, null);
+        this.getCaseFirstOption = GetStringOptionNode.create(context, IntlUtil.KEY_CASE_FIRST, GetStringOptionNode.CASE_FIRST_OPTION_VALUES, null);
         this.getNumericOption = GetBooleanOptionNode.create(context, IntlUtil.KEY_NUMERIC, null);
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);
     }
@@ -214,16 +227,33 @@ public abstract class InitializeLocaleNode extends JavaScriptBaseNode {
 
     private static String weekDayToString(String fw) {
         return switch (fw) {
-            case "0" -> IntlUtil.SUN;
-            case "1" -> IntlUtil.MON;
-            case "2" -> IntlUtil.TUE;
-            case "3" -> IntlUtil.WED;
-            case "4" -> IntlUtil.THU;
-            case "5" -> IntlUtil.FRI;
-            case "6" -> IntlUtil.SAT;
-            case "7" -> IntlUtil.SUN;
+            case "0" -> SUN;
+            case "1" -> MON;
+            case "2" -> TUE;
+            case "3" -> WED;
+            case "4" -> THU;
+            case "5" -> FRI;
+            case "6" -> SAT;
+            case "7" -> SUN;
             default -> fw;
         };
+    }
+
+    public static int weekDayToNumber(String fw) {
+        if (fw == null) {
+            return -1;
+        } else {
+            return switch (fw) {
+                case MON -> 1;
+                case TUE -> 2;
+                case WED -> 3;
+                case THU -> 4;
+                case FRI -> 5;
+                case SAT -> 6;
+                case SUN -> 7;
+                default -> throw Errors.shouldNotReachHere(fw);
+            };
+        }
     }
 
 }
