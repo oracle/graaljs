@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -211,9 +211,9 @@ public class ForeignObjectPrototypeTest {
         Assert.assertTrue(testInstanceofIntl("Array", ProxyArray.fromArray("fun", "with", "proxy", "array")));
         Assert.assertTrue(testInstanceofIntl("Date", Instant.now()));
         Assert.assertTrue(testInstanceofIntl("Map", new TestTruffleHash()));
-        Assert.assertTrue(testInstanceofIntl("String", new TestTruffleString()));
-        Assert.assertTrue(testInstanceofIntl("Boolean", new TestTruffleBoolean()));
-        Assert.assertTrue(testInstanceofIntl("Number", new TestTruffleNumber()));
+        Assert.assertFalse(testInstanceofIntl("String", new TestTruffleString()));
+        Assert.assertFalse(testInstanceofIntl("Boolean", new TestTruffleBoolean()));
+        Assert.assertFalse(testInstanceofIntl("Number", new TestTruffleNumber()));
         Assert.assertTrue(testInstanceofIntl("Function", (ProxyExecutable) v -> true));
         Assert.assertTrue(testInstanceofIntl("Object", new Object()));
 
