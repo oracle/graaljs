@@ -71,11 +71,6 @@ public abstract class AbstractBodyNode extends JavaScriptNode {
     }
 
     @Override
-    public final long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return super.executeLong(frame);
-    }
-
-    @Override
     public final void executeVoid(VirtualFrame frame) {
         super.executeVoid(frame);
     }
