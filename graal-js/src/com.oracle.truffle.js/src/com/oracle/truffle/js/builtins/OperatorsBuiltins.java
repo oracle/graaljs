@@ -301,7 +301,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                 for (int i = 0; i < openSetLength; i++) {
                     Object element = readOpenSetElement(openSet, i);
                     if (!(element instanceof TruffleString str) || !Boundaries.economicSetContains(OperatorSet.ALL_OPERATORS, str)) {
-                        throw Errors.createTypeError(Strings.toJavaString(Strings.concat(Strings.constant("unrecognized operator "), openOperatorToString(element))), this);
+                        throw Errors.createTypeError(Boundaries.stringFormat("unrecognized operator %s", openOperatorToString(element)), this);
                     }
                     Boundaries.economicSetAdd(openOperators, (TruffleString) element);
                 }
@@ -334,7 +334,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                                 throw Errors.createTypeError(Boundaries.stringFormat("the implementation of the operator %s %s [[Class]] is not a function", getClassName(leftType), operator), this);
                             }
                             if (!leftSet.isOperatorOpen(operator)) {
-                                throw Errors.createTypeError(Boundaries.stringFormat("the operator %s may not be overloaded on the provided type %s", operator, getClassName(leftType), this));
+                                throw Errors.createTypeError(Boundaries.stringFormat("the operator %s may not be overloaded on the provided type %s", operator, getClassName(leftType)), this);
                             }
                             if (!Boundaries.economicMapContainsKey(rightOperatorDefinitions, operator)) {
                                 Boundaries.economicMapPut(rightOperatorDefinitions, operator, new JSDynamicObject[operatorCounter]);
@@ -361,7 +361,7 @@ public final class OperatorsBuiltins extends JSBuiltinsContainer.Lambda {
                                 throw Errors.createTypeError(Boundaries.stringFormat("the implementation of the operator [[Class]] %s %s is not a function", operator, getClassName(rightType)), this);
                             }
                             if (!rightSet.isOperatorOpen(operator)) {
-                                throw Errors.createTypeError(Boundaries.stringFormat("the operator %s may not be overloaded on the provided type %s", operator, getClassName(rightType), this));
+                                throw Errors.createTypeError(Boundaries.stringFormat("the operator %s may not be overloaded on the provided type %s", operator, getClassName(rightType)), this);
                             }
                             if (!Boundaries.economicMapContainsKey(leftOperatorDefinitions, operator)) {
                                 Boundaries.economicMapPut(leftOperatorDefinitions, operator, new JSDynamicObject[operatorCounter]);

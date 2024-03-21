@@ -173,10 +173,6 @@ public abstract class JavaScriptNode extends JavaScriptBaseNode implements Instr
         }
     }
 
-    public long executeLong(VirtualFrame frame) throws UnexpectedResultException {
-        return JSTypesGen.expectLong(execute(frame));
-    }
-
     /**
      * Like {@link #execute(VirtualFrame)} except that it throws away the result. A node can
      * override this method if it has a better way to execute without producing a value.
