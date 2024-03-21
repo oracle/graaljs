@@ -183,7 +183,7 @@ public final class NpmCompatibleESModuleLoader extends DefaultESModuleLoader {
                 // Just load the module
                 try {
                     String cwdOption = realm.getContextOptions().getRequireCwd();
-                    TruffleFile cwd = cwdOption == null ? realm.getEnv().getCurrentWorkingDirectory() : realm.getEnv().getPublicTruffleFile(cwdOption);
+                    TruffleFile cwd = cwdOption.isEmpty() ? realm.getEnv().getCurrentWorkingDirectory() : realm.getEnv().getPublicTruffleFile(cwdOption);
                     TruffleFile modulePath = joinPaths(cwd, moduleReplacementName);
                     src = Source.newBuilder(ID, modulePath).build();
                 } catch (IOException | SecurityException e) {

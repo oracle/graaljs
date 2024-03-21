@@ -140,7 +140,7 @@ public abstract class CommonJSRequireBuiltin extends GlobalBuiltins.JSFileLoadin
 
     static TruffleFile getRequireCwd(JSRealm realm, TruffleLanguage.Env env) {
         String cwdOption = realm.getContextOptions().getRequireCwd();
-        return cwdOption == null ? env.getCurrentWorkingDirectory() : env.getPublicTruffleFile(cwdOption);
+        return cwdOption.isEmpty() ? env.getCurrentWorkingDirectory() : env.getPublicTruffleFile(cwdOption);
     }
 
     CommonJSRequireBuiltin(JSContext context, JSBuiltin builtin) {

@@ -2201,9 +2201,11 @@ public class JSRealm {
         if (getContextOptions().isCommonJSRequire()) {
             String cwdOption = getContextOptions().getRequireCwd();
             try {
-                TruffleFile cwdFile = getEnv().getPublicTruffleFile(cwdOption);
-                if (cwdOption != null && !cwdFile.exists()) {
-                    throw Errors.createError("Invalid CommonJS root folder: " + cwdOption);
+                if (!cwdOption.isEmpty()) {
+                    TruffleFile cwdFile = getEnv().getPublicTruffleFile(cwdOption);
+                    if (!cwdFile.exists()) {
+                        throw Errors.createError("Invalid CommonJS root folder: " + cwdOption);
+                    }
                 }
             } catch (SecurityException | UnsupportedOperationException | IllegalArgumentException se) {
                 throw Errors.createError("Access denied to CommonJS root folder: " + cwdOption);

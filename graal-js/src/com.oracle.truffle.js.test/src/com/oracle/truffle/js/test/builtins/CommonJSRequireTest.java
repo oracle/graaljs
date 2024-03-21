@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -584,10 +584,10 @@ public class CommonJSRequireTest {
         Map<String, String> options = new HashMap<>();
         options.put(COMMONJS_REQUIRE_NAME, "true");
         try (Context cx = testContext(options)) {
-            cx.eval("js", "require('./module.mjs');");
+            cx.eval("js", "require('./iDontExist.mjs');");
             assert false : "Should throw";
         } catch (PolyglotException e) {
-            Assert.assertEquals("Error: Invalid CommonJS root folder: ", e.getMessage());
+            Assert.assertEquals("TypeError: Cannot load module: './iDontExist.mjs'", e.getMessage());
         }
     }
 
