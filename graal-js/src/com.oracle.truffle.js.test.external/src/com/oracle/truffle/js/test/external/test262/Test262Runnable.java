@@ -522,8 +522,7 @@ public class Test262Runnable extends TestRunnable {
     }
 
     private TestFile.Result processFailedNegativeRun(int ecmaVersion, String negativeExpectedMessage, String actualMessage) {
-        // e.g. 11.13.1-4-29gs.js has "negative: ."
-        if ((actualMessage != null && actualMessage.contains(negativeExpectedMessage)) || negativeExpectedMessage.equals(".")) {
+        if (actualMessage != null && actualMessage.startsWith(negativeExpectedMessage)) {
             return TestFile.Result.PASSED;
         } else {
             return failNegativeWrongException(ecmaVersion, negativeExpectedMessage, actualMessage);
@@ -531,7 +530,7 @@ public class Test262Runnable extends TestRunnable {
     }
 
     private TestFile.Result failNegativeWrongException(int ecmaVersion, String expectedMessage, String actualMessage) {
-        logFailure(ecmaVersion, "negative test, was expected to fail, what it did, but for wrong reasons:\n\n" + actualMessage + "\n\n" + "expected: " + expectedMessage);
+        logFailure(ecmaVersion, "negative test, was expected to fail, what it did, but for wrong reasons:\n" + actualMessage + "\n" + "expected: " + expectedMessage);
         return TestFile.Result.failed("negative test expected to fail with different reasons" + ecmaVersionToString(ecmaVersion));
     }
 
@@ -551,7 +550,7 @@ public class Test262Runnable extends TestRunnable {
                 if (matcher.find()) {
                     String candidate = line.substring(matcher.end());
                     if (!candidate.isBlank()) {
-                        return candidate;
+                        return candidate.strip();
                     } else {
                         lookForType = true;
                     }
@@ -559,7 +558,7 @@ public class Test262Runnable extends TestRunnable {
             } else {
                 Matcher matcher = NEGATIVE_TYPE_PREFIX.matcher(line);
                 if (matcher.find()) {
-                    return line.substring(matcher.end());
+                    return line.substring(matcher.end()).strip();
                 }
             }
         }

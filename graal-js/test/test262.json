@@ -14,6 +14,18 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
+    "filePath" : "annexB/language/comments/single-line-html-close-first-line-1.js",
+    "status" : "FAIL",
+    "comment" : "test has raw flag but should be executed with harness/sta.js"
+  }, {
+    "filePath" : "annexB/language/comments/single-line-html-close-first-line-2.js",
+    "status" : "FAIL",
+    "comment" : "test has raw flag but should be executed with harness/sta.js"
+  }, {
+    "filePath" : "annexB/language/comments/single-line-html-close-first-line-3.js",
+    "status" : "FAIL",
+    "comment" : "test has raw flag but should be executed with harness/sta.js"
+  }, {
     "filePath" : "annexB/language/function-code/block-decl-func-skip-arguments.js",
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."

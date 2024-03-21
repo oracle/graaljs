@@ -83,19 +83,16 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_REGEXP_UNICODE_SETS = "--harmony-regexp-unicode-sets";
     private static final String NO_ASYNC_STACK_TRACES = "--noasync-stack-traces";
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
+    private static final String NO_EXPERIMENTAL_SIMD = "--no-experimental-wasm-simd";
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
 
     private static final Set<String> UNSUPPORTED_FLAGS = featureSet(new String[]{
                     "--experimental-d8-web-snapshot-api",
-                    "--experimental-wasm-bulk-memory",
                     "--experimental-wasm-compilation-hints",
                     "--experimental-wasm-eh",
                     "--experimental-wasm-gc",
                     "--experimental-wasm-memory64",
-                    "--experimental-wasm-reftypes",
                     "--experimental-wasm-return-call",
-                    "--experimental-wasm-simd",
-                    "--experimental-wasm-threads",
                     "--experimental-wasm-type-reflection",
                     "--experimental-wasm-typed-funcref",
                     "--experimental-web-snapshots",
@@ -152,9 +149,11 @@ public class TestV8Runnable extends TestRunnable {
             extraOptions.put("wasm.Threads", "true");
             // Required for using shared memories, for now
             extraOptions.put("wasm.UseUnsafeMemory", "true");
-        }
 
-        suite.logVerbose("Starting: " + getName());
+            if (flags.contains(NO_EXPERIMENTAL_SIMD)) {
+                extraOptions.put("wasm.SIMD", "false");
+            }
+        }
 
         if (getConfig().isPrintScript()) {
             printScript(TestSuite.toPrintableCode(code));
@@ -215,6 +214,7 @@ public class TestV8Runnable extends TestRunnable {
         }
 
         if (supported) {
+            suite.logVerbose("Starting: " + getName());
             testFile.setResult(runTest(ecmaVersion, version -> runInternal(version, file, negative, shouldThrow, module, extraOptions, setupFiles)));
         } else {
             testFile.setStatus(TestFile.Status.SKIP); // attn: does not force-skip statusOverrides
