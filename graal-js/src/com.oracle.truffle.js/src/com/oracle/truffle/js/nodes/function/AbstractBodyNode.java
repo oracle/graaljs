@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,10 @@
  */
 package com.oracle.truffle.js.nodes.function;
 
+import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.StandardTags;
 import com.oracle.truffle.api.instrumentation.Tag;
+import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 
 public abstract class AbstractBodyNode extends JavaScriptNode {
@@ -52,4 +54,30 @@ public abstract class AbstractBodyNode extends JavaScriptNode {
         }
         return super.hasTag(tag);
     }
+
+    @Override
+    public final boolean executeBoolean(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeBoolean(frame);
+    }
+
+    @Override
+    public final double executeDouble(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeDouble(frame);
+    }
+
+    @Override
+    public final int executeInt(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeInt(frame);
+    }
+
+    @Override
+    public final long executeLong(VirtualFrame frame) throws UnexpectedResultException {
+        return super.executeLong(frame);
+    }
+
+    @Override
+    public final void executeVoid(VirtualFrame frame) {
+        super.executeVoid(frame);
+    }
+
 }
