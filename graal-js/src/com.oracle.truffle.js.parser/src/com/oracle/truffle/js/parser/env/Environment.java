@@ -68,7 +68,6 @@ import com.oracle.truffle.js.nodes.access.WritePropertyNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
-import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
@@ -515,7 +514,7 @@ public abstract class Environment {
     }
 
     public VarRef createTempVar() {
-        JSFrameSlot var = declareTempVar(Strings.constant("tmp"));
+        JSFrameSlot var = declareTempVar("tmp");
         return findTempVar(var);
     }
 
@@ -544,7 +543,7 @@ public abstract class Environment {
         };
     }
 
-    private JSFrameSlot declareTempVar(TruffleString prefix) {
+    private JSFrameSlot declareTempVar(String prefix) {
         return declareLocalVar(factory.createInternalSlotId(prefix, getFunctionFrameDescriptor().getSize()));
     }
 
