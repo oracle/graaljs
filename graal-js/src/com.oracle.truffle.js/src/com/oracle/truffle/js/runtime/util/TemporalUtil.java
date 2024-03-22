@@ -316,8 +316,6 @@ public final class TemporalUtil {
     public static final TruffleString BRACKET_U_CA_EQUALS = Strings.constant("[u-ca=");
 
     public static final TruffleString GET_OFFSET_NANOSECONDS_FOR = Strings.constant("getOffsetNanosecondsFor");
-    public static final TruffleString YEAR_MONTH_FROM_FIELDS = Strings.constant("yearMonthFromFields");
-    public static final TruffleString MONTH_DAY_FROM_FIELDS = Strings.constant("monthDayFromFields");
     public static final TruffleString GET_POSSIBLE_INSTANTS_FOR = Strings.constant("getPossibleInstantsFor");
 
     public static final int HOURS_PER_DAY = 24;
