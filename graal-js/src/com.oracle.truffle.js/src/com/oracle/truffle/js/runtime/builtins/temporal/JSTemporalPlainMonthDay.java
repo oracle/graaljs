@@ -72,7 +72,7 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     public static final TruffleString CLASS_NAME = Strings.constant("PlainMonthDay");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainMonthDay.prototype");
-    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainYearMonth");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainMonthDay");
 
     public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, int isoMonth, int isoDay, Object calendar, int referenceISOYear,
                     Node node, InlinedBranchProfile errorBranch) {

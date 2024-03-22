@@ -3351,10 +3351,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-05-16"
   }, {
-    "filePath" : "built-ins/Temporal/PlainMonthDay/prototype/toStringTag/prop-desc.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-05-20"
-  }, {
     "filePath" : "built-ins/Temporal/PlainMonthDay/refisoyear-out-of-range.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-08-08"
