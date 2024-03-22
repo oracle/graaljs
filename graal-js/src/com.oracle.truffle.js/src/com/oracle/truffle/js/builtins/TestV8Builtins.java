@@ -42,12 +42,10 @@ package com.oracle.truffle.js.builtins;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNameNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
@@ -73,7 +71,6 @@ import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToPrimitiveNod
 import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToStringNodeGen;
 import com.oracle.truffle.js.builtins.helper.GCNodeGen;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
-import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
@@ -404,11 +401,6 @@ public final class TestV8Builtins extends JSBuiltinsContainer.SwitchEnum<TestV8B
             } else {
                 return d;
             }
-        }
-
-        @Override
-        protected JavaScriptNode copyUninitialized(Set<Class<? extends Tag>> materializedTags) {
-            return TestV8ToLengthNodeGen.create(getContext(), getBuiltin(), cloneUninitialized(getArguments(), materializedTags));
         }
     }
 
