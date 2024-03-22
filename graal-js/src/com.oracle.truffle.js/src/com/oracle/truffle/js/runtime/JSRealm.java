@@ -219,7 +219,6 @@ import com.oracle.truffle.js.runtime.util.StableContextOptionValue;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
 import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexCompiledRegexAccessor;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
  * Container for JavaScript globals (i.e. an ECMAScript 6 Realm object).
@@ -1091,8 +1090,8 @@ public class JSRealm {
             this.temporalCalendarMonthsInYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.MONTHS_IN_YEAR);
             this.temporalCalendarInLeapYearFunctionObject = JSDynamicObject.getOrNull(this.temporalCalendarPrototype, TemporalConstants.IN_LEAP_YEAR);
 
-            this.temporalTimeZoneGetOffsetNanosecondsForFunctionObject = JSDynamicObject.getOrNull(this.temporalTimeZonePrototype, TemporalUtil.GET_OFFSET_NANOSECONDS_FOR);
-            this.temporalTimeZoneGetPossibleInstantsForFunctionObject = JSDynamicObject.getOrNull(this.temporalTimeZonePrototype, TemporalUtil.GET_POSSIBLE_INSTANTS_FOR);
+            this.temporalTimeZoneGetOffsetNanosecondsForFunctionObject = JSDynamicObject.getOrNull(this.temporalTimeZonePrototype, TemporalConstants.GET_OFFSET_NANOSECONDS_FOR);
+            this.temporalTimeZoneGetPossibleInstantsForFunctionObject = JSDynamicObject.getOrNull(this.temporalTimeZonePrototype, TemporalConstants.GET_POSSIBLE_INSTANTS_FOR);
         } else {
             this.temporalPlainTimeConstructor = null;
             this.temporalPlainTimePrototype = null;

@@ -305,18 +305,7 @@ public final class TemporalUtil {
     public static final BigDecimal BD_10_POW_M_6 = new BigDecimal("0.000001");
     public static final BigDecimal BD_10_POW_M_9 = new BigDecimal("0.000000001");
 
-    public static final char UNICODE_MINUS_SIGN = '\u2212';
-
     public static final MathContext mc_20_floor = new MathContext(20, java.math.RoundingMode.FLOOR);
-
-    public static final TruffleString FRACTIONAL_SECOND_DIGITS = Strings.constant("fractionalSecondDigits");
-    public static final TruffleString ZEROS = Strings.constant("000000000");
-    public static final TruffleString OFFSET_ZERO = Strings.constant("+00:00");
-    public static final TruffleString CALENDAR_NAME = Strings.constant("calendarName");
-    public static final TruffleString BRACKET_U_CA_EQUALS = Strings.constant("[u-ca=");
-
-    public static final TruffleString GET_OFFSET_NANOSECONDS_FOR = Strings.constant("getOffsetNanosecondsFor");
-    public static final TruffleString GET_POSSIBLE_INSTANTS_FOR = Strings.constant("getPossibleInstantsFor");
 
     public static final int HOURS_PER_DAY = 24;
     public static final int MINUTES_PER_HOUR = 60;
@@ -552,7 +541,7 @@ public final class TemporalUtil {
 
         assert smallestUnit == Unit.EMPTY;
 
-        Object digits = getStringOrNumberOption(options, FRACTIONAL_SECOND_DIGITS, listAuto, 0, 9, AUTO, toStringNode, getOptionNode);
+        Object digits = getStringOrNumberOption(options, TemporalConstants.FRACTIONAL_SECOND_DIGITS, listAuto, 0, 9, AUTO, toStringNode, getOptionNode);
         if (Boundaries.equals(digits, AUTO)) {
             return JSTemporalPrecisionRecord.create(AUTO, Unit.NANOSECOND, 1);
         }
@@ -647,9 +636,9 @@ public final class TemporalUtil {
     private static ParseISODateTimeResult parseISODateTimeIntl(TruffleString string, JSTemporalParserRecord rec) {
         TruffleString fraction = rec.getFraction();
         if (fraction == null) {
-            fraction = ZEROS;
+            fraction = TemporalConstants.ZEROS;
         } else {
-            fraction = Strings.concat(fraction, ZEROS);
+            fraction = Strings.concat(fraction, TemporalConstants.ZEROS);
         }
 
         if (rec.getYear() == 0 && (Strings.indexOf(string, TemporalConstants.MINUS_000000) >= 0 || Strings.indexOf(string, TemporalConstants.UNICODE_MINUS_SIGN_000000) >= 0)) {
@@ -1693,7 +1682,7 @@ public final class TemporalUtil {
     }
 
     public static ShowCalendar toShowCalendarOption(JSDynamicObject options, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
-        return toShowCalendar((TruffleString) getOptionNode.execute(options, CALENDAR_NAME, OptionType.STRING, listAutoAlwaysNever, AUTO), equalNode);
+        return toShowCalendar((TruffleString) getOptionNode.execute(options, TemporalConstants.CALENDAR_NAME, OptionType.STRING, listAutoAlwaysNever, AUTO), equalNode);
     }
 
     @TruffleBoundary
@@ -1728,7 +1717,7 @@ public final class TemporalUtil {
         } else if (ShowCalendar.AUTO == showCalendar && ISO8601.equals(id)) {
             return Strings.EMPTY_STRING;
         } else {
-            return Strings.concatAll(BRACKET_U_CA_EQUALS, id, Strings.BRACKET_CLOSE);
+            return Strings.concatAll(TemporalConstants.BRACKET_U_CA_EQUALS, id, Strings.BRACKET_CLOSE);
         }
     }
 
@@ -2980,7 +2969,7 @@ public final class TemporalUtil {
         if (timeZone instanceof TruffleString) {
             getOffsetNanosecondsForMethod = realm.getTemporalTimeZoneGetOffsetNanosecondsForFunctionObject();
         } else {
-            getOffsetNanosecondsForMethod = JSRuntime.get(timeZone, GET_OFFSET_NANOSECONDS_FOR);
+            getOffsetNanosecondsForMethod = JSRuntime.get(timeZone, TemporalConstants.GET_OFFSET_NANOSECONDS_FOR);
         }
         return new TimeZoneMethodsRecord(timeZone, getOffsetNanosecondsForMethod, null);
     }
@@ -3028,7 +3017,7 @@ public final class TemporalUtil {
         if (rec.getOffsetFraction() == null) {
             nanoseconds = 0;
         } else {
-            TruffleString fraction = Strings.concat(rec.getOffsetFraction(), ZEROS);
+            TruffleString fraction = Strings.concat(rec.getOffsetFraction(), TemporalConstants.ZEROS);
             fraction = Strings.lazySubstring(fraction, 0, 9);
             try {
                 nanoseconds = Strings.parseLong(fraction, 10);
@@ -3231,7 +3220,7 @@ public final class TemporalUtil {
             JSTemporalTimeZoneRecord timeZoneResult = parseTemporalTimeZoneString(string, true);
             TruffleString offsetString = timeZoneResult.getOffsetString();
             if (timeZoneResult.isZ()) {
-                offsetString = OFFSET_ZERO;
+                offsetString = TemporalConstants.OFFSET_ZERO;
             }
             assert offsetString != null;
             return result.withTimeZoneResult(JSTemporalTimeZoneRecord.create(timeZoneResult.isZ(), offsetString, timeZoneResult.getName()));

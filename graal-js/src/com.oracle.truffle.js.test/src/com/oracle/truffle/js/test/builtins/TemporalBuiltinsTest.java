@@ -54,8 +54,8 @@ import org.junit.Test;
 
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalParserRecord;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalParser;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.test.JSTest;
 
 public class TemporalBuiltinsTest extends JSTest {
@@ -943,7 +943,7 @@ public class TemporalBuiltinsTest extends JSTest {
     @Test
     public void testMinus000000Fails() {
         minus000000Fails('-');
-        minus000000Fails(TemporalUtil.UNICODE_MINUS_SIGN); // #2069
+        minus000000Fails(TemporalConstants.UNICODE_MINUS_SIGN); // #2069
     }
 
     private static void minus000000Fails(char minus) {

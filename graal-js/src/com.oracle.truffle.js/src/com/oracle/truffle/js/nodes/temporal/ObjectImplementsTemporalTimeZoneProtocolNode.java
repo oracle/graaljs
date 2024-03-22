@@ -48,12 +48,12 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
 /**
  * Implementation of ObjectImplementsTemporalTimeZoneProtocol() operation.
  */
-@ImportStatic({TemporalUtil.class, Strings.class})
+@ImportStatic({TemporalConstants.class, Strings.class})
 public abstract class ObjectImplementsTemporalTimeZoneProtocolNode extends JavaScriptBaseNode {
 
     protected ObjectImplementsTemporalTimeZoneProtocolNode() {

@@ -76,9 +76,11 @@ public final class TemporalConstants {
     public static final TruffleString OFFSET = Strings.constant("offset");
     public static final TruffleString ERA = Strings.constant("era");
     public static final TruffleString ERA_YEAR = Strings.constant("eraYear");
+    public static final TruffleString FRACTIONAL_SECOND_DIGITS = Strings.constant("fractionalSecondDigits");
 
     public static final TruffleString FIELDS = Strings.constant("fields");
     public static final TruffleString CALENDAR = Strings.constant("calendar");
+    public static final TruffleString CALENDAR_NAME = Strings.constant("calendarName");
     public static final TruffleString DAYS_IN_YEAR = Strings.constant("daysInYear");
     public static final TruffleString DAYS_IN_MONTH = Strings.constant("daysInMonth");
     public static final TruffleString DAYS_IN_WEEK = Strings.constant("daysInWeek");
@@ -153,6 +155,8 @@ public final class TemporalConstants {
     public static final TruffleString UTC = Strings.constant("UTC");
 
     public static final TruffleString DISAMBIGUATION = Strings.constant("disambiguation");
+    public static final TruffleString GET_OFFSET_NANOSECONDS_FOR = Strings.constant("getOffsetNanosecondsFor");
+    public static final TruffleString GET_POSSIBLE_INSTANTS_FOR = Strings.constant("getPossibleInstantsFor");
     public static final TruffleString NOW = Strings.constant("Now");
 
     public static final TruffleString GLOBAL_PLAIN_TIME = Strings.constant("PlainTime");
@@ -168,6 +172,10 @@ public final class TemporalConstants {
     public static final TruffleString GLOBAL_TEMPORAL_NOW = Strings.constant("Temporal.Now");
 
     public static final TruffleString MINUS_000000 = Strings.constant("-000000");
-    public static final TruffleString UNICODE_MINUS_SIGN_000000 = Strings.constant(TemporalUtil.UNICODE_MINUS_SIGN + "000000");
+    public static final char UNICODE_MINUS_SIGN = '\u2212';
+    public static final TruffleString UNICODE_MINUS_SIGN_000000 = Strings.constant(UNICODE_MINUS_SIGN + "000000");
+    public static final TruffleString ZEROS = Strings.constant("000000000");
+    public static final TruffleString OFFSET_ZERO = Strings.constant("+00:00");
+    public static final TruffleString BRACKET_U_CA_EQUALS = Strings.constant("[u-ca=");
 
 }
