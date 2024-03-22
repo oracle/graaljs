@@ -2286,22 +2286,22 @@ public class JSRealm {
         JSObjectUtil.putToStringTag(temporalObject, TemporalConstants.TEMPORAL);
 
         int flags = JSAttributes.configurableNotEnumerableWritable();
-        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_PLAIN_TIME, getTemporalPlainTimeConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_PLAIN_DATE, getTemporalPlainDateConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_PLAIN_DATE_TIME, getTemporalPlainDateTimeConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_DURATION, getTemporalDurationConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_CALENDAR, getTemporalCalendarConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_PLAIN_YEAR_MONTH, getTemporalPlainYearMonthConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_PLAIN_MONTH_DAY, getTemporalPlainMonthDayConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_INSTANT, getTemporalInstantConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_TIME_ZONE, getTemporalTimeZoneConstructor(), flags);
-        JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.GLOBAL_ZONED_DATE_TIME, getTemporalZonedDateTimeConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainTime.CLASS_NAME, getTemporalPlainTimeConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainDate.CLASS_NAME, getTemporalPlainDateConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainDateTime.CLASS_NAME, getTemporalPlainDateTimeConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, JSTemporalDuration.CLASS_NAME, getTemporalDurationConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, JSTemporalCalendar.CLASS_NAME, getTemporalCalendarConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainYearMonth.CLASS_NAME, getTemporalPlainYearMonthConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, JSTemporalPlainMonthDay.CLASS_NAME, getTemporalPlainMonthDayConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, JSTemporalInstant.CLASS_NAME, getTemporalInstantConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, JSTemporalTimeZone.CLASS_NAME, getTemporalTimeZoneConstructor(), flags);
+        JSObjectUtil.putDataProperty(temporalObject, JSTemporalZonedDateTime.CLASS_NAME, getTemporalZonedDateTimeConstructor(), flags);
 
         JSObject nowObject = JSOrdinary.createInit(this);
 
         JSObjectUtil.putDataProperty(temporalObject, TemporalConstants.NOW, nowObject, flags);
         JSObjectUtil.putFunctionsFromContainer(this, nowObject, TemporalNowBuiltins.BUILTINS);
-        JSObjectUtil.putToStringTag(nowObject, TemporalConstants.GLOBAL_TEMPORAL_NOW);
+        JSObjectUtil.putToStringTag(nowObject, TemporalConstants.TEMPORAL_NOW_TO_STRING_TAG);
 
         putGlobalProperty(TemporalConstants.TEMPORAL, temporalObject);
     }

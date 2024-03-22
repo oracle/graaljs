@@ -158,18 +158,7 @@ public final class TemporalConstants {
     public static final TruffleString GET_OFFSET_NANOSECONDS_FOR = Strings.constant("getOffsetNanosecondsFor");
     public static final TruffleString GET_POSSIBLE_INSTANTS_FOR = Strings.constant("getPossibleInstantsFor");
     public static final TruffleString NOW = Strings.constant("Now");
-
-    public static final TruffleString GLOBAL_PLAIN_TIME = Strings.constant("PlainTime");
-    public static final TruffleString GLOBAL_PLAIN_DATE = Strings.constant("PlainDate");
-    public static final TruffleString GLOBAL_PLAIN_DATE_TIME = Strings.constant("PlainDateTime");
-    public static final TruffleString GLOBAL_DURATION = Strings.constant("Duration");
-    public static final TruffleString GLOBAL_CALENDAR = Strings.constant("Calendar");
-    public static final TruffleString GLOBAL_PLAIN_YEAR_MONTH = Strings.constant("PlainYearMonth");
-    public static final TruffleString GLOBAL_PLAIN_MONTH_DAY = Strings.constant("PlainMonthDay");
-    public static final TruffleString GLOBAL_TIME_ZONE = Strings.constant("TimeZone");
-    public static final TruffleString GLOBAL_INSTANT = Strings.constant("Instant");
-    public static final TruffleString GLOBAL_ZONED_DATE_TIME = Strings.constant("ZonedDateTime");
-    public static final TruffleString GLOBAL_TEMPORAL_NOW = Strings.constant("Temporal.Now");
+    public static final TruffleString TEMPORAL_NOW_TO_STRING_TAG = Strings.constant("Temporal.Now");
 
     public static final TruffleString MINUS_000000 = Strings.constant("-000000");
     public static final char UNICODE_MINUS_SIGN = '\u2212';
