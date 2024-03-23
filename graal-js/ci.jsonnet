@@ -84,7 +84,7 @@ local ci = import '../ci.jsonnet';
     run+: [
       ['cd', '../../graal/vm'],
       ['set-export', 'NATIVE_IMAGES', 'native-image'],
-      ['mx', '--dynamicimports', '/graal-js,/substratevm', 'gate', '--no-warning-as-error', '--strict-mode', '--tags', 'build,svm-truffle-tck-js'],
+      ['mx', '--dynamicimports', '/graal-js,/substratevm', 'gate', '--no-warning-as-error', '--strict-mode', '--tags', 'build,truffle-native-tck-js'],
     ],
   },
 
