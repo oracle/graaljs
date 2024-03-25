@@ -2324,6 +2324,15 @@ public final class TemporalUtil {
         if (nanoseconds > 0 && sign < 0) {
             return false;
         }
+        double twoPow32 = 1L << 32;
+        if (Math.abs(years) >= twoPow32 || Math.abs(months) >= twoPow32 || Math.abs(weeks) >= twoPow32) {
+            return false;
+        }
+        long normalizedSeconds = 86400 * (long) days + 3600 * (long) hours + 60 * (long) minutes + (long) seconds + ((long) milliseconds) / 1000 + ((long) microseconds) / 1000_000 +
+                        ((long) nanoseconds) / 1000_000_000;
+        if (Math.abs(normalizedSeconds) >= 1L << 53) {
+            return false;
+        }
         return true;
     }
 
