@@ -148,6 +148,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
@@ -3432,12 +3433,29 @@ public final class TemporalUtil {
     private static List<JSTemporalInstantObject> getPossibleInstantsFor(JSContext context, JSRealm realm, TimeZoneMethodsRecord timeZoneRec, JSDynamicObject dateTime) {
         assert timeZoneRec.getPossibleInstantsFor() != null;
         Object receiver = timeZoneRec.receiver();
+        boolean isBuiltin = false;
         if (receiver instanceof TruffleString identifier) {
+            isBuiltin = true;
             receiver = createTemporalTimeZone(context, realm, identifier);
         }
+
         Object possibleInstants = JSRuntime.call(timeZoneRec.getPossibleInstantsFor(), receiver, new Object[]{dateTime});
-        IteratorRecord iteratorRecord = JSRuntime.getIterator(possibleInstants);
         List<JSTemporalInstantObject> list = new ArrayList<>();
+
+        if (isBuiltin) {
+            // CreateListFromArrayLike
+            JSDynamicObject possibleInstantsObject = (JSDynamicObject) possibleInstants;
+            long len = JSRuntime.toLength(JSObject.get(possibleInstantsObject, JSAbstractArray.LENGTH));
+            long index = 0;
+            while (index < len) {
+                Object next = JSObject.get(possibleInstantsObject, index);
+                list.add((JSTemporalInstantObject) next);
+                index++;
+            }
+            return list;
+        }
+
+        IteratorRecord iteratorRecord = JSRuntime.getIterator(possibleInstants);
         Object next = true;
         while (next != Boolean.FALSE) {
             next = JSRuntime.iteratorStep(iteratorRecord);
