@@ -613,29 +613,19 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             1, unit, RoundingMode.TRUNC,
                             plainRelativeTo, zonedRelativeTo, calendarRec, timeZoneRec, precalculatedPlainDateTime);
 
-            double whole = 0;
-            if (unit == Unit.YEAR) {
-                whole = roundResult.getYears();
-            } else if (unit == Unit.MONTH) {
-                whole = roundResult.getMonths();
-            } else if (unit == Unit.WEEK) {
-                whole = roundResult.getWeeks();
-            } else if (unit == Unit.DAY) {
-                whole = roundResult.getDays();
-            } else if (unit == Unit.HOUR) {
-                whole = roundResult.getHours();
-            } else if (unit == Unit.MINUTE) {
-                whole = roundResult.getMinutes();
-            } else if (unit == Unit.SECOND) {
-                whole = roundResult.getSeconds();
-            } else if (unit == Unit.MILLISECOND) {
-                whole = roundResult.getMilliseconds();
-            } else if (unit == Unit.MICROSECOND) {
-                whole = roundResult.getMicroseconds();
-            } else {
-                assert Unit.NANOSECOND == unit;
-                whole = roundResult.getNanoseconds();
-            }
+            double whole = switch (unit) {
+                case YEAR -> roundResult.getYears();
+                case MONTH -> roundResult.getMonths();
+                case WEEK -> roundResult.getWeeks();
+                case DAY -> roundResult.getDays();
+                case HOUR -> roundResult.getHours();
+                case MINUTE -> roundResult.getMinutes();
+                case SECOND -> roundResult.getSeconds();
+                case MILLISECOND -> roundResult.getMilliseconds();
+                case MICROSECOND -> roundResult.getMicroseconds();
+                case NANOSECOND -> roundResult.getNanoseconds();
+                default -> throw Errors.shouldNotReachHereUnexpectedValue(unit);
+            };
             return whole + roundResult.getRemainder();
         }
 
