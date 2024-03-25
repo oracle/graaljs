@@ -3290,7 +3290,7 @@ public final class TemporalUtil {
             JSTemporalPlainDateTimeObject earlierDateTime = JSTemporalPlainDateTime.create(ctx, realm,
                             earlierDate.year(), earlierDate.month(), earlierDate.day(),
                             earlierTime.hour(), earlierTime.minute(), earlierTime.second(), earlierTime.millisecond(), earlierTime.microsecond(), earlierTime.nanosecond(),
-                            dateTime.getCalendar(), null, InlinedBranchProfile.getUncached());
+                            ISO8601, null, InlinedBranchProfile.getUncached());
             List<JSTemporalInstantObject> possibleInstants2 = getPossibleInstantsFor(ctx, realm, timeZoneRec, earlierDateTime);
             if (possibleInstants2.size() == 0) {
                 throw Errors.createRangeError("nothing found");
@@ -3307,7 +3307,7 @@ public final class TemporalUtil {
         JSTemporalPlainDateTimeObject laterDateTime = JSTemporalPlainDateTime.create(ctx, realm,
                         laterDate.year(), laterDate.month(), laterDate.day(),
                         laterTime.hour(), laterTime.minute(), laterTime.second(), laterTime.millisecond(), laterTime.microsecond(), laterTime.nanosecond(),
-                        dateTime.getCalendar(), null, InlinedBranchProfile.getUncached());
+                        ISO8601, null, InlinedBranchProfile.getUncached());
 
         List<JSTemporalInstantObject> possibleInstants2 = getPossibleInstantsFor(ctx, realm, timeZoneRec, laterDateTime);
         n = possibleInstants2.size();
