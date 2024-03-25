@@ -187,8 +187,6 @@ public final class TemporalUtil {
     private static final Function<Object, Object> toPositiveInteger = TemporalUtil::toPositiveInteger;
     private static final Function<Object, Object> toString = JSRuntime::toString;
 
-    public static final Set<TruffleString> pluralUnits = Set.of(YEARS, MONTHS, WEEKS, DAYS, HOURS, MINUTES, SECONDS,
-                    MILLISECONDS, MICROSECONDS, NANOSECONDS);
     public static final Map<TruffleString, TruffleString> pluralToSingular = Map.ofEntries(
                     Map.entry(YEARS, YEAR),
                     Map.entry(MONTHS, MONTH),
@@ -569,8 +567,11 @@ public final class TemporalUtil {
     public static Unit toSmallestTemporalUnit(JSDynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback, TemporalGetOptionNode getOptionNode,
                     TruffleString.EqualNode equalNode) {
         TruffleString smallestUnit = (TruffleString) getOptionNode.execute(normalizedOptions, SMALLEST_UNIT, OptionType.STRING, listAllDateTime, fallback);
-        if (smallestUnit != null && Boundaries.setContains(pluralUnits, smallestUnit)) {
-            smallestUnit = Boundaries.mapGet(pluralToSingular, smallestUnit);
+        if (smallestUnit != null) {
+            TruffleString singular = Boundaries.mapGet(TemporalUtil.pluralToSingular, smallestUnit);
+            if (singular != null) {
+                smallestUnit = singular;
+            }
         }
         if (smallestUnit != null && Boundaries.listContains(disallowedUnits, smallestUnit)) {
             throw Errors.createRangeError("Smallest unit not allowed.");

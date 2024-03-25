@@ -98,8 +98,11 @@ public abstract class JSTemporalBuiltinOperation extends JSBuiltinNode {
         if (largestUnit != null && largestUnit.equals(AUTO) && autoValue != null) {
             return autoValue;
         }
-        if (largestUnit != null && Boundaries.setContains(TemporalUtil.pluralUnits, largestUnit)) {
-            largestUnit = Boundaries.mapGet(TemporalUtil.pluralToSingular, largestUnit);
+        if (largestUnit != null) {
+            TruffleString singular = Boundaries.mapGet(TemporalUtil.pluralToSingular, largestUnit);
+            if (singular != null) {
+                largestUnit = singular;
+            }
         }
         if (largestUnit != null && Boundaries.listContains(disallowedUnits, largestUnit)) {
             errorBranch.enter(node);
@@ -111,8 +114,11 @@ public abstract class JSTemporalBuiltinOperation extends JSBuiltinNode {
     protected static TemporalUtil.Unit toSmallestTemporalUnit(JSDynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback,
                     TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode, Node node, InlinedBranchProfile errorBranch) {
         TruffleString smallestUnit = (TruffleString) getOptionNode.execute(normalizedOptions, SMALLEST_UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTime, fallback);
-        if (smallestUnit != null && Boundaries.setContains(TemporalUtil.pluralUnits, smallestUnit)) {
-            smallestUnit = Boundaries.mapGet(TemporalUtil.pluralToSingular, smallestUnit);
+        if (smallestUnit != null) {
+            TruffleString singular = Boundaries.mapGet(TemporalUtil.pluralToSingular, smallestUnit);
+            if (singular != null) {
+                smallestUnit = singular;
+            }
         }
         if (smallestUnit != null && Boundaries.listContains(disallowedUnits, smallestUnit)) {
             errorBranch.enter(node);
@@ -123,8 +129,11 @@ public abstract class JSTemporalBuiltinOperation extends JSBuiltinNode {
 
     protected static TemporalUtil.Unit toTemporalDurationTotalUnit(JSDynamicObject normalizedOptions, TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
         TruffleString unit = (TruffleString) getOptionNode.execute(normalizedOptions, UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTime, null);
-        if (unit != null && Boundaries.setContains(TemporalUtil.pluralUnits, unit)) {
-            unit = Boundaries.mapGet(TemporalUtil.pluralToSingular, unit);
+        if (unit != null) {
+            TruffleString singular = Boundaries.mapGet(TemporalUtil.pluralToSingular, unit);
+            if (singular != null) {
+                unit = singular;
+            }
         }
         return TemporalUtil.toUnit(unit, equalNode);
     }
