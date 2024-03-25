@@ -103,7 +103,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     TimeZoneMethodsRecord timeZoneRec) {
 
         public JSTemporalCalendarHolder relativeTo() {
-            return plainRelativeTo != null ? plainRelativeTo : zonedRelativeTo;
+            return zonedRelativeTo != null ? zonedRelativeTo : plainRelativeTo;
         }
 
         public CalendarMethodsRecord createCalendarMethodsRecord(CalendarMethodsRecordLookupNode lookupDateAddNode, CalendarMethodsRecordLookupNode lookupDateUntilNode) {
