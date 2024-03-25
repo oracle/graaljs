@@ -288,7 +288,7 @@ public final class TemporalUtil {
     private static final BigInteger isoTimeUpperBound = new BigInteger("8640000086400000000000");
     private static final BigInteger isoTimeLowerBound = isoTimeUpperBound.negate();
     private static final int isoTimeBoundYears = 270000;
-    private static final int ISO_DATE_MAX_UTC_OFFSET_DAYS = 100_000_000;
+    private static final int ISO_DATE_MAX_UTC_OFFSET_DAYS = 100_000_001;
 
     // 8.64 * 10^13
     private static final BigInteger BI_8_64_13 = BigInteger.valueOf(86400000000000L);
@@ -1588,7 +1588,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static ISODateRecord balanceISODate(int year, int month, int day) {
-        if (year < Year.MIN_VALUE || year > Year.MAX_VALUE || Math.abs(day) > ISO_DATE_MAX_UTC_OFFSET_DAYS) {
+        if (year < -1000000 || 1000000 < year || day < -ISO_DATE_MAX_UTC_OFFSET_DAYS || ISO_DATE_MAX_UTC_OFFSET_DAYS < day) {
             // This check is sometimes performed only after AddISODate in the spec.
             // We do it earlier to avoid having to deal with non-finite epoch days.
             // This is OK since all callers would throw a RangeError immediately after anyway.
