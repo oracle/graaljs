@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
@@ -87,6 +86,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
@@ -116,6 +116,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
@@ -485,15 +486,14 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected Object dateUntil(JSTemporalCalendarObject calendar, Object oneObj, Object twoObj, Object optionsParam,
                         @Cached ToTemporalDateNode toTemporalDate,
-                        @Cached TruffleString.EqualNode equalNode,
-                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getLargestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject one = toTemporalDate.execute(oneObj);
             JSTemporalPlainDateObject two = toTemporalDate.execute(twoObj);
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listTime, AUTO, Unit.DAY, equalNode, getOptionNode, this, errorBranch);
+            Unit largestUnit = getLargestUnit.execute(options, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateOrAuto, Unit.AUTO, Unit.DAY);
             JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay(),
                             largestUnit);

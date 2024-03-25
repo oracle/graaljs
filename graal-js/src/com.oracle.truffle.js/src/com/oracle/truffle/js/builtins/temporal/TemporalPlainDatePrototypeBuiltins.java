@@ -40,17 +40,17 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 
 import java.util.EnumSet;
 import java.util.List;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -75,6 +75,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateNode;
@@ -420,8 +421,10 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             this.sign = sign;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSTemporalDurationObject differenceTemporalPlainDate(JSTemporalPlainDateObject temporalDate, Object otherObj, Object options,
+                        @Bind("this") Node node,
                         @Cached JSToNumberNode toNumber,
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
                         @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
@@ -432,19 +435,20 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getLargestUnit,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalPlainDateObject other = toTemporalDate.execute(otherObj);
             if (!TemporalUtil.calendarEquals(temporalDate.getCalendar(), other.getCalendar(), toCalendarIdentifier)) {
-                errorBranch.enter(this);
+                errorBranch.enter(node);
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
 
-            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
-            List<TruffleString> disallowedUnits = TemporalUtil.listTime;
-            Unit smallestUnit = toSmallestTemporalUnit(resolvedOptions, disallowedUnits, DAY, equalNode, getOptionNode, this, errorBranch);
+            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
+            Unit smallestUnit = getSmallestUnit.execute(resolvedOptions, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingDate, Unit.DAY);
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.DAY, smallestUnit);
-            Unit largestUnit = toLargestTemporalUnit(resolvedOptions, disallowedUnits, AUTO, defaultLargestUnit, equalNode, getOptionNode, this, errorBranch);
+            Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateOrAuto, Unit.AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(resolvedOptions, TRUNC, equalNode, getOptionNode);
             if (sign == TemporalUtil.SINCE) {
@@ -464,11 +468,11 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
                                 0, 0, (long) roundingIncrement, smallestUnit, roundingMode, temporalDate, calendarRec);
                 return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
                                 sign * result2.getYears(), sign * result2.getMonths(), sign * result2.getWeeks(), sign * result2.getDays(),
-                                0, 0, 0, 0, 0, 0, this, errorBranch);
+                                0, 0, 0, 0, 0, 0, node, errorBranch);
             }
             return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
                             sign * result.getYears(), sign * result.getMonths(), sign * result.getWeeks(), sign * result.getDays(),
-                            0, 0, 0, 0, 0, 0, this, errorBranch);
+                            0, 0, 0, 0, 0, 0, node, errorBranch);
         }
 
         @SuppressWarnings("unused")

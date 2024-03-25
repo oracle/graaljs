@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.temporal;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.OFFSET;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.PREFER;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
@@ -94,6 +93,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
@@ -522,10 +522,11 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode, equalNode);
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getSmallestUnit, getOptionNode);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode, getOptionNode);
             ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode, equalNode);
             TruffleString showTimeZone = TemporalUtil.toShowTimeZoneNameOption(options, getOptionNode);
@@ -833,6 +834,8 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached TemporalDurationAddNode durationAddNode,
                         @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getLargestUnit,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord,
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
                         @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
@@ -845,9 +848,9 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
             JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
-            Unit smallestUnit = toSmallestTemporalUnit(resolvedOptions, TemporalUtil.listEmpty, NANOSECOND, equalNode, getOptionNode, node, errorBranch);
+            Unit smallestUnit = getSmallestUnit.execute(resolvedOptions, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingDateTime, Unit.NANOSECOND);
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.HOUR, smallestUnit);
-            Unit largestUnit = toLargestTemporalUnit(resolvedOptions, TemporalUtil.listEmpty, AUTO, defaultLargestUnit, equalNode, getOptionNode, node, errorBranch);
+            Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateTimeOrAuto, Unit.AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(resolvedOptions, TRUNC, equalNode, getOptionNode);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
@@ -919,6 +922,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached JSToNumberNode toNumber,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined,
                         @Cached CreateTimeZoneMethodsRecordNode createTimeZoneMethodsRecord) {
@@ -933,11 +937,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             } else {
                 roundTo = getOptionsObject(roundToParam, this, errorBranch, optionUndefined);
             }
-            Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMW, null, equalNode, getOptionNode, this, errorBranch);
-            if (smallestUnit == Unit.EMPTY) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createRangeErrorSmallestUnitExpected();
-            }
+            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTimeOrDay, Unit.REQUIRED);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, toNumber);
             Object timeZone = zonedDateTime.getTimeZone();

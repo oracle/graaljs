@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOUR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECOND;
@@ -77,6 +76,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
@@ -374,12 +374,14 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached TruffleString.EqualNode equalNode, @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getLargestUnit,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalPlainTimeObject other = toTemporalTime.execute(otherObj, null);
             JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
-            Unit smallestUnit = toSmallestTemporalUnit(resolvedOptions, TemporalUtil.listYMWD, NANOSECOND, equalNode, getOptionNode, this, errorBranch);
-            Unit largestUnit = toLargestTemporalUnit(resolvedOptions, TemporalUtil.listYMWD, AUTO, Unit.HOUR, equalNode, getOptionNode, this, errorBranch);
+            Unit smallestUnit = getSmallestUnit.execute(resolvedOptions, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.NANOSECOND);
+            Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingTimeOrAuto, Unit.AUTO, Unit.HOUR);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(resolvedOptions, TemporalConstants.TRUNC, equalNode, getOptionNode);
             if (sign == TemporalUtil.SINCE) {
@@ -421,6 +423,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached JSToNumberNode toNumber,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (roundToParam == Undefined.instance) {
@@ -434,11 +437,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
             } else {
                 roundTo = getOptionsObject(roundToParam, this, errorBranch, optionUndefined);
             }
-            Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null, equalNode, getOptionNode, this, errorBranch);
-            if (smallestUnit == Unit.EMPTY) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createRangeErrorSmallestUnitExpected();
-            }
+            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.REQUIRED);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             int maximum;
             if (smallestUnit == Unit.HOUR) {
@@ -624,10 +623,11 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode, equalNode);
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getSmallestUnit, getOptionNode);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode, getOptionNode);
             TimeRecord roundResult = TemporalUtil.roundTime(
                             time.getHour(), time.getMinute(), time.getSecond(),

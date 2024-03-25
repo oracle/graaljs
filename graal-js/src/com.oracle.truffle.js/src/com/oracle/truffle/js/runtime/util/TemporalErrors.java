@@ -41,11 +41,13 @@
 package com.oracle.truffle.js.runtime.util;
 
 import java.util.List;
+import java.util.Map;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public final class TemporalErrors {
@@ -96,6 +98,13 @@ public final class TemporalErrors {
     @TruffleBoundary
     public static JSException createRangeErrorOptionsNotContained(List<?> values, Object value) {
         return Errors.createRangeError(String.format("Given options value: %s is not contained in values: %s", value, values));
+    }
+
+    @TruffleBoundary
+    public static JSException createRangeErrorUnitValueUndefinedOrNotAllowed(TruffleString property, TruffleString value, Map<TruffleString, TemporalUtil.Unit> allowedUnits) {
+        return Errors.createRangeError(String.format("Given options value for %s: %s is not one of the allowed values: %s",
+                        property, value == null ? "undefined" : JSRuntime.quote(value),
+                        allowedUnits.entrySet().stream().sorted(Map.Entry.comparingByValue()).toList()));
     }
 
     @TruffleBoundary
@@ -206,11 +215,6 @@ public final class TemporalErrors {
     @TruffleBoundary
     public static JSException createRangeErrorInvalidNanoseconds() {
         return Errors.createRangeError("invalid nanoseconds value");
-    }
-
-    @TruffleBoundary
-    public static JSException createRangeErrorSmallestUnitExpected() {
-        return Errors.createRangeError("smallestUnit expected");
     }
 
     @TruffleBoundary

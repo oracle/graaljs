@@ -40,13 +40,7 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.LARGEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ROUNDING_MODE;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SMALLEST_UNIT;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.UNIT;
-
-import java.util.List;
 
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -56,8 +50,6 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
-import com.oracle.truffle.js.runtime.Boundaries;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
@@ -89,53 +81,6 @@ public abstract class JSTemporalBuiltinOperation extends JSBuiltinNode {
 
     protected boolean isObject(Object obj) {
         return isObjectNode.executeBoolean(obj);
-    }
-
-    protected static TemporalUtil.Unit toLargestTemporalUnit(JSDynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback, TemporalUtil.Unit autoValue,
-                    TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode, Node node, InlinedBranchProfile errorBranch) {
-        assert fallback == null || (!disallowedUnits.contains(fallback) && !disallowedUnits.contains(AUTO));
-        TruffleString largestUnit = (TruffleString) getOptionNode.execute(normalizedOptions, LARGEST_UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTimeAuto, fallback);
-        if (largestUnit != null && largestUnit.equals(AUTO) && autoValue != null) {
-            return autoValue;
-        }
-        if (largestUnit != null) {
-            TruffleString singular = Boundaries.mapGet(TemporalUtil.pluralToSingular, largestUnit);
-            if (singular != null) {
-                largestUnit = singular;
-            }
-        }
-        if (largestUnit != null && Boundaries.listContains(disallowedUnits, largestUnit)) {
-            errorBranch.enter(node);
-            throw Errors.createRangeError("Largest unit is not allowed.");
-        }
-        return TemporalUtil.toUnit(largestUnit, equalNode);
-    }
-
-    protected static TemporalUtil.Unit toSmallestTemporalUnit(JSDynamicObject normalizedOptions, List<TruffleString> disallowedUnits, TruffleString fallback,
-                    TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode, Node node, InlinedBranchProfile errorBranch) {
-        TruffleString smallestUnit = (TruffleString) getOptionNode.execute(normalizedOptions, SMALLEST_UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTime, fallback);
-        if (smallestUnit != null) {
-            TruffleString singular = Boundaries.mapGet(TemporalUtil.pluralToSingular, smallestUnit);
-            if (singular != null) {
-                smallestUnit = singular;
-            }
-        }
-        if (smallestUnit != null && Boundaries.listContains(disallowedUnits, smallestUnit)) {
-            errorBranch.enter(node);
-            throw Errors.createRangeError("Smallest unit not allowed.");
-        }
-        return TemporalUtil.toUnit(smallestUnit, equalNode);
-    }
-
-    protected static TemporalUtil.Unit toTemporalDurationTotalUnit(JSDynamicObject normalizedOptions, TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
-        TruffleString unit = (TruffleString) getOptionNode.execute(normalizedOptions, UNIT, TemporalUtil.OptionType.STRING, TemporalUtil.listAllDateTime, null);
-        if (unit != null) {
-            TruffleString singular = Boundaries.mapGet(TemporalUtil.pluralToSingular, unit);
-            if (singular != null) {
-                unit = singular;
-            }
-        }
-        return TemporalUtil.toUnit(unit, equalNode);
     }
 
     protected static TemporalUtil.RoundingMode toTemporalRoundingMode(JSDynamicObject options, TruffleString fallback,

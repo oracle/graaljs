@@ -51,6 +51,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
@@ -58,8 +59,10 @@ import static com.oracle.truffle.js.runtime.util.TemporalUtil.getDouble;
 
 import java.util.EnumSet;
 
+import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -80,6 +83,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalBalanceDateDurationRelativeNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
@@ -398,8 +402,10 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization
         protected JSTemporalDurationObject round(JSTemporalDurationObject duration, Object roundToParam,
+                        @Bind("this") Node node,
                         @Cached JSToNumberNode toNumber,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalDurationAddNode durationAddNode,
@@ -412,21 +418,23 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached TemporalUnbalanceDateDurationRelativeNode unbalanceDurationRelativeNode,
                         @Cached TemporalBalanceDateDurationRelativeNode balanceDateDurationRelativeNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getLargestUnit,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (roundToParam == Undefined.instance) {
                 throw TemporalErrors.createTypeErrorOptionsUndefined();
             }
             JSDynamicObject roundTo;
-            if (roundToIsTString.profile(this, Strings.isTString(roundToParam))) {
+            if (roundToIsTString.profile(node, Strings.isTString(roundToParam))) {
                 roundTo = JSOrdinary.createWithNullPrototype(getContext());
                 JSRuntime.createDataPropertyOrThrow(roundTo, TemporalConstants.SMALLEST_UNIT, roundToParam);
             } else {
-                roundTo = getOptionsObject(roundToParam, this, errorBranch, optionUndefined);
+                roundTo = getOptionsObject(roundToParam, node, errorBranch, optionUndefined);
             }
             boolean smallestUnitPresent = true;
             boolean largestUnitPresent = true;
-            Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listEmpty, null, equalNode, getOptionNode, this, errorBranch);
+            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingDateTime, Unit.EMPTY);
             if (smallestUnit == Unit.EMPTY) {
                 smallestUnitPresent = false;
                 smallestUnit = Unit.NANOSECOND;
@@ -436,7 +444,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds());
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(existingLargestUnit, smallestUnit);
-            Unit largestUnit = toLargestTemporalUnit(roundTo, TemporalUtil.listEmpty, null, null, equalNode, getOptionNode, this, errorBranch);
+            Unit largestUnit = getLargestUnit.execute(roundTo, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateTimeOrAuto, Unit.EMPTY);
             if (largestUnit == Unit.EMPTY) {
                 largestUnitPresent = false;
                 largestUnit = defaultLargestUnit;
@@ -444,7 +452,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 largestUnit = defaultLargestUnit;
             }
             if (!smallestUnitPresent && !largestUnitPresent) {
-                errorBranch.enter(this);
+                errorBranch.enter(node);
                 throw Errors.createRangeError("at least one of smallestUnit or largestUnit is required");
             }
             JSRealm realm = getRealm();
@@ -490,7 +498,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 timeZoneRec, instant, zonedRelativeTo.getCalendar());
                 plainRelativeTo = JSTemporalPlainDate.create(getContext(), realm,
                                 precalculatedPlainDateTime.getYear(), precalculatedPlainDateTime.getMonth(), precalculatedPlainDateTime.getDay(),
-                                zonedRelativeTo.getCalendar(), this, errorBranch);
+                                zonedRelativeTo.getCalendar(), node, errorBranch);
             }
 
             CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(lookupDateAdd, lookupDateUntil);
@@ -503,7 +511,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             duration.getMicroseconds(), duration.getNanoseconds(), (long) roundingIncrement, smallestUnit,
                             roundingMode, plainRelativeTo, zonedRelativeTo, calendarRec, timeZoneRec, precalculatedPlainDateTime);
             TimeDurationRecord balanceResult;
-            if (relativeToIsZonedDateTime.profile(this, zonedRelativeTo != null)) {
+            if (relativeToIsZonedDateTime.profile(node, zonedRelativeTo != null)) {
                 JSTemporalDurationRecord adjustResult = TemporalUtil.adjustRoundedDurationDays(getContext(), realm, durationAddNode, roundDurationNode,
                                 roundResult.getYears(), roundResult.getMonths(), roundResult.getWeeks(), roundResult.getDays(),
                                 roundResult.getHours(), roundResult.getMinutes(), roundResult.getSeconds(),
@@ -523,7 +531,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             return JSTemporalDuration.createTemporalDuration(getContext(), realm,
                             result.years(), result.months(), result.weeks(), result.days(),
                             balanceResult.hours(), balanceResult.minutes(), balanceResult.seconds(),
-                            balanceResult.milliseconds(), balanceResult.microseconds(), balanceResult.nanoseconds(), this, errorBranch);
+                            balanceResult.milliseconds(), balanceResult.microseconds(), balanceResult.nanoseconds(), node, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -539,15 +547,16 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             super(context, builtin);
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization
-        protected double total(JSTemporalDurationObject duration, Object totalOfParam,
-                        @Cached TruffleString.EqualNode equalNode,
+        protected final double total(JSTemporalDurationObject duration, Object totalOfParam,
+                        @Bind("this") Node node,
                         @Cached ToRelativeTemporalObjectNode toRelativeTemporalObjectNode,
                         @Cached("createDateAdd()") CalendarMethodsRecordLookupNode lookupDateAdd,
                         @Cached("createDateUntil()") CalendarMethodsRecordLookupNode lookupDateUntil,
                         @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalUnbalanceDateDurationRelativeNode unbalanceDurationRelativeNode,
-                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getTemporalUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (totalOfParam == Undefined.instance) {
@@ -560,14 +569,14 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 totalOf = JSOrdinary.createWithNullPrototype(getContext());
                 JSRuntime.createDataPropertyOrThrow(totalOf, TemporalConstants.UNIT, totalOfParam);
             } else {
-                totalOf = getOptionsObject(totalOfParam, this, errorBranch, optionUndefined);
+                totalOf = getOptionsObject(totalOfParam, node, errorBranch, optionUndefined);
             }
             var relativeToRec = toRelativeTemporalObjectNode.execute(totalOf);
             JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
             JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();
             TimeZoneMethodsRecord timeZoneRec = relativeToRec.timeZoneRec();
 
-            Unit unit = toTemporalDurationTotalUnit(totalOf, equalNode, getOptionNode);
+            Unit unit = getTemporalUnit.execute(totalOf, UNIT, TemporalUtil.unitMappingDateTime, Unit.REQUIRED);
             JSTemporalPlainDateTimeObject precalculatedPlainDateTime = null;
             boolean plainDateTimeOrRelativeToWillBeUsed = unit == Unit.YEAR || unit == Unit.MONTH || unit == Unit.WEEK || unit == Unit.DAY ||
                             duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0;
@@ -582,7 +591,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                                 timeZoneRec, instant, zonedRelativeTo.getCalendar());
                 plainRelativeTo = JSTemporalPlainDate.create(getContext(), realm,
                                 precalculatedPlainDateTime.getYear(), precalculatedPlainDateTime.getMonth(), precalculatedPlainDateTime.getDay(),
-                                zonedRelativeTo.getCalendar(), this, errorBranch);
+                                zonedRelativeTo.getCalendar(), node, errorBranch);
             }
 
             CalendarMethodsRecord calendarRec = relativeToRec.createCalendarMethodsRecord(lookupDateAdd, lookupDateUntil);
@@ -672,10 +681,11 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(opt, this, errorBranch, optionUndefined);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode, equalNode);
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getSmallestUnit, getOptionNode);
             if (precision.getUnit() == Unit.MINUTE) {
                 errorBranch.enter(this);
                 throw Errors.createRangeError("unexpected precision minute");

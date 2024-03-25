@@ -43,7 +43,6 @@ package com.oracle.truffle.js.builtins.temporal;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtoi;
 
@@ -87,6 +86,7 @@ import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalBalanceDateDurationRelativeNode;
@@ -436,8 +436,10 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             this.sign = sign;
         }
 
+        @SuppressWarnings("truffle-static-method")
         @Specialization
-        final JSTemporalDurationObject differenceTemporalPlainDateTime(JSTemporalPlainDateTimeObject dateTime, Object otherObj, Object options,
+        protected JSTemporalDurationObject differenceTemporalPlainDateTime(JSTemporalPlainDateTimeObject dateTime, Object otherObj, Object options,
+                        @Bind("this") Node node,
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
                         @Cached JSToNumberNode toNumber,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
@@ -449,20 +451,22 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalBalanceDateDurationRelativeNode balanceDateDurationRelative,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getLargestUnit,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalPlainDateTimeObject other = toTemporalDateTime.execute(otherObj, Undefined.instance);
             var calendar = dateTime.getCalendar();
             if (!TemporalUtil.calendarEquals(calendar, other.getCalendar(), toCalendarIdentifier)) {
-                errorBranch.enter(this);
+                errorBranch.enter(node);
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
 
-            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
+            JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
 
-            Unit smallestUnit = toSmallestTemporalUnit(resolvedOptions, TemporalUtil.listEmpty, NANOSECOND, equalNode, getOptionNode, this, errorBranch);
+            Unit smallestUnit = getSmallestUnit.execute(resolvedOptions, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingDateTime, Unit.NANOSECOND);
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.DAY, smallestUnit);
-            Unit largestUnit = toLargestTemporalUnit(resolvedOptions, TemporalUtil.listEmpty, AUTO, defaultLargestUnit, equalNode, getOptionNode, this, errorBranch);
+            Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateTimeOrAuto, Unit.AUTO, defaultLargestUnit);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
 
             RoundingMode roundingMode = toTemporalRoundingMode(resolvedOptions, TRUNC, equalNode, getOptionNode);
@@ -482,7 +486,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), other.getYear(), other.getMonth(),
                             other.getDay(), other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond(), calendarRec,
                             largestUnit, resolvedOptions);
-            JSTemporalPlainDateObject plainRelativeTo = JSTemporalPlainDate.create(getContext(), realm, dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), calendar, this, errorBranch);
+            JSTemporalPlainDateObject plainRelativeTo = JSTemporalPlainDate.create(getContext(), realm, dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), calendar, node, errorBranch);
             JSTemporalDurationRecord roundResult = roundDurationNode.execute(diff.getYears(), diff.getMonths(), diff.getWeeks(), diff.getDays(), diff.getHours(),
                             diff.getMinutes(), diff.getSeconds(), diff.getMilliseconds(), diff.getMicroseconds(), diff.getNanoseconds(),
                             (long) roundingIncrement, smallestUnit, roundingMode, plainRelativeTo, calendarRec);
@@ -496,7 +500,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                             sign * balanceResult.years(), sign * balanceResult.months(), sign * balanceResult.weeks(), sign * balanceResult.days(),
                             sign * result.hours(), sign * result.minutes(), sign * result.seconds(),
                             sign * result.milliseconds(), sign * result.microseconds(), sign * result.nanoseconds(),
-                            this, errorBranch);
+                            node, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -545,10 +549,11 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode, equalNode);
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getSmallestUnit, getOptionNode);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
             ShowCalendar showCalendar = TemporalUtil.toShowCalendarOption(options, getOptionNode, equalNode);
             JSTemporalDurationRecord result = TemporalUtil.roundISODateTime(
@@ -727,6 +732,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                         @Cached JSToNumberNode toNumberNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (roundToParam == Undefined.instance) {
@@ -739,11 +745,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             } else {
                 roundTo = getOptionsObject(roundToParam, this, errorBranch, optionUndefined);
             }
-            Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMW, null, equalNode, getOptionNode, this, errorBranch);
-            if (smallestUnit == Unit.EMPTY) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
-            }
+            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTimeOrDay, Unit.REQUIRED);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, toNumberNode);
             JSTemporalDurationRecord result = TemporalUtil.roundISODateTime(dt.getYear(), dt.getMonth(), dt.getDay(), dt.getHour(), dt.getMinute(), dt.getSecond(),

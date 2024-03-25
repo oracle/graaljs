@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CALENDAR;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.OVERFLOW;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
@@ -75,6 +73,7 @@ import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalAddDateNode;
@@ -537,6 +536,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                         @Cached("createFields()") CalendarMethodsRecordLookupNode lookupFields,
                         @Cached("createKeys(getContext())") EnumerableOwnPropertyNamesNode namesNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getLargestUnit,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached ToTemporalYearMonthNode toTemporalYearMonthNode,
@@ -551,9 +552,8 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
                 throw TemporalErrors.createRangeErrorIdenticalCalendarExpected();
             }
             JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, node, errorBranch, optionUndefined), Null.instance);
-            List<TruffleString> disallowedUnits = TemporalUtil.listWDHMSMMN;
-            Unit smallestUnit = toSmallestTemporalUnit(resolvedOptions, disallowedUnits, MONTH, equalNode, getOptionNode, node, errorBranch);
-            Unit largestUnit = toLargestTemporalUnit(resolvedOptions, disallowedUnits, AUTO, Unit.YEAR, equalNode, getOptionNode, node, errorBranch);
+            Unit smallestUnit = getSmallestUnit.execute(resolvedOptions, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingYearMonth, Unit.MONTH);
+            Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingYearMonthOrAuto, Unit.AUTO, Unit.YEAR);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(resolvedOptions, TRUNC, equalNode, getOptionNode);
             if (sign == TemporalUtil.SINCE) {
