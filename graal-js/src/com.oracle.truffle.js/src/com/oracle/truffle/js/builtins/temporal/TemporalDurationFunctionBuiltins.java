@@ -145,6 +145,12 @@ public class TemporalDurationFunctionBuiltins extends JSBuiltinsContainer.Switch
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
             JSRealm realm = getRealm();
 
+            if (one.getYears() == two.getYears() && one.getMonths() == two.getMonths() && one.getWeeks() == two.getWeeks() && one.getDays() == two.getDays() && one.getHours() == two.getHours() &&
+                            one.getMinutes() == two.getMinutes() && one.getSeconds() == two.getSeconds() && one.getMilliseconds() == two.getMilliseconds() &&
+                            one.getMicroseconds() == two.getMicroseconds() && one.getNanoseconds() == two.getNanoseconds()) {
+                return 0;
+            }
+
             var relativeToRec = toRelativeTemporalObjectNode.execute(options);
             JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
             JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();
