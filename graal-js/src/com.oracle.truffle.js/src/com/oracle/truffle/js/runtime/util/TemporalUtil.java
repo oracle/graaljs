@@ -471,11 +471,9 @@ public final class TemporalUtil {
     }
 
     // 13.4
-    public static double getNumberOption(JSDynamicObject options, TruffleString property, double minimum, double maximum,
-                    double fallback, IsObjectNode isObject,
+    public static double getNumberOption(Object options, TruffleString property, double minimum, double maximum, double fallback,
                     JSToNumberNode numberNode) {
-        assert isObject.executeBoolean(options);
-        Object value = JSObject.get(options, property);
+        Object value = JSRuntime.get(options, property);
         return defaultNumberOptions(value, minimum, maximum, fallback, numberNode);
     }
 
@@ -499,8 +497,7 @@ public final class TemporalUtil {
     }
 
     // 13.17
-    public static double toTemporalRoundingIncrement(JSDynamicObject options, Double dividend, boolean inclusive,
-                    IsObjectNode isObject,
+    public static double toTemporalRoundingIncrement(Object options, Double dividend, boolean inclusive,
                     JSToNumberNode toNumber) {
         double maximum;
         double dDividend = Double.NaN;
@@ -517,7 +514,7 @@ public final class TemporalUtil {
             }
         }
 
-        double increment = getNumberOption(options, ROUNDING_INCREMENT, 1, maximum, 1, isObject, toNumber);
+        double increment = getNumberOption(options, ROUNDING_INCREMENT, 1, maximum, 1, toNumber);
         if (dividend != null && dDividend % increment != 0) {
             throw Errors.createRangeError("Increment out of range.");
         }
@@ -2717,7 +2714,7 @@ public final class TemporalUtil {
                         rt.hour(), rt.minute(), rt.second(), rt.millisecond(), rt.microsecond(), rt.nanosecond());
     }
 
-    public static double toTemporalDateTimeRoundingIncrement(JSDynamicObject options, Unit smallestUnit, IsObjectNode isObject, JSToNumberNode toNumber) {
+    public static double toTemporalDateTimeRoundingIncrement(JSDynamicObject options, Unit smallestUnit, JSToNumberNode toNumber) {
         int maximum = 0;
         if (Unit.DAY == smallestUnit) {
             maximum = 1;
@@ -2729,7 +2726,7 @@ public final class TemporalUtil {
             assert Unit.MILLISECOND == smallestUnit || Unit.MICROSECOND == smallestUnit || Unit.NANOSECOND == smallestUnit;
             maximum = 1000;
         }
-        return toTemporalRoundingIncrement(options, (double) maximum, false, isObject, toNumber);
+        return toTemporalRoundingIncrement(options, (double) maximum, false, toNumber);
     }
 
     public static boolean isValidTime(int hours, int minutes, int seconds, int milliseconds, int microseconds, int nanoseconds) {

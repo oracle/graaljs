@@ -470,7 +470,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             }
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, maximum, false, isObjectNode, toNumber);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, maximum, false, toNumber);
 
             Object dateAddMethod = lookupDateAdd.execute(calendar);
             Object dateUntilMethod = lookupDateUntil.execute(calendar);
@@ -745,7 +745,7 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
             }
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
-            double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, isObjectNode, toNumberNode);
+            double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, toNumberNode);
             JSTemporalDurationRecord result = TemporalUtil.roundISODateTime(dt.getYear(), dt.getMonth(), dt.getDay(), dt.getHour(), dt.getMinute(), dt.getSecond(),
                             dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),

@@ -851,7 +851,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(resolvedOptions, TRUNC, equalNode, getOptionNode);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, maximum, false, isObjectNode, toNumber);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, maximum, false, toNumber);
             JSRealm realm = getRealm();
             if (!(Unit.YEAR == largestUnit || Unit.MONTH == largestUnit || Unit.WEEK == largestUnit || Unit.DAY == largestUnit)) {
                 TimeDurationRecord result = TemporalUtil.differenceInstant(zonedDateTime.getNanoseconds(), other.getNanoseconds(),
@@ -939,7 +939,7 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 throw TemporalErrors.createRangeErrorSmallestUnitExpected();
             }
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
-            double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, isObjectNode, toNumber);
+            double roundingIncrement = TemporalUtil.toTemporalDateTimeRoundingIncrement(roundTo, smallestUnit, toNumber);
             Object timeZone = zonedDateTime.getTimeZone();
             var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
             JSRealm realm = getRealm();

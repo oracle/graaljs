@@ -278,7 +278,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(resolvedOptions, TRUNC, equalNode, getOptionNode);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, maximum, false, isObjectNode, toNumber);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, maximum, false, toNumber);
 
             BigInt one = isUntil ? instant.getNanoseconds() : other.getNanoseconds();
             BigInt two = isUntil ? other.getNanoseconds() : instant.getNanoseconds();
@@ -341,7 +341,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 assert Unit.NANOSECOND == smallestUnit;
                 maximum = TemporalUtil.NS_PER_DAY;
             }
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, true, isObjectNode, toNumber);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, true, toNumber);
             BigInt roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode);
             return JSTemporalInstant.create(getContext(), getRealm(), roundedNs);
         }

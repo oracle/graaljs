@@ -451,7 +451,7 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, false, isObjectNode, toNumber);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, false, toNumber);
             var relativeToRec = toRelativeTemporalObjectNode.execute(roundTo);
             JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
             JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();

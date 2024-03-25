@@ -559,7 +559,7 @@ public class TemporalPlainYearMonthPrototypeBuiltins extends JSBuiltinsContainer
             if (sign == TemporalUtil.SINCE) {
                 roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             }
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, null, false, isObjectNode, toNumberNode);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, null, false, toNumberNode);
 
             Object dateAddMethod = lookupDateAdd.execute(calendar);
             Object dateFromFieldsMethod = lookupDateFromFields.execute(calendar);

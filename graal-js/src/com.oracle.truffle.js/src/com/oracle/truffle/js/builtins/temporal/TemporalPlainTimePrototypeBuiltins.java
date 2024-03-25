@@ -386,7 +386,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             }
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, maximum, false, isObjectNode, toNumber);
+            long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, maximum, false, toNumber);
             TimeDurationRecord result = TemporalUtil.differenceTime(
                             temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
                             temporalTime.getNanosecond(),
@@ -449,7 +449,7 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
                 maximum = 1000;
             }
             double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, (double) maximum,
-                            false, isObjectNode, toNumber);
+                            false, toNumber);
             TimeRecord result = TemporalUtil.roundTime(temporalTime.getHour(), temporalTime.getMinute(),
                             temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
                             temporalTime.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);

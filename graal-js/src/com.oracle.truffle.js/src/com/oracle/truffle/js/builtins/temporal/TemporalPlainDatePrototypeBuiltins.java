@@ -450,7 +450,7 @@ public class TemporalPlainDatePrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (sign == TemporalUtil.SINCE) {
                 roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
             }
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, null, false, isObjectNode, toNumber);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, null, false, toNumber);
 
             Object dateAddMethod = lookupDateAdd.execute(temporalDate.getCalendar());
             Object dateUntilMethod = lookupDateUntil.execute(temporalDate.getCalendar());
