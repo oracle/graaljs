@@ -43,7 +43,6 @@ package com.oracle.truffle.js.nodes.unary;
 import java.util.Objects;
 
 import com.oracle.truffle.api.dsl.Executed;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags;
@@ -64,8 +63,6 @@ public abstract class JSUnaryNode extends JavaScriptNode {
     public final JavaScriptNode getOperand() {
         return operandNode;
     }
-
-    public abstract Object execute(VirtualFrame frame, Object operandValue);
 
     @Override
     public String expressionToString() {

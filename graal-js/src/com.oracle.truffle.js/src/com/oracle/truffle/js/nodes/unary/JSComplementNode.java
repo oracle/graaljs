@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,7 +45,6 @@ import java.util.Set;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -80,6 +79,8 @@ public abstract class JSComplementNode extends JSUnaryNode {
         }
     }
 
+    public abstract Object execute(Object value);
+
     @Specialization
     protected int doInteger(int a) {
         return ~a;
@@ -113,11 +114,10 @@ public abstract class JSComplementNode extends JSUnaryNode {
     }
 
     @Specialization(guards = {"!hasOverloadedOperators(value)"}, replaces = {"doInteger", "doSafeInteger", "doDouble", "doBigInt"})
-    protected Object doGeneric(VirtualFrame frame, Object value,
-                    @Cached JSToNumericNode toNumericNode,
+    protected Object doGeneric(Object value, @Cached JSToNumericNode toNumericNode,
                     @Cached("createInner()") JSComplementNode recursive) {
         Object number = toNumericNode.execute(value);
-        return recursive.execute(frame, number);
+        return recursive.execute(number);
     }
 
     static JSComplementNode createInner() {
