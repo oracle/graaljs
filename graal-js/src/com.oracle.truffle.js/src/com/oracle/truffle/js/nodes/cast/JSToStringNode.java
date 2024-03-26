@@ -140,8 +140,10 @@ public abstract class JSToStringNode extends JavaScriptBaseNode {
         return Strings.fromLong(value);
     }
 
+    @InliningCutoff
     @Specialization
-    protected TruffleString doDouble(double d, @Cached JSDoubleToStringNode doubleToStringNode) {
+    protected TruffleString doDouble(double d,
+                    @Cached JSDoubleToStringNode doubleToStringNode) {
         return doubleToStringNode.executeString(d);
     }
 

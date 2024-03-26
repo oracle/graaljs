@@ -117,6 +117,7 @@ import java.util.function.Function;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.ExactMath;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -1370,6 +1371,7 @@ public final class TemporalUtil {
         return epochNanoseconds;
     }
 
+    @InliningCutoff
     public static Overflow toTemporalOverflow(JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
         if (options == Undefined.instance) {
             return Overflow.CONSTRAIN;
