@@ -2699,10 +2699,19 @@ public final class JSRuntime {
         return builder.toString();
     }
 
+    /**
+     * Implementation of the Quote(value) operation as defined in the ECMAscript spec. It wraps a
+     * String value in double quotes and escapes characters within.
+     *
+     * @param value string to quote
+     *
+     * @return quoted and escaped string
+     */
     @TruffleBoundary
     public static TruffleString quote(TruffleString value) {
+        int len = Strings.length(value);
         int pos = 0;
-        while (pos < Strings.length(value)) {
+        while (pos < len) {
             char ch = Strings.charAt(value, pos);
             if (ch < ' ' || ch == '\\' || ch == '"') {
                 break;
@@ -2710,10 +2719,10 @@ public final class JSRuntime {
             pos++;
         }
 
-        var builder = Strings.builderCreate(Strings.length(value) + 2);
+        var builder = Strings.builderCreate(len + 2);
         Strings.builderAppend(builder, '"');
         Strings.builderAppend(builder, value, 0, pos);
-        for (int i = pos; i < Strings.length(value); i++) {
+        for (int i = pos; i < len; i++) {
             char ch = Strings.charAt(value, i);
             if (ch < ' ') {
                 if (ch == '\b') {

@@ -909,10 +909,6 @@ public final class Strings {
         return node.execute(chars, fromIndex, length);
     }
 
-    public static TruffleString intToHexString(char i) {
-        return fromJavaString(Integer.toHexString(i));
-    }
-
     public static TruffleString flatten(TruffleString.MaterializeNode materializeNode, TruffleString value) {
         materializeNode.execute(value, TruffleString.Encoding.UTF_16);
         return value;

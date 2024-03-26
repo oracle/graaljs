@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,7 +102,6 @@ import com.oracle.truffle.js.parser.BinarySnapshotProvider;
 import com.oracle.truffle.js.parser.JavaScriptTranslator;
 import com.oracle.truffle.js.parser.SnapshotProvider;
 import com.oracle.truffle.js.parser.env.Environment;
-import com.oracle.truffle.js.parser.json.JSONParserUtil;
 import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -391,10 +390,10 @@ public class Recording {
                 stringified = String.valueOf(constant);
             } else if (constant instanceof Long) {
                 stringified = String.valueOf(constant) + 'L';
-            } else if (Strings.isTString(constant)) {
-                stringified = Strings.toJavaString(JSONParserUtil.quote((TruffleString) constant));
+            } else if (constant instanceof TruffleString str) {
+                stringified = Strings.toJavaString(JSRuntime.quote(str));
             } else if (constant instanceof BigInt) {
-                stringified = typeName(BigInt.class) + ".valueOf(" + JSONParserUtil.quote(Strings.fromBigInt((BigInt) constant)) + ")";
+                stringified = typeName(BigInt.class) + ".valueOf(" + JSRuntime.quote(Strings.fromBigInt((BigInt) constant)) + ")";
             } else if (constant.getClass().isEnum()) {
                 stringified = typeName(constant.getClass()) + "." + constant;
             } else if (constant == Dead.instance()) {
@@ -737,7 +736,7 @@ public class Recording {
         @Override
         public String rhs() {
             return String.format("%s.create(%s, null, null, null, %d, %s, %d)", typeName(JSFunctionData.class), context, functionData.getLength(),
-                            JSONParserUtil.quote(functionData.getName()), functionData.getFlags());
+                            JSRuntime.quote(functionData.getName()), functionData.getFlags());
         }
 
         @Override
@@ -879,7 +878,7 @@ public class Recording {
 
         @Override
         public String toString() {
-            return node + ".setName(" + JSONParserUtil.quote(name) + ")";
+            return node + ".setName(" + JSRuntime.quote(name) + ")";
         }
 
         @Override
