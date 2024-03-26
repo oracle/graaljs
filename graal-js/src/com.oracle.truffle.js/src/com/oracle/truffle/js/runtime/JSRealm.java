@@ -2971,6 +2971,7 @@ public class JSRealm {
         }
     }
 
+    @TruffleBoundary
     public long currentTimeMillis() {
         return Math.floorDiv(nanoTimeWallClock(), NANOSECONDS_PER_MILLISECOND);
     }
