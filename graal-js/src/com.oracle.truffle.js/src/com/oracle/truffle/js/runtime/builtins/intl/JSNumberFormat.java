@@ -555,7 +555,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                     endRangeStart = start;
                     endRangeLimit = limit;
                 } else {
-                    throw Errors.shouldNotReachHere(fieldValue.toString());
+                    throw Errors.shouldNotReachHereUnexpectedValue(fieldValue);
                 }
             } else if (field instanceof NumberFormat.Field) {
                 String type;
@@ -587,7 +587,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                 parts.add(IntlUtil.makePart(context, realm, type, value, null, source));
                 lastLimit = limit;
             } else {
-                throw Errors.shouldNotReachHere(field.toString());
+                throw Errors.shouldNotReachHereUnexpectedValue(field);
             }
         }
 

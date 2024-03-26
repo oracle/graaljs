@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
@@ -208,8 +207,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             }
             return toRecordWeeksPlural(0, 0, weeks, days);
         }
-        CompilerDirectives.transferToInterpreter();
-        throw Errors.shouldNotReachHere("unexpected largest unit: " + largestUnit);
+        throw Errors.shouldNotReachHereUnexpectedValue(largestUnit);
     }
 
     private static JSTemporalDurationRecord toRecordPlural(long year, long month, long day) {

@@ -873,7 +873,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                     endRangeStart = start;
                     endRangeLimit = limit;
                 } else {
-                    throw Errors.shouldNotReachHere(fieldValue.toString());
+                    throw Errors.shouldNotReachHereUnexpectedValue(fieldValue);
                 }
             } else if (field instanceof DateFormat.Field) {
                 String value = formattedString.substring(start, limit);
@@ -893,7 +893,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
                 parts.add(makePart(context, realm, type, value, source));
                 lastLimit = limit;
             } else {
-                throw Errors.shouldNotReachHere(field.toString());
+                throw Errors.shouldNotReachHereUnexpectedValue(field);
             }
         }
 

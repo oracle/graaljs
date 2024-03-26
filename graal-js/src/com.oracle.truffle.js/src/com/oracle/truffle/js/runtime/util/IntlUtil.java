@@ -50,7 +50,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.MissingResourceException;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -826,7 +825,7 @@ public final class IntlUtil {
             case HOUR_CYCLE_24:
                 return IntlUtil.H24;
             default:
-                throw Errors.shouldNotReachHere(Objects.toString(hourCycle));
+                throw Errors.shouldNotReachHereUnexpectedValue(hourCycle);
         }
     }
 

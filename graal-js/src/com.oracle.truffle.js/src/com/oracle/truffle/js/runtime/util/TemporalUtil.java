@@ -1386,8 +1386,7 @@ public final class TemporalUtil {
         } else if (TemporalConstants.REJECT.equals(result)) {
             return Overflow.REJECT;
         }
-        CompilerDirectives.transferToInterpreter();
-        throw Errors.shouldNotReachHere("unknown overflow type: " + result);
+        throw Errors.shouldNotReachHereUnexpectedValue(result);
     }
 
     public static JSTemporalDateTimeRecord interpretTemporalDateTimeFields(CalendarMethodsRecord calendarRec, JSDynamicObject fields, JSDynamicObject options, TemporalGetOptionNode getOptionNode,
