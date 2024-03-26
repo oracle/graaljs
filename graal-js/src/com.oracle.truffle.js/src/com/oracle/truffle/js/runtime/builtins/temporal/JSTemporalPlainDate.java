@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -132,6 +133,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return createIntl(context, realm, proto, year, month, day, calendar);
     }
 
+    @InliningCutoff
     private static JSTemporalPlainDateObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,
                     int year, int month, int day, Object calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateFactory();

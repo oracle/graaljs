@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -85,6 +86,7 @@ public final class JSTemporalPlainTime extends JSNonProxy implements JSConstruct
                         node, errorBranch);
     }
 
+    @InliningCutoff
     public static JSTemporalPlainTimeObject create(JSContext context, JSRealm realm, JSDynamicObject proto,
                     int hours, int minutes, int seconds, int milliseconds, int microseconds, int nanoseconds,
                     Node node, InlinedBranchProfile errorBranch) {
