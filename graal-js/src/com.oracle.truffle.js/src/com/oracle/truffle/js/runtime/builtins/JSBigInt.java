@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.BigIntFunctionBuiltins;
@@ -63,10 +64,12 @@ public final class JSBigInt extends JSPrimitive implements JSConstructorFactory.
     private JSBigInt() {
     }
 
+    @InliningCutoff
     public static JSBigIntObject create(JSContext context, JSRealm realm, BigInt value) {
         return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), value);
     }
 
+    @InliningCutoff
     public static JSBigIntObject create(JSContext context, JSRealm realm, JSDynamicObject proto, BigInt value) {
         JSObjectFactory factory = context.getBigIntFactory();
         var shape = factory.getShape(realm, proto);

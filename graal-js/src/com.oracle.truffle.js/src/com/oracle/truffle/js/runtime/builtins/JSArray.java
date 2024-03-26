@@ -44,6 +44,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -162,12 +163,14 @@ public final class JSArray extends JSAbstractArray implements JSConstructorFacto
         return createWithProto(context, realm, proto, arrayType, array, null, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
+    @InliningCutoff
     public static JSArrayObject createDefaultProto(JSContext context, JSRealm realm,
                     ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         JSObjectFactory factory = context.getArrayFactory();
-        return createImpl(factory, realm, factory.getPrototype(realm), arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
+        return createImpl(factory, realm, INSTANCE.getIntrinsicDefaultProto(realm), arrayType, array, site, length, usedLength, indexOffset, arrayOffset, holeCount);
     }
 
+    @InliningCutoff
     public static JSArrayObject createWithProto(JSContext context, JSRealm realm, JSDynamicObject prototype,
                     ScriptArray arrayType, Object array, ArrayAllocationSite site, long length, int usedLength, int indexOffset, int arrayOffset, int holeCount) {
         JSObjectFactory factory = context.getArrayFactory();

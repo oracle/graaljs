@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
@@ -269,6 +270,7 @@ public final class JSFunction extends JSNonProxy {
         return createDefault(functionData, enclosingFrame, lexicalThis, realm);
     }
 
+    @InliningCutoff
     private static JSFunctionObject createDefault(JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm) {
         JSFunctionFactory factory = initialFactory(functionData);
         return factory.create(functionData, enclosingFrame, classPrototype, realm);
