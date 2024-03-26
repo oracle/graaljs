@@ -142,6 +142,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return factory.trackAllocation(newObj);
     }
 
+    @TruffleBoundary
     public static JSTemporalDurationRecord differenceISODate(int y1, int m1, int d1, int y2, int m2, int d2, Unit largestUnit) {
         assert largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY;
         if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
