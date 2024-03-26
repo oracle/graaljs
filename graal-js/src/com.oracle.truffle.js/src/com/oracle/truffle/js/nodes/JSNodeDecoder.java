@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -83,6 +83,8 @@ public class JSNodeDecoder {
         ID_LDC_ENUM,
         /** Load string constant into register. */
         ID_LDC_STRING,
+        /** Load string constant into register. */
+        ID_LDC_JAVA_STRING,
         /** Load singleton constant into register. */
         ID_LDC_SINGLETON,
         /** Load BigInt constant into register. */
@@ -177,6 +179,9 @@ public class JSNodeDecoder {
                     break;
                 case ID_LDC_STRING:
                     storeResult(state, state.getString());
+                    break;
+                case ID_LDC_JAVA_STRING:
+                    storeResult(state, state.getString().toJavaStringUncached());
                     break;
                 case ID_LDC_SINGLETON:
                     storeResult(state, SINGLETONS[state.getInt()]);

@@ -392,6 +392,8 @@ public class Recording {
                 stringified = String.valueOf(constant) + 'L';
             } else if (constant instanceof TruffleString str) {
                 stringified = Strings.toJavaString(JSRuntime.quote(str));
+            } else if (constant instanceof String str) {
+                stringified = JSRuntime.quote(str);
             } else if (constant instanceof BigInt) {
                 stringified = typeName(BigInt.class) + ".valueOf(" + JSRuntime.quote(Strings.fromBigInt((BigInt) constant)) + ")";
             } else if (constant.getClass().isEnum()) {
@@ -415,7 +417,7 @@ public class Recording {
 
         @Override
         public boolean isPrimitiveValue() {
-            return !(Strings.isTString(constant) || constant instanceof BigInt);
+            return !(constant instanceof TruffleString || constant instanceof String || constant instanceof BigInt);
         }
 
         @Override
@@ -1295,7 +1297,7 @@ public class Recording {
 
     private Inst encode(Object arg, Class<?> declaredType, Type genericType) {
         Inst enc;
-        if (arg == null || JSRuntime.isJSPrimitive(arg) || arg instanceof Long || arg == Dead.instance()) {
+        if (arg == null || JSRuntime.isJSPrimitive(arg) || arg instanceof Long || arg instanceof String || arg == Dead.instance()) {
             enc = dumpConst(arg, unboxedType(arg, declaredType));
         } else if (arg.getClass().isEnum()) {
             enc = dumpConst(arg, declaredType);
