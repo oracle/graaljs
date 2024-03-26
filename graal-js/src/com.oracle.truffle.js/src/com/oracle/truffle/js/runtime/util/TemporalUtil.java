@@ -181,7 +181,6 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
 public final class TemporalUtil {
@@ -1761,8 +1760,8 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
-    public static JSDynamicObject defaultMergeFields(JSContext ctx, JSRealm realm, JSDynamicObject fields, JSDynamicObject additionalFields) {
-        JSDynamicObject merged = JSOrdinary.create(ctx, realm, Null.instance);
+    public static JSDynamicObject defaultMergeFields(JSContext ctx, JSDynamicObject fields, JSDynamicObject additionalFields) {
+        JSDynamicObject merged = JSOrdinary.createWithNullPrototype(ctx);
         List<Object> originalKeys = JSObject.ownPropertyKeys(fields);
         for (Object nextKey : originalKeys) {
             if (!MONTH.equals(nextKey) && !MONTH_CODE.equals(nextKey)) {

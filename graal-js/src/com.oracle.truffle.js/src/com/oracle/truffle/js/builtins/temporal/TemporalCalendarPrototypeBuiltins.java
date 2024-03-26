@@ -259,7 +259,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert calendar.getId().equals(ISO8601);
             JSDynamicObject fieldsCopy = snapshotOwnProperties.snapshot(toObject.execute(fields), Null.instance, EMPTY, UNDEFINED_IN_ARRAY);
             JSDynamicObject additionalFieldsCopy = snapshotOwnProperties.snapshot(toObject.execute(additionalFields), Null.instance, EMPTY, UNDEFINED_IN_ARRAY);
-            return TemporalUtil.defaultMergeFields(getContext(), getRealm(), fieldsCopy, additionalFieldsCopy);
+            return TemporalUtil.defaultMergeFields(getContext(), fieldsCopy, additionalFieldsCopy);
         }
 
         @SuppressWarnings("unused")
