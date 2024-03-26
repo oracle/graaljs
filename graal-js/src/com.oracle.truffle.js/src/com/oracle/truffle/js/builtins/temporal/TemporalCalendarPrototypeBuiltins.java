@@ -50,7 +50,6 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -270,33 +269,6 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class JSTemporalCalendarFields extends JSTemporalBuiltinOperation {
-        @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private IteratorValueNode getIteratorValueNode;
-        @Child private IteratorStepNode iteratorStepNode;
-
-        protected void iteratorCloseAbrupt(Object iterator) {
-            if (iteratorCloseNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
-            }
-            iteratorCloseNode.executeAbrupt(iterator);
-        }
-
-        protected Object getIteratorValue(Object iteratorResult) {
-            if (getIteratorValueNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorValueNode = insert(IteratorValueNode.create());
-            }
-            return getIteratorValueNode.execute(iteratorResult);
-        }
-
-        protected Object iteratorStep(IteratorRecord iterator) {
-            if (iteratorStepNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorStepNode = insert(IteratorStepNode.create());
-            }
-            return iteratorStepNode.execute(iterator);
-        }
 
         protected JSTemporalCalendarFields(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -304,28 +276,31 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSDynamicObject fields(JSTemporalCalendarObject calendar, Object fieldsParam,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode) {
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached("create(getContext())") IteratorCloseNode iteratorCloseNode,
+                        @Cached IteratorValueNode getIteratorValueNode,
+                        @Cached IteratorStepNode iteratorStepNode) {
             assert calendar.getId().equals(ISO8601);
             IteratorRecord iter = getIteratorNode.execute(this, fieldsParam /* , sync */);
             List<TruffleString> fieldNames = new ArrayList<>();
             while (true) {
-                Object next = iteratorStep(iter);
+                Object next = iteratorStepNode.execute(iter);
                 if (next == Boolean.FALSE) {
                     break;
                 }
-                Object nextValue = getIteratorValue(next);
+                Object nextValue = getIteratorValueNode.execute(next);
                 if (nextValue instanceof TruffleString str) {
                     if (Boundaries.listContains(fieldNames, str)) {
-                        iteratorCloseAbrupt(iter.getIterator());
+                        iteratorCloseNode.executeAbrupt(iter.getIterator());
                         throw Errors.createRangeErrorFormat("Duplicate field: %s", null, str);
                     }
                     if (!(YEAR.equals(str) || MONTH.equals(str) || MONTH_CODE.equals(str) || DAY.equals(str))) {
-                        iteratorCloseAbrupt(iter.getIterator());
+                        iteratorCloseNode.executeAbrupt(iter.getIterator());
                         throw Errors.createRangeErrorFormat("Invalid field: %s", null, str);
                     }
-                    fieldNames.add(str);
+                    Boundaries.listAdd(fieldNames, str);
                 } else {
-                    iteratorCloseAbrupt(iter.getIterator());
+                    iteratorCloseNode.executeAbrupt(iter.getIterator());
                     throw Errors.createTypeErrorNotAString(nextValue);
                 }
             }
