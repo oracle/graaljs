@@ -399,18 +399,20 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
                         @Cached("createCall()") @Shared("callNode") JSFunctionCallNode callNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared("mapLib") InteropLibrary mapLib,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary iteratorLib,
-                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary entryLib) {
+                        @CachedLibrary(limit = "InteropLibraryLimit") @Exclusive InteropLibrary entryLib,
+                        @Cached ImportValueNode importValue) {
             try {
                 Object hashEntriesIterator = mapLib.getHashEntriesIterator(thisObj);
                 while (true) {
+                    Object nextEntry;
                     try {
-                        Object nextEntry = iteratorLib.getIteratorNextElement(hashEntriesIterator);
-                        Object key = entryLib.readArrayElement(nextEntry, 0);
-                        Object value = entryLib.readArrayElement(nextEntry, 1);
-                        callNode.executeCall(JSArguments.create(thisArg, callback, new Object[]{value, key, thisObj}));
+                        nextEntry = iteratorLib.getIteratorNextElement(hashEntriesIterator);
                     } catch (StopIterationException e) {
                         break;
                     }
+                    Object key = importValue.executeWithTarget(entryLib.readArrayElement(nextEntry, 0));
+                    Object value = importValue.executeWithTarget(entryLib.readArrayElement(nextEntry, 1));
+                    callNode.executeCall(JSArguments.create(thisArg, callback, new Object[]{value, key, thisObj}));
                 }
             } catch (UnsupportedMessageException | InvalidArrayIndexException e) {
                 throw Errors.createTypeErrorInteropException(thisObj, e, "forEach", this);
