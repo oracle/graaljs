@@ -187,6 +187,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             return Undefined.instance;
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected JSDynamicObject doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
@@ -243,6 +244,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             return JSMap.getInternalMap(thisObj).remove(normalizedKey);
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected boolean doForeignMap(Object thisObj, Object key,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
@@ -282,6 +284,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             return JSRuntime.nullToUndefined(value);
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected Object doForeignMap(Object thisObj, Object key,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
@@ -319,6 +322,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             return thisObj;
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected Object doForeignMap(Object thisObj, Object key, Object value,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
@@ -357,6 +361,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             return JSMap.getInternalMap(thisObj).has(normalizedKey);
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected Object doForeignMap(Object thisObj, Object key,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib) {
@@ -393,6 +398,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             return Undefined.instance;
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)", "isCallable.executeBoolean(callback)"})
         protected Object doForeignMap(Object thisObj, Object callback, Object thisArg,
                         @Cached @Shared @SuppressWarnings("unused") IsCallableNode isCallable,
@@ -451,6 +457,7 @@ public final class MapPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<M
             return JSMap.getMapSize(thisObj);
         }
 
+        @InliningCutoff
         @Specialization(guards = {"!isJSMap(thisObj)", "isForeignHash(thisObj, mapLib)"})
         protected final Object doForeignMap(Object thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary mapLib,
