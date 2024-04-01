@@ -1372,6 +1372,22 @@ public final class TemporalUtil {
         return epochNanoseconds;
     }
 
+    @TruffleBoundary
+    public static Overflow toTemporalOverflow(Object options) {
+        if (options == Undefined.instance) {
+            return Overflow.CONSTRAIN;
+        }
+        Object value = JSRuntime.get(options, OVERFLOW);
+        if (value == Undefined.instance) {
+            return Overflow.CONSTRAIN;
+        }
+        TruffleString strValue = JSRuntime.toString(value);
+        if (!listConstrainReject.contains(strValue)) {
+            throw TemporalErrors.createRangeErrorOptionsNotContained(listConstrainReject, strValue);
+        }
+        return toOverflow(strValue);
+    }
+
     @InliningCutoff
     public static Overflow toTemporalOverflow(JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
         if (options == Undefined.instance) {
@@ -3378,6 +3394,11 @@ public final class TemporalUtil {
         JSTemporalPlainDateTimeObject temporalDateTime = precalculatedPlainDateTime != null
                         ? precalculatedPlainDateTime
                         : builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, calendarRec.receiver());
+        if (years == 0 && months == 0 && weeks == 0) {
+            Overflow overflow = toTemporalOverflow(options);
+            BigInt intermediate = addDaysToZonedDateTime(ctx, realm, instant, temporalDateTime, timeZoneRec, (int) days, overflow).epochNanoseconds();
+            return addInstant(intermediate, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        }
         JSTemporalPlainDateObject datePart = JSTemporalPlainDate.create(ctx, realm, temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(),
                         calendarRec.receiver(), null, InlinedBranchProfile.getUncached());
         JSTemporalDurationObject dateDuration = JSTemporalDuration.createTemporalDuration(ctx, realm, years, months, weeks, days, 0, 0, 0, 0, 0, 0, null, InlinedBranchProfile.getUncached());
