@@ -83,7 +83,7 @@ public abstract class JSTemporalBuiltinOperation extends JSBuiltinNode {
         return isObjectNode.executeBoolean(obj);
     }
 
-    protected static TemporalUtil.RoundingMode toTemporalRoundingMode(JSDynamicObject options, TruffleString fallback,
+    public static TemporalUtil.RoundingMode toTemporalRoundingMode(JSDynamicObject options, TruffleString fallback,
                     TruffleString.EqualNode equalNode, TemporalGetOptionNode getOptionNode) {
         return TemporalUtil.toRoundingMode((TruffleString) getOptionNode.execute(options, ROUNDING_MODE, TemporalUtil.OptionType.STRING, TemporalUtil.listRoundingMode, fallback), equalNode);
     }

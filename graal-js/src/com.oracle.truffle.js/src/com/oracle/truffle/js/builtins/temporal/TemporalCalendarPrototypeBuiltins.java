@@ -468,7 +468,10 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             JSTemporalPlainDateObject one = toTemporalDate.execute(oneObj);
             JSTemporalPlainDateObject two = toTemporalDate.execute(twoObj);
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            Unit largestUnit = getLargestUnit.execute(options, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateOrAuto, Unit.AUTO, Unit.DAY);
+            Unit largestUnit = getLargestUnit.execute(options, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateOrAuto, Unit.AUTO);
+            if (largestUnit == Unit.AUTO) {
+                largestUnit = Unit.DAY;
+            }
             JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay(),
                             largestUnit);

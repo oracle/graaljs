@@ -76,6 +76,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
+import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
@@ -369,37 +370,28 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Specialization
         public JSTemporalDurationObject differenceTemporalPlainTime(JSTemporalPlainTimeObject temporalTime, Object otherObj, Object options,
-                        @Cached JSToNumberNode toNumber,
                         @Cached ToTemporalTimeNode toTemporalTime,
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
-                        @Cached TruffleString.EqualNode equalNode, @Cached TemporalRoundDurationNode roundDurationNode,
-                        @Cached TemporalGetOptionNode getOptionNode,
-                        @Cached GetTemporalUnitNode getLargestUnit,
-                        @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached TemporalRoundDurationNode roundDurationNode,
+                        @Cached GetDifferenceSettingsNode getDifferenceSettings,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalPlainTimeObject other = toTemporalTime.execute(otherObj, null);
             JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
-            Unit smallestUnit = getSmallestUnit.execute(resolvedOptions, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.NANOSECOND);
-            Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingTimeOrAuto, Unit.AUTO, Unit.HOUR);
-            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            RoundingMode roundingMode = toTemporalRoundingMode(resolvedOptions, TemporalConstants.TRUNC, equalNode, getOptionNode);
-            if (sign == TemporalUtil.SINCE) {
-                roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
-            }
-            Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            long roundingIncrement = (long) TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, maximum, false, toNumber);
+
+            var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingTimeOrAuto, TemporalUtil.unitMappingTime, Unit.NANOSECOND, Unit.HOUR);
+
             TimeDurationRecord result = TemporalUtil.differenceTime(
                             temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(), temporalTime.getMillisecond(), temporalTime.getMicrosecond(),
                             temporalTime.getNanosecond(),
                             other.getHour(), other.getMinute(), other.getSecond(), other.getMillisecond(), other.getMicrosecond(), other.getNanosecond());
             JSTemporalDurationRecord result2 = roundDurationNode.execute(0, 0, 0, 0,
                             result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(),
-                            result.nanoseconds(), roundingIncrement, smallestUnit, roundingMode);
+                            result.nanoseconds(), settings.roundingIncrement(), settings.smallestUnit(), settings.roundingMode());
             JSRealm realm = getRealm();
             TimeDurationRecord result3 = TemporalUtil.balanceTimeDuration(
                             0, result2.getHours(), result2.getMinutes(), result2.getSeconds(), result2.getMilliseconds(), result2.getMicroseconds(),
-                            result2.getNanoseconds(), largestUnit);
+                            result2.getNanoseconds(), settings.largestUnit());
             return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
                             sign * result3.hours(), sign * result3.minutes(), sign * result3.seconds(), sign * result3.milliseconds(), sign * result3.microseconds(),
                             sign * result3.nanoseconds(), this, errorBranch);

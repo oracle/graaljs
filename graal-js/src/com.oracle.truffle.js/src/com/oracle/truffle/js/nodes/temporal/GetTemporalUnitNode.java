@@ -49,10 +49,8 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 /**
  * Implementation of GetTemporalUnit() operation.
@@ -62,35 +60,23 @@ public abstract class GetTemporalUnitNode extends JavaScriptBaseNode {
     protected GetTemporalUnitNode() {
     }
 
-    public abstract TemporalUtil.Unit execute(JSDynamicObject normalizedOptions, TruffleString property, Map<TruffleString, TemporalUtil.Unit> unitMapping,
-                    TemporalUtil.Unit defaultValue, TemporalUtil.Unit autoValue);
-
-    public final TemporalUtil.Unit execute(JSDynamicObject normalizedOptions, TruffleString property, Map<TruffleString, TemporalUtil.Unit> unitMapping,
-                    TemporalUtil.Unit defaultValue) {
-        return execute(normalizedOptions, property, unitMapping, defaultValue, null);
-    }
+    public abstract TemporalUtil.Unit execute(JSDynamicObject normalizedOptions, TruffleString key, Map<TruffleString, TemporalUtil.Unit> unitMapping, TemporalUtil.Unit defaultValue);
 
     @Specialization
-    final TemporalUtil.Unit getUnit(JSDynamicObject normalizedOptions, TruffleString propertyName, Map<TruffleString, TemporalUtil.Unit> unitMapping,
-                    TemporalUtil.Unit defaultValue, TemporalUtil.Unit autoValue,
+    final TemporalUtil.Unit getUnit(JSDynamicObject normalizedOptions, TruffleString key, Map<TruffleString, TemporalUtil.Unit> unitMapping, TemporalUtil.Unit defaultValue,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached TemporalGetOptionNode getOptionNode) {
-        assert autoValue == null || defaultValue == Unit.AUTO;
         assert defaultValue == TemporalUtil.Unit.REQUIRED || defaultValue == TemporalUtil.Unit.EMPTY || unitMapping.containsValue(defaultValue) : defaultValue;
-        TruffleString value = (TruffleString) getOptionNode.execute(normalizedOptions, propertyName, TemporalUtil.OptionType.STRING, null,
-                        defaultValue == Unit.AUTO ? TemporalConstants.AUTO : null);
+        TruffleString value = (TruffleString) getOptionNode.execute(normalizedOptions, key, TemporalUtil.OptionType.STRING, null, null);
         if (value != null) {
             TemporalUtil.Unit unit = Boundaries.mapGet(unitMapping, value);
             if (unit != null) {
-                if (unit == TemporalUtil.Unit.AUTO && autoValue != null) {
-                    return autoValue;
-                }
                 return unit;
             }
         } else if (defaultValue != TemporalUtil.Unit.REQUIRED) {
             return defaultValue;
         }
         errorBranch.enter(this);
-        throw TemporalErrors.createRangeErrorUnitValueUndefinedOrNotAllowed(propertyName, value, unitMapping);
+        throw TemporalErrors.createRangeErrorUnitValueUndefinedOrNotAllowed(key, value, unitMapping);
     }
 }
