@@ -112,8 +112,8 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                 return null;
             }
             Object calendar = relativeTo().getCalendar();
-            Object dateAdd = lookupDateAddNode.execute(calendar);
-            Object dateUntil = lookupDateUntilNode.execute(calendar);
+            Object dateAdd = (lookupDateAddNode == null) ? null : lookupDateAddNode.execute(calendar);
+            Object dateUntil = (lookupDateUntilNode == null) ? null : lookupDateUntilNode.execute(calendar);
             return CalendarMethodsRecord.forDateAddDateUntil(calendar, dateAdd, dateUntil);
         }
     }
