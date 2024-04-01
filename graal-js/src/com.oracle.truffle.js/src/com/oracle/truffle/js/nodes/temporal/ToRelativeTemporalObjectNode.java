@@ -175,8 +175,8 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             JSDynamicObject dateOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSObjectUtil.putDataProperty(dateOptions, OVERFLOW, CONSTRAIN);
             result = TemporalUtil.interpretTemporalDateTimeFields(calendarRec, fields, dateOptions, getOptionNode, dateFromFieldsNode);
-            offsetString = getOffsetNode.getValue(value);
-            Object timeZoneTemp = getTimeZoneNode.getValue(value);
+            offsetString = getOffsetNode.getValue(fields);
+            Object timeZoneTemp = getTimeZoneNode.getValue(fields);
             if (timeZoneTemp != Undefined.instance) {
                 timeZone = toTimeZoneSlotValue.execute(timeZoneTemp);
             }
