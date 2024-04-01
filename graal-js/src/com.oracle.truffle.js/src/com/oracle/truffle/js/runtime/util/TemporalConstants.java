@@ -50,14 +50,14 @@ public final class TemporalConstants {
 
     public static final TruffleString TEMPORAL = Strings.constant("Temporal");
 
-    public static final TruffleString YEAR = Strings.constant("year");
-    public static final TruffleString MONTH = Strings.constant("month");
+    public static final TruffleString YEAR = Strings.YEAR;
+    public static final TruffleString MONTH = Strings.MONTH;
     public static final TruffleString MONTH_CODE = Strings.constant("monthCode");
     public static final TruffleString WEEK = Strings.constant("week");
-    public static final TruffleString DAY = Strings.constant("day");
-    public static final TruffleString HOUR = Strings.constant("hour");
-    public static final TruffleString MINUTE = Strings.constant("minute");
-    public static final TruffleString SECOND = Strings.constant("second");
+    public static final TruffleString DAY = Strings.DAY;
+    public static final TruffleString HOUR = Strings.HOUR;
+    public static final TruffleString MINUTE = Strings.MINUTE;
+    public static final TruffleString SECOND = Strings.SECOND;
     public static final TruffleString MILLISECOND = Strings.constant("millisecond");
     public static final TruffleString MICROSECOND = Strings.constant("microsecond");
     public static final TruffleString NANOSECOND = Strings.constant("nanosecond");
@@ -74,12 +74,12 @@ public final class TemporalConstants {
     public static final TruffleString NANOSECONDS = Strings.constant("nanoseconds");
 
     public static final TruffleString OFFSET = Strings.constant("offset");
-    public static final TruffleString ERA = Strings.constant("era");
+    public static final TruffleString ERA = Strings.ERA;
     public static final TruffleString ERA_YEAR = Strings.constant("eraYear");
-    public static final TruffleString FRACTIONAL_SECOND_DIGITS = Strings.constant("fractionalSecondDigits");
+    public static final TruffleString FRACTIONAL_SECOND_DIGITS = Strings.FRACTIONAL_SECOND_DIGITS;
 
     public static final TruffleString FIELDS = Strings.constant("fields");
-    public static final TruffleString CALENDAR = Strings.constant("calendar");
+    public static final TruffleString CALENDAR = Strings.CALENDAR;
     public static final TruffleString CALENDAR_NAME = Strings.constant("calendarName");
     public static final TruffleString DAYS_IN_YEAR = Strings.constant("daysInYear");
     public static final TruffleString DAYS_IN_MONTH = Strings.constant("daysInMonth");
@@ -121,13 +121,13 @@ public final class TemporalConstants {
     public static final TruffleString OVERFLOW = Strings.constant("overflow");
     public static final TruffleString COMPATIBLE = Strings.constant("compatible");
 
-    public static final TruffleString TIME_ZONE = Strings.constant("timeZone");
-    public static final TruffleString TIME_ZONE_NAME = Strings.constant("timeZoneName");
+    public static final TruffleString TIME_ZONE = Strings.TIME_ZONE;
+    public static final TruffleString TIME_ZONE_NAME = Strings.TIME_ZONE_NAME;
 
     public static final TruffleString DATE_UNTIL = Strings.constant("dateUntil");
     public static final TruffleString DATE_ADD = Strings.constant("dateAdd");
 
-    public static final TruffleString UNIT = Strings.constant("unit");
+    public static final TruffleString UNIT = Strings.UNIT;
     public static final TruffleString SMALLEST_UNIT = Strings.constant("smallestUnit");
 
     public static final TruffleString AUTO = Strings.constant("auto");
@@ -145,8 +145,8 @@ public final class TemporalConstants {
     public static final TruffleString HALF_EXPAND = Strings.constant("halfExpand");
     public static final TruffleString HALF_TRUNC = Strings.constant("halfTrunc");
     public static final TruffleString HALF_EVEN = Strings.constant("halfEven");
-    public static final TruffleString ROUNDING_MODE = Strings.constant("roundingMode");
-    public static final TruffleString ROUNDING_INCREMENT = Strings.constant("roundingIncrement");
+    public static final TruffleString ROUNDING_MODE = Strings.ROUNDING_MODE;
+    public static final TruffleString ROUNDING_INCREMENT = Strings.ROUNDING_INCREMENT;
 
     public static final TruffleString MERGE_FIELDS = Strings.constant("mergeFields");
     public static final TruffleString RELATIVE_TO = Strings.constant("relativeTo");

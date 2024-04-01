@@ -494,6 +494,22 @@ public final class Strings {
     public static final TruffleString PRIVATE = constant("private");
     public static final TruffleString INIT = constant("init");
 
+    /* Intl and Temporal: common string constants. */
+    public static final TruffleString CALENDAR = Strings.constant("calendar");
+    public static final TruffleString ERA = Strings.constant("era");
+    public static final TruffleString YEAR = Strings.constant("year");
+    public static final TruffleString MONTH = Strings.constant("month");
+    public static final TruffleString DAY = Strings.constant("day");
+    public static final TruffleString HOUR = Strings.constant("hour");
+    public static final TruffleString MINUTE = Strings.constant("minute");
+    public static final TruffleString SECOND = Strings.constant("second");
+    public static final TruffleString UNIT = Strings.constant("unit");
+    public static final TruffleString FRACTIONAL_SECOND_DIGITS = Strings.constant("fractionalSecondDigits");
+    public static final TruffleString ROUNDING_INCREMENT = Strings.constant("roundingIncrement");
+    public static final TruffleString ROUNDING_MODE = Strings.constant("roundingMode");
+    public static final TruffleString TIME_ZONE = Strings.constant("timeZone");
+    public static final TruffleString TIME_ZONE_NAME = Strings.constant("timeZoneName");
+
     /* end of constants */
 
     public static boolean isTString(Object string) {
