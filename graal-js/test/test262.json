@@ -2423,10 +2423,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/since/order-of-operations.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-12-12"
-  }, {
     "filePath" : "built-ins/Temporal/Instant/prototype/subtract/argument-not-object.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -2510,10 +2506,6 @@
     "filePath" : "built-ins/Temporal/Instant/prototype/until/instant-string.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/Instant/prototype/until/order-of-operations.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/Now/plainDate/timezone-string-datetime.js",
     "status" : "FAIL",
@@ -2731,10 +2723,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/since/roundingincrement-out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/since/wrapping-at-end-of-month.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -2870,10 +2858,6 @@
     "filePath" : "built-ins/Temporal/PlainDate/prototype/until/round-cross-unit-boundary.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainDate/prototype/until/roundingincrement-out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
   }, {
     "filePath" : "built-ins/Temporal/PlainDate/prototype/until/wrapping-at-end-of-month.js",
     "status" : "FAIL",
@@ -3451,10 +3435,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/since/order-of-operations.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-12-12"
-  }, {
     "filePath" : "built-ins/Temporal/PlainTime/prototype/subtract/argument-duration-out-of-range.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -3538,10 +3518,6 @@
     "filePath" : "built-ins/Temporal/PlainTime/prototype/until/argument-wrong-type.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainTime/prototype/until/order-of-operations.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-12-12"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/compare/argument-string-date-with-utc-offset.js",
     "status" : "FAIL",
@@ -3647,10 +3623,6 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
   }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/since/roundingincrement-out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
-  }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/subtract/argument-duration-max.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-03-15"
@@ -3754,10 +3726,6 @@
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/until/round-cross-unit-boundary.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/until/roundingincrement-out-of-range.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-02-13"
   }, {
     "filePath" : "built-ins/Temporal/PlainYearMonth/prototype/year/validate-calendar-value.js",
     "status" : "FAIL",
@@ -4408,14 +4376,6 @@
     "comment" : "new failures 2022-11-30"
   }, {
     "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/roundingmode-floor.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/roundingmode-halfCeil.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2022-11-30"
-  }, {
-    "filePath" : "built-ins/Temporal/ZonedDateTime/prototype/since/roundingmode-halfFloor.js",
     "status" : "FAIL",
     "comment" : "new failures 2022-11-30"
   }, {
