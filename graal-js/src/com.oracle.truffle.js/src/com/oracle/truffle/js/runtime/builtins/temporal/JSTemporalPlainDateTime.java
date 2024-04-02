@@ -50,7 +50,6 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimeFunctionBuil
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainDateTimePrototypeBuiltins;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
@@ -164,8 +163,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         TruffleString hourString = TemporalUtil.toZeroPaddedDecimalString(hour, 2);
         TruffleString minuteString = TemporalUtil.toZeroPaddedDecimalString(minute, 2);
         TruffleString secondString = TemporalUtil.formatSecondsStringPart(second, millisecond, microsecond, nanosecond, precision);
-        TruffleString calendarID = JSRuntime.toString(calendar);
-        TruffleString calendarString = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);
+        TruffleString calendarString = TemporalUtil.maybeFormatCalendarAnnotation(calendar, showCalendar);
         return Strings.format("%s-%s-%sT%s:%s%s%s", yearString, monthString, dayString, hourString, minuteString, secondString, calendarString);
     }
 

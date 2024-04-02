@@ -1754,6 +1754,16 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
+    public static TruffleString maybeFormatCalendarAnnotation(Object calendar, ShowCalendar showCalendar) {
+        if (showCalendar == ShowCalendar.NEVER) {
+            return Strings.EMPTY_STRING;
+        } else {
+            TruffleString calendarID = ToTemporalCalendarIdentifierNode.getUncached().executeString(calendar);
+            return formatCalendarAnnotation(calendarID, showCalendar);
+        }
+    }
+
+    @TruffleBoundary
     public static TruffleString formatCalendarAnnotation(TruffleString id, ShowCalendar showCalendar) {
         if (ShowCalendar.NEVER == showCalendar) {
             return Strings.EMPTY_STRING;
@@ -3223,8 +3233,7 @@ public final class TemporalUtil {
             TruffleString timeZoneID = JSRuntime.toString(timeZone);
             timeZoneString = Strings.addBrackets(timeZoneID);
         }
-        TruffleString calendarID = JSRuntime.toString(zonedDateTime.getCalendar());
-        TruffleString calendarString = formatCalendarAnnotation(calendarID, showCalendar);
+        TruffleString calendarString = maybeFormatCalendarAnnotation(zonedDateTime.getCalendar(), showCalendar);
         return Strings.concatAll(dateTimeString, offsetString, timeZoneString, calendarString);
     }
 
