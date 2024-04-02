@@ -137,6 +137,7 @@ import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
+import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
@@ -539,6 +540,25 @@ public final class TemporalUtil {
             throw Errors.createRangeError("Increment out of range.");
         }
         return increment;
+    }
+
+    public static JSTemporalPrecisionRecord toSecondsStringPrecisionRecord(Unit smallestUnit, int fractionalDigitCount) {
+        return switch (smallestUnit) {
+            case MINUTE -> JSTemporalPrecisionRecord.create(MINUTE, Unit.MINUTE, 1);
+            case SECOND -> JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
+            case MILLISECOND -> JSTemporalPrecisionRecord.create(3, Unit.MILLISECOND, 1);
+            case MICROSECOND -> JSTemporalPrecisionRecord.create(6, Unit.MICROSECOND, 1);
+            case NANOSECOND -> JSTemporalPrecisionRecord.create(9, Unit.NANOSECOND, 1);
+            case EMPTY -> switch (fractionalDigitCount) {
+                case ToFractionalSecondDigitsNode.AUTO -> JSTemporalPrecisionRecord.create(AUTO, Unit.NANOSECOND, 1);
+                case 0 -> JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
+                case 1, 2, 3 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.MILLISECOND, Math.pow(10, 3 - fractionalDigitCount));
+                case 4, 5, 6 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.MICROSECOND, Math.pow(10, 6 - fractionalDigitCount));
+                case 7, 8, 9 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.NANOSECOND, Math.pow(10, 9 - fractionalDigitCount));
+                default -> throw Errors.shouldNotReachHereUnexpectedValue(fractionalDigitCount);
+            };
+            default -> throw Errors.shouldNotReachHereUnexpectedValue(smallestUnit);
+        };
     }
 
     public static JSTemporalPrecisionRecord toSecondsStringPrecision(JSDynamicObject options, JSToStringNode toStringNode, GetTemporalUnitNode getSmallestUnit, TemporalGetOptionNode getOptionNode) {
