@@ -59,8 +59,8 @@ public final class JSPromise extends JSNonProxy implements JSConstructorFactory.
 
     public static final JSPromise INSTANCE = new JSPromise();
 
-    public static final TruffleString RESOLVE = Strings.constant("resolve");
-    public static final TruffleString THEN = Strings.constant("then");
+    public static final TruffleString RESOLVE = Strings.RESOLVE;
+    public static final TruffleString THEN = Strings.THEN;
 
     // for Promise.prototype.finally
     public static final HiddenKey PROMISE_ON_FINALLY = new HiddenKey("OnFinally");

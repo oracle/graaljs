@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -426,7 +426,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         protected JSRegExpToStringNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.getFlagsNode = PropertyGetNode.create(Strings.FLAGS, false, context);
+            this.getFlagsNode = PropertyGetNode.create(JSRegExp.FLAGS, false, context);
             this.getSourceNode = PropertyGetNode.create(Strings.SOURCE, false, context);
         }
 
@@ -1934,7 +1934,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Specialization(guards = "isRegExpPrototype(obj)")
         Object doPrototype(@SuppressWarnings("unused") JSDynamicObject obj) {
-            return Strings.EMPTY_REGEX;
+            return JSRegExp.EMPTY_REGEX;
         }
 
         @Fallback

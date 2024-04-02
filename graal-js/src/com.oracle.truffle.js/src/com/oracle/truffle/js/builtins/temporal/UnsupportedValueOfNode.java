@@ -38,45 +38,27 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.nodes.temporal;
+package com.oracle.truffle.js.builtins.temporal;
 
-import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NeverDefault;
+import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
-import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSContext;
 
 /**
- * Implementation of ObjectImplementsTemporalTimeZoneProtocol() operation.
+ * Unsupported {@code Temporal.*.prototype.valueOf()}.
  */
-@ImportStatic({TemporalConstants.class, Strings.class})
-public abstract class ObjectImplementsTemporalTimeZoneProtocolNode extends JavaScriptBaseNode {
+public abstract class UnsupportedValueOfNode extends JSBuiltinNode {
 
-    protected ObjectImplementsTemporalTimeZoneProtocolNode() {
+    protected UnsupportedValueOfNode(JSContext context, JSBuiltin builtin) {
+        super(context, builtin);
     }
 
-    @NeverDefault
-    public static ObjectImplementsTemporalTimeZoneProtocolNode create() {
-        return ObjectImplementsTemporalTimeZoneProtocolNodeGen.create();
-    }
-
-    public abstract boolean execute(Object object);
-
+    @TruffleBoundary(transferToInterpreterOnException = false)
     @Specialization
-    public boolean doTimeZone(@SuppressWarnings("unused") JSTemporalTimeZoneObject object) {
-        return true;
+    protected static Object valueOf(@SuppressWarnings("unused") Object thisObj) {
+        throw Errors.createTypeError("Not supported.");
     }
-
-    @Specialization(guards = "!isJSTemporalTimeZone(object)")
-    public boolean doNonCalendar(Object object,
-                    @Cached("create(GET_OFFSET_NANOSECONDS_FOR, getJSContext())") HasPropertyCacheNode hasGetOffsetNanosecondsFor,
-                    @Cached("create(GET_POSSIBLE_INSTANTS_FOR, getJSContext())") HasPropertyCacheNode hasGetPossibleInstantsFor,
-                    @Cached("create(ID_PROPERTY_NAME, getJSContext())") HasPropertyCacheNode hasID) {
-        return hasGetOffsetNanosecondsFor.hasProperty(object) && hasGetPossibleInstantsFor.hasProperty(object) && hasID.hasProperty(object);
-    }
-
 }

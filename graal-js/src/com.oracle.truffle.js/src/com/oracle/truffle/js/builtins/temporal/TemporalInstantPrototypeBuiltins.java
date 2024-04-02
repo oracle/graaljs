@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 
@@ -66,12 +65,13 @@ import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsF
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToZonedDateTimeISONodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToZonedDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantUntilSinceNodeGen;
-import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantValueOfNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
@@ -165,9 +165,9 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             case subtract:
                 return JSTemporalInstantAddSubNodeGen.create(context, builtin, TemporalUtil.SUBTRACT, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case until:
-                return JSTemporalInstantUntilSinceNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalInstantUntilSinceNodeGen.create(context, builtin, TemporalUtil.UNTIL, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case since:
-                return JSTemporalInstantUntilSinceNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
+                return JSTemporalInstantUntilSinceNodeGen.create(context, builtin, TemporalUtil.SINCE, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case round:
                 return JSTemporalInstantRoundNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case equals:
@@ -178,7 +178,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             case toJSON:
                 return JSTemporalInstantToLocaleStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case valueOf:
-                return JSTemporalInstantValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                return UnsupportedValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case toZonedDateTime:
                 return JSTemporalInstantToZonedDateTimeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toZonedDateTimeISO:
@@ -254,40 +254,32 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
     public abstract static class JSTemporalInstantUntilSinceNode extends JSTemporalBuiltinOperation {
 
-        private final boolean isUntil;
+        private final int sign;
 
-        protected JSTemporalInstantUntilSinceNode(JSContext context, JSBuiltin builtin, boolean isUntil) {
+        protected JSTemporalInstantUntilSinceNode(JSContext context, JSBuiltin builtin, int sign) {
             super(context, builtin);
-            this.isUntil = isUntil;
+            this.sign = sign;
         }
 
         @Specialization
         protected JSTemporalDurationObject differenceTemporalInstant(JSTemporalInstantObject instant, Object otherObj, Object options,
                         @Cached SnapshotOwnPropertiesNode snapshotOwnProperties,
-                        @Cached JSToNumberNode toNumber,
-                        @Cached TruffleString.EqualNode equalNode,
                         @Cached ToTemporalInstantNode toTemporalInstantNode,
-                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetDifferenceSettingsNode getDifferenceSettings,
                         @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSTemporalInstantObject other = toTemporalInstantNode.execute(otherObj);
             JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
-            Unit smallestUnit = toSmallestTemporalUnit(resolvedOptions, TemporalUtil.listYMWD, NANOSECOND, equalNode, getOptionNode, this, errorBranch);
-            Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(Unit.SECOND, smallestUnit);
-            Unit largestUnit = toLargestTemporalUnit(resolvedOptions, TemporalUtil.listYMWD, AUTO, defaultLargestUnit, equalNode, getOptionNode, this, errorBranch);
-            TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            RoundingMode roundingMode = toTemporalRoundingMode(resolvedOptions, TRUNC, equalNode, getOptionNode);
-            Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(resolvedOptions, maximum, false, isObjectNode, toNumber);
+            var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingTimeOrAuto, TemporalUtil.unitMappingTime, Unit.NANOSECOND, Unit.SECOND);
 
-            BigInt one = isUntil ? instant.getNanoseconds() : other.getNanoseconds();
-            BigInt two = isUntil ? other.getNanoseconds() : instant.getNanoseconds();
-
-            TimeDurationRecord result = TemporalUtil.differenceInstant(one, two, roundingIncrement, smallestUnit, largestUnit, roundingMode, roundDurationNode);
+            TimeDurationRecord norm = TemporalUtil.differenceInstant(instant.getNanoseconds(), other.getNanoseconds(),
+                            settings.roundingIncrement(), settings.smallestUnit(), settings.largestUnit(), settings.roundingMode(), roundDurationNode);
+            TimeDurationRecord result = TemporalUtil.balanceTimeDuration(norm, settings.largestUnit());
             JSRealm realm = getRealm();
             return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
-                            result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(), result.nanoseconds(), this, errorBranch);
+                            sign * result.hours(), sign * result.minutes(), sign * result.seconds(), sign * result.milliseconds(), sign * result.microseconds(), sign * result.nanoseconds(),
+                            this, errorBranch);
         }
 
         @SuppressWarnings("unused")
@@ -308,6 +300,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached JSToNumberNode toNumber,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (roundToParam == Undefined.instance) {
@@ -321,11 +314,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             } else {
                 roundTo = getOptionsObject(roundToParam, this, errorBranch, optionUndefined);
             }
-            Unit smallestUnit = toSmallestTemporalUnit(roundTo, TemporalUtil.listYMWD, null, equalNode, getOptionNode, this, errorBranch);
-            if (smallestUnit == Unit.EMPTY) {
-                errorBranch.enter(this);
-                throw TemporalErrors.createRangeErrorSmallestUnitExpected();
-            }
+            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.REQUIRED);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             double maximum;
             if (Unit.HOUR == smallestUnit) {
@@ -342,7 +331,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 assert Unit.NANOSECOND == smallestUnit;
                 maximum = TemporalUtil.NS_PER_DAY;
             }
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, true, isObjectNode, toNumber);
+            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, true, toNumber);
             BigInt roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode);
             return JSTemporalInstant.create(getContext(), getRealm(), roundedNs);
         }
@@ -386,6 +375,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                         @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
@@ -394,7 +384,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             if (timeZoneRaw != Undefined.instance) {
                 timeZone = toTimeZoneSlotValue.execute(timeZoneRaw);
             }
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getOptionNode, equalNode);
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getSmallestUnit, getOptionNode);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
             BigInt ns = instant.getNanoseconds();
             BigInt roundedNs = TemporalUtil.roundTemporalInstant(ns, (long) precision.getIncrement(), precision.getUnit(), roundingMode);
@@ -425,18 +415,6 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         @Specialization(guards = "!isJSTemporalInstant(thisObj)")
         protected static Object invalidReceiver(@SuppressWarnings("unused") Object thisObj) {
             throw TemporalErrors.createTypeErrorTemporalInstantExpected();
-        }
-    }
-
-    public abstract static class JSTemporalInstantValueOf extends JSTemporalBuiltinOperation {
-
-        protected JSTemporalInstantValueOf(JSContext context, JSBuiltin builtin) {
-            super(context, builtin);
-        }
-
-        @Specialization
-        protected Object valueOf(@SuppressWarnings("unused") Object thisObj) {
-            throw Errors.createTypeError("Not supported.");
         }
     }
 

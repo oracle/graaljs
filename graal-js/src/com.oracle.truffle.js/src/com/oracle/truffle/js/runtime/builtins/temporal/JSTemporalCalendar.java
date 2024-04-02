@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalCalendarFunctionBuiltins;
@@ -69,16 +70,12 @@ public final class JSTemporalCalendar extends JSNonProxy implements JSConstructo
     }
 
     public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, TruffleString id) {
-        JSObjectFactory factory = context.getTemporalCalendarFactory();
-        return create(factory, realm, factory.getPrototype(realm), id);
+        return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), id);
     }
 
+    @InliningCutoff
     public static JSTemporalCalendarObject create(JSContext context, JSRealm realm, JSDynamicObject proto, TruffleString id) {
         JSObjectFactory factory = context.getTemporalCalendarFactory();
-        return create(factory, realm, proto, id);
-    }
-
-    private static JSTemporalCalendarObject create(JSObjectFactory factory, JSRealm realm, JSDynamicObject proto, TruffleString id) {
         var shape = factory.getShape(realm, proto);
         var newObj = factory.initProto(new JSTemporalCalendarObject(shape, proto, id), realm, proto);
         return factory.trackAllocation(newObj);

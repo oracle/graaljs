@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -96,6 +97,7 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
         return createIntl(context, realm, proto, isoYear, isoMonth, calendar, referenceISODay);
     }
 
+    @InliningCutoff
     private static JSTemporalPlainYearMonthObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto, int isoYear, int isoMonth, Object calendar, int referenceISODay) {
         JSObjectFactory factory = context.getTemporalPlainYearMonthFactory();
         var shape = factory.getShape(realm, proto);

@@ -45,6 +45,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.object.Shape;
@@ -80,7 +81,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("String.prototype");
     public static final TruffleString CLASS_NAME_EXTENSIONS = Strings.constant("StringExtensions");
 
-    public static final TruffleString LENGTH = Strings.constant("length");
+    public static final TruffleString LENGTH = Strings.LENGTH;
 
     public static final TruffleString REGEXP_ITERATOR_CLASS_NAME = Strings.constant("RegExp String Iterator");
     public static final TruffleString REGEXP_ITERATOR_PROTOTYPE_NAME = Strings.constant("RegExp String Iterator.prototype");
@@ -100,11 +101,13 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
     private JSString() {
     }
 
+    @InliningCutoff
     public static JSStringObject create(JSContext context, JSRealm realm, TruffleString value) {
         JSObjectFactory factory = context.getStringFactory();
-        return create(factory, realm, factory.getPrototype(realm), value);
+        return create(factory, realm, INSTANCE.getIntrinsicDefaultProto(realm), value);
     }
 
+    @InliningCutoff
     public static JSStringObject create(JSContext context, JSRealm realm, JSDynamicObject proto, TruffleString value) {
         JSObjectFactory factory = context.getStringFactory();
         return create(factory, realm, proto, value);

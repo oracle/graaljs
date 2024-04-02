@@ -58,8 +58,8 @@ public final class Strings {
     }
 
     public static final TruffleString EMPTY_STRING = TruffleString.Encoding.UTF_16.getEmpty();
-    public static final TruffleString LINE_SEPARATOR = constant("\n");
-    public static final String LINE_SEPARATOR_JLS = toJavaString(LINE_SEPARATOR);
+    public static final String LINE_SEPARATOR_JLS = "\n";
+    public static final TruffleString LINE_SEPARATOR = constant(LINE_SEPARATOR_JLS);
 
     /* Numeric */
     public static final TruffleString ZERO = constant("0");
@@ -125,7 +125,7 @@ public final class Strings {
     public static final TruffleString SINGLE_QUOTE = constant("'");
     public static final TruffleString SYMBOL_PLUS = constant("+");
     public static final TruffleString SYMBOL_PLUS_PLUS = constant("++");
-    public static final TruffleString SYMBOL_MINUS = constant("-");
+    public static final TruffleString SYMBOL_MINUS = DASH;
     public static final TruffleString SYMBOL_MINUS_MINUS = constant("--");
     public static final TruffleString SYMBOL_AMPERSAND = constant("&");
     public static final TruffleString SYMBOL_PIPE = constant("|");
@@ -136,35 +136,7 @@ public final class Strings {
     public static final TruffleString SYMBOL_STAR = constant("*");
     public static final TruffleString SYMBOL_STAR_STAR = constant("**");
 
-    /* Regex */
-    public static final TruffleString EMPTY_REGEX = constant("(?:)");
-    public static final TruffleString INPUT = constant("input");
-    public static final TruffleString MULTILINE = constant("multiline");
-    public static final TruffleString LAST_MATCH = constant("lastMatch");
-    public static final TruffleString LAST_PAREN = constant("lastParen");
-    public static final TruffleString LEFT_CONTEXT = constant("leftContext");
-    public static final TruffleString RIGHT_CONTEXT = constant("rightContext");
-    public static final TruffleString $_ = constant("$_");
-    public static final TruffleString $_AMPERSAND = constant("$&");
-    public static final TruffleString $_PLUS = constant("$+");
-    public static final TruffleString $_BACKTICK = constant("$`");
-    public static final TruffleString $_SQUOT = constant("$'");
-    public static final TruffleString $_1 = constant("$1");
-    public static final TruffleString $_2 = constant("$2");
-    public static final TruffleString $_3 = constant("$3");
-    public static final TruffleString $_4 = constant("$4");
-    public static final TruffleString $_5 = constant("$5");
-    public static final TruffleString $_6 = constant("$6");
-    public static final TruffleString $_7 = constant("$7");
-    public static final TruffleString $_8 = constant("$8");
-    public static final TruffleString $_9 = constant("$9");
-    public static final TruffleString SET_INPUT = constant("setInput");
-
     public static final TruffleString BRACKET_SYMBOL_DOT = constant("[Symbol.");
-    public static final TruffleString UND_DASH = constant("und-");
-    public static final TruffleString DASH_PER_DASH = constant("-per-");
-    public static final TruffleString X_DASH = constant("x-");
-    public static final TruffleString DASH_X_DASH = constant("-x-");
 
     /* words */
     public static final TruffleString ACCESSOR = constant("accessor");
@@ -175,6 +147,8 @@ public final class Strings {
     public static final TruffleString ARGUMENTS = Strings.constant("arguments");
     public static final TruffleString BOUND = constant("bound");
     public static final TruffleString CALL = constant("call");
+    public static final TruffleString CALLEE = constant("callee");
+    public static final TruffleString CALLER = constant("caller");
     public static final TruffleString CAUSE = constant("cause");
     public static final TruffleString COMPARE = constant("compare");
     public static final TruffleString CONSTRUCT = Strings.constant("construct");
@@ -187,11 +161,12 @@ public final class Strings {
     public static final TruffleString ENTRIES = constant("entries");
     public static final TruffleString UC_ERROR = constant("Error");
     public static final TruffleString FILE = constant("file");
-    public static final TruffleString FLAGS = constant("flags");
     public static final TruffleString FORMAT = constant("format");
     public static final TruffleString FUNCTION = constant("function");
     public static final TruffleString GLOBAL = constant("global");
     public static final TruffleString HAS = constant("has");
+    public static final TruffleString INDEX = constant("index");
+    public static final TruffleString INPUT = constant("input");
     public static final TruffleString INSTANCE = constant("instance");
     public static final TruffleString JOIN = constant("join");
     public static final String JOIN_JLS = toJavaString(JOIN);
@@ -199,8 +174,6 @@ public final class Strings {
     public static final TruffleString KEY = constant("key");
     public static final TruffleString KEYS = constant("keys");
     public static final TruffleString LENGTH = constant("length");
-    public static final TruffleString LITERAL = constant("literal");
-    public static final TruffleString LOWER = constant("lower");
     public static final TruffleString MESSAGE = constant("message");
     public static final TruffleString MODULE = constant("module");
     public static final TruffleString NAME = constant("name");
@@ -220,6 +193,7 @@ public final class Strings {
     public static final TruffleString REJECT = constant("reject");
     public static final TruffleString RESOLVE = constant("resolve");
     public static final TruffleString RETURN = constant("return");
+    public static final TruffleString SCRIPT = constant("script");
     public static final TruffleString SOURCE = constant("source");
     public static final TruffleString STRING = constant("string");
     public static final TruffleString UC_STRING = constant("String");
@@ -230,12 +204,12 @@ public final class Strings {
     public static final TruffleString THEN = Strings.constant("then");
     public static final TruffleString THIS = Strings.constant("this");
     public static final TruffleString THROW = Strings.constant("throw");
+    public static final TruffleString TYPE = constant("type");
     public static final TruffleString UNDEFINED = constant("undefined");
     public static final TruffleString UNKNOWN = constant("unknown");
-    public static final TruffleString UPPER = constant("upper");
     public static final TruffleString URL = constant("url");
-    public static final TruffleString VALUE = constant("value");
-    public static final String VALUE_JLS = toJavaString(VALUE);
+    public static final String VALUE_JLS = "value";
+    public static final TruffleString VALUE = constant(VALUE_JLS);
     public static final TruffleString VALUES = constant("values");
     public static final TruffleString WITH = constant("with");
 
@@ -261,12 +235,12 @@ public final class Strings {
     public static final TruffleString TO_JSON = constant("toJSON");
     public static final TruffleString TO_ISO_STRING = constant("toISOString");
     public static final TruffleString TO_LOCALE_STRING = constant("toLocaleString");
-    public static final TruffleString TO_STRING = constant("toString");
-    public static final String TO_STRING_JLS = toJavaString(TO_STRING);
+    public static final String TO_STRING_JLS = "toString";
+    public static final TruffleString TO_STRING = constant(TO_STRING_JLS);
     public static final TruffleString TO_UTC_STRING = constant("toUTCString");
     public static final TruffleString TO_GMT_STRING = constant("toGMTString");
-    public static final TruffleString VALUE_OF = constant("valueOf");
-    public static final String VALUE_OF_JLS = toJavaString(VALUE_OF);
+    public static final String VALUE_OF_JLS = "valueOf";
+    public static final TruffleString VALUE_OF = constant(VALUE_OF_JLS);
     public static final TruffleString IMPORT_SCRIPT_ENGINE_GLOBAL_BINDINGS = constant("importScriptEngineGlobalBindings");
     public static final TruffleString HAS_INSTANCE = constant("hasInstance");
     public static final TruffleString IS_CONCAT_SPREADABLE = constant("isConcatSpreadable");
@@ -287,18 +261,18 @@ public final class Strings {
 
     public static final TruffleString UC_ARRAY = constant("Array");
     public static final TruffleString UC_OBJECT = constant("Object");
+    public static final TruffleString UC_MODULE = constant("Module");
 
     public static final TruffleString CAPS_ID = constant("ID");
-    public static final TruffleString CAPS_JSON = constant("JSON");
     public static final TruffleString CAPS_PWD = constant("PWD");
 
     /* globals */
     public static final TruffleString DOLLAR_ENV = constant("$ENV");
 
     /* hint words */
-    public static final TruffleString HINT_STRING = constant("string");
+    public static final TruffleString HINT_STRING = STRING;
     public static final TruffleString HINT_NUMBER = constant("number");
-    public static final TruffleString HINT_DEFAULT = constant("default");
+    public static final TruffleString HINT_DEFAULT = DEFAULT;
 
     /* html */
     public static final TruffleString HTML_QUOT = constant("&quot;");
@@ -370,15 +344,6 @@ public final class Strings {
     public static final TruffleString BACKSLASH_BACKSLASH = constant("\\\\");
     public static final TruffleString BACKSLASH_DOUBLE_QUOTE = constant("\\\"");
 
-    public static final TruffleString ESCAPE_B = constant("\\b");
-    public static final TruffleString ESCAPE_F = constant("\\f");
-    public static final TruffleString ESCAPE_N = constant("\\n");
-    public static final TruffleString ESCAPE_R = constant("\\r");
-    public static final TruffleString ESCAPE_T = constant("\\t");
-    public static final TruffleString ESCAPE_U_00 = constant("\\u00");
-    public static final TruffleString ESCAPE_BACKSLASH = constant("\\\\");
-    public static final TruffleString ESCAPE_QUOTE = constant("\\\"");
-
     /* WASM */
     public static final TruffleString I_64 = constant("i64");
     public static final TruffleString I_32 = constant("i32");
@@ -392,26 +357,22 @@ public final class Strings {
     public static final TruffleString REVOCABLE = constant("revocable");
 
     /* GlobalBuiltins */
-    public static final TruffleString EVAL_OBJ_FILE_NAME = constant("name");
-    public static final TruffleString EVAL_OBJ_SOURCE = constant("script");
+    public static final TruffleString EVAL_OBJ_FILE_NAME = NAME;
+    public static final TruffleString EVAL_OBJ_SOURCE = SCRIPT;
 
     /* CommonJS */
     public static final TruffleString FILENAME_VAR_NAME = constant("__filename");
     public static final TruffleString DIRNAME_VAR_NAME = constant("__dirname");
-    public static final TruffleString MODULE_PROPERTY_NAME = constant("module");
+    public static final TruffleString MODULE_PROPERTY_NAME = MODULE;
     public static final TruffleString EXPORTS_PROPERTY_NAME = constant("exports");
     public static final TruffleString REQUIRE_PROPERTY_NAME = constant("require");
-    public static final TruffleString RESOLVE_PROPERTY_NAME = constant("resolve");
+    public static final TruffleString RESOLVE_PROPERTY_NAME = RESOLVE;
     public static final TruffleString LOADED_PROPERTY_NAME = constant("loaded");
     public static final TruffleString FILENAME_PROPERTY_NAME = constant("filename");
     public static final TruffleString ID_PROPERTY_NAME = constant("id");
     public static final TruffleString ENV_PROPERTY_NAME = constant("env");
-    public static final TruffleString JS_EXT = constant(".js");
-    public static final TruffleString JSON_EXT = constant(".json");
-    public static final TruffleString NODE_EXT = constant(".node");
     public static final TruffleString PACKAGE_JSON_MAIN_PROPERTY_NAME = constant("main");
-    public static final TruffleString PACKAGE_JSON_TYPE_PROPERTY_NAME = constant("type");
-    public static final TruffleString PACKAGE_JSON_MODULE_VALUE = constant("module");
+    public static final TruffleString PACKAGE_JSON_TYPE_PROPERTY_NAME = TYPE;
 
     /* Test262 */
     public static final TruffleString CREATE_REALM = constant("createRealm");
@@ -465,7 +426,6 @@ public final class Strings {
     public static final TruffleString $_EXIT = constant("$EXIT");
     public static final TruffleString $_OUT = constant("$OUT");
     public static final TruffleString $_ERR = constant("$ERR");
-    public static final TruffleString UC_REALM = constant("Realm");
     public static final TruffleString GLOBAL__LINE__ = constant("__LINE__");
     public static final TruffleString GLOBAL__FILE__ = constant("__FILE__");
     public static final TruffleString GLOBAL__DIR__ = constant("__DIR__");
@@ -475,13 +435,10 @@ public final class Strings {
     public static final TruffleString $_OPTIONS = constant("$OPTIONS");
     public static final TruffleString $_ARG = constant("$ARG");
 
-    public static final TruffleString GREGORY = constant("gregory");
     public static final TruffleString MEMORY = constant("memory");
     public static final TruffleString TABLE = constant("table");
     public static final TruffleString STATUS = constant("status");
     public static final TruffleString REASON = constant("reason");
-    public static final TruffleString OPERATOR = constant("operator");
-    public static final TruffleString TYPE = constant("type");
     public static final TruffleString DOT_PROTOTYPE = constant(".prototype");
     public static final TruffleString EVAL = constant("eval");
     public static final TruffleString A = constant("a");
@@ -537,6 +494,22 @@ public final class Strings {
     public static final TruffleString PRIVATE = constant("private");
     public static final TruffleString INIT = constant("init");
 
+    /* Intl and Temporal: common string constants. */
+    public static final TruffleString CALENDAR = Strings.constant("calendar");
+    public static final TruffleString ERA = Strings.constant("era");
+    public static final TruffleString YEAR = Strings.constant("year");
+    public static final TruffleString MONTH = Strings.constant("month");
+    public static final TruffleString DAY = Strings.constant("day");
+    public static final TruffleString HOUR = Strings.constant("hour");
+    public static final TruffleString MINUTE = Strings.constant("minute");
+    public static final TruffleString SECOND = Strings.constant("second");
+    public static final TruffleString UNIT = Strings.constant("unit");
+    public static final TruffleString FRACTIONAL_SECOND_DIGITS = Strings.constant("fractionalSecondDigits");
+    public static final TruffleString ROUNDING_INCREMENT = Strings.constant("roundingIncrement");
+    public static final TruffleString ROUNDING_MODE = Strings.constant("roundingMode");
+    public static final TruffleString TIME_ZONE = Strings.constant("timeZone");
+    public static final TruffleString TIME_ZONE_NAME = Strings.constant("timeZoneName");
+
     /* end of constants */
 
     public static boolean isTString(Object string) {
@@ -565,10 +538,10 @@ public final class Strings {
         return node.execute(longValue, TruffleString.Encoding.UTF_16, true);
     }
 
-    public static TruffleString[] constantArray(String... strings) {
+    public static TruffleString[] fromJavaStringArray(String... strings) {
         TruffleString[] ret = new TruffleString[strings.length];
         for (int i = 0; i < strings.length; i++) {
-            ret[i] = constant(strings[i]);
+            ret[i] = fromJavaString(strings[i]);
         }
         return ret;
     }
@@ -907,10 +880,6 @@ public final class Strings {
 
     public static TruffleString fromCharArray(TruffleString.FromCharArrayUTF16Node node, char[] chars, int fromIndex, int length) {
         return node.execute(chars, fromIndex, length);
-    }
-
-    public static TruffleString intToHexString(char i) {
-        return fromJavaString(Integer.toHexString(i));
     }
 
     public static TruffleString flatten(TruffleString.MaterializeNode materializeNode, TruffleString value) {

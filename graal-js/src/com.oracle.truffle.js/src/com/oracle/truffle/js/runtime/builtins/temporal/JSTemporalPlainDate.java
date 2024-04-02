@@ -40,8 +40,8 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -133,6 +133,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return createIntl(context, realm, proto, year, month, day, calendar);
     }
 
+    @InliningCutoff
     private static JSTemporalPlainDateObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,
                     int year, int month, int day, Object calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateFactory();
@@ -141,6 +142,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         return factory.trackAllocation(newObj);
     }
 
+    @TruffleBoundary
     public static JSTemporalDurationRecord differenceISODate(int y1, int m1, int d1, int y2, int m2, int d2, Unit largestUnit) {
         assert largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY;
         if (largestUnit == Unit.YEAR || largestUnit == Unit.MONTH) {
@@ -208,8 +210,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
             }
             return toRecordWeeksPlural(0, 0, weeks, days);
         }
-        CompilerDirectives.transferToInterpreter();
-        throw Errors.shouldNotReachHere("unexpected largest unit: " + largestUnit);
+        throw Errors.shouldNotReachHereUnexpectedValue(largestUnit);
     }
 
     private static JSTemporalDurationRecord toRecordPlural(long year, long month, long day) {

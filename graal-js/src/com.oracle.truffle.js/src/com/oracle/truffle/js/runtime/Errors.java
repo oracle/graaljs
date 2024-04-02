@@ -728,7 +728,7 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createRangeErrorInvalidTimeZone(TruffleString timeZoneName) {
+    public static JSException createRangeErrorInvalidTimeZone(String timeZoneName) {
         return Errors.createRangeError(String.format("Invalid time zone %s", timeZoneName));
     }
 

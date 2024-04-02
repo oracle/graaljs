@@ -112,13 +112,8 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
             }
 
             @Override
-            public Object execute(VirtualFrame frame, Object operandValue) {
-                return toObjectArray.executeObjectArray(operandValue);
-            }
-
-            @Override
             public Object execute(VirtualFrame frame) {
-                return execute(frame, operandNode.execute(frame));
+                return toObjectArray.executeObjectArray(operandNode.execute(frame));
             }
 
             @Override

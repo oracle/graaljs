@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,6 +44,7 @@ import java.util.Set;
 
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.dsl.NeverDefault;
@@ -295,9 +296,10 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
 
         @InliningCutoff
         @Specialization(guards = {"isBitwiseOr()"})
-        protected Object doOverloadedOperator(JSOverloadedOperatorsObject value,
-                        @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode) {
-            return overloadedOperatorNode.execute(value, 0);
+        protected int doOverloadedOperator(JSOverloadedOperatorsObject value,
+                        @Cached("createNumeric(getOverloadedOperatorName())") JSOverloadedBinaryNode overloadedOperatorNode,
+                        @Cached @Shared JSToInt32Node toInt32Node) {
+            return toInt32Node.executeInt(overloadedOperatorNode.execute(value, 0));
         }
 
         protected TruffleString getOverloadedOperatorName() {
@@ -313,7 +315,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
         @Specialization(guards = "isForeignObject(object)")
         protected static int doForeignObject(Object object,
                         @Cached("createHintNumber()") JSToPrimitiveNode toPrimitiveNode,
-                        @Cached JSToInt32Node toInt32Node) {
+                        @Cached @Shared JSToInt32Node toInt32Node) {
             return toInt32Node.executeInt(toPrimitiveNode.execute(object));
         }
 

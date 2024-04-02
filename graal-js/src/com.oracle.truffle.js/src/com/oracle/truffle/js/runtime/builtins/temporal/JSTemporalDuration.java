@@ -49,6 +49,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -107,6 +108,7 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
         return createIntl(context, realm, proto, years, months, weeks, days, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
     }
 
+    @InliningCutoff
     private static JSTemporalDurationObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,
                     double years, double months, double weeks, double days,
                     double hours, double minutes, double seconds, double milliseconds, double microseconds, double nanoseconds) {

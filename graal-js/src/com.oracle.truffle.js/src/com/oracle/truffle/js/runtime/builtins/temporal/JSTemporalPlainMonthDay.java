@@ -43,6 +43,7 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -72,13 +73,14 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
 
     public static final TruffleString CLASS_NAME = Strings.constant("PlainMonthDay");
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("PlainMonthDay.prototype");
-    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainYearMonth");
+    public static final TruffleString TO_STRING_TAG = Strings.constant("Temporal.PlainMonthDay");
 
     public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, int isoMonth, int isoDay, Object calendar, int referenceISOYear,
                     Node node, InlinedBranchProfile errorBranch) {
         return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), isoMonth, isoDay, calendar, referenceISOYear, node, errorBranch);
     }
 
+    @InliningCutoff
     public static JSTemporalPlainMonthDayObject create(JSContext context, JSRealm realm, JSDynamicObject proto, int isoMonth, int isoDay, Object calendar, int referenceISOYear,
                     Node node, InlinedBranchProfile errorBranch) {
         if (!TemporalUtil.isValidISODate(referenceISOYear, isoMonth, isoDay)) {

@@ -42,7 +42,6 @@ package com.oracle.truffle.js.nodes.binary;
 
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -74,8 +73,6 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     protected JSUnsignedRightShiftNode(JavaScriptNode left, JavaScriptNode right) {
         super(left, right);
     }
-
-    @Child private JSToUInt32Node toUInt32Node;
 
     public static JavaScriptNode create(JavaScriptNode left, JavaScriptNode right) {
         Truncatable.truncate(left);
@@ -116,15 +113,17 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     @Specialization(guards = "rvalZero(b)")
-    protected double doDoubleZero(double a, @SuppressWarnings("unused") int b) {
-        return toUInt32(a);
+    protected double doDoubleZero(double a, @SuppressWarnings("unused") int b,
+                    @Cached @Shared JSToUInt32Node lvalToUint32Node) {
+        return lvalToUint32Node.executeLong(a);
     }
 
     @Specialization(guards = "!rvalZero(b)")
     protected Number doDouble(double a, int b,
+                    @Cached @Shared JSToUInt32Node lvalToUint32Node,
                     @Cached @Shared InlinedConditionProfile returnType) {
 
-        long lnum = toUInt32(a);
+        long lnum = lvalToUint32Node.executeLong(a);
         int shiftCount = b & 0x1F;
         if (returnType.profile(this, lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE)) {
             return (double) (lnum >>> shiftCount);
@@ -134,10 +133,11 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
 
     @Specialization
     protected Number doIntDouble(int a, double b,
-                    @Cached JSToUInt32Node rvalToUint32Node,
+                    @Cached @Shared JSToUInt32Node lvalToUint32Node,
+                    @Cached @Shared JSToUInt32Node rvalToUint32Node,
                     @Cached @Shared InlinedConditionProfile returnType) {
 
-        long lnum = toUInt32(a);
+        long lnum = lvalToUint32Node.executeLong(a);
         int shiftCount = (int) rvalToUint32Node.executeLong(b) & 0x1F;
         if (returnType.profile(this, lnum >= Integer.MAX_VALUE || lnum <= Integer.MIN_VALUE)) {
             return (double) (lnum >>> shiftCount);
@@ -146,8 +146,10 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
     }
 
     @Specialization
-    protected double doDoubleDouble(double a, double b) {
-        return (toUInt32(a) >>> ((int) toUInt32(b) & 0x1F));
+    protected double doDoubleDouble(double a, double b,
+                    @Cached @Shared JSToUInt32Node lvalToUint32Node,
+                    @Cached @Shared JSToUInt32Node rvalToUint32Node) {
+        return (lvalToUint32Node.executeLong(a) >>> ((int) rvalToUint32Node.executeLong(b) & 0x1F));
     }
 
     @Specialization
@@ -177,14 +179,6 @@ public abstract class JSUnsignedRightShiftNode extends JSBinaryNode {
         Object rnum = rvalToNumericNode.execute(rval);
         ensureBothSameNumericType(lnum, rnum, node, mixedNumericTypes);
         return innerShiftNode.executeNumber(lnum, rnum);
-    }
-
-    private long toUInt32(Object target) {
-        if (toUInt32Node == null) {
-            CompilerDirectives.transferToInterpreterAndInvalidate();
-            toUInt32Node = insert(JSToUInt32Node.create());
-        }
-        return toUInt32Node.executeLong(target);
     }
 
     protected static boolean isHandled(Object lval, Object rval) {

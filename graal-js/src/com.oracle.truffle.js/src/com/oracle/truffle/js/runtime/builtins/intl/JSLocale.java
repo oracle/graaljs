@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.intl.LocalePrototypeBuiltins;
+import com.oracle.truffle.js.nodes.intl.InitializeLocaleNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.Strings;
@@ -213,7 +214,7 @@ public final class JSLocale extends JSNonProxy implements JSConstructorFactory.D
         state.calendar = locale.getUnicodeLocaleType("ca");
         state.caseFirst = locale.getUnicodeLocaleType("kf");
         state.collation = locale.getUnicodeLocaleType("co");
-        state.firstDayOfWeek = IntlUtil.weekDayToNumber(locale.getUnicodeLocaleType("fw"));
+        state.firstDayOfWeek = InitializeLocaleNode.weekDayToNumber(locale.getUnicodeLocaleType("fw"));
         state.hourCycle = locale.getUnicodeLocaleType("hc");
         String kn = locale.getUnicodeLocaleType("kn");
         state.numeric = "true".equals(kn) || "".equals(kn);

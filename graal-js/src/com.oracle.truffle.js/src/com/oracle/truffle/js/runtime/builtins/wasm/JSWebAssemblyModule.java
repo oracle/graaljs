@@ -58,7 +58,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSWebAssemblyModule extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("Module");
+    public static final TruffleString CLASS_NAME = Strings.UC_MODULE;
 
     public static final TruffleString WEB_ASSEMBLY_MODULE = Strings.constant("WebAssembly.Module");
 

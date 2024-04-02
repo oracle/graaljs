@@ -53,7 +53,7 @@ import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
 
 public final class JSAsyncGenerator extends JSNonProxy implements JSConstructorFactory, PrototypeSupplier {
 
-    public static final TruffleString CLASS_NAME = Strings.constant("AsyncGenerator");
+    public static final TruffleString CLASS_NAME = JSFunction.ASYNC_GENERATOR_NAME;
     public static final TruffleString PROTOTYPE_NAME = Strings.constant("AsyncGenerator.prototype");
     public static final TruffleString TO_STRING_TAG = CLASS_NAME;
 

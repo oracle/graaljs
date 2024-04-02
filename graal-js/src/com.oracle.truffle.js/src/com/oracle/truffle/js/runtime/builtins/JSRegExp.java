@@ -86,20 +86,40 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     public static final TruffleString CLASS_NAME = Strings.constant("RegExp");
     public static final TruffleString PROTOTYPE_NAME = Strings.concat(CLASS_NAME, Strings.DOT_PROTOTYPE);
     public static final TruffleString MULTILINE = Strings.constant("multiline");
-    public static final TruffleString GLOBAL = Strings.constant("global");
+    public static final TruffleString GLOBAL = Strings.GLOBAL;
     public static final TruffleString IGNORE_CASE = Strings.constant("ignoreCase");
     public static final TruffleString STICKY = Strings.constant("sticky");
     public static final TruffleString UNICODE = Strings.constant("unicode");
     public static final TruffleString DOT_ALL = Strings.constant("dotAll");
-    public static final TruffleString SOURCE = Strings.constant("source");
+    public static final TruffleString SOURCE = Strings.SOURCE;
     public static final TruffleString FLAGS = Strings.constant("flags");
     public static final TruffleString LAST_INDEX = Strings.constant("lastIndex");
-    public static final TruffleString INPUT = Strings.constant("input");
+    public static final TruffleString INPUT = Strings.INPUT;
     public static final TruffleString GROUPS = Strings.constant("groups");
-    public static final TruffleString INDEX = Strings.constant("index");
+    public static final TruffleString INDEX = Strings.INDEX;
     public static final TruffleString INDICES = Strings.constant("indices");
     public static final TruffleString HAS_INDICES = Strings.constant("hasIndices");
     public static final TruffleString UNICODE_SETS = Strings.constant("unicodeSets");
+
+    public static final TruffleString EMPTY_REGEX = Strings.constant("(?:)");
+    public static final TruffleString LAST_MATCH = Strings.constant("lastMatch");
+    public static final TruffleString LAST_PAREN = Strings.constant("lastParen");
+    public static final TruffleString LEFT_CONTEXT = Strings.constant("leftContext");
+    public static final TruffleString RIGHT_CONTEXT = Strings.constant("rightContext");
+    public static final TruffleString $_ = Strings.constant("$_");
+    public static final TruffleString $_AMPERSAND = Strings.constant("$&");
+    public static final TruffleString $_PLUS = Strings.constant("$+");
+    public static final TruffleString $_BACKTICK = Strings.constant("$`");
+    public static final TruffleString $_SQUOT = Strings.constant("$'");
+    public static final TruffleString $_1 = Strings.constant("$1");
+    public static final TruffleString $_2 = Strings.constant("$2");
+    public static final TruffleString $_3 = Strings.constant("$3");
+    public static final TruffleString $_4 = Strings.constant("$4");
+    public static final TruffleString $_5 = Strings.constant("$5");
+    public static final TruffleString $_6 = Strings.constant("$6");
+    public static final TruffleString $_7 = Strings.constant("$7");
+    public static final TruffleString $_8 = Strings.constant("$8");
+    public static final TruffleString $_9 = Strings.constant("$9");
 
     public static final PropertyProxy LAZY_INDEX_PROXY = new LazyRegexResultIndexProxyProperty();
     public static final HiddenKey GROUPS_RESULT_ID = new HiddenKey("regexResult");
@@ -296,7 +316,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
         InteropReadStringMemberNode readString = InteropReadStringMemberNode.getUncached();
         TruffleString pattern = readString.execute(null, regex, TRegexUtil.Props.CompiledRegex.PATTERN);
         if (Strings.length(pattern) == 0) {
-            pattern = Strings.EMPTY_REGEX;
+            pattern = EMPTY_REGEX;
         }
         Object regexFlags = TRegexUtil.InteropReadMemberNode.getUncached().execute(null, regex, TRegexUtil.Props.CompiledRegex.FLAGS);
         TruffleString flags = readString.execute(null, regexFlags, TRegexUtil.Props.Flags.SOURCE);
@@ -385,7 +405,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     @TruffleBoundary
     public static TruffleString escapeRegExpPattern(TruffleString pattern) {
         if (Strings.length(pattern) == 0) {
-            return Strings.EMPTY_REGEX;
+            return EMPTY_REGEX;
         }
         int extraChars = escapeRegExpExtraCharCount(pattern);
         if (extraChars == 0) {

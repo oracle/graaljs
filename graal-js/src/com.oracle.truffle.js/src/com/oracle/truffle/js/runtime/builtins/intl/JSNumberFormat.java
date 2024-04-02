@@ -268,7 +268,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         } else if (IntlUtil.AUTO.equals(useGrouping)) {
             strategy = NumberFormatter.GroupingStrategy.AUTO;
         } else {
-            assert IntlUtil.ALWAYS.equals(useGrouping);
+            assert IntlUtil.ALWAYS.equals(useGrouping) : useGrouping;
             strategy = NumberFormatter.GroupingStrategy.ON_ALIGNED;
         }
         return strategy;
@@ -555,7 +555,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                     endRangeStart = start;
                     endRangeLimit = limit;
                 } else {
-                    throw Errors.shouldNotReachHere(fieldValue.toString());
+                    throw Errors.shouldNotReachHereUnexpectedValue(fieldValue);
                 }
             } else if (field instanceof NumberFormat.Field) {
                 String type;
@@ -587,7 +587,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
                 parts.add(IntlUtil.makePart(context, realm, type, value, null, source));
                 lastLimit = limit;
             } else {
-                throw Errors.shouldNotReachHere(field.toString());
+                throw Errors.shouldNotReachHereUnexpectedValue(field);
             }
         }
 
@@ -1050,6 +1050,7 @@ public final class JSNumberFormat extends JSNonProxy implements JSConstructorFac
         }
 
         public void setGroupingUsed(Object useGrouping) {
+            assert useGrouping instanceof Boolean || useGrouping instanceof String : useGrouping;
             this.useGrouping = useGrouping;
         }
 

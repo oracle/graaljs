@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
+
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -54,6 +56,12 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  * SetNumberFormatDigitOptions() operation.
  */
 public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode {
+
+    private static final List<String> ROUNDING_MODE_OPTION_VALUES = List.of(IntlUtil.CEIL, IntlUtil.FLOOR, IntlUtil.EXPAND, IntlUtil.TRUNC,
+                    IntlUtil.HALF_CEIL, IntlUtil.HALF_FLOOR, IntlUtil.HALF_EXPAND, IntlUtil.HALF_TRUNC, IntlUtil.HALF_EVEN);
+    private static final List<String> ROUNDING_PRIORITY_OPTIONS_VALUES = List.of(IntlUtil.AUTO, IntlUtil.MORE_PRECISION, IntlUtil.LESS_PRECISION);
+    private static final List<String> TRAILING_ZERO_DISPLAY_OPTION_VALUES = List.of(IntlUtil.AUTO, IntlUtil.STRIP_IF_INTEGER);
+
     @Child GetNumberOptionNode getMinIntDigitsOption;
     @Child PropertyGetNode getMinFracDigitsOption;
     @Child PropertyGetNode getMaxFracDigitsOption;
@@ -80,11 +88,9 @@ public abstract class SetNumberFormatDigitOptionsNode extends JavaScriptBaseNode
         this.getMnfdDNO = DefaultNumberOptionNode.create();
         this.getMxfdDNO = DefaultNumberOptionNode.create();
         this.getRoundingIncrementOption = GetNumberOptionNode.create(context, IntlUtil.KEY_ROUNDING_INCREMENT);
-        this.getRoundingModeOption = GetStringOptionNode.create(context, IntlUtil.KEY_ROUNDING_MODE, new String[]{IntlUtil.CEIL, IntlUtil.FLOOR, IntlUtil.EXPAND, IntlUtil.TRUNC, IntlUtil.HALF_CEIL,
-                        IntlUtil.HALF_FLOOR, IntlUtil.HALF_EXPAND, IntlUtil.HALF_TRUNC, IntlUtil.HALF_EVEN}, IntlUtil.HALF_EXPAND);
-        this.getRoundingPriorityOption = GetStringOptionNode.create(context, IntlUtil.KEY_ROUNDING_PRIORITY, new String[]{IntlUtil.AUTO, IntlUtil.MORE_PRECISION, IntlUtil.LESS_PRECISION},
-                        IntlUtil.AUTO);
-        this.getTrailingZeroDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, new String[]{IntlUtil.AUTO, IntlUtil.STRIP_IF_INTEGER}, IntlUtil.AUTO);
+        this.getRoundingModeOption = GetStringOptionNode.create(context, IntlUtil.KEY_ROUNDING_MODE, ROUNDING_MODE_OPTION_VALUES, IntlUtil.HALF_EXPAND);
+        this.getRoundingPriorityOption = GetStringOptionNode.create(context, IntlUtil.KEY_ROUNDING_PRIORITY, ROUNDING_PRIORITY_OPTIONS_VALUES, IntlUtil.AUTO);
+        this.getTrailingZeroDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_TRAILING_ZERO_DISPLAY, TRAILING_ZERO_DISPLAY_OPTION_VALUES, IntlUtil.AUTO);
     }
 
     public static SetNumberFormatDigitOptionsNode create(JSContext context) {

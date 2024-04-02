@@ -104,10 +104,10 @@ public abstract class CreateDecoratorContextObjectNode extends JavaScriptBaseNod
     private static final TruffleString SETTER_KIND = Strings.constant("setter");
     private static final TruffleString METHOD_KIND = Strings.constant("method");
     private static final TruffleString CLASS_KIND = Strings.constant("class");
-    private static final TruffleString AUTO_ACCESSOR_KIND = Strings.constant("accessor");
+    private static final TruffleString AUTO_ACCESSOR_KIND = Strings.ACCESSOR;
 
     private static final TruffleString ADD_INITIALIZER = Strings.constant("addInitializer");
-    private static final TruffleString NAME = Strings.constant("name");
+    private static final TruffleString NAME = Strings.NAME;
     private static final TruffleString KIND = Strings.constant("kind");
     private static final TruffleString ACCESS = Strings.constant("access");
 

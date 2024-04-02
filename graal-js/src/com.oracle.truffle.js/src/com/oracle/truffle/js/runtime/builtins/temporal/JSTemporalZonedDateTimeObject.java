@@ -87,7 +87,10 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
         return Instant.ofEpochSecond(res[0].longValue(), res[1].intValue());
     }
 
-    @ExportMessage
+    @ExportMessage(name = "isTimeZone")
+    @ExportMessage(name = "isDate")
+    @ExportMessage(name = "isTime")
+    @TruffleBoundary
     boolean isTimeZone() {
         return getZoneIdIntl() != null;
     }
@@ -121,19 +124,9 @@ public final class JSTemporalZonedDateTimeObject extends JSTemporalCalendarHolde
     }
 
     @ExportMessage
-    boolean isDate() {
-        return isTimeZone();
-    }
-
-    @ExportMessage
     @TruffleBoundary
     LocalDate asDate() throws UnsupportedMessageException {
         return LocalDate.ofInstant(toInstant(), asTimeZone());
-    }
-
-    @ExportMessage
-    boolean isTime() {
-        return isTimeZone();
     }
 
     @ExportMessage

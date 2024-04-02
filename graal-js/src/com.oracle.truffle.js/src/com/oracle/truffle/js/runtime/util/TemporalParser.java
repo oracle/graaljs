@@ -980,7 +980,7 @@ public final class TemporalParser {
     }
 
     private static boolean isSign(char c) {
-        return c == '+' || c == '-' || c == TemporalUtil.UNICODE_MINUS_SIGN;
+        return c == '+' || c == '-' || c == TemporalConstants.UNICODE_MINUS_SIGN;
     }
 
     private static Matcher createMatch(String pattern, TruffleString input) {

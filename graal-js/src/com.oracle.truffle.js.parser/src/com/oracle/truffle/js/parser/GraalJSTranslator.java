@@ -199,8 +199,6 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     public static final String DIR__ = "__DIR__";
     public static final String IMPORT = "import";
     public static final String IMPORT_META = "import.meta";
-    public static final TruffleString GENERATOREXPR = Strings.constant("generatorexpr");
-    public static final TruffleString GENERATORSTATE = Strings.constant("generatorstate");
     public static final String ARGUMENTS = "arguments";
 
     public static final JavaScriptNode[] EMPTY_NODE_ARRAY = new JavaScriptNode[0];
@@ -839,7 +837,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
             JavaScriptNode jschild = (JavaScriptNode) child;
             if (NodeUtil.isReplacementSafe(parent, child, ANY_JAVA_SCRIPT_NODE)) {
                 JSFrameDescriptor functionFrameDescriptor = environment.getFunctionFrameDescriptor();
-                InternalSlotId identifier = factory.createInternalSlotId(GENERATOREXPR, functionFrameDescriptor.getSize());
+                InternalSlotId identifier = factory.createInternalSlotId("generatorexpr", functionFrameDescriptor.getSize());
                 JSFrameSlot frameSlot = functionFrameDescriptor.addFrameSlot(identifier);
                 JavaScriptNode readState = factory.createReadCurrentFrameSlot(frameSlot);
                 if (jschild.hasTag(StandardTags.ExpressionTag.class) ||
@@ -2347,7 +2345,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
     }
 
     public JSFrameSlot addGeneratorStateSlot(JSFrameDescriptor functionFrameDescriptor, FrameSlotKind slotKind) {
-        InternalSlotId identifier = factory.createInternalSlotId(GENERATORSTATE, functionFrameDescriptor.getSize());
+        InternalSlotId identifier = factory.createInternalSlotId("generatorstate", functionFrameDescriptor.getSize());
         return functionFrameDescriptor.addFrameSlot(identifier, slotKind);
     }
 
@@ -3441,7 +3439,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         Block switchBlock = lc.getCurrentBlock();
         assert switchBlock.isSwitchBlock();
 
-        InternalSlotId switchVarName = makeUniqueTempVarNameForStatement(Strings.SWITCH, switchNode.getLineNumber());
+        InternalSlotId switchVarName = makeUniqueTempVarNameForStatement("switch", switchNode.getLineNumber());
         environment.declareLocalVar(switchVarName);
 
         JavaScriptNode switchExpression = transform(switchNode.getExpression());
@@ -3672,7 +3670,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         try (EnvironmentCloseable withParent = new EnvironmentCloseable(withParentEnv)) {
             JavaScriptNode withExpression = transform(withNode.getExpression());
             JavaScriptNode toObject = factory.createToObjectForWithStatement(context, withExpression);
-            InternalSlotId withVarName = makeUniqueTempVarNameForStatement(Strings.WITH, withNode.getLineNumber());
+            InternalSlotId withVarName = makeUniqueTempVarNameForStatement("with", withNode.getLineNumber());
             environment.declareInternalSlot(withVarName);
             JavaScriptNode writeWith = environment.findInternalSlot(withVarName).createWriteNode(toObject);
             JavaScriptNode withStatement;
@@ -3866,7 +3864,7 @@ abstract class GraalJSTranslator extends com.oracle.js.parser.ir.visitor.Transla
         }
     }
 
-    private InternalSlotId makeUniqueTempVarNameForStatement(TruffleString prefix, int lineNumber) {
+    private InternalSlotId makeUniqueTempVarNameForStatement(String prefix, int lineNumber) {
         InternalSlotId name = factory.createInternalSlotId(prefix, lineNumber);
         assert !environment.hasLocalVar(name);
         return name;

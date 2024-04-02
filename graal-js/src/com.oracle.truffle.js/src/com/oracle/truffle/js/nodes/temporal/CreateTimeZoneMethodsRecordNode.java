@@ -48,12 +48,12 @@ import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.GetMethodNode;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.TimeZoneMethodsRecord;
-import com.oracle.truffle.js.runtime.util.TemporalUtil;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
 /**
  * Implementation of the CreateTimeZoneMethodsRecord operation.
  */
-@ImportStatic(TemporalUtil.class)
+@ImportStatic(TemporalConstants.class)
 public abstract class CreateTimeZoneMethodsRecordNode extends JavaScriptBaseNode {
 
     protected CreateTimeZoneMethodsRecordNode() {

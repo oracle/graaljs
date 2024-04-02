@@ -40,43 +40,43 @@
  */
 package com.oracle.truffle.js.nodes.temporal;
 
+import java.util.Map;
+
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.nodes.access.HasPropertyCacheNode;
-import com.oracle.truffle.js.runtime.Strings;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalTimeZoneObject;
-import com.oracle.truffle.js.runtime.util.TemporalConstants;
+import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of ObjectImplementsTemporalTimeZoneProtocol() operation.
+ * Implementation of GetTemporalUnit() operation.
  */
-@ImportStatic({TemporalConstants.class, Strings.class})
-public abstract class ObjectImplementsTemporalTimeZoneProtocolNode extends JavaScriptBaseNode {
+public abstract class GetTemporalUnitNode extends JavaScriptBaseNode {
 
-    protected ObjectImplementsTemporalTimeZoneProtocolNode() {
+    protected GetTemporalUnitNode() {
     }
 
-    @NeverDefault
-    public static ObjectImplementsTemporalTimeZoneProtocolNode create() {
-        return ObjectImplementsTemporalTimeZoneProtocolNodeGen.create();
-    }
-
-    public abstract boolean execute(Object object);
+    public abstract TemporalUtil.Unit execute(JSDynamicObject normalizedOptions, TruffleString key, Map<TruffleString, TemporalUtil.Unit> unitMapping, TemporalUtil.Unit defaultValue);
 
     @Specialization
-    public boolean doTimeZone(@SuppressWarnings("unused") JSTemporalTimeZoneObject object) {
-        return true;
+    final TemporalUtil.Unit getUnit(JSDynamicObject normalizedOptions, TruffleString key, Map<TruffleString, TemporalUtil.Unit> unitMapping, TemporalUtil.Unit defaultValue,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached TemporalGetOptionNode getOptionNode) {
+        assert defaultValue == TemporalUtil.Unit.REQUIRED || defaultValue == TemporalUtil.Unit.EMPTY || unitMapping.containsValue(defaultValue) : defaultValue;
+        TruffleString value = (TruffleString) getOptionNode.execute(normalizedOptions, key, TemporalUtil.OptionType.STRING, null, null);
+        if (value != null) {
+            TemporalUtil.Unit unit = Boundaries.mapGet(unitMapping, value);
+            if (unit != null) {
+                return unit;
+            }
+        } else if (defaultValue != TemporalUtil.Unit.REQUIRED) {
+            return defaultValue;
+        }
+        errorBranch.enter(this);
+        throw TemporalErrors.createRangeErrorUnitValueUndefinedOrNotAllowed(key, value, unitMapping);
     }
-
-    @Specialization(guards = "!isJSTemporalTimeZone(object)")
-    public boolean doNonCalendar(Object object,
-                    @Cached("create(GET_OFFSET_NANOSECONDS_FOR, getJSContext())") HasPropertyCacheNode hasGetOffsetNanosecondsFor,
-                    @Cached("create(GET_POSSIBLE_INSTANTS_FOR, getJSContext())") HasPropertyCacheNode hasGetPossibleInstantsFor,
-                    @Cached("create(ID_PROPERTY_NAME, getJSContext())") HasPropertyCacheNode hasID) {
-        return hasGetOffsetNanosecondsFor.hasProperty(object) && hasGetPossibleInstantsFor.hasProperty(object) && hasID.hasProperty(object);
-    }
-
 }

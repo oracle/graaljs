@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.SymbolFunctionBuiltins;
@@ -68,6 +69,7 @@ public final class JSSymbol extends JSNonProxy implements JSConstructorFactory.D
     private JSSymbol() {
     }
 
+    @InliningCutoff
     public static JSSymbolObject create(JSContext context, JSRealm realm, Symbol symbol) {
         JSObjectFactory factory = context.getSymbolFactory();
         var proto = factory.getPrototype(realm);

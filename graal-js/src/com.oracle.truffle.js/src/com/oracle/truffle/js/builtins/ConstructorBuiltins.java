@@ -1087,7 +1087,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         protected final JSObject constructDateZero(JSDynamicObject newTarget, @SuppressWarnings("unused") Object[] args) {
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
-            return JSDate.create(getContext(), realm, proto, now());
+            return JSDate.create(getContext(), realm, proto, realm.currentTimeMillis());
         }
 
         protected static Object arg0(Object[] args) {
@@ -1110,6 +1110,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached InlinedConditionProfile stringOrNumberProfile,
                         @Cached("createHintDefault()") JSToPrimitiveNode toPrimitiveNode,
                         @Cached @Shared JSToDoubleNode toDoubleNode) {
+            JSRealm realm = getRealm();
             Object arg0 = args[0];
             double rawDateValue;
             if (getContext().getEcmaScriptVersion() >= 6 && interop.isInstant(arg0)) {
@@ -1117,13 +1118,12 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             } else {
                 Object value = toPrimitiveNode.execute(arg0);
                 if (stringOrNumberProfile.profile(this, value instanceof TruffleString)) {
-                    rawDateValue = parseDate((TruffleString) value);
+                    rawDateValue = parseDate(getContext(), realm, (TruffleString) value);
                 } else {
                     rawDateValue = toDoubleNode.executeDouble(value);
                 }
             }
             double dateValue = timeClip(rawDateValue, isSpecialCase);
-            JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
             return JSDate.create(getContext(), realm, proto, dateValue);
         }
@@ -1146,13 +1146,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @TruffleBoundary
-        private double now() {
-            return getRealm().currentTimeMillis();
-        }
-
-        @TruffleBoundary
-        private double parseDate(TruffleString target) {
-            Integer[] fields = getContext().getEvaluator().parseDate(getRealm(), Strings.toJavaString(Strings.lazyTrim(target)), false);
+        public static double parseDate(JSContext context, JSRealm realm, TruffleString dateStr) {
+            Integer[] fields = context.getEvaluator().parseDate(realm, Strings.toJavaString(Strings.lazyTrim(dateStr)), false);
             if (fields != null) {
                 return JSDate.makeDate(fields[0], fields[1], fields[2], fields[3], fields[4], fields[5], fields[6], fields[7]);
             }

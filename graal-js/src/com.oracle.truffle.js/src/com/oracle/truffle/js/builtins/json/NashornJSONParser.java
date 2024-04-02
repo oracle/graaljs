@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -80,10 +80,6 @@ public class NashornJSONParser {
 
     private static final int EOF = -1;
 
-    private static final TruffleString TRUE = Strings.constant("true");
-    private static final TruffleString FALSE = Strings.constant("false");
-    private static final TruffleString NULL = Strings.constant("null");
-
     private static final String MSG_INVALID_ESCAPE_CHAR = "invalid.escape.char";
     private static final String MSG_INVALID_HEX = "invalid.hex";
     private static final String MSG_JSON_INVALID_NUMBER = "json.invalid.number";
@@ -147,11 +143,11 @@ public class NashornJSONParser {
             case '"':
                 return parseString();
             case 'f':
-                return parseKeyword(FALSE, Boolean.FALSE);
+                return parseKeyword(Strings.FALSE, Boolean.FALSE);
             case 't':
-                return parseKeyword(TRUE, Boolean.TRUE);
+                return parseKeyword(Strings.TRUE, Boolean.TRUE);
             case 'n':
-                return parseKeyword(NULL, Null.instance);
+                return parseKeyword(Strings.NULL, Null.instance);
             default:
                 if (isDigit(c) || c == '-') {
                     return parseNumber();

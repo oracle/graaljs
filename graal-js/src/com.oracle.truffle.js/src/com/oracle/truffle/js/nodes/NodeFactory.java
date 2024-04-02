@@ -1358,7 +1358,7 @@ public class NodeFactory {
         return new DebugScopeVarWrapperNode(varName, defaultDelegate, dynamicScope, scopeAccessNode);
     }
 
-    public InternalSlotId createInternalSlotId(TruffleString description, int ordinal) {
+    public InternalSlotId createInternalSlotId(String description, int ordinal) {
         return new InternalSlotId(description, ordinal);
     }
 

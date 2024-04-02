@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -60,6 +60,7 @@ import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_BOOLEAN;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_DOUBLE;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_ENUM;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_INT;
+import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_JAVA_STRING;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_LONG;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_SINGLETON;
 import static com.oracle.truffle.js.nodes.JSNodeDecoder.Bytecode.ID_LDC_STRING;
@@ -79,8 +80,8 @@ import java.util.HashMap;
 import java.util.stream.Collectors;
 
 import com.oracle.truffle.api.frame.FrameSlotKind;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.source.SourceSection;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.codec.BinaryEncoder;
 import com.oracle.truffle.js.codec.NodeDecoder;
 import com.oracle.truffle.js.nodes.JSNodeDecoder;
@@ -197,9 +198,12 @@ public class JSNodeEncoder {
         } else if (value instanceof Double) {
             putBytecode(ID_LDC_DOUBLE);
             putDouble((double) value);
-        } else if (Strings.isTString(value)) {
+        } else if (value instanceof TruffleString) {
             putBytecode(ID_LDC_STRING);
             putString((TruffleString) value);
+        } else if (value instanceof String) {
+            putBytecode(ID_LDC_JAVA_STRING);
+            putString(Strings.fromJavaString((String) value));
         } else if (value instanceof BigInt) {
             putBytecode(ID_LDC_BIGINT);
             putString(Strings.fromBigInt((BigInt) value));

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,6 +53,8 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSRelativeTimeFormatObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNode {
+
+    private static final List<String> RELATIVE_TIME_FORMAT_NUMERIC_OPTION_VALUES = List.of(IntlUtil.ALWAYS, IntlUtil.AUTO);
 
     private final JSContext context;
 
@@ -69,9 +72,9 @@ public abstract class InitializeRelativeTimeFormatNode extends JavaScriptBaseNod
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
-        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, new String[]{IntlUtil.LONG, IntlUtil.SHORT, IntlUtil.NARROW}, IntlUtil.LONG);
-        this.getNumericOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMERIC, new String[]{IntlUtil.ALWAYS, IntlUtil.AUTO}, IntlUtil.ALWAYS);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, GetStringOptionNode.LONG_SHORT_NARROW_OPTION_VALUES, IntlUtil.LONG);
+        this.getNumericOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMERIC, RELATIVE_TIME_FORMAT_NUMERIC_OPTION_VALUES, IntlUtil.ALWAYS);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);
     }
 

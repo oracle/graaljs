@@ -52,9 +52,6 @@ public final class Null {
     public static final TruffleString TYPE_NAME = Strings.OBJECT;
     public static final TruffleString NAME = Strings.NULL;
 
-    public static final TruffleString DISPLAY_STRING_UNDEFINED = Strings.constant("[object Undefined]");
-    public static final TruffleString DISPLAY_STRING_NULL = Strings.constant("[object Null]");
-
     public static final JSClass NULL_CLASS = NullClass.INSTANCE;
     static final Shape SHAPE = JSShape.makeStaticRoot(Null.NULL_CLASS);
     public static final JSDynamicObject instance = new Nullish();

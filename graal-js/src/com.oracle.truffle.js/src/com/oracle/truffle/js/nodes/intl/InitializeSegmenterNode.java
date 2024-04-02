@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2019, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2019, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
@@ -52,6 +53,8 @@ import com.oracle.truffle.js.runtime.builtins.intl.JSSegmenterObject;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
+
+    private static final List<String> GRANULARITY_OPTION_VALUES = List.of(IntlUtil.GRAPHEME, IntlUtil.WORD, IntlUtil.SENTENCE);
 
     private final JSContext context;
 
@@ -67,8 +70,8 @@ public abstract class InitializeSegmenterNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.getOptionsObjectNode = GetOptionsObjectNodeGen.create(context);
-        this.getGranularityOption = GetStringOptionNode.create(context, IntlUtil.KEY_GRANULARITY, new String[]{IntlUtil.GRAPHEME, IntlUtil.WORD, IntlUtil.SENTENCE}, IntlUtil.GRAPHEME);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getGranularityOption = GetStringOptionNode.create(context, IntlUtil.KEY_GRANULARITY, GRANULARITY_OPTION_VALUES, IntlUtil.GRAPHEME);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
     }
 
     public abstract JSSegmenterObject executeInit(JSSegmenterObject segmenterObj, Object locales, Object options);

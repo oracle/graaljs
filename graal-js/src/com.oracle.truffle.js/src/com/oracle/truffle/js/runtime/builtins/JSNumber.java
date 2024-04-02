@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.NumberFunctionBuiltins;
@@ -67,10 +68,12 @@ public final class JSNumber extends JSPrimitive implements JSConstructorFactory.
     private JSNumber() {
     }
 
+    @InliningCutoff
     public static JSNumberObject create(JSContext context, JSRealm realm, Number value) {
         return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), value);
     }
 
+    @InliningCutoff
     public static JSNumberObject create(JSContext context, JSRealm realm, JSDynamicObject proto, Number value) {
         JSObjectFactory factory = context.getNumberFactory();
         var shape = factory.getShape(realm, proto);

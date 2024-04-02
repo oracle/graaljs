@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -117,6 +118,7 @@ public final class JSTemporalPlainDateTime extends JSNonProxy implements JSConst
         return create(context, realm, proto, y, m, d, hour, minute, second, millisecond, microsecond, nanosecond, calendar, null, InlinedBranchProfile.getUncached());
     }
 
+    @InliningCutoff
     private static JSTemporalPlainDateTimeObject createIntl(JSContext context, JSRealm realm, JSDynamicObject proto,
                     int y, int m, int d, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond, Object calendar) {
         JSObjectFactory factory = context.getTemporalPlainDateTimeFactory();

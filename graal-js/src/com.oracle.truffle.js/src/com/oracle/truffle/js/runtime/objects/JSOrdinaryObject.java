@@ -70,6 +70,11 @@ public abstract class JSOrdinaryObject extends JSNonProxyObject implements JSCop
         }
     }
 
+    public static JSOrdinaryObject createWithDefaultLayout(Shape shape, JSDynamicObject proto) {
+        assert DefaultLayout.class == shape.getLayoutClass() : shape.getLayoutClass();
+        return new DefaultLayout(shape, proto);
+    }
+
     @Override
     public TruffleString getClassName() {
         return JSOrdinary.CLASS_NAME;

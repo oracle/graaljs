@@ -63,7 +63,7 @@ import com.oracle.truffle.js.runtime.Strings;
 public final class FunctionEnvironment extends Environment {
     private static final TruffleString RETURN_SLOT_IDENTIFIER = Strings.constant("<return>");
     static final TruffleString ARGUMENTS_SLOT_IDENTIFIER = Strings.constant("<arguments>");
-    static final TruffleString THIS_SLOT_IDENTIFIER = Strings.constant("<this>");
+    static final TruffleString THIS_SLOT_IDENTIFIER = JSFrameUtil.THIS_SLOT_ID;
     static final TruffleString SUPER_SLOT_IDENTIFIER = Strings.constant("<super>");
     static final TruffleString NEW_TARGET_SLOT_IDENTIFIER = Strings.constant("<new.target>");
     static final TruffleString YIELD_VALUE_SLOT_IDENTIFIER = Strings.constant("<yieldvalue>");

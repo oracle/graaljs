@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
@@ -55,6 +56,14 @@ import com.oracle.truffle.js.runtime.util.IntlUtil;
  * https://tc39.github.io/ecma402/#sec-initializenumberformat
  */
 public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
+
+    private static final List<String> CURRENCY_SIGN_OPTION_VALUES = List.of(IntlUtil.STANDARD, IntlUtil.ACCOUNTING);
+    private static final List<String> STYLE_OPTION_VALUES = List.of(IntlUtil.DECIMAL, IntlUtil.PERCENT, IntlUtil.CURRENCY, IntlUtil.UNIT);
+    private static final List<String> CURRENCY_DISPLAY_OPTION_VALUES = List.of(IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NARROW_SYMBOL, IntlUtil.NAME);
+    private static final List<String> NOTATION_OPTION_VALUES = List.of(IntlUtil.STANDARD, IntlUtil.SCIENTIFIC, IntlUtil.ENGINEERING, IntlUtil.COMPACT);
+    private static final List<String> COMPACT_OPTION_VALUES = List.of(IntlUtil.SHORT, IntlUtil.LONG);
+    private static final List<String> USE_GROUPING_OPTION_VALUES = List.of(IntlUtil.MIN2, IntlUtil.AUTO, IntlUtil.ALWAYS);
+    private static final List<String> SIGN_DISPLAY_OPTION_VALUES = List.of(IntlUtil.AUTO, IntlUtil.NEVER, IntlUtil.ALWAYS, IntlUtil.EXCEPT_ZERO, IntlUtil.NEGATIVE);
 
     private final JSContext context;
 
@@ -85,22 +94,18 @@ public abstract class InitializeNumberFormatNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.coerceOptionsToObjectNode = CoerceOptionsToObjectNodeGen.create(context);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
         this.getNumberingSystemOption = GetStringOptionNode.create(context, IntlUtil.KEY_NUMBERING_SYSTEM, null, null);
-        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, new String[]{IntlUtil.DECIMAL, IntlUtil.PERCENT, IntlUtil.CURRENCY, IntlUtil.UNIT}, IntlUtil.DECIMAL);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, STYLE_OPTION_VALUES, IntlUtil.DECIMAL);
         this.getCurrencyOption = GetStringOptionNode.create(context, IntlUtil.KEY_CURRENCY, null, null);
-        this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_CURRENCY_DISPLAY, new String[]{IntlUtil.CODE, IntlUtil.SYMBOL, IntlUtil.NARROW_SYMBOL, IntlUtil.NAME},
-                        IntlUtil.SYMBOL);
-        this.getCurrencySignOption = GetStringOptionNode.create(context, IntlUtil.KEY_CURRENCY_SIGN, new String[]{IntlUtil.STANDARD, IntlUtil.ACCOUNTING}, IntlUtil.STANDARD);
+        this.getCurrencyDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_CURRENCY_DISPLAY, CURRENCY_DISPLAY_OPTION_VALUES, IntlUtil.SYMBOL);
+        this.getCurrencySignOption = GetStringOptionNode.create(context, IntlUtil.KEY_CURRENCY_SIGN, CURRENCY_SIGN_OPTION_VALUES, IntlUtil.STANDARD);
         this.getUnitOption = GetStringOptionNode.create(context, IntlUtil.KEY_UNIT, null, null);
-        this.getUnitDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_UNIT_DISPLAY, new String[]{IntlUtil.SHORT, IntlUtil.NARROW, IntlUtil.LONG}, IntlUtil.SHORT);
-        this.getNotationOption = GetStringOptionNode.create(context, IntlUtil.KEY_NOTATION, new String[]{IntlUtil.STANDARD, IntlUtil.SCIENTIFIC, IntlUtil.ENGINEERING, IntlUtil.COMPACT},
-                        IntlUtil.STANDARD);
-        this.getCompactDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_COMPACT_DISPLAY, new String[]{IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.SHORT);
-        this.getUseGroupingOption = GetStringOrBooleanOptionNode.create(context, IntlUtil.KEY_USE_GROUPING, new String[]{IntlUtil.MIN2, IntlUtil.AUTO, IntlUtil.ALWAYS}, IntlUtil.ALWAYS, false, null);
-        this.getSignDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_SIGN_DISPLAY,
-                        new String[]{IntlUtil.AUTO, IntlUtil.NEVER, IntlUtil.ALWAYS, IntlUtil.EXCEPT_ZERO, IntlUtil.NEGATIVE},
-                        IntlUtil.AUTO);
+        this.getUnitDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_UNIT_DISPLAY, GetStringOptionNode.LONG_SHORT_NARROW_OPTION_VALUES, IntlUtil.SHORT);
+        this.getNotationOption = GetStringOptionNode.create(context, IntlUtil.KEY_NOTATION, NOTATION_OPTION_VALUES, IntlUtil.STANDARD);
+        this.getCompactDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_COMPACT_DISPLAY, COMPACT_OPTION_VALUES, IntlUtil.SHORT);
+        this.getUseGroupingOption = GetStringOrBooleanOptionNode.create(context, IntlUtil.KEY_USE_GROUPING, USE_GROUPING_OPTION_VALUES, IntlUtil.ALWAYS, false, null);
+        this.getSignDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_SIGN_DISPLAY, SIGN_DISPLAY_OPTION_VALUES, IntlUtil.AUTO);
         this.setNumberFormatDigitOptions = SetNumberFormatDigitOptionsNode.create(context);
     }
 

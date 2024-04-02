@@ -40,7 +40,6 @@
  */
 package com.oracle.truffle.js.builtins.temporal;
 
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ISO8601;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTH;
@@ -51,7 +50,6 @@ import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.List;
 
-import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
@@ -87,6 +85,7 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
+import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
@@ -116,6 +115,7 @@ import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Overflow;
@@ -258,7 +258,7 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
             assert calendar.getId().equals(ISO8601);
             JSDynamicObject fieldsCopy = snapshotOwnProperties.snapshot(toObject.execute(fields), Null.instance, EMPTY, UNDEFINED_IN_ARRAY);
             JSDynamicObject additionalFieldsCopy = snapshotOwnProperties.snapshot(toObject.execute(additionalFields), Null.instance, EMPTY, UNDEFINED_IN_ARRAY);
-            return TemporalUtil.defaultMergeFields(getContext(), getRealm(), fieldsCopy, additionalFieldsCopy);
+            return TemporalUtil.defaultMergeFields(getContext(), fieldsCopy, additionalFieldsCopy);
         }
 
         @SuppressWarnings("unused")
@@ -269,33 +269,6 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
     }
 
     public abstract static class JSTemporalCalendarFields extends JSTemporalBuiltinOperation {
-        @Child private IteratorCloseNode iteratorCloseNode;
-        @Child private IteratorValueNode getIteratorValueNode;
-        @Child private IteratorStepNode iteratorStepNode;
-
-        protected void iteratorCloseAbrupt(Object iterator) {
-            if (iteratorCloseNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorCloseNode = insert(IteratorCloseNode.create(getContext()));
-            }
-            iteratorCloseNode.executeAbrupt(iterator);
-        }
-
-        protected Object getIteratorValue(Object iteratorResult) {
-            if (getIteratorValueNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getIteratorValueNode = insert(IteratorValueNode.create());
-            }
-            return getIteratorValueNode.execute(iteratorResult);
-        }
-
-        protected Object iteratorStep(IteratorRecord iterator) {
-            if (iteratorStepNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                iteratorStepNode = insert(IteratorStepNode.create());
-            }
-            return iteratorStepNode.execute(iterator);
-        }
 
         protected JSTemporalCalendarFields(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
@@ -303,28 +276,31 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSDynamicObject fields(JSTemporalCalendarObject calendar, Object fieldsParam,
-                        @Cached(inline = true) GetIteratorNode getIteratorNode) {
+                        @Cached(inline = true) GetIteratorNode getIteratorNode,
+                        @Cached("create(getContext())") IteratorCloseNode iteratorCloseNode,
+                        @Cached IteratorValueNode getIteratorValueNode,
+                        @Cached IteratorStepNode iteratorStepNode) {
             assert calendar.getId().equals(ISO8601);
             IteratorRecord iter = getIteratorNode.execute(this, fieldsParam /* , sync */);
             List<TruffleString> fieldNames = new ArrayList<>();
             while (true) {
-                Object next = iteratorStep(iter);
+                Object next = iteratorStepNode.execute(iter);
                 if (next == Boolean.FALSE) {
                     break;
                 }
-                Object nextValue = getIteratorValue(next);
+                Object nextValue = getIteratorValueNode.execute(next);
                 if (nextValue instanceof TruffleString str) {
                     if (Boundaries.listContains(fieldNames, str)) {
-                        iteratorCloseAbrupt(iter.getIterator());
+                        iteratorCloseNode.executeAbrupt(iter.getIterator());
                         throw Errors.createRangeErrorFormat("Duplicate field: %s", null, str);
                     }
                     if (!(YEAR.equals(str) || MONTH.equals(str) || MONTH_CODE.equals(str) || DAY.equals(str))) {
-                        iteratorCloseAbrupt(iter.getIterator());
+                        iteratorCloseNode.executeAbrupt(iter.getIterator());
                         throw Errors.createRangeErrorFormat("Invalid field: %s", null, str);
                     }
-                    fieldNames.add(str);
+                    Boundaries.listAdd(fieldNames, str);
                 } else {
-                    iteratorCloseAbrupt(iter.getIterator());
+                    iteratorCloseNode.executeAbrupt(iter.getIterator());
                     throw Errors.createTypeErrorNotAString(nextValue);
                 }
             }
@@ -485,15 +461,17 @@ public class TemporalCalendarPrototypeBuiltins extends JSBuiltinsContainer.Switc
         @Specialization
         protected Object dateUntil(JSTemporalCalendarObject calendar, Object oneObj, Object twoObj, Object optionsParam,
                         @Cached ToTemporalDateNode toTemporalDate,
-                        @Cached TruffleString.EqualNode equalNode,
-                        @Cached TemporalGetOptionNode getOptionNode,
+                        @Cached GetTemporalUnitNode getLargestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             assert calendar.getId().equals(ISO8601);
             JSTemporalPlainDateObject one = toTemporalDate.execute(oneObj);
             JSTemporalPlainDateObject two = toTemporalDate.execute(twoObj);
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            Unit largestUnit = toLargestTemporalUnit(options, TemporalUtil.listTime, AUTO, Unit.DAY, equalNode, getOptionNode, this, errorBranch);
+            Unit largestUnit = getLargestUnit.execute(options, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateOrAuto, Unit.AUTO);
+            if (largestUnit == Unit.AUTO) {
+                largestUnit = Unit.DAY;
+            }
             JSTemporalDurationRecord result = JSTemporalPlainDate.differenceISODate(
                             one.getYear(), one.getMonth(), one.getDay(), two.getYear(), two.getMonth(), two.getDay(),
                             largestUnit);

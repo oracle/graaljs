@@ -72,8 +72,6 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
  */
 public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpBuiltins.RegExpBuiltin> {
 
-    public static final TruffleString INPUT = Strings.constant("input");
-
     public static final JSBuiltinsContainer BUILTINS = new RegExpBuiltins();
 
     protected RegExpBuiltins() {
@@ -83,7 +81,7 @@ public final class RegExpBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpB
     public enum RegExpBuiltin implements BuiltinEnum<RegExpBuiltin> {
 
         input(0),
-        set_input(1, INPUT),
+        set_input(1, Strings.INPUT),
         lastMatch(0),
         lastParen(0),
         leftContext(0),

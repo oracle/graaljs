@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.intl;
 
+import java.util.List;
 import java.util.MissingResourceException;
 
 import com.oracle.truffle.api.dsl.Specialization;
@@ -53,6 +54,11 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.IntlUtil;
 
 public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
+
+    private static final List<String> TYPE_OPTION_VALUES = List.of(IntlUtil.LANGUAGE, IntlUtil.REGION, IntlUtil.SCRIPT, IntlUtil.CURRENCY, IntlUtil.CALENDAR, IntlUtil.DATE_TIME_FIELD);
+    private static final List<String> FALLBACK_OPTION_VALUES = List.of(IntlUtil.CODE, IntlUtil.NONE);
+    private static final List<String> LANGUAGE_DISPLAY_OPTION_VALUES = List.of(IntlUtil.DIALECT, IntlUtil.STANDARD);
+
     private final JSContext context;
     @Child JSToCanonicalizedLocaleListNode toCanonicalizedLocaleListNode;
     @Child GetOptionsObjectNode getOptionsObjectNode;
@@ -67,12 +73,11 @@ public abstract class InitializeDisplayNamesNode extends JavaScriptBaseNode {
         this.context = context;
         this.toCanonicalizedLocaleListNode = JSToCanonicalizedLocaleListNode.create(context);
         this.getOptionsObjectNode = GetOptionsObjectNodeGen.create(context);
-        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, new String[]{IntlUtil.LOOKUP, IntlUtil.BEST_FIT}, IntlUtil.BEST_FIT);
-        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, new String[]{IntlUtil.NARROW, IntlUtil.SHORT, IntlUtil.LONG}, IntlUtil.LONG);
-        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.KEY_TYPE,
-                        new String[]{IntlUtil.LANGUAGE, IntlUtil.REGION, IntlUtil.SCRIPT, IntlUtil.CURRENCY, IntlUtil.CALENDAR, IntlUtil.DATE_TIME_FIELD}, null);
-        this.getFallbackOption = GetStringOptionNode.create(context, IntlUtil.KEY_FALLBACK, new String[]{IntlUtil.CODE, IntlUtil.NONE}, IntlUtil.CODE);
-        this.getLanguageDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_LANGUAGE_DISPLAY, new String[]{IntlUtil.DIALECT, IntlUtil.STANDARD}, IntlUtil.DIALECT);
+        this.getLocaleMatcherOption = GetStringOptionNode.create(context, IntlUtil.KEY_LOCALE_MATCHER, GetStringOptionNode.LOCALE_MATCHER_OPTION_VALUES, IntlUtil.BEST_FIT);
+        this.getStyleOption = GetStringOptionNode.create(context, IntlUtil.KEY_STYLE, GetStringOptionNode.NARROW_SHORT_LONG_OPTION_VALUES, IntlUtil.LONG);
+        this.getTypeOption = GetStringOptionNode.create(context, IntlUtil.KEY_TYPE, TYPE_OPTION_VALUES, null);
+        this.getFallbackOption = GetStringOptionNode.create(context, IntlUtil.KEY_FALLBACK, FALLBACK_OPTION_VALUES, IntlUtil.CODE);
+        this.getLanguageDisplayOption = GetStringOptionNode.create(context, IntlUtil.KEY_LANGUAGE_DISPLAY, LANGUAGE_DISPLAY_OPTION_VALUES, IntlUtil.DIALECT);
     }
 
     public abstract JSDisplayNamesObject executeInit(JSDisplayNamesObject displayNames, Object locales, Object options);

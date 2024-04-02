@@ -44,6 +44,7 @@ import com.oracle.truffle.api.CallTarget;
 import com.oracle.truffle.api.CompilerAsserts;
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.RootCallTarget;
 import com.oracle.truffle.api.Truffle;
 import com.oracle.truffle.api.frame.Frame;
@@ -103,7 +104,7 @@ public final class JSFunction extends JSNonProxy {
     public static final TruffleString ASYNC_GENERATOR_FUNCTION_NAME = Strings.constant("AsyncGeneratorFunction");
     public static final TruffleString ASYNC_GENERATOR_NAME = Strings.constant("AsyncGenerator");
     public static final TruffleString ENUMERATE_ITERATOR_PROTOTYPE_NAME = Strings.constant("[[Enumerate]].prototype");
-    public static final TruffleString CALLER = Strings.constant("caller");
+    public static final TruffleString CALLER = Strings.CALLER;
     public static final TruffleString ARGUMENTS = Strings.ARGUMENTS;
     public static final TruffleString LENGTH = Strings.LENGTH;
     public static final TruffleString NAME = Strings.NAME;
@@ -269,6 +270,7 @@ public final class JSFunction extends JSNonProxy {
         return createDefault(functionData, enclosingFrame, lexicalThis, realm);
     }
 
+    @InliningCutoff
     private static JSFunctionObject createDefault(JSFunctionData functionData, MaterializedFrame enclosingFrame, Object classPrototype, JSRealm realm) {
         JSFunctionFactory factory = initialFactory(functionData);
         return factory.create(functionData, enclosingFrame, classPrototype, realm);

@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalTimeZoneFunctionBuiltins;
@@ -69,6 +70,7 @@ public final class JSTemporalTimeZone extends JSNonProxy implements JSConstructo
     private JSTemporalTimeZone() {
     }
 
+    @InliningCutoff
     public static JSTemporalTimeZoneObject create(JSContext context, JSRealm realm, JSDynamicObject proto, BigInt nanoseconds, TruffleString identifier) {
         JSObjectFactory factory = context.getTemporalTimeZoneFactory();
         var shape = factory.getShape(realm, proto);

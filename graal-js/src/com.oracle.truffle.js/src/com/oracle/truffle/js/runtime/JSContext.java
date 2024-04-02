@@ -541,7 +541,7 @@ public class JSContext {
 
     private final Set<TruffleString> supportedImportAttributes;
 
-    private static final TruffleString TYPE_IMPORT_ATTRIBUTE = Strings.constant("type");
+    private static final TruffleString TYPE_IMPORT_ATTRIBUTE = Strings.TYPE;
 
     /**
      * A shared root node that acts as a parent providing a lock to nodes that are not rooted in a

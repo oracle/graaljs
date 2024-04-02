@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.runtime.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
+import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.BooleanPrototypeBuiltins;
@@ -67,10 +68,12 @@ public final class JSBoolean extends JSPrimitive implements JSConstructorFactory
     private JSBoolean() {
     }
 
+    @InliningCutoff
     public static JSBooleanObject create(JSContext context, JSRealm realm, boolean value) {
         return create(context, realm, INSTANCE.getIntrinsicDefaultProto(realm), value);
     }
 
+    @InliningCutoff
     public static JSBooleanObject create(JSContext context, JSRealm realm, JSDynamicObject proto, boolean value) {
         JSObjectFactory factory = context.getBooleanFactory();
         var shape = factory.getShape(realm, proto);

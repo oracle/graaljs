@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,8 +89,7 @@ import com.oracle.js.parser.ir.VarNode;
 import com.oracle.js.parser.ir.WhileNode;
 import com.oracle.js.parser.ir.WithNode;
 import com.oracle.js.parser.ir.visitor.NodeVisitor;
-import com.oracle.truffle.js.parser.json.JSONParserUtil;
-import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 /**
  * This IR writer produces a JSON string that represents AST as a JSON string.
@@ -1137,6 +1136,6 @@ public final class JSONWriter extends NodeVisitor<LexicalContext> {
     }
 
     private static String quote(final String str) {
-        return Strings.toJavaString(JSONParserUtil.quote(Strings.fromJavaString(str)));
+        return JSRuntime.quote(str);
     }
 }

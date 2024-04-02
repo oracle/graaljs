@@ -55,6 +55,7 @@ import com.oracle.truffle.js.nodes.JSGuards;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.ToDisplayStringFormat;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 
@@ -116,7 +117,7 @@ public final class Nullish extends JSDynamicObject {
 
     @Override
     public TruffleString toDisplayStringImpl(boolean allowSideEffects, ToDisplayStringFormat format, int depth) {
-        return this == Undefined.instance ? Null.DISPLAY_STRING_UNDEFINED : Null.DISPLAY_STRING_NULL;
+        return this == Undefined.instance ? Strings.TO_STRING_VALUE_UNDEFINED : Strings.TO_STRING_VALUE_NULL;
     }
 
     @Override
