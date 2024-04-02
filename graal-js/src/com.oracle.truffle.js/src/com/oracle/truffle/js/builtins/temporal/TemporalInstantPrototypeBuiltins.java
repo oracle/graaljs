@@ -273,14 +273,13 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             JSDynamicObject resolvedOptions = snapshotOwnProperties.snapshot(getOptionsObject(options, this, errorBranch, optionUndefined), Null.instance);
             var settings = getDifferenceSettings.execute(sign, resolvedOptions, TemporalUtil.unitMappingTimeOrAuto, TemporalUtil.unitMappingTime, Unit.NANOSECOND, Unit.SECOND);
 
-            BigInt one = sign == TemporalUtil.UNTIL ? instant.getNanoseconds() : other.getNanoseconds();
-            BigInt two = sign == TemporalUtil.UNTIL ? other.getNanoseconds() : instant.getNanoseconds();
-
-            TimeDurationRecord result = TemporalUtil.differenceInstant(one, two, settings.roundingIncrement(), settings.smallestUnit(), settings.largestUnit(), settings.roundingMode(),
-                            roundDurationNode);
+            TimeDurationRecord norm = TemporalUtil.differenceInstant(instant.getNanoseconds(), other.getNanoseconds(),
+                            settings.roundingIncrement(), settings.smallestUnit(), settings.largestUnit(), settings.roundingMode(), roundDurationNode);
+            TimeDurationRecord result = TemporalUtil.balanceTimeDuration(norm, settings.largestUnit());
             JSRealm realm = getRealm();
             return JSTemporalDuration.createTemporalDuration(getContext(), realm, 0, 0, 0, 0,
-                            result.hours(), result.minutes(), result.seconds(), result.milliseconds(), result.microseconds(), result.nanoseconds(), this, errorBranch);
+                            sign * result.hours(), sign * result.minutes(), sign * result.seconds(), sign * result.milliseconds(), sign * result.microseconds(), sign * result.nanoseconds(),
+                            this, errorBranch);
         }
 
         @SuppressWarnings("unused")

@@ -2025,6 +2025,10 @@ public final class TemporalUtil {
         }
     }
 
+    public static TimeDurationRecord balanceTimeDuration(TimeDurationRecord norm, Unit largestUnit) {
+        return balanceTimeDuration(norm.days(), norm.hours(), norm.minutes(), norm.seconds(), norm.milliseconds(), norm.microseconds(), norm.nanoseconds(), largestUnit);
+    }
+
     public static TimeDurationRecord balanceTimeDuration(BigInt nanoseconds, Unit largestUnit) {
         TimeDurationRecord result = balancePossiblyInfiniteTimeDuration(nanoseconds, largestUnit);
         if (result.isOverflow()) {
