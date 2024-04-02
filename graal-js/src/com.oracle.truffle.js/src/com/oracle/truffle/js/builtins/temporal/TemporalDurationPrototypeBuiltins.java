@@ -79,7 +79,6 @@ import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
@@ -89,6 +88,7 @@ import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDateDurationRelativeNode;
+import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.runtime.Errors;
@@ -675,9 +675,9 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
         }
 
         @Specialization
-        protected TruffleString toString(JSTemporalDurationObject dur, Object opt,
+        protected TruffleString toString(JSTemporalDurationObject duration, Object opt,
+                        @Cached ToFractionalSecondDigitsNode toFractionalSecondDigitsNode,
                         @Cached JSNumberToBigIntNode toBigIntNode,
-                        @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalRoundDurationNode roundDurationNode,
                         @Cached TemporalGetOptionNode getOptionNode,
@@ -685,15 +685,32 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(opt, this, errorBranch, optionUndefined);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getSmallestUnit, getOptionNode);
-            if (precision.getUnit() == Unit.MINUTE) {
-                errorBranch.enter(this);
-                throw Errors.createRangeError("unexpected precision minute");
-            }
+            int digits = toFractionalSecondDigitsNode.execute(options);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
-            JSTemporalDurationRecord result = roundDurationNode.execute(dur.getYears(), dur.getMonths(), dur.getWeeks(), dur.getDays(),
-                            dur.getHours(), dur.getMinutes(), dur.getSeconds(), dur.getMilliseconds(), dur.getMicroseconds(),
-                            dur.getNanoseconds(), (long) precision.getIncrement(), precision.getUnit(), roundingMode);
+
+            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.EMPTY);
+            if (smallestUnit == Unit.HOUR || smallestUnit == Unit.MINUTE) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
+            }
+
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecisionRecord(smallestUnit, digits);
+
+            JSTemporalDurationRecord result;
+            if (precision.getUnit() != Unit.NANOSECOND || precision.getIncrement() != 1) {
+                Unit largestUnit = TemporalUtil.defaultTemporalLargestUnit(duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(),
+                                duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds());
+                JSTemporalDurationRecord roundRecord = roundDurationNode.execute(0, 0, 0, 0,
+                                duration.getHours(), duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(), duration.getMicroseconds(),
+                                duration.getNanoseconds(), precision.getIncrement(), precision.getUnit(), roundingMode);
+                TimeDurationRecord time = TemporalUtil.balanceTimeDuration(0, roundRecord.getHours(), roundRecord.getMinutes(), roundRecord.getSeconds(), roundRecord.getMilliseconds(),
+                                roundRecord.getMicroseconds(), roundRecord.getNanoseconds(), TemporalUtil.largerOfTwoTemporalUnits(largestUnit, Unit.SECOND));
+                result = JSTemporalDurationRecord.createWeeks(duration.getYears(), duration.getMonths(), duration.getWeeks(),
+                                duration.getDays() + time.days(), time.hours(), time.minutes(), time.seconds(), time.milliseconds(), time.microseconds(), time.nanoseconds());
+            } else {
+                result = JSTemporalDurationRecord.create(duration);
+            }
+
             return JSTemporalDuration.temporalDurationToString(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
                             result.getHours(), result.getMinutes(), result.getSeconds(),
                             result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(),
