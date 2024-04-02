@@ -115,6 +115,7 @@ public final class Strings {
     public static final TruffleString EMPTY_OBJECT = constant("{}");
     public static final TruffleString EMPTY_OBJECT_DOTS = constant("{...}");
     public static final TruffleString EQUALS_DOUBLE_QUOTE = constant("=\"");
+    public static final TruffleString EXCLAMATION_MARK = constant("!");
     public static final TruffleString GET_DOLLAR_UNDERSCORE = constant("get $_");
     public static final TruffleString PAREN_OPEN = constant("(");
     public static final TruffleString PAREN_CLOSE = constant(")");

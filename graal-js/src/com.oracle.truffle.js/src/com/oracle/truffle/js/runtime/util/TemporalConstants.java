@@ -133,6 +133,7 @@ public final class TemporalConstants {
     public static final TruffleString AUTO = Strings.constant("auto");
     public static final TruffleString ALWAYS = Strings.constant("always");
     public static final TruffleString NEVER = Strings.constant("never");
+    public static final TruffleString CRITICAL = Strings.constant("critical");
     public static final TruffleString EARLIER = Strings.constant("earlier");
     public static final TruffleString LATER = Strings.constant("later");
 
@@ -165,6 +166,6 @@ public final class TemporalConstants {
     public static final TruffleString UNICODE_MINUS_SIGN_000000 = Strings.constant(UNICODE_MINUS_SIGN + "000000");
     public static final TruffleString ZEROS = Strings.constant("000000000");
     public static final TruffleString OFFSET_ZERO = Strings.constant("+00:00");
-    public static final TruffleString BRACKET_U_CA_EQUALS = Strings.constant("[u-ca=");
+    public static final TruffleString U_CA_EQUALS = Strings.constant("u-ca=");
 
 }

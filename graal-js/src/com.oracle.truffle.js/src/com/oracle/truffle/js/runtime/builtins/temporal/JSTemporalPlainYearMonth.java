@@ -144,7 +144,7 @@ public final class JSTemporalPlainYearMonth extends JSNonProxy implements JSCons
         TruffleString month = TemporalUtil.toZeroPaddedDecimalString(ym.getMonth(), 2);
         TruffleString result = Strings.concatAll(year, Strings.DASH, month);
         TruffleString calendarID = JSRuntime.toString(ym.getCalendar());
-        if (showCalendar == ShowCalendar.ALWAYS || !ISO8601.equals(calendarID)) {
+        if (showCalendar == ShowCalendar.ALWAYS || showCalendar == ShowCalendar.CRITICAL || !ISO8601.equals(calendarID)) {
             TruffleString day = TemporalUtil.toZeroPaddedDecimalString(ym.getDay(), 2);
             result = Strings.concatAll(result, Strings.DASH, day);
         }

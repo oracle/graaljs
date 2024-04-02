@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CEIL;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.COMPATIBLE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CRITICAL;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DISAMBIGUATION;
@@ -270,7 +271,7 @@ public final class TemporalUtil {
 
     public static final List<TruffleString> listAuto = List.of(AUTO);
     public static final List<TruffleString> listAutoNever = List.of(AUTO, NEVER);
-    public static final List<TruffleString> listAutoAlwaysNever = List.of(AUTO, ALWAYS, NEVER);
+    public static final List<TruffleString> listAutoAlwaysNeverCritical = List.of(AUTO, ALWAYS, NEVER, CRITICAL);
     public static final List<TruffleString> listConstrainReject = List.of(CONSTRAIN, REJECT);
     public static final List<TruffleString> listTimeZone = List.of(TIME_ZONE);
     public static final List<TruffleString> listTimeZoneOffset = List.of(TIME_ZONE, OFFSET);
@@ -462,7 +463,8 @@ public final class TemporalUtil {
     public enum ShowCalendar {
         AUTO,
         ALWAYS,
-        NEVER
+        NEVER,
+        CRITICAL
     }
 
     private static Map<TruffleString, Unit> createUnitMapping(List<TruffleString> singularUnits, TruffleString... extraValues) {
@@ -1723,7 +1725,7 @@ public final class TemporalUtil {
     }
 
     public static ShowCalendar toShowCalendarOption(JSDynamicObject options, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
-        return toShowCalendar((TruffleString) getOptionNode.execute(options, TemporalConstants.CALENDAR_NAME, OptionType.STRING, listAutoAlwaysNever, AUTO), equalNode);
+        return toShowCalendar((TruffleString) getOptionNode.execute(options, TemporalConstants.CALENDAR_NAME, OptionType.STRING, listAutoAlwaysNeverCritical, AUTO), equalNode);
     }
 
     @TruffleBoundary
@@ -1758,7 +1760,8 @@ public final class TemporalUtil {
         } else if (ShowCalendar.AUTO == showCalendar && ISO8601.equals(id)) {
             return Strings.EMPTY_STRING;
         } else {
-            return Strings.concatAll(TemporalConstants.BRACKET_U_CA_EQUALS, id, Strings.BRACKET_CLOSE);
+            TruffleString flag = (showCalendar == ShowCalendar.CRITICAL) ? Strings.EXCLAMATION_MARK : Strings.EMPTY_STRING;
+            return Strings.concatAll(Strings.BRACKET_OPEN, flag, TemporalConstants.U_CA_EQUALS, id, Strings.BRACKET_CLOSE);
         }
     }
 
@@ -3850,14 +3853,15 @@ public final class TemporalUtil {
         throw Errors.createTypeError("unexpected offsetOption");
     }
 
-    @TruffleBoundary
     public static ShowCalendar toShowCalendar(TruffleString showCalendar, TruffleString.EqualNode equalNode) {
-        if (equalNode.execute(showCalendar, AUTO, TruffleString.Encoding.UTF_16)) {
+        if (Strings.equals(equalNode, showCalendar, AUTO)) {
             return ShowCalendar.AUTO;
-        } else if (equalNode.execute(showCalendar, NEVER, TruffleString.Encoding.UTF_16)) {
+        } else if (Strings.equals(equalNode, showCalendar, NEVER)) {
             return ShowCalendar.NEVER;
-        } else if (equalNode.execute(showCalendar, ALWAYS, TruffleString.Encoding.UTF_16)) {
+        } else if (Strings.equals(equalNode, showCalendar, ALWAYS)) {
             return ShowCalendar.ALWAYS;
+        } else if (Strings.equals(equalNode, showCalendar, CRITICAL)) {
+            return ShowCalendar.CRITICAL;
         }
         throw Errors.createTypeError("unexpected showCalendar");
     }
