@@ -3018,15 +3018,15 @@ public final class TemporalUtil {
             outputTimeZone = UTC;
         }
         var timeZoneRec = createTimeZoneMethodsRecordOnlyGetOffsetNanosecondsFor(realm, outputTimeZone);
-        JSTemporalPlainDateTimeObject dateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, TemporalConstants.ISO8601);
+        long offsetNs = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, instant);
+        JSTemporalPlainDateTimeObject dateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, realm, instant, TemporalConstants.ISO8601, offsetNs);
         TruffleString dateTimeString = JSTemporalPlainDateTime.temporalDateTimeToString(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                         dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), Undefined.instance,
                         precision, ShowCalendar.NEVER);
-        TruffleString timeZoneString = null;
+        TruffleString timeZoneString;
         if (timeZone == Undefined.instance) {
             timeZoneString = Strings.UC_Z;
         } else {
-            long offsetNs = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, instant);
             timeZoneString = formatISOTimeZoneOffsetString(offsetNs);
         }
         return Strings.concat(dateTimeString, timeZoneString);

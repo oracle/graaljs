@@ -67,7 +67,6 @@ import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsF
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantUntilSinceNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
@@ -75,6 +74,7 @@ import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
+import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalInstantNode;
@@ -363,6 +363,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
         }
     }
 
+    @ImportStatic(TemporalConstants.class)
     public abstract static class JSTemporalInstantToString extends JSTemporalBuiltinOperation {
 
         protected JSTemporalInstantToString(JSContext context, JSBuiltin builtin) {
@@ -371,23 +372,32 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected TruffleString toString(JSTemporalInstantObject instant, Object optionsParam,
+                        @Cached ToFractionalSecondDigitsNode toFractionalSecondDigits,
                         @Cached ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue,
-                        @Cached JSToStringNode toStringNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached("create(TIME_ZONE, getContext())") PropertyGetNode getTimeZone,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            Object timeZoneRaw = JSObject.get(options, TIME_ZONE);
-            Object timeZone = Undefined.instance;
-            if (timeZoneRaw != Undefined.instance) {
-                timeZone = toTimeZoneSlotValue.execute(timeZoneRaw);
-            }
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getSmallestUnit, getOptionNode);
+            int digits = toFractionalSecondDigits.execute(options);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TRUNC, equalNode, getOptionNode);
-            BigInt ns = instant.getNanoseconds();
-            BigInt roundedNs = TemporalUtil.roundTemporalInstant(ns, (long) precision.getIncrement(), precision.getUnit(), roundingMode);
+
+            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.EMPTY);
+            if (smallestUnit == Unit.HOUR) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
+            }
+
+            Object timeZone = getTimeZone.getValue(options);
+            if (timeZone != Undefined.instance) {
+                timeZone = toTimeZoneSlotValue.execute(timeZone);
+            }
+
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecisionRecord(smallestUnit, digits);
+            BigInt roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), precision.getIncrement(), precision.getUnit(), roundingMode);
+
             JSRealm realm = getRealm();
             var roundedInstant = JSTemporalInstant.create(getContext(), realm, roundedNs);
             return TemporalUtil.temporalInstantToString(getContext(), realm, roundedInstant, timeZone, precision.getPrecision());
