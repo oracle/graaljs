@@ -4179,68 +4179,12 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
   }, {
-    "filePath" : "built-ins/TypedArray/prototype/fill/fill-values-conversion-operations.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Conversion values for Float16 are not provided by the test harness"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/map/return-new-typedarray-conversion-operation.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Conversion values for Float16 are not provided by the test harness"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/set/array-arg-src-tonumber-value-conversions.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Conversion values for Float16 are not provided by the test harness"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-diff-buffer-other-type-conversions-sab.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Conversion values for Float16 are not provided by the test harness"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-diff-buffer-other-type-conversions.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Conversion values for Float16 are not provided by the test harness"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/ctors/object-arg/conversion-operation.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Conversion values for Float16 are not provided by the test harness"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/DefineOwnProperty/conversion-operation.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Conversion values for Float16 are not provided by the test harness"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/conversion-operation.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Conversion values for Float16 are not provided by the test harness"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",
