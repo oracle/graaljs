@@ -84,7 +84,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ROUNDING_INCREMENT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SMALLEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE_NAME;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
@@ -132,7 +131,6 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
-import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
@@ -564,51 +562,6 @@ public final class TemporalUtil {
         };
     }
 
-    public static JSTemporalPrecisionRecord toSecondsStringPrecision(JSDynamicObject options, JSToStringNode toStringNode, GetTemporalUnitNode getSmallestUnit, TemporalGetOptionNode getOptionNode) {
-        Unit smallestUnit = getSmallestUnit.execute(options, SMALLEST_UNIT, unitMappingTimeExceptHour, Unit.EMPTY);
-
-        if (Unit.MINUTE == smallestUnit) {
-            return JSTemporalPrecisionRecord.create(MINUTE, Unit.MINUTE, 1);
-        } else if (Unit.SECOND == smallestUnit) {
-            return JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
-        } else if (Unit.MILLISECOND == smallestUnit) {
-            return JSTemporalPrecisionRecord.create(3, Unit.MILLISECOND, 1);
-        } else if (Unit.MICROSECOND == smallestUnit) {
-            return JSTemporalPrecisionRecord.create(6, Unit.MICROSECOND, 1);
-        } else if (Unit.NANOSECOND == smallestUnit) {
-            return JSTemporalPrecisionRecord.create(9, Unit.NANOSECOND, 1);
-        }
-
-        assert smallestUnit == Unit.EMPTY : smallestUnit;
-
-        Object digits = getStringOrNumberOption(options, TemporalConstants.FRACTIONAL_SECOND_DIGITS, listAuto, 0, 9, AUTO, toStringNode, getOptionNode);
-        if (Boundaries.equals(digits, AUTO)) {
-            return JSTemporalPrecisionRecord.create(AUTO, Unit.NANOSECOND, 1);
-        }
-        int iDigit = JSRuntime.intValue((Number) digits);
-
-        if (iDigit == 0) {
-            return JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
-        }
-        if (iDigit == 1 || iDigit == 2 || iDigit == 3) {
-            return JSTemporalPrecisionRecord.create(digits, Unit.MILLISECOND, Math.pow(10, 3 - toLong(digits)));
-        }
-        if (iDigit == 4 || iDigit == 5 || iDigit == 6) {
-            return JSTemporalPrecisionRecord.create(digits, Unit.MICROSECOND, Math.pow(10, 6 - toLong(digits)));
-        }
-        assert iDigit == 7 || iDigit == 8 || iDigit == 9;
-        return JSTemporalPrecisionRecord.create(digits, Unit.NANOSECOND, Math.pow(10, 9 - toLong(digits)));
-    }
-
-    // TODO this whole method should be unnecessary
-    @TruffleBoundary
-    private static long toLong(Object digits) {
-        if (digits instanceof Number) {
-            return ((Number) digits).longValue();
-        }
-        return JSRuntime.toNumber(digits).longValue();
-    }
-
     @TruffleBoundary
     public static ParseISODateTimeResult parseTemporalRelativeToString(TruffleString isoString) {
         if (!(new TemporalParser(isoString)).isTemporalDateTimeString()) {
@@ -801,7 +754,7 @@ public final class TemporalUtil {
                             toZeroPaddedDecimalString(microsecond, 3),
                             toZeroPaddedDecimalString(nanosecond, 3));
             // no leak, because this string is concatenated immediately after
-            fractionString = Strings.lazySubstring(fractionString, 0, (int) toLong(precision));
+            fractionString = Strings.lazySubstring(fractionString, 0, (int) precision);
         }
         return Strings.concatAll(secondString, Strings.DOT, fractionString);
     }
