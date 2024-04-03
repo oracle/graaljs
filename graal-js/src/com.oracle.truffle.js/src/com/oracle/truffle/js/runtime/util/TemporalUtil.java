@@ -271,6 +271,7 @@ public final class TemporalUtil {
 
     public static final List<TruffleString> listAuto = List.of(AUTO);
     public static final List<TruffleString> listAutoNever = List.of(AUTO, NEVER);
+    public static final List<TruffleString> listAutoNeverCritical = List.of(AUTO, NEVER, CRITICAL);
     public static final List<TruffleString> listAutoAlwaysNeverCritical = List.of(AUTO, ALWAYS, NEVER, CRITICAL);
     public static final List<TruffleString> listConstrainReject = List.of(CONSTRAIN, REJECT);
     public static final List<TruffleString> listTimeZone = List.of(TIME_ZONE);
@@ -3142,7 +3143,7 @@ public final class TemporalUtil {
     }
 
     public static TruffleString toShowTimeZoneNameOption(JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
-        return (TruffleString) getOptionNode.execute(options, TIME_ZONE_NAME, OptionType.STRING, listAutoNever, AUTO);
+        return (TruffleString) getOptionNode.execute(options, TIME_ZONE_NAME, OptionType.STRING, listAutoNeverCritical, AUTO);
     }
 
     public static TruffleString toShowOffsetOption(JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
@@ -3231,6 +3232,9 @@ public final class TemporalUtil {
             timeZoneString = Strings.EMPTY_STRING;
         } else {
             TruffleString timeZoneID = ToTemporalTimeZoneIdentifierNode.getUncached().executeString(timeZone);
+            if (CRITICAL.equals(showTimeZone)) {
+                timeZoneID = Strings.concat(Strings.EXCLAMATION_MARK, timeZoneID);
+            }
             timeZoneString = Strings.addBrackets(timeZoneID);
         }
         TruffleString calendarString = maybeFormatCalendarAnnotation(zonedDateTime.getCalendar(), showCalendar);
