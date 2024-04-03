@@ -3230,7 +3230,7 @@ public final class TemporalUtil {
         if (NEVER.equals(showTimeZone)) {
             timeZoneString = Strings.EMPTY_STRING;
         } else {
-            TruffleString timeZoneID = JSRuntime.toString(timeZone);
+            TruffleString timeZoneID = ToTemporalTimeZoneIdentifierNode.getUncached().executeString(timeZone);
             timeZoneString = Strings.addBrackets(timeZoneID);
         }
         TruffleString calendarString = maybeFormatCalendarAnnotation(zonedDateTime.getCalendar(), showCalendar);
