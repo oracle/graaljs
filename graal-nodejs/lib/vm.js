@@ -40,13 +40,14 @@ const {
   ERR_INVALID_ARG_TYPE,
 } = require('internal/errors').codes;
 const {
+  validateArray,
   validateBoolean,
   validateBuffer,
-  validateFunction,
   validateInt32,
-  validateObject,
   validateOneOf,
+  validateObject,
   validateString,
+  validateStringArray,
   validateUint32,
 } = require('internal/validators');
 const {
@@ -55,8 +56,10 @@ const {
   kVmBreakFirstLineSymbol,
 } = require('internal/util');
 const {
+  getHostDefinedOptionId,
   internalCompileFunction,
   isContext,
+  registerImportModuleDynamically,
 } = require('internal/vm');
 const kParsingContext = Symbol('script parsing context');
 
@@ -87,6 +90,8 @@ class Script extends ContextifyScript {
     }
     validateBoolean(produceCachedData, 'options.produceCachedData');
 
+    const hostDefinedOptionId =
+        getHostDefinedOptionId(importModuleDynamically, filename);
     // Calling `ReThrow()` on a native TryCatch does not generate a new
     // abort-on-uncaught-exception check. A dummy try/catch in JS land
     // protects against that.
@@ -97,20 +102,14 @@ class Script extends ContextifyScript {
             columnOffset,
             cachedData,
             produceCachedData,
-            parsingContext);
+            parsingContext,
+            hostDefinedOptionId);
     } catch (e) {
       throw e; /* node-do-not-add-exception-line */
     }
 
     if (importModuleDynamically !== undefined) {
-      validateFunction(importModuleDynamically,
-                       'options.importModuleDynamically');
-      const { importModuleDynamicallyWrap } = require('internal/vm/module');
-      const { setCallbackForWrap } = require('internal/modules/esm/utils');
-      setCallbackForWrap(this, {
-        importModuleDynamically:
-          importModuleDynamicallyWrap(importModuleDynamically),
-      });
+      registerImportModuleDynamically(this, importModuleDynamically);
     }
   }
 
@@ -299,7 +298,54 @@ function runInThisContext(code, options) {
 }
 
 function compileFunction(code, params, options = kEmptyObject) {
-  return internalCompileFunction(code, params, options).function;
+  validateString(code, 'code');
+  if (params !== undefined) {
+    validateStringArray(params, 'params');
+  }
+  const {
+    filename = '',
+    columnOffset = 0,
+    lineOffset = 0,
+    cachedData = undefined,
+    produceCachedData = false,
+    parsingContext = undefined,
+    contextExtensions = [],
+    importModuleDynamically,
+  } = options;
+
+  validateString(filename, 'options.filename');
+  validateInt32(columnOffset, 'options.columnOffset');
+  validateInt32(lineOffset, 'options.lineOffset');
+  if (cachedData !== undefined)
+    validateBuffer(cachedData, 'options.cachedData');
+  validateBoolean(produceCachedData, 'options.produceCachedData');
+  if (parsingContext !== undefined) {
+    if (
+      typeof parsingContext !== 'object' ||
+      parsingContext === null ||
+      !isContext(parsingContext)
+    ) {
+      throw new ERR_INVALID_ARG_TYPE(
+        'options.parsingContext',
+        'Context',
+        parsingContext,
+      );
+    }
+  }
+  validateArray(contextExtensions, 'options.contextExtensions');
+  ArrayPrototypeForEach(contextExtensions, (extension, i) => {
+    const name = `options.contextExtensions[${i}]`;
+    validateObject(extension, name, { __proto__: null, nullable: true });
+  });
+
+  const hostDefinedOptionId =
+      getHostDefinedOptionId(importModuleDynamically, filename);
+
+  return internalCompileFunction(
+    code, filename, lineOffset, columnOffset,
+    cachedData, produceCachedData, parsingContext, contextExtensions,
+    params, hostDefinedOptionId, importModuleDynamically,
+  ).function;
 }
 
 const measureMemoryModes = {
