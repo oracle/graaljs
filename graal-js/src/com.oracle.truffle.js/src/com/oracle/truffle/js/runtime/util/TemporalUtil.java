@@ -730,6 +730,7 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static TruffleString formatSecondsStringPart(long second, long millisecond, long microsecond, long nanosecond,
                     Object precision) {
+        assert JSTemporalPrecisionRecord.isValidPrecision(precision) : precision;
         if (precision.equals(MINUTE)) {
             return Strings.EMPTY_STRING;
         }

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,14 +40,18 @@
  */
 package com.oracle.truffle.js.runtime.builtins.temporal;
 
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
 public final class JSTemporalPrecisionRecord {
-    private final Object precision; // number, or TruffleString "auto"
+    private final Object precision; // TruffleString "minute", "auto", or an integer from 0 to 9
     private final Unit unit;
     private final double increment;
 
     private JSTemporalPrecisionRecord(Object precision, Unit unit, double increment) {
+        assert isValidPrecision(precision) : precision;
         this.precision = precision;
         this.unit = unit;
         this.increment = increment;
@@ -68,4 +72,15 @@ public final class JSTemporalPrecisionRecord {
     public double getIncrement() {
         return increment;
     }
+
+    public static boolean isValidPrecision(Object precision) {
+        if (precision instanceof TruffleString strPrecision) {
+            return Strings.equals(strPrecision, TemporalConstants.MINUTE) || Strings.equals(strPrecision, TemporalConstants.AUTO);
+        } else if (precision instanceof Integer intPrecision) {
+            return (0 <= intPrecision) || (intPrecision <= 9);
+        } else {
+            return false;
+        }
+    }
+
 }
