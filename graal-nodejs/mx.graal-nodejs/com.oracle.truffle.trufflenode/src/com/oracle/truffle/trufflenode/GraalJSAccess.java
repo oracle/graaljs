@@ -2679,7 +2679,7 @@ public final class GraalJSAccess {
      * Key for a weak callback.
      */
     private static final HiddenKey HIDDEN_WEAK_CALLBACK = new HiddenKey("WeakCallback");
-    private static final HiddenKey HIDDEN_WEAK_CALLBACK_CONTEXT = new HiddenKey("WeakCallbackContext");
+    private static final HiddenKey HIDDEN_WEAK_CALLBACK_SUBSTITUTE = new HiddenKey("WeakCallbackSubstitute");
 
     /**
      * Reference queue associated with weak references to objects that require invocation of a
@@ -2701,12 +2701,15 @@ public final class GraalJSAccess {
         } else {
             JSDynamicObject target;
             HiddenKey key;
-            if (object instanceof JSRealm) {
-                target = ((JSRealm) object).getGlobalObject();
-                key = HIDDEN_WEAK_CALLBACK_CONTEXT;
-            } else if (object instanceof JSDynamicObject) {
-                target = (JSDynamicObject) object;
+            if (object instanceof JSRealm realm) {
+                target = realm.getGlobalObject();
+                key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
+            } else if (object instanceof JSDynamicObject jsObject) {
+                target = jsObject;
                 key = HIDDEN_WEAK_CALLBACK;
+            } else if (object instanceof JSModuleRecord moduleRecord) {
+                target = moduleRecord.getContext().getEvaluator().getModuleNamespace(moduleRecord);
+                key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
             } else {
                 System.err.println("Weak references not supported for " + object);
                 return null;
