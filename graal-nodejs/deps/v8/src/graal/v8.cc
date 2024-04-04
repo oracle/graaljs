@@ -749,6 +749,14 @@ namespace v8 {
         reinterpret_cast<GraalObject*> (this)->SetInternalField(index, value);
     }
 
+    void Object::SetInternalFieldForNodeCore(int index, Local<Module> value) {
+        reinterpret_cast<GraalObject*> (this)->SetInternalFieldForNodeCore(index, value);
+    }
+
+    void Object::SetInternalFieldForNodeCore(int index, Local<UnboundScript> value) {
+        reinterpret_cast<GraalObject*> (this)->SetInternalFieldForNodeCore(index, value);
+    }
+
     Local<Value> Object::SlowGetInternalField(int index) {
         return reinterpret_cast<GraalObject*> (this)->SlowGetInternalField(index);
     }
