@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -192,9 +192,21 @@ int GraalObject::InternalFieldCount() {
     return internal_field_count_cache_;
 }
 
-void GraalObject::SetInternalField(int index, v8::Local<v8::Value> value) {
-    jobject java_value = reinterpret_cast<GraalValue*> (*value)->GetJavaObject();
+void GraalObject::SetInternalFieldImpl(int index, GraalHandleContent* handle) {
+    jobject java_value = handle->GetJavaObject();
     JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_set_internal_field, GetJavaObject(), (jint) index, java_value);
+}
+
+void GraalObject::SetInternalField(int index, v8::Local<v8::Value> value) {
+    SetInternalFieldImpl(index, reinterpret_cast<GraalHandleContent*> (*value));
+}
+
+void GraalObject::SetInternalFieldForNodeCore(int index, v8::Local<v8::Module> value) {
+    SetInternalFieldImpl(index, reinterpret_cast<GraalHandleContent*> (*value));
+}
+
+void GraalObject::SetInternalFieldForNodeCore(int index, v8::Local<v8::UnboundScript> value) {
+    SetInternalFieldImpl(index, reinterpret_cast<GraalHandleContent*> (*value));
 }
 
 v8::Local<v8::Value> GraalObject::SlowGetInternalField(int index) {
