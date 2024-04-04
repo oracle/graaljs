@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CEIL;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.COMPATIBLE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.CONSTRAIN;
+import static com.oracle.truffle.js.runtime.util.TemporalConstants.CRITICAL;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAY;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.DISAMBIGUATION;
@@ -83,7 +84,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.ROUNDING_INCREMENT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SMALLEST_UNIT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE_NAME;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
@@ -131,12 +131,12 @@ import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
-import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalDurationAddNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
+import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarSlotValueNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneIdentifierNode;
@@ -148,6 +148,7 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.builtins.JSDate;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.intl.JSDateTimeFormat;
@@ -268,7 +269,8 @@ public final class TemporalUtil {
 
     public static final List<TruffleString> listAuto = List.of(AUTO);
     public static final List<TruffleString> listAutoNever = List.of(AUTO, NEVER);
-    public static final List<TruffleString> listAutoAlwaysNever = List.of(AUTO, ALWAYS, NEVER);
+    public static final List<TruffleString> listAutoNeverCritical = List.of(AUTO, NEVER, CRITICAL);
+    public static final List<TruffleString> listAutoAlwaysNeverCritical = List.of(AUTO, ALWAYS, NEVER, CRITICAL);
     public static final List<TruffleString> listConstrainReject = List.of(CONSTRAIN, REJECT);
     public static final List<TruffleString> listTimeZone = List.of(TIME_ZONE);
     public static final List<TruffleString> listTimeZoneOffset = List.of(TIME_ZONE, OFFSET);
@@ -288,7 +290,7 @@ public final class TemporalUtil {
     private static final BigInteger isoTimeUpperBound = new BigInteger("8640000086400000000000");
     private static final BigInteger isoTimeLowerBound = isoTimeUpperBound.negate();
     private static final int isoTimeBoundYears = 270000;
-    private static final int ISO_DATE_MAX_UTC_OFFSET_DAYS = 100_000_000;
+    private static final int ISO_DATE_MAX_UTC_OFFSET_DAYS = 100_000_001;
 
     // 8.64 * 10^13
     private static final BigInteger BI_8_64_13 = BigInteger.valueOf(86400000000000L);
@@ -460,7 +462,8 @@ public final class TemporalUtil {
     public enum ShowCalendar {
         AUTO,
         ALWAYS,
-        NEVER
+        NEVER,
+        CRITICAL
     }
 
     private static Map<TruffleString, Unit> createUnitMapping(List<TruffleString> singularUnits, TruffleString... extraValues) {
@@ -540,49 +543,23 @@ public final class TemporalUtil {
         return increment;
     }
 
-    public static JSTemporalPrecisionRecord toSecondsStringPrecision(JSDynamicObject options, JSToStringNode toStringNode, GetTemporalUnitNode getSmallestUnit, TemporalGetOptionNode getOptionNode) {
-        Unit smallestUnit = getSmallestUnit.execute(options, SMALLEST_UNIT, unitMappingTimeExceptHour, Unit.EMPTY);
-
-        if (Unit.MINUTE == smallestUnit) {
-            return JSTemporalPrecisionRecord.create(MINUTE, Unit.MINUTE, 1);
-        } else if (Unit.SECOND == smallestUnit) {
-            return JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
-        } else if (Unit.MILLISECOND == smallestUnit) {
-            return JSTemporalPrecisionRecord.create(3, Unit.MILLISECOND, 1);
-        } else if (Unit.MICROSECOND == smallestUnit) {
-            return JSTemporalPrecisionRecord.create(6, Unit.MICROSECOND, 1);
-        } else if (Unit.NANOSECOND == smallestUnit) {
-            return JSTemporalPrecisionRecord.create(9, Unit.NANOSECOND, 1);
-        }
-
-        assert smallestUnit == Unit.EMPTY : smallestUnit;
-
-        Object digits = getStringOrNumberOption(options, TemporalConstants.FRACTIONAL_SECOND_DIGITS, listAuto, 0, 9, AUTO, toStringNode, getOptionNode);
-        if (Boundaries.equals(digits, AUTO)) {
-            return JSTemporalPrecisionRecord.create(AUTO, Unit.NANOSECOND, 1);
-        }
-        int iDigit = JSRuntime.intValue((Number) digits);
-
-        if (iDigit == 0) {
-            return JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
-        }
-        if (iDigit == 1 || iDigit == 2 || iDigit == 3) {
-            return JSTemporalPrecisionRecord.create(digits, Unit.MILLISECOND, Math.pow(10, 3 - toLong(digits)));
-        }
-        if (iDigit == 4 || iDigit == 5 || iDigit == 6) {
-            return JSTemporalPrecisionRecord.create(digits, Unit.MICROSECOND, Math.pow(10, 6 - toLong(digits)));
-        }
-        assert iDigit == 7 || iDigit == 8 || iDigit == 9;
-        return JSTemporalPrecisionRecord.create(digits, Unit.NANOSECOND, Math.pow(10, 9 - toLong(digits)));
-    }
-
-    // TODO this whole method should be unnecessary
-    @TruffleBoundary
-    private static long toLong(Object digits) {
-        if (digits instanceof Number) {
-            return ((Number) digits).longValue();
-        }
-        return JSRuntime.toNumber(digits).longValue();
+    public static JSTemporalPrecisionRecord toSecondsStringPrecisionRecord(Unit smallestUnit, int fractionalDigitCount) {
+        return switch (smallestUnit) {
+            case MINUTE -> JSTemporalPrecisionRecord.create(MINUTE, Unit.MINUTE, 1);
+            case SECOND -> JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
+            case MILLISECOND -> JSTemporalPrecisionRecord.create(3, Unit.MILLISECOND, 1);
+            case MICROSECOND -> JSTemporalPrecisionRecord.create(6, Unit.MICROSECOND, 1);
+            case NANOSECOND -> JSTemporalPrecisionRecord.create(9, Unit.NANOSECOND, 1);
+            case EMPTY -> switch (fractionalDigitCount) {
+                case ToFractionalSecondDigitsNode.AUTO -> JSTemporalPrecisionRecord.create(AUTO, Unit.NANOSECOND, 1);
+                case 0 -> JSTemporalPrecisionRecord.create(0, Unit.SECOND, 1);
+                case 1, 2, 3 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.MILLISECOND, Math.pow(10, 3 - fractionalDigitCount));
+                case 4, 5, 6 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.MICROSECOND, Math.pow(10, 6 - fractionalDigitCount));
+                case 7, 8, 9 -> JSTemporalPrecisionRecord.create(fractionalDigitCount, Unit.NANOSECOND, Math.pow(10, 9 - fractionalDigitCount));
+                default -> throw Errors.shouldNotReachHereUnexpectedValue(fractionalDigitCount);
+            };
+            default -> throw Errors.shouldNotReachHereUnexpectedValue(smallestUnit);
+        };
     }
 
     @TruffleBoundary
@@ -753,6 +730,7 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static TruffleString formatSecondsStringPart(long second, long millisecond, long microsecond, long nanosecond,
                     Object precision) {
+        assert JSTemporalPrecisionRecord.isValidPrecision(precision) : precision;
         if (precision.equals(MINUTE)) {
             return Strings.EMPTY_STRING;
         }
@@ -777,7 +755,7 @@ public final class TemporalUtil {
                             toZeroPaddedDecimalString(microsecond, 3),
                             toZeroPaddedDecimalString(nanosecond, 3));
             // no leak, because this string is concatenated immediately after
-            fractionString = Strings.lazySubstring(fractionString, 0, (int) toLong(precision));
+            fractionString = Strings.lazySubstring(fractionString, 0, (int) precision);
         }
         return Strings.concatAll(secondString, Strings.DOT, fractionString);
     }
@@ -1371,6 +1349,22 @@ public final class TemporalUtil {
         return epochNanoseconds;
     }
 
+    @TruffleBoundary
+    public static Overflow toTemporalOverflow(Object options) {
+        if (options == Undefined.instance) {
+            return Overflow.CONSTRAIN;
+        }
+        Object value = JSRuntime.get(options, OVERFLOW);
+        if (value == Undefined.instance) {
+            return Overflow.CONSTRAIN;
+        }
+        TruffleString strValue = JSRuntime.toString(value);
+        if (!listConstrainReject.contains(strValue)) {
+            throw TemporalErrors.createRangeErrorOptionsNotContained(listConstrainReject, strValue);
+        }
+        return toOverflow(strValue);
+    }
+
     @InliningCutoff
     public static Overflow toTemporalOverflow(JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
         if (options == Undefined.instance) {
@@ -1588,7 +1582,7 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     public static ISODateRecord balanceISODate(int year, int month, int day) {
-        if (year < Year.MIN_VALUE || year > Year.MAX_VALUE || Math.abs(day) > ISO_DATE_MAX_UTC_OFFSET_DAYS) {
+        if (year < -1000000 || 1000000 < year || day < -ISO_DATE_MAX_UTC_OFFSET_DAYS || ISO_DATE_MAX_UTC_OFFSET_DAYS < day) {
             // This check is sometimes performed only after AddISODate in the spec.
             // We do it earlier to avoid having to deal with non-finite epoch days.
             // This is OK since all callers would throw a RangeError immediately after anyway.
@@ -1686,7 +1680,7 @@ public final class TemporalUtil {
     }
 
     public static ShowCalendar toShowCalendarOption(JSDynamicObject options, TemporalGetOptionNode getOptionNode, TruffleString.EqualNode equalNode) {
-        return toShowCalendar((TruffleString) getOptionNode.execute(options, TemporalConstants.CALENDAR_NAME, OptionType.STRING, listAutoAlwaysNever, AUTO), equalNode);
+        return toShowCalendar((TruffleString) getOptionNode.execute(options, TemporalConstants.CALENDAR_NAME, OptionType.STRING, listAutoAlwaysNeverCritical, AUTO), equalNode);
     }
 
     @TruffleBoundary
@@ -1715,13 +1709,24 @@ public final class TemporalUtil {
     }
 
     @TruffleBoundary
+    public static TruffleString maybeFormatCalendarAnnotation(Object calendar, ShowCalendar showCalendar) {
+        if (showCalendar == ShowCalendar.NEVER) {
+            return Strings.EMPTY_STRING;
+        } else {
+            TruffleString calendarID = ToTemporalCalendarIdentifierNode.getUncached().executeString(calendar);
+            return formatCalendarAnnotation(calendarID, showCalendar);
+        }
+    }
+
+    @TruffleBoundary
     public static TruffleString formatCalendarAnnotation(TruffleString id, ShowCalendar showCalendar) {
         if (ShowCalendar.NEVER == showCalendar) {
             return Strings.EMPTY_STRING;
         } else if (ShowCalendar.AUTO == showCalendar && ISO8601.equals(id)) {
             return Strings.EMPTY_STRING;
         } else {
-            return Strings.concatAll(TemporalConstants.BRACKET_U_CA_EQUALS, id, Strings.BRACKET_CLOSE);
+            TruffleString flag = (showCalendar == ShowCalendar.CRITICAL) ? Strings.EXCLAMATION_MARK : Strings.EMPTY_STRING;
+            return Strings.concatAll(Strings.BRACKET_OPEN, flag, TemporalConstants.U_CA_EQUALS, id, Strings.BRACKET_CLOSE);
         }
     }
 
@@ -2322,6 +2327,15 @@ public final class TemporalUtil {
             return false;
         }
         if (nanoseconds > 0 && sign < 0) {
+            return false;
+        }
+        double twoPow32 = 1L << 32;
+        if (Math.abs(years) >= twoPow32 || Math.abs(months) >= twoPow32 || Math.abs(weeks) >= twoPow32) {
+            return false;
+        }
+        long normalizedSeconds = 86400 * (long) days + 3600 * (long) hours + 60 * (long) minutes + (long) seconds + ((long) milliseconds) / 1000 + ((long) microseconds) / 1000_000 +
+                        ((long) nanoseconds) / 1000_000_000;
+        if (Math.abs(normalizedSeconds) >= 1L << 53) {
             return false;
         }
         return true;
@@ -2958,15 +2972,15 @@ public final class TemporalUtil {
             outputTimeZone = UTC;
         }
         var timeZoneRec = createTimeZoneMethodsRecordOnlyGetOffsetNanosecondsFor(realm, outputTimeZone);
-        JSTemporalPlainDateTimeObject dateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, TemporalConstants.ISO8601);
+        long offsetNs = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, instant);
+        JSTemporalPlainDateTimeObject dateTime = builtinTimeZoneGetPlainDateTimeFor(ctx, realm, instant, TemporalConstants.ISO8601, offsetNs);
         TruffleString dateTimeString = JSTemporalPlainDateTime.temporalDateTimeToString(dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(),
                         dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), Undefined.instance,
                         precision, ShowCalendar.NEVER);
-        TruffleString timeZoneString = null;
+        TruffleString timeZoneString;
         if (timeZone == Undefined.instance) {
             timeZoneString = Strings.UC_Z;
         } else {
-            long offsetNs = getOffsetNanosecondsFor(ctx, realm, timeZoneRec, instant);
             timeZoneString = formatISOTimeZoneOffsetString(offsetNs);
         }
         return Strings.concat(dateTimeString, timeZoneString);
@@ -3083,7 +3097,7 @@ public final class TemporalUtil {
     }
 
     public static TruffleString toShowTimeZoneNameOption(JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
-        return (TruffleString) getOptionNode.execute(options, TIME_ZONE_NAME, OptionType.STRING, listAutoNever, AUTO);
+        return (TruffleString) getOptionNode.execute(options, TIME_ZONE_NAME, OptionType.STRING, listAutoNeverCritical, AUTO);
     }
 
     public static TruffleString toShowOffsetOption(JSDynamicObject options, TemporalGetOptionNode getOptionNode) {
@@ -3171,11 +3185,13 @@ public final class TemporalUtil {
         if (NEVER.equals(showTimeZone)) {
             timeZoneString = Strings.EMPTY_STRING;
         } else {
-            TruffleString timeZoneID = JSRuntime.toString(timeZone);
+            TruffleString timeZoneID = ToTemporalTimeZoneIdentifierNode.getUncached().executeString(timeZone);
+            if (CRITICAL.equals(showTimeZone)) {
+                timeZoneID = Strings.concat(Strings.EXCLAMATION_MARK, timeZoneID);
+            }
             timeZoneString = Strings.addBrackets(timeZoneID);
         }
-        TruffleString calendarID = JSRuntime.toString(zonedDateTime.getCalendar());
-        TruffleString calendarString = formatCalendarAnnotation(calendarID, showCalendar);
+        TruffleString calendarString = maybeFormatCalendarAnnotation(zonedDateTime.getCalendar(), showCalendar);
         return Strings.concatAll(dateTimeString, offsetString, timeZoneString, calendarString);
     }
 
@@ -3280,7 +3296,7 @@ public final class TemporalUtil {
             JSTemporalPlainDateTimeObject earlierDateTime = JSTemporalPlainDateTime.create(ctx, realm,
                             earlierDate.year(), earlierDate.month(), earlierDate.day(),
                             earlierTime.hour(), earlierTime.minute(), earlierTime.second(), earlierTime.millisecond(), earlierTime.microsecond(), earlierTime.nanosecond(),
-                            dateTime.getCalendar(), null, InlinedBranchProfile.getUncached());
+                            ISO8601, null, InlinedBranchProfile.getUncached());
             List<JSTemporalInstantObject> possibleInstants2 = getPossibleInstantsFor(ctx, realm, timeZoneRec, earlierDateTime);
             if (possibleInstants2.size() == 0) {
                 throw Errors.createRangeError("nothing found");
@@ -3297,7 +3313,7 @@ public final class TemporalUtil {
         JSTemporalPlainDateTimeObject laterDateTime = JSTemporalPlainDateTime.create(ctx, realm,
                         laterDate.year(), laterDate.month(), laterDate.day(),
                         laterTime.hour(), laterTime.minute(), laterTime.second(), laterTime.millisecond(), laterTime.microsecond(), laterTime.nanosecond(),
-                        dateTime.getCalendar(), null, InlinedBranchProfile.getUncached());
+                        ISO8601, null, InlinedBranchProfile.getUncached());
 
         List<JSTemporalInstantObject> possibleInstants2 = getPossibleInstantsFor(ctx, realm, timeZoneRec, laterDateTime);
         n = possibleInstants2.size();
@@ -3368,6 +3384,11 @@ public final class TemporalUtil {
         JSTemporalPlainDateTimeObject temporalDateTime = precalculatedPlainDateTime != null
                         ? precalculatedPlainDateTime
                         : builtinTimeZoneGetPlainDateTimeFor(ctx, realm, timeZoneRec, instant, calendarRec.receiver());
+        if (years == 0 && months == 0 && weeks == 0) {
+            Overflow overflow = toTemporalOverflow(options);
+            BigInt intermediate = addDaysToZonedDateTime(ctx, realm, instant, temporalDateTime, timeZoneRec, (int) days, overflow).epochNanoseconds();
+            return addInstant(intermediate, hours, minutes, seconds, milliseconds, microseconds, nanoseconds);
+        }
         JSTemporalPlainDateObject datePart = JSTemporalPlainDate.create(ctx, realm, temporalDateTime.getYear(), temporalDateTime.getMonth(), temporalDateTime.getDay(),
                         calendarRec.receiver(), null, InlinedBranchProfile.getUncached());
         JSTemporalDurationObject dateDuration = JSTemporalDuration.createTemporalDuration(ctx, realm, years, months, weeks, days, 0, 0, 0, 0, 0, 0, null, InlinedBranchProfile.getUncached());
@@ -3423,12 +3444,29 @@ public final class TemporalUtil {
     private static List<JSTemporalInstantObject> getPossibleInstantsFor(JSContext context, JSRealm realm, TimeZoneMethodsRecord timeZoneRec, JSDynamicObject dateTime) {
         assert timeZoneRec.getPossibleInstantsFor() != null;
         Object receiver = timeZoneRec.receiver();
+        boolean isBuiltin = false;
         if (receiver instanceof TruffleString identifier) {
+            isBuiltin = true;
             receiver = createTemporalTimeZone(context, realm, identifier);
         }
+
         Object possibleInstants = JSRuntime.call(timeZoneRec.getPossibleInstantsFor(), receiver, new Object[]{dateTime});
-        IteratorRecord iteratorRecord = JSRuntime.getIterator(possibleInstants);
         List<JSTemporalInstantObject> list = new ArrayList<>();
+
+        if (isBuiltin) {
+            // CreateListFromArrayLike
+            JSDynamicObject possibleInstantsObject = (JSDynamicObject) possibleInstants;
+            long len = JSRuntime.toLength(JSObject.get(possibleInstantsObject, JSAbstractArray.LENGTH));
+            long index = 0;
+            while (index < len) {
+                Object next = JSObject.get(possibleInstantsObject, index);
+                list.add((JSTemporalInstantObject) next);
+                index++;
+            }
+            return list;
+        }
+
+        IteratorRecord iteratorRecord = JSRuntime.getIterator(possibleInstants);
         Object next = true;
         while (next != Boolean.FALSE) {
             next = JSRuntime.iteratorStep(iteratorRecord);
@@ -3782,14 +3820,15 @@ public final class TemporalUtil {
         throw Errors.createTypeError("unexpected offsetOption");
     }
 
-    @TruffleBoundary
     public static ShowCalendar toShowCalendar(TruffleString showCalendar, TruffleString.EqualNode equalNode) {
-        if (equalNode.execute(showCalendar, AUTO, TruffleString.Encoding.UTF_16)) {
+        if (Strings.equals(equalNode, showCalendar, AUTO)) {
             return ShowCalendar.AUTO;
-        } else if (equalNode.execute(showCalendar, NEVER, TruffleString.Encoding.UTF_16)) {
+        } else if (Strings.equals(equalNode, showCalendar, NEVER)) {
             return ShowCalendar.NEVER;
-        } else if (equalNode.execute(showCalendar, ALWAYS, TruffleString.Encoding.UTF_16)) {
+        } else if (Strings.equals(equalNode, showCalendar, ALWAYS)) {
             return ShowCalendar.ALWAYS;
+        } else if (Strings.equals(equalNode, showCalendar, CRITICAL)) {
+            return ShowCalendar.CRITICAL;
         }
         throw Errors.createTypeError("unexpected showCalendar");
     }

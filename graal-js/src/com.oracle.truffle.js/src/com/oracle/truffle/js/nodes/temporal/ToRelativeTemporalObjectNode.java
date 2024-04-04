@@ -103,7 +103,7 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                     TimeZoneMethodsRecord timeZoneRec) {
 
         public JSTemporalCalendarHolder relativeTo() {
-            return plainRelativeTo != null ? plainRelativeTo : zonedRelativeTo;
+            return zonedRelativeTo != null ? zonedRelativeTo : plainRelativeTo;
         }
 
         public CalendarMethodsRecord createCalendarMethodsRecord(CalendarMethodsRecordLookupNode lookupDateAddNode, CalendarMethodsRecordLookupNode lookupDateUntilNode) {
@@ -112,8 +112,8 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
                 return null;
             }
             Object calendar = relativeTo().getCalendar();
-            Object dateAdd = lookupDateAddNode.execute(calendar);
-            Object dateUntil = lookupDateUntilNode.execute(calendar);
+            Object dateAdd = (lookupDateAddNode == null) ? null : lookupDateAddNode.execute(calendar);
+            Object dateUntil = (lookupDateUntilNode == null) ? null : lookupDateUntilNode.execute(calendar);
             return CalendarMethodsRecord.forDateAddDateUntil(calendar, dateAdd, dateUntil);
         }
     }
@@ -175,8 +175,8 @@ public abstract class ToRelativeTemporalObjectNode extends JavaScriptBaseNode {
             JSDynamicObject dateOptions = JSOrdinary.createWithNullPrototype(ctx);
             JSObjectUtil.putDataProperty(dateOptions, OVERFLOW, CONSTRAIN);
             result = TemporalUtil.interpretTemporalDateTimeFields(calendarRec, fields, dateOptions, getOptionNode, dateFromFieldsNode);
-            offsetString = getOffsetNode.getValue(value);
-            Object timeZoneTemp = getTimeZoneNode.getValue(value);
+            offsetString = getOffsetNode.getValue(fields);
+            Object timeZoneTemp = getTimeZoneNode.getValue(fields);
             if (timeZoneTemp != Undefined.instance) {
                 timeZone = toTimeZoneSlotValue.execute(timeZoneTemp);
             }

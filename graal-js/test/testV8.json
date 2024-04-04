@@ -910,10 +910,6 @@
     "status" : "SKIP",
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
   }, {
-    "filePath" : "mjsunit/html-comments.js",
-    "status" : "FAIL",
-    "comment" : "Off-spec: expects --> comment to work at the beginning of a file."
-  }, {
     "filePath" : "mjsunit/ic-megadom-2.js",
     "status" : "FAIL",
     "comment" : "d8.dom"

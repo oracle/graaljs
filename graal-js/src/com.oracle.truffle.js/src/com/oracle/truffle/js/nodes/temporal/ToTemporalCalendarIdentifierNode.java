@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
@@ -49,11 +50,13 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 
 /**
  * Implementation of ToTemporalCalendarIdentifier() operation.
  */
+@GenerateUncached
 @ImportStatic(Strings.class)
 public abstract class ToTemporalCalendarIdentifierNode extends JavaScriptBaseNode {
 
@@ -65,6 +68,11 @@ public abstract class ToTemporalCalendarIdentifierNode extends JavaScriptBaseNod
         return ToTemporalCalendarIdentifierNodeGen.create();
     }
 
+    @NeverDefault
+    public static ToTemporalCalendarIdentifierNode getUncached() {
+        return ToTemporalCalendarIdentifierNodeGen.getUncached();
+    }
+
     public abstract TruffleString executeString(Object calendarSlotValue);
 
     @Specialization
@@ -74,9 +82,9 @@ public abstract class ToTemporalCalendarIdentifierNode extends JavaScriptBaseNod
 
     @Specialization(guards = "!isString(calendarSlotValue)")
     public TruffleString doNonString(Object calendarSlotValue,
-                    @Cached("create(ID_PROPERTY_NAME, getJSContext())") PropertyGetNode getIdNode,
+                    @Cached(value = "create(ID_PROPERTY_NAME, getJSContext())", uncached = "getNullNode()") PropertyGetNode getIdNode,
                     @Cached InlinedBranchProfile errorBranch) {
-        Object identifier = getIdNode.getValue(calendarSlotValue);
+        Object identifier = (getIdNode != null) ? getIdNode.getValue(calendarSlotValue) : JSRuntime.get(calendarSlotValue, Strings.ID_PROPERTY_NAME);
         if (identifier instanceof TruffleString stringIdentifier) {
             return stringIdentifier;
         } else {

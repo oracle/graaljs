@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -93,23 +93,16 @@ public class TemporalDurationHugeTest extends JSTest {
 
     @Test
     public void testDurationHugeYears() {
-        // consistent with Polyfill run on Node 14
-        String code = "let d = new Temporal.Duration(9223372036854776000);\n" +
-                        "d.years === 9223372036854776000 && d.toString() === 'P9223372036854775808Y';";
-        testTrue(code);
+        assertThrowsRangeError("new Temporal.Duration(9223372036854776000);");
     }
 
     @Test
     public void testDurationHugeYearsScientific() {
-        // consistent with Polyfill
-        String code = "let d = new Temporal.Duration(1e100);\n" +
-                        "d.years === 1e+100 && d.toString() === 'P10000000000000000159028911097599180468360808563945281389781327557747838772170381060813469985856815104Y';";
-        testTrue(code);
+        assertThrowsRangeError("new Temporal.Duration(1e100);");
     }
 
     @Test
     public void testDurationHugeNanoseconds() {
-        // consistent with Polyfill run on Node 14
         String code = "let d = new Temporal.Duration(0,0,0,0,0,0,0,0,0,9223372036854776000);\n" +
                         "d.nanoseconds === 9223372036854776000 && d.toString() === 'PT9223372036.854775808S' ;";
         testTrue(code);
@@ -128,47 +121,6 @@ public class TemporalDurationHugeTest extends JSTest {
     }
 
     @Test
-    public void testDurationHugeAdd() {
-        String code = "var duration = new Temporal.Duration(0,0,0,5e18);\n" +
-                        "duration = duration.add(duration);" +
-                        "duration.toString() === 'P10000000000000000000D' ;";
-        testTrue(code);
-    }
-
-    @Test
-    public void testCalendarDateAddHuge() {
-        String code = "var calendar = new Temporal.Calendar('iso8601');\n" +
-                        "var date = new Temporal.PlainDate(2022, 1, 1);\n" +
-                        "var duration = new Temporal.Duration(1e100);\n" +
-                        "var result = calendar.dateAdd(date, duration);\n" +
-                        "throw TypeError('should not reach here');";
-
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, code);
-            Assert.fail("exception expected");
-        } catch (PolyglotException ex) {
-            Assert.assertThat(ex.getMessage(), CoreMatchers.startsWith("RangeError"));
-            Assert.assertThat(ex.getMessage(), CoreMatchers.containsString("outside of supported range"));
-        }
-    }
-
-    @Test
-    public void testPlainDateAddHuge() {
-        String code = "var date = new Temporal.PlainDate(2022, 1, 1);\n" +
-                        "var duration = new Temporal.Duration(1e100);\n" +
-                        "var result = date.add(duration);\n" +
-                        "throw TypeError('should not reach here');";
-
-        try (Context ctx = getJSContext()) {
-            ctx.eval(ID, code);
-            Assert.fail("exception expected");
-        } catch (PolyglotException ex) {
-            Assert.assertThat(ex.getMessage(), CoreMatchers.startsWith("RangeError"));
-            Assert.assertThat(ex.getMessage(), CoreMatchers.containsString("outside of supported range"));
-        }
-    }
-
-    @Test
     public void testPlainTimeAddHugeNanoseconds() {
         String code = "var time = new Temporal.PlainTime(1, 2, 3);\n" +
                         "var duration = Temporal.Duration.from({nanoseconds: 1e100});\n" +
@@ -182,4 +134,14 @@ public class TemporalDurationHugeTest extends JSTest {
             Assert.assertTrue(ctx.eval(ID, code).asBoolean());
         }
     }
+
+    private static void assertThrowsRangeError(String code) {
+        try (Context ctx = getJSContext()) {
+            ctx.eval(ID, code);
+            Assert.fail("RangeError expected");
+        } catch (PolyglotException ex) {
+            Assert.assertThat(ex.getMessage(), CoreMatchers.startsWith("RangeError"));
+        }
+    }
+
 }

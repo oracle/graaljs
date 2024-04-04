@@ -50,9 +50,9 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayFunctionBuiltins;
 import com.oracle.truffle.js.builtins.temporal.TemporalPlainMonthDayPrototypeBuiltins;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalCalendarIdentifierNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
@@ -136,9 +136,9 @@ public class JSTemporalPlainMonthDay extends JSNonProxy implements JSConstructor
         TruffleString monthString = TemporalUtil.toZeroPaddedDecimalString(md.getMonth(), 2);
         TruffleString dayString = TemporalUtil.toZeroPaddedDecimalString(md.getDay(), 2);
 
-        TruffleString calendarID = JSRuntime.toString(md.getCalendar());
+        TruffleString calendarID = ToTemporalCalendarIdentifierNode.getUncached().executeString(md.getCalendar());
         TruffleString result = Strings.format("%s-%s", monthString, dayString);
-        if (showCalendar == ShowCalendar.ALWAYS || !ISO8601.equals(calendarID)) {
+        if (showCalendar == ShowCalendar.ALWAYS || showCalendar == ShowCalendar.CRITICAL || !ISO8601.equals(calendarID)) {
             TruffleString year = TemporalUtil.padISOYear(md.getYear());
             result = Strings.format("%s-%s", year, result);
         }

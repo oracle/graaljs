@@ -41,56 +41,59 @@
 package com.oracle.truffle.js.nodes.temporal;
 
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.GenerateUncached;
 import com.oracle.truffle.api.dsl.ImportStatic;
-import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
+import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.TemporalConstants;
 
-/**
- * Implementation of ToTemporalTimeZoneIdentifier() operation.
- */
-@GenerateUncached
-@ImportStatic(Strings.class)
-public abstract class ToTemporalTimeZoneIdentifierNode extends JavaScriptBaseNode {
+@ImportStatic(TemporalConstants.class)
+public abstract class ToFractionalSecondDigitsNode extends JavaScriptBaseNode {
+    public static final int AUTO = -1;
 
-    protected ToTemporalTimeZoneIdentifierNode() {
-    }
-
-    @NeverDefault
-    public static ToTemporalTimeZoneIdentifierNode create() {
-        return ToTemporalTimeZoneIdentifierNodeGen.create();
-    }
-
-    @NeverDefault
-    public static ToTemporalTimeZoneIdentifierNode getUncached() {
-        return ToTemporalTimeZoneIdentifierNodeGen.getUncached();
-    }
-
-    public abstract TruffleString executeString(Object timeZoneSlotValue);
+    public abstract int execute(Object normalizedOptions);
 
     @Specialization
-    public TruffleString doString(TruffleString timeZoneSlotValue) {
-        return timeZoneSlotValue;
+    protected int toFractionalSecondDigits(Object normalizedOptions,
+                    @Cached("create(FRACTIONAL_SECOND_DIGITS, getJSContext())") PropertyGetNode getFractionalSecondDigits,
+                    @Cached JSToStringNode toStringNode,
+                    @Cached TruffleString.EqualNode equalNode,
+                    @Cached InlinedBranchProfile errorBranch) {
+        Object digitsValue = getFractionalSecondDigits.getValue(normalizedOptions);
+        if (digitsValue == Undefined.instance) {
+            return AUTO;
+        }
+        if (digitsValue instanceof Number numberValue) {
+            if (JSRuntime.isNaN(numberValue)) {
+                errorBranch.enter(this);
+                throw invalidDigits();
+            }
+            double digitCount = Math.floor(JSRuntime.toDouble(numberValue));
+            if (digitCount < 0 || digitCount > 9) {
+                errorBranch.enter(this);
+                throw invalidDigits();
+            }
+            return (int) digitCount;
+        } else {
+            TruffleString stringValue = toStringNode.executeString(digitsValue);
+            if (!Strings.equals(equalNode, TemporalConstants.AUTO, stringValue)) {
+                errorBranch.enter(this);
+                throw invalidDigits();
+            }
+            return AUTO;
+        }
     }
 
-    @Specialization(guards = "!isString(timeZoneSlotValue)")
-    public TruffleString doNonString(Object timeZoneSlotValue,
-                    @Cached(value = "create(ID_PROPERTY_NAME, getJSContext())", uncached = "getNullNode()") PropertyGetNode getIdNode,
-                    @Cached InlinedBranchProfile errorBranch) {
-        Object identifier = (getIdNode != null) ? getIdNode.getValue(timeZoneSlotValue) : JSRuntime.get(timeZoneSlotValue, Strings.ID_PROPERTY_NAME);
-        if (identifier instanceof TruffleString stringIdentifier) {
-            return stringIdentifier;
-        } else {
-            errorBranch.enter(this);
-            throw Errors.createTypeErrorNotAString(identifier);
-        }
+    private static JSException invalidDigits() {
+        return Errors.createRangeError("Invalid fractionalSecondDigits");
     }
 
 }

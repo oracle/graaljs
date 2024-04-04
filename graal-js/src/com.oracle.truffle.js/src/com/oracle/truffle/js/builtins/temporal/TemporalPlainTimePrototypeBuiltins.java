@@ -72,7 +72,6 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainTimePrototypeBuiltin
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CreateTimeZoneMethodsRecordNode;
@@ -82,6 +81,7 @@ import com.oracle.truffle.js.nodes.temporal.IsPartialTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalRoundDurationNode;
+import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDateNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeNode;
@@ -611,19 +611,27 @@ public class TemporalPlainTimePrototypeBuiltins extends JSBuiltinsContainer.Swit
         }
 
         @Specialization
-        protected final TruffleString toString(JSTemporalPlainTimeObject time, Object optionsParam,
-                        @Cached JSToStringNode toStringNode,
+        protected final TruffleString toString(JSTemporalPlainTimeObject temporalTime, Object optionsParam,
+                        @Cached ToFractionalSecondDigitsNode toFractionalSecondDigitsNode,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached GetTemporalUnitNode getSmallestUnit,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             JSDynamicObject options = getOptionsObject(optionsParam, this, errorBranch, optionUndefined);
-            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecision(options, toStringNode, getSmallestUnit, getOptionNode);
+            int digits = toFractionalSecondDigitsNode.execute(options);
             RoundingMode roundingMode = toTemporalRoundingMode(options, TemporalConstants.TRUNC, equalNode, getOptionNode);
-            TimeRecord roundResult = TemporalUtil.roundTime(
-                            time.getHour(), time.getMinute(), time.getSecond(),
-                            time.getMillisecond(), time.getMicrosecond(), time.getNanosecond(),
+
+            Unit smallestUnit = getSmallestUnit.execute(options, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.EMPTY);
+            if (smallestUnit == Unit.HOUR) {
+                errorBranch.enter(this);
+                throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
+            }
+
+            JSTemporalPrecisionRecord precision = TemporalUtil.toSecondsStringPrecisionRecord(smallestUnit, digits);
+
+            TimeRecord roundResult = TemporalUtil.roundTime(temporalTime.getHour(), temporalTime.getMinute(), temporalTime.getSecond(),
+                            temporalTime.getMillisecond(), temporalTime.getMicrosecond(), temporalTime.getNanosecond(),
                             precision.getIncrement(), precision.getUnit(), roundingMode,
                             null);
             return JSTemporalPlainTime.temporalTimeToString(

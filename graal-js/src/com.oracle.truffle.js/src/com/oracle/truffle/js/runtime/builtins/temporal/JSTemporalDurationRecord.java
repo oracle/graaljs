@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -130,6 +130,11 @@ public final class JSTemporalDurationRecord {
 
     public static JSTemporalDurationRecord create(JSTemporalDateTimeRecord r) {
         return create(r.getYear(), r.getMonth(), r.getDay(), r.getHour(), r.getMinute(), r.getSecond(), r.getMillisecond(), r.getMicrosecond(), r.getNanosecond());
+    }
+
+    public static JSTemporalDurationRecord create(JSTemporalDurationObject duration) {
+        return createWeeks(duration.getYears(), duration.getMonths(), duration.getWeeks(), duration.getDays(), duration.getHours(), duration.getMinutes(), duration.getSeconds(),
+                        duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
     }
 
 }

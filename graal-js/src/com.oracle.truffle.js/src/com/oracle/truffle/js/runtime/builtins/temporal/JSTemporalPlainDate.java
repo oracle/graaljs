@@ -51,7 +51,6 @@ import com.oracle.truffle.js.builtins.temporal.TemporalPlainDatePrototypeBuiltin
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSConstructor;
 import com.oracle.truffle.js.runtime.builtins.JSConstructorFactory;
@@ -226,9 +225,7 @@ public final class JSTemporalPlainDate extends JSNonProxy implements JSConstruct
         TruffleString yearString = TemporalUtil.padISOYear(date.getYear());
         TruffleString monthString = TemporalUtil.toZeroPaddedDecimalString(date.getMonth(), 2);
         TruffleString dayString = TemporalUtil.toZeroPaddedDecimalString(date.getDay(), 2);
-
-        TruffleString calendarID = JSRuntime.toString(date.getCalendar());
-        Object calendar = TemporalUtil.formatCalendarAnnotation(calendarID, showCalendar);
+        TruffleString calendar = TemporalUtil.maybeFormatCalendarAnnotation(date.getCalendar(), showCalendar);
 
         return Strings.format("%s-%s-%s%s", yearString, monthString, dayString, calendar);
     }
