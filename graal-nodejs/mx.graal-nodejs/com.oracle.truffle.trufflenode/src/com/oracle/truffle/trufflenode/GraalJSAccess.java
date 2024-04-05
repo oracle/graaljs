@@ -2695,8 +2695,10 @@ public final class GraalJSAccess {
     @SuppressWarnings("unchecked")
     private WeakCallback updateWeakCallback(Object object, long reference, long data, long callbackPointer, int type) {
         Map<Long, WeakCallback> map;
-        if (object instanceof NodeScriptOrModule) {
-            map = ((NodeScriptOrModule) object).getWeakCallbackMap();
+        if (object instanceof NodeScriptOrModule scriptOrModule) {
+            map = scriptOrModule.getWeakCallbackMap();
+        } else if (object instanceof UnboundScript script) {
+            map = script.getWeakCallbackMap();
         } else {
             JSDynamicObject target;
             HiddenKey key;
@@ -4152,7 +4154,7 @@ public final class GraalJSAccess {
         NativeAccess.notifyWasmStreamingCallback(response, resolve, reject);
     }
 
-    private static class WeakCallback extends WeakReference<Object> {
+    public static class WeakCallback extends WeakReference<Object> {
 
         long data;
         long callback;
