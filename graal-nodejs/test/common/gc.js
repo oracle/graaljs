@@ -51,7 +51,7 @@ async function checkIfCollectable(
       // not enough problems in the CI & be slower depending on file system.
       // Just do this for now as long as it works and only invent some
       // internal voodoo when we absolutely have no other choice.
-      require('v8').getHeapSnapshot().pause().read();
+//      require('v8').getHeapSnapshot().pause().read();
       console.log(`Generated heap snapshot at ${count}`);
     }
     if (count % logEvery === 0) {
