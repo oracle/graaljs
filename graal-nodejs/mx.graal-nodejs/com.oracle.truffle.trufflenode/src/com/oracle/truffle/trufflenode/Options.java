@@ -158,6 +158,7 @@ public final class Options {
                         "nolazy",
                         "nouse-idle-notification",
                         "stack-size",
+                        "trace-gc",
                         "use-idle-notification"
         });
 
