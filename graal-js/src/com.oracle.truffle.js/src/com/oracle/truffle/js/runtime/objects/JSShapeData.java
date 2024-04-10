@@ -110,15 +110,16 @@ public final class JSShapeData {
     private static JSShapeData getShapeData(Shape shape) {
         CompilerAsserts.neverPartOfCompilation();
         JSContext context = JSShape.getJSContext(shape);
-        synchronized (context) {
-            Map<Shape, JSShapeData> map = context.getShapeDataMap();
-            JSShapeData shapeData = map.get(shape);
-            if (shapeData == null) {
-                shapeData = new JSShapeData();
-                map.put(shape, shapeData);
+        Map<Shape, JSShapeData> map = context.getShapeDataMap();
+        JSShapeData shapeData = map.get(shape);
+        if (shapeData == null) {
+            shapeData = new JSShapeData();
+            JSShapeData previous = map.putIfAbsent(shape, shapeData);
+            if (previous != null) {
+                shapeData = previous;
             }
-            return shapeData;
         }
+        return shapeData;
     }
 
     @TruffleBoundary
