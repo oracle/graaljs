@@ -150,6 +150,7 @@ local graalNodeJs = import 'graal-nodejs/ci.jsonnet';
     ],
     // Avoid building native images on machines with very little RAM.
     capabilities+: if 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then ['ram16gb'] else [],
+    targets: ['ondemand'],
     timelimit: if 'os' in self && (self.os == 'darwin' && self.arch == 'amd64') then '1:30:00' else '1:00:00',
     notify_groups: ['javascript'],
   },
