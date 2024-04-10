@@ -40,10 +40,8 @@
  */
 package com.oracle.truffle.js.runtime;
 
-import java.util.Collections;
 import java.util.Map;
 import java.util.Objects;
-import java.util.WeakHashMap;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.TruffleLanguage;
@@ -59,6 +57,7 @@ import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
 import com.oracle.truffle.js.runtime.interop.JSMetaType;
 import com.oracle.truffle.js.runtime.objects.Undefined;
+import com.oracle.truffle.js.runtime.util.ConcurrentWeakIdentityHashMap;
 import com.oracle.truffle.js.runtime.util.WeakMap;
 
 /**
@@ -163,7 +162,7 @@ public final class Symbol implements TruffleObject {
 
     private static Symbol createWellKnown(TruffleString description) {
         Symbol symbol = new Symbol(description, false, false);
-        symbol.setInvertedMap(Collections.synchronizedMap(new WeakHashMap<>()));
+        symbol.setInvertedMap(ConcurrentWeakIdentityHashMap.create());
         return symbol;
     }
 
