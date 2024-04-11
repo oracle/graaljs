@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -100,7 +100,7 @@ public final class EngineCacheData {
     }
 
     @TruffleBoundary
-    public Object createOrUseCachedSingleton(TruffleString name) {
+    public Symbol createOrUseCachedSingleton(TruffleString name) {
         if (context.isMultiContext() && JSConfig.UseSingletonSymbols) {
             if (cachedSingletonSymbols.size() < MaxSingletonSymbolsCacheSize) {
                 SingletonSymbolUsageDescriptor descriptor = cachedSingletonSymbols.computeIfAbsent(name, key -> new SingletonSymbolUsageDescriptor(Symbol.create(key)));
