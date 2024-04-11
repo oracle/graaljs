@@ -156,11 +156,13 @@ public final class Symbol implements TruffleObject {
     }
 
     public static Symbol create(TruffleString description) {
-        return new Symbol(description, false, false);
+        Symbol symbol = new Symbol(description, false, false);
+        JavaScriptLanguage.getCurrentLanguage().getJSContext().unregisteredSymbolCreated(symbol);
+        return symbol;
     }
 
     private static Symbol createWellKnown(TruffleString description) {
-        Symbol symbol = create(description);
+        Symbol symbol = new Symbol(description, false, false);
         symbol.setInvertedMap(Collections.synchronizedMap(new WeakHashMap<>()));
         return symbol;
     }
@@ -277,4 +279,9 @@ public final class Symbol implements TruffleObject {
         assert this.invertedMap == null;
         this.invertedMap = invMap;
     }
+
+    void clearInvertedMap() {
+        this.invertedMap = null;
+    }
+
 }

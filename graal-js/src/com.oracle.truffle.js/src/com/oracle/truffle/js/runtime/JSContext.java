@@ -269,6 +269,21 @@ public class JSContext {
     // Used to track singleton symbols allocations across aux engine cache runs.
     private Object symbolUsageMarker = new Object();
 
+    private final Map<Symbol, Void> unregisteredSymbols = new WeakHashMap<>();
+
+    @TruffleBoundary
+    public void unregisteredSymbolCreated(Symbol symbol) {
+        synchronized (this) {
+            unregisteredSymbols.put(symbol, null);
+        }
+    }
+
+    public void clearSymbolInvertedMaps() {
+        for (Symbol symbol : unregisteredSymbols.keySet()) {
+            symbol.clearInvertedMap();
+        }
+    }
+
     public void resetSymbolUsageMarker() {
         CompilerAsserts.neverPartOfCompilation();
         // Symbols that were used exactly once in previous executions, will most-likely
