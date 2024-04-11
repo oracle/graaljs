@@ -124,23 +124,20 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
             case gc:
                 return GCNodeGen.create(context, builtin, args().createArgumentNodes(context));
 
-            default:
-                switch (builtinEnum) {
-                    case agentStart:
-                        return Test262AgentStartNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                    case agentBroadcast:
-                        return Test262AgentBroadcastNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                    case agentGetReport:
-                        return Test262AgentGetReportNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                    case agentSleep:
-                        return Test262AgentSleepNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                    case agentReceiveBroadcast:
-                        return Test262AgentReceiveBroadcastNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                    case agentReport:
-                        return Test262AgentReportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
-                    case agentLeaving:
-                        return Test262AgentLeavingNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
-                }
+            case agentStart:
+                return Test262AgentStartNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case agentBroadcast:
+                return Test262AgentBroadcastNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case agentGetReport:
+                return Test262AgentGetReportNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
+            case agentSleep:
+                return Test262AgentSleepNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case agentReceiveBroadcast:
+                return Test262AgentReceiveBroadcastNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case agentReport:
+                return Test262AgentReportNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case agentLeaving:
+                return Test262AgentLeavingNodeGen.create(context, builtin, args().fixedArgs(0).createArgumentNodes(context));
         }
         return null;
     }
