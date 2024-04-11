@@ -14,7 +14,7 @@ distlib==0.3.0
 distro==1.4.0
 docutils==0.16
 html5lib==1.0.1
-idna==2.8
+idna==3.7
 imagesize==1.2.0
 ipaddr==2.2.0
 Jinja2==2.11.3
