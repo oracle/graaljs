@@ -66,6 +66,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
     private final byte attributeFlags;
     private final byte ecmaScriptVersion;
     private final boolean annexB;
+    private final boolean optional;
 
     private final BuiltinNodeFactory functionNodeFactory;
     private final BuiltinNodeFactory constructorNodeFactory;
@@ -75,7 +76,7 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
     private static final int SETTER_FLAG = 1 << 4;
 
     public JSBuiltin(TruffleString containerName, TruffleString functionName, Object key, int length, int attributeFlags, int ecmaScriptVersion,
-                    boolean annexB, BuiltinNodeFactory functionNodeFactory, BuiltinNodeFactory constructorNodeFactory, BuiltinNodeFactory newTargetConstructorFactory) {
+                    boolean annexB, BuiltinNodeFactory functionNodeFactory, BuiltinNodeFactory constructorNodeFactory, BuiltinNodeFactory newTargetConstructorFactory, boolean isOptional) {
         assert isAllowedKey(key);
         assert (byte) ecmaScriptVersion == ecmaScriptVersion && (byte) attributeFlags == attributeFlags;
         this.name = functionName;
@@ -85,13 +86,14 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
         this.ecmaScriptVersion = (byte) ecmaScriptVersion;
         this.attributeFlags = (byte) (attributeFlags | detectAccessor(functionName));
         this.annexB = annexB;
+        this.optional = isOptional;
         this.functionNodeFactory = functionNodeFactory;
         this.constructorNodeFactory = constructorNodeFactory;
         this.newTargetConstructorNodeFactory = newTargetConstructorFactory;
     }
 
     public JSBuiltin(TruffleString containerName, TruffleString name, int length, int flags, BuiltinNodeFactory functionNodeFactory) {
-        this(containerName, name, name, length, flags, 5, false, functionNodeFactory, null, null);
+        this(containerName, name, name, length, flags, 5, false, functionNodeFactory, null, null, false);
     }
 
     /**
@@ -175,6 +177,11 @@ public final class JSBuiltin implements Builtin, JSFunctionData.CallTargetInitia
     @Override
     public boolean isSetter() {
         return (attributeFlags & SETTER_FLAG) != 0;
+    }
+
+    @Override
+    public boolean isOptional() {
+        return optional;
     }
 
     public static SourceSection getSourceSection() {

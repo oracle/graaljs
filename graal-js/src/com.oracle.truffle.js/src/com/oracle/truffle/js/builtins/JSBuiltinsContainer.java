@@ -150,7 +150,7 @@ public class JSBuiltinsContainer {
             BuiltinNodeFactory call = new FactoryImpl(false, false);
             BuiltinNodeFactory construct = isConstructor ? new FactoryImpl(true, false) : null;
             BuiltinNodeFactory constructNewTarget = isNewTargetConstructor ? new FactoryImpl(true, true) : null;
-            register(new JSBuiltin(getName(), name, name, length, attributeFlags, 5, false, call, construct, constructNewTarget));
+            register(new JSBuiltin(getName(), name, name, length, attributeFlags, 5, false, call, construct, constructNewTarget, false));
         }
 
         protected abstract Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget);
@@ -206,7 +206,7 @@ public class JSBuiltinsContainer {
             int length = builtinEnum.getLength();
             int attributeFlags = JSAttributes.fromConfigurableEnumerableWritable(builtinEnum.isConfigurable(), builtinEnum.isEnumerable(), builtinEnum.isWritable());
             return new JSBuiltin(getName(), name, key, length, attributeFlags, builtinEnum.getECMAScriptVersion(), builtinEnum.isAnnexB(), functionNodeFactory,
-                            constructorNodeFactory, newTargetConstructorFactory);
+                            constructorNodeFactory, newTargetConstructorFactory, builtinEnum.isOptional());
         }
 
         public Class<E> getEnumType() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,12 +69,16 @@ public interface Builtin {
 
     boolean isSetter();
 
+    boolean isOptional();
+
     JSFunctionData createFunctionData(JSContext context);
 
     default boolean isIncluded(JSContext context) {
         if (getECMAScriptVersion() > context.getEcmaScriptVersion()) {
             return false;
         } else if (isAnnexB() && !context.isOptionAnnexB()) {
+            return false;
+        } else if (isOptional()) {
             return false;
         }
         return true;
