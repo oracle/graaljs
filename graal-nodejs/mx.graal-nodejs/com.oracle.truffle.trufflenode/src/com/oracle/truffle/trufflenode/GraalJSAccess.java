@@ -320,8 +320,8 @@ public final class GraalJSAccess {
     private static final Map<Integer, HiddenKey> INTERNAL_FIELD_KEYS_MAP = new ConcurrentHashMap<>();
     private static final HiddenKey[] INTERNAL_FIELD_KEYS_ARRAY = createInternalFieldKeysArray(10);
 
-    private static final Symbol RESOLVER_RESOLVE = Symbol.create(RESOLVE);
-    private static final Symbol RESOLVER_REJECT = Symbol.create(REJECT);
+    private static final Symbol RESOLVER_RESOLVE = Symbol.createPrivate(RESOLVE);
+    private static final Symbol RESOLVER_REJECT = Symbol.createPrivate(REJECT);
 
     public static final HiddenKey HOLDER_KEY = new HiddenKey("Holder");
     public static final HiddenKey ACCESSOR_KEY = new HiddenKey("Accessor");
