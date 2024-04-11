@@ -46,7 +46,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 
 import java.util.Arrays;
 import java.util.Comparator;
-import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
@@ -266,18 +265,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.of(find, findIndex, fill, copyWithin, keys, values, entries).contains(this)) {
-                return JSConfig.ECMAScript2015;
-            } else if (this == includes) {
-                return JSConfig.ECMAScript2016;
-            } else if (EnumSet.of(flat, flatMap).contains(this)) {
-                return JSConfig.ECMAScript2019;
-            } else if (this == at) {
-                return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(findLast, findLastIndex, toReversed, toSorted, toSpliced, with).contains(this)) {
-                return JSConfig.ECMAScript2023;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case find, findIndex, fill, copyWithin, keys, values, entries -> JSConfig.ECMAScript2015;
+                case includes -> JSConfig.ECMAScript2016;
+                case flat, flatMap -> JSConfig.ECMAScript2019;
+                case at -> JSConfig.ECMAScript2022;
+                case findLast, findLastIndex, toReversed, toSorted, toSpliced, with -> JSConfig.ECMAScript2023;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
     }
 

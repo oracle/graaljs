@@ -159,10 +159,10 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
 
         @Override
         public int getECMAScriptVersion() {
-            if (this.equals(notify)) {
-                return JSConfig.ECMAScript2019;
-            }
-            return JSConfig.ECMAScript2017;
+            return switch (this) {
+                case notify -> JSConfig.ECMAScript2019;
+                default -> JSConfig.ECMAScript2017;
+            };
         }
     }
 

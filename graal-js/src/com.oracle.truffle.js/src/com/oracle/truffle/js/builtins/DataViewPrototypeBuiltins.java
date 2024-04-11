@@ -128,10 +128,10 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.of(getFloat16, setFloat16).contains(this)) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case getFloat16, setFloat16 -> JSConfig.StagingECMAScriptVersion;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
     }
 

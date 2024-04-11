@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
@@ -191,13 +189,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.of(_match, _replace, _search, _split).contains(this)) {
-                return 6;
-            }
-            if (this.equals(_matchAll)) {
-                return JSConfig.ECMAScript2019;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case _match, _replace, _search, _split -> JSConfig.ECMAScript2015;
+                case _matchAll -> JSConfig.ECMAScript2019;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
 
         @Override
@@ -1768,13 +1764,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             @Override
             public int getECMAScriptVersion() {
-                if (EnumSet.of(sticky, unicode).contains(this)) {
-                    return 6;
-                } else if (this == dotAll) {
-                    return JSConfig.ECMAScript2018;
-                }
-                // Note: hasIndices (ES 2022) may be enabled using regexp-match-indices flag, too.
-                return BuiltinEnum.super.getECMAScriptVersion();
+                return switch (this) {
+                    case sticky, unicode -> JSConfig.ECMAScript2015;
+                    case dotAll -> JSConfig.ECMAScript2018;
+                    // Note: hasIndices (ES 2022) may be enabled using regexp-match-indices flag, too.
+                    default -> BuiltinEnum.super.getECMAScriptVersion();
+                };
             }
 
             @Override

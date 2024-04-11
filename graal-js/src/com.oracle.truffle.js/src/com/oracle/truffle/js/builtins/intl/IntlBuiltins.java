@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -89,13 +89,10 @@ public final class IntlBuiltins extends JSBuiltinsContainer.SwitchEnum<IntlBuilt
 
         @Override
         public int getECMAScriptVersion() {
-            switch (this) {
-                case getCanonicalLocales:
-                    return JSConfig.ECMAScript2016;
-                case supportedValuesOf:
-                    return JSConfig.ECMAScript2023;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case getCanonicalLocales -> JSConfig.ECMAScript2016;
+                case supportedValuesOf -> JSConfig.ECMAScript2023;
+            };
         }
     }
 

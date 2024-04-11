@@ -201,10 +201,10 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Override
         public int getECMAScriptVersion() {
-            if (this == DatePrototype._toPrimitive) {
-                return 6;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case _toPrimitive -> 6;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
     }
 

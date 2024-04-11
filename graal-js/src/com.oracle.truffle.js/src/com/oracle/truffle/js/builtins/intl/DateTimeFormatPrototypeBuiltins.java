@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -105,14 +105,11 @@ public final class DateTimeFormatPrototypeBuiltins extends JSBuiltinsContainer.S
 
         @Override
         public int getECMAScriptVersion() {
-            switch (this) {
-                case formatToParts:
-                    return JSConfig.ECMAScript2017;
-                case formatRange:
-                case formatRangeToParts:
-                    return JSConfig.ECMAScript2021;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case formatToParts -> JSConfig.ECMAScript2017;
+                case formatRange, formatRangeToParts -> JSConfig.ECMAScript2021;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
 
         @Override

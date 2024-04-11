@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.builtins;
 
-import java.util.EnumSet;
-
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
@@ -135,12 +133,11 @@ public final class ArrayFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.of(of, from).contains(this)) {
-                return 6;
-            } else if (this == fromAsync) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case of, from -> JSConfig.ECMAScript2015;
+                case fromAsync -> JSConfig.StagingECMAScriptVersion;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
     }
 

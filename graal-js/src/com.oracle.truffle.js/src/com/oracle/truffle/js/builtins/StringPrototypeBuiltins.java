@@ -262,20 +262,15 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.range(startsWith, normalize).contains(this)) {
-                return 6;
-            } else if (EnumSet.range(padStart, padEnd).contains(this)) {
-                return JSConfig.ECMAScript2017;
-            } else if (matchAll == this) {
-                return JSConfig.ECMAScript2020;
-            } else if (replaceAll == this) {
-                return JSConfig.ECMAScript2021;
-            } else if (at == this) {
-                return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(isWellFormed, toWellFormed).contains(this)) {
-                return JSConfig.ECMAScript2024;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case startsWith, endsWith, includes, repeat, codePointAt, _iterator, normalize -> JSConfig.ECMAScript2015;
+                case padStart, padEnd -> JSConfig.ECMAScript2017;
+                case matchAll -> JSConfig.ECMAScript2020;
+                case replaceAll -> JSConfig.ECMAScript2021;
+                case at -> JSConfig.ECMAScript2022;
+                case isWellFormed, toWellFormed -> JSConfig.ECMAScript2024;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
 
         @Override
