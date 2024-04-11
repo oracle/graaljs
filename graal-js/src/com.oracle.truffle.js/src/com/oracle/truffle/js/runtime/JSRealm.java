@@ -102,7 +102,6 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltins;
 import com.oracle.truffle.js.builtins.OperatorsBuiltins;
 import com.oracle.truffle.js.builtins.PerformanceBuiltins;
 import com.oracle.truffle.js.builtins.PolyglotBuiltins;
-import com.oracle.truffle.js.builtins.RealmFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ReflectBuiltins;
 import com.oracle.truffle.js.builtins.RegExpBuiltins;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltins;
@@ -112,6 +111,8 @@ import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.foreign.ForeignIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.json.JSON;
 import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltins;
+import com.oracle.truffle.js.builtins.testing.PolyglotInternalBuiltins;
+import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -2459,12 +2460,11 @@ public class JSRealm {
     private void setupPolyglot() {
         JSObject polyglotObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.BUILTINS);
-
+        if (getContextOptions().isPolyglotEvalFile()) {
+            JSObjectUtil.putDataProperty(polyglotObject, Strings.EVAL_FILE, lookupFunction(PolyglotBuiltins.BUILTINS, Strings.EVAL_FILE), JSAttributes.getDefaultNotEnumerable());
+        }
         if (getContextOptions().isDebugBuiltin()) {
-            JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.INTERNAL_BUILTINS);
-        } else if (getContextOptions().isPolyglotEvalFile()) {
-            // already loaded above when `debug-builtin` is true
-            JSObjectUtil.putDataProperty(polyglotObject, Strings.EVAL_FILE, lookupFunction(PolyglotBuiltins.INTERNAL_BUILTINS, Strings.EVAL_FILE), JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotInternalBuiltins.BUILTINS);
         }
         putGlobalProperty(POLYGLOT_CLASS_NAME, polyglotObject);
     }

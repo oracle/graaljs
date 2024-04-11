@@ -38,7 +38,7 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.testing;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -52,25 +52,26 @@ import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugClassNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugContinueInInterpreterNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugStringCompareNodeGen;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8AtomicsNumWaitersForTestingNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ConstructDoubleNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8CreatePrivateSymbolNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8EnqueueJobNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ReferenceEqualNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetAllowAtomicsWaitNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SetTimeoutNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8SymbolIsPrivateNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToLengthNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToNumberNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToPrimitiveNodeGen;
-import com.oracle.truffle.js.builtins.TestV8BuiltinsFactory.TestV8ToStringNodeGen;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
 import com.oracle.truffle.js.builtins.helper.GCNodeGen;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8AtomicsNumUnresolvedAsyncPromisesForTestingNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8AtomicsNumWaitersForTestingNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ConstructDoubleNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8CreateAsyncFromSyncIteratorNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8CreatePrivateSymbolNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8DoublePartNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8EnqueueJobNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ReferenceEqualNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8RunMicrotasksNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8SetAllowAtomicsWaitNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8SetTimeoutNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8SymbolIsPrivateNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ToLengthNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ToNameNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ToNumberNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ToPrimitiveNodeGen;
+import com.oracle.truffle.js.builtins.testing.TestV8BuiltinsFactory.TestV8ToStringNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIndexNode;

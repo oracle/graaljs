@@ -38,21 +38,22 @@
  * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  * SOFTWARE.
  */
-package com.oracle.truffle.js.builtins;
+package com.oracle.truffle.js.builtins.testing;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.IndirectCallNode;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.source.Source;
-import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCreateNodeGen;
-import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmCurrentNodeGen;
-import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmDetachGlobalNodeGen;
-import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmDisposeNodeGen;
-import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmEvalNodeGen;
-import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmGlobalNodeGen;
-import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmNavigateNodeGen;
-import com.oracle.truffle.js.builtins.RealmFunctionBuiltinsFactory.RealmOwnerNodeGen;
+import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltinsFactory.RealmCreateNodeGen;
+import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltinsFactory.RealmCurrentNodeGen;
+import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltinsFactory.RealmDetachGlobalNodeGen;
+import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltinsFactory.RealmDisposeNodeGen;
+import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltinsFactory.RealmEvalNodeGen;
+import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltinsFactory.RealmGlobalNodeGen;
+import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltinsFactory.RealmNavigateNodeGen;
+import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltinsFactory.RealmOwnerNodeGen;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.ScriptNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
