@@ -162,7 +162,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         // Annex B
         compile(2),
 
-        // TBD
+        // ES 2020
         _matchAll(1, Symbol.SYMBOL_MATCH_ALL);
 
         private final int length;
@@ -191,7 +191,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         public int getECMAScriptVersion() {
             return switch (this) {
                 case _match, _replace, _search, _split -> JSConfig.ECMAScript2015;
-                case _matchAll -> JSConfig.ECMAScript2019;
+                case _matchAll -> JSConfig.ECMAScript2020;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
         }
