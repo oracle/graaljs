@@ -26,10 +26,6 @@
     "status" : "FAIL",
     "comment" : "test has raw flag but should be executed with harness/sta.js"
   }, {
-    "filePath" : "annexB/language/eval-code/direct/script-decl-lex-no-collision.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
     "filePath" : "annexB/language/function-code/block-decl-func-skip-arguments.js",
     "status" : "FAIL",
     "comment" : "Off spec test that even does not reflect web reality."
@@ -5644,10 +5640,6 @@
     "filePath" : "language/expressions/assignment/target-member-computed-reference-undefined.js",
     "status" : "FAIL",
     "comment" : "new failures 2021-07-08"
-  }, {
-    "filePath" : "language/global-code/script-decl-lex-var-declared-via-eval.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
   }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
