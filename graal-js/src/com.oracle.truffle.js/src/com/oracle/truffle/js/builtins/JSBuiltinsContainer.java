@@ -62,7 +62,7 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
  */
 public class JSBuiltinsContainer {
     private final TruffleString name;
-    private final EconomicMap<TruffleString, JSBuiltin> builtins = EconomicMap.create();
+    private final EconomicMap<Object, JSBuiltin> functions = EconomicMap.create();
     private final EconomicMap<Object, Pair<JSBuiltin, JSBuiltin>> accessors = EconomicMap.create();
 
     protected JSBuiltinsContainer(TruffleString name) {
@@ -70,16 +70,18 @@ public class JSBuiltinsContainer {
         this.name = name;
     }
 
-    public final JSBuiltin lookupFunctionByName(TruffleString methodName) {
-        return builtins.get(methodName);
+    public final JSBuiltin lookupFunctionByKey(Object key) {
+        assert JSRuntime.isPropertyKey(key) : key;
+        return functions.get(key);
     }
 
     public final Pair<JSBuiltin, JSBuiltin> lookupAccessorByKey(Object key) {
+        assert JSRuntime.isPropertyKey(key) : key;
         return accessors.get(key);
     }
 
     public final void forEachBuiltin(Consumer<? super JSBuiltin> consumer) {
-        builtins.getValues().forEach(consumer);
+        functions.getValues().forEach(consumer);
     }
 
     public final void forEachAccessor(BiConsumer<? super JSBuiltin, ? super JSBuiltin> consumer) {
@@ -87,16 +89,18 @@ public class JSBuiltinsContainer {
     }
 
     protected final void register(JSBuiltin builtin) {
-        assert !builtins.containsKey(builtin.getName()) : builtin.getName();
-        builtins.put(builtin.getName(), builtin);
+        Object key = builtin.getKey();
         if (builtin.isGetter()) {
-            Pair<JSBuiltin, JSBuiltin> existing = accessors.get(builtin.getKey(), Pair.empty());
-            assert existing.getLeft() == null : builtin.getKey();
-            accessors.put(builtin.getKey(), Pair.create(builtin, existing.getRight()));
+            Pair<JSBuiltin, JSBuiltin> existing = accessors.get(key, Pair.empty());
+            assert existing.getLeft() == null : key;
+            accessors.put(key, Pair.create(builtin, existing.getRight()));
         } else if (builtin.isSetter()) {
-            Pair<JSBuiltin, JSBuiltin> existing = accessors.get(builtin.getKey(), Pair.empty());
-            assert existing.getRight() == null : builtin.getKey();
-            accessors.put(builtin.getKey(), Pair.create(existing.getLeft(), builtin));
+            Pair<JSBuiltin, JSBuiltin> existing = accessors.get(key, Pair.empty());
+            assert existing.getRight() == null : key;
+            accessors.put(key, Pair.create(existing.getLeft(), builtin));
+        } else {
+            assert !functions.containsKey(key) : key;
+            functions.put(key, builtin);
         }
     }
 

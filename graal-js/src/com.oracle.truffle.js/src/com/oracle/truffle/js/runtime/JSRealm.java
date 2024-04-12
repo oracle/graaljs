@@ -1239,9 +1239,9 @@ public class JSRealm {
         this.currentRealm = prevRealm;
     }
 
-    public final JSFunctionObject lookupFunction(JSBuiltinsContainer container, TruffleString methodName) {
-        assert JSRuntime.isPropertyKey(methodName);
-        Builtin builtin = Objects.requireNonNull(container.lookupFunctionByName(methodName));
+    public final JSFunctionObject lookupFunction(JSBuiltinsContainer container, Object key) {
+        assert JSRuntime.isPropertyKey(key);
+        Builtin builtin = Objects.requireNonNull(container.lookupFunctionByKey(key));
         JSFunctionData functionData = builtin.createFunctionData(context);
         return JSFunction.create(this, functionData);
     }
@@ -2215,13 +2215,13 @@ public class JSRealm {
             JSDynamicObject resolveFunction = lookupFunction(builtins, Strings.RESOLVE_PROPERTY_NAME);
             JSObject.set(requireFunction, Strings.RESOLVE_PROPERTY_NAME, resolveFunction);
             putGlobalProperty(Strings.REQUIRE_PROPERTY_NAME, requireFunction);
-            JSDynamicObject dirnameGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.dirnameGetter.getName());
+            JSDynamicObject dirnameGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.dirnameGetter.getKey());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.DIRNAME_VAR_NAME, PropertyDescriptor.createAccessor(dirnameGetter, Undefined.instance, false, false));
-            JSDynamicObject filenameGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.filenameGetter.getName());
+            JSDynamicObject filenameGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.filenameGetter.getKey());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.FILENAME_VAR_NAME, PropertyDescriptor.createAccessor(filenameGetter, Undefined.instance, false, false));
-            JSDynamicObject moduleGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.globalModuleGetter.getName());
+            JSDynamicObject moduleGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.globalModuleGetter.getKey());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.MODULE_PROPERTY_NAME, PropertyDescriptor.createAccessor(moduleGetter, Undefined.instance, false, false));
-            JSDynamicObject exportsGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.globalExportsGetter.getName());
+            JSDynamicObject exportsGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.globalExportsGetter.getKey());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.EXPORTS_PROPERTY_NAME, PropertyDescriptor.createAccessor(exportsGetter, Undefined.instance, false, false));
             this.commonJSRequireFunctionObject = requireFunction;
         }

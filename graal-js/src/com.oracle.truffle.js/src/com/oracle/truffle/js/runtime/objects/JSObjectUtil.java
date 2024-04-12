@@ -404,9 +404,8 @@ public final class JSObjectUtil {
             public void accept(Builtin builtin) {
                 if (!builtin.isIncluded(context)) {
                     return;
-                } else if (builtin.isGetter() || builtin.isSetter()) {
-                    return;
                 }
+                assert !builtin.isGetter() && !builtin.isSetter() : builtin;
                 JSFunctionData functionData = builtin.createFunctionData(context);
                 putDataProperty(thisObj, builtin.getKey(), JSFunction.create(realm, functionData), builtin.getAttributeFlags());
             }
