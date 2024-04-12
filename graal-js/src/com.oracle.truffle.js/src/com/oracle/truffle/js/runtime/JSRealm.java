@@ -2556,7 +2556,7 @@ public class JSRealm {
         JSObjectUtil.putToStringTag(obj, ATOMICS_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.BUILTINS);
         if (getContextOptions().isAtomicsWaitAsync()) {
-            JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.WAIT_ASYNC_BUILTINS);
+            JSObjectUtil.putFunctionFromContainer(this, obj, AtomicsBuiltins.BUILTINS, AtomicsBuiltins.Atomics.waitAsync.getKey());
         }
         return obj;
     }

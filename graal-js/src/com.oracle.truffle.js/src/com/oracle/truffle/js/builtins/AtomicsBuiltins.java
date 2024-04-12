@@ -125,7 +125,6 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<AtomicsBuiltins.Atomics> {
 
     public static final JSBuiltinsContainer BUILTINS = new AtomicsBuiltins();
-    public static final JSBuiltinsContainer WAIT_ASYNC_BUILTINS = new WaitAsyncBuiltins();
 
     protected AtomicsBuiltins() {
         super(JSRealm.ATOMICS_CLASS_NAME, Atomics.class);
@@ -144,7 +143,11 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         wait(4),
         isLockFree(1),
 
-        notify(3);
+        // ES 2019
+        notify(3),
+
+        // ES 2024
+        waitAsync(4);
 
         private final int length;
 
@@ -161,8 +164,15 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
         public int getECMAScriptVersion() {
             return switch (this) {
                 case notify -> JSConfig.ECMAScript2019;
+                case waitAsync -> JSConfig.ECMAScript2024;
                 default -> JSConfig.ECMAScript2017;
             };
+        }
+
+        @Override
+        public boolean isOptional() {
+            // waitAsync (ES 2024) may be enabled/disabled using atomics-wait-async flag, too.
+            return this == waitAsync;
         }
     }
 
@@ -194,39 +204,10 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 return AtomicsWaitNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
             case isLockFree:
                 return AtomicsIsLockFreeNodeGen.create(context, builtin, args().fixedArgs(1).createArgumentNodes(context));
+            case waitAsync:
+                return AtomicsWaitAsyncNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
         }
         return null;
-    }
-
-    public static final class WaitAsyncBuiltins extends JSBuiltinsContainer.SwitchEnum<WaitAsyncBuiltins.WaitAsync> {
-
-        protected WaitAsyncBuiltins() {
-            super(WaitAsync.class);
-        }
-
-        public enum WaitAsync implements BuiltinEnum<WaitAsync> {
-            waitAsync(4);
-
-            private final int length;
-
-            WaitAsync(int length) {
-                this.length = length;
-            }
-
-            @Override
-            public int getLength() {
-                return length;
-            }
-        }
-
-        @Override
-        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, WaitAsync builtinEnum) {
-            return switch (builtinEnum) {
-                case waitAsync -> AtomicsWaitAsyncNodeGen.create(context, builtin, args().fixedArgs(4).createArgumentNodes(context));
-                default -> null;
-            };
-        }
-
     }
 
     @ImportStatic(JSArrayBufferView.class)
