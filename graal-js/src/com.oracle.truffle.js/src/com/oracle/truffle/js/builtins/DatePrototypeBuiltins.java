@@ -114,13 +114,9 @@ import com.oracle.truffle.js.runtime.objects.Null;
 /**
  * Contains builtins for {@linkplain JSDate}.prototype.
  */
-public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<DatePrototypeBuiltins.DatePrototype> {
+public final class DatePrototypeBuiltins {
 
-    public static final JSBuiltinsContainer BUILTINS = new DatePrototypeBuiltins();
-
-    protected DatePrototypeBuiltins() {
-        super(JSDate.PROTOTYPE_NAME, DatePrototype.class);
-    }
+    public static final JSBuiltinsContainer BUILTINS = JSBuiltinsContainer.fromEnum(JSDate.PROTOTYPE_NAME, DatePrototype.class);
 
     public enum DatePrototype implements BuiltinEnum<DatePrototype> {
         valueOf(0),
@@ -184,9 +180,11 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
         setYear(1);
 
         private final int length;
+        private final boolean isUTC;
 
         DatePrototype(int length) {
             this.length = length;
+            this.isUTC = name().startsWith("UTC", 2) || name().startsWith("UTC", 3); // {to,get,set}UTC*
         }
 
         @Override
@@ -206,120 +204,98 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
         }
-    }
 
-    private static final boolean UTC = true;
-    private static final boolean NO_UTC = false;
-
-    @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, DatePrototype builtinEnum) {
-        switch (builtinEnum) {
-            case valueOf:
-            case getTime:
-                return JSDateValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case toString:
-                return JSDateToStringNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
-            case toDateString:
-                return JSDateToDateStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case toTimeString:
-                return JSDateToTimeStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case toLocaleString:
-                if (context.isOptionIntl402()) {
-                    return JSDateToStringIntlNodeGen.create(context, builtin, NO_UTC, args().withThis().fixedArgs(2).createArgumentNodes(context));
-                } else {
-                    return JSDateToStringNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
-                }
-            case toLocaleDateString:
-                if (context.isOptionIntl402()) {
-                    return JSDateToLocaleDateStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
-                } else {
-                    return JSDateToLocaleDateStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-                }
-            case toLocaleTimeString:
-                if (context.isOptionIntl402()) {
-                    return JSDateToLocaleTimeStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
-                } else {
-                    return JSDateToLocaleTimeStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-                }
-            case toUTCString:
-                return JSDateToStringNodeGen.create(context, builtin, UTC, args().withThis().createArgumentNodes(context));
-            case toISOString:
-                return JSDateToISOStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case getFullYear:
-                return JSDateGetFullYearNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
-            case getYear:
-                return JSDateGetYearNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case getUTCFullYear:
-                return JSDateGetFullYearNodeGen.create(context, builtin, UTC, args().withThis().createArgumentNodes(context));
-            case getMonth:
-                return JSDateGetMonthNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
-            case getUTCMonth:
-                return JSDateGetMonthNodeGen.create(context, builtin, UTC, args().withThis().createArgumentNodes(context));
-            case getDate:
-                return JSDateGetDateNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
-            case getUTCDate:
-                return JSDateGetDateNodeGen.create(context, builtin, UTC, args().withThis().createArgumentNodes(context));
-            case getDay:
-                return JSDateGetDayNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
-            case getUTCDay:
-                return JSDateGetDayNodeGen.create(context, builtin, UTC, args().withThis().createArgumentNodes(context));
-            case getHours:
-                return JSDateGetHoursNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
-            case getUTCHours:
-                return JSDateGetHoursNodeGen.create(context, builtin, UTC, args().withThis().createArgumentNodes(context));
-            case getMinutes:
-                return JSDateGetMinutesNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
-            case getUTCMinutes:
-                return JSDateGetMinutesNodeGen.create(context, builtin, UTC, args().withThis().createArgumentNodes(context));
-            case getSeconds:
-                return JSDateGetSecondsNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
-            case getUTCSeconds:
-                return JSDateGetSecondsNodeGen.create(context, builtin, UTC, args().withThis().createArgumentNodes(context));
-            case getMilliseconds:
-                return JSDateGetMillisecondsNodeGen.create(context, builtin, NO_UTC, args().withThis().createArgumentNodes(context));
-            case getUTCMilliseconds:
-                return JSDateGetMillisecondsNodeGen.create(context, builtin, UTC, args().withThis().createArgumentNodes(context));
-            case setTime:
-                return JSDateSetTimeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case setDate:
-                return JSDateSetDateNodeGen.create(context, builtin, NO_UTC, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case setUTCDate:
-                return JSDateSetDateNodeGen.create(context, builtin, UTC, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case setYear:
-                return JSDateSetYearNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case setFullYear:
-                return JSDateSetFullYearNodeGen.create(context, builtin, NO_UTC, args().withThis().varArgs().createArgumentNodes(context));
-            case setUTCFullYear:
-                return JSDateSetFullYearNodeGen.create(context, builtin, UTC, args().withThis().varArgs().createArgumentNodes(context));
-            case setMonth:
-                return JSDateSetMonthNodeGen.create(context, builtin, NO_UTC, args().withThis().varArgs().createArgumentNodes(context));
-            case setUTCMonth:
-                return JSDateSetMonthNodeGen.create(context, builtin, UTC, args().withThis().varArgs().createArgumentNodes(context));
-            case setHours:
-                return JSDateSetHoursNodeGen.create(context, builtin, NO_UTC, args().withThis().varArgs().createArgumentNodes(context));
-            case setUTCHours:
-                return JSDateSetHoursNodeGen.create(context, builtin, UTC, args().withThis().varArgs().createArgumentNodes(context));
-            case setMinutes:
-                return JSDateSetMinutesNodeGen.create(context, builtin, NO_UTC, args().withThis().varArgs().createArgumentNodes(context));
-            case setUTCMinutes:
-                return JSDateSetMinutesNodeGen.create(context, builtin, UTC, args().withThis().varArgs().createArgumentNodes(context));
-            case setSeconds:
-                return JSDateSetSecondsNodeGen.create(context, builtin, NO_UTC, args().withThis().varArgs().createArgumentNodes(context));
-            case setUTCSeconds:
-                return JSDateSetSecondsNodeGen.create(context, builtin, UTC, args().withThis().varArgs().createArgumentNodes(context));
-            case setMilliseconds:
-                return JSDateSetMillisecondsNodeGen.create(context, builtin, NO_UTC, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case setUTCMilliseconds:
-                return JSDateSetMillisecondsNodeGen.create(context, builtin, UTC, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case getTimezoneOffset:
-                return JSDateGetTimezoneOffsetNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            case toJSON:
-                return JSDateToJSONNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
-            case _toPrimitive:
-                return JSDateToPrimitiveNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+        @Override
+        public Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
+            switch (this) {
+                case valueOf:
+                case getTime:
+                    return JSDateValueOfNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case toString:
+                case toUTCString:
+                    return JSDateToStringNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
+                case toDateString:
+                    return JSDateToDateStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case toTimeString:
+                    return JSDateToTimeStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case toLocaleString:
+                    return context.isOptionIntl402()
+                                    ? JSDateToStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                    : JSDateToStringNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
+                case toLocaleDateString:
+                    return context.isOptionIntl402()
+                                    ? JSDateToLocaleDateStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                    : JSDateToLocaleDateStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case toLocaleTimeString:
+                    return context.isOptionIntl402()
+                                    ? JSDateToLocaleTimeStringIntlNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context))
+                                    : JSDateToLocaleTimeStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case toISOString:
+                    return JSDateToISOStringNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case getFullYear:
+                case getUTCFullYear:
+                    return JSDateGetFullYearNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
+                case getYear:
+                    return JSDateGetYearNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case getMonth:
+                case getUTCMonth:
+                    return JSDateGetMonthNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
+                case getDate:
+                case getUTCDate:
+                    return JSDateGetDateNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
+                case getDay:
+                case getUTCDay:
+                    return JSDateGetDayNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
+                case getHours:
+                case getUTCHours:
+                    return JSDateGetHoursNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
+                case getMinutes:
+                case getUTCMinutes:
+                    return JSDateGetMinutesNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
+                case getSeconds:
+                case getUTCSeconds:
+                    return JSDateGetSecondsNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
+                case getMilliseconds:
+                case getUTCMilliseconds:
+                    return JSDateGetMillisecondsNodeGen.create(context, builtin, isUTC, args().withThis().createArgumentNodes(context));
+                case setTime:
+                    return JSDateSetTimeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case setDate:
+                case setUTCDate:
+                    return JSDateSetDateNodeGen.create(context, builtin, isUTC, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case setFullYear:
+                case setUTCFullYear:
+                    return JSDateSetFullYearNodeGen.create(context, builtin, isUTC, args().withThis().varArgs().createArgumentNodes(context));
+                case setYear:
+                    return JSDateSetYearNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case setMonth:
+                case setUTCMonth:
+                    return JSDateSetMonthNodeGen.create(context, builtin, isUTC, args().withThis().varArgs().createArgumentNodes(context));
+                case setHours:
+                case setUTCHours:
+                    return JSDateSetHoursNodeGen.create(context, builtin, isUTC, args().withThis().varArgs().createArgumentNodes(context));
+                case setMinutes:
+                case setUTCMinutes:
+                    return JSDateSetMinutesNodeGen.create(context, builtin, isUTC, args().withThis().varArgs().createArgumentNodes(context));
+                case setSeconds:
+                case setUTCSeconds:
+                    return JSDateSetSecondsNodeGen.create(context, builtin, isUTC, args().withThis().varArgs().createArgumentNodes(context));
+                case setMilliseconds:
+                case setUTCMilliseconds:
+                    return JSDateSetMillisecondsNodeGen.create(context, builtin, isUTC, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case getTimezoneOffset:
+                    return JSDateGetTimezoneOffsetNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+                case toJSON:
+                    return JSDateToJSONNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                case _toPrimitive:
+                    return JSDateToPrimitiveNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                default:
+                    return null;
+            }
         }
-        return null;
     }
+
+    private static final boolean NO_UTC = false;
 
     public abstract static class JSDateOperation extends JSBuiltinNode {
         protected final boolean isUTC;
@@ -422,8 +398,8 @@ public final class DatePrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<
 
         @Child InitializeDateTimeFormatNode initDateTimeFormatNode;
 
-        public JSDateToStringIntlNode(JSContext context, JSBuiltin builtin, boolean isUTC) {
-            super(context, builtin, isUTC);
+        public JSDateToStringIntlNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, NO_UTC);
             this.initDateTimeFormatNode = InitializeDateTimeFormatNode.createInitalizeDateTimeFormatNode(context, InitializeDateTimeFormatNode.Required.ANY, InitializeDateTimeFormatNode.Defaults.ALL);
         }
 
