@@ -175,7 +175,6 @@ import com.oracle.truffle.js.runtime.util.TRegexUtil.TRegexResultAccessor;
 public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum<StringPrototypeBuiltins.StringPrototype> {
 
     public static final JSBuiltinsContainer BUILTINS = new StringPrototypeBuiltins();
-    public static final JSBuiltinsContainer EXTENSION_BUILTINS = new StringPrototypeExtensionBuiltins();
 
     protected StringPrototypeBuiltins() {
         super(JSString.PROTOTYPE_NAME, StringPrototype.class);
@@ -231,6 +230,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         padStart(1),
         padEnd(1),
 
+        // ES2019 (and nashorn-compat mode)
+        trimStart(0),
+        trimEnd(0),
+
         // ES2020
         matchAll(1),
 
@@ -265,6 +268,8 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return switch (this) {
                 case startsWith, endsWith, includes, repeat, codePointAt, _iterator, normalize -> JSConfig.ECMAScript2015;
                 case padStart, padEnd -> JSConfig.ECMAScript2017;
+                // Note: trimStart and trimEnd are manually added.
+                case trimStart, trimEnd -> JSConfig.ECMAScript2019;
                 case matchAll -> JSConfig.ECMAScript2020;
                 case replaceAll -> JSConfig.ECMAScript2021;
                 case at -> JSConfig.ECMAScript2022;
@@ -276,6 +281,11 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         @Override
         public Object getKey() {
             return this == _iterator ? Symbol.SYMBOL_ITERATOR : BuiltinEnum.super.getKey();
+        }
+
+        @Override
+        public boolean isOptional() {
+            return this == trimStart || this == trimEnd;
         }
     }
 
@@ -370,6 +380,10 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringPadNodeGen.create(context, builtin, true, args().withThis().varArgs().createArgumentNodes(context));
             case padEnd:
                 return JSStringPadNodeGen.create(context, builtin, false, args().withThis().varArgs().createArgumentNodes(context));
+            case trimStart:
+                return JSStringTrimLeftNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case trimEnd:
+                return JSStringTrimRightNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
 
             case anchor:
                 return createHTMLNode(context, builtin, Strings.A, Strings.NAME);
@@ -407,39 +421,6 @@ public final class StringPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSStringToWellFormedNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
         }
         return null;
-    }
-
-    public static final class StringPrototypeExtensionBuiltins extends JSBuiltinsContainer.SwitchEnum<StringPrototypeExtensionBuiltins.StringExtensionBuiltins> {
-        protected StringPrototypeExtensionBuiltins() {
-            super(JSString.CLASS_NAME_EXTENSIONS, StringExtensionBuiltins.class);
-        }
-
-        public enum StringExtensionBuiltins implements BuiltinEnum<StringExtensionBuiltins> {
-            trimStart(0),
-            trimEnd(0);
-
-            private final int length;
-
-            StringExtensionBuiltins(int length) {
-                this.length = length;
-            }
-
-            @Override
-            public int getLength() {
-                return length;
-            }
-        }
-
-        @Override
-        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, StringExtensionBuiltins builtinEnum) {
-            switch (builtinEnum) {
-                case trimStart:
-                    return JSStringTrimLeftNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-                case trimEnd:
-                    return JSStringTrimRightNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
-            }
-            return null;
-        }
     }
 
     abstract static class JSStringOperation extends JSBuiltinNode {
