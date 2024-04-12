@@ -70,12 +70,12 @@ import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
  */
 public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode {
     private final boolean isConst;
-    @Child private HasVarDeclarationOrRestrictedGlobalPropertyNode hasVarDeclarationOrRestrictedGlobalPropertyNode;
+    @Child private HasRestrictedGlobalPropertyNode hasRestrictedGlobalPropertyNode;
 
     protected DeclareGlobalLexicalVariableNode(TruffleString varName, boolean isConst) {
         super(varName);
         this.isConst = isConst;
-        this.hasVarDeclarationOrRestrictedGlobalPropertyNode = HasVarDeclarationOrRestrictedGlobalPropertyNodeGen.create();
+        this.hasRestrictedGlobalPropertyNode = HasRestrictedGlobalPropertyNodeGen.create();
     }
 
     public static DeclareGlobalLexicalVariableNode create(TruffleString varName, boolean isConst) {
@@ -85,7 +85,7 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
     @Override
     public void verify(JSContext context, JSRealm realm) {
         super.verify(context, realm);
-        if (hasVarDeclarationOrRestrictedGlobalPropertyNode.execute(realm.getGlobalObject(), varName)) {
+        if (hasRestrictedGlobalPropertyNode.execute(realm.getGlobalObject(), varName)) {
             errorProfile.enter();
             throw Errors.createSyntaxErrorVariableAlreadyDeclared(varName, this);
         }
@@ -135,12 +135,12 @@ public abstract class DeclareGlobalLexicalVariableNode extends DeclareGlobalNode
 }
 
 /**
- * Checks if either HasVarDeclaration or HasRestrictedGlobalProperty is true for this binding.
+ * Checks if HasRestrictedGlobalProperty is true for this binding.
  *
  * The object must be either a {@link JSGlobalObject} or a {@link JSProxyObject}.
  */
-abstract class HasVarDeclarationOrRestrictedGlobalPropertyNode extends JavaScriptBaseNode {
-    protected HasVarDeclarationOrRestrictedGlobalPropertyNode() {
+abstract class HasRestrictedGlobalPropertyNode extends JavaScriptBaseNode {
+    protected HasRestrictedGlobalPropertyNode() {
     }
 
     public abstract boolean execute(JSDynamicObject object, Object key);
@@ -151,14 +151,14 @@ abstract class HasVarDeclarationOrRestrictedGlobalPropertyNode extends JavaScrip
                     @Cached("thisObj.getShape()") @SuppressWarnings("unused") Shape cachedShape,
                     @Cached("cachedShape.getProperty(propertyKey)") Property cachedProperty) {
         CompilerAsserts.partialEvaluationConstant(propertyKey);
-        return cachedProperty != null && (!JSProperty.isConfigurable(cachedProperty.getFlags()) || JSProperty.isGlobalVarDeclaration(cachedProperty.getFlags()));
+        return cachedProperty != null && !JSProperty.isConfigurable(cachedProperty.getFlags());
     }
 
     @Specialization(replaces = "doGlobalObjectCached")
     static boolean doGlobalObjectUncached(JSGlobalObject thisObj, Object propertyKey) {
         CompilerAsserts.partialEvaluationConstant(propertyKey);
         Property property = thisObj.getShape().getProperty(propertyKey);
-        return property != null && (!JSProperty.isConfigurable(property.getFlags()) || JSProperty.isGlobalVarDeclaration(property.getFlags()));
+        return property != null && !JSProperty.isConfigurable(property.getFlags());
     }
 
     @Specialization

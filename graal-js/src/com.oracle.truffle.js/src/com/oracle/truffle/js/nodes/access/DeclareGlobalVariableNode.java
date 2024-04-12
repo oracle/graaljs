@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -58,7 +58,6 @@ import com.oracle.truffle.js.runtime.objects.JSAttributes;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.JSProperty;
 import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 
@@ -99,8 +98,6 @@ public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
         if (!hasOwnPropertyNode.hasProperty(globalObject)) {
             assert JSObject.isExtensible(globalObject);
             executeVoid(globalObject, context);
-        } else if (configurable) {
-            ensureHasVarDeclarationOrRestrictedGlobalProperty(globalObject);
         }
     }
 
@@ -125,7 +122,7 @@ public abstract class DeclareGlobalVariableNode extends DeclareGlobalNode {
     }
 
     private int getAttributeFlags() {
-        return (configurable ? JSAttributes.configurableEnumerableWritable() | JSProperty.GLOBAL_VAR : JSAttributes.notConfigurableEnumerableWritable());
+        return (configurable ? JSAttributes.configurableEnumerableWritable() : JSAttributes.notConfigurableEnumerableWritable());
     }
 
     @NeverDefault
