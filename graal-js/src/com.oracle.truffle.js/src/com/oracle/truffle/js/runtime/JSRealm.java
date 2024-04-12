@@ -2210,17 +2210,18 @@ public class JSRealm {
                 throw Errors.createError("Access denied to CommonJS root folder: " + cwdOption);
             }
             // Define `require` and other globals in global scope.
-            JSDynamicObject requireFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, Strings.REQUIRE_PROPERTY_NAME);
-            JSDynamicObject resolveFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, Strings.RESOLVE_PROPERTY_NAME);
+            JSBuiltinsContainer builtins = GlobalCommonJSRequireBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS;
+            JSDynamicObject requireFunction = lookupFunction(builtins, Strings.REQUIRE_PROPERTY_NAME);
+            JSDynamicObject resolveFunction = lookupFunction(builtins, Strings.RESOLVE_PROPERTY_NAME);
             JSObject.set(requireFunction, Strings.RESOLVE_PROPERTY_NAME, resolveFunction);
             putGlobalProperty(Strings.REQUIRE_PROPERTY_NAME, requireFunction);
-            JSDynamicObject dirnameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.dirnameGetter.getName());
+            JSDynamicObject dirnameGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.dirnameGetter.getName());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.DIRNAME_VAR_NAME, PropertyDescriptor.createAccessor(dirnameGetter, Undefined.instance, false, false));
-            JSDynamicObject filenameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.filenameGetter.getName());
+            JSDynamicObject filenameGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.filenameGetter.getName());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.FILENAME_VAR_NAME, PropertyDescriptor.createAccessor(filenameGetter, Undefined.instance, false, false));
-            JSDynamicObject moduleGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalModuleGetter.getName());
+            JSDynamicObject moduleGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.globalModuleGetter.getName());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.MODULE_PROPERTY_NAME, PropertyDescriptor.createAccessor(moduleGetter, Undefined.instance, false, false));
-            JSDynamicObject exportsGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalExportsGetter.getName());
+            JSDynamicObject exportsGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.globalExportsGetter.getName());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.EXPORTS_PROPERTY_NAME, PropertyDescriptor.createAccessor(exportsGetter, Undefined.instance, false, false));
             this.commonJSRequireFunctionObject = requireFunction;
         }
