@@ -366,7 +366,7 @@ public final class JSRegExp extends JSNonProxy implements JSConstructorFactory.D
     }
 
     private static void putRegExpPropertyAccessor(JSRealm realm, JSDynamicObject prototype, TruffleString name) {
-        JSObjectUtil.putBuiltinAccessorProperty(prototype, name, realm.lookupAccessor(RegExpPrototypeBuiltins.RegExpPrototypeGetterBuiltins.BUILTINS, name));
+        JSObjectUtil.putBuiltinAccessorProperty(prototype, name, realm.lookupAccessor(RegExpPrototypeBuiltins.BUILTINS, name));
     }
 
     private static Object es5GetEmptyRegexEarly(JSRealm realm) {

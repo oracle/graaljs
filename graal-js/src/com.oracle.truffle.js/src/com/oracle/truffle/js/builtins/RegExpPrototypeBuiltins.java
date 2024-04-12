@@ -40,6 +40,8 @@
  */
 package com.oracle.truffle.js.builtins;
 
+import java.util.EnumSet;
+
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
@@ -163,7 +165,19 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         compile(2),
 
         // ES 2020
-        _matchAll(1, Symbol.SYMBOL_MATCH_ALL);
+        _matchAll(1, Symbol.SYMBOL_MATCH_ALL),
+
+        // getters
+        flags(0),
+        source(0),
+        global(0),
+        multiline(0),
+        ignoreCase(0),
+        sticky(0),      // ES 2015
+        unicode(0),     // ES 2015
+        dotAll(0),      // ES 2018
+        hasIndices(0),  // ES 2022
+        unicodeSets(0); // ES 2024
 
         private final int length;
         private final Symbol key;
@@ -188,10 +202,22 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Override
+        public boolean isGetter() {
+            return EnumSet.range(flags, unicodeSets).contains(this);
+        }
+
+        @Override
         public int getECMAScriptVersion() {
             return switch (this) {
                 case _match, _replace, _search, _split -> JSConfig.ECMAScript2015;
                 case _matchAll -> JSConfig.ECMAScript2020;
+                // Note: RegExp.prototype getters are always manually added currently.
+                case sticky, unicode -> JSConfig.ECMAScript2015;
+                case dotAll -> JSConfig.ECMAScript2018;
+                // Note: hasIndices (ES 2022) may be enabled using regexp-match-indices flag, too.
+                case hasIndices -> JSConfig.ECMAScript2022;
+                // Note: unicodeSets (ES 2024) may be enabled using regexp-unicode-sets flag, too.
+                case unicodeSets -> JSConfig.ECMAScript2024;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
         }
@@ -227,6 +253,19 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return JSRegExpCompileNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case _matchAll:
                 return JSRegExpMatchAllNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case source:
+                return CompiledRegexPatternAccessor.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            case flags:
+                return RegExpFlagsGetterNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            case dotAll:
+            case global:
+            case hasIndices:
+            case ignoreCase:
+            case multiline:
+            case sticky:
+            case unicode:
+            case unicodeSets:
+                return CompiledRegexFlagPropertyAccessor.create(context, builtin, builtinEnum.name(), args().withThis().fixedArgs(0).createArgumentNodes(context));
         }
         return null;
     }
@@ -1728,67 +1767,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.@@matchAll", thisObj);
         }
 
-    }
-
-    public static final class RegExpPrototypeGetterBuiltins extends JSBuiltinsContainer.SwitchEnum<RegExpPrototypeGetterBuiltins.RegExpPrototypeGetters> {
-
-        public static final JSBuiltinsContainer BUILTINS = new RegExpPrototypeGetterBuiltins();
-
-        protected RegExpPrototypeGetterBuiltins() {
-            super(JSRegExp.PROTOTYPE_NAME, RegExpPrototypeGetters.class);
-        }
-
-        public enum RegExpPrototypeGetters implements BuiltinEnum<RegExpPrototypeGetters> {
-
-            flags(0),
-            source(0),
-            global(0),
-            multiline(0),
-            ignoreCase(0),
-            sticky(0),      // ES 2015
-            unicode(0),     // ES 2015
-            dotAll(0),      // ES 2018
-            hasIndices(0),  // ES 2022
-            unicodeSets(0); // Stage 3 proposal
-
-            private final int length;
-
-            RegExpPrototypeGetters(int length) {
-                this.length = length;
-            }
-
-            @Override
-            public int getLength() {
-                return length;
-            }
-
-            @Override
-            public int getECMAScriptVersion() {
-                return switch (this) {
-                    case sticky, unicode -> JSConfig.ECMAScript2015;
-                    case dotAll -> JSConfig.ECMAScript2018;
-                    // Note: hasIndices (ES 2022) may be enabled using regexp-match-indices flag, too.
-                    default -> BuiltinEnum.super.getECMAScriptVersion();
-                };
-            }
-
-            @Override
-            public boolean isGetter() {
-                return true;
-            }
-        }
-
-        @Override
-        protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, RegExpPrototypeGetters builtinEnum) {
-            switch (builtinEnum) {
-                case source:
-                    return CompiledRegexPatternAccessor.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
-                case flags:
-                    return RegExpFlagsGetterNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
-                default:
-                    return CompiledRegexFlagPropertyAccessor.create(context, builtin, builtinEnum.name(), args().withThis().fixedArgs(0).createArgumentNodes(context));
-            }
-        }
     }
 
     /**
