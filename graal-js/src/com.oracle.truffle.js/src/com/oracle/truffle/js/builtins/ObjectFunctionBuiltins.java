@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import java.util.ArrayList;
-import java.util.EnumSet;
 import java.util.List;
 import java.util.Map;
 
@@ -210,18 +209,14 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.of(is, getOwnPropertySymbols, assign).contains(this)) {
-                return 6;
-            } else if (EnumSet.of(getOwnPropertyDescriptors, values, entries).contains(this)) {
-                return JSConfig.ECMAScript2017;
-            } else if (this == fromEntries) {
-                return JSConfig.ECMAScript2019;
-            } else if (this == hasOwn) {
-                return JSConfig.ECMAScript2022;
-            } else if (this == groupBy) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case is, getOwnPropertySymbols, assign -> JSConfig.ECMAScript2015;
+                case getOwnPropertyDescriptors, values, entries -> JSConfig.ECMAScript2017;
+                case fromEntries -> JSConfig.ECMAScript2019;
+                case hasOwn -> JSConfig.ECMAScript2022;
+                case groupBy -> JSConfig.StagingECMAScriptVersion;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
     }
 

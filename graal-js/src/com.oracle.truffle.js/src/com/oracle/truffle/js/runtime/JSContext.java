@@ -603,8 +603,8 @@ public class JSContext {
         this.importModuleDynamicallyCallbackNotUsedAssumption = Truffle.getRuntime().createAssumption("importModuleDynamicallyCallbackNotUsedAssumption");
 
         this.emptyFunctionCallTarget = createEmptyFunctionCallTarget(lang);
-        this.symbolSpeciesThisGetterFunctionData = JSFunctionData.createCallOnly(this, createReadFrameThisCallTarget(lang), 0, GET_SYMBOL_SPECIES_NAME);
-        this.symbolIteratorThisGetterFunctionData = JSFunctionData.createCallOnly(this, createReadFrameThisCallTarget(lang), 0, SYMBOL_ITERATOR_NAME);
+        this.symbolSpeciesThisGetterFunctionData = JSFunctionData.createCallOnly(this, createReadFrameThisCallTarget(lang, GET_SYMBOL_SPECIES_NAME), 0, GET_SYMBOL_SPECIES_NAME);
+        this.symbolIteratorThisGetterFunctionData = JSFunctionData.createCallOnly(this, createReadFrameThisCallTarget(lang, SYMBOL_ITERATOR_NAME), 0, SYMBOL_ITERATOR_NAME);
 
         this.builtinFunctionData = new JSFunctionData[BuiltinFunctionKey.values().length];
 
@@ -1366,7 +1366,7 @@ public class JSContext {
 
     /** CallTarget for an empty function that returns undefined. */
     private static CallTarget createEmptyFunctionCallTarget(JavaScriptLanguage lang) {
-        return new JavaScriptRootNode(lang, null, null) {
+        return new JavaScriptRootNode(lang) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return Undefined.instance;
@@ -1382,11 +1382,17 @@ public class JSContext {
         return symbolSpeciesThisGetterFunctionData;
     }
 
-    private static CallTarget createReadFrameThisCallTarget(JavaScriptLanguage lang) {
-        return new JavaScriptRootNode(lang, null, null) {
+    private static CallTarget createReadFrameThisCallTarget(JavaScriptLanguage lang, TruffleString name) {
+        String callTargetName = name.toJavaStringUncached();
+        return new JavaScriptRootNode(lang) {
             @Override
             public Object execute(VirtualFrame frame) {
                 return JSFrameUtil.getThisObj(frame);
+            }
+
+            @Override
+            public String getName() {
+                return callTargetName;
             }
         }.getCallTarget();
     }
@@ -1420,7 +1426,7 @@ public class JSContext {
     }
 
     private static RootCallTarget createNotConstructibleCallTarget(JavaScriptLanguage lang, boolean generator, JSContext context) {
-        return new JavaScriptRootNode(lang, null, null) {
+        return new JavaScriptRootNode(lang) {
             @Override
             public Object execute(VirtualFrame frame) {
                 if (generator) {
@@ -1833,7 +1839,7 @@ public class JSContext {
     }
 
     private JSFunctionData protoSetterFunction() {
-        CallTarget callTarget = new JavaScriptRootNode(getLanguage(), null, null) {
+        CallTarget callTarget = new JavaScriptRootNode(getLanguage()) {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] arguments = frame.getArguments();
@@ -1854,12 +1860,17 @@ public class JSContext {
                 }
                 return Undefined.instance;
             }
+
+            @Override
+            public String getName() {
+                return JSObject.SET_PROTO_NAME.toJavaStringUncached();
+            }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(this, callTarget, 0, Strings.concat(Strings.SET_SPC, JSObject.PROTO));
+        return JSFunctionData.createCallOnly(this, callTarget, 0, JSObject.SET_PROTO_NAME);
     }
 
     private JSFunctionData protoGetterFunction() {
-        CallTarget callTarget = new JavaScriptRootNode(getLanguage(), null, null) {
+        CallTarget callTarget = new JavaScriptRootNode(getLanguage()) {
             @Child private JSToObjectNode toObjectNode = JSToObjectNode.create();
             @Child private GetPrototypeNode getPrototypeNode = GetPrototypeNode.create();
 
@@ -1871,8 +1882,13 @@ public class JSContext {
                 }
                 return Null.instance;
             }
+
+            @Override
+            public String getName() {
+                return JSObject.GET_PROTO_NAME.toJavaStringUncached();
+            }
         }.getCallTarget();
-        return JSFunctionData.createCallOnly(this, callTarget, 0, Strings.concat(Strings.GET_SPC, JSObject.PROTO));
+        return JSFunctionData.createCallOnly(this, callTarget, 0, JSObject.GET_PROTO_NAME);
     }
 
     public void checkEvalAllowed() {

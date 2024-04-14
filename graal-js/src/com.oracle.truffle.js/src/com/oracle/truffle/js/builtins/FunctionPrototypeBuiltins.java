@@ -144,10 +144,10 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @Override
         public int getECMAScriptVersion() {
-            if (this == _hasInstance) {
-                return 6;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case _hasInstance -> 6;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
     }
 

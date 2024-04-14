@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -92,10 +92,10 @@ public final class FinalizationRegistryPrototypeBuiltins extends JSBuiltinsConta
 
         @Override
         public int getECMAScriptVersion() {
-            if (this == cleanupSome) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return JSConfig.ECMAScript2021;
+            return switch (this) {
+                case cleanupSome -> JSConfig.StagingECMAScriptVersion;
+                default -> JSConfig.ECMAScript2021;
+            };
         }
     }
 

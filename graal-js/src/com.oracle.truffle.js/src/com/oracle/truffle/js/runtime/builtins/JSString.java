@@ -261,15 +261,16 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         // sets the length just for the prototype
         JSObjectUtil.putDataProperty(prototype, LENGTH, 0, JSAttributes.notConfigurableNotEnumerableNotWritable());
         JSObjectUtil.putFunctionsFromContainer(realm, prototype, StringPrototypeBuiltins.BUILTINS);
-        if (ctx.isOptionNashornCompatibilityMode() || ctx.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
-            JSObjectUtil.putFunctionsFromContainer(realm, prototype, StringPrototypeBuiltins.EXTENSION_BUILTINS);
+        JSFunctionObject trimStartFunction = realm.lookupFunction(StringPrototypeBuiltins.BUILTINS, StringPrototypeBuiltins.StringPrototype.trimStart.getKey());
+        JSFunctionObject trimEndFunction = realm.lookupFunction(StringPrototypeBuiltins.BUILTINS, StringPrototypeBuiltins.StringPrototype.trimEnd.getKey());
+        if (ctx.getEcmaScriptVersion() >= JSConfig.ECMAScript2019) {
+            JSObjectUtil.putDataProperty(prototype, TRIM_START, trimStartFunction, JSAttributes.configurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(prototype, TRIM_END, trimEndFunction, JSAttributes.configurableNotEnumerableWritable());
         }
-        if (ctx.isOptionAnnexB()) {
+        if (ctx.isOptionAnnexB() || ctx.isOptionNashornCompatibilityMode()) {
             // trimLeft/trimRight are the same objects as trimStart/trimEnd
-            Object trimStart = JSObject.get(prototype, TRIM_START);
-            Object trimEnd = JSObject.get(prototype, TRIM_END);
-            JSObjectUtil.putDataProperty(prototype, TRIM_LEFT, trimStart, JSAttributes.configurableNotEnumerableWritable());
-            JSObjectUtil.putDataProperty(prototype, TRIM_RIGHT, trimEnd, JSAttributes.configurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(prototype, TRIM_LEFT, trimStartFunction, JSAttributes.configurableNotEnumerableWritable());
+            JSObjectUtil.putDataProperty(prototype, TRIM_RIGHT, trimEndFunction, JSAttributes.configurableNotEnumerableWritable());
         }
         return prototype;
     }

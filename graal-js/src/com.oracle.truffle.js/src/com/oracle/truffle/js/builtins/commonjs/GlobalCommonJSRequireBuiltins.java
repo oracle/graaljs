@@ -49,6 +49,9 @@ import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
  * Built-ins for CommonJS 'require' emulation.
  */
 public class GlobalCommonJSRequireBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalCommonJSRequireBuiltins.GlobalRequire> {
+
+    public static final JSBuiltinsContainer GLOBAL_COMMONJS_REQUIRE_EXTENSIONS = new GlobalCommonJSRequireBuiltins();
+
     public GlobalCommonJSRequireBuiltins() {
         super(GlobalRequire.class);
     }

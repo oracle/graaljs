@@ -102,7 +102,6 @@ import com.oracle.truffle.js.builtins.ObjectFunctionBuiltins;
 import com.oracle.truffle.js.builtins.OperatorsBuiltins;
 import com.oracle.truffle.js.builtins.PerformanceBuiltins;
 import com.oracle.truffle.js.builtins.PolyglotBuiltins;
-import com.oracle.truffle.js.builtins.RealmFunctionBuiltins;
 import com.oracle.truffle.js.builtins.ReflectBuiltins;
 import com.oracle.truffle.js.builtins.RegExpBuiltins;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltins;
@@ -112,6 +111,8 @@ import com.oracle.truffle.js.builtins.foreign.ForeignIterablePrototypeBuiltins;
 import com.oracle.truffle.js.builtins.foreign.ForeignIteratorPrototypeBuiltins;
 import com.oracle.truffle.js.builtins.json.JSON;
 import com.oracle.truffle.js.builtins.temporal.TemporalNowBuiltins;
+import com.oracle.truffle.js.builtins.testing.PolyglotInternalBuiltins;
+import com.oracle.truffle.js.builtins.testing.RealmFunctionBuiltins;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
@@ -1238,9 +1239,9 @@ public class JSRealm {
         this.currentRealm = prevRealm;
     }
 
-    public final JSFunctionObject lookupFunction(JSBuiltinsContainer container, TruffleString methodName) {
-        assert JSRuntime.isPropertyKey(methodName);
-        Builtin builtin = Objects.requireNonNull(container.lookupFunctionByName(methodName));
+    public final JSFunctionObject lookupFunction(JSBuiltinsContainer container, Object key) {
+        assert JSRuntime.isPropertyKey(key);
+        Builtin builtin = Objects.requireNonNull(container.lookupFunctionByKey(key));
         JSFunctionData functionData = builtin.createFunctionData(context);
         return JSFunction.create(this, functionData);
     }
@@ -2209,17 +2210,18 @@ public class JSRealm {
                 throw Errors.createError("Access denied to CommonJS root folder: " + cwdOption);
             }
             // Define `require` and other globals in global scope.
-            JSDynamicObject requireFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, Strings.REQUIRE_PROPERTY_NAME);
-            JSDynamicObject resolveFunction = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, Strings.RESOLVE_PROPERTY_NAME);
+            JSBuiltinsContainer builtins = GlobalCommonJSRequireBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS;
+            JSDynamicObject requireFunction = lookupFunction(builtins, Strings.REQUIRE_PROPERTY_NAME);
+            JSDynamicObject resolveFunction = lookupFunction(builtins, Strings.RESOLVE_PROPERTY_NAME);
             JSObject.set(requireFunction, Strings.RESOLVE_PROPERTY_NAME, resolveFunction);
             putGlobalProperty(Strings.REQUIRE_PROPERTY_NAME, requireFunction);
-            JSDynamicObject dirnameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.dirnameGetter.getName());
+            JSDynamicObject dirnameGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.dirnameGetter.getKey());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.DIRNAME_VAR_NAME, PropertyDescriptor.createAccessor(dirnameGetter, Undefined.instance, false, false));
-            JSDynamicObject filenameGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.filenameGetter.getName());
+            JSDynamicObject filenameGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.filenameGetter.getKey());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.FILENAME_VAR_NAME, PropertyDescriptor.createAccessor(filenameGetter, Undefined.instance, false, false));
-            JSDynamicObject moduleGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalModuleGetter.getName());
+            JSDynamicObject moduleGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.globalModuleGetter.getKey());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.MODULE_PROPERTY_NAME, PropertyDescriptor.createAccessor(moduleGetter, Undefined.instance, false, false));
-            JSDynamicObject exportsGetter = lookupFunction(GlobalBuiltins.GLOBAL_COMMONJS_REQUIRE_EXTENSIONS, GlobalCommonJSRequireBuiltins.GlobalRequire.globalExportsGetter.getName());
+            JSDynamicObject exportsGetter = lookupFunction(builtins, GlobalCommonJSRequireBuiltins.GlobalRequire.globalExportsGetter.getKey());
             JSObject.defineOwnProperty(getGlobalObject(), Strings.EXPORTS_PROPERTY_NAME, PropertyDescriptor.createAccessor(exportsGetter, Undefined.instance, false, false));
             this.commonJSRequireFunctionObject = requireFunction;
         }
@@ -2459,12 +2461,11 @@ public class JSRealm {
     private void setupPolyglot() {
         JSObject polyglotObject = JSObjectUtil.createOrdinaryPrototypeObject(this);
         JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.BUILTINS);
-
+        if (getContextOptions().isPolyglotEvalFile()) {
+            JSObjectUtil.putDataProperty(polyglotObject, Strings.EVAL_FILE, lookupFunction(PolyglotBuiltins.BUILTINS, Strings.EVAL_FILE), JSAttributes.getDefaultNotEnumerable());
+        }
         if (getContextOptions().isDebugBuiltin()) {
-            JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotBuiltins.INTERNAL_BUILTINS);
-        } else if (getContextOptions().isPolyglotEvalFile()) {
-            // already loaded above when `debug-builtin` is true
-            JSObjectUtil.putDataProperty(polyglotObject, Strings.EVAL_FILE, lookupFunction(PolyglotBuiltins.INTERNAL_BUILTINS, Strings.EVAL_FILE), JSAttributes.getDefaultNotEnumerable());
+            JSObjectUtil.putFunctionsFromContainer(this, polyglotObject, PolyglotInternalBuiltins.BUILTINS);
         }
         putGlobalProperty(POLYGLOT_CLASS_NAME, polyglotObject);
     }
@@ -2555,7 +2556,7 @@ public class JSRealm {
         JSObjectUtil.putToStringTag(obj, ATOMICS_CLASS_NAME);
         JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.BUILTINS);
         if (getContextOptions().isAtomicsWaitAsync()) {
-            JSObjectUtil.putFunctionsFromContainer(this, obj, AtomicsBuiltins.WAIT_ASYNC_BUILTINS);
+            JSObjectUtil.putFunctionFromContainer(this, obj, AtomicsBuiltins.BUILTINS, AtomicsBuiltins.Atomics.waitAsync.getKey());
         }
         return obj;
     }

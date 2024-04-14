@@ -99,6 +99,8 @@ public abstract non-sealed class JSObject extends JSDynamicObject {
     public static final TruffleString CONSTRUCTOR = Strings.constant("constructor");
     public static final TruffleString PROTOTYPE = Strings.constant("prototype");
     public static final TruffleString PROTO = Strings.constant("__proto__");
+    public static final TruffleString GET_PROTO_NAME = Strings.constant("get __proto__");
+    public static final TruffleString SET_PROTO_NAME = Strings.constant("set __proto__");
     public static final HiddenKey HIDDEN_PROTO = new HiddenKey("[[Prototype]]");
 
     public static final TruffleString NO_SUCH_PROPERTY_NAME = Strings.constant("__noSuchProperty__");

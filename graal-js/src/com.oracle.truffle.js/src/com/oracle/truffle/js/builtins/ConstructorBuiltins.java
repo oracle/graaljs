@@ -313,6 +313,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         BigInt(1),
         Function(1),
         ArrayBuffer(1),
+
+        // Intl
         Collator(0),
         NumberFormat(0),
         ListFormat(0),
@@ -419,18 +421,15 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
 
         @Override
         public int getECMAScriptVersion() {
-            if (AsyncGeneratorFunction == this) {
-                return JSConfig.ECMAScript2018;
-            } else if (EnumSet.of(SharedArrayBuffer, AsyncFunction).contains(this)) {
-                return JSConfig.ECMAScript2017;
-            } else if (EnumSet.range(Map, Symbol).contains(this)) {
-                return 6;
-            } else if (EnumSet.of(PlainTime, Calendar, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, TimeZone, ZonedDateTime).contains(this)) {
-                return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(Iterator, AsyncIterator).contains(this)) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case Map, Set, WeakMap, WeakSet, GeneratorFunction, Proxy, Promise, TypedArray, Symbol -> JSConfig.ECMAScript2015;
+                case AsyncFunction, SharedArrayBuffer -> JSConfig.ECMAScript2017;
+                case AsyncGeneratorFunction -> JSConfig.ECMAScript2018;
+                case WeakRef, FinalizationRegistry -> JSConfig.ECMAScript2021;
+                case PlainTime, Calendar, Duration, PlainDate, PlainDateTime, PlainYearMonth, PlainMonthDay, Instant, TimeZone, ZonedDateTime -> JSConfig.StagingECMAScriptVersion;
+                case Iterator, AsyncIterator -> JSConfig.StagingECMAScriptVersion;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
     }
 

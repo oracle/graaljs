@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins.json;
 
 import java.util.ArrayList;
 import java.util.Arrays;
-import java.util.EnumSet;
 import java.util.List;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
@@ -126,10 +125,10 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.of(rawJSON, isRawJSON).contains(this)) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case rawJSON, isRawJSON -> JSConfig.StagingECMAScriptVersion;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
     }
 

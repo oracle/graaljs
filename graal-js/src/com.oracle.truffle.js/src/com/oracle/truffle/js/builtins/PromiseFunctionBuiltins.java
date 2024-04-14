@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -115,14 +115,12 @@ public final class PromiseFunctionBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public int getECMAScriptVersion() {
-            if (this == any) {
-                return JSConfig.ECMAScript2021;
-            } else if (this == allSettled) {
-                return JSConfig.ECMAScript2020;
-            } else if (this == withResolvers) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return 6;
+            return switch (this) {
+                case any -> JSConfig.ECMAScript2021;
+                case allSettled -> JSConfig.ECMAScript2020;
+                case withResolvers -> JSConfig.StagingECMAScriptVersion;
+                default -> JSConfig.ECMAScript2015;
+            };
         }
     }
 

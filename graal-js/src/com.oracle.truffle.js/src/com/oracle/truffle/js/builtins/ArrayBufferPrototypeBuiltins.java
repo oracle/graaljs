@@ -41,7 +41,6 @@
 package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
-import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -115,10 +114,10 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Override
         public int getECMAScriptVersion() {
-            if (EnumSet.of(detached, transfer, transferToFixedLength).contains(this)) {
-                return JSConfig.ECMAScript2024;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case detached, transfer, transferToFixedLength -> JSConfig.ECMAScript2024;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
 
     }

@@ -103,7 +103,6 @@ import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadBufferNo
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadFullyNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalReadLineNodeGen;
 import com.oracle.truffle.js.builtins.GlobalBuiltinsFactory.JSGlobalUnEscapeNodeGen;
-import com.oracle.truffle.js.builtins.commonjs.GlobalCommonJSRequireBuiltins;
 import com.oracle.truffle.js.builtins.helper.FloatParserNode;
 import com.oracle.truffle.js.builtins.helper.StringEscape;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -159,7 +158,6 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
     public static final JSBuiltinsContainer GLOBAL_NASHORN_EXTENSIONS = new GlobalNashornScriptingBuiltins();
     public static final JSBuiltinsContainer GLOBAL_PRINT = new GlobalPrintBuiltins();
     public static final JSBuiltinsContainer GLOBAL_LOAD = new GlobalLoadBuiltins();
-    public static final JSBuiltinsContainer GLOBAL_COMMONJS_REQUIRE_EXTENSIONS = new GlobalCommonJSRequireBuiltins();
 
     protected GlobalBuiltins() {
         super(Global.class);

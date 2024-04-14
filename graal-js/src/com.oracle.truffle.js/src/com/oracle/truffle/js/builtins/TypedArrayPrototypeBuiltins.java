@@ -195,14 +195,12 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Override
         public int getECMAScriptVersion() {
-            if (this == includes) {
-                return JSConfig.ECMAScript2016;
-            } else if (this == at) {
-                return JSConfig.ECMAScript2022;
-            } else if (EnumSet.of(findLast, findLastIndex, toReversed, toSorted, with).contains(this)) {
-                return JSConfig.ECMAScript2023;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case includes -> JSConfig.ECMAScript2016;
+                case at -> JSConfig.ECMAScript2022;
+                case findLast, findLastIndex, toReversed, toSorted, with -> JSConfig.ECMAScript2023;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
 
         @Override

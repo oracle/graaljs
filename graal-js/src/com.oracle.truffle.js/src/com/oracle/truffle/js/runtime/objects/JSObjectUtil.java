@@ -397,6 +397,15 @@ public final class JSObjectUtil {
         return (key instanceof TruffleString name && (Strings.equals(JSObject.NO_SUCH_PROPERTY_NAME, name) || Strings.equals(JSObject.NO_SUCH_METHOD_NAME, name)));
     }
 
+    public static void putFunctionFromContainer(JSRealm realm, JSDynamicObject thisObj, JSBuiltinsContainer container, Object key) {
+        JSContext context = realm.getContext();
+        Builtin builtin = container.lookupFunctionByKey(key);
+        assert !builtin.isGetter() && !builtin.isSetter() : builtin;
+        JSFunctionData functionData = builtin.createFunctionData(context);
+        JSFunctionObject functionObj = JSFunction.create(realm, functionData);
+        putDataProperty(thisObj, builtin.getKey(), functionObj, builtin.getAttributeFlags());
+    }
+
     public static void putFunctionsFromContainer(JSRealm realm, JSDynamicObject thisObj, JSBuiltinsContainer container) {
         JSContext context = realm.getContext();
         container.forEachBuiltin(new Consumer<Builtin>() {
@@ -404,9 +413,8 @@ public final class JSObjectUtil {
             public void accept(Builtin builtin) {
                 if (!builtin.isIncluded(context)) {
                     return;
-                } else if (builtin.isGetter() || builtin.isSetter()) {
-                    return;
                 }
+                assert !builtin.isGetter() && !builtin.isSetter() : builtin;
                 JSFunctionData functionData = builtin.createFunctionData(context);
                 putDataProperty(thisObj, builtin.getKey(), JSFunction.create(realm, functionData), builtin.getAttributeFlags());
             }

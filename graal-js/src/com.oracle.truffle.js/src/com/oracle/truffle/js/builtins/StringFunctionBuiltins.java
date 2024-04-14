@@ -136,12 +136,11 @@ public final class StringFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
         @Override
         public int getECMAScriptVersion() {
-            if (this == fromCodePoint) {
-                return 6;
-            } else if (this == dedent) {
-                return JSConfig.StagingECMAScriptVersion;
-            }
-            return BuiltinEnum.super.getECMAScriptVersion();
+            return switch (this) {
+                case fromCodePoint -> JSConfig.ECMAScript2015;
+                case dedent -> JSConfig.StagingECMAScriptVersion;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
     }
 
