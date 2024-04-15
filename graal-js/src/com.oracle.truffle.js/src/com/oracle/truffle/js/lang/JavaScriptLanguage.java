@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -186,6 +186,8 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
         ensureErrorClassesInitialized();
     }
 
+    private int realmCount;
+
     public JavaScriptLanguage() {
         this.promiseJobsQueueEmptyAssumption = Truffle.getRuntime().createAssumption("PromiseJobsQueueEmpty");
     }
@@ -359,6 +361,9 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
 
     @Override
     protected void initializeContext(JSRealm realm) {
+        synchronized (this) {
+            realmCount++;
+        }
         realm.initialize();
     }
 
@@ -457,6 +462,13 @@ public final class JavaScriptLanguage extends TruffleLanguage<JSRealm> {
             realm.getContext().getTimeProfiler().printCumulative();
         }
         realm.dispose();
+        synchronized (this) {
+            if (--realmCount == 0) {
+                // Clear inverted maps that are no longer needed to ensure
+                // that they are not stored in aux engine cache
+                realm.getContext().clearSymbolInvertedMaps();
+            }
+        }
     }
 
     @Override

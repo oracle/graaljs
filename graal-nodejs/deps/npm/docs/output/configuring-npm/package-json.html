@@ -364,26 +364,39 @@ will be used instead.</p>
 <li>The file(s) in the "bin" field</li>
 </ul>
 <p><code>README</code> &amp; <code>LICENSE</code> can have any case and extension.</p>
-<p>Conversely, some files are always ignored:</p>
+<p>Some files are always ignored by default:</p>
 <ul>
-<li><code>.git</code></li>
-<li><code>CVS</code></li>
-<li><code>.svn</code></li>
-<li><code>.hg</code></li>
-<li><code>.lock-wscript</code></li>
-<li><code>.wafpickle-N</code></li>
+<li><code>*.orig</code></li>
 <li><code>.*.swp</code></li>
 <li><code>.DS_Store</code></li>
 <li><code>._*</code></li>
+<li><code>.git</code></li>
+<li><code>.hg</code></li>
+<li><code>.lock-wscript</code></li>
+<li><code>.npmrc</code></li>
+<li><code>.svn</code></li>
+<li><code>.wafpickle-N</code></li>
+<li><code>CVS</code></li>
+<li><code>config.gypi</code></li>
+<li><code>node_modules</code></li>
 <li><code>npm-debug.log</code></li>
+<li><code>package-lock.json</code> (use
+<a href="../configuring-npm/npm-shrinkwrap-json.html"><code>npm-shrinkwrap.json</code></a>
+if you wish it to be published)</li>
+<li><code>pnpm-lock.yaml</code></li>
+<li><code>yarn.lock</code></li>
+</ul>
+<p>Most of these ignored files can be included specifically if included in
+the <code>files</code> globs.  Exceptions to this are:</p>
+<ul>
+<li><code>.git</code></li>
 <li><code>.npmrc</code></li>
 <li><code>node_modules</code></li>
-<li><code>config.gypi</code></li>
-<li><code>*.orig</code></li>
-<li><code>package-lock.json</code> (use
-<a href="../configuring-npm/npm-shrinkwrap-json.html"><code>npm-shrinkwrap.json</code></a> if you wish
-it to be published)</li>
+<li><code>package-lock.json</code></li>
+<li><code>pnpm-lock.yaml</code></li>
+<li><code>yarn.lock</code></li>
 </ul>
+<p>These can not be included.</p>
 <h3 id="main">main</h3>
 <p>The main field is a module ID that is the primary entry point to your
 program.  That is, if your package is named <code>foo</code>, and a user installs it,
@@ -685,7 +698,7 @@ contains a package. Local paths can be saved using <code>npm install -S</code> o
 </code></pre>
 <p>This feature is helpful for local offline development and creating tests
 that require npm installing where you don't want to hit an external server,
-but should not be used when publishing packages to the public registry.</p>
+but should not be used when publishing your package to the public registry.</p>
 <p><em>note</em>: Packages linked by local path will not have their own
 dependencies installed when <code>npm install</code> is ran in this case.  You must
 run <code>npm install</code> from inside the local path itself.</p>

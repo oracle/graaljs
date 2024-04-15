@@ -475,7 +475,7 @@ namespace v8 {
 
     const HeapSnapshot* HeapProfiler::TakeHeapSnapshot(ActivityControl* control, ObjectNameResolver* global_object_name_resolver, bool treat_global_objects_as_roots, bool capture_numeric_value) {
         TRACE
-        return nullptr;
+        return new HeapSnapshot();
     }
 
     SnapshotObjectId HeapProfiler::GetHeapStats(OutputStream* stream, int64_t* timestamp_us) {
@@ -747,6 +747,14 @@ namespace v8 {
 
     void Object::SetInternalField(int index, Local<Value> value) {
         reinterpret_cast<GraalObject*> (this)->SetInternalField(index, value);
+    }
+
+    void Object::SetInternalFieldForNodeCore(int index, Local<Module> value) {
+        reinterpret_cast<GraalObject*> (this)->SetInternalFieldForNodeCore(index, value);
+    }
+
+    void Object::SetInternalFieldForNodeCore(int index, Local<UnboundScript> value) {
+        reinterpret_cast<GraalObject*> (this)->SetInternalFieldForNodeCore(index, value);
     }
 
     Local<Value> Object::SlowGetInternalField(int index) {

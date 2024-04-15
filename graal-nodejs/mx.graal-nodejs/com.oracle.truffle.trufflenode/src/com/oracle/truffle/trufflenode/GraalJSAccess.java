@@ -321,8 +321,8 @@ public final class GraalJSAccess {
     private static final Map<Integer, HiddenKey> INTERNAL_FIELD_KEYS_MAP = new ConcurrentHashMap<>();
     private static final HiddenKey[] INTERNAL_FIELD_KEYS_ARRAY = createInternalFieldKeysArray(10);
 
-    private static final Symbol RESOLVER_RESOLVE = Symbol.create(RESOLVE);
-    private static final Symbol RESOLVER_REJECT = Symbol.create(REJECT);
+    private static final Symbol RESOLVER_RESOLVE = Symbol.createPrivate(RESOLVE);
+    private static final Symbol RESOLVER_REJECT = Symbol.createPrivate(REJECT);
 
     public static final HiddenKey HOLDER_KEY = new HiddenKey("Holder");
     public static final HiddenKey ACCESSOR_KEY = new HiddenKey("Accessor");
@@ -1589,10 +1589,18 @@ public final class GraalJSAccess {
     }
 
     public Object symbolNew(Object name) {
-        if (isAuxEngineCacheMode()) {
-            return getContextEngineCacheData(mainJSContext).createOrUseCachedSingleton((TruffleString) name);
+        Object prev = mainJSRealm.getTruffleContext().enter(null);
+        try {
+            Symbol symbol;
+            if (isAuxEngineCacheMode()) {
+                symbol = getContextEngineCacheData(mainJSContext).createOrUseCachedSingleton((TruffleString) name);
+            } else {
+                symbol = Symbol.create((TruffleString) name);
+            }
+            return symbol;
+        } finally {
+            mainJSRealm.getTruffleContext().leave(null, prev);
         }
-        return Symbol.create((TruffleString) name);
     }
 
     public Object symbolName(Object symbol) {
@@ -2691,7 +2699,7 @@ public final class GraalJSAccess {
      * Key for a weak callback.
      */
     private static final HiddenKey HIDDEN_WEAK_CALLBACK = new HiddenKey("WeakCallback");
-    private static final HiddenKey HIDDEN_WEAK_CALLBACK_CONTEXT = new HiddenKey("WeakCallbackContext");
+    private static final HiddenKey HIDDEN_WEAK_CALLBACK_SUBSTITUTE = new HiddenKey("WeakCallbackSubstitute");
 
     /**
      * Reference queue associated with weak references to objects that require invocation of a
@@ -2708,17 +2716,22 @@ public final class GraalJSAccess {
     @SuppressWarnings("unchecked")
     private WeakCallback updateWeakCallback(Object object, long reference, long data, long callbackPointer, int type) {
         Map<Long, WeakCallback> map;
-        if (object instanceof NodeScriptOrModule) {
-            map = ((NodeScriptOrModule) object).getWeakCallbackMap();
+        if (object instanceof NodeScriptOrModule scriptOrModule) {
+            map = scriptOrModule.getWeakCallbackMap();
+        } else if (object instanceof UnboundScript script) {
+            map = script.getWeakCallbackMap();
         } else {
             JSDynamicObject target;
             HiddenKey key;
-            if (object instanceof JSRealm) {
-                target = ((JSRealm) object).getGlobalObject();
-                key = HIDDEN_WEAK_CALLBACK_CONTEXT;
-            } else if (object instanceof JSDynamicObject) {
-                target = (JSDynamicObject) object;
+            if (object instanceof JSRealm realm) {
+                target = realm.getGlobalObject();
+                key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
+            } else if (object instanceof JSDynamicObject jsObject) {
+                target = jsObject;
                 key = HIDDEN_WEAK_CALLBACK;
+            } else if (object instanceof JSModuleRecord moduleRecord) {
+                target = moduleRecord.getContext().getEvaluator().getModuleNamespace(moduleRecord);
+                key = HIDDEN_WEAK_CALLBACK_SUBSTITUTE;
             } else {
                 System.err.println("Weak references not supported for " + object);
                 return null;
@@ -4162,7 +4175,7 @@ public final class GraalJSAccess {
         NativeAccess.notifyWasmStreamingCallback(response, resolve, reject);
     }
 
-    private static class WeakCallback extends WeakReference<Object> {
+    public static class WeakCallback extends WeakReference<Object> {
 
         long data;
         long callback;

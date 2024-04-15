@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,12 +42,16 @@ package com.oracle.truffle.trufflenode.info;
 
 import java.nio.ByteBuffer;
 
+import java.util.HashMap;
+import java.util.Map;
+
 import com.oracle.js.parser.ir.FunctionNode;
 import com.oracle.truffle.api.TruffleFile;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.runtime.Strings;
+import com.oracle.truffle.trufflenode.GraalJSAccess;
 
 public final class UnboundScript {
 
@@ -58,6 +62,8 @@ public final class UnboundScript {
     private final int id;
     private final Source source;
     private final Object parseResult;
+
+    private Map<Long, GraalJSAccess.WeakCallback> weakCallbackMap;
 
     private UnboundScript(Source source, Object parseResult, int id) {
         this.source = source;
@@ -115,4 +121,12 @@ public final class UnboundScript {
     public Object getParseResult() {
         return parseResult;
     }
+
+    public Map<Long, GraalJSAccess.WeakCallback> getWeakCallbackMap() {
+        if (weakCallbackMap == null) {
+            weakCallbackMap = new HashMap<>();
+        }
+        return weakCallbackMap;
+    }
+
 }
