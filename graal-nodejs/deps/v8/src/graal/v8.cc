@@ -475,7 +475,7 @@ namespace v8 {
 
     const HeapSnapshot* HeapProfiler::TakeHeapSnapshot(ActivityControl* control, ObjectNameResolver* global_object_name_resolver, bool treat_global_objects_as_roots, bool capture_numeric_value) {
         TRACE
-        return nullptr;
+        return new HeapSnapshot();
     }
 
     SnapshotObjectId HeapProfiler::GetHeapStats(OutputStream* stream, int64_t* timestamp_us) {
