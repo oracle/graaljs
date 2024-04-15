@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -76,9 +76,6 @@ public final class JSProperty {
 
     /** A special data property with internal accessor-like semantics. */
     private static final int DATA_SPECIAL = PROXY | MODULE_NAMESPACE_EXPORT;
-
-    /** Global var declaration or function declaration (currently only set in eval code). */
-    public static final int GLOBAL_VAR = 1 << 7;
 
     private JSProperty() {
     }
@@ -247,10 +244,6 @@ public final class JSProperty {
 
     public static boolean isDataSpecial(int flags) {
         return (flags & DATA_SPECIAL) != 0;
-    }
-
-    public static boolean isGlobalVarDeclaration(int flags) {
-        return (flags & GLOBAL_VAR) != 0;
     }
 
     public static PropertyProxy getConstantProxy(Property proxyProperty) {

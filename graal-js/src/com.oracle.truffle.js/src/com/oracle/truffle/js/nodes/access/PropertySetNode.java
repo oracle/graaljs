@@ -141,7 +141,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     protected PropertySetNode(Object key, JSContext context, boolean isGlobal, boolean isStrict, boolean setOwnProperty, int attributeFlags, boolean declaration, boolean superProperty) {
         super(key, context);
-        assert setOwnProperty ? attributeFlags == (attributeFlags & (JSAttributes.ATTRIBUTES_MASK | JSProperty.CONST | JSProperty.GLOBAL_VAR)) : attributeFlags == JSAttributes.getDefault();
+        assert setOwnProperty ? attributeFlags == (attributeFlags & (JSAttributes.ATTRIBUTES_MASK | JSProperty.CONST)) : attributeFlags == JSAttributes.getDefault();
         this.isGlobal = isGlobal;
         this.isStrict = isStrict;
         this.setOwnProperty = setOwnProperty;

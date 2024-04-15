@@ -203,9 +203,6 @@ public final class DefinePropertyUtil {
         Property currentProperty = getPropertyByKey(thisObj, key);
         assert !JSProperty.isDataSpecial(currentProperty) || JSProperty.isProxy(currentProperty) : currentProperty;
 
-        // Preserve internal property flags (currently only for global var declarations).
-        newAttr |= currentProperty.getFlags() & JSProperty.GLOBAL_VAR;
-
         if (JSProperty.isProxy(currentProperty) && descriptor.isDataDescriptor()) {
             PropertyProxy proxy = (PropertyProxy) JSDynamicObject.getOrNull(thisObj, key);
             if (currentProperty.getFlags() != newAttr) {

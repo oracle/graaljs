@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,11 +43,9 @@ package com.oracle.truffle.js.nodes.access;
 import java.util.Set;
 
 import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
-import com.oracle.truffle.api.object.Property;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -55,9 +53,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSGlobal;
-import com.oracle.truffle.js.runtime.builtins.JSGlobalObject;
-import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
-import com.oracle.truffle.js.runtime.objects.JSProperty;
 
 @ImportStatic({JSGlobal.class})
 public abstract class DeclareGlobalNode extends JavaScriptBaseNode {
@@ -88,20 +83,6 @@ public abstract class DeclareGlobalNode extends JavaScriptBaseNode {
 
     public boolean isGlobalFunctionDeclaration() {
         return false;
-    }
-
-    @TruffleBoundary
-    protected final void ensureHasVarDeclarationOrRestrictedGlobalProperty(JSDynamicObject globalObject) {
-        if (globalObject instanceof JSGlobalObject) {
-            Property property = globalObject.getShape().getProperty(varName);
-            if (property != null && JSProperty.isConfigurable(property.getFlags())) {
-                // Property exists and is configurable (i.e. HasRestrictedGlobalProperty == false);
-                // Ensure it is flagged for future HasVarDeclaration checks.
-                if (!JSProperty.isGlobalVarDeclaration(property.getFlags())) {
-                    JSDynamicObject.setPropertyFlags(globalObject, varName, property.getFlags() | JSProperty.GLOBAL_VAR);
-                }
-            }
-        }
     }
 
     protected abstract DeclareGlobalNode copyUninitialized(Set<Class<? extends Tag>> materializedTags);
