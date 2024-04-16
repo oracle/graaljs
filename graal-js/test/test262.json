@@ -177,20 +177,12 @@
     },
     "comment" : "Contains a hard-coded timeout that is exceeded in CompileImmediately mode"
   }, {
-    "filePath" : "built-ins/DataView/prototype/setFloat16/set-values-return-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
-  }, {
     "filePath" : "built-ins/Function/prototype/toString/built-in-function-object.js",
     "status" : "PASS",
     "statusOverrides" : {
       "COMPILE_IMMEDIATELY" : "SKIP"
     },
     "comment" : "Long-running in compile mode"
-  }, {
-    "filePath" : "built-ins/Math/f16round/value-conversion.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-04-12"
   }, {
     "filePath" : "built-ins/Object/defineProperty/15.2.3.6-4-116.js",
     "status" : "SKIP",
@@ -4391,61 +4383,12 @@
     "status" : "FAIL",
     "comment" : "new failures 2022-05-20"
   }, {
-    "filePath" : "built-ins/TypedArray/prototype/fill/fill-values-conversion-operations.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Float16Array: wrong conversion to float16"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/map/return-new-typedarray-conversion-operation.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Float16Array: wrong conversion to float16"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/set/array-arg-src-tonumber-value-conversions.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Float16Array: wrong conversion to float16"
-  }, {
-    "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-diff-buffer-other-type-conversions.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Float16Array: wrong conversion to float16"
-  }, {
     "filePath" : "built-ins/TypedArray/prototype/set/typedarray-arg-set-values-same-buffer-other-type.js",
     "status" : "PASS",
     "statusOverrides" : {
       "BIG_ENDIAN" : "FAIL"
     },
     "comment" : "Incorrect test (assumes little endian platform), see https://github.com/tc39/test262/issues/757"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/ctors/object-arg/conversion-operation.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Float16Array: wrong conversion to float16"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/DefineOwnProperty/conversion-operation.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Float16Array: wrong conversion to float16"
-  }, {
-    "filePath" : "built-ins/TypedArrayConstructors/internals/Set/conversion-operation.js",
-    "status" : "PASS",
-    "statusOverrides" : {
-      "STAGING" : "FAIL"
-    },
-    "comment" : "Float16Array: wrong conversion to float16"
   }, {
     "filePath" : "intl402/DateTimeFormat/prototype/format/temporal-objects-resolved-time-zone.js",
     "status" : "FAIL",

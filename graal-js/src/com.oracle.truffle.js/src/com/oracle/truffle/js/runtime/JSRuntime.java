@@ -2936,6 +2936,37 @@ public final class JSRuntime {
         }
     }
 
+    public static short toFloat16(Number number) {
+        return toFloat16(doubleValue(number));
+    }
+
+    public static short toFloat16(double d) {
+        float f = (float) d;
+        short s = Float.floatToFloat16(f);
+        if (f != d) {
+            // The conversion to float is not exact. Check if we get the same
+            // float16 when using the float on the other side of the original value.
+            if (f < d) {
+                short sNextUp = Float.floatToFloat16(Math.nextUp(f));
+                if (s != sNextUp) {
+                    // We need the closer one from low and high
+                    float low = Float.float16ToFloat(s);
+                    float high = Float.float16ToFloat(sNextUp);
+                    return (high - d < d - low) ? sNextUp : s;
+                }
+            } else {
+                short sNextDown = Float.floatToFloat16(Math.nextDown(f));
+                if (s != sNextDown) {
+                    // We need the closer one from low and high
+                    float low = Float.float16ToFloat(sNextDown);
+                    float high = Float.float16ToFloat(s);
+                    return (high - d < d - low) ? s : sNextDown;
+                }
+            }
+        }
+        return s;
+    }
+
     public static Object getBufferElementDirect(ByteBufferAccess bufferAccess, ByteBuffer buffer, TypedArray.ElementType elementType, int index) {
         switch (elementType) {
             case Int8:
@@ -2996,7 +3027,7 @@ public final class JSRuntime {
                 bufferAccess.putInt64(buffer, index, toBigInt(value).longValue());
                 break;
             case Float16:
-                bufferAccess.putFloat16(buffer, index, Float.floatToFloat16(floatValue((Number) value)));
+                bufferAccess.putFloat16(buffer, index, toFloat16((Number) value));
                 break;
             case Float32:
                 bufferAccess.putFloat(buffer, index, floatValue((Number) value));
