@@ -43,6 +43,7 @@ package com.oracle.truffle.js.builtins.math;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 
 public abstract class F16roundNode extends MathOperation {
 
@@ -52,7 +53,7 @@ public abstract class F16roundNode extends MathOperation {
 
     @Specialization
     protected static double f16round(double x) {
-        return Float.float16ToFloat(Float.floatToFloat16((float) x));
+        return Float.float16ToFloat(JSRuntime.toFloat16(x));
     }
 
     @Specialization

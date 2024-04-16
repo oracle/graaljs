@@ -1572,7 +1572,7 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public void setDoubleImpl(JSArrayBufferObject buffer, int offset, int index, double value, InteropLibrary interop) {
-            ByteArrayAccess.nativeOrder().putFloat16(getByteArray(buffer), offset + index * FLOAT16_BYTES_PER_ELEMENT, Float.floatToFloat16((float) value));
+            ByteArrayAccess.nativeOrder().putFloat16(getByteArray(buffer), offset + index * FLOAT16_BYTES_PER_ELEMENT, JSRuntime.toFloat16(value));
         }
 
         @Override
@@ -1582,7 +1582,7 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public void setBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
-            ByteArrayAccess.forOrder(littleEndian).putFloat16(getByteArray(buffer), index, Float.floatToFloat16(JSRuntime.floatValue((Number) value)));
+            ByteArrayAccess.forOrder(littleEndian).putFloat16(getByteArray(buffer), index, JSRuntime.toFloat16((Number) value));
         }
 
         @Override
@@ -1603,7 +1603,7 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public void setDoubleImpl(JSArrayBufferObject buffer, int offset, int index, double value, InteropLibrary interop) {
-            ByteBufferAccess.nativeOrder().putFloat16(getDirectByteBuffer(buffer), offset + index * FLOAT16_BYTES_PER_ELEMENT, Float.floatToFloat16((float) value));
+            ByteBufferAccess.nativeOrder().putFloat16(getDirectByteBuffer(buffer), offset + index * FLOAT16_BYTES_PER_ELEMENT, JSRuntime.toFloat16(value));
         }
 
         @Override
@@ -1613,7 +1613,7 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public void setBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
-            ByteBufferAccess.forOrder(littleEndian).putFloat16(getDirectByteBuffer(buffer), index, Float.floatToFloat16(JSRuntime.floatValue((Number) value)));
+            ByteBufferAccess.forOrder(littleEndian).putFloat16(getDirectByteBuffer(buffer), index, JSRuntime.toFloat16((Number) value));
         }
 
         @Override
@@ -1634,7 +1634,7 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public void setDoubleImpl(JSArrayBufferObject buffer, int offset, int index, double value, InteropLibrary interop) {
-            writeBufferFloat16(buffer, offset + index * FLOAT16_BYTES_PER_ELEMENT, (float) value, ByteOrder.nativeOrder(), interop);
+            writeBufferFloat16(buffer, offset + index * FLOAT16_BYTES_PER_ELEMENT, value, ByteOrder.nativeOrder(), interop);
         }
 
         @Override
@@ -1644,7 +1644,7 @@ public abstract class TypedArray extends ScriptArray {
 
         @Override
         public void setBufferElement(JSArrayBufferObject buffer, int index, boolean littleEndian, Object value, InteropLibrary interop) {
-            writeBufferFloat16(buffer, index, JSRuntime.floatValue((Number) value), littleEndian ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN, interop);
+            writeBufferFloat16(buffer, index, JSRuntime.doubleValue((Number) value), littleEndian ? ByteOrder.LITTLE_ENDIAN : ByteOrder.BIG_ENDIAN, interop);
         }
 
         static float readBufferFloat16(Object buffer, int byteIndex, ByteOrder order, InteropLibrary interop) {
@@ -1657,9 +1657,9 @@ public abstract class TypedArray extends ScriptArray {
             }
         }
 
-        static void writeBufferFloat16(Object buffer, int byteIndex, float value, ByteOrder order, InteropLibrary interop) {
+        static void writeBufferFloat16(Object buffer, int byteIndex, double value, ByteOrder order, InteropLibrary interop) {
             try {
-                interop.writeBufferShort(buffer, order, byteIndex, Float.floatToFloat16(value));
+                interop.writeBufferShort(buffer, order, byteIndex, JSRuntime.toFloat16(value));
             } catch (UnsupportedMessageException e) {
                 throw Errors.createTypeErrorReadOnlyBuffer();
             } catch (InvalidBufferOffsetException e) {
