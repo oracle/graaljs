@@ -49,7 +49,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -270,19 +269,15 @@ public class JSContext {
     // Used to track singleton symbols allocations across aux engine cache runs.
     private Object symbolUsageMarker = new Object();
 
-    private final Map<Symbol, Void> unregisteredSymbols = new WeakHashMap<>();
+    private final Map<Symbol, Boolean> unregisteredSymbols = ConcurrentWeakIdentityHashMap.create();
 
     @TruffleBoundary
     public void unregisteredSymbolCreated(Symbol symbol) {
-        synchronized (this) {
-            unregisteredSymbols.put(symbol, null);
-        }
+        unregisteredSymbols.put(symbol, Boolean.TRUE);
     }
 
     public void clearSymbolInvertedMaps() {
-        for (Symbol symbol : unregisteredSymbols.keySet()) {
-            symbol.clearInvertedMap();
-        }
+        unregisteredSymbols.forEach((symbol, unused) -> symbol.clearInvertedMap());
     }
 
     public void resetSymbolUsageMarker() {
