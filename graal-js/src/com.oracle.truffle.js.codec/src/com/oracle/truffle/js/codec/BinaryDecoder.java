@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -138,9 +138,8 @@ public final class BinaryDecoder {
     public byte[] getByteArray() {
         int size = getUInt();
         byte[] array = new byte[size];
-        for (int i = 0; i < size; i++) {
-            array[i] = (byte) getU1();
-        }
+        buffer.get(pos, array);
+        pos += size;
         return array;
     }
 
