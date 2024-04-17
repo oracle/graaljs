@@ -49,7 +49,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.WeakHashMap;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
@@ -166,6 +165,7 @@ import com.oracle.truffle.js.runtime.objects.Null;
 import com.oracle.truffle.js.runtime.objects.ScriptOrModule;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.CompilableBiFunction;
+import com.oracle.truffle.js.runtime.util.ConcurrentWeakIdentityHashMap;
 import com.oracle.truffle.js.runtime.util.DebugJSAgent;
 import com.oracle.truffle.js.runtime.util.StableContextOptionValue;
 import com.oracle.truffle.js.runtime.util.TRegexUtil;
@@ -269,19 +269,15 @@ public class JSContext {
     // Used to track singleton symbols allocations across aux engine cache runs.
     private Object symbolUsageMarker = new Object();
 
-    private final Map<Symbol, Void> unregisteredSymbols = new WeakHashMap<>();
+    private final Map<Symbol, Boolean> unregisteredSymbols = ConcurrentWeakIdentityHashMap.create();
 
     @TruffleBoundary
     public void unregisteredSymbolCreated(Symbol symbol) {
-        synchronized (this) {
-            unregisteredSymbols.put(symbol, null);
-        }
+        unregisteredSymbols.put(symbol, Boolean.TRUE);
     }
 
     public void clearSymbolInvertedMaps() {
-        for (Symbol symbol : unregisteredSymbols.keySet()) {
-            symbol.clearInvertedMap();
-        }
+        unregisteredSymbols.forEach((symbol, unused) -> symbol.clearInvertedMap());
     }
 
     public void resetSymbolUsageMarker() {
@@ -416,7 +412,7 @@ public class JSContext {
     final JSFunctionData protoGetterFunctionData;
     final JSFunctionData protoSetterFunctionData;
 
-    private Map<Shape, JSShapeData> shapeDataMap;
+    private final Map<Shape, JSShapeData> shapeDataMap = ConcurrentWeakIdentityHashMap.create();
 
     private final Assumption singleRealmAssumption;
     private final boolean isMultiContext;
@@ -1352,19 +1348,7 @@ public class JSContext {
     }
 
     public Map<Shape, JSShapeData> getShapeDataMap() {
-        assert Thread.holdsLock(this);
-        Map<Shape, JSShapeData> map = shapeDataMap;
-        if (map == null) {
-            map = createShapeDataMap();
-        }
-        return map;
-    }
-
-    private Map<Shape, JSShapeData> createShapeDataMap() {
-        CompilerAsserts.neverPartOfCompilation();
-        Map<Shape, JSShapeData> map = new WeakHashMap<>();
-        shapeDataMap = map;
-        return map;
+        return shapeDataMap;
     }
 
     public JavaScriptLanguage getLanguage() {
