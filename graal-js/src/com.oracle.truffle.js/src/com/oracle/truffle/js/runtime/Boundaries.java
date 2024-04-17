@@ -215,6 +215,11 @@ public final class Boundaries {
         dst.put(dstPos, src, srcPos, srcLength);
     }
 
+    @TruffleBoundary(allowInlining = true)
+    public static ByteBuffer byteBufferWrap(byte[] array) {
+        return ByteBuffer.wrap(array);
+    }
+
     @TruffleBoundary
     public static boolean setContains(Set<?> set, Object element) {
         return set.contains(element);
