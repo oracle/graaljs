@@ -2902,12 +2902,11 @@ public final class TemporalUtil {
     }
 
     public static JSTemporalTimeZoneObject systemTimeZone(JSContext ctx, JSRealm realm) {
-        TruffleString identifier = defaultTimeZone();
-        return createTemporalTimeZone(ctx, realm, identifier);
+        return createTemporalTimeZone(ctx, realm, systemTimeZoneIdentifier(realm));
     }
 
-    public static TruffleString defaultTimeZone() {
-        return UTC;
+    public static TruffleString systemTimeZoneIdentifier(JSRealm realm) {
+        return Strings.fromJavaString(realm.getLocalTimeZoneId().getId());
     }
 
     public static boolean isTemporalInstant(Object obj) {
