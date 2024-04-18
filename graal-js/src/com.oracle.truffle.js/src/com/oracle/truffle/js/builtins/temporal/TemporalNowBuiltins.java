@@ -61,7 +61,6 @@ import com.oracle.truffle.js.nodes.temporal.ToTemporalTimeZoneSlotValueNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
-import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendarObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalInstantObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDate;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
@@ -180,9 +179,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
         public JSTemporalPlainDateTimeObject plainDateTimeISO(Object temporalTimeZoneLike,
                         @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                         @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
-            JSRealm realm = getRealm();
-            JSTemporalCalendarObject iso8601Calendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
-            return TemporalUtil.systemDateTime(temporalTimeZoneLike, iso8601Calendar, getContext(), realm, toCalendarSlotValue, toTemporalTimeZone);
+            return TemporalUtil.systemDateTime(temporalTimeZoneLike, TemporalConstants.ISO8601, getContext(), getRealm(), toCalendarSlotValue, toTemporalTimeZone);
         }
     }
 
@@ -210,9 +207,7 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
         public JSTemporalZonedDateTimeObject zonedDateTimeISO(Object temporalTimeZoneLike,
                         @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                         @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
-            JSRealm realm = getRealm();
-            JSTemporalCalendarObject iso8601Calendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
-            return TemporalUtil.systemZonedDateTime(temporalTimeZoneLike, iso8601Calendar, getContext(), realm, toCalendarSlotValue, toTemporalTimeZone);
+            return TemporalUtil.systemZonedDateTime(temporalTimeZoneLike, TemporalConstants.ISO8601, getContext(), getRealm(), toCalendarSlotValue, toTemporalTimeZone);
         }
     }
 
@@ -245,9 +240,8 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
                         @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                         @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
             JSRealm realm = getRealm();
-            JSTemporalCalendarObject calendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
-            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext(), realm, toCalendarSlotValue, toTemporalTimeZone);
-            return JSTemporalPlainDate.create(getContext(), getRealm(),
+            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, TemporalConstants.ISO8601, getContext(), realm, toCalendarSlotValue, toTemporalTimeZone);
+            return JSTemporalPlainDate.create(getContext(), realm,
                             dateTime.getYear(), dateTime.getMonth(), dateTime.getDay(), dateTime.getCalendar(), this, errorBranch);
         }
     }
@@ -264,9 +258,8 @@ public class TemporalNowBuiltins extends JSBuiltinsContainer.SwitchEnum<Temporal
                         @Cached ToTemporalCalendarSlotValueNode toCalendarSlotValue,
                         @Cached ToTemporalTimeZoneSlotValueNode toTemporalTimeZone) {
             JSRealm realm = getRealm();
-            JSTemporalCalendarObject calendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
-            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, calendar, getContext(), realm, toCalendarSlotValue, toTemporalTimeZone);
-            return JSTemporalPlainTime.create(getContext(), getRealm(),
+            JSTemporalPlainDateTimeObject dateTime = TemporalUtil.systemDateTime(temporalTimeZoneLike, TemporalConstants.ISO8601, getContext(), realm, toCalendarSlotValue, toTemporalTimeZone);
+            return JSTemporalPlainTime.create(getContext(), realm,
                             dateTime.getHour(), dateTime.getMinute(), dateTime.getSecond(), dateTime.getMillisecond(), dateTime.getMicrosecond(), dateTime.getNanosecond(), this, errorBranch);
         }
     }
