@@ -43,7 +43,7 @@ package com.oracle.truffle.trufflenode.buffer;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.JSBuiltinsContainer;
+import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
@@ -59,7 +59,6 @@ import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.RealmData;
 
 public final class NIOBuffer extends JSNonProxy {
-    private static final JSBuiltinsContainer NIO_BUFFER_BUILTINS = new NIOBufferBuiltins();
 
     public static final TruffleString NIO_BUFFER_MODULE_NAME = Strings.constant("node:internal/graal/buffer");
 
@@ -72,29 +71,28 @@ public final class NIOBuffer extends JSNonProxy {
     private static JSObject create(JSRealm realm) {
         JSContext context = realm.getContext();
         JSObject obj = JSOrdinary.createWithNullPrototype(context);
-        JSObjectUtil.putFunctionsFromContainer(realm, obj, NIO_BUFFER_BUILTINS);
+        JSObjectUtil.putFunctionsFromContainer(realm, obj, NIOBufferPrototype.BUILTINS);
         return obj;
     }
 
     @TruffleBoundary
-    public static Object createInitFunction(JSRealm realm) {
+    public static Object createInitFunction(JSRealm functionRealm) {
         // This JS function will be executed at node.js bootstrap time to register
         // the "default" Buffer API functions.
-        JavaScriptRootNode wrapperNode = new JavaScriptRootNode() {
+        JavaScriptRootNode wrapperNode = new JavaScriptRootNode(functionRealm.getContext().getLanguage()) {
             @Override
             public Object execute(VirtualFrame frame) {
                 Object[] args = frame.getArguments();
-                assert args.length == 4;
-                JSFunctionObject nativeUtf8Write = (JSFunctionObject) args[2];
-                JSFunctionObject nativeUtf8Slice = (JSFunctionObject) args[3];
-                RealmData embedderData = GraalJSAccess.getRealmEmbedderData(getRealm());
+                assert JSArguments.getUserArgumentCount(args) == 1 : JSArguments.getUserArgumentCount(args);
+                JSFunctionObject nativeUtf8Write = (JSFunctionObject) JSArguments.getUserArgument(args, 0);
+                JSRealm realm = getRealm();
+                RealmData embedderData = GraalJSAccess.getRealmEmbedderData(realm);
                 embedderData.setNativeUtf8Write(nativeUtf8Write);
-                embedderData.setNativeUtf8Slice(nativeUtf8Slice);
-                return create(getRealm());
+                return create(realm);
             }
         };
-        JSFunctionData functionData = JSFunctionData.createCallOnly(realm.getContext(), wrapperNode.getCallTarget(), 2, NIO_BUFFER_BUILTINS_INIT_FUNCTION);
-        return JSFunction.create(realm, functionData);
+        JSFunctionData functionData = JSFunctionData.createCallOnly(functionRealm.getContext(), wrapperNode.getCallTarget(), 2, NIO_BUFFER_BUILTINS_INIT_FUNCTION);
+        return JSFunction.create(functionRealm, functionData);
     }
 
 }

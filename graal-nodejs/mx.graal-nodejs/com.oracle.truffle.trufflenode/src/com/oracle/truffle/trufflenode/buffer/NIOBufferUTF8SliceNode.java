@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,63 +45,82 @@ import java.nio.ByteBuffer;
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Shared;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropException;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.LoopNode;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.access.ArrayBufferViewGetByteLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
+import com.oracle.truffle.js.runtime.Boundaries;
+import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
-import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
-import com.oracle.truffle.js.runtime.builtins.JSFunction;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
-import com.oracle.truffle.trufflenode.GraalJSAccess;
-import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 
+@ImportStatic(JSConfig.class)
 public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
-    protected final BranchProfile nativePath = BranchProfile.create();
     protected final BranchProfile errorBranch = BranchProfile.create();
 
     public NIOBufferUTF8SliceNode(JSContext context, JSBuiltin builtin) {
         super(context, builtin);
     }
 
-    private JSFunctionObject getNativeUtf8Slice() {
-        return GraalJSAccess.getRealmEmbedderData(getRealm()).getNativeUtf8Slice();
-    }
-
     @Specialization(guards = "isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
     final Object sliceDirect(JSTypedArrayObject target, Object start, Object end,
-                    @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
-                    @Cached @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
-                    @Cached @Shared("fromByteArray") TruffleString.FromByteArrayNode fromByteArrayNode,
-                    @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
-                    @Cached @Shared("isValid") TruffleString.IsValidNode isValidNode) {
-        JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
+                    @Cached @Shared JSToIntegerAsIntNode toIntNode,
+                    @Cached @Shared ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared TruffleString.FromByteArrayNode fromByteArrayNode,
+                    @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode) {
+        JSArrayBufferObject arrayBuffer = target.getArrayBuffer();
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
 
         return slice(target, start, end, rawBuffer,
-                        toIntNode, getLengthNode, fromByteArrayNode, switchEncodingNode, isValidNode);
+                        toIntNode, getLengthNode, fromByteArrayNode, switchEncodingNode, null);
     }
 
-    @Specialization(guards = "!isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
-    final Object sliceInterop(JSTypedArrayObject target, Object start, Object end,
-                    @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
-                    @Cached @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
-                    @Cached @Shared("fromByteArray") TruffleString.FromByteArrayNode fromByteArrayNode,
-                    @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
-                    @Cached @Shared("isValid") TruffleString.IsValidNode isValidNode,
-                    @Cached(inline = true) ArrayBufferGetContentsNode arrayBufferGetContentsNode) {
-        JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
-        ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(this, arrayBuffer);
+    @Specialization(guards = "isJSHeapArrayBuffer(target.getArrayBuffer())")
+    final Object sliceHeap(JSTypedArrayObject target, Object start, Object end,
+                    @Cached @Shared JSToIntegerAsIntNode toIntNode,
+                    @Cached @Shared ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared TruffleString.FromByteArrayNode fromByteArrayNode,
+                    @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode) {
+        JSArrayBufferObject arrayBuffer = target.getArrayBuffer();
+        ByteBuffer rawBuffer = Boundaries.byteBufferWrap(JSArrayBufferObject.getByteArray(arrayBuffer));
 
         return slice(target, start, end, rawBuffer,
-                        toIntNode, getLengthNode, fromByteArrayNode, switchEncodingNode, isValidNode);
+                        toIntNode, getLengthNode, fromByteArrayNode, switchEncodingNode, null);
+    }
+
+    @Specialization(guards = "isJSInteropArrayBuffer(target.getArrayBuffer())")
+    final Object sliceInterop(JSTypedArrayObject target, Object start, Object end,
+                    @Cached @Shared JSToIntegerAsIntNode toIntNode,
+                    @Cached @Shared ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared TruffleString.FromByteArrayNode fromByteArrayNode,
+                    @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @CachedLibrary(limit = "1") InteropLibrary asByteBufferInterop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bufferInterop) {
+        JSArrayBufferObject arrayBuffer = target.getArrayBuffer();
+        ByteBuffer rawBuffer;
+        ByteBuffer maybeRawBuffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(arrayBuffer, asByteBufferInterop, getRealm());
+        if (maybeRawBuffer != null) {
+            // We have direct read access to the backing ByteBuffer.
+            rawBuffer = maybeRawBuffer;
+        } else {
+            // Read from the foreign buffer object using InteropLibrary.
+            rawBuffer = null;
+        }
+
+        return slice(target, start, end, rawBuffer,
+                        toIntNode, getLengthNode, fromByteArrayNode, switchEncodingNode, bufferInterop);
     }
 
     private Object slice(JSTypedArrayObject target, Object start, Object end, ByteBuffer rawBuffer,
@@ -109,7 +128,7 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
                     ArrayBufferViewGetByteLengthNode getLengthNode,
                     TruffleString.FromByteArrayNode fromByteArrayNode,
                     TruffleString.SwitchEncodingNode switchEncodingNode,
-                    TruffleString.IsValidNode isValidNode) {
+                    InteropLibrary interop) {
         int bufferLength = getLengthNode.executeInt(this, target, getContext());
         if (bufferLength == 0) {
             // By default, an empty buffer returns an empty string
@@ -153,22 +172,21 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
             throw stringTooLong();
         }
 
-        byte[] data = copySliceToByteArray(rawBuffer, byteOffset, actualStart, actualEnd, length);
+        byte[] data;
+        if (interop == null || rawBuffer != null) {
+            data = copySliceToByteArray(rawBuffer, byteOffset, actualStart, actualEnd, length);
+        } else {
+            data = copyBufferSliceToByteArray(target.getArrayBuffer(), byteOffset, actualStart, length, interop);
+        }
         LoopNode.reportLoopCount(this, length);
 
         TruffleString utf8String = fromByteArrayNode.execute(data, TruffleString.Encoding.UTF_8, false);
-        if (isValidNode.execute(utf8String, TruffleString.Encoding.UTF_8)) {
-            TruffleString utf16String = switchEncodingNode.execute(utf8String, TruffleString.Encoding.UTF_16);
-            if (Strings.length(utf16String) > getContext().getStringLengthLimit()) {
-                errorBranch.enter();
-                throw stringTooLong();
-            }
-            return utf16String;
+        TruffleString utf16String = switchEncodingNode.execute(utf8String, TruffleString.Encoding.UTF_16);
+        if (Strings.length(utf16String) > getContext().getStringLengthLimit()) {
+            errorBranch.enter();
+            throw stringTooLong();
         }
-
-        // TruffleString handles incomplete UTF-8 sequences wrongly, hence the fallback to native.
-        // Note: Not passing the original start, end arguments to avoid repeating any side effects.
-        return doNativeFallback(target, actualStart, actualEnd);
+        return utf16String;
     }
 
     @TruffleBoundary
@@ -179,14 +197,19 @@ public abstract class NIOBufferUTF8SliceNode extends NIOBufferAccessNode {
         return slicedData;
     }
 
+    protected byte[] copyBufferSliceToByteArray(Object buffer, int byteOffset, int start, int length, InteropLibrary interop) {
+        try {
+            byte[] copyBuffer = new byte[length];
+            interop.readBuffer(buffer, (long) byteOffset + start, copyBuffer, 0, length);
+            return copyBuffer;
+        } catch (InteropException iex) {
+            throw Errors.shouldNotReachHere(iex);
+        }
+    }
+
     @SuppressWarnings("unused")
     @Specialization(guards = {"!isJSArrayBufferView(target)"})
     static Object sliceNotBuffer(Object target, Object start, Object end) {
         throw notBuffer();
-    }
-
-    private Object doNativeFallback(JSTypedArrayObject target, Object start, Object end) {
-        nativePath.enter();
-        return JSFunction.call(getNativeUtf8Slice(), target, new Object[]{start, end});
     }
 }

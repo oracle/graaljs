@@ -515,12 +515,14 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
 
     private TruffleStringBuilder jsonQuote(TruffleStringBuilderUTF16 builder, TruffleString valueStr) {
         return jsonQuote(stringBuilderProfile, builder, valueStr,
+                        TruffleString.ReadCharUTF16Node.getUncached(),
                         TruffleStringBuilder.AppendCharUTF16Node.getUncached(),
                         TruffleStringBuilder.AppendStringNode.getUncached(),
                         TruffleStringBuilder.AppendSubstringByteIndexNode.getUncached());
     }
 
     public static TruffleStringBuilder jsonQuote(StringBuilderProfile stringBuilderProfile, TruffleStringBuilderUTF16 sb, TruffleString valueStr,
+                    TruffleString.ReadCharUTF16Node readCharNode,
                     TruffleStringBuilder.AppendCharUTF16Node appendCharNode,
                     TruffleStringBuilder.AppendStringNode appendStringNode,
                     TruffleStringBuilder.AppendSubstringByteIndexNode appendSubstringNode) {
@@ -531,7 +533,7 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             // BMP: No surrogate handling necessary.
             // Check if any escaping is needed (control, quote, or backslash).
             for (; pos < length; pos++) {
-                char ch = Strings.charAt(valueStr, pos);
+                char ch = Strings.charAt(readCharNode, valueStr, pos);
                 if (ch < ' ' || ch == '"' || ch == '\\') {
                     break;
                 } else {
@@ -545,17 +547,21 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
             }
         }
         if (pos < length) {
-            jsonQuoteWithEscape(stringBuilderProfile, sb, valueStr, appendCharNode, appendStringNode, pos);
+            jsonQuoteWithEscape(stringBuilderProfile, sb, valueStr, pos,
+                            readCharNode, appendCharNode, appendStringNode);
         }
         stringBuilderProfile.append(appendCharNode, sb, '"');
         return sb;
     }
 
-    private static void jsonQuoteWithEscape(StringBuilderProfile stringBuilderProfile, TruffleStringBuilderUTF16 sb, TruffleString valueStr, TruffleStringBuilder.AppendCharUTF16Node appendCharNode,
-                    TruffleStringBuilder.AppendStringNode appendStringNode, int startPos) {
+    private static void jsonQuoteWithEscape(StringBuilderProfile stringBuilderProfile, TruffleStringBuilderUTF16 sb, TruffleString valueStr, int startPos,
+                    TruffleString.ReadCharUTF16Node readCharNode,
+                    TruffleStringBuilder.AppendCharUTF16Node appendCharNode,
+                    TruffleStringBuilder.AppendStringNode appendStringNode) {
         int length = Strings.length(valueStr);
-        for (int i = startPos; i < length;) {
-            char ch = Strings.charAt(valueStr, i);
+        int i = startPos;
+        for (; i < length; i++) {
+            char ch = Strings.charAt(readCharNode, valueStr, i);
             if (ch < ' ') {
                 if (ch == '\b') {
                     stringBuilderProfile.append(appendStringNode, sb, Strings.BACKSLASH_B);
@@ -578,24 +584,23 @@ public abstract class JSONStringifyStringNode extends JavaScriptBaseNode {
                 } else if (Character.isSurrogate(ch)) {
                     if (Character.isHighSurrogate(ch)) {
                         char nextCh;
-                        if (i + 1 < length && (Character.isLowSurrogate(nextCh = Strings.charAt(valueStr, i + 1)))) {
+                        if (i + 1 < length && (Character.isLowSurrogate(nextCh = Strings.charAt(readCharNode, valueStr, i + 1)))) {
                             // paired surrogates
                             stringBuilderProfile.append(appendCharNode, sb, ch);
                             stringBuilderProfile.append(appendCharNode, sb, nextCh);
                             i++;
-                        } else {
-                            // unpaired high surrogate
-                            jsonQuoteSurrogate(stringBuilderProfile, sb, ch, appendCharNode, appendStringNode);
+                            continue;
                         }
+                        // unpaired high surrogate
                     } else {
                         // unpaired low surrogate
-                        jsonQuoteSurrogate(stringBuilderProfile, sb, ch, appendCharNode, appendStringNode);
+                        assert Character.isLowSurrogate(ch);
                     }
+                    jsonQuoteSurrogate(stringBuilderProfile, sb, ch, appendCharNode, appendStringNode);
                 } else {
                     stringBuilderProfile.append(appendCharNode, sb, ch);
                 }
             }
-            i++;
         }
     }
 

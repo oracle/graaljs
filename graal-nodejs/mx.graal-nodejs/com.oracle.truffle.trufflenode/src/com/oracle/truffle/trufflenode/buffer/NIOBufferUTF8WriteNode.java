@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -65,9 +65,9 @@ import com.oracle.truffle.js.runtime.builtins.JSArrayBufferView;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
 import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
 import com.oracle.truffle.js.runtime.builtins.JSTypedArrayObject;
+import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
-import com.oracle.truffle.trufflenode.node.ArrayBufferGetContentsNode;
 
 @ImportStatic(JSConfig.class)
 public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
@@ -84,11 +84,11 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
     @Specialization(guards = "isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
     final Object writeDirect(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes,
-                    @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
-                    @Cached @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
-                    @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
-                    @Cached @Shared("getInternalByteArray") TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
-                    @Cached @Shared("readByte") TruffleString.ReadByteNode readByteNode) {
+                    @Cached @Shared JSToIntegerAsIntNode toIntNode,
+                    @Cached @Shared ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached @Shared TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
+                    @Cached @Shared TruffleString.ReadByteNode readByteNode) {
         JSArrayBufferObject arrayBuffer = JSArrayBufferView.getArrayBuffer(target);
         ByteBuffer rawBuffer = getDirectByteBuffer(arrayBuffer);
 
@@ -96,19 +96,39 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
                         toIntNode, getLengthNode, switchEncodingNode, getInternalByteArrayNode, readByteNode, null);
     }
 
-    @Specialization(guards = "!isJSDirectOrSharedArrayBuffer(target.getArrayBuffer())")
+    @Specialization(guards = "isJSHeapArrayBuffer(target.getArrayBuffer())")
+    final Object writeHeap(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes,
+                    @Cached @Shared JSToIntegerAsIntNode toIntNode,
+                    @Cached @Shared ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached @Shared TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
+                    @Cached @Shared TruffleString.ReadByteNode readByteNode) {
+        ByteBuffer rawBuffer = Boundaries.byteBufferWrap(JSArrayBufferObject.getByteArray(target.getArrayBuffer()));
+        return write(target, str, destOffset, bytes, rawBuffer,
+                        toIntNode, getLengthNode, switchEncodingNode, getInternalByteArrayNode, readByteNode, null);
+    }
+
+    @Specialization(guards = "isJSInteropArrayBuffer(target.getArrayBuffer())")
     final Object writeInterop(JSTypedArrayObject target, TruffleString str, Object destOffset, Object bytes,
-                    @Cached @Shared("toInt") JSToIntegerAsIntNode toIntNode,
-                    @Cached @Shared("getLength") ArrayBufferViewGetByteLengthNode getLengthNode,
-                    @Cached @Shared("switchEncoding") TruffleString.SwitchEncodingNode switchEncodingNode,
-                    @Cached @Shared("getInternalByteArray") TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
-                    @Cached @Shared("readByte") TruffleString.ReadByteNode readByteNode,
-                    @Cached(inline = true) ArrayBufferGetContentsNode arrayBufferGetContentsNode,
-                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-        ByteBuffer rawBuffer = arrayBufferGetContentsNode.execute(this, target.getArrayBuffer());
+                    @Cached @Shared JSToIntegerAsIntNode toIntNode,
+                    @Cached @Shared ArrayBufferViewGetByteLengthNode getLengthNode,
+                    @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode,
+                    @Cached @Shared TruffleString.GetInternalByteArrayNode getInternalByteArrayNode,
+                    @Cached @Shared TruffleString.ReadByteNode readByteNode,
+                    @CachedLibrary(limit = "1") InteropLibrary asByteBufferInterop,
+                    @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary bufferInterop) {
+        ByteBuffer rawBuffer;
+        ByteBuffer maybeRawBuffer = JSInteropUtil.foreignInteropBufferAsByteBuffer(target.getArrayBuffer(), asByteBufferInterop, getRealm());
+        if (maybeRawBuffer != null && !maybeRawBuffer.isReadOnly()) {
+            // We have direct write access to the backing ByteBuffer.
+            rawBuffer = maybeRawBuffer;
+        } else {
+            // Write to the foreign buffer object using InteropLibrary.
+            rawBuffer = null;
+        }
 
         return write(target, str, destOffset, bytes, rawBuffer,
-                        toIntNode, getLengthNode, switchEncodingNode, getInternalByteArrayNode, readByteNode, interop);
+                        toIntNode, getLengthNode, switchEncodingNode, getInternalByteArrayNode, readByteNode, bufferInterop);
     }
 
     private int write(JSTypedArrayObject target, TruffleString str, Object destOffset0, Object bytes, ByteBuffer rawBuffer,
@@ -161,20 +181,23 @@ public abstract class NIOBufferUTF8WriteNode extends NIOBufferAccessNode {
 
         InternalByteArray byteArray = getInternalByteArrayNode.execute(utf8Str, TruffleString.Encoding.UTF_8);
         assert copyLength <= byteArray.getLength();
-        Boundaries.byteBufferPutArray(rawBuffer, bufferOffset + destOffset, byteArray.getArray(), byteArray.getOffset(), copyLength);
-        LoopNode.reportLoopCount(this, copyLength);
 
-        if (interop != null) {
-            // Write the data to the original interop buffer
-            interopBufferWriteBack(target.getArrayBuffer(), rawBuffer, bufferOffset, destOffset, copyLength, interop);
+        if (interop == null || rawBuffer != null) {
+            // Bulk-copy the string contents directly to the backing ByteBuffer
+            Boundaries.byteBufferPutArray(rawBuffer, bufferOffset + destOffset, byteArray.getArray(), byteArray.getOffset(), copyLength);
+        } else {
+            // Write the data byte by byte to the foreign buffer using InteropLibrary
+            interopBufferWriteArraySlice(target.getArrayBuffer(), bufferOffset, destOffset, byteArray.getArray(), byteArray.getOffset(), copyLength, interop);
         }
+        LoopNode.reportLoopCount(this, copyLength);
         return copyLength;
     }
 
-    private static void interopBufferWriteBack(JSArrayBufferObject arrayBuffer, ByteBuffer rawBuffer, int bufferOffset, int destOffset, int copyLength, InteropLibrary interop) {
+    private static void interopBufferWriteArraySlice(JSArrayBufferObject arrayBuffer, int bufferOffset, int destOffset,
+                    byte[] sourceArray, int sourceArrayOffset, int copyLength, InteropLibrary interop) {
         try {
             for (int i = 0; i < copyLength; i++) {
-                interop.writeBufferByte(arrayBuffer, bufferOffset + destOffset + i, rawBuffer.get(bufferOffset + destOffset + i));
+                interop.writeBufferByte(arrayBuffer, (long) bufferOffset + destOffset + i, sourceArray[sourceArrayOffset + i]);
             }
         } catch (InteropException iex) {
             throw CompilerDirectives.shouldNotReachHere(iex);

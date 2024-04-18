@@ -74,13 +74,17 @@ public final class Options {
 
     public static Options parseArguments(String[] args) throws Exception {
         Function<String[], Object[]> parser;
-        if (JSConfig.SubstrateVM) {
+        try {
             parser = new OptionsParser();
-        } else {
-            // AbstractLanguageLauncher is not accessible through
-            // language class loader (that loaded this class) in GraalVM
-            Class<Function<String[], Object[]>> clazz = loadOptionsParser();
-            parser = clazz.getDeclaredConstructor().newInstance();
+        } catch (NoClassDefFoundError e) {
+            if (JSConfig.SubstrateVM) {
+                throw e;
+            } else {
+                // AbstractLanguageLauncher is not accessible through
+                // language class loader (that loaded this class) in GraalVM (legacy build)
+                Class<Function<String[], Object[]>> clazz = loadOptionsParser();
+                parser = clazz.getDeclaredConstructor().newInstance();
+            }
         }
         Object[] result = parser.apply(args);
         return new Options((Context.Builder) result[0], (Boolean) result[1], (Boolean) result[2], (Boolean) result[3]);
@@ -88,13 +92,18 @@ public final class Options {
 
     @SuppressWarnings("unchecked")
     private static Class<Function<String[], Object[]>> loadOptionsParser() throws Exception {
+        String javaHome = System.getProperty("java.home");
         Path truffleNodePath = Optional.ofNullable(System.getenv("TRUFFLENODE_JAR_PATH")).map(Path::of).orElseGet(
-                        () -> Path.of(System.getProperty("java.home"), "languages", "nodejs", "trufflenode.jar"));
+                        () -> Path.of(javaHome, "languages", "nodejs", "trufflenode.jar"));
         Path launcherCommonPath = Optional.ofNullable(System.getenv("LAUNCHER_COMMON_JAR_PATH")).map(Path::of).orElseGet(
-                        () -> Path.of(System.getProperty("java.home"), "lib", "graalvm", "launcher-common.jar"));
-        URL truffleNodeURL = truffleNodePath.toUri().toURL();
-        URL launcherCommonURL = launcherCommonPath.toUri().toURL();
-        ClassLoader loader = new URLClassLoader(new URL[]{launcherCommonURL, truffleNodeURL}, ClassLoader.getSystemClassLoader());
+                        () -> Path.of(javaHome, "lib", "graalvm", "launcher-common.jar"));
+        Path jlinePath = Path.of(javaHome, "lib", "graalvm", "jline3.jar");
+        URL[] urls = new URL[]{
+                        truffleNodePath.toUri().toURL(),
+                        launcherCommonPath.toUri().toURL(),
+                        jlinePath.toUri().toURL(),
+        };
+        ClassLoader loader = new URLClassLoader(urls, ClassLoader.getSystemClassLoader());
         return (Class<Function<String[], Object[]>>) loader.loadClass("com.oracle.truffle.trufflenode.Options$OptionsParser");
     }
 

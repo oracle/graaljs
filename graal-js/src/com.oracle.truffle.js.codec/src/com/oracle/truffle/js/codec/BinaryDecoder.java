@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -131,16 +131,21 @@ public final class BinaryDecoder {
     }
 
     public TruffleString getString() {
+        int strideLog2 = getU1();
         byte[] byteArray = getByteArray();
-        return TruffleString.fromByteArrayUncached(byteArray, TruffleString.Encoding.UTF_16);
+        if (strideLog2 == TruffleString.CompactionLevel.S1.getLog2()) {
+            return TruffleString.fromByteArrayUncached(byteArray, TruffleString.Encoding.ISO_8859_1).switchEncodingUncached(TruffleString.Encoding.UTF_16);
+        } else {
+            assert strideLog2 == TruffleString.CompactionLevel.S2.getLog2() : strideLog2;
+            return TruffleString.fromByteArrayUncached(byteArray, TruffleString.Encoding.UTF_16);
+        }
     }
 
     public byte[] getByteArray() {
         int size = getUInt();
         byte[] array = new byte[size];
-        for (int i = 0; i < size; i++) {
-            array[i] = (byte) getU1();
-        }
+        buffer.get(pos, array);
+        pos += size;
         return array;
     }
 

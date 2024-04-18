@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,11 +40,11 @@
  */
 package com.oracle.truffle.js.codec;
 
-import com.oracle.truffle.api.strings.TruffleString;
-
 import java.math.BigInteger;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+
+import com.oracle.truffle.api.strings.TruffleString;
 
 /**
  * Utility for encoding values to a ByteBuffer.
@@ -134,16 +134,19 @@ public class BinaryEncoder {
     }
 
     public void putString(TruffleString value) {
-        int length = value.byteLength(TruffleString.Encoding.UTF_16);
-        putUV(length);
-        ensureCapacity(length);
-        for (int i = 0; i < length >> 1; i++) {
-            buffer.putChar((char) value.readCharUTF16Uncached(i));
+        TruffleString.CompactionLevel compactionLevel = value.getStringCompactionLevelUncached(TruffleString.Encoding.UTF_16);
+        putU1(compactionLevel.getLog2());
+        if (compactionLevel == TruffleString.CompactionLevel.S1) {
+            putByteArray(value.switchEncodingUncached(TruffleString.Encoding.ISO_8859_1).copyToByteArrayUncached(TruffleString.Encoding.ISO_8859_1));
+        } else {
+            assert compactionLevel == TruffleString.CompactionLevel.S2 : compactionLevel;
+            putByteArray(value.copyToByteArrayUncached(TruffleString.Encoding.UTF_16));
         }
     }
 
     public void putByteArray(byte[] value) {
         putUV(value.length);
+        ensureCapacity(value.length);
         for (int i = 0; i < value.length; i++) {
             putU1(value[i]);
         }

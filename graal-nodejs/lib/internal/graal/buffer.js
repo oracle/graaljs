@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,7 +44,7 @@ const NIOBufferPrototypeAllocator = typeof graalExtension === 'undefined' ? argu
 
 function patchBufferPrototype(proto) {
 	if (NIOBufferPrototypeAllocator) {
-		const bufferBuiltin = NIOBufferPrototypeAllocator(proto.utf8Write, proto.utf8Slice);
+		const bufferBuiltin = NIOBufferPrototypeAllocator(proto.utf8Write);
 		proto.utf8Write = bufferBuiltin.utf8Write;
 		proto.utf8Slice = bufferBuiltin.utf8Slice;
 	}
