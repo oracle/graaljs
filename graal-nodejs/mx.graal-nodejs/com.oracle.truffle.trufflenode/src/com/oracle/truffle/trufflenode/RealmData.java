@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -57,7 +57,6 @@ public final class RealmData {
     private final Map<Integer, JSFunctionObject> functionTemplateObjects = new HashMap<>();
 
     private JSFunctionObject nativeUtf8Write;
-    private JSFunctionObject nativeUtf8Slice;
     private JSDynamicObject resolverFactory;
     private JSDynamicObject extrasBindingObject;
     private JSFunctionObject arrayBufferGetContentsFunction;
@@ -82,14 +81,6 @@ public final class RealmData {
 
     public void setNativeUtf8Write(JSFunctionObject nativeUtf8Write) {
         this.nativeUtf8Write = nativeUtf8Write;
-    }
-
-    public JSFunctionObject getNativeUtf8Slice() {
-        return nativeUtf8Slice;
-    }
-
-    public void setNativeUtf8Slice(JSFunctionObject nativeUtf8Slice) {
-        this.nativeUtf8Slice = nativeUtf8Slice;
     }
 
     public void setEmbedderData(int index, Object value) {

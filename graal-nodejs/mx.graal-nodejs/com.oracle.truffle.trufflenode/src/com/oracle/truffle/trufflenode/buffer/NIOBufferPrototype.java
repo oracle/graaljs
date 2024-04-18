@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2018, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,39 +47,31 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 
-public final class NIOBufferBuiltins extends JSBuiltinsContainer.SwitchEnum<NIOBufferBuiltins.Buffer> {
+public enum NIOBufferPrototype implements BuiltinEnum<NIOBufferPrototype> {
+
+    utf8Write(0),
+    utf8Slice(0);
 
     public static final TruffleString NIOBUFFER_PROTOTYPE = Strings.constant("NIOBuffer.prototype");
+    public static final JSBuiltinsContainer BUILTINS = JSBuiltinsContainer.fromEnum(NIOBUFFER_PROTOTYPE, NIOBufferPrototype.class);
 
-    protected NIOBufferBuiltins() {
-        super(NIOBUFFER_PROTOTYPE, Buffer.class);
-    }
+    private final int length;
 
-    public enum Buffer implements BuiltinEnum<Buffer> {
-        utf8Write(0),
-        utf8Slice(0);
-
-        private final int length;
-
-        Buffer(int length) {
-            this.length = length;
-        }
-
-        @Override
-        public int getLength() {
-            return length;
-        }
+    NIOBufferPrototype(int length) {
+        this.length = length;
     }
 
     @Override
-    protected Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget, Buffer builtinEnum) {
-        switch (builtinEnum) {
-            case utf8Write:
-                return NIOBufferUTF8WriteNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
-            case utf8Slice:
-                return NIOBufferUTF8SliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
-        }
-        return null;
+    public int getLength() {
+        return length;
+    }
+
+    @Override
+    public Object createNode(JSContext context, JSBuiltin builtin, boolean construct, boolean newTarget) {
+        return switch (this) {
+            case utf8Write -> NIOBufferUTF8WriteNodeGen.create(context, builtin, args().withThis().fixedArgs(3).createArgumentNodes(context));
+            case utf8Slice -> NIOBufferUTF8SliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+        };
     }
 
 }
