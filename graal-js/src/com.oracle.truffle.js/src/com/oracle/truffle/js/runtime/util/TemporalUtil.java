@@ -2790,7 +2790,7 @@ public final class TemporalUtil {
                     JSContext ctx, JSRealm realm, ToTemporalCalendarSlotValueNode toCalendarSlotValue, ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue) {
         Object timeZone;
         if (temporalTimeZoneLike == Undefined.instance) {
-            timeZone = systemTimeZone(ctx, realm);
+            timeZone = systemTimeZoneIdentifier(realm);
         } else {
             timeZone = toTimeZoneSlotValue.execute(temporalTimeZoneLike);
         }
@@ -2878,7 +2878,7 @@ public final class TemporalUtil {
                     JSContext ctx, JSRealm realm, ToTemporalCalendarSlotValueNode toCalendarSlotValue, ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue) {
         Object timeZone;
         if (temporalTimeZoneLike == Undefined.instance) {
-            timeZone = systemTimeZone(ctx, realm);
+            timeZone = systemTimeZoneIdentifier(realm);
         } else {
             timeZone = toTimeZoneSlotValue.execute(temporalTimeZoneLike);
         }
