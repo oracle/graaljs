@@ -50,6 +50,7 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDateTimeRecord;
@@ -111,14 +112,16 @@ public abstract class ToTemporalTimeNode extends JavaScriptBaseNode {
             }
             JSTemporalDateTimeRecord result = TemporalUtil.toTemporalTimeRecord(itemObj);
             result2 = TemporalUtil.regulateTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond(), overflow);
-        } else {
-            TruffleString string = toStringNode.executeString(item);
+        } else if (item instanceof TruffleString string) {
             JSTemporalDateTimeRecord result = TemporalUtil.parseTemporalTimeString(string);
             assert TemporalUtil.isValidTime(result.getHour(), result.getMinute(), result.getSecond(), result.getMillisecond(), result.getMicrosecond(), result.getNanosecond());
             if (result.hasCalendar() && !toStringNode.executeString(result.getCalendar()).equals(TemporalConstants.ISO8601)) {
                 throw TemporalErrors.createRangeErrorTemporalISO8601Expected();
             }
             result2 = JSTemporalDurationRecord.create(result);
+        } else {
+            errorBranch.enter(this);
+            throw Errors.createTypeErrorNotAString(item);
         }
         return JSTemporalPlainTime.create(ctx, realm,
                         dtoi(result2.getHours()), dtoi(result2.getMinutes()), dtoi(result2.getSeconds()),
