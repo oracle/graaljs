@@ -503,30 +503,6 @@ public final class TemporalParser {
         return null;
     }
 
-    public JSTemporalParserRecord parseTimeZoneString() {
-        reset();
-        // TimeZoneIdentifier
-        if (parseTimeZoneIdentifier()) {
-            if (atEnd()) {
-                return result();
-            }
-        }
-
-        reset();
-        // Date TimeSpecSeparator(opt) TimeZone Calendar(opt)
-        if (parseDate()) {
-            if (parseTimeSpecSeparator(true)) {
-                if (parseTimeZone()) {
-                    parseCalendar();
-                    if (atEnd()) {
-                        return result();
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
     private boolean parseTimeZoneIANAName() {
         TruffleString ianaName = rest;
 
@@ -937,7 +913,17 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean parseTimeZoneIdentifier() {
+    public JSTemporalParserRecord parseTimeZoneIdentifier() {
+        reset();
+        if (tryParseTimeZoneIdentifier()) {
+            if (atEnd()) {
+                return result();
+            }
+        }
+        return null;
+    }
+
+    private boolean tryParseTimeZoneIdentifier() {
         // TimeZoneIANAName
         reset();
         if (parseTimeZoneIANAName()) {
@@ -947,6 +933,9 @@ public final class TemporalParser {
         // TimeZoneNumericUTCOffset
         reset();
         if (tryParseTimeZoneNumericUTCOffset(false)) {
+            if (offsetSecond != null || offsetFraction != null) {
+                return false;
+            }
             return true;
         }
 

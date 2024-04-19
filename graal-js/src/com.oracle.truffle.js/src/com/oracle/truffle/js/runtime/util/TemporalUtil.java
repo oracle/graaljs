@@ -3063,7 +3063,25 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     private static JSTemporalTimeZoneRecord parseTemporalTimeZoneString(TruffleString string, boolean offsetRequired) {
-        JSTemporalParserRecord rec = (new TemporalParser(string)).parseTimeZoneString();
+        TemporalParser parser = new TemporalParser(string);
+        JSTemporalParserRecord rec;
+        if (offsetRequired) {
+            rec = parser.parseISODateTime();
+        } else {
+            rec = parser.parseTimeZoneIdentifier();
+            if (rec == null) {
+                rec = parser.parseISODateTime();
+                if (rec != null) {
+                    if (rec.getTimeZoneANYName() != null) {
+                        rec = new TemporalParser(rec.getTimeZoneANYName()).parseTimeZoneIdentifier();
+                    } else if (rec.getTimeZoneNumericUTCOffset() != null) {
+                        rec = (new TemporalParser(rec.getTimeZoneNumericUTCOffset())).parseTimeZoneIdentifier();
+                    } else if (!rec.getZ()) {
+                        rec = null;
+                    }
+                }
+            }
+        }
         if (rec == null) {
             throw Errors.createRangeError("TemporalTimeZoneString expected");
         }
