@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,7 +47,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
@@ -67,8 +67,7 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
     protected JSTemporalDurationObject toTemporalDuration(Object item,
                     @Cached InlinedConditionProfile isObjectProfile,
                     @Cached InlinedBranchProfile errorBranch,
-                    @Cached IsObjectNode isObjectNode,
-                    @Cached JSToStringNode toStringNode) {
+                    @Cached IsObjectNode isObjectNode) {
         JSTemporalDurationRecord result;
         if (isObjectProfile.profile(this, isObjectNode.executeBoolean(item))) {
             JSDynamicObject itemObj = (JSDynamicObject) item;
@@ -76,9 +75,11 @@ public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
                 return (JSTemporalDurationObject) itemObj;
             }
             result = JSTemporalDuration.toTemporalDurationRecord(itemObj);
-        } else {
-            TruffleString string = toStringNode.executeString(item);
+        } else if (item instanceof TruffleString string) {
             result = JSTemporalDuration.parseTemporalDurationString(string);
+        } else {
+            errorBranch.enter(this);
+            throw Errors.createTypeErrorNotAString(item);
         }
         return JSTemporalDuration.createTemporalDuration(getLanguage().getJSContext(), getRealm(),
                         result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
