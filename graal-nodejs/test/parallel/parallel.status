@@ -53,6 +53,9 @@ test-cli-node-print-help: FAIL
 test-crypto-dh-leak: SKIP
 test-worker-memory: SKIP
 
+# Sometimes crashes on svm due to an intentional stack overflow
+test-error-serdes: PASS, CRASH
+
 # Uses v8 extension (--expose_externalize_string flag that exposes two additional functions)
 test-fs-write: FAIL
 
