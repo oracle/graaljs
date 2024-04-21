@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,7 +49,6 @@ import com.oracle.truffle.api.CompilerDirectives.CompilationFinal;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.GenerateCached;
 import com.oracle.truffle.api.dsl.GenerateInline;
@@ -105,6 +104,7 @@ import com.oracle.truffle.js.nodes.cast.JSToInt32Node;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode.JSToPropertyKeyWrapperNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayIndexNoToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTaggedExecutionNode;
 import com.oracle.truffle.js.nodes.instrumentation.JSTags.WriteElementTag;
@@ -1605,22 +1605,19 @@ public class WriteElementNode extends JSTargetableNode {
         @Specialization(replaces = {"doStringIntegerIndex"})
         protected void doString(Object target, Object index, Object value, Object receiver, WriteElementNode root,
                         @Cached @Shared InlinedConditionProfile isImmutable,
-                        @Cached @Exclusive InlinedConditionProfile isIndexProfile,
-                        @Cached("createNoToPropertyKey()") ToArrayIndexNode toArrayIndexNode,
+                        @Cached ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
                         @Cached JSToPropertyKeyNode indexToPropertyKeyNode) {
             TruffleString string = (TruffleString) target;
-            Object convertedIndex = toArrayIndexNode.execute(index);
-            if (isIndexProfile.profile(this, convertedIndex instanceof Long)) {
-                long longIndex = (long) convertedIndex;
-                if (isImmutable.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
-                    // cannot set characters of immutable strings
-                    if (root.isStrict) {
-                        throw Errors.createTypeErrorNotWritableIndex(longIndex, string, this);
-                    }
-                    return;
+            long longIndex = toArrayIndexNode.executeLong(this, index);
+            if (isImmutable.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
+                // cannot set characters of immutable strings
+                if (root.isStrict) {
+                    throw Errors.createTypeErrorNotWritableIndex(longIndex, string, this);
                 }
+                return;
             }
-            JSObject.setWithReceiver(JSString.create(root.context, getRealm(), string), indexToPropertyKeyNode.execute(index), value, receiver, root.isStrict, classProfile, root);
+            Object propertyKey = indexToPropertyKeyNode.execute(index);
+            JSObject.setWithReceiver(JSString.create(root.context, getRealm(), string), propertyKey, value, receiver, root.isStrict, classProfile, root);
         }
 
         @Override

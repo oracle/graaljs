@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,6 +50,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArr
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 
@@ -66,7 +67,7 @@ public abstract class AbstractIntArray extends AbstractWritableArray {
 
     @Override
     public final ScriptArray setElementImpl(JSDynamicObject object, long index, Object value, boolean strict) {
-        assert index >= 0;
+        assert JSRuntime.isArrayIndex(index) : index;
         if (injectBranchProbability(FASTPATH_PROBABILITY, value instanceof Integer && isSupported(object, index))) {
             int intValue = (int) value;
             if (injectBranchProbability(SLOWPATH_PROBABILITY, intValue == HolesIntArray.HOLE_VALUE)) {

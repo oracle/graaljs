@@ -50,6 +50,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.FrequencyBasedPolymorphicAccessNode.FrequencyBasedPropertyGetNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayIndexNoToPropertyKeyNode;
 import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
@@ -88,12 +89,13 @@ abstract class CachedGetPropertyNode extends JavaScriptBaseNode {
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 
-    @Specialization(guards = {"!isJSProxy(target)", "toArrayIndexNode.isResultArrayIndex(maybeIndex)"}, replaces = {"doIntIndex"}, limit = "1")
+    @SuppressWarnings("truffle-static-method")
+    @Specialization(guards = {"!isJSProxy(target)", "index >= 0"}, replaces = {"doIntIndex"}, limit = "1")
     Object doArrayIndex(JSDynamicObject target, @SuppressWarnings("unused") Object key, Object receiver, Object defaultValue,
-                    @Cached("createNoToPropertyKey()") @SuppressWarnings("unused") ToArrayIndexNode toArrayIndexNode,
-                    @Bind("toArrayIndexNode.execute(key)") Object maybeIndex,
+                    @Cached @SuppressWarnings("unused") ToArrayIndexNoToPropertyKeyNode toArrayIndexNode,
+                    @Bind("toArrayIndexNode.executeLong(this, key)") long index,
                     @Cached @Shared("jsclassProfile") JSClassProfile jsclassProfile) {
-        long index = (long) maybeIndex;
+        assert JSRuntime.isArrayIndex(index) : index;
         return JSObject.getOrDefault(target, index, receiver, defaultValue, jsclassProfile, this);
     }
 

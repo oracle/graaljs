@@ -1,0 +1,167 @@
+/*
+ * Copyright (c) 2024, 2024, Oracle and/or its affiliates. All rights reserved.
+ * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
+ *
+ * The Universal Permissive License (UPL), Version 1.0
+ *
+ * Subject to the condition set forth below, permission is hereby granted to any
+ * person obtaining a copy of this software, associated documentation and/or
+ * data (collectively the "Software"), free of charge and under any and all
+ * copyright rights in the Software, and any and all patent rights owned or
+ * freely licensable by each licensor hereunder covering either (i) the
+ * unmodified Software as contributed to or provided by such licensor, or (ii)
+ * the Larger Works (as defined below), to deal in both
+ *
+ * (a) the Software, and
+ *
+ * (b) any piece of software and/or hardware listed in the lrgrwrks.txt file if
+ * one is included with the Software each a "Larger Work" to which the Software
+ * is contributed by such licensors),
+ *
+ * without restriction, including without limitation the rights to copy, create
+ * derivative works of, display, perform, and distribute the Software and make,
+ * use, sell, offer for sale, import, export, have made, and have sold the
+ * Software and the Larger Work(s), and to sublicense the foregoing rights on
+ * either these or other terms.
+ *
+ * This license is subject to the following condition:
+ *
+ * The above copyright notice and either this complete permission notice or at a
+ * minimum a reference to the UPL must be included in all copies or substantial
+ * portions of the Software.
+ *
+ * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+ * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+ * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+ * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+ * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+ * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+ * SOFTWARE.
+ */
+package com.oracle.truffle.js.nodes.cast;
+
+import com.oracle.truffle.api.dsl.Cached;
+import com.oracle.truffle.api.dsl.GenerateCached;
+import com.oracle.truffle.api.dsl.GenerateInline;
+import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.Specialization;
+import com.oracle.truffle.api.interop.InteropLibrary;
+import com.oracle.truffle.api.library.CachedLibrary;
+import com.oracle.truffle.api.nodes.Node;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.strings.TruffleString;
+import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.JSConfig;
+import com.oracle.truffle.js.runtime.JSRuntime;
+import com.oracle.truffle.js.runtime.Strings;
+
+/**
+ * Converts value to array index or {@link JSRuntime#INVALID_ARRAY_INDEX}.
+ */
+@GenerateInline
+@GenerateCached(false)
+@ImportStatic({JSConfig.class, JSRuntime.class})
+public abstract class ToArrayIndexNoToPropertyKeyNode extends JavaScriptBaseNode {
+
+    public abstract long executeLong(Node node, Object value);
+
+    protected ToArrayIndexNoToPropertyKeyNode() {
+    }
+
+    @Specialization(guards = "isIntArrayIndex(value)")
+    protected static long doInteger(int value) {
+        return value;
+    }
+
+    @Specialization(guards = "!isIntArrayIndex(value)")
+    protected static long doIntegerNonArrayIndex(@SuppressWarnings("unused") int value) {
+        return JSRuntime.INVALID_ARRAY_INDEX;
+    }
+
+    @Specialization(guards = "isLongArrayIndex(value)")
+    protected static long doLong(long value) {
+        return JSRuntime.castArrayIndex(value);
+    }
+
+    @Specialization(guards = "!isLongArrayIndex(value)")
+    protected static long doLongNonArrayIndex(@SuppressWarnings("unused") long value) {
+        return JSRuntime.INVALID_ARRAY_INDEX;
+    }
+
+    protected static boolean doubleIsIntIndex(double d) {
+        return JSRuntime.doubleIsRepresentableAsInt(d) && d >= 0;
+    }
+
+    @Specialization(guards = "doubleIsIntIndex(value)")
+    protected static long doDoubleAsIntIndex(double value) {
+        return JSRuntime.castArrayIndex(value);
+    }
+
+    protected static boolean doubleIsUintIndex(double d) {
+        return JSRuntime.doubleIsRepresentableAsUnsignedInt(d, true) && d >= 0 && d < 0xffff_ffffL;
+    }
+
+    @Specialization(guards = "doubleIsUintIndex(value)", replaces = "doDoubleAsIntIndex")
+    protected static long doDoubleAsUintIndex(double value) {
+        return JSRuntime.castArrayIndex(value);
+    }
+
+    @Specialization(guards = "!doubleIsUintIndex(value)")
+    protected static long doDoubleNonArrayIndex(@SuppressWarnings("unused") double value) {
+        return JSRuntime.INVALID_ARRAY_INDEX;
+    }
+
+    @Specialization(guards = "isBigIntArrayIndex(value)")
+    protected static long doBigInt(BigInt value) {
+        return value.longValue();
+    }
+
+    @Specialization
+    protected static long doBigIntNonArrayIndex(@SuppressWarnings("unused") BigInt value) {
+        return JSRuntime.INVALID_ARRAY_INDEX;
+    }
+
+    @SuppressWarnings("truffle-inlining")
+    @Specialization(guards = {"arrayIndexLengthInRange(index)"})
+    protected static long convertFromString(Node node, TruffleString index,
+                    @Cached TruffleString.ReadCharUTF16Node stringReadNode,
+                    @Cached InlinedBranchProfile startsWithDigitBranch,
+                    @Cached InlinedBranchProfile isArrayIndexBranch,
+                    @Cached InlinedBranchProfile invalidArrayIndexBranch) {
+        if (JSRuntime.isAsciiDigit(Strings.charAt(stringReadNode, index, 0))) {
+            startsWithDigitBranch.enter(node);
+            long longValue = JSRuntime.parseArrayIndexRaw(index, stringReadNode);
+            if (JSRuntime.isArrayIndex(longValue)) {
+                isArrayIndexBranch.enter(node);
+                return JSRuntime.castArrayIndex(longValue);
+            }
+        }
+        invalidArrayIndexBranch.enter(node);
+        return JSRuntime.INVALID_ARRAY_INDEX;
+    }
+
+    @Specialization(guards = {"!arrayIndexLengthInRange(index)"})
+    protected static long convertFromStringNotInRange(@SuppressWarnings("unused") TruffleString index) {
+        return JSRuntime.INVALID_ARRAY_INDEX;
+    }
+
+    protected static boolean notArrayIndex(Object o) {
+        return !(o instanceof Integer ||
+                        o instanceof Double ||
+                        o instanceof Long ||
+                        o instanceof BigInt ||
+                        o instanceof TruffleString);
+    }
+
+    @Specialization(guards = {"notArrayIndex(value)"}, limit = "InteropLibraryLimit")
+    protected static long doNonArrayIndex(Object value,
+                    @CachedLibrary("value") @SuppressWarnings("unused") InteropLibrary interop) {
+        long index = ToArrayIndexNode.toArrayIndex(value, interop);
+        if (index >= 0) {
+            return JSRuntime.castArrayIndex(index);
+        } else {
+            return JSRuntime.INVALID_ARRAY_INDEX;
+        }
+    }
+}
