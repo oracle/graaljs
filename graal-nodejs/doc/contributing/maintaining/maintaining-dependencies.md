@@ -9,7 +9,7 @@ All dependencies are located within the `deps` directory.
 This a list of all the dependencies:
 
 * [acorn][]
-* [ada 2.7.2][]
+* [ada][]
 * [base64][]
 * [brotli][]
 * [c-ares 1.20.1][]
@@ -25,12 +25,12 @@ This a list of all the dependencies:
 * [npm][]
 * [openssl][]
 * [postject][]
-* [simdutf 3.2.18][]
+* [simdutf 4.0.4][]
 * [undici 5.26.4][]
 * [uv][]
 * [uvwasi 0.0.19][]
 * [V8][]
-* [zlib 1.2.13.1-motley-fef5869][]
+* [zlib][]
 
 Any code which meets one or more of these conditions should
 be managed as a dependency:
@@ -148,7 +148,7 @@ The [acorn](https://github.com/acornjs/acorn) dependency is a JavaScript parser.
 [acorn-walk](https://github.com/acornjs/acorn/tree/master/acorn-walk) is
 an abstract syntax tree walker for the ESTree format.
 
-### ada 2.7.2
+### ada
 
 The [ada](https://github.com/ada-url/ada) dependency is a
 fast and spec-compliant URL parser written in C++.
@@ -273,7 +273,7 @@ See [maintaining-openssl][] for more informations.
 The [postject](https://github.com/nodejs/postject) dependency is used for the
 [Single Executable strategic initiative](https://github.com/nodejs/single-executable).
 
-### simdutf 3.2.18
+### simdutf 4.0.4
 
 The [simdutf](https://github.com/simdutf/simdutf) dependency is
 a C++ library for fast UTF-8 decoding and encoding.
@@ -304,7 +304,7 @@ See [maintaining-web-assembly][] for more informations.
 high-performance JavaScript and WebAssembly engine, written in C++.
 See [maintaining-V8][] for more informations.
 
-### zlib 1.2.13.1-motley-fef5869
+### zlib
 
 The [zlib](https://chromium.googlesource.com/chromium/src/+/refs/heads/main/third_party/zlib)
 dependency lossless data-compression library,
@@ -312,7 +312,7 @@ it comes from the Chromium team's zlib fork which incorporated
 performance improvements not currently available in standard zlib.
 
 [acorn]: #acorn
-[ada 2.7.2]: #ada-272
+[ada]: #ada
 [base64]: #base64
 [brotli]: #brotli
 [c-ares 1.20.1]: #c-ares-1200
@@ -335,10 +335,10 @@ performance improvements not currently available in standard zlib.
 [npm]: #npm
 [openssl]: #openssl
 [postject]: #postject
-[simdutf 3.2.18]: #simdutf-3218
+[simdutf 4.0.4]: #simdutf-404
 [undici 5.26.4]: #undici-5264
 [update-openssl-action]: ../../../.github/workflows/update-openssl.yml
 [uv]: #uv
 [uvwasi 0.0.19]: #uvwasi-0019
 [v8]: #v8
-[zlib 1.2.13.1-motley-fef5869]: #zlib-12131-motley-fef5869
+[zlib]: #zlib

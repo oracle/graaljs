@@ -4510,6 +4510,13 @@ An array of supported digest functions can be retrieved using
 <!-- YAML
 added: v0.11.14
 changes:
+  - version:
+      - v21.6.2
+      - v20.11.1
+      - v18.19.1
+    pr-url: https://github.com/nodejs-private/node-private/pull/515
+    description: The `RSA_PKCS1_PADDING` padding was disabled unless the
+                 OpenSSL build supports implicit rejection.
   - version: v15.0.0
     pr-url: https://github.com/nodejs/node/pull/35093
     description: Added string, ArrayBuffer, and CryptoKey as allowable key
@@ -4550,6 +4557,11 @@ If `privateKey` is not a [`KeyObject`][], this function behaves as if
 `privateKey` had been passed to [`crypto.createPrivateKey()`][]. If it is an
 object, the `padding` property can be passed. Otherwise, this function uses
 `RSA_PKCS1_OAEP_PADDING`.
+
+Using `crypto.constants.RSA_PKCS1_PADDING` in [`crypto.privateDecrypt()`][]
+requires OpenSSL to support implicit rejection (`rsa_pkcs1_implicit_rejection`).
+If the version of OpenSSL used by Node.js does not support this feature,
+attempting to use `RSA_PKCS1_PADDING` will fail.
 
 ### `crypto.privateEncrypt(privateKey, buffer)`
 

@@ -60,7 +60,6 @@ using v8::MicrotasksPolicy;
 using v8::Name;
 using v8::NamedPropertyHandlerConfiguration;
 using v8::Nothing;
-using v8::Number;
 using v8::Object;
 using v8::ObjectTemplate;
 using v8::PrimitiveArray;
@@ -73,11 +72,11 @@ using v8::Script;
 using v8::ScriptCompiler;
 using v8::ScriptOrigin;
 using v8::String;
+using v8::Symbol;
 using v8::Uint32;
 using v8::UnboundScript;
 using v8::Value;
 using v8::WeakCallbackInfo;
-using v8::WeakCallbackType;
 
 // The vm module executes code in a sandboxed environment with a different
 // global object than the rest of the code. This is achieved by applying
@@ -788,10 +787,12 @@ void ContextifyScript::New(const FunctionCallbackInfo<Value>& args) {
   bool produce_cached_data = false;
   Local<Context> parsing_context = context;
 
+  Local<Symbol> id_symbol;
   if (argc > 2) {
     // new ContextifyScript(code, filename, lineOffset, columnOffset,
-    //                      cachedData, produceCachedData, parsingContext)
-    CHECK_EQ(argc, 7);
+    //                      cachedData, produceCachedData, parsingContext,
+    //                      hostDefinedOptionId)
+    CHECK_EQ(argc, 8);
     CHECK(args[2]->IsNumber());
     line_offset = args[2].As<Int32>()->Value();
     CHECK(args[3]->IsNumber());
@@ -810,6 +811,8 @@ void ContextifyScript::New(const FunctionCallbackInfo<Value>& args) {
       CHECK_NOT_NULL(sandbox);
       parsing_context = sandbox->context();
     }
+    CHECK(args[7]->IsSymbol());
+    id_symbol = args[7].As<Symbol>();
   }
 
   ContextifyScript* contextify_script =
@@ -833,10 +836,8 @@ void ContextifyScript::New(const FunctionCallbackInfo<Value>& args) {
 
   Local<PrimitiveArray> host_defined_options =
       PrimitiveArray::New(isolate, loader::HostDefinedOptions::kLength);
-  host_defined_options->Set(isolate, loader::HostDefinedOptions::kType,
-                            Number::New(isolate, loader::ScriptType::kScript));
-  host_defined_options->Set(isolate, loader::HostDefinedOptions::kID,
-                            Number::New(isolate, contextify_script->id()));
+  host_defined_options->Set(
+      isolate, loader::HostDefinedOptions::kID, id_symbol);
 
   ScriptOrigin origin(isolate,
                       filename,
@@ -873,11 +874,21 @@ void ContextifyScript::New(const FunctionCallbackInfo<Value>& args) {
                      "ContextifyScript::New");
     return;
   }
+
   contextify_script->script_.Reset(isolate, v8_script);
+  contextify_script->script_.SetWeak();
+  contextify_script->object()->SetInternalFieldForNodeCore(kUnboundScriptSlot,
+                                                           v8_script);
 
   std::unique_ptr<ScriptCompiler::CachedData> new_cached_data;
   if (produce_cached_data) {
     new_cached_data.reset(ScriptCompiler::CreateCodeCache(v8_script));
+  }
+
+  if (contextify_script->object()
+          ->SetPrivate(context, env->host_defined_option_symbol(), id_symbol)
+          .IsNothing()) {
+    return;
   }
 
   if (StoreCodeCacheResult(env,
@@ -1120,17 +1131,11 @@ bool ContextifyScript::EvalMachine(Local<Context> context,
 
 
 ContextifyScript::ContextifyScript(Environment* env, Local<Object> object)
-    : BaseObject(env, object),
-      id_(env->get_next_script_id()) {
+    : BaseObject(env, object) {
   MakeWeak();
-  env->id_to_script_map.emplace(id_, this);
 }
 
-
-ContextifyScript::~ContextifyScript() {
-  env()->id_to_script_map.erase(id_);
-}
-
+ContextifyScript::~ContextifyScript() {}
 
 void ContextifyContext::CompileFunction(
     const FunctionCallbackInfo<Value>& args) {
@@ -1192,6 +1197,10 @@ void ContextifyContext::CompileFunction(
     params_buf = args[8].As<Array>();
   }
 
+  // Argument 10: host-defined option symbol
+  CHECK(args[9]->IsSymbol());
+  Local<Symbol> id_symbol = args[9].As<Symbol>();
+
   // Read cache from cached data buffer
   ScriptCompiler::CachedData* cached_data = nullptr;
   if (!cached_data_buf.IsEmpty()) {
@@ -1200,18 +1209,11 @@ void ContextifyContext::CompileFunction(
       data + cached_data_buf->ByteOffset(), cached_data_buf->ByteLength());
   }
 
-  // Get the function id
-  uint32_t id = env->get_next_function_id();
-
   // Set host_defined_options
   Local<PrimitiveArray> host_defined_options =
       PrimitiveArray::New(isolate, loader::HostDefinedOptions::kLength);
   host_defined_options->Set(
-      isolate,
-      loader::HostDefinedOptions::kType,
-      Number::New(isolate, loader::ScriptType::kFunction));
-  host_defined_options->Set(
-      isolate, loader::HostDefinedOptions::kID, Number::New(isolate, id));
+      isolate, loader::HostDefinedOptions::kID, id_symbol);
 
   ScriptOrigin origin(isolate,
                       filename,
@@ -1276,20 +1278,13 @@ void ContextifyContext::CompileFunction(
     }
     return;
   }
-
-  Local<Object> cache_key;
-  if (!env->compiled_fn_entry_template()->NewInstance(
-           context).ToLocal(&cache_key)) {
+  if (fn->SetPrivate(context, env->host_defined_option_symbol(), id_symbol)
+          .IsNothing()) {
     return;
   }
-  CompiledFnEntry* entry = new CompiledFnEntry(env, cache_key, id, fn);
-  env->id_to_function_map.emplace(id, entry);
 
   Local<Object> result = Object::New(isolate);
   if (result->Set(parsing_context, env->function_string(), fn).IsNothing())
-    return;
-  if (result->Set(parsing_context, env->cache_key_string(), cache_key)
-          .IsNothing())
     return;
   if (result
           ->Set(parsing_context,
@@ -1313,25 +1308,6 @@ void ContextifyContext::CompileFunction(
   }
 
   args.GetReturnValue().Set(result);
-}
-
-void CompiledFnEntry::WeakCallback(
-    const WeakCallbackInfo<CompiledFnEntry>& data) {
-  CompiledFnEntry* entry = data.GetParameter();
-  delete entry;
-}
-
-CompiledFnEntry::CompiledFnEntry(Environment* env,
-                                 Local<Object> object,
-                                 uint32_t id,
-                                 Local<Function> fn)
-    : BaseObject(env, object), id_(id), fn_(env->isolate(), fn) {
-  fn_.SetWeak(this, WeakCallback, v8::WeakCallbackType::kParameter);
-}
-
-CompiledFnEntry::~CompiledFnEntry() {
-  env()->id_to_function_map.erase(id_);
-  fn_.ClearWeak();
 }
 
 static void StartSigintWatchdog(const FunctionCallbackInfo<Value>& args) {
@@ -1420,15 +1396,6 @@ void Initialize(Local<Object> target,
   // Used in tests.
   SetMethodNoSideEffect(
       context, target, "watchdogHasPendingSigint", WatchdogHasPendingSigint);
-
-  {
-    Local<FunctionTemplate> tpl = FunctionTemplate::New(env->isolate());
-    tpl->SetClassName(FIXED_ONE_BYTE_STRING(env->isolate(), "CompiledFnEntry"));
-    tpl->InstanceTemplate()->SetInternalFieldCount(
-        CompiledFnEntry::kInternalFieldCount);
-
-    env->set_compiled_fn_entry_template(tpl->InstanceTemplate());
-  }
 
   Local<Object> constants = Object::New(env->isolate());
   Local<Object> measure_memory = Object::New(env->isolate());
