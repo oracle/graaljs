@@ -38,10 +38,96 @@ Array [
       name:          test-package
       version:       1.0.0
       filename:      test-package-1.0.0.tgz
-      package size:  160 B
+      package size:  {size}
       unpacked size: 87 B
-      shasum:{sha}
-      integrity:{sha}
+      shasum:        {sha}
+      integrity:     {integrity}
+      total files:   1
+    ),
+  ],
+  Array [
+    "",
+    "",
+  ],
+  Array [
+    "",
+    "Publishing to https://registry.npmjs.org/ with tag latest and default access (dry-run)",
+  ],
+]
+`
+
+exports[`test/lib/commands/publish.js TAP foreground-scripts can still be set to false > must match snapshot 1`] = `
+Array [
+  Array [
+    "",
+  ],
+  Array [
+    "",
+    "package: test-fg-scripts@0.0.0",
+  ],
+  Array [
+    "=== Tarball Contents ===",
+  ],
+  Array [
+    "",
+    "110B package.json",
+  ],
+  Array [
+    "=== Tarball Details ===",
+  ],
+  Array [
+    "",
+    String(
+      name:          test-fg-scripts
+      version:       0.0.0
+      filename:      test-fg-scripts-0.0.0.tgz
+      package size:  {size}
+      unpacked size: 110 B
+      shasum:        {sha}
+      integrity:     {integrity}
+      total files:   1
+    ),
+  ],
+  Array [
+    "",
+    "",
+  ],
+  Array [
+    "",
+    "Publishing to https://registry.npmjs.org/ with tag latest and default access (dry-run)",
+  ],
+]
+`
+
+exports[`test/lib/commands/publish.js TAP foreground-scripts defaults to true > must match snapshot 1`] = `
+Array [
+  Array [
+    "",
+  ],
+  Array [
+    "",
+    "package: test-fg-scripts@0.0.0",
+  ],
+  Array [
+    "=== Tarball Contents ===",
+  ],
+  Array [
+    "",
+    "110B package.json",
+  ],
+  Array [
+    "=== Tarball Details ===",
+  ],
+  Array [
+    "",
+    String(
+      name:          test-fg-scripts
+      version:       0.0.0
+      filename:      test-fg-scripts-0.0.0.tgz
+      package size:  {size}
+      unpacked size: 110 B
+      shasum:        {sha}
+      integrity:     {integrity}
       total files:   1
     ),
   ],
@@ -82,15 +168,15 @@ exports[`test/lib/commands/publish.js TAP json > new package json 1`] = `
   "id": "test-package@1.0.0",
   "name": "test-package",
   "version": "1.0.0",
-  "size": 160,
+  "size": "{size}",
   "unpackedSize": 87,
   "shasum": "{sha}",
-  "integrity": "{sha}",
+  "integrity": "{integrity}",
   "filename": "test-package-1.0.0.tgz",
   "files": [
     {
       "path": "package.json",
-      "size": 87,
+      "size": "{size}",
       "mode": 420
     }
   ],
@@ -289,10 +375,10 @@ Array [
       name:          @npm/test-package
       version:       1.0.0
       filename:      npm-test-package-1.0.0.tgz
-      package size:  147 B
+      package size:  {size}
       unpacked size: 55 B
-      shasum:{sha}
-      integrity:{sha}
+      shasum:        {sha}
+      integrity:     {integrity}
       total files:   1
     ),
   ],
@@ -344,10 +430,10 @@ Array [
       name:          @npm/test-package
       version:       1.0.0
       filename:      npm-test-package-1.0.0.tgz
-      package size:  147 B
+      package size:  {size}
       unpacked size: 55 B
-      shasum:{sha}
-      integrity:{sha}
+      shasum:        {sha}
+      integrity:     {integrity}
       total files:   1
     ),
   ],
@@ -398,10 +484,10 @@ Array [
       name:          test-tar-package
       version:       1.0.0
       filename:      test-tar-package-1.0.0.tgz
-      package size:  218 B
+      package size:  {size}
       unpacked size: 124 B
-      shasum:{sha}
-      integrity:{sha}
+      shasum:        {sha}
+      integrity:     {integrity}
       total files:   2
     ),
   ],
@@ -550,15 +636,15 @@ exports[`test/lib/commands/publish.js TAP workspaces json > all workspaces in js
     "id": "workspace-a@1.2.3-a",
     "name": "workspace-a",
     "version": "1.2.3-a",
-    "size": 162,
+    "size": "{size}",
     "unpackedSize": 82,
     "shasum": "{sha}",
-    "integrity": "{sha}",
+    "integrity": "{integrity}",
     "filename": "workspace-a-1.2.3-a.tgz",
     "files": [
       {
         "path": "package.json",
-        "size": 82,
+        "size": "{size}",
         "mode": 420
       }
     ],
@@ -569,15 +655,15 @@ exports[`test/lib/commands/publish.js TAP workspaces json > all workspaces in js
     "id": "workspace-b@1.2.3-n",
     "name": "workspace-b",
     "version": "1.2.3-n",
-    "size": 171,
+    "size": "{size}",
     "unpackedSize": 92,
     "shasum": "{sha}",
-    "integrity": "{sha}",
+    "integrity": "{integrity}",
     "filename": "workspace-b-1.2.3-n.tgz",
     "files": [
       {
         "path": "package.json",
-        "size": 92,
+        "size": "{size}",
         "mode": 420
       }
     ],
@@ -588,15 +674,15 @@ exports[`test/lib/commands/publish.js TAP workspaces json > all workspaces in js
     "id": "workspace-n@1.2.3-n",
     "name": "workspace-n",
     "version": "1.2.3-n",
-    "size": 140,
+    "size": "{size}",
     "unpackedSize": 42,
     "shasum": "{sha}",
-    "integrity": "{sha}",
+    "integrity": "{integrity}",
     "filename": "workspace-n-1.2.3-n.tgz",
     "files": [
       {
         "path": "package.json",
-        "size": 42,
+        "size": "{size}",
         "mode": 420
       }
     ],
