@@ -1240,7 +1240,7 @@ void JSSharedStruct::JSSharedStructVerify(Isolate* isolate) {
 void WeakCell::WeakCellVerify(Isolate* isolate) {
   CHECK(IsWeakCell());
 
-  CHECK(target().IsJSReceiver() || target().IsUndefined(isolate));
+  CHECK(target().IsUndefined(isolate) || target().CanBeHeldWeakly());
 
   CHECK(prev().IsWeakCell() || prev().IsUndefined(isolate));
   if (prev().IsWeakCell()) {
@@ -1268,7 +1268,7 @@ void WeakCell::WeakCellVerify(Isolate* isolate) {
 void JSWeakRef::JSWeakRefVerify(Isolate* isolate) {
   CHECK(IsJSWeakRef());
   JSObjectVerify(isolate);
-  CHECK(target().IsUndefined(isolate) || target().IsJSReceiver());
+  CHECK(target().IsUndefined(isolate) || target().CanBeHeldWeakly());
 }
 
 void JSFinalizationRegistry::JSFinalizationRegistryVerify(Isolate* isolate) {

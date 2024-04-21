@@ -537,6 +537,25 @@ This can be overridden by setting the \`--force\` flag.
 
 
 
+#### \`expect-result-count\`
+
+* Default: null
+* Type: null or Number
+
+Tells to expect a specific number of results from the command.
+
+This config can not be used with: \`expect-results\`
+
+#### \`expect-results\`
+
+* Default: null
+* Type: null or Boolean
+
+Tells npm whether or not to expect results from the command. Can be either
+true (expect some results) or false (expect no results).
+
+This config can not be used with: \`expect-result-count\`
+
 #### \`fetch-retries\`
 
 * Default: 2
@@ -618,7 +637,8 @@ recommended that you do not use this option!
 
 #### \`foreground-scripts\`
 
-* Default: false
+* Default: \`false\` unless when using \`npm pack\` or \`npm publish\` where it
+  defaults to \`true\`
 * Type: Boolean
 
 Run all build scripts (ie, \`preinstall\`, \`install\`, and \`postinstall\`)
@@ -900,6 +920,16 @@ This differs from \`--omit=peer\`, in that \`--omit=peer\` will avoid unpacking
 
 Use of \`legacy-peer-deps\` is not recommended, as it will not enforce the
 \`peerDependencies\` contract that meta-dependencies may rely on.
+
+
+
+#### \`libc\`
+
+* Default: null
+* Type: null or String
+
+Override libc of native modules to install. Acceptable values are same as
+\`libc\` field of package.json
 
 
 
@@ -1421,7 +1451,7 @@ SBOM format to use when generating SBOMs.
 * Type: "library", "application", or "framework"
 
 The type of package described by the generated SBOM. For SPDX, this is the
-value for the \`primaryPackagePurpose\` fieled. For CycloneDX, this is the
+value for the \`primaryPackagePurpose\` field. For CycloneDX, this is the
 value for the \`type\` field.
 
 
@@ -2049,6 +2079,7 @@ Array [
   "commit-hooks",
   "cpu",
   "os",
+  "libc",
   "depth",
   "description",
   "dev",
@@ -2063,6 +2094,8 @@ Array [
   "dry-run",
   "editor",
   "engine-strict",
+  "expect-results",
+  "expect-result-count",
   "fetch-retries",
   "fetch-retry-factor",
   "fetch-retry-maxtimeout",
@@ -2206,6 +2239,7 @@ Array [
   "commit-hooks",
   "cpu",
   "os",
+  "libc",
   "depth",
   "description",
   "dev",
@@ -2313,6 +2347,8 @@ Array [
 
 exports[`test/lib/docs.js TAP config > keys that are not flattened 1`] = `
 Array [
+  "expect-results",
+  "expect-result-count",
   "init-author-email",
   "init-author-name",
   "init-author-url",
@@ -2395,6 +2431,7 @@ Object {
   "json": false,
   "key": null,
   "legacyPeerDeps": false,
+  "libc": null,
   "localAddress": null,
   "location": "user",
   "lockfileVersion": null,
@@ -3240,7 +3277,7 @@ Options:
 [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
 [--strict-peer-deps] [--prefer-dedupe] [--no-package-lock] [--package-lock-only]
 [--foreground-scripts] [--ignore-scripts] [--no-audit] [--no-bin-links]
-[--no-fund] [--dry-run] [--cpu <cpu>] [--os <os>]
+[--no-fund] [--dry-run] [--cpu <cpu>] [--os <os>] [--libc <libc>]
 [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
 [-ws|--workspaces] [--include-workspace-root] [--install-links]
 
@@ -3274,6 +3311,7 @@ aliases: add, i, in, ins, inst, insta, instal, isnt, isnta, isntal, isntall
 #### \`dry-run\`
 #### \`cpu\`
 #### \`os\`
+#### \`libc\`
 #### \`workspace\`
 #### \`workspaces\`
 #### \`include-workspace-root\`
@@ -3337,7 +3375,7 @@ Options:
 [--include <prod|dev|optional|peer> [--include <prod|dev|optional|peer> ...]]
 [--strict-peer-deps] [--prefer-dedupe] [--no-package-lock] [--package-lock-only]
 [--foreground-scripts] [--ignore-scripts] [--no-audit] [--no-bin-links]
-[--no-fund] [--dry-run] [--cpu <cpu>] [--os <os>]
+[--no-fund] [--dry-run] [--cpu <cpu>] [--os <os>] [--libc <libc>]
 [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
 [-ws|--workspaces] [--include-workspace-root] [--install-links]
 
@@ -3371,6 +3409,7 @@ alias: it
 #### \`dry-run\`
 #### \`cpu\`
 #### \`os\`
+#### \`libc\`
 #### \`workspace\`
 #### \`workspaces\`
 #### \`include-workspace-root\`
@@ -3854,6 +3893,7 @@ Options:
 [-g|--global]
 [-w|--workspace <workspace-name> [-w|--workspace <workspace-name> ...]]
 [-ws|--workspaces] [--include-workspace-root] [--package-lock-only]
+[--expect-results|--expect-result-count <count>]
 
 Run "npm help query" for more info
 
@@ -3866,6 +3906,8 @@ npm query <selector>
 #### \`workspaces\`
 #### \`include-workspace-root\`
 #### \`package-lock-only\`
+#### \`expect-results\`
+#### \`expect-result-count\`
 `
 
 exports[`test/lib/docs.js TAP usage rebuild > must match snapshot 1`] = `

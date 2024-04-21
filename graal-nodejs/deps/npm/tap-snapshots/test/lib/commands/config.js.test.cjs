@@ -35,6 +35,7 @@ exports[`test/lib/commands/config.js TAP config list --json > output matches sna
   "commit-hooks": true,
   "cpu": null,
   "os": null,
+  "libc": null,
   "depth": null,
   "description": true,
   "dev": false,
@@ -49,6 +50,8 @@ exports[`test/lib/commands/config.js TAP config list --json > output matches sna
   "dry-run": false,
   "editor": "{EDITOR}",
   "engine-strict": false,
+  "expect-results": null,
+  "expect-result-count": null,
   "fetch-retries": 2,
   "fetch-retry-factor": 10,
   "fetch-retry-maxtimeout": 60000,
@@ -206,6 +209,8 @@ diff-unified = 3
 dry-run = false
 editor = "{EDITOR}"
 engine-strict = false
+expect-result-count = null
+expect-results = null
 fetch-retries = 2
 fetch-retry-factor = 10
 fetch-retry-maxtimeout = 60000
@@ -245,6 +250,7 @@ json = false
 key = null
 legacy-bundling = false
 legacy-peer-deps = false
+libc = null
 link = false
 local-address = null
 location = "user"

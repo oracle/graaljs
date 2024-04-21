@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -72,6 +72,8 @@ public:
             v8::PropertyAttribute attributes);
     int InternalFieldCount();
     void SetInternalField(int index, v8::Local<v8::Value> value);
+    void SetInternalFieldForNodeCore(int index, v8::Local<v8::Module> value);
+    void SetInternalFieldForNodeCore(int index, v8::Local<v8::UnboundScript> value);
     void SetAlignedPointerInInternalField(int index, void* value);
     v8::Local<v8::Value> SlowGetInternalField(int index);
     void* SlowGetAlignedPointerFromInternalField(int index);
@@ -100,6 +102,7 @@ protected:
     inline GraalObject(GraalIsolate* isolate, jobject java_object);
 private:
     int internal_field_count_cache_;
+    void SetInternalFieldImpl(int index, GraalHandleContent* handle);
 };
 
 #endif /* GRAAL_OBJECT_H_ */
