@@ -76,6 +76,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
 
     @Override
     protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index, Object receiver) {
+        requireObjectCoercible(target, index);
         Object convertedIndex = toArrayIndex(index);
         writeIndex(frame, convertedIndex);
         return super.executeWithTargetAndIndex(frame, target, convertedIndex, receiver);
@@ -83,12 +84,14 @@ public class CompoundWriteElementNode extends WriteElementNode {
 
     @Override
     protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index, Object receiver) {
+        requireObjectCoercible(target, index);
         writeIndex(frame, index);
         return super.executeWithTargetAndIndex(frame, target, index, receiver);
     }
 
     @Override
     protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index, Object receiver) throws UnexpectedResultException {
+        requireObjectCoercible(target, index);
         Object convertedIndex = toArrayIndex(index);
         writeIndex(frame, convertedIndex);
         return super.executeWithTargetAndIndexInt(frame, target, convertedIndex, receiver);
@@ -96,12 +99,14 @@ public class CompoundWriteElementNode extends WriteElementNode {
 
     @Override
     protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index, Object receiver) throws UnexpectedResultException {
+        requireObjectCoercible(target, index);
         writeIndex(frame, index);
         return super.executeWithTargetAndIndexInt(frame, target, index, receiver);
     }
 
     @Override
     protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index, Object receiver) throws UnexpectedResultException {
+        requireObjectCoercible(target, index);
         Object convertedIndex = toArrayIndex(index);
         writeIndex(frame, convertedIndex);
         return super.executeWithTargetAndIndexDouble(frame, target, convertedIndex, receiver);
@@ -109,6 +114,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
 
     @Override
     protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index, Object receiver) throws UnexpectedResultException {
+        requireObjectCoercible(target, index);
         writeIndex(frame, index);
         return super.executeWithTargetAndIndexDouble(frame, target, index, receiver);
     }
@@ -131,8 +137,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
      *
      * See also: https://github.com/tc39/test262/issues/3407
      */
-    @Override
-    protected void requireObjectCoercible(Object target, int index) {
+    private void requireObjectCoercible(Object target, int index) {
         try {
             requireObjectCoercibleNode.executeVoid(target);
         } catch (JSException e) {
@@ -143,8 +148,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
     /**
      * @see #requireObjectCoercible(Object, int)
      */
-    @Override
-    protected void requireObjectCoercible(Object target, Object index) {
+    private void requireObjectCoercible(Object target, Object index) {
         try {
             requireObjectCoercibleNode.executeVoid(target);
         } catch (JSException e) {
@@ -152,7 +156,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
         }
     }
 
-    protected final Object toArrayIndex(Object index) {
+    private Object toArrayIndex(Object index) {
         if (toArrayIndexNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             toArrayIndexNode = insert(ToArrayIndexNode.createNoStringToIndex());
