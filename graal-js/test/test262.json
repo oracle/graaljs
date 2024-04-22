@@ -5576,14 +5576,6 @@
     },
     "comment" : "Long-running in compile mode"
   }, {
-    "filePath" : "language/expressions/assignment/target-member-computed-reference-null.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-07-08"
-  }, {
-    "filePath" : "language/expressions/assignment/target-member-computed-reference-undefined.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2021-07-08"
-  }, {
     "filePath" : "language/line-terminators/invalid-comment-single-cr.js",
     "status" : "PASS",
     "statusOverrides" : {
