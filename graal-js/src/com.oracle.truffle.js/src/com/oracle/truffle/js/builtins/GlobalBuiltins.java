@@ -830,6 +830,11 @@ public class GlobalBuiltins extends JSBuiltinsContainer.SwitchEnum<GlobalBuiltin
         }
 
         @Specialization
+        protected long parseFloatLong(long value) {
+            return value;
+        }
+
+        @Specialization
         protected double parseFloatDouble(double value,
                         @Cached InlinedConditionProfile negativeZero) {
             if (negativeZero.profile(this, JSRuntime.isNegativeZero(value))) {
