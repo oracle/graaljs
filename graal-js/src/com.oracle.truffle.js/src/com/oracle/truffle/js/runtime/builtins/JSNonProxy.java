@@ -333,7 +333,7 @@ public abstract class JSNonProxy extends JSClass {
         if (descriptor.isDataDescriptor()) {
             if (!descriptor.getWritable()) {
                 if (isStrict) {
-                    throw Errors.createTypeErrorNotWritableProperty(key, target);
+                    throw Errors.createTypeErrorNotWritableProperty(key, target, encapsulatingNode);
                 }
                 return false;
             }
@@ -354,7 +354,7 @@ public abstract class JSNonProxy extends JSClass {
                 }
                 if (!existingDesc.getWritable()) {
                     if (isStrict) {
-                        throw Errors.createTypeErrorNotWritableProperty(key, receiverObj);
+                        throw Errors.createTypeErrorNotWritableProperty(key, receiverObj, encapsulatingNode);
                     }
                     return false;
                 }
@@ -368,7 +368,7 @@ public abstract class JSNonProxy extends JSClass {
             Object setter = descriptor.getSet();
             if (setter == Undefined.instance || setter == null) {
                 if (isStrict) {
-                    throw Errors.createTypeErrorCannotSetAccessorProperty(key, target);
+                    throw Errors.createTypeErrorCannotSetAccessorProperty(key, target, encapsulatingNode);
                 }
                 return false;
             }
@@ -390,7 +390,7 @@ public abstract class JSNonProxy extends JSClass {
                 if (desc != null) {
                     if (desc.isDataDescriptor() && !desc.getWritable()) {
                         if (isStrict) {
-                            throw Errors.createTypeErrorNotWritableProperty(key, current);
+                            throw Errors.createTypeErrorNotWritableProperty(key, current, encapsulatingNode);
                         }
                         return false;
                     } else if (desc.isAccessorDescriptor()) {
@@ -444,7 +444,7 @@ public abstract class JSNonProxy extends JSClass {
             JSRuntime.call(setter, receiver, new Object[]{value}, encapsulatingNode);
             return true;
         } else if (isStrict) {
-            throw Errors.createTypeErrorCannotSetAccessorProperty(key, thisObj);
+            throw Errors.createTypeErrorCannotSetAccessorProperty(key, thisObj, encapsulatingNode);
         } else {
             return false;
         }

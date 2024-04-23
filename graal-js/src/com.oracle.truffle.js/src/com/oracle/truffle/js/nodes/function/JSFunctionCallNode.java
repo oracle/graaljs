@@ -1560,7 +1560,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
                 assert JSArguments.getFunctionObject(arguments) == receiver;
                 if (interop.isNull(receiver)) {
                     errorBranch.enter();
-                    throw Errors.createTypeErrorCannotGetProperty(getContext(), functionName, receiver, false, this);
+                    throw Errors.createTypeErrorCannotGetProperty(functionName, receiver, false, this);
                 }
                 if (optimistic) {
                     try {

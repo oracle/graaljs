@@ -340,7 +340,7 @@ public class WritePropertyNode extends JSTargetableWriteNode {
             referenceErrorBranchEntered = true;
         }
         assert !cache.isGlobal() || (thisObj == null) || (JSDynamicObject.isJSDynamicObject(thisObj) && thisObj == getRealm().getGlobalObject());
-        throw Errors.createReferenceErrorNotDefined(cache.getContext(), getKey(), this);
+        throw Errors.createReferenceErrorNotDefined(getKey(), this);
     }
 
     @Override

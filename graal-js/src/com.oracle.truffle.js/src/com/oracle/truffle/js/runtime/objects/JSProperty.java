@@ -137,7 +137,7 @@ public final class JSProperty {
         } else {
             if (isWritable(property)) {
                 if (isProxy(property)) {
-                    return setValueProxy(property, store, thisObj, value, isStrict);
+                    return setValueProxy(property, store, thisObj, value, isStrict, encapsulatingNode);
                 } else {
                     assert isData(property) && !isDataSpecial(property) : property;
                     assert !(value instanceof Accessor || value instanceof PropertyProxy || value instanceof ExportResolution);
@@ -147,7 +147,7 @@ public final class JSProperty {
                 }
             } else {
                 if (isStrict) {
-                    throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
+                    throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj, encapsulatingNode);
                 }
                 return false;
             }
@@ -160,16 +160,16 @@ public final class JSProperty {
             JSRuntime.call(setter, thisObj, new Object[]{value}, encapsulatingNode);
             return true;
         } else if (isStrict) {
-            throw Errors.createTypeErrorCannotSetAccessorProperty(property.getKey(), store);
+            throw Errors.createTypeErrorCannotSetAccessorProperty(property.getKey(), store, encapsulatingNode);
         } else {
             return false;
         }
     }
 
-    private static boolean setValueProxy(Property property, JSDynamicObject store, Object thisObj, Object value, boolean isStrict) {
+    private static boolean setValueProxy(Property property, JSDynamicObject store, Object thisObj, Object value, boolean isStrict, Node encapsulatingNode) {
         boolean ret = ((PropertyProxy) JSDynamicObject.getOrNull(store, property.getKey())).set(store, value);
         if (!ret && isStrict) {
-            throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj);
+            throw Errors.createTypeErrorNotWritableProperty(property.getKey(), thisObj, encapsulatingNode);
         }
         return ret;
     }

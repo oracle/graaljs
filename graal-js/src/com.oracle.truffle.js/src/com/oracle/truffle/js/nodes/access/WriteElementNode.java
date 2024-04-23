@@ -1565,7 +1565,7 @@ public class WriteElementNode extends JSTargetableNode {
             if (isImmutable.profile(this, index >= 0 && index < Strings.length(string))) {
                 // cannot set characters of immutable strings
                 if (root.isStrict) {
-                    throw Errors.createTypeErrorNotWritableIndex(index, string, this);
+                    throw Errors.createTypeErrorNotWritableProperty(index, string, this);
                 }
                 return;
             } else {
@@ -1583,7 +1583,7 @@ public class WriteElementNode extends JSTargetableNode {
             if (isImmutable.profile(this, longIndex >= 0 && longIndex < Strings.length(string))) {
                 // cannot set characters of immutable strings
                 if (root.isStrict) {
-                    throw Errors.createTypeErrorNotWritableIndex(longIndex, string, this);
+                    throw Errors.createTypeErrorNotWritableProperty(longIndex, string, this);
                 }
                 return;
             }
@@ -1723,7 +1723,7 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedBranchProfile errorBranch) {
             Object truffleObject = classProfile.profile(this, target);
             if (interop.isNull(truffleObject)) {
-                throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this, root.getContext());
+                throw Errors.createTypeErrorCannotSetProperty(index, truffleObject, this);
             }
             Object propertyKey;
             Object exportedValue = exportValue.execute(value);

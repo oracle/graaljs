@@ -107,7 +107,7 @@ public abstract class PrivateFieldSetNode extends JSTargetableNode {
         Object setter = accessor.getSetter();
         if (setter == Undefined.instance) {
             errorBranch.enter(this);
-            throw Errors.createTypeErrorCannotSetAccessorProperty(keyAsString(), target);
+            throw Errors.createTypeErrorCannotSetAccessorProperty(keyAsString(), target, this);
         }
         callNode.executeCall(JSArguments.createOneArg(target, setter, value));
         return value;

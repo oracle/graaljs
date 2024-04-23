@@ -177,7 +177,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         if (index >= 0 && index < getStringLength(thisObj)) {
             // Indexed properties of a String are non-writable and non-configurable.
             if (isStrict) {
-                throw Errors.createTypeErrorNotWritableIndex(index, thisObj, encapsulatingNode);
+                throw Errors.createTypeErrorNotWritableProperty(index, thisObj, encapsulatingNode);
             }
             return true;
         } else {
@@ -194,7 +194,7 @@ public final class JSString extends JSPrimitive implements JSConstructorFactory.
         if (index >= 0 && index < getStringLength(thisObj)) {
             // Indexed properties of a String are non-writable and non-configurable.
             if (isStrict) {
-                throw Errors.createTypeErrorNotWritableIndex(index, thisObj, encapsulatingNode);
+                throw Errors.createTypeErrorNotWritableProperty(index, thisObj, encapsulatingNode);
             }
             return true;
         } else {
