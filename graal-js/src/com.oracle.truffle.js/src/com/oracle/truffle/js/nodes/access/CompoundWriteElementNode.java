@@ -135,7 +135,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
         try {
             requireObjectCoercibleNode.executeVoid(target);
         } catch (JSException e) {
-            throw Errors.createTypeErrorCannotSetProperty(index, target, this);
+            throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
         }
     }
 
@@ -143,7 +143,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
         try {
             requireObjectCoercibleNode.executeVoid(target);
         } catch (JSException e) {
-            throw Errors.createTypeErrorCannotSetProperty(index, target, this);
+            throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
         }
     }
 
