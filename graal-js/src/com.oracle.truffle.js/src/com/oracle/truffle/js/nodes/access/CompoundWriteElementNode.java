@@ -131,12 +131,6 @@ public class CompoundWriteElementNode extends WriteElementNode {
         }
     }
 
-    /**
-     * Off-spec: We perform RequireObjectCoercible(lhs) before evaluating the rhs (only) for
-     * compatibility with current test262 tests and other engines.
-     *
-     * See also: https://github.com/tc39/test262/issues/3407
-     */
     private void requireObjectCoercible(Object target, int index) {
         try {
             requireObjectCoercibleNode.executeVoid(target);
@@ -145,9 +139,6 @@ public class CompoundWriteElementNode extends WriteElementNode {
         }
     }
 
-    /**
-     * @see #requireObjectCoercible(Object, int)
-     */
     private void requireObjectCoercible(Object target, Object index) {
         try {
             requireObjectCoercibleNode.executeVoid(target);
