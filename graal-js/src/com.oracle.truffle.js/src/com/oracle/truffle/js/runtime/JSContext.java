@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -267,6 +267,21 @@ public class JSContext {
 
     // Used to track singleton symbols allocations across aux engine cache runs.
     private Object symbolUsageMarker = new Object();
+
+    private final Map<Symbol, Void> unregisteredSymbols = new WeakHashMap<>();
+
+    @TruffleBoundary
+    public void unregisteredSymbolCreated(Symbol symbol) {
+        synchronized (this) {
+            unregisteredSymbols.put(symbol, null);
+        }
+    }
+
+    public void clearSymbolInvertedMaps() {
+        for (Symbol symbol : unregisteredSymbols.keySet()) {
+            symbol.clearInvertedMap();
+        }
+    }
 
     public void resetSymbolUsageMarker() {
         CompilerAsserts.neverPartOfCompilation();

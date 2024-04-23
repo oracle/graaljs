@@ -96,7 +96,7 @@ import com.oracle.truffle.js.runtime.util.UnmodifiableArrayList;
 public class ImportCallNode extends JavaScriptNode {
 
     private static final HiddenKey CURRENT_MODULE_RECORD_KEY = new HiddenKey("%currentModuleRecord");
-    private static final TruffleString ASSERTIONS = Strings.constant("assert");
+    private static final TruffleString ASSERT = Strings.constant("assert");
 
     @Child private JavaScriptNode argRefNode;
     private final ScriptOrModule activeScriptOrModule;
@@ -109,7 +109,8 @@ public class ImportCallNode extends JavaScriptNode {
     @Child private JSFunctionCallNode callRejectNode;
     @Child private TryCatchNode.GetErrorObjectNode getErrorObjectNode;
     @Child private EnumerableOwnPropertyNamesNode enumerableOwnPropertyNamesNode;
-    @Child private PropertyGetNode getAssertionsNode;
+    @Child private PropertyGetNode getWithNode;
+    @Child private PropertyGetNode getAssertNode;
 
     private final JSContext context;
 
@@ -161,10 +162,11 @@ public class ImportCallNode extends JavaScriptNode {
     @SuppressWarnings("unchecked")
     private Object executeAssertions(VirtualFrame frame, ScriptOrModule referencingScriptOrModule, Object specifier) {
         assert optionsRefNode != null;
-        if (enumerableOwnPropertyNamesNode == null || getAssertionsNode == null) {
+        if (enumerableOwnPropertyNamesNode == null || getWithNode == null || getAssertNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             enumerableOwnPropertyNamesNode = insert(EnumerableOwnPropertyNamesNode.createKeys(context));
-            getAssertionsNode = insert(PropertyGetNode.create(ASSERTIONS, context));
+            getWithNode = insert(PropertyGetNode.create(Strings.WITH, context));
+            getAssertNode = insert(PropertyGetNode.create(ASSERT, context));
         }
         Object options = optionsRefNode.execute(frame);
         PromiseCapabilityRecord promiseCapability = newPromiseCapability();
@@ -181,7 +183,10 @@ public class ImportCallNode extends JavaScriptNode {
             }
             Object assertionsObj;
             try {
-                assertionsObj = getAssertionsNode.getValue(options);
+                assertionsObj = getWithNode.getValue(options);
+                if (assertionsObj == Undefined.instance) {
+                    assertionsObj = getAssertNode.getValue(options);
+                }
             } catch (AbstractTruffleException ex) {
                 return rejectPromise(promiseCapability, ex);
             }
@@ -197,6 +202,7 @@ public class ImportCallNode extends JavaScriptNode {
                     return rejectPromise(promiseCapability, ex);
                 }
                 assertions = (Map.Entry<TruffleString, TruffleString>[]) new Map.Entry<?, ?>[keys.size()];
+                boolean allStrings = true;
                 for (int i = 0; i < keys.size(); i++) {
                     TruffleString key = (TruffleString) keys.get(i);
                     Object value;
@@ -205,10 +211,16 @@ public class ImportCallNode extends JavaScriptNode {
                     } catch (AbstractTruffleException ex) {
                         return rejectPromise(promiseCapability, ex);
                     }
-                    if (!Strings.isTString(value)) {
-                        return rejectPromiseWithTypeError(promiseCapability, "Import assertion value must be a string");
+                    if (Strings.isTString(value)) {
+                        assertions[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
+                    } else {
+                        // Read all values before rejecting the promise,
+                        // we were supposed to do EnumerableOwnProperties(KEY+VALUE) above.
+                        allStrings = false;
                     }
-                    assertions[i] = Boundaries.mapEntry(key, JSRuntime.toStringIsString(value));
+                }
+                if (!allStrings) {
+                    return rejectPromiseWithTypeError(promiseCapability, "Import assertion value must be a string");
                 }
             }
         }

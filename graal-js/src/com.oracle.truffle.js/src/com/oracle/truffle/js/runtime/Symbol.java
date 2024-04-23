@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -69,67 +69,67 @@ public final class Symbol implements TruffleObject {
      * A method that determines if a constructor object recognizes an object as one of the
      * constructor's instances. Called by the semantics of the instanceof operator.
      */
-    public static final Symbol SYMBOL_HAS_INSTANCE = Symbol.create(Strings.constant("Symbol.hasInstance"));
+    public static final Symbol SYMBOL_HAS_INSTANCE = createWellKnown(Strings.constant("Symbol.hasInstance"));
     /**
      * A Boolean valued property that if true indicates that an object should be flatten to its
      * array elements by Array.prototype.concat.
      */
-    public static final Symbol SYMBOL_IS_CONCAT_SPREADABLE = Symbol.create(Strings.constant("Symbol.isConcatSpreadable"));
+    public static final Symbol SYMBOL_IS_CONCAT_SPREADABLE = createWellKnown(Strings.constant("Symbol.isConcatSpreadable"));
     /**
      * A method that returns the default iterator for an object. Called by the semantics of the
      * for-of statement.
      */
-    public static final Symbol SYMBOL_ITERATOR = Symbol.create(Strings.constant("Symbol.iterator"));
+    public static final Symbol SYMBOL_ITERATOR = createWellKnown(Strings.constant("Symbol.iterator"));
     /**
      * A method that returns the default asynchronous iterator for an object. Called by the
      * semantics of the for-await-of statement.
      */
-    public static final Symbol SYMBOL_ASYNC_ITERATOR = Symbol.create(Strings.constant("Symbol.asyncIterator"));
+    public static final Symbol SYMBOL_ASYNC_ITERATOR = createWellKnown(Strings.constant("Symbol.asyncIterator"));
     /**
      * A regular expression method that matches the regular expression against a string. Called by
      * the String.prototype.match method.
      */
-    public static final Symbol SYMBOL_MATCH = Symbol.create(Strings.constant("Symbol.match"));
+    public static final Symbol SYMBOL_MATCH = createWellKnown(Strings.constant("Symbol.match"));
     /**
      * A regular expression method that returns an iterator, that yields matches of the regular
      * expression against a string. Called by the String.prototype.matchAll method.
      */
-    public static final Symbol SYMBOL_MATCH_ALL = Symbol.create(Strings.constant("Symbol.matchAll"));
+    public static final Symbol SYMBOL_MATCH_ALL = createWellKnown(Strings.constant("Symbol.matchAll"));
     /**
      * A regular expression method that replaces matched substrings of a string. Called by the
      * String.prototype.replace method.
      */
-    public static final Symbol SYMBOL_REPLACE = Symbol.create(Strings.constant("Symbol.replace"));
+    public static final Symbol SYMBOL_REPLACE = createWellKnown(Strings.constant("Symbol.replace"));
     /**
      * A regular expression method that returns the index within a string that matches the regular
      * expression. Called by the String.prototype.search method.
      */
-    public static final Symbol SYMBOL_SEARCH = Symbol.create(Strings.constant("Symbol.search"));
+    public static final Symbol SYMBOL_SEARCH = createWellKnown(Strings.constant("Symbol.search"));
     /**
      * A function valued property that is the constructor function that is used to create derived
      * objects.
      */
-    public static final Symbol SYMBOL_SPECIES = Symbol.create(Strings.constant("Symbol.species"));
+    public static final Symbol SYMBOL_SPECIES = createWellKnown(Strings.constant("Symbol.species"));
     /**
      * A regular expression method that splits a string at the indices that match the regular
      * expression. Called by the String.prototype.split method.
      */
-    public static final Symbol SYMBOL_SPLIT = Symbol.create(Strings.constant("Symbol.split"));
+    public static final Symbol SYMBOL_SPLIT = createWellKnown(Strings.constant("Symbol.split"));
     /**
      * A method that converts an object to a corresponding primitive value. Called by the
      * ToPrimitive abstract operation.
      */
-    public static final Symbol SYMBOL_TO_PRIMITIVE = Symbol.create(Strings.constant("Symbol.toPrimitive"));
+    public static final Symbol SYMBOL_TO_PRIMITIVE = createWellKnown(Strings.constant("Symbol.toPrimitive"));
     /**
      * A property whose String value that is used in the creation of the default string description
      * of an object. Called by the built-in method Object.prototype.toString.
      */
-    public static final Symbol SYMBOL_TO_STRING_TAG = Symbol.create(Strings.constant("Symbol.toStringTag"));
+    public static final Symbol SYMBOL_TO_STRING_TAG = createWellKnown(Strings.constant("Symbol.toStringTag"));
     /**
      * A property whose value is an Object whose own property names are property names that are
      * excluded from the with environment bindings of the associated object.
      */
-    public static final Symbol SYMBOL_UNSCOPABLES = Symbol.create(Strings.constant("Symbol.unscopables"));
+    public static final Symbol SYMBOL_UNSCOPABLES = createWellKnown(Strings.constant("Symbol.unscopables"));
 
     /**
      * [[Description]] of Symbol if it is a String value, {@code null} otherwise ([[Description]] is
@@ -154,6 +154,12 @@ public final class Symbol implements TruffleObject {
     }
 
     public static Symbol create(TruffleString description) {
+        Symbol symbol = new Symbol(description, false, false);
+        JavaScriptLanguage.getCurrentLanguage().getJSContext().unregisteredSymbolCreated(symbol);
+        return symbol;
+    }
+
+    private static Symbol createWellKnown(TruffleString description) {
         return new Symbol(description, false, false);
     }
 
@@ -269,4 +275,9 @@ public final class Symbol implements TruffleObject {
         assert this.invertedMap == null;
         this.invertedMap = invMap;
     }
+
+    void clearInvertedMap() {
+        this.invertedMap = null;
+    }
+
 }
