@@ -954,7 +954,7 @@ public class TemporalBuiltinsTest extends JSTest {
             ctx.eval(ID, code);
             Assert.fail();
         } catch (PolyglotException ex) {
-            Assert.assertTrue(ex.getMessage().contains("invalid PlainDateTime"));
+            Assert.assertTrue(ex.getMessage(), ex.getMessage().startsWith("RangeError:"));
         }
     }
 

@@ -2790,7 +2790,7 @@ public final class TemporalUtil {
                     JSContext ctx, JSRealm realm, ToTemporalCalendarSlotValueNode toCalendarSlotValue, ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue) {
         Object timeZone;
         if (temporalTimeZoneLike == Undefined.instance) {
-            timeZone = systemTimeZone(ctx, realm);
+            timeZone = systemTimeZoneIdentifier(realm);
         } else {
             timeZone = toTimeZoneSlotValue.execute(temporalTimeZoneLike);
         }
@@ -2878,7 +2878,7 @@ public final class TemporalUtil {
                     JSContext ctx, JSRealm realm, ToTemporalCalendarSlotValueNode toCalendarSlotValue, ToTemporalTimeZoneSlotValueNode toTimeZoneSlotValue) {
         Object timeZone;
         if (temporalTimeZoneLike == Undefined.instance) {
-            timeZone = systemTimeZone(ctx, realm);
+            timeZone = systemTimeZoneIdentifier(realm);
         } else {
             timeZone = toTimeZoneSlotValue.execute(temporalTimeZoneLike);
         }
@@ -2902,12 +2902,11 @@ public final class TemporalUtil {
     }
 
     public static JSTemporalTimeZoneObject systemTimeZone(JSContext ctx, JSRealm realm) {
-        TruffleString identifier = defaultTimeZone();
-        return createTemporalTimeZone(ctx, realm, identifier);
+        return createTemporalTimeZone(ctx, realm, systemTimeZoneIdentifier(realm));
     }
 
-    public static TruffleString defaultTimeZone() {
-        return UTC;
+    public static TruffleString systemTimeZoneIdentifier(JSRealm realm) {
+        return Strings.fromJavaString(realm.getLocalTimeZoneId().getId());
     }
 
     public static boolean isTemporalInstant(Object obj) {
@@ -3064,7 +3063,25 @@ public final class TemporalUtil {
 
     @TruffleBoundary
     private static JSTemporalTimeZoneRecord parseTemporalTimeZoneString(TruffleString string, boolean offsetRequired) {
-        JSTemporalParserRecord rec = (new TemporalParser(string)).parseTimeZoneString();
+        TemporalParser parser = new TemporalParser(string);
+        JSTemporalParserRecord rec;
+        if (offsetRequired) {
+            rec = parser.parseISODateTime();
+        } else {
+            rec = parser.parseTimeZoneIdentifier();
+            if (rec == null) {
+                rec = parser.parseISODateTime();
+                if (rec != null) {
+                    if (rec.getTimeZoneANYName() != null) {
+                        rec = new TemporalParser(rec.getTimeZoneANYName()).parseTimeZoneIdentifier();
+                    } else if (rec.getTimeZoneNumericUTCOffset() != null) {
+                        rec = (new TemporalParser(rec.getTimeZoneNumericUTCOffset())).parseTimeZoneIdentifier();
+                    } else if (!rec.getZ()) {
+                        rec = null;
+                    }
+                }
+            }
+        }
         if (rec == null) {
             throw Errors.createRangeError("TemporalTimeZoneString expected");
         }

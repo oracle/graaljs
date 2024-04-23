@@ -99,6 +99,7 @@ public final class TemporalParser {
     private static final TruffleString T = Strings.constant("t");
     private static final TruffleString U_CA_EQUALS = Strings.constant("u-ca=");
     private static final TruffleString ETC_GMT = Strings.constant("Etc/GMT");
+    private static final TruffleString SIX_ZEROS = Strings.constant("000000");
 
     private final TruffleString input;
     private TruffleString rest;
@@ -502,30 +503,6 @@ public final class TemporalParser {
         return null;
     }
 
-    public JSTemporalParserRecord parseTimeZoneString() {
-        reset();
-        // TimeZoneIdentifier
-        if (parseTimeZoneIdentifier()) {
-            if (atEnd()) {
-                return result();
-            }
-        }
-
-        reset();
-        // Date TimeSpecSeparator(opt) TimeZone Calendar(opt)
-        if (parseDate()) {
-            if (parseTimeSpecSeparator(true)) {
-                if (parseTimeZone()) {
-                    parseCalendar();
-                    if (atEnd()) {
-                        return result();
-                    }
-                }
-            }
-        }
-        return null;
-    }
-
     private boolean parseTimeZoneIANAName() {
         TruffleString ianaName = rest;
 
@@ -792,7 +769,12 @@ public final class TemporalParser {
             year = group(rest, matcher, 1);
             month = group(rest, matcher, 2);
             day = group(rest, matcher, 3);
-            if (Strings.charAt(year, 0) == '\u2212') {
+            char yearCh0 = Strings.charAt(year, 0);
+            if ((yearCh0 == '-' || yearCh0 == '\u2212') && Strings.startsWith(year, SIX_ZEROS, 1)) {
+                // It is a Syntax Error if DateYear is "-000000"
+                return false;
+            }
+            if (yearCh0 == '\u2212') {
                 year = Strings.concat(Strings.DASH, Strings.lazySubstring(year, 1));
             }
             move(matcher.end(3));
@@ -931,7 +913,17 @@ public final class TemporalParser {
         return false;
     }
 
-    private boolean parseTimeZoneIdentifier() {
+    public JSTemporalParserRecord parseTimeZoneIdentifier() {
+        reset();
+        if (tryParseTimeZoneIdentifier()) {
+            if (atEnd()) {
+                return result();
+            }
+        }
+        return null;
+    }
+
+    private boolean tryParseTimeZoneIdentifier() {
         // TimeZoneIANAName
         reset();
         if (parseTimeZoneIANAName()) {
@@ -941,6 +933,9 @@ public final class TemporalParser {
         // TimeZoneNumericUTCOffset
         reset();
         if (tryParseTimeZoneNumericUTCOffset(false)) {
+            if (offsetSecond != null || offsetFraction != null) {
+                return false;
+            }
             return true;
         }
 
