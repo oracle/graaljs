@@ -1540,7 +1540,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         @CompilationFinal private JSDynamicObject constantFunction;
         @Child private CreateMethodPropertyNode setConstructor;
         @CompilationFinal private int kind;
-        private final JSContext context;
         private final CountingConditionProfile prototypeInitializedProfile = CountingConditionProfile.create();
 
         private static final int UNKNOWN = 0;
@@ -1554,7 +1553,6 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
         public ClassPrototypePropertyGetNode(Property property, ReceiverCheckNode receiverCheck, JSContext context) {
             super(receiverCheck);
             assert JSProperty.isData(property) && isClassPrototypeProperty(property);
-            this.context = context;
             this.constantFunction = context.isMultiContext() ? GENERIC_FUN : UNKNOWN_FUN;
         }
 
@@ -1578,11 +1576,11 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
             if (prototypeInitializedProfile.profile(JSFunction.isClassPrototypeInitialized(functionObj))) {
                 return JSFunction.getClassPrototypeInitialized(functionObj);
             } else {
-                return getPrototypeNotInitialized(functionObj);
+                return getPrototypeNotInitialized(functionObj, root.getContext());
             }
         }
 
-        private Object getPrototypeNotInitialized(JSFunctionObject functionObj) {
+        private Object getPrototypeNotInitialized(JSFunctionObject functionObj, JSContext context) {
             if (kind == UNKNOWN) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 JSFunctionData functionData = JSFunction.getFunctionData(functionObj);
@@ -1699,16 +1697,14 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
 
     public static final class LazyNamedCaptureGroupPropertyGetNode extends LinkedPropertyGetNode {
 
-        private final JSContext context;
         private final int[] groupIndices;
         @Child TruffleString.SubstringByteIndexNode substringNode = TruffleString.SubstringByteIndexNode.create();
         @Child private InvokeGetGroupBoundariesMethodNode getStartNode = InvokeGetGroupBoundariesMethodNode.create();
         @Child private InvokeGetGroupBoundariesMethodNode getEndNode = InvokeGetGroupBoundariesMethodNode.create();
         private final ConditionProfile isIndicesObject = ConditionProfile.create();
 
-        public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, int[] groupIndices, JSContext context) {
+        public LazyNamedCaptureGroupPropertyGetNode(Property property, ReceiverCheckNode receiverCheck, int[] groupIndices) {
             super(receiverCheck);
-            this.context = context;
             assert isLazyNamedCaptureGroupProperty(property);
             this.groupIndices = groupIndices;
         }
@@ -1723,7 +1719,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                                 null, getStartNode, getEndNode);
             } else {
                 TruffleString input = groups.getInputString();
-                return TRegexMaterializeResult.materializeGroup(context, regexResult, groupIndices, input,
+                return TRegexMaterializeResult.materializeGroup(root.getContext(), regexResult, groupIndices, input,
                                 null, substringNode, getStartNode, getEndNode);
             }
         }
@@ -1862,7 +1858,7 @@ public class PropertyGetNode extends PropertyCacheNode<PropertyGetNode.GetCacheN
                 return new LazyRegexResultIndexPropertyGetNode(property, receiverCheck);
             } else if (isLazyNamedCaptureGroupProperty(property)) {
                 int[] groupIndices = ((JSRegExp.LazyNamedCaptureGroupProperty) JSProperty.getConstantProxy(property)).getGroupIndices();
-                return new LazyNamedCaptureGroupPropertyGetNode(property, receiverCheck, groupIndices, context);
+                return new LazyNamedCaptureGroupPropertyGetNode(property, receiverCheck, groupIndices);
             } else {
                 return new ProxyPropertyGetNode(property, receiverCheck);
             }
