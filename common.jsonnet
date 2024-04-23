@@ -1,10 +1,6 @@
 local common = (import "ci/common.jsonnet");
 
 local jdks = {
-  jdk17:: common.jdks["labsjdk-ee-17"] + {
-    jdk:: 'jdk' + super.jdk_version,
-  },
-
   jdk21:: common.jdks["labsjdk-ee-21"] + {
     jdk:: 'jdk' + super.jdk_version,
   },
@@ -66,8 +62,8 @@ targets +
 
   linux_amd64:: common.linux_amd64 + self.linux_common,
 
-  x52:: self.linux_amd64 + {
-    capabilities+: ['no_frequency_scaling', 'tmpfs25g', 'x52'],
+  e3:: self.linux_amd64 + {
+    capabilities+: ['tmpfs25g', 'e3'],
   },
 
   linux_aarch64:: common.linux_aarch64 + self.linux_common,
