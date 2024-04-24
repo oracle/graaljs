@@ -69,10 +69,11 @@ Note that the ES module file has `.mjs` extension.
 Also note that the `allowIO()` option is provided to enable IO access.
 More examples of ES modules usage are available [here](https://github.com/oracle/graaljs/blob/master/graal-js/src/com.oracle.truffle.js.test/src/com/oracle/truffle/js/test/interop/ESModuleTest.java).
 
-#### Experimental module namespace exports
+#### Module namespace exports
 
-The `--js.esm-eval-returns-exports` experimental option can be used to expose the ES module namespace exported object to a Polyglot `Context`.
+The `--js.esm-eval-returns-exports` option (off by default) can be used to expose the ES module namespace exported object to a Polyglot `Context`.
 This can be handy when an ES module is used directly from Java:
+
 ```java
 public static void main(String[] args) throws IOException {
 
@@ -92,8 +93,6 @@ public static void main(String[] args) throws IOException {
     System.out.println(exports.getMember("foo").toString()); // prints `42`
 }
 ```
-The option is disabled by default.
-
 
 ### Truffle FileSystem
 
