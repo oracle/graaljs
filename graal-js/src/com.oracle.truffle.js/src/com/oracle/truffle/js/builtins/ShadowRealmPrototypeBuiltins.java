@@ -378,7 +378,7 @@ public final class ShadowRealmPrototypeBuiltins extends JSBuiltinsContainer.Swit
                     JSRealm callerRealm = functionObject.getRealm();
                     assert getRealm() == callerRealm;
                     if (!hasOwnProperty.executeBoolean(exports, exportNameString)) {
-                        throw Errors.createTypeErrorCannotGetProperty(context, exportNameString, exports, false, this);
+                        throw Errors.createTypeErrorCannotGetProperty(exportNameString, exports, false, this);
                     }
                     Object value = getExport.executeWithTargetAndIndex(exports, exportNameString);
                     return getWrappedValue.execute(context, callerRealm, value);

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -90,7 +90,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
                     @Cached("getPropertyCacheLimit()") int cacheLimit) {
         assert !exists || dead == (JSDynamicObject.getOrNull(scope, varName) == Dead.instance());
         if (dead) {
-            throw Errors.createReferenceErrorNotDefined(getLanguage().getJSContext(), varName, this);
+            throw Errors.createReferenceErrorNotDefined(varName, this);
         }
         if (constAssignment) {
             throw Errors.createTypeErrorConstReassignment(varName, this);
@@ -109,7 +109,7 @@ public abstract class GlobalScopeLookupNode extends JavaScriptBaseNode {
         if (property != null) {
             if (JSDynamicObject.getOrNull(scope, varName) == Dead.instance()) {
                 errorBranch.enter(this);
-                throw Errors.createReferenceErrorNotDefined(getLanguage().getJSContext(), varName, this);
+                throw Errors.createReferenceErrorNotDefined(varName, this);
             } else if (write && JSProperty.isConst(property)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorConstReassignment(varName, this);

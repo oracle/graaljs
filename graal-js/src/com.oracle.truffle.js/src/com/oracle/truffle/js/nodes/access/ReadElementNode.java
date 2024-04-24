@@ -1456,7 +1456,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
             Object truffleObject = classProfile.profile(this, target);
             if (interop.isNull(truffleObject)) {
                 errorBranch.enter(this);
-                throw Errors.createTypeErrorCannotGetProperty(root.getContext(), JSRuntime.safeToString(index), target, false, this);
+                throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
             }
             Object foreignResult = getImpl(truffleObject, index, receiver, defaultValue, root, errorBranch);
             if (foreignResult == defaultValue) {

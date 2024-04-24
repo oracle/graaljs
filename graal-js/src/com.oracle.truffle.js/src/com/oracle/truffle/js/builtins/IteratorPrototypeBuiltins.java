@@ -234,7 +234,7 @@ public final class IteratorPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 throw Errors.createTypeErrorNotAnObject(thisObj, this);
             } else if (thisObj == home) {
                 errorProfile.enter(this);
-                throw Errors.createTypeErrorCannotSetProperty(propertyKey, thisObj, this, context);
+                throw Errors.createTypeErrorCannotSetProperty(propertyKey, thisObj, this);
             } else if (hasOwnPropertyProfile.profile(this, hasOwnConstructorPropertyNode.hasProperty(thisObj))) {
                 setConstructorNode.setValue(thisObj, value);
             } else {

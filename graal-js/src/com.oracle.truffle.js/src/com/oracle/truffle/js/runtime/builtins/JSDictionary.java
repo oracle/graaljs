@@ -212,7 +212,7 @@ public final class JSDictionary extends JSNonProxy {
                 JSRuntime.call(setter, thisObj, new Object[]{value}, encapsulatingNode);
                 return true;
             } else if (isStrict) {
-                throw Errors.createTypeErrorCannotSetAccessorProperty(key, store);
+                throw Errors.createTypeErrorCannotSetAccessorProperty(key, store, encapsulatingNode);
             } else {
                 return false;
             }
@@ -223,7 +223,7 @@ public final class JSDictionary extends JSNonProxy {
                 return true;
             } else {
                 if (isStrict) {
-                    throw Errors.createTypeErrorNotWritableProperty(key, thisObj);
+                    throw Errors.createTypeErrorNotWritableProperty(key, thisObj, encapsulatingNode);
                 }
                 return false;
             }

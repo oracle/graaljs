@@ -451,7 +451,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             boolean ret = ((PropertyProxy) location.get(store, guard)).set(store, value);
             if (!ret && isStrict) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorNotWritableProperty(root.getKey(), thisObj);
+                throw Errors.createTypeErrorNotWritableProperty(root.getKey(), thisObj, this);
             }
             return true;
         }
@@ -640,7 +640,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             } else {
                 undefinedSetterBranch.enter();
                 if (isStrict) {
-                    throw Errors.createTypeErrorCannotSetAccessorProperty(root.getKey(), store);
+                    throw Errors.createTypeErrorCannotSetAccessorProperty(root.getKey(), store, this);
                 }
             }
             return true;
@@ -742,7 +742,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             assert thisObj == Undefined.instance || thisObj == Null.instance;
-            throw Errors.createTypeErrorCannotSetProperty(root.getKey(), thisObj, this, root.getContext());
+            throw Errors.createTypeErrorCannotSetProperty(root.getKey(), thisObj, this);
         }
     }
 
@@ -868,7 +868,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
         private Object nullCheck(Object truffleObject, Object key) {
             if (interop.isNull(truffleObject)) {
-                throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this, context);
+                throw Errors.createTypeErrorCannotSetProperty(key, truffleObject, this);
             }
             return truffleObject;
         }
@@ -998,7 +998,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             boolean ret = JSArray.setLength(store, value, this);
             if (!ret && isStrict) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorNotWritableProperty(JSArray.LENGTH, thisObj);
+                throw Errors.createTypeErrorNotWritableProperty(JSArray.LENGTH, thisObj, this);
             }
             return true;
         }

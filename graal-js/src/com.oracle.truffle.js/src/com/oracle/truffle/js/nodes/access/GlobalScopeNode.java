@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -103,7 +103,7 @@ abstract class GlobalScopeTDZCheckNode extends GlobalScopeNode {
                     @Cached("isDead(cachedShape)") boolean dead) {
         assert dead == (JSDynamicObject.getOrNull(scope, varName) == Dead.instance());
         if (dead) {
-            throw Errors.createReferenceErrorNotDefined(context, varName, this);
+            throw Errors.createReferenceErrorNotDefined(varName, this);
         }
         return scope;
     }
@@ -114,7 +114,7 @@ abstract class GlobalScopeTDZCheckNode extends GlobalScopeNode {
                     @Cached InlinedBranchProfile deadBranch) {
         if (getNode.getValue(scope) == Dead.instance()) {
             deadBranch.enter(this);
-            throw Errors.createReferenceErrorNotDefined(context, varName, this);
+            throw Errors.createReferenceErrorNotDefined(varName, this);
         }
         return scope;
     }

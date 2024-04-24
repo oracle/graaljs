@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,10 +42,12 @@ package com.oracle.truffle.js.nodes.access;
 
 import java.util.Set;
 
+import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
+import com.oracle.truffle.js.nodes.cast.ToArrayIndexNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
@@ -53,6 +55,7 @@ import com.oracle.truffle.js.runtime.JSException;
 public class CompoundWriteElementNode extends WriteElementNode {
     @Child private JSWriteFrameSlotNode writeIndexNode;
     @Child private RequireObjectCoercibleNode requireObjectCoercibleNode;
+    @Child private ToArrayIndexNode toArrayIndexNode;
 
     public static CompoundWriteElementNode create(JavaScriptNode targetNode, JavaScriptNode indexNode, JavaScriptNode valueNode, JSWriteFrameSlotNode writeIndexNode, JSContext context,
                     boolean isStrict) {
@@ -73,6 +76,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
 
     @Override
     protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, Object index, Object receiver) {
+        requireObjectCoercible(target, index);
         Object convertedIndex = toArrayIndex(index);
         writeIndex(frame, convertedIndex);
         return super.executeWithTargetAndIndex(frame, target, convertedIndex, receiver);
@@ -80,12 +84,14 @@ public class CompoundWriteElementNode extends WriteElementNode {
 
     @Override
     protected Object executeWithTargetAndIndex(VirtualFrame frame, Object target, int index, Object receiver) {
+        requireObjectCoercible(target, index);
         writeIndex(frame, index);
         return super.executeWithTargetAndIndex(frame, target, index, receiver);
     }
 
     @Override
     protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, Object index, Object receiver) throws UnexpectedResultException {
+        requireObjectCoercible(target, index);
         Object convertedIndex = toArrayIndex(index);
         writeIndex(frame, convertedIndex);
         return super.executeWithTargetAndIndexInt(frame, target, convertedIndex, receiver);
@@ -93,12 +99,14 @@ public class CompoundWriteElementNode extends WriteElementNode {
 
     @Override
     protected int executeWithTargetAndIndexInt(VirtualFrame frame, Object target, int index, Object receiver) throws UnexpectedResultException {
+        requireObjectCoercible(target, index);
         writeIndex(frame, index);
         return super.executeWithTargetAndIndexInt(frame, target, index, receiver);
     }
 
     @Override
     protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, Object index, Object receiver) throws UnexpectedResultException {
+        requireObjectCoercible(target, index);
         Object convertedIndex = toArrayIndex(index);
         writeIndex(frame, convertedIndex);
         return super.executeWithTargetAndIndexDouble(frame, target, convertedIndex, receiver);
@@ -106,6 +114,7 @@ public class CompoundWriteElementNode extends WriteElementNode {
 
     @Override
     protected double executeWithTargetAndIndexDouble(VirtualFrame frame, Object target, int index, Object receiver) throws UnexpectedResultException {
+        requireObjectCoercible(target, index);
         writeIndex(frame, index);
         return super.executeWithTargetAndIndexDouble(frame, target, index, receiver);
     }
@@ -122,31 +131,28 @@ public class CompoundWriteElementNode extends WriteElementNode {
         }
     }
 
-    /**
-     * Off-spec: We perform RequireObjectCoercible(lhs) before evaluating the rhs (only) for
-     * compatibility with current test262 tests and other engines.
-     *
-     * See also: https://github.com/tc39/test262/issues/3407
-     */
-    @Override
-    protected void requireObjectCoercible(Object target, int index) {
+    private void requireObjectCoercible(Object target, int index) {
         try {
             requireObjectCoercibleNode.executeVoid(target);
         } catch (JSException e) {
-            throw Errors.createTypeErrorCannotSetProperty(index, target, this);
+            throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
         }
     }
 
-    /**
-     * @see #requireObjectCoercible(Object, int)
-     */
-    @Override
-    protected void requireObjectCoercible(Object target, Object index) {
+    private void requireObjectCoercible(Object target, Object index) {
         try {
             requireObjectCoercibleNode.executeVoid(target);
         } catch (JSException e) {
-            throw Errors.createTypeErrorCannotSetProperty(index, target, this);
+            throw Errors.createTypeErrorCannotGetProperty(index, target, false, this);
         }
+    }
+
+    private Object toArrayIndex(Object index) {
+        if (toArrayIndexNode == null) {
+            CompilerDirectives.transferToInterpreterAndInvalidate();
+            toArrayIndexNode = insert(ToArrayIndexNode.createNoStringToIndex());
+        }
+        return toArrayIndexNode.execute(index);
     }
 
     @Override

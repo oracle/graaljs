@@ -397,20 +397,15 @@ public final class Errors {
         String message;
         JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
         if (language.getJSContext().isOptionNashornCompatibilityMode()) {
-            message = keyToString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj);
+            message = quoteIfString(key) + " is not a writable property of " + JSRuntime.safeToString(thisObj);
         } else {
-            message = "Cannot assign to read only property '" + key.toString() + "' of " + JSRuntime.safeToString(thisObj);
+            message = "Cannot assign to read only property '" + keyToString(key) + "' of " + JSRuntime.safeToString(thisObj);
         }
         return Errors.createTypeError(message, originatingNode);
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorNotWritableProperty(Object key, Object thisObj) {
-        return createTypeErrorNotWritableProperty(key, thisObj, null);
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorNotWritableIndex(long index, Object thisObj, Node originatingNode) {
+    public static JSException createTypeErrorNotWritableProperty(long index, Object thisObj, Node originatingNode) {
         return createTypeErrorNotWritableProperty(Strings.fromLong(index), thisObj, originatingNode);
     }
 
@@ -421,17 +416,17 @@ public final class Errors {
 
     @TruffleBoundary
     public static JSException createTypeErrorNotConfigurableProperty(Object key) {
-        return JSException.create(JSErrorType.TypeError, keyToString(key) + " is not a configurable property");
+        return JSException.create(JSErrorType.TypeError, quoteIfString(key) + " is not a configurable property");
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorNotExtensible(JSDynamicObject thisObj, Object key) {
-        return Errors.createTypeError("Cannot add new property " + keyToString(key) + " to non-extensible " + JSObject.defaultToString(thisObj));
+        return Errors.createTypeError("Cannot add new property " + quoteIfString(key) + " to non-extensible " + JSObject.defaultToString(thisObj));
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorSetNonObjectReceiver(Object receiver, Object key) {
-        return Errors.createTypeError("Cannot add property " + keyToString(key) + " to non-object " + JSRuntime.safeToString(receiver));
+        return Errors.createTypeError("Cannot add property " + quoteIfString(key) + " to non-object " + JSRuntime.safeToString(receiver));
     }
 
     @TruffleBoundary
@@ -443,29 +438,24 @@ public final class Errors {
     }
 
     private static String keyToString(Object key) {
-        assert JSRuntime.isPropertyKey(key);
-        return key instanceof TruffleString str ? '"' + Strings.toJavaString(str) + '"' : key.toString();
+        return JSRuntime.safeToString(key).toString();
+    }
+
+    private static String quoteIfString(Object key) {
+        return key instanceof TruffleString str ? '"' + Strings.toJavaString(str) + '"' : keyToString(key);
     }
 
     @TruffleBoundary
     public static JSException createReferenceErrorNotDefined(Object key, Node originatingNode) {
-        JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
-        return createReferenceErrorNotDefined(language.getJSContext(), key, originatingNode);
-    }
-
-    @TruffleBoundary
-    public static JSException createReferenceErrorNotDefined(JSContext context, Object key, Node originatingNode) {
-        return Errors.createReferenceError(quoteKey(context, key) + " is not defined", originatingNode);
-    }
-
-    private static String quoteKey(JSContext context, Object key) {
-        return context.isOptionNashornCompatibilityMode() ? "\"" + key + "\"" : key.toString();
+        String format = JavaScriptLanguage.get(originatingNode).getJSContext().isOptionNashornCompatibilityMode()
+                        ? "\"%s\" is not defined"
+                        : "%s is not defined";
+        return Errors.createReferenceError(String.format(format, keyToString(key)), originatingNode);
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotRedefineProperty(Object key) {
-        assert JSRuntime.isPropertyKey(key);
-        return Errors.createTypeErrorFormat("Cannot redefine property: %s", key);
+        return Errors.createTypeErrorFormat("Cannot redefine property: %s", keyToString(key));
     }
 
     @TruffleBoundary
@@ -474,21 +464,10 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotSetProperty(int index, Object object, Node originatingNode) {
-        return createTypeErrorCannotSetProperty(JSRuntime.safeToString(index), object, originatingNode);
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorCannotSetProperty(Object key, Object object, Node originatingNode) {
-        JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
-        return createTypeErrorCannotSetProperty(JSRuntime.safeToString(key), object, originatingNode, language.getJSContext());
-    }
-
-    @TruffleBoundary
-    public static JSException createTypeErrorCannotSetProperty(Object key, Object object, Node originatingNode, JSContext context) {
-        assert JSRuntime.isPropertyKey(key);
+    public static JSException createTypeErrorCannotSetProperty(Object keyOrIndex, Object object, Node originatingNode) {
+        String key = keyToString(keyOrIndex);
         String errorMessage;
-        if (context.isOptionNashornCompatibilityMode()) {
+        if (JavaScriptLanguage.get(originatingNode).getJSContext().isOptionNashornCompatibilityMode()) {
             errorMessage = "Cannot set property \"" + key + "\" of " + JSRuntime.safeToString(object);
         } else {
             errorMessage = "Cannot set property '" + key + "' of " + JSRuntime.safeToString(object);
@@ -497,26 +476,24 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotSetAccessorProperty(Object key, JSDynamicObject store) {
-        assert JSRuntime.isPropertyKey(key);
-        JavaScriptLanguage language = JavaScriptLanguage.get(null);
+    public static JSException createTypeErrorCannotSetAccessorProperty(Object key, JSDynamicObject store, Node originatingNode) {
+        JavaScriptLanguage language = JavaScriptLanguage.get(originatingNode);
         String message = language.getJSContext().isOptionNashornCompatibilityMode()
                         ? "Cannot set property \"%s\" of %s that has only a getter"
                         : "Cannot set property %s of %s which has only a getter";
-        return Errors.createTypeErrorFormat(message, key, JSObject.defaultToString(store));
+        return createTypeError(String.format(message, keyToString(key), JSObject.defaultToString(store)), originatingNode);
     }
 
     @TruffleBoundary
     public static JSException createTypeErrorCannotGetAccessorProperty(Object key, JSDynamicObject store, Node originatingNode) {
-        assert JSRuntime.isPropertyKey(key);
-        return createTypeError(String.format("Cannot get property %s of %s which has only a setter", key, JSObject.defaultToString(store)), originatingNode);
+        return createTypeError(String.format("Cannot get property %s of %s which has only a setter", keyToString(key), JSObject.defaultToString(store)), originatingNode);
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotGetProperty(JSContext context, Object key, Object object, boolean isGetMethod, Node originatingNode) {
-        assert JSRuntime.isPropertyKey(key);
+    public static JSException createTypeErrorCannotGetProperty(Object keyOrIndex, Object object, boolean isGetMethod, Node originatingNode) {
+        String key = keyToString(keyOrIndex);
         String errorMessage;
-        if (context.isOptionNashornCompatibilityMode()) {
+        if (JavaScriptLanguage.get(originatingNode).getJSContext().isOptionNashornCompatibilityMode()) {
             if (isGetMethod) {
                 errorMessage = JSRuntime.safeToString(object) + " has no such function \"" + key + "\"";
             } else {
@@ -778,9 +755,8 @@ public final class Errors {
     }
 
     @TruffleBoundary
-    public static JSException createTypeErrorCannotDeletePropertyOf(Object propertyKey, Object object) {
-        assert JSRuntime.isPropertyKey(propertyKey);
-        return createTypeError("Cannot delete property " + JSRuntime.quote(propertyKey.toString()) + " of " + JSRuntime.safeToString(object));
+    public static JSException createTypeErrorCannotDeletePropertyOf(Object key, Object object) {
+        return createTypeError("Cannot delete property \"" + keyToString(key) + "\" of " + JSRuntime.safeToString(object));
     }
 
     @TruffleBoundary
