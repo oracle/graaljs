@@ -471,12 +471,12 @@ def run_javascript_basictests(js_binary):
 
 
 def mx_register_dynamic_suite_constituents(register_project, register_distribution):
-    if register_distribution:
-        layout_dist = mx.distribution('sdk:JS_ISOLATE_LAYOUT', fatalIfMissing=False)
-        if layout_dist:
-            language_dist = [d for d in _suite.dists if d.name == 'GRAALJS'][0]
-            resource_project = [p for p in _suite.projects if p.name == 'com.oracle.truffle.js.isolate'][0]
-            mx_truffle.register_polyglot_isolate_distributions(register_distribution, 'js', language_dist, layout_dist, resource_project)
+    if register_project and register_distribution:
+        isolate_build_options = ['-H:+AuxiliaryEngineCache', '-H:ReservedAuxiliaryImageBytes=2145482548'] if not mx.is_windows() else []
+        meta_pom = [p for p in _suite.dists if p.name == 'JS_COMMUNITY'][0]
+        mx_truffle.register_polyglot_isolate_distributions(_suite, register_project, register_distribution,'js',
+                                        'src', meta_pom.name, meta_pom.maven_group_id(), meta_pom.theLicense,
+                                        isolate_build_options=isolate_build_options)
 
 
 mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
@@ -517,17 +517,7 @@ mx_sdk.register_graalvm_component(mx_sdk.GraalVmLanguage(
                 '-H:+AuxiliaryEngineCache',
                 '-H:ReservedAuxiliaryImageBytes=2145482548',
             ] if not mx.is_windows() else [],
-            language='js',
-            isolate_library_layout_distribution={
-                'name': 'JS_ISOLATE_LAYOUT',
-                'platforms': [
-                    'linux-amd64',
-                    'linux-aarch64',
-                    'darwin-amd64',
-                    'darwin-aarch64',
-                    'windows-amd64',
-                ],
-            },
+            language='js'
         )
     ],
     boot_jars=[],
