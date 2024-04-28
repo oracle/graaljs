@@ -895,7 +895,7 @@ public final class JSRuntime {
             return Null.NAME;
         } else if (value instanceof Boolean) {
             return booleanToString((Boolean) value);
-        } else if (isNumber(value)) {
+        } else if (isNumber(value) || value instanceof Long) {
             return numberToString((Number) value);
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
