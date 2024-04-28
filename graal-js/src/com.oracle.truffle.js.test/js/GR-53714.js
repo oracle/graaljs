@@ -23,3 +23,4 @@ assertSame(Number.prototype, Object.getPrototypeOf(long42));
 var o = { 42: 'foo'};
 
 assertSame(JSON.stringify(o, null, 20), JSON.stringify(o, null, long20));
+assertSame(JSON.stringify(o, [42]), JSON.stringify(o, [long42]));
