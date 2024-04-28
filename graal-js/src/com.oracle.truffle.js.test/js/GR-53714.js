@@ -18,3 +18,4 @@ var long42 = java.lang.Long.parseLong("42");
 assertSame('22', 42..toString(long20));
 assertSameContent([], [].splice(long0));
 assertSameContent([long20, long42], [long42, long20].sort());
+assertSame(Number.prototype, Object.getPrototypeOf(long42));
