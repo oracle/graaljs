@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,7 +42,6 @@ package com.oracle.truffle.js.builtins;
 
 import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.js.builtins.DebugBuiltinsFactory.DebugTypedArrayDetachBufferNodeGen;
@@ -57,11 +56,11 @@ import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262CreateRealmN
 import com.oracle.truffle.js.builtins.Test262BuiltinsFactory.Test262EvalScriptNodeGen;
 import com.oracle.truffle.js.builtins.helper.GCNodeGen;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
+import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.function.JSLoadNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.Evaluator;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -249,15 +248,13 @@ public final class Test262Builtins extends JSBuiltinsContainer.SwitchEnum<Test26
         }
 
         @Specialization
-        protected Object doSleep(int time) {
+        protected Object doSleepInt(Object timeParam,
+                        @Cached JSToIntegerAsLongNode toIntegerNode) {
+            long time = toIntegerNode.executeLong(timeParam);
             ((DebugJSAgent) getRealm().getAgent()).sleep(time);
             return Undefined.instance;
         }
 
-        @Fallback
-        protected Object doSleep(@SuppressWarnings("unused") Object time) {
-            throw Errors.createTypeError("Integer expected");
-        }
     }
 
     /**

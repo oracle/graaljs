@@ -191,7 +191,7 @@ public class DebugJSAgent extends JSAgent {
     }
 
     @TruffleBoundary
-    public void sleep(int time) {
+    public void sleep(long time) {
         try {
             Thread.sleep(time);
         } catch (InterruptedException e) {
