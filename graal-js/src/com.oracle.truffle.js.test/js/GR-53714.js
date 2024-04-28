@@ -32,3 +32,7 @@ assertThrows(() => (0 instanceof long0), TypeError);
 var fooTimeZone = { getOffsetNanosecondsFor() { return long42; }, getPossibleInstantsFor() {}, id: 'foo' };
 var zonedDateTime = new Temporal.ZonedDateTime(0n, fooTimeZone);
 assertSame(42, zonedDateTime.offsetNanoseconds);
+
+var f = function() {};
+Object.defineProperty(f, 'length', { value: long42 });
+assertSame(42, f.bind().length);
