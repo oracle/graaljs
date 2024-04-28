@@ -885,7 +885,7 @@ public final class JSRuntime {
             return Null.NAME;
         } else if (value instanceof Boolean) {
             return booleanToString((Boolean) value);
-        } else if (isNumber(value)) {
+        } else if (isNumber(value) || value instanceof Long) {
             return numberToString((Number) value);
         } else if (value instanceof Symbol) {
             throw Errors.createTypeErrorCannotConvertToString("a Symbol value");
@@ -1413,7 +1413,7 @@ public final class JSRuntime {
             return true;
         } else if (x instanceof Integer && y instanceof Integer) {
             return (int) x == (int) y;
-        } else if (isNumber(x) && isNumber(y)) {
+        } else if ((isNumber(x) || x instanceof Long) && (isNumber(y) || y instanceof Long)) {
             double xd = doubleValue((Number) x);
             double yd = doubleValue((Number) y);
             return Double.compare(xd, yd) == 0;
@@ -1947,7 +1947,8 @@ public final class JSRuntime {
     }
 
     public static boolean isJSPrimitive(Object value) {
-        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || Strings.isTString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol;
+        return isNumber(value) || value instanceof Long || value instanceof BigInt || value instanceof Boolean || Strings.isTString(value) || value == Undefined.instance || value == Null.instance ||
+                        value instanceof Symbol;
     }
 
     public static Object nullToUndefined(Object value) {

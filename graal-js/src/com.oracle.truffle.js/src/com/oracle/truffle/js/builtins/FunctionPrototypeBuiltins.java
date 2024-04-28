@@ -263,7 +263,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 // inner Math.max() avoids potential underflow during the subtraction
                 int lengthAsInt = Math.max(0, Math.max(0, targetLenAsInt) - argCount);
                 ((JSFunctionObject.BoundOrWrapped) boundFunction).setBoundLength(lengthAsInt);
-            } else if (JSRuntime.isNumber(targetLen)) {
+            } else if (JSRuntime.isNumber(targetLen) || targetLen instanceof Long) {
                 Number length;
                 double targetLenAsInt = toIntegerOrInfinity((Number) targetLen);
                 if (targetLenAsInt != Double.NEGATIVE_INFINITY) {

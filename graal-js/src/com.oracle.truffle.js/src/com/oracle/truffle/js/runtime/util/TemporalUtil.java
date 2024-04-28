@@ -2861,7 +2861,7 @@ public final class TemporalUtil {
             receiver = createTemporalTimeZone(context, realm, identifier);
         }
         Object offsetNanoseconds = JSRuntime.call(getOffsetNanosecondsFor, receiver, new Object[]{instant});
-        if (!JSRuntime.isNumber(offsetNanoseconds)) {
+        if (!(JSRuntime.isNumber(offsetNanoseconds) || offsetNanoseconds instanceof Long)) {
             throw Errors.createTypeError("Number expected");
         }
         if (offsetNanoseconds instanceof Integer intValue) {
