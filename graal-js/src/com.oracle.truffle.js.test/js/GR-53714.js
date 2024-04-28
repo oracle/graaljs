@@ -7,6 +7,8 @@
 
 /**
  * Regression test of the handling of long values.
+ * 
+ * @option temporal
  */
 
 load('assert.js');
@@ -26,3 +28,7 @@ var o = { 42: 'foo'};
 assertSame(JSON.stringify(o, null, 20), JSON.stringify(o, null, long20));
 
 assertThrows(() => (0 instanceof long0), TypeError);
+
+var fooTimeZone = { getOffsetNanosecondsFor() { return long42; }, getPossibleInstantsFor() {}, id: 'foo' };
+var zonedDateTime = new Temporal.ZonedDateTime(0n, fooTimeZone);
+assertSame(42, zonedDateTime.offsetNanoseconds);
