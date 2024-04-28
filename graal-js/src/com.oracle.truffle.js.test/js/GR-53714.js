@@ -24,3 +24,5 @@ var o = { 42: 'foo'};
 
 assertSame(JSON.stringify(o, null, 20), JSON.stringify(o, null, long20));
 assertSame(JSON.stringify(o, [42]), JSON.stringify(o, [long42]));
+
+assertThrows(() => (0 instanceof long0), TypeError);
