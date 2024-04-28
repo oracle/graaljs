@@ -373,6 +373,14 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
         }
 
         @Specialization
+        static TruffleString doLong(long space,
+                        @Cached @Shared JSToIntegerAsIntNode toIntegerNode,
+                        @Cached @Shared TruffleString.FromByteArrayNode fromByteArrayNode,
+                        @Cached @Shared TruffleString.SwitchEncodingNode switchEncodingNode) {
+            return doNumber(space, toIntegerNode, fromByteArrayNode, switchEncodingNode);
+        }
+
+        @Specialization
         static TruffleString doString(TruffleString space,
                         @Cached @Shared TruffleString.SubstringByteIndexNode substringNode) {
             if (Strings.length(space) <= 10) {
