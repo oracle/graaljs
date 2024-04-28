@@ -1947,7 +1947,8 @@ public final class JSRuntime {
     }
 
     public static boolean isJSPrimitive(Object value) {
-        return isNumber(value) || value instanceof BigInt || value instanceof Boolean || Strings.isTString(value) || value == Undefined.instance || value == Null.instance || value instanceof Symbol;
+        return isNumber(value) || value instanceof Long || value instanceof BigInt || value instanceof Boolean || Strings.isTString(value) || value == Undefined.instance || value == Null.instance ||
+                        value instanceof Symbol;
     }
 
     public static Object nullToUndefined(Object value) {
