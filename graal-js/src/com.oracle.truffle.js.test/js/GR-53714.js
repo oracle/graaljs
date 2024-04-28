@@ -11,6 +11,8 @@
 
 load('assert.js');
 
+var long0 = java.lang.Long.parseLong("0");
 var long20 = java.lang.Long.parseLong("20");
 
 assertSame('22', 42..toString(long20));
+assertSameContent([], [].splice(long0));
