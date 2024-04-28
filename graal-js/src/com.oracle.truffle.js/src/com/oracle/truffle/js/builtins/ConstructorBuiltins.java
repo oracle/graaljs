@@ -854,7 +854,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         @CompilationFinal private ConstructArrayAllocationSite arrayAllocationSite = createAllocationSite();
 
         protected static boolean isOneNumberArg(Object[] args) {
-            return args.length == 1 && JSRuntime.isNumber(args[0]);
+            return args.length == 1 && (JSRuntime.isNumber(args[0]) || args[0] instanceof Long);
         }
 
         protected static boolean isOneForeignArg(Object[] args) {
