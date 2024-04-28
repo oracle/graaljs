@@ -1436,7 +1436,7 @@ public final class JSRuntime {
             return true;
         } else if (x instanceof Integer && y instanceof Integer) {
             return (int) x == (int) y;
-        } else if (isNumber(x) && isNumber(y)) {
+        } else if ((isNumber(x) || x instanceof Long) && (isNumber(y) || y instanceof Long)) {
             double xd = doubleValue((Number) x);
             double yd = doubleValue((Number) y);
             return Double.compare(xd, yd) == 0;

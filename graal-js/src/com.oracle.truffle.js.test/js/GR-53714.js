@@ -16,6 +16,7 @@ load('assert.js');
 var long0 = java.lang.Long.parseLong("0");
 var long20 = java.lang.Long.parseLong("20");
 var long42 = java.lang.Long.parseLong("42");
+var long1234 = java.lang.Long.parseLong("1234");
 
 assertSame('22', 42..toString(long20));
 assertSameContent([], [].splice(long0));
@@ -36,3 +37,7 @@ assertSame(42, zonedDateTime.offsetNanoseconds);
 var f = function() {};
 Object.defineProperty(f, 'length', { value: long42 });
 assertSame(42, f.bind().length);
+
+o = {};
+Object.defineProperty(o, 'foo', { value: long1234 });
+Object.defineProperty(o, 'foo', { value: long1234 });
