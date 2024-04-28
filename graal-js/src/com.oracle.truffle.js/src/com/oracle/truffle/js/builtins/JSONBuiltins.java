@@ -314,7 +314,7 @@ public final class JSONBuiltins extends JSBuiltinsContainer.SwitchEnum<JSONBuilt
                     space = toString(space);
                 }
             }
-            if (JSRuntime.isNumber(space)) {
+            if (JSRuntime.isNumber(space) || space instanceof Long) {
                 if (toIntegerNode == null) {
                     CompilerDirectives.transferToInterpreterAndInvalidate();
                     toIntegerNode = insert(JSToIntegerAsIntNode.create());
