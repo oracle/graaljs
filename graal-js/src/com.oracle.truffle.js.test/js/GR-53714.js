@@ -41,3 +41,13 @@ assertSame(42, f.bind().length);
 o = {};
 Object.defineProperty(o, 'foo', { value: long1234 });
 Object.defineProperty(o, 'foo', { value: long1234 });
+
+// inspired by mjsunit/regress-3718.js
+function getTypeName(receiver) {
+  Error.prepareStackTrace = function(e, stack) { return stack; }
+  var stack = (function() { return new Error().stack; }).call(receiver);
+  Error.prepareStackTrace = undefined;
+  return stack[0].getTypeName();
+}
+
+assertSame("Number", getTypeName(long42));

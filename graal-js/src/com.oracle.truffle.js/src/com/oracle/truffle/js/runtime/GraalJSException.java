@@ -470,7 +470,7 @@ public abstract class GraalJSException extends AbstractTruffleException {
         assert JSRuntime.isJSPrimitive(thisObj);
         if (thisObj instanceof Boolean) {
             return Strings.UC_BOOLEAN;
-        } else if (JSRuntime.isNumber(thisObj)) {
+        } else if (JSRuntime.isNumber(thisObj) || thisObj instanceof Long) {
             return Strings.UC_NUMBER;
         } else if (Strings.isTString(thisObj)) {
             return Strings.UC_STRING;
