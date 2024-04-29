@@ -2131,13 +2131,6 @@
     },
     "comment" : "Uses Worker"
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-10126-streaming.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Different error message"
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-10126.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -2378,13 +2371,6 @@
       "POLYGLOT" : "PASS"
     },
     "comment" : "V8 test update 2022-11-28"
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1180690.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Tests v8's lazy validation. In GraalWasm, functions are validated eagerly."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-11809.js",
     "status" : "SKIP",
@@ -2854,13 +2840,6 @@
       "POLYGLOT" : "FAIL"
     },
     "comment" : "Exception handling proposal."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-1430858.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Uses WebAssembly.compileStreaming from the WebAssembly Web API."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1432453.js",
     "status" : "SKIP",
@@ -3704,13 +3683,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-8846.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Exception handling proposal."
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-8896.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3852,12 +3824,6 @@
       "POLYGLOT" : "PASS"
     }
   }, {
-    "filePath" : "mjsunit/regress/wasm/regress-935138.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "PASS"
-    }
-  }, {
     "filePath" : "mjsunit/regress/wasm/regress-940296.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -3900,13 +3866,6 @@
       "POLYGLOT" : "FAIL"
     },
     "comment" : "The module is invalid because of multiple reasons. V8 chooses to report one reason (missing end opcode), while we report another (missing return value)."
-  }, {
-    "filePath" : "mjsunit/regress/wasm/regress-956771b.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Uses WebAssembly.compileStreaming from the Web Embedding API."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-957405.js",
     "status" : "SKIP",
@@ -5224,13 +5183,6 @@
     },
     "comment" : "new failures 2024-01-19"
   }, {
-    "filePath" : "mjsunit/wasm/gc-js-interop-wasm.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "new failures 2024-01-19"
-  }, {
     "filePath" : "mjsunit/wasm/gc-js-interop.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -5950,30 +5902,6 @@
     }
   }, {
     "filePath" : "mjsunit/wasm/start-function.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    }
-  }, {
-    "filePath" : "mjsunit/wasm/streaming-api.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    }
-  }, {
-    "filePath" : "mjsunit/wasm/streaming-compile.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    }
-  }, {
-    "filePath" : "mjsunit/wasm/streaming-error-position.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    }
-  }, {
-    "filePath" : "mjsunit/wasm/streaming-trap-location.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
