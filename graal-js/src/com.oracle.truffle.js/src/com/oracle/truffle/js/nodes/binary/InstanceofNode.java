@@ -151,7 +151,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
     }
 
     @Specialization(guards = {"isNullOrUndefined(target)"})
-    protected boolean doNullOrUndefinedTarget(@SuppressWarnings("unused") Object obj, JSDynamicObject target) {
+    protected boolean doNullOrUndefinedTarget(@SuppressWarnings("unused") Object obj, Object target) {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
     }
 
@@ -180,7 +180,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         throw Errors.createTypeErrorInvalidInstanceofTarget(target, this);
     }
 
-    @Specialization(guards = {"isForeignObject(target)", "isJSDynamicObject(instance)"})
+    @Specialization(guards = {"isForeignObject(target)"})
     protected boolean doForeignTargetJSType(@SuppressWarnings("unused") JSDynamicObject instance, @SuppressWarnings("unused") Object target) {
         return false;
     }
