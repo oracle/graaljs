@@ -58,7 +58,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.nodes.NodeInfo;
-import com.oracle.truffle.api.object.Shape;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -69,7 +68,6 @@ import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.IsJSObjectNode;
 import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.IsBoundFunctionCacheNodeGen;
 import com.oracle.truffle.js.nodes.binary.InstanceofNodeGen.OrdinaryHasInstanceNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -85,6 +83,8 @@ import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
 import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSFunction;
+import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
@@ -206,14 +206,12 @@ public abstract class InstanceofNode extends JSBinaryNode {
         protected final JSContext context;
         @CompilationFinal private boolean lessThan4 = true;
         @Child private PropertyGetNode getPrototypeNode;
-        @Child private IsBoundFunctionCacheNode boundFuncCacheNode;
         @Child protected IsCallableNode isCallableNode;
 
         public abstract boolean executeBoolean(Object left, Object right);
 
         protected OrdinaryHasInstanceNode(JSContext context) {
             this.context = context;
-            this.boundFuncCacheNode = IsBoundFunctionCacheNode.create(context);
             this.isCallableNode = IsCallableNode.create();
         }
 
@@ -241,15 +239,15 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return false;
         }
 
-        @Specialization(guards = {"isJSFunction(check)", "isBoundFunction(check)"})
-        protected boolean doIsBound(Object obj, JSDynamicObject check,
+        @Specialization
+        protected boolean doIsBound(Object obj, JSFunctionObject.Bound check,
                         @Cached("create(context)") InstanceofNode instanceofNode) {
             Object boundTargetFunction = JSFunction.getBoundTargetFunction(check);
             return instanceofNode.executeBoolean(obj, boundTargetFunction);
         }
 
         @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
-        protected boolean doForeignObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right,
+        protected boolean doForeignObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSObject right,
                         @Cached @Shared IsObjectNode isAnyObjectNode,
                         @Cached @Shared ForeignObjectPrototypeNode getForeignPrototypeNode,
                         @Cached @Shared InlinedBranchProfile invalidPrototypeBranch,
@@ -261,7 +259,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
             }
         }
 
-        private boolean foreignObjectIntl(Object left, JSDynamicObject right, IsObjectNode isObjectNode, ForeignObjectPrototypeNode getForeignPrototypeNode,
+        private boolean foreignObjectIntl(Object left, JSObject right, IsObjectNode isObjectNode, ForeignObjectPrototypeNode getForeignPrototypeNode,
                         InlinedBranchProfile invalidPrototypeBranch, OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
             if (!isObjectNode.executeBoolean(left)) {
                 return false;
@@ -274,13 +272,13 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return ordinaryHasInstanceNode.executeBoolean(foreignProto, right);
         }
 
-        @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
-        protected boolean doNotAnObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right) {
+        @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "!isBoundFunction(right)"})
+        protected boolean doNotAnObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSFunctionObject right) {
             return false;
         }
 
         @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSProxy(right)", "isCallableProxy(right)"})
-        protected boolean doNotAnObjectProxyForeign(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right,
+        protected boolean doNotAnObjectProxyForeign(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSProxyObject right,
                         @Cached @Shared IsObjectNode isAnyObjectNode,
                         @Cached @Shared ForeignObjectPrototypeNode getForeignPrototypeNode,
                         @Cached @Shared InlinedBranchProfile invalidPrototypeBranch,
@@ -294,7 +292,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         }
 
         @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
-        protected boolean doJSObject(JSDynamicObject left, JSDynamicObject right,
+        protected boolean doJSObject(JSDynamicObject left, JSObject right,
                         @Cached @Shared @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached @Shared GetPrototypeNode getPrototype1Node,
                         @Cached @Shared GetPrototypeNode getPrototype2Node,
@@ -305,6 +303,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
                         @Cached @Shared InlinedBranchProfile need3Hops,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @Cached @Shared InlinedBranchProfile invalidPrototypeBranch) {
+            assert JSRuntime.isCallableIsJSObject(right) : right;
             JSDynamicObject ctorPrototype = getConstructorPrototype(right, invalidPrototypeBranch);
             if (lessThan4) {
                 JSDynamicObject proto = getPrototype1Node.execute(left);
@@ -333,8 +332,8 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return doJSObject4(left, ctorPrototype, getPrototype3Node, errorBranch);
         }
 
-        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSProxy(right)", "isCallableProxy(right)"})
-        protected boolean doJSObjectProxy(JSDynamicObject left, JSDynamicObject right,
+        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isCallableProxy(right)"})
+        protected boolean doJSObjectProxy(JSDynamicObject left, JSProxyObject right,
                         @Cached @Shared IsJSObjectNode isObjectNode,
                         @Cached @Shared GetPrototypeNode getPrototype1Node,
                         @Cached @Shared GetPrototypeNode getPrototype2Node,
@@ -364,9 +363,8 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return false;
         }
 
-        protected boolean isBoundFunction(JSDynamicObject func) {
-            assert JSFunction.isJSFunction(func);
-            return boundFuncCacheNode.executeBoolean(func);
+        protected boolean isBoundFunction(Object func) {
+            return func instanceof JSFunctionObject.Bound;
         }
 
         @TruffleBoundary
@@ -376,49 +374,6 @@ public abstract class InstanceofNode extends JSBinaryNode {
             } else {
                 return Errors.createTypeError("\"prototype\" of " + JSRuntime.safeToString(obj) + " is not an Object, it is " + JSRuntime.safeToString(proto), this);
             }
-        }
-    }
-
-    /**
-     * Caches on the passed function and its property of being a "bound function exotic object".
-     *
-     * Bound functions have internal slots due to which we can identify them with a shape check.
-     */
-    public abstract static class IsBoundFunctionCacheNode extends JavaScriptBaseNode {
-        final boolean multiContext;
-
-        public abstract boolean executeBoolean(JSDynamicObject func);
-
-        protected IsBoundFunctionCacheNode(boolean multiContext) {
-            this.multiContext = multiContext;
-        }
-
-        public static IsBoundFunctionCacheNode create(JSContext context) {
-            return IsBoundFunctionCacheNodeGen.create(context.isMultiContext());
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = {"!multiContext", "func == cachedFunction"}, limit = "1")
-        protected static boolean doCachedInstance(JSDynamicObject func,
-                        @Cached(value = "func") JSDynamicObject cachedFunction,
-                        @Cached(value = "isBoundFunction(func)") boolean cachedIsBound) {
-            assert isBoundFunction(func) == cachedIsBound;
-            return cachedIsBound;
-        }
-
-        @SuppressWarnings("unused")
-        @Specialization(guards = "cachedShape.check(func)", replaces = "doCachedInstance", limit = "1")
-        protected static boolean doCachedShape(JSDynamicObject func,
-                        @Cached("func.getShape()") Shape cachedShape,
-                        @Cached(value = "isBoundFunction(func)") boolean cachedIsBound) {
-            assert isBoundFunction(func) == cachedIsBound;
-            return cachedIsBound;
-        }
-
-        @Specialization(replaces = "doCachedShape")
-        protected static boolean isBoundFunction(JSDynamicObject func) {
-            assert JSFunction.isJSFunction(func);
-            return JSFunction.isBoundFunction(func);
         }
     }
 
