@@ -213,6 +213,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         protected OrdinaryHasInstanceNode(JSContext context) {
             this.context = context;
             this.isCallableNode = IsCallableNode.create();
+            this.getPrototypeNode = PropertyGetNode.create(JSObject.PROTOTYPE, context);
         }
 
         @NeverDefault
@@ -220,79 +221,17 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return OrdinaryHasInstanceNodeGen.create(context);
         }
 
-        private JSDynamicObject getConstructorPrototype(JSDynamicObject rhs, InlinedBranchProfile invalidPrototypeBranch) {
-            if (getPrototypeNode == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                getPrototypeNode = insert(PropertyGetNode.create(JSObject.PROTOTYPE, context));
-            }
-            Object proto = getPrototypeNode.getValue(rhs);
-            if (!(JSRuntime.isObject(proto))) {
+        private JSObject getConstructorPrototype(JSObject target, InlinedBranchProfile invalidPrototypeBranch) {
+            Object proto = getPrototypeNode.getValue(target);
+            if (!(proto instanceof JSObject)) {
                 invalidPrototypeBranch.enter(this);
-                throw createTypeErrorInvalidPrototype(rhs, proto);
+                throw createTypeErrorInvalidPrototype(target, proto);
             }
-            return (JSDynamicObject) proto;
+            return (JSObject) proto;
         }
 
-        @SuppressWarnings("unused")
-        @Specialization(guards = "!isCallableNode.executeBoolean(check)")
-        protected boolean doNotCallable(Object obj, Object check) {
-            return false;
-        }
-
-        @Specialization
-        protected boolean doIsBound(Object obj, JSFunctionObject.Bound check,
-                        @Cached("create(context)") InstanceofNode instanceofNode) {
-            Object boundTargetFunction = JSFunction.getBoundTargetFunction(check);
-            return instanceofNode.executeBoolean(obj, boundTargetFunction);
-        }
-
-        @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
-        protected boolean doForeignObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSObject right,
-                        @Cached @Shared IsObjectNode isAnyObjectNode,
-                        @Cached @Shared ForeignObjectPrototypeNode getForeignPrototypeNode,
-                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch,
-                        @Cached("create(context)") @Shared OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
-            if (context.isOptionForeignObjectPrototype()) {
-                return foreignObjectIntl(left, right, isAnyObjectNode, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
-            } else {
-                return false;
-            }
-        }
-
-        private boolean foreignObjectIntl(Object left, JSObject right, IsObjectNode isObjectNode, ForeignObjectPrototypeNode getForeignPrototypeNode,
-                        InlinedBranchProfile invalidPrototypeBranch, OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
-            if (!isObjectNode.executeBoolean(left)) {
-                return false;
-            }
-            Object rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
-            Object foreignProto = getForeignPrototypeNode.execute(left);
-            if (foreignProto == rightProto) {
-                return true;
-            }
-            return ordinaryHasInstanceNode.executeBoolean(foreignProto, right);
-        }
-
-        @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "!isBoundFunction(right)"})
-        protected boolean doNotAnObject(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSFunctionObject right) {
-            return false;
-        }
-
-        @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isJSProxy(right)", "isCallableProxy(right)"})
-        protected boolean doNotAnObjectProxyForeign(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSProxyObject right,
-                        @Cached @Shared IsObjectNode isAnyObjectNode,
-                        @Cached @Shared ForeignObjectPrototypeNode getForeignPrototypeNode,
-                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch,
-                        @Cached("create(context)") @Shared OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
-            return doForeignObject(left, right, isAnyObjectNode, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
-        }
-
-        @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "isJSProxy(right)", "isCallableProxy(right)"})
-        protected boolean doNotAnObjectProxyPrimitive(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSDynamicObject right) {
-            return false;
-        }
-
-        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isJSFunction(right)", "!isBoundFunction(right)"})
-        protected boolean doJSObject(JSDynamicObject left, JSObject right,
+        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "!isBoundFunction(right)"})
+        protected final boolean doJSObjectFunction(Object left, JSFunctionObject right,
                         @Cached @Shared @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
                         @Cached @Shared GetPrototypeNode getPrototype1Node,
                         @Cached @Shared GetPrototypeNode getPrototype2Node,
@@ -303,8 +242,108 @@ public abstract class InstanceofNode extends JSBinaryNode {
                         @Cached @Shared InlinedBranchProfile need3Hops,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @Cached @Shared InlinedBranchProfile invalidPrototypeBranch) {
+            return doJSObject((JSObject) left, right, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops, errorBranch, invalidPrototypeBranch);
+        }
+
+        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isCallableProxy(right)"})
+        protected final boolean doJSObjectProxy(Object left, JSProxyObject right,
+                        @Cached @Shared @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
+                        @Cached @Shared GetPrototypeNode getPrototype1Node,
+                        @Cached @Shared GetPrototypeNode getPrototype2Node,
+                        @Cached @Shared GetPrototypeNode getPrototype3Node,
+                        @Cached @Shared InlinedBranchProfile firstTrue,
+                        @Cached @Shared InlinedBranchProfile firstFalse,
+                        @Cached @Shared InlinedBranchProfile need2Hops,
+                        @Cached @Shared InlinedBranchProfile need3Hops,
+                        @Cached @Shared InlinedBranchProfile errorBranch,
+                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch) {
+            return doJSObject((JSObject) left, right, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops, errorBranch, invalidPrototypeBranch);
+        }
+
+        @Specialization
+        protected boolean doBound(Object obj, JSFunctionObject.Bound bound,
+                        @Cached("create(context)") InstanceofNode instanceofNode) {
+            Object boundTargetFunction = JSFunction.getBoundTargetFunction(bound);
+            return instanceofNode.executeBoolean(obj, boundTargetFunction);
+        }
+
+        private boolean doForeignObject(Object left, JSObject right,
+                        @Cached @Shared IsObjectNode isAnyObjectNode,
+                        @Cached @Shared ForeignObjectPrototypeNode getForeignPrototypeNode,
+                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch,
+                        @Cached("create(context)") @Shared OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
+            if (context.isOptionForeignObjectPrototype()) {
+                return doForeignObjectPrototype(left, right, isAnyObjectNode, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
+            } else {
+                return false;
+            }
+        }
+
+        private boolean doForeignObjectPrototype(Object left, JSObject right, IsObjectNode isObjectNode, ForeignObjectPrototypeNode getForeignPrototypeNode,
+                        InlinedBranchProfile invalidPrototypeBranch, OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
+            if (!isObjectNode.executeBoolean(left)) {
+                return false;
+            }
+            JSObject rightProto = getConstructorPrototype(right, invalidPrototypeBranch);
+            Object foreignProto = getForeignPrototypeNode.execute(left);
+            if (foreignProto == rightProto) {
+                return true;
+            }
+            return ordinaryHasInstanceNode.executeBoolean(foreignProto, right);
+        }
+
+        @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "!isBoundFunction(right)"})
+        protected final boolean doForeignObjectUnbound(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSFunctionObject right,
+                        @Cached @Shared IsObjectNode isAnyObjectNode,
+                        @Cached @Shared ForeignObjectPrototypeNode getForeignPrototypeNode,
+                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch,
+                        @Cached("create(context)") @Shared OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
+            return doForeignObject(left, right, isAnyObjectNode, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
+        }
+
+        @Specialization(guards = {"!isJSObject(left)", "isForeignObject(left)", "isCallableProxy(right)"})
+        protected final boolean doForeignObjectProxy(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSProxyObject right,
+                        @Cached @Shared IsObjectNode isAnyObjectNode,
+                        @Cached @Shared ForeignObjectPrototypeNode getForeignPrototypeNode,
+                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch,
+                        @Cached("create(context)") @Shared OrdinaryHasInstanceNode ordinaryHasInstanceNode) {
+            return doForeignObject(left, right, isAnyObjectNode, getForeignPrototypeNode, invalidPrototypeBranch, ordinaryHasInstanceNode);
+        }
+
+        @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "!isBoundFunction(right)"})
+        protected static boolean doNotAnObjectUnbound(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSFunctionObject right) {
+            return false;
+        }
+
+        @Specialization(guards = {"!isJSObject(left)", "!isForeignObject(left)", "isCallableProxy(right)"})
+        protected static boolean doNotAnObjectProxy(@SuppressWarnings("unused") Object left, @SuppressWarnings("unused") JSProxyObject right) {
+            return false;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "!isCallableNode.executeBoolean(target)")
+        protected static boolean doNotCallable(Object obj, Object target) {
+            return false;
+        }
+
+        @SuppressWarnings("unused")
+        @Specialization(guards = "isForeignObject(target)")
+        protected static boolean doForeignTarget(Object obj, Object target) {
+            return false;
+        }
+
+        private boolean doJSObject(JSObject left, JSObject right,
+                        GetPrototypeNode getPrototype1Node,
+                        GetPrototypeNode getPrototype2Node,
+                        GetPrototypeNode getPrototype3Node,
+                        InlinedBranchProfile firstTrue,
+                        InlinedBranchProfile firstFalse,
+                        InlinedBranchProfile need2Hops,
+                        InlinedBranchProfile need3Hops,
+                        InlinedBranchProfile errorBranch,
+                        InlinedBranchProfile invalidPrototypeBranch) {
             assert JSRuntime.isCallableIsJSObject(right) : right;
-            JSDynamicObject ctorPrototype = getConstructorPrototype(right, invalidPrototypeBranch);
+            JSObject ctorPrototype = getConstructorPrototype(right, invalidPrototypeBranch);
             if (lessThan4) {
                 JSDynamicObject proto = getPrototype1Node.execute(left);
                 if (proto == ctorPrototype) {
@@ -332,22 +371,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
             return doJSObject4(left, ctorPrototype, getPrototype3Node, errorBranch);
         }
 
-        @Specialization(guards = {"isObjectNode.executeBoolean(left)", "isCallableProxy(right)"})
-        protected boolean doJSObjectProxy(JSDynamicObject left, JSProxyObject right,
-                        @Cached @Shared IsJSObjectNode isObjectNode,
-                        @Cached @Shared GetPrototypeNode getPrototype1Node,
-                        @Cached @Shared GetPrototypeNode getPrototype2Node,
-                        @Cached @Shared GetPrototypeNode getPrototype3Node,
-                        @Cached @Shared InlinedBranchProfile firstTrue,
-                        @Cached @Shared InlinedBranchProfile firstFalse,
-                        @Cached @Shared InlinedBranchProfile need2Hops,
-                        @Cached @Shared InlinedBranchProfile need3Hops,
-                        @Cached @Shared InlinedBranchProfile errorBranch,
-                        @Cached @Shared InlinedBranchProfile invalidPrototypeBranch) {
-            return doJSObject(left, right, isObjectNode, getPrototype1Node, getPrototype2Node, getPrototype3Node, firstTrue, firstFalse, need2Hops, need3Hops, errorBranch, invalidPrototypeBranch);
-        }
-
-        private boolean doJSObject4(JSDynamicObject obj, JSDynamicObject check, GetPrototypeNode getLoopedPrototypeNode, InlinedBranchProfile errorBranch) {
+        private boolean doJSObject4(JSDynamicObject obj, JSObject check, GetPrototypeNode getLoopedPrototypeNode, InlinedBranchProfile errorBranch) {
             JSDynamicObject proto = obj;
             int counter = 0;
             while ((proto = getLoopedPrototypeNode.execute(proto)) != Null.instance) {

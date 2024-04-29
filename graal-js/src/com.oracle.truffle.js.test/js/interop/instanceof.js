@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * Licensed under the Universal Permissive License v 1.0 as shown at http://oss.oracle.com/licenses/upl.
@@ -23,3 +23,7 @@ assertTrue(stringBuilder instanceof java.lang.StringBuilder);
 assertTrue(stringBuilder instanceof java.lang.CharSequence);
 assertTrue(stringBuilder instanceof java.lang.Object);
 assertFalse(stringBuilder instanceof java.lang.Runnable);
+
+assertThrows(() => stringBuilder instanceof (new java.lang.Object()), TypeError); // Right-hand-side of instanceof is not a meta object
+assertFalse(Function.prototype[Symbol.hasInstance].call(java.lang.Object, stringBuilder)); // Callable (instantiable) foreign object
+assertFalse(Function.prototype[Symbol.hasInstance].call(java.lang.Runnable, stringBuilder)); // Not callable foreign object
