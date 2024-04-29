@@ -89,6 +89,8 @@ public final class Lexer extends Scanner implements StringPool {
     private static final String MSG_LEXER_ERROR = "lexer.error.";
     private static final String MSG_MISSING_CLOSE_QUOTE = "missing.close.quote";
     private static final String MSG_MISSING_SPACE_AFTER_NUMBER = "missing.space.after.number";
+    private static final String MSG_NUMERIC_LITERAL_MISSING_DIGIT = "numeric.literal.missing.digit";
+    private static final String MSG_NUMERIC_LITERAL_MISSING_EXPONENT = "numeric.literal.missing.exponent";
     private static final String MSG_NUMERIC_LITERAL_MULTIPLE_SEPARATORS = "numeric.literal.multiple.separators";
     private static final String MSG_NUMERIC_LITERAL_TRAILING_SEPARATOR = "numeric.literal.trailing.separator";
     private static final String MSG_STRICT_NO_NONOCTALDECIMAL = "strict.no.nonoctaldecimal";
@@ -756,6 +758,14 @@ public final class Lexer extends Scanner implements StringPool {
         return maxDigit;
     }
 
+    private void consumeRequiredDigit(TokenType type, int radix, int prefixStart) {
+        if (convertDigit(ch0, radix) != -1) {
+            skip(1);
+        } else {
+            error(Lexer.message(MSG_NUMERIC_LITERAL_MISSING_DIGIT, source.getString(prefixStart, position - prefixStart)), type, position, limit - position);
+        }
+    }
+
     /**
      * Convert a digit to a integer. Can't use Character.digit since we are restricted to ASCII by
      * the spec.
@@ -1345,22 +1355,23 @@ public final class Lexer extends Scanner implements StringPool {
 
         // If number begins with 0x.
         boolean numericSeparators = isES2020();
-        if (digit == 0 && (ch1 == 'x' || ch1 == 'X') && convertDigit(ch2, 16) != -1) {
-            // Skip over 0xN.
-            skip(3);
-            // Skip over remaining digits.
+        if (digit == 0 && (ch1 == 'x' || ch1 == 'X')) {
+            // Skip over 0x.
+            skip(2);
             type = HEXADECIMAL;
+            consumeRequiredDigit(type, 16, start);
             consumeDigits(type, 16, numericSeparators, numericSeparators);
-        } else if (digit == 0 && isES6() && (ch1 == 'o' || ch1 == 'O') && convertDigit(ch2, 8) != -1) {
-            // Skip over 0oN.
-            skip(3);
-            // Skip over remaining digits.
+        } else if (digit == 0 && isES6() && (ch1 == 'o' || ch1 == 'O')) {
+            // Skip over 0o.
+            skip(2);
             type = OCTAL;
+            consumeRequiredDigit(type, 8, start);
             consumeDigits(type, 8, numericSeparators, numericSeparators);
-        } else if (digit == 0 && isES6() && (ch1 == 'b' || ch1 == 'B') && convertDigit(ch2, 2) != -1) {
-            // Skip over 0bN.
-            skip(3);
+        } else if (digit == 0 && isES6() && (ch1 == 'b' || ch1 == 'B')) {
+            // Skip over 0b.
+            skip(2);
             type = BINARY_NUMBER;
+            consumeRequiredDigit(type, 2, start);
             consumeDigits(type, 2, numericSeparators, numericSeparators);
         } else {
             // Check for possible octal constant.
@@ -1398,7 +1409,10 @@ public final class Lexer extends Scanner implements StringPool {
                     if (ch0 == '+' || ch0 == '-') {
                         skip(1);
                     }
-                    // Skip exponent.
+                    // Check and skip exponent.
+                    if (convertDigit(ch0, 10) == -1) {
+                        error(Lexer.message(MSG_NUMERIC_LITERAL_MISSING_EXPONENT), type, position, limit - position);
+                    }
                     consumeDigits(type, 10, false, numericSeparators);
                 }
             }
