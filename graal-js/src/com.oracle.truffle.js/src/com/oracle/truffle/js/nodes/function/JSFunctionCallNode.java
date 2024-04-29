@@ -1287,10 +1287,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private Object[] bindExtraArguments(Object[] origArgs) {
-            JSFunctionObject function = (JSFunctionObject) JSArguments.getFunctionObject(origArgs);
-            if (!JSFunction.isBoundFunction(function)) {
-                throw Errors.shouldNotReachHere();
-            }
+            JSFunctionObject.Bound function = (JSFunctionObject.Bound) JSArguments.getFunctionObject(origArgs);
             Object boundTargetFunction = JSFunction.getBoundTargetFunction(function);
             Object boundThis = useDynamicThis ? JSArguments.getThisObject(origArgs) : JSFunction.getBoundThis(function);
             Object[] boundArguments = JSFunction.getBoundArguments(function);
