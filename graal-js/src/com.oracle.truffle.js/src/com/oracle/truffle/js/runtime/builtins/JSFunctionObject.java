@@ -186,8 +186,8 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     @TruffleBoundary
     private static SourceSection getSourceLocationImpl(JSDynamicObject receiver) {
         Object function = receiver;
-        while (JSFunction.isBoundFunction(function)) {
-            function = JSFunction.getBoundTargetFunction((JSFunctionObject) function);
+        while (function instanceof JSFunctionObject.Bound boundFunction) {
+            function = JSFunction.getBoundTargetFunction(boundFunction);
         }
         if (JSFunction.isJSFunction(function)) {
             CallTarget ct = JSFunction.getCallTarget((JSFunctionObject) function);
