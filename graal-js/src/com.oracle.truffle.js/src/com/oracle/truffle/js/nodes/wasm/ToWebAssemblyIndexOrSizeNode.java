@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -69,25 +70,29 @@ public abstract class ToWebAssemblyIndexOrSizeNode extends JavaScriptBaseNode {
     public abstract double executeDouble(Object value);
 
     public int executeInt(Object value) {
-        double valueDouble = executeDouble(value);
-        if (valueDouble > Integer.MAX_VALUE) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be in the int range", errorMessagePrefix);
-        }
-        return (int) valueDouble;
+        return (int) executeDouble(value);
     }
 
     @Specialization
     protected double convert(Object value) {
         Number valueNumber = toNumberNode.executeNumber(value);
         double valueDouble = JSRuntime.doubleValue(valueNumber);
-        if (Double.isNaN(valueDouble)) {
+        if (!Double.isFinite(valueDouble)) {
             errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be convertible to a valid number", errorMessagePrefix);
+            throw Errors.createTypeErrorFormat("%s must be convertible to a valid number", this, errorMessagePrefix);
         }
+        valueDouble = ExactMath.truncate(valueDouble);
         if (valueDouble < 0) {
             errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be non-negative", errorMessagePrefix);
+            throw Errors.createTypeErrorFormat("%s must be non-negative", this, errorMessagePrefix);
+        }
+        if (valueDouble > 0xFFFF_FFFFL) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorFormat("%s must be in the unsigned long range", this, errorMessagePrefix);
+        }
+        if (valueDouble > Integer.MAX_VALUE) {
+            errorBranch.enter();
+            throw Errors.createRangeErrorFormat("%s must be in the int range", this, errorMessagePrefix);
         }
         return valueDouble;
     }
