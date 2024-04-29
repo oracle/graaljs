@@ -143,10 +143,10 @@ public class TestV8Runnable extends TestRunnable {
         }
         if (suite.getConfig().isPolyglot()) {
             extraOptions.put(JSContextOptions.WEBASSEMBLY_NAME, Boolean.toString(!flags.contains(NO_EXPOSE_WASM)));
-            // TODO: remove after reference types are enabled by default in wasm
-            extraOptions.put("wasm.BulkMemoryAndRefTypes", "true");
             // TODO: remove after threads are enabled by default in wasm
             extraOptions.put("wasm.Threads", "true");
+            // TODO: remove after extended-const-expressions are enabled by default in wasm
+            extraOptions.put("wasm.ExtendedConstExpressions", "true");
             // Required for using shared memories, for now
             extraOptions.put("wasm.UseUnsafeMemory", "true");
 
