@@ -93,6 +93,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-gc",
                     "--experimental-wasm-memory64",
                     "--experimental-wasm-return-call",
+                    "--experimental-wasm-stringref",
                     "--experimental-wasm-type-reflection",
                     "--experimental-wasm-typed-funcref",
                     "--experimental-web-snapshots",
