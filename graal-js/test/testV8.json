@@ -2102,14 +2102,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses WasmGC proposal"
   }, {
     "filePath" : "mjsunit/regress/wasm/global-initializer-error-offset.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Different error message"
   }, {
     "filePath" : "mjsunit/regress/wasm/i32-lowering-inlining.js",
     "status" : "SKIP",
@@ -2129,7 +2129,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-10126-streaming.js",
     "status" : "SKIP",
@@ -2223,7 +2223,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1070078.js",
     "status" : "SKIP",
@@ -2282,7 +2282,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Tests %SerializeWasmModule and %DeserializeWasmModule"
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1111522.js",
     "status" : "SKIP",
@@ -2302,7 +2303,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "V8 throws an implementation-specific RangeError when encountering a Table that is too large. We throw a LinkerError that is appropriate according to the spec."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1116019.js",
     "status" : "SKIP",
@@ -2342,7 +2344,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses the return_call_indirect instruction (opcode 0x13) from the tail call proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1146861.js",
     "status" : "SKIP",
@@ -2355,7 +2357,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Uses the try instruction (opcode 0x06) from the exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1152937.js",
     "status" : "SKIP",
@@ -2381,7 +2383,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Tests v8's lazy validation. In GraalWasm, functions are validated eagerly."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-11809.js",
     "status" : "SKIP",
@@ -2406,7 +2409,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Uses a tag section (id 13) in the module. This is specific to the exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1188975.js",
     "status" : "SKIP",
@@ -2419,7 +2422,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Structs (GC proposal)."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1201340.js",
     "status" : "SKIP",
@@ -2457,49 +2460,49 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Different wording of out-of-bounds memory access error message."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1236958.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Arrays (GC proposal)."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1237024.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Arrays (GC proposal)."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1239116.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Different wording of out-of-bounds memory access error message."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1239116b.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Different wording of out-of-bounds memory access error message."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1239954.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Arrays (GC proposal)."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1242300.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Different wording of out-of-bounds memory access error message."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1242689.js",
     "status" : "SKIP",
@@ -2571,7 +2574,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Structs (GC proposal)."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-12866.js",
     "status" : "SKIP",
@@ -2585,14 +2588,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Different wording of error message when unknown section code is encountered."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-12874.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Recursive groups of composite type definitions (GC proposal)."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1289678.js",
     "status" : "SKIP",
@@ -2606,14 +2609,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-13061.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Struct types (GC proposal)."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-13118.js",
     "status" : "SKIP",
@@ -2638,7 +2641,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses call_ref instruction (opcode 0x14) from the Function Type References proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-13290.js",
     "status" : "SKIP",
@@ -2663,14 +2666,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Uses WebAssembly.Tag and WebAssembly.Exception from the exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1364036.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Function Type References proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-13700.js",
     "status" : "SKIP",
@@ -2696,7 +2699,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Different wording of error message concerning unknown local."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1379364.js",
     "status" : "SKIP",
@@ -2715,14 +2718,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-13826.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1388938.js",
     "status" : "SKIP",
@@ -2743,21 +2746,21 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-13946.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-13956.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1395604.js",
     "status" : "SKIP",
@@ -2770,14 +2773,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Different wording of error message relating to out-of-bounds memory access."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-14047.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-14113.js",
     "status" : "SKIP",
@@ -2802,21 +2805,21 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-14167.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1416758.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-14171.js",
     "status" : "SKIP",
@@ -2829,42 +2832,42 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1417908.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1418706.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-14270.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1430858.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses WebAssembly.compileStreaming from the WebAssembly Web API."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1432453.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2023-10-09"
+    "comment" : "memory.atomic.wait32 doesn't work with memories which are not exported/imported from JavaScript."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1443218.js",
     "status" : "SKIP",
@@ -2878,42 +2881,42 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses br_on_null instruction (opcode 0xd5) from the Function Type References proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1447367.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1448663.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses ref.as_non_null (opcode 0xd4) from the Function Type References proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1449208.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Checks wording of error messages and implementation-specific limits."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1458941.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1460019.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Tables with initializers from the Function Type References proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1466656.js",
     "status" : "SKIP",
@@ -2932,84 +2935,84 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1478913.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1484393.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1484978.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Uses the i32x4.dot_i8x16_i7x16_add_s instruction (opcode 0xFD 0x113) from the Relaxed SIMD proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1485764.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1487077.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2023-10-09"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1490847-2.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1490847-3.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1490847.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1491415.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1500804.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses Worker."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1500812.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Different error message for out-of-bounds memory access."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1501914.js",
     "status" : "SKIP",
@@ -3023,42 +3026,42 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal and Function Reference Types proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1507779.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1511849.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1512426.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses missing d8.terminate function."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1514072.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1514304.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1516319.js",
     "status" : "SKIP",
@@ -3072,7 +3075,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses Worker."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-5531.js",
     "status" : "SKIP",
@@ -3280,7 +3283,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Different error class used for instantiating a module which doesn't fit into memory. The spec doesn't specify OOM error classes."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-724851.js",
     "status" : "SKIP",
@@ -3439,7 +3443,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Uses %SerializeWasmModule and %DeserializeWasmModule."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-782280.js",
     "status" : "SKIP",
@@ -3539,14 +3543,15 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Uses %SerializeWasmModule and %DeserializeWasmModule."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-8094.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-8095.js",
     "status" : "SKIP",
@@ -3661,7 +3666,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Uses Worker."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-853453.js",
     "status" : "SKIP",
@@ -3704,14 +3709,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-8896.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal and %SerializeWasmModule/%DeserializeWasmModule."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-894307.js",
     "status" : "SKIP",
@@ -3856,7 +3861,7 @@
     "filePath" : "mjsunit/regress/wasm/regress-940296.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-9425.js",
@@ -3871,7 +3876,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Different error message for SIMD types in JS imported/exported function signatures."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-946350.js",
     "status" : "SKIP",
@@ -3893,13 +3898,15 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "The module is invalid because of multiple reasons. V8 chooses to report one reason (missing end opcode), while we report another (missing return value)."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-956771b.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Uses WebAssembly.compileStreaming from the Web Embedding API."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-957405.js",
     "status" : "SKIP",
@@ -3922,7 +3929,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Tests an implementation-specific limit in V8."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-980007.js",
     "status" : "SKIP",
@@ -3935,13 +3943,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-985154.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Wrong order of property keys in sloppy functions."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1057094.js",
     "status" : "SKIP",
@@ -3986,7 +3995,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1340488.js",
     "status" : "SKIP",
@@ -4031,28 +4040,28 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1464604.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1465386.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1466312.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Reference-Typed Strings proposal and GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1483481.js",
     "status" : "SKIP",
@@ -4064,16 +4073,15 @@
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1486362.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "new failures 2023-10-09"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1502180.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Missing console.profile."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1507663.js",
     "status" : "SKIP",
@@ -4087,7 +4095,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1510626.js",
     "status" : "SKIP",
@@ -4106,7 +4114,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Setting values in an ArrayBuffer that's backing a WebAssembly.Memory should break when detaching the buffer using WebAssembly.Memory.prototype.grow. However, the spec seems to be fine with setting values in a TypedArray backed by a detached ArrayBuffer (https://tc39.es/ecma262/multipage/ordinary-and-exotic-objects-behaviours.html#sec-typedarraysetelement)."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-969498.js",
     "status" : "SKIP",
@@ -4119,14 +4128,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-struct-set-into-unreachable.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-ubsan.js",
     "status" : "SKIP",
@@ -4139,7 +4148,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses the Type Reflection proposal for WebAssembly JS API (via the ToPromising function)."
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-v8-9106.js",
     "status" : "SKIP",
@@ -4152,21 +4161,21 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/typecheck-null-undefined.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/regress/wasm/wasm-typer-incompatible-ref-cast.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/serialize-deserialize-now.js",
     "status" : "FAIL",
