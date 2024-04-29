@@ -100,7 +100,6 @@ public class TestV8Runnable extends TestRunnable {
                     "--expose-fast-api",
                     "--harmony-rab-gsab",
                     "--harmony-struct",
-                    "--wasm-staging",
                     "--wasm-test-streaming"
     });
     private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
