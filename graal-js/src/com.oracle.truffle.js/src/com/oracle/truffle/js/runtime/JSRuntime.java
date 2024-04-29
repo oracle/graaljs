@@ -91,6 +91,7 @@ import com.oracle.truffle.js.runtime.builtins.JSNumber;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.builtins.JSProxy;
+import com.oracle.truffle.js.runtime.builtins.JSProxyObject;
 import com.oracle.truffle.js.runtime.builtins.JSSet;
 import com.oracle.truffle.js.runtime.builtins.JSString;
 import com.oracle.truffle.js.runtime.builtins.JSSymbol;
@@ -2566,19 +2567,18 @@ public final class JSRuntime {
 
     @TruffleBoundary
     public static JSRealm getFunctionRealm(Object obj, JSRealm currentRealm) {
-        if (JSObject.isJSObject(obj)) {
-            JSObject dynObj = (JSObject) obj;
-            if (JSFunction.isJSFunction(dynObj)) {
-                if (JSFunction.isBoundFunction(dynObj)) {
-                    return getFunctionRealm(JSFunction.getBoundTargetFunction(dynObj), currentRealm);
+        if (obj instanceof JSObject jsObj) {
+            if (jsObj instanceof JSFunctionObject function) {
+                if (jsObj instanceof JSFunctionObject.Bound boundFunction) {
+                    return getFunctionRealm(JSFunction.getBoundTargetFunction(boundFunction), currentRealm);
                 } else {
-                    return JSFunction.getRealm(dynObj);
+                    return JSFunction.getRealm(function);
                 }
-            } else if (JSProxy.isJSProxy(dynObj)) {
-                if (JSProxy.getHandler(dynObj) == Null.instance) {
+            } else if (jsObj instanceof JSProxyObject) {
+                if (JSProxy.getHandler(jsObj) == Null.instance) {
                     throw Errors.createTypeErrorProxyRevoked();
                 }
-                return getFunctionRealm(JSProxy.getTarget(dynObj), currentRealm);
+                return getFunctionRealm(JSProxy.getTarget(jsObj), currentRealm);
             }
         }
         return currentRealm;
