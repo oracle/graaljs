@@ -420,7 +420,7 @@ public final class JSFunction extends JSNonProxy {
     }
 
     public static boolean isBoundFunction(Object function) {
-        return isJSFunction(function) && getFunctionData((JSFunctionObject) function).isBound();
+        return function instanceof JSFunctionObject.Bound;
     }
 
     public static boolean isAsyncFunction(JSDynamicObject function) {

@@ -201,6 +201,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
     }
 
     // ES6, 7.3.19, OrdinaryHasInstance (C, O).
+    @ImportStatic({JSFunction.class})
     public abstract static class OrdinaryHasInstanceNode extends JavaScriptBaseNode {
 
         protected final JSContext context;
@@ -385,10 +386,6 @@ public abstract class InstanceofNode extends JSBinaryNode {
                 }
             }
             return false;
-        }
-
-        protected boolean isBoundFunction(Object func) {
-            return func instanceof JSFunctionObject.Bound;
         }
 
         @TruffleBoundary
