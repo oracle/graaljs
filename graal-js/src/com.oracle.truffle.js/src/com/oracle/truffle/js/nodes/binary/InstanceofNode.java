@@ -263,7 +263,7 @@ public abstract class InstanceofNode extends JSBinaryNode {
         @Specialization
         protected boolean doBound(Object obj, JSFunctionObject.Bound bound,
                         @Cached("create(context)") InstanceofNode instanceofNode) {
-            Object boundTargetFunction = JSFunction.getBoundTargetFunction(bound);
+            Object boundTargetFunction = bound.getBoundTargetFunction();
             return instanceofNode.executeBoolean(obj, boundTargetFunction);
         }
 

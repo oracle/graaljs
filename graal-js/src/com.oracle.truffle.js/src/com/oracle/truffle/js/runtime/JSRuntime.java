@@ -2570,7 +2570,7 @@ public final class JSRuntime {
         if (obj instanceof JSObject jsObj) {
             if (jsObj instanceof JSFunctionObject function) {
                 if (jsObj instanceof JSFunctionObject.Bound boundFunction) {
-                    return getFunctionRealm(JSFunction.getBoundTargetFunction(boundFunction), currentRealm);
+                    return getFunctionRealm(boundFunction.getBoundTargetFunction(), currentRealm);
                 } else {
                     return JSFunction.getRealm(function);
                 }
