@@ -160,14 +160,14 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
 
     private static int doVolatileGetFromBuffer(JSArrayBufferObject buffer, int intArrayOffset) {
         TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) TypedArrayFactory.Int32Array.createArrayType(true, false);
-        int result = typedArray.getIntImpl(buffer, 0, intArrayOffset, InteropLibrary.getUncached());
+        int result = typedArray.getBufferElementIntImpl(buffer, intArrayOffset, true, InteropLibrary.getUncached());
         VarHandle.acquireFence();
         return result;
     }
 
     private static BigInt doVolatileGetBigIntFromBuffer(JSArrayBufferObject buffer, int bigIntArrayOffset) {
         TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) TypedArrayFactory.BigInt64Array.createArrayType(true, false);
-        BigInt result = typedArray.getBigIntImpl(buffer, 0, bigIntArrayOffset, InteropLibrary.getUncached());
+        BigInt result = BigInt.valueOf(typedArray.getBufferElementLongImpl(buffer, bigIntArrayOffset, true, InteropLibrary.getUncached()));
         VarHandle.acquireFence();
         return result;
     }
