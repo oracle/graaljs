@@ -46,6 +46,7 @@ import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.nodes.UnexpectedResultException;
+import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
@@ -61,7 +62,6 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -130,7 +130,8 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
         protected JSDynamicObject doRegExpStringIterator(VirtualFrame frame, JSDynamicObject iterator,
                         @Cached InlinedCountingConditionProfile noMatchProfile,
                         @Cached InlinedConditionProfile globalProfile,
-                        @Cached AdvanceStringIndexNode advanceStringIndexUnicode) {
+                        @Cached AdvanceStringIndexNode advanceStringIndex,
+                        @Cached InlinedBranchProfile lastIndexNotIntBranch) {
             boolean done;
             try {
                 done = getGetDoneNode().getValueBoolean(iterator);
@@ -161,13 +162,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
                 if (globalProfile.profile(this, global)) {
                     TruffleString matchStr = getToStringNode().executeString(read(match, 0));
                     if (Strings.isEmpty(matchStr)) {
-                        long lastIndex = getToLengthNode().executeLong(getLastIndex(regex));
-                        long nextIndex = lastIndex + 1;
-                        if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
-                            setLastIndex(regex, advanceStringIndexUnicode.execute(this, string, (int) lastIndex, fullUnicode));
-                        } else {
-                            setLastIndex(regex, (double) nextIndex);
-                        }
+                        advanceLastIndexAfterEmptyMatch(regex, string, fullUnicode, this, getToLengthNode(), advanceStringIndex, lastIndexNotIntBranch);
                     }
                     return getCreateIterResultObjectNode().execute(frame, match, false);
                 } else {
