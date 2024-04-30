@@ -1112,17 +1112,19 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 var sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
                 int lastMatchEnd = 0;
                 int matchStart = -1;
-                long lastIndex = sticky ? toLength.executeLong(parent.getLastIndex(rx)) : 0;
+                long lastIndex;
+                if (global) {
+                    // Set(rx, "lastIndex", 0, true) will be performed after the loop.
+                    lastIndex = 0;
+                } else if (sticky) {
+                    lastIndex = toLength.executeLong(parent.getLastIndex(rx));
+                } else {
+                    lastIndex = 0;
+                }
                 Object lastRegexResult = null;
                 while (lastIndex <= length) {
                     Object tRegexResult = execIgnoreLastIndexNode.execute(rx, s, lastIndex);
                     if (noMatchProfile.profile(node, !TRegexResultAccessor.isMatch(tRegexResult, node, readIsMatch))) {
-                        if (matchStart < 0) {
-                            if (global || sticky) {
-                                parent.setLastIndex(rx, 0);
-                            }
-                            return s;
-                        }
                         break;
                     }
                     if (!context.getRegExpStaticResultUnusedAssumption().isValid()) {
@@ -1154,11 +1156,16 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         break;
                     }
                 }
-                if (context.isOptionRegexpStaticResult() && matchStart >= 0) {
-                    JSRealm.get(node).setStaticRegexResult(context, tRegexCompiledRegex, s, matchStart, lastRegexResult);
-                }
                 if (global || sticky) {
-                    parent.setLastIndex(rx, sticky ? lastMatchEnd : 0);
+                    parent.setLastIndex(rx, global ? 0 : lastMatchEnd);
+                }
+                if (matchStart < 0) {
+                    // no match found
+                    assert lastMatchEnd == 0 && sb.isEmpty();
+                    return s;
+                }
+                if (context.isOptionRegexpStaticResult()) {
+                    JSRealm.get(node).setStaticRegexResult(context, tRegexCompiledRegex, s, matchStart, lastRegexResult);
                 }
                 if (lastMatchEnd < length) {
                     parent.append(sb, s, lastMatchEnd, length);
