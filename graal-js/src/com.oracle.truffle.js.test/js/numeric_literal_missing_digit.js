@@ -44,6 +44,12 @@ for (const snippet of [
     "0x_0",
     "0o_0",
     "0b_0",
+    "0x-1",
+    "0o-1",
+    "0b-1",
+    "0x+1",
+    "0o+1",
+    "0b+1",
 ].flatMap(x => [x, x.toUpperCase()])) {
     assertThrows(() => new Function(snippet), SyntaxError, "Missing digit");
     assertThrows(() => new Function(snippet + "n"), SyntaxError, "Missing digit");
