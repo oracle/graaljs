@@ -154,10 +154,6 @@ public final class JSGuards {
         return shape.getDynamicType() == JSFunction.INSTANCE;
     }
 
-    public static boolean isBoundJSFunction(Object value) {
-        return JSFunction.isBoundFunction(value);
-    }
-
     public static boolean isCallable(Object reviver) {
         return JSRuntime.isCallable(reviver);
     }

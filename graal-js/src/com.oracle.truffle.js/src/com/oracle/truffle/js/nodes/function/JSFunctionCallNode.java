@@ -950,9 +950,9 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
     protected static JSFunctionCacheNode createCallableNode(JSFunctionObject function, JSFunctionData functionData, boolean isNew, boolean isNewTarget, boolean cacheOnInstance) {
         CallTarget callTarget = getCallTarget(functionData, isNew, isNewTarget);
         assert callTarget != null;
-        if (JSFunction.isBoundFunction(function) && isBoundFunctionNestingDepthWithinLimits(function)) {
+        if (function instanceof JSFunctionObject.Bound boundFunction && isBoundFunctionNestingDepthWithinLimits(boundFunction)) {
             if (cacheOnInstance) {
-                return new BoundFunctionInstanceCallNode(function, isNew, isNewTarget);
+                return new BoundFunctionInstanceCallNode(boundFunction, isNew, isNewTarget);
             } else {
                 return new DynamicBoundFunctionCallNode(isNew, isNewTarget, functionData);
             }
@@ -964,7 +964,7 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
             if (cacheOnInstance) {
                 return new FunctionInstanceCacheNode(function, callTarget);
-            } else if (JSFunction.isBoundFunction(function)) {
+            } else if (function instanceof JSFunctionObject.Bound) {
                 // used in the case of a deeply nested bound function
                 return new BoundFunctionDataCacheNode(functionData, callTarget);
             } else if (function instanceof JSFunctionObject.Unbound) {
@@ -975,12 +975,12 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
     }
 
-    private static boolean isBoundFunctionNestingDepthWithinLimits(JSFunctionObject function) {
-        JSFunctionObject boundFunction = function;
+    private static boolean isBoundFunctionNestingDepthWithinLimits(JSFunctionObject.Bound function) {
+        JSFunctionObject.Bound boundFunction = function;
         for (int i = 0; i < JSConfig.BoundFunctionUnpackLimit; i++) {
-            Object targetFunction = JSFunction.getBoundTargetFunction(boundFunction);
-            if (JSFunction.isBoundFunction(targetFunction)) {
-                boundFunction = (JSFunctionObject) targetFunction;
+            Object targetFunction = boundFunction.getBoundTargetFunction();
+            if (targetFunction instanceof JSFunctionObject.Bound nestedBoundFunction) {
+                boundFunction = nestedBoundFunction;
             } else {
                 return true;
             }
@@ -1167,20 +1167,19 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         private final boolean useDynamicThis;
         private final boolean isNewTarget;
 
-        BoundFunctionInstanceCallNode(JSFunctionObject function, boolean isNew, boolean isNewTarget) {
-            assert JSFunction.isBoundFunction(function);
+        BoundFunctionInstanceCallNode(JSFunctionObject.Bound function, boolean isNew, boolean isNewTarget) {
             this.boundFunctionObj = function;
             Object lastReceiver;
             Object lastFunction = function;
             List<Object> prefixArguments = new ArrayList<>();
             do {
-                JSFunctionObject boundFunction = (JSFunctionObject) lastFunction;
-                Object[] extraArguments = JSFunction.getBoundArguments(boundFunction);
+                JSFunctionObject.Bound boundFunction = (JSFunctionObject.Bound) lastFunction;
+                Object[] extraArguments = boundFunction.getBoundArguments();
                 prefixArguments.addAll(0, Arrays.asList(extraArguments));
 
-                lastReceiver = JSFunction.getBoundThis(boundFunction);
-                lastFunction = JSFunction.getBoundTargetFunction(boundFunction);
-            } while (JSFunction.isBoundFunction(lastFunction) && !isNewTarget);
+                lastReceiver = boundFunction.getBoundThis();
+                lastFunction = boundFunction.getBoundTargetFunction();
+            } while (lastFunction instanceof JSFunctionObject.Bound && !isNewTarget);
             // Note: We cannot unpack nested bound functions if this is a construct-with-newTarget.
             // This is because we need to apply the SameValue(F, newTarget) check below recursively
             // for all bound functions F until we reach the unbound target function.
@@ -1240,8 +1239,8 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
 
         private boolean checkTargetFunction(Object[] arguments) {
             Object targetFunction = JSArguments.getFunctionObject(arguments);
-            while (JSFunction.isBoundFunction(targetFunction)) {
-                targetFunction = JSFunction.getBoundTargetFunction((JSFunctionObject) targetFunction);
+            while (targetFunction instanceof JSFunctionObject.Bound boundFunction) {
+                targetFunction = boundFunction.getBoundTargetFunction();
                 if (isNewTarget) {
                     // see note above
                     return targetFunctionObj == targetFunction;
@@ -1287,13 +1286,10 @@ public abstract class JSFunctionCallNode extends JavaScriptNode implements JavaS
         }
 
         private Object[] bindExtraArguments(Object[] origArgs) {
-            JSFunctionObject function = (JSFunctionObject) JSArguments.getFunctionObject(origArgs);
-            if (!JSFunction.isBoundFunction(function)) {
-                throw Errors.shouldNotReachHere();
-            }
-            Object boundTargetFunction = JSFunction.getBoundTargetFunction(function);
-            Object boundThis = useDynamicThis ? JSArguments.getThisObject(origArgs) : JSFunction.getBoundThis(function);
-            Object[] boundArguments = JSFunction.getBoundArguments(function);
+            JSFunctionObject.Bound function = (JSFunctionObject.Bound) JSArguments.getFunctionObject(origArgs);
+            Object boundTargetFunction = function.getBoundTargetFunction();
+            Object boundThis = useDynamicThis ? JSArguments.getThisObject(origArgs) : function.getBoundThis();
+            Object[] boundArguments = function.getBoundArguments();
             int skip = isNewTarget ? 1 : 0;
             Object[] origUserArgs = JSArguments.extractUserArguments(origArgs, skip);
             int newUserArgCount = boundArguments.length + origUserArgs.length;

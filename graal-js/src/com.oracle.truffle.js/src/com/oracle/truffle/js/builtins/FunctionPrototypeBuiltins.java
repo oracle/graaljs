@@ -369,17 +369,17 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             super(context, builtin);
         }
 
-        protected boolean isBoundTarget(JSDynamicObject fnObj) {
-            return JSFunction.isBoundFunction(fnObj);
+        @TruffleBoundary
+        @Specialization
+        protected final TruffleString toStringFunction(JSFunctionObject fnObj) {
+            if (fnObj instanceof JSFunctionObject.Bound) {
+                return toStringBound(fnObj);
+            } else {
+                return toStringDefaultTarget(fnObj);
+            }
         }
 
-        @Specialization(guards = {"isJSFunction(fnObj)", "!isBoundTarget(fnObj)"})
-        protected TruffleString toStringDefault(JSDynamicObject fnObj) {
-            return toStringDefaultTarget(fnObj);
-        }
-
-        @Specialization(guards = {"isJSFunction(fnObj)", "isBoundTarget(fnObj)"})
-        protected TruffleString toStringBound(JSDynamicObject fnObj) {
+        private TruffleString toStringBound(JSFunctionObject fnObj) {
             if (getContext().isOptionV8CompatibilityMode()) {
                 return Strings.FUNCTION_NATIVE_CODE;
             } else {
@@ -396,7 +396,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isES2019OrLater()", "!isJSFunction(fnObj)", "isCallable.executeBoolean(fnObj)"})
-        protected TruffleString toStringCallable(Object fnObj,
+        protected static TruffleString toStringCallable(Object fnObj,
                         @Cached @Shared IsCallableNode isCallable,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interopStr,
@@ -418,13 +418,13 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
 
         @SuppressWarnings("unused")
         @Specialization(guards = {"isES2019OrLater()", "!isCallable.executeBoolean(fnObj)"})
-        protected TruffleString toStringNotCallable(Object fnObj,
+        protected static TruffleString toStringNotCallable(Object fnObj,
                         @Cached @Shared IsCallableNode isCallable) {
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }
 
         @Specialization(guards = {"!isES2019OrLater()", "!isJSFunction(fnObj)"})
-        protected TruffleString toStringNotFunction(Object fnObj) {
+        protected static TruffleString toStringNotFunction(Object fnObj) {
             throw Errors.createTypeErrorNotAFunction(fnObj);
         }
 

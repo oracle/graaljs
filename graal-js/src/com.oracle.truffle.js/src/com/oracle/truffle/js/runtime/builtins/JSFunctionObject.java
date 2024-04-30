@@ -186,8 +186,8 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     @TruffleBoundary
     private static SourceSection getSourceLocationImpl(JSDynamicObject receiver) {
         Object function = receiver;
-        while (JSFunction.isBoundFunction(function)) {
-            function = JSFunction.getBoundTargetFunction((JSFunctionObject) function);
+        while (function instanceof JSFunctionObject.Bound boundFunction) {
+            function = boundFunction.getBoundTargetFunction();
         }
         if (JSFunction.isJSFunction(function)) {
             CallTarget ct = JSFunction.getCallTarget((JSFunctionObject) function);
@@ -282,6 +282,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
     public static final class Unbound extends JSFunctionObject {
         protected Unbound(Shape shape, JSDynamicObject proto, JSFunctionData functionData, MaterializedFrame enclosingFrame, JSRealm realm, Object classPrototype) {
             super(shape, proto, functionData, enclosingFrame, realm, classPrototype);
+            assert !functionData.isBound();
         }
     }
 
@@ -347,6 +348,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
         protected Bound(Shape shape, JSDynamicObject proto, JSFunctionData functionData, JSRealm realm, Object classPrototype,
                         Object boundTargetFunction, Object boundThis, Object[] boundArguments) {
             super(shape, proto, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, classPrototype);
+            assert functionData.isBound();
             this.boundTargetFunction = boundTargetFunction;
             this.boundThis = boundThis;
             this.boundArguments = boundArguments;
@@ -382,6 +384,7 @@ public abstract class JSFunctionObject extends JSNonProxyObject {
         protected Wrapped(Shape shape, JSDynamicObject proto, JSFunctionData functionData, JSRealm realm, Object wrappedTargetFunction) {
             super(shape, proto, functionData, JSFrameUtil.NULL_MATERIALIZED_FRAME, realm, JSFunction.CLASS_PROTOTYPE_PLACEHOLDER);
             this.wrappedTargetFunction = wrappedTargetFunction;
+            assert !functionData.isBound();
         }
 
         public Object getWrappedTargetFunction() {
