@@ -143,6 +143,11 @@ public final class Boundaries {
         return list.toArray();
     }
 
+    @TruffleBoundary
+    public static String[] listToStringArray(List<String> list) {
+        return list.toArray(new String[0]);
+    }
+
     public static <T> List<T> listToEditable(List<T> list) {
         if (list instanceof ArrayList) {
             return list;
