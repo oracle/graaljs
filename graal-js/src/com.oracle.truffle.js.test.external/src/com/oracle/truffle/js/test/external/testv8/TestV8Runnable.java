@@ -85,13 +85,14 @@ public class TestV8Runnable extends TestRunnable {
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_EXPERIMENTAL_SIMD = "--no-experimental-wasm-simd";
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
+    private static final String EXPERIMENTAL_WASM_MEMORY64 = "--experimental-wasm-memory64";
+    private static final String EXPERIMENTAL_WASM_MULTIMEMORY = "--experimental-wasm-multi-memory";
 
     private static final Set<String> UNSUPPORTED_FLAGS = featureSet(new String[]{
                     "--experimental-d8-web-snapshot-api",
                     "--experimental-wasm-compilation-hints",
                     "--experimental-wasm-eh",
                     "--experimental-wasm-gc",
-                    "--experimental-wasm-memory64",
                     "--experimental-wasm-return-call",
                     "--experimental-wasm-stringref",
                     "--experimental-wasm-type-reflection",
@@ -153,6 +154,12 @@ public class TestV8Runnable extends TestRunnable {
 
             if (flags.contains(NO_EXPERIMENTAL_SIMD)) {
                 extraOptions.put("wasm.SIMD", "false");
+            }
+            if (flags.contains(EXPERIMENTAL_WASM_MEMORY64)) {
+                extraOptions.put("wasm.Memory64", "true");
+            }
+            if (flags.contains(EXPERIMENTAL_WASM_MULTIMEMORY)) {
+                extraOptions.put("wasm.MultiMemory", "true");
             }
         }
 

@@ -4736,6 +4736,13 @@
     },
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "mjsunit/wasm/atomics-memory64.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "Memory instance size exceeded beyond 4GB. In the current spec, the JS WebAssembly API should not allow such large memory instances. Furhtermore, GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
+  }, {
     "filePath" : "mjsunit/wasm/atomics-non-shared.js",
     "status" : "SKIP",
     "statusOverrides" : {
@@ -5680,6 +5687,13 @@
       "POLYGLOT" : "PASS"
     }
   }, {
+    "filePath" : "mjsunit/wasm/memory64.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "Memory instance size exceeded beyond 4GB. In the current spec, the JS WebAssembly API should not allow such large memory instances. Furhtermore, GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
+  }, {
     "filePath" : "mjsunit/wasm/memory_1gb_oob.js",
     "status" : "SKIP",
     "comment" : "long-running test, deactivated"
@@ -5708,6 +5722,12 @@
       "POLYGLOT" : "FAIL"
     },
     "comment" : "new failures 2023-10-09"
+  }, {
+    "filePath" : "mjsunit/wasm/multi-memory64.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/multi-table-element-section.js",
     "status" : "SKIP",
@@ -5908,6 +5928,13 @@
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
     }
+  }, {
+    "filePath" : "mjsunit/wasm/simd-lane-memory64.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "Memory instance size exceeded beyond 4GB. In the current spec, the JS WebAssembly API should not allow such large memory instances. Furhtermore, GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
   }, {
     "filePath" : "mjsunit/wasm/single-threaded-compilation.js",
     "status" : "SKIP",
