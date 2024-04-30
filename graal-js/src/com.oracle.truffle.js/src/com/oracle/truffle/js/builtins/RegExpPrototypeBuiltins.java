@@ -493,7 +493,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             super(context, builtin);
         }
 
-        protected Object read(Object target, int index) {
+        protected Object read(Object target, long index) {
             if (readNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 readNode = insert(ReadElementNode.create(getContext()));
@@ -501,7 +501,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return readNode.executeWithTargetAndIndex(target, index);
         }
 
-        protected void write(Object target, int index, Object value) {
+        protected void write(Object target, long index, Object value) {
             if (writeNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
                 writeNode = insert(WriteElementNode.create(getContext(), true, true));
@@ -688,6 +688,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                     return array;
                 }
+                // limited by max array length and max string length
                 int arrayLength = 0;
                 int prevMatchEnd = 0;
                 int fromIndex = 0;
@@ -697,11 +698,13 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     if (resultIsNull.profile(node, regexResult == Null.instance)) {
                         fromIndex = movePosition(str, unicodeMatching, fromIndex, node, isUnicode, advanceStringIndexUnicode);
                     } else {
-                        int matchEnd = (int) toLength.executeLong(parent.getLastIndex(splitter));
+                        long lastIndex = toLength.executeLong(parent.getLastIndex(splitter));
+                        int matchEnd = (int) Math.min(lastIndex, size);
                         if (sameMatchEnd.profile(node, matchEnd == prevMatchEnd)) {
                             fromIndex = movePosition(str, unicodeMatching, fromIndex, node, isUnicode, advanceStringIndexUnicode);
                         } else {
-                            parent.write(array, arrayLength, Strings.substring(context, substringNode, str, prevMatchEnd, fromIndex - prevMatchEnd));
+                            TruffleString part = Strings.substring(context, substringNode, str, prevMatchEnd, fromIndex - prevMatchEnd);
+                            parent.write(array, arrayLength, part);
                             arrayLength++;
                             if (arrayLength == lim) {
                                 prematureReturnBranch.enter(node);
@@ -710,7 +713,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             prevMatchEnd = matchEnd;
                             fromIndex = matchEnd;
                             long numberOfCaptures = toLength.executeLong(getLength.getValue(regexResult));
-                            for (int i = 1; i < numberOfCaptures; i++) {
+                            for (long i = 1; i < numberOfCaptures; i++) {
                                 parent.write(array, arrayLength, parent.read(regexResult, i));
                                 arrayLength++;
                                 if (arrayLength == lim) {
@@ -721,8 +724,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         }
                     }
                 }
-                int begin = Math.min(prevMatchEnd, Strings.length(str));
-                parent.write(array, arrayLength, Strings.substring(context, substringNode, str, begin, size - begin));
+                TruffleString part = Strings.substring(context, substringNode, str, prevMatchEnd, size - prevMatchEnd);
+                parent.write(array, arrayLength, part);
                 return array;
             }
         }
@@ -790,7 +793,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         if (matchEnd == prevMatchEnd) {
                             fromIndex = movePosition(str, unicodeMatching, fromIndex, node, isUnicode, advanceStringIndexUnicode);
                         } else {
-                            parent.write(array, arrayLength++, Strings.substring(context, substringNode, str, prevMatchEnd, matchStart - prevMatchEnd));
+                            TruffleString part = Strings.substring(context, substringNode, str, prevMatchEnd, matchStart - prevMatchEnd);
+                            parent.write(array, arrayLength++, part);
                             if (arrayLength == lim) {
                                 prematureReturnBranch.enter(node);
                                 return array;
@@ -818,7 +822,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     realm.setStaticRegexResult(context, tRegexCompiledRegex, str, matchStart, lastRegexResult);
                 }
                 if (matchStart != matchEnd || prevMatchEnd < size) {
-                    parent.write(array, arrayLength, Strings.substring(context, substringNode, str, prevMatchEnd, size - prevMatchEnd));
+                    TruffleString part = Strings.substring(context, substringNode, str, prevMatchEnd, size - prevMatchEnd);
+                    parent.write(array, arrayLength, part);
                 }
                 return array;
             }
@@ -1101,7 +1106,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 var sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
                 int lastMatchEnd = 0;
                 int matchStart = -1;
-                int lastIndex = sticky ? (int) toLength.executeLong(parent.getLastIndex(rx)) : 0;
+                long lastIndex = sticky ? toLength.executeLong(parent.getLastIndex(rx)) : 0;
                 Object lastRegexResult = null;
                 while (lastIndex <= length) {
                     Object tRegexResult = execIgnoreLastIndexNode.execute(rx, s, lastIndex);
@@ -1327,10 +1332,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             }
 
             private static int processNonLazy(JSDynamicObject result, JSToLengthNode toLength, PropertyGetNode getLength, JSRegExpReplaceNode parent) {
-                int resultLength = (int) toLength.executeLong(getLength.getValue(result));
+                long resultLength = toLength.executeLong(getLength.getValue(result));
                 TruffleString result0Str = parent.toString3(parent.read(result, 0));
                 parent.write(result, 0, result0Str);
-                for (int n = 1; n < resultLength; n++) {
+                for (long n = 1; n < resultLength; n++) {
                     Object value = parent.read(result, n);
                     if (value != Undefined.instance) {
                         parent.write(result, n, parent.toString3(value));
@@ -1634,8 +1639,13 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     matchStr = toString2Node.executeString(read(result, 0));
                     write(array, n, matchStr);
                     if (Strings.length(matchStr) == 0) {
-                        int lastI = (int) toLengthNode.executeLong(getLastIndex(rx));
-                        setLastIndex(rx, isUnicode.profile(node, fullUnicode) ? advanceStringIndexUnicode.execute(node, s, lastI) : lastI + 1);
+                        long lastIndex = toLengthNode.executeLong(getLastIndex(rx));
+                        long nextIndex = lastIndex + 1;
+                        if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
+                            setLastIndex(rx, isUnicode.profile(node, fullUnicode) ? advanceStringIndexUnicode.execute(node, s, (int) lastIndex) : (int) nextIndex);
+                        } else {
+                            setLastIndex(rx, (double) nextIndex);
+                        }
                     }
                     n++;
                 }

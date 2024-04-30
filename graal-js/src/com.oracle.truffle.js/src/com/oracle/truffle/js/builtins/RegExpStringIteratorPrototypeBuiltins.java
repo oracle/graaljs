@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
+import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSString;
@@ -129,6 +130,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
         protected JSDynamicObject doRegExpStringIterator(VirtualFrame frame, JSDynamicObject iterator,
                         @Cached InlinedCountingConditionProfile noMatchProfile,
                         @Cached InlinedConditionProfile globalProfile,
+                        @Cached InlinedConditionProfile isUnicode,
                         @Cached AdvanceStringIndexUnicodeNode advanceStringIndexUnicode) {
             boolean done;
             try {
@@ -160,9 +162,13 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
                 if (globalProfile.profile(this, global)) {
                     TruffleString matchStr = getToStringNode().executeString(read(match, 0));
                     if (Strings.isEmpty(matchStr)) {
-                        int thisIndex = (int) getToLengthNode().executeLong(getLastIndex(regex));
-                        int nextIndex = fullUnicode ? advanceStringIndexUnicode.execute(this, string, thisIndex) : thisIndex + 1;
-                        setLastIndex(regex, nextIndex);
+                        long lastIndex = getToLengthNode().executeLong(getLastIndex(regex));
+                        long nextIndex = lastIndex + 1;
+                        if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
+                            setLastIndex(regex, isUnicode.profile(this, fullUnicode) ? advanceStringIndexUnicode.execute(this, string, (int) lastIndex) : (int) nextIndex);
+                        } else {
+                            setLastIndex(regex, (double) nextIndex);
+                        }
                     }
                     return getCreateIterResultObjectNode().execute(frame, match, false);
                 } else {
