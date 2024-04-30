@@ -581,6 +581,18 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             return getLastIndexNode.getValue(obj);
         }
 
+        protected final void advanceLastIndexAfterEmptyMatch(Object regex, TruffleString string, boolean fullUnicode,
+                        Node node, JSToLengthNode toLengthNode, AdvanceStringIndexNode advanceStringIndex, InlinedBranchProfile lastIndexNotIntBranch) {
+            long thisIndex = toLengthNode.executeLong(getLastIndex(regex));
+            long nextIndex = thisIndex + 1;
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.LIKELY_PROBABILITY, JSRuntime.longIsRepresentableAsInt(nextIndex))) {
+                setLastIndex(regex, advanceStringIndex.execute(node, string, (int) thisIndex, fullUnicode));
+            } else {
+                lastIndexNotIntBranch.enter(node);
+                setLastIndex(regex, (double) nextIndex);
+            }
+        }
+
         protected Object regexExecIntl(Object regex, TruffleString input) {
             if (regexExecIntlNode == null) {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1247,7 +1259,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached InlinedConditionProfile noMatchProfile,
                             @Cached InlinedConditionProfile lazyResultArrayProfile,
                             @Cached InlinedConditionProfile validPositionProfile,
-                            @Cached InlinedBranchProfile dollarProfile) {
+                            @Cached InlinedBranchProfile dollarProfile,
+                            @Cached InlinedBranchProfile lastIndexNotIntBranch) {
                 TruffleString replaceString = null;
                 JSDynamicObject replaceFunction = null;
                 if (functionalReplace) {
@@ -1301,13 +1314,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                     if (global) {
                         if (matchLength == 0) {
-                            long lastIndex = toLength.executeLong(parent.getLastIndex(rx));
-                            long nextIndex = lastIndex + 1;
-                            if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
-                                parent.setLastIndex(rx, advanceStringIndex.execute(node, s, (int) lastIndex, fullUnicode));
-                            } else {
-                                parent.setLastIndex(rx, (double) nextIndex);
-                            }
+                            parent.advanceLastIndexAfterEmptyMatch(rx, s, fullUnicode, node, toLength, advanceStringIndex, lastIndexNotIntBranch);
                         }
                     } else {
                         break;
@@ -1646,7 +1653,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToLengthNode toLengthNode,
                         @Cached InlinedConditionProfile isGlobal,
-                        @Cached AdvanceStringIndexNode advanceStringIndex) {
+                        @Cached AdvanceStringIndexNode advanceStringIndex,
+                        @Cached InlinedBranchProfile lastIndexNotIntBranch) {
             TruffleString s = toString1Node.executeString(param);
             TruffleString flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(rx));
             if (isGlobal.profile(node, Strings.indexOf(stringIndexOfNode, flags, 'g') == -1)) {
@@ -1665,14 +1673,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                     matchStr = toString2Node.executeString(read(result, 0));
                     write(array, n, matchStr);
-                    if (Strings.length(matchStr) == 0) {
-                        long lastIndex = toLengthNode.executeLong(getLastIndex(rx));
-                        long nextIndex = lastIndex + 1;
-                        if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
-                            setLastIndex(rx, advanceStringIndex.execute(node, s, (int) lastIndex, fullUnicode));
-                        } else {
-                            setLastIndex(rx, (double) nextIndex);
-                        }
+                    if (Strings.isEmpty(matchStr)) {
+                        advanceLastIndexAfterEmptyMatch(rx, s, fullUnicode, node, toLengthNode, advanceStringIndex, lastIndexNotIntBranch);
                     }
                     n++;
                 }
