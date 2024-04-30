@@ -122,7 +122,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
         return JSRuntime.booleanToNumber(value);
     }
 
-    @Specialization(guards = "isLongRepresentableAsInt32(value)")
+    @Specialization
     protected int doLong(long value) {
         return (int) value;
     }
@@ -237,7 +237,7 @@ public abstract class JSToInt32Node extends JavaScriptBaseNode {
             return JSRuntime.booleanToNumber(value);
         }
 
-        @Specialization(guards = "isLongRepresentableAsInt32(value)")
+        @Specialization
         protected int doLong(long value) {
             return (int) value;
         }
