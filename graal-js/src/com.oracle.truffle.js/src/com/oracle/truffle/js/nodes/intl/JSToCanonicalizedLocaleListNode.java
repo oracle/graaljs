@@ -138,7 +138,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 }
             }
         }
-        return result.toArray(new String[]{});
+        return Boundaries.listToStringArray(result);
     }
 
     @Specialization(guards = {"isForeignObject(object)"})
@@ -184,7 +184,7 @@ public abstract class JSToCanonicalizedLocaleListNode extends JavaScriptBaseNode
                 }
             }
         }
-        return result.toArray(new String[]{});
+        return Boundaries.listToStringArray(result);
     }
 
     private static String[] doJavaString(String s) {
