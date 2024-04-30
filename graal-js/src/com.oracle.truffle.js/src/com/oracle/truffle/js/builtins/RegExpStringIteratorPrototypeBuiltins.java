@@ -49,7 +49,7 @@ import com.oracle.truffle.api.nodes.UnexpectedResultException;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.InlinedCountingConditionProfile;
 import com.oracle.truffle.api.strings.TruffleString;
-import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.AdvanceStringIndexUnicodeNode;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.AdvanceStringIndexNode;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltins.RegExpPrototypeSymbolOperation;
 import com.oracle.truffle.js.builtins.RegExpStringIteratorPrototypeBuiltinsFactory.RegExpStringIteratorNextNodeGen;
 import com.oracle.truffle.js.nodes.access.CreateIterResultObjectNode;
@@ -130,8 +130,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
         protected JSDynamicObject doRegExpStringIterator(VirtualFrame frame, JSDynamicObject iterator,
                         @Cached InlinedCountingConditionProfile noMatchProfile,
                         @Cached InlinedConditionProfile globalProfile,
-                        @Cached InlinedConditionProfile isUnicode,
-                        @Cached AdvanceStringIndexUnicodeNode advanceStringIndexUnicode) {
+                        @Cached AdvanceStringIndexNode advanceStringIndexUnicode) {
             boolean done;
             try {
                 done = getGetDoneNode().getValueBoolean(iterator);
@@ -165,7 +164,7 @@ public final class RegExpStringIteratorPrototypeBuiltins extends JSBuiltinsConta
                         long lastIndex = getToLengthNode().executeLong(getLastIndex(regex));
                         long nextIndex = lastIndex + 1;
                         if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
-                            setLastIndex(regex, isUnicode.profile(this, fullUnicode) ? advanceStringIndexUnicode.execute(this, string, (int) lastIndex) : (int) nextIndex);
+                            setLastIndex(regex, advanceStringIndexUnicode.execute(this, string, (int) lastIndex, fullUnicode));
                         } else {
                             setLastIndex(regex, (double) nextIndex);
                         }

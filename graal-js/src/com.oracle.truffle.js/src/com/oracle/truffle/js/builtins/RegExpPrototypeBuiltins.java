@@ -454,16 +454,20 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
     @GenerateInline
     @GenerateCached(false)
-    protected abstract static class AdvanceStringIndexUnicodeNode extends JavaScriptBaseNode {
+    protected abstract static class AdvanceStringIndexNode extends JavaScriptBaseNode {
 
-        public abstract int execute(Node node, TruffleString s, int index);
+        public abstract int execute(Node node, TruffleString s, int index, boolean unicode);
 
         @Specialization
-        protected static int advanceStringIndexUnicode(Node node, TruffleString s, int index,
+        protected static int advanceStringIndex(Node node, TruffleString s, int index, boolean unicode,
                         @Cached(inline = false) TruffleString.ReadCharUTF16Node readChar,
+                        @Cached InlinedConditionProfile advanceUnicode,
                         @Cached InlinedConditionProfile advanceIndexLength,
                         @Cached InlinedConditionProfile advanceIndexFirst,
                         @Cached InlinedConditionProfile advanceIndexSecond) {
+            if (!advanceUnicode.profile(node, unicode)) {
+                return index + 1;
+            }
             if (advanceIndexLength.profile(node, index + 1 >= Strings.length(s))) {
                 return index + 1;
             }
@@ -658,12 +662,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached("createNew()") JSFunctionCallNode constructorCall,
                             @Cached JSToLengthNode toLength,
                             @Cached TruffleString.SubstringByteIndexNode substringNode,
-                            @Cached AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached AdvanceStringIndexNode advanceStringIndex,
                             @Cached InlinedConditionProfile limitUndefined,
                             @Cached InlinedConditionProfile sizeIsZero,
                             @Cached InlinedConditionProfile resultIsNull,
                             @Cached InlinedConditionProfile sameMatchEnd,
-                            @Cached InlinedConditionProfile isUnicode,
                             @Cached InlinedBranchProfile prematureReturnBranch) {
                 TruffleString flags = toString2.executeString(getFlags.getValue(rx));
                 boolean unicodeMatching = Strings.indexOfAny(indexOfNode, flags, 'u', 'v') >= 0;
@@ -696,12 +699,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     parent.setLastIndex(splitter, fromIndex);
                     JSDynamicObject regexResult = (JSDynamicObject) parent.regexExecIntl(splitter, str);
                     if (resultIsNull.profile(node, regexResult == Null.instance)) {
-                        fromIndex = movePosition(str, unicodeMatching, fromIndex, node, isUnicode, advanceStringIndexUnicode);
+                        fromIndex = advanceStringIndex.execute(node, str, fromIndex, unicodeMatching);
                     } else {
                         long lastIndex = toLength.executeLong(parent.getLastIndex(splitter));
                         int matchEnd = (int) Math.min(lastIndex, size);
                         if (sameMatchEnd.profile(node, matchEnd == prevMatchEnd)) {
-                            fromIndex = movePosition(str, unicodeMatching, fromIndex, node, isUnicode, advanceStringIndexUnicode);
+                            fromIndex = advanceStringIndex.execute(node, str, fromIndex, unicodeMatching);
                         } else {
                             TruffleString part = Strings.substring(context, substringNode, str, prevMatchEnd, fromIndex - prevMatchEnd);
                             parent.write(array, arrayLength, part);
@@ -751,10 +754,9 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached("createNew()") @Shared JSFunctionCallNode constructorCall,
                             @Cached("create(context, false)") @Shared JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndex,
                             @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
-                            @Cached @Shared AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared AdvanceStringIndexNode advanceStringIndex,
                             @Cached @Shared InlinedConditionProfile sizeIsZero,
                             @Cached @Shared InlinedConditionProfile resultIsNull,
-                            @Cached @Shared InlinedConditionProfile isUnicode,
                             @Cached @Shared InlinedConditionProfile stickyFlagSet,
                             @Cached @Shared InlinedBranchProfile prematureReturnBranch) {
                 Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlags);
@@ -791,7 +793,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         matchStart = TRegexResultAccessor.captureGroupStart(tRegexResult, 0, node, getStart);
                         matchEnd = TRegexResultAccessor.captureGroupEnd(tRegexResult, 0, node, getEnd);
                         if (matchEnd == prevMatchEnd) {
-                            fromIndex = movePosition(str, unicodeMatching, fromIndex, node, isUnicode, advanceStringIndexUnicode);
+                            fromIndex = advanceStringIndex.execute(node, str, fromIndex, unicodeMatching);
                         } else {
                             TruffleString part = Strings.substring(context, substringNode, str, prevMatchEnd, matchStart - prevMatchEnd);
                             parent.write(array, arrayLength++, part);
@@ -811,7 +813,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                                 }
                             }
                             if (matchStart == matchEnd) {
-                                fromIndex = movePosition(str, unicodeMatching, fromIndex, node, isUnicode, advanceStringIndexUnicode);
+                                fromIndex = advanceStringIndex.execute(node, str, fromIndex, unicodeMatching);
                             } else {
                                 fromIndex = matchEnd;
                             }
@@ -843,15 +845,14 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached("createNew()") @Shared JSFunctionCallNode constructorCall,
                             @Cached("create(context, false)") @Shared JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndex,
                             @Cached @Shared TruffleString.SubstringByteIndexNode substringNode,
-                            @Cached @Shared AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared AdvanceStringIndexNode advanceStringIndex,
                             @Cached @Shared InlinedConditionProfile sizeIsZero,
                             @Cached @Shared InlinedConditionProfile resultIsNull,
-                            @Cached @Shared InlinedConditionProfile isUnicode,
                             @Cached @Shared InlinedConditionProfile stickyFlagSet,
                             @Cached @Shared InlinedBranchProfile prematureReturnBranch) {
                 return doCached(rx, str, lim, context, parent, node, JSRegExp.getCompiledRegex(rx),
                                 readFlags, readSticky, readUnicode, readUnicodeSets, removeStickyFlag, readIsMatch, readGroupCount, getStart, getEnd, constructorCall, execIgnoreLastIndex,
-                                substringNode, advanceStringIndexUnicode, sizeIsZero, resultIsNull, isUnicode, stickyFlagSet, prematureReturnBranch);
+                                substringNode, advanceStringIndex, sizeIsZero, resultIsNull, stickyFlagSet, prematureReturnBranch);
             }
         }
 
@@ -946,11 +947,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 isPristineObjectNode = insert(IsPristineObjectNode.createRegExpExecAndMatch(getContext()));
             }
             return isPristineObjectNode.execute(rx);
-        }
-
-        static int movePosition(TruffleString s, boolean unicodeMatching, int lastIndex,
-                        Node node, InlinedConditionProfile isUnicode, AdvanceStringIndexUnicodeNode advanceIndex) {
-            return isUnicode.profile(node, unicodeMatching) ? advanceIndex.execute(node, s, lastIndex) : lastIndex + 1;
         }
     }
 
@@ -1079,9 +1075,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Bind("this") Node node,
                             @Cached("getCompiledRegex(rx)") Object tRegexCompiledRegex,
                             @Cached("create(context, false)") @Shared JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
-                            @Cached @Shared AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared AdvanceStringIndexNode advanceStringIndex,
                             @Cached @Shared JSToLengthNode toLength,
-                            @Cached @Shared InlinedConditionProfile unicodeProfile,
                             @Cached @Shared InlinedConditionProfile globalProfile,
                             @Cached @Shared InlinedConditionProfile stickyProfile,
                             @Cached @Shared InlinedConditionProfile noMatchProfile,
@@ -1099,8 +1094,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached(inline = true) @Shared InteropReadIntMemberNode readGroupCount) {
                 Object tRegexFlags = TRegexCompiledRegexAccessor.flags(tRegexCompiledRegex, node, readFlags);
                 boolean global = globalProfile.profile(node, TRegexFlagsAccessor.global(tRegexFlags, node, readGlobal));
-                boolean eitherUnicode = unicodeProfile.profile(node,
-                                TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode) || TRegexFlagsAccessor.unicodeSets(tRegexFlags, node, readUnicodeSets));
+                boolean eitherUnicode = TRegexFlagsAccessor.unicode(tRegexFlags, node, readUnicode) || TRegexFlagsAccessor.unicodeSets(tRegexFlags, node, readUnicodeSets);
                 boolean sticky = stickyProfile.profile(node, TRegexFlagsAccessor.sticky(tRegexFlags, node, readSticky));
                 int length = Strings.length(s);
                 var sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
@@ -1140,7 +1134,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     lastMatchEnd = matchEnd;
                     if (global) {
                         if (matchStart == matchEnd) {
-                            lastIndex = eitherUnicode ? advanceStringIndexUnicode.execute(node, s, matchEnd) : matchEnd + 1;
+                            lastIndex = advanceStringIndex.execute(node, s, matchEnd, eitherUnicode);
                         } else {
                             lastIndex = matchEnd;
                         }
@@ -1166,9 +1160,8 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             JSContext context, JSRegExpReplaceNode parent,
                             @Bind("this") Node node,
                             @Cached("create(context, false)") @Shared JSRegExpExecIntlNode.JSRegExpExecIntlIgnoreLastIndexNode execIgnoreLastIndexNode,
-                            @Cached @Shared AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached @Shared AdvanceStringIndexNode advanceStringIndex,
                             @Cached @Shared JSToLengthNode toLength,
-                            @Cached @Shared InlinedConditionProfile unicodeProfile,
                             @Cached @Shared InlinedConditionProfile globalProfile,
                             @Cached @Shared InlinedConditionProfile stickyProfile,
                             @Cached @Shared InlinedConditionProfile noMatchProfile,
@@ -1185,7 +1178,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached(inline = true) @Shared InteropReadMemberNode readGroups,
                             @Cached(inline = true) @Shared InteropReadIntMemberNode readGroupCount) {
                 return doCached(rx, s, replaceString, parsedWithNamedCG, parsedWithoutNamedCG, context, parent, node, JSRegExp.getCompiledRegex(rx),
-                                execIgnoreLastIndexNode, advanceStringIndexUnicode, toLength, unicodeProfile, globalProfile, stickyProfile, noMatchProfile, hasNamedCaptureGroupsProfile, dollarProfile,
+                                execIgnoreLastIndexNode, advanceStringIndex, toLength, globalProfile, stickyProfile, noMatchProfile, hasNamedCaptureGroupsProfile, dollarProfile,
                                 readGlobal, readSticky, readUnicode, readUnicodeSets, readIsMatch, getStart, getEnd, readFlags, readGroups, readGroupCount);
             }
         }
@@ -1200,7 +1193,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
             protected static TruffleString replaceAccordingToSpec(JSDynamicObject rx, TruffleString s, Object replaceValue, boolean functionalReplace,
                             JSContext context, JSRegExpReplaceNode parent,
                             @Bind("this") Node node,
-                            @Cached AdvanceStringIndexUnicodeNode advanceStringIndexUnicode,
+                            @Cached AdvanceStringIndexNode advanceStringIndex,
                             @Cached JSToLengthNode toLength,
                             @Cached JSToIntegerAsIntNode toIntegerNode,
                             @Cached JSToStringNode toStringForFlagsNode,
@@ -1273,10 +1266,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     }
                     if (global) {
                         if (matchLength == 0) {
-                            long lastI = toLength.executeLong(parent.getLastIndex(rx));
-                            long nextIndex = lastI + 1;
+                            long lastIndex = toLength.executeLong(parent.getLastIndex(rx));
+                            long nextIndex = lastIndex + 1;
                             if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
-                                parent.setLastIndex(rx, fullUnicode ? advanceStringIndexUnicode.execute(node, s, (int) lastI) : (int) nextIndex);
+                                parent.setLastIndex(rx, advanceStringIndex.execute(node, s, (int) lastIndex, fullUnicode));
                             } else {
                                 parent.setLastIndex(rx, (double) nextIndex);
                             }
@@ -1618,8 +1611,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         @Cached JSToStringNode toString2Node,
                         @Cached JSToLengthNode toLengthNode,
                         @Cached InlinedConditionProfile isGlobal,
-                        @Cached InlinedConditionProfile isUnicode,
-                        @Cached AdvanceStringIndexUnicodeNode advanceStringIndexUnicode) {
+                        @Cached AdvanceStringIndexNode advanceStringIndex) {
             TruffleString s = toString1Node.executeString(param);
             TruffleString flags = toStringNodeForFlags.executeString(getFlagsNode.getValue(rx));
             if (isGlobal.profile(node, Strings.indexOf(stringIndexOfNode, flags, 'g') == -1)) {
@@ -1642,7 +1634,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         long lastIndex = toLengthNode.executeLong(getLastIndex(rx));
                         long nextIndex = lastIndex + 1;
                         if (JSRuntime.longIsRepresentableAsInt(nextIndex)) {
-                            setLastIndex(rx, isUnicode.profile(node, fullUnicode) ? advanceStringIndexUnicode.execute(node, s, (int) lastIndex) : (int) nextIndex);
+                            setLastIndex(rx, advanceStringIndex.execute(node, s, (int) lastIndex, fullUnicode));
                         } else {
                             setLastIndex(rx, (double) nextIndex);
                         }
