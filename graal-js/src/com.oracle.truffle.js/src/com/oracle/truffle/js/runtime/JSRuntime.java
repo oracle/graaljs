@@ -2113,13 +2113,6 @@ public final class JSRuntime {
     }
 
     /**
-     * Convert JS number to long.
-     */
-    public static long toLong(Number value) {
-        return longValue(value);
-    }
-
-    /**
      * Concatenate two strings, preallocating the buffer with the exact length of the result.
      */
     @TruffleBoundary
