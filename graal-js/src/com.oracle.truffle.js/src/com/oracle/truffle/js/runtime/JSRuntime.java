@@ -696,11 +696,18 @@ public final class JSRuntime {
         return toUInt32(toNumber(value));
     }
 
+    /**
+     * ToUint32 after previous ToNumber conversion.
+     */
     public static long toUInt32(Number number) {
-        if (number instanceof Double) {
-            return toUInt32(((Double) number).doubleValue());
+        if (number instanceof Integer) {
+            return Integer.toUnsignedLong((int) number);
+        } else if (number instanceof Double) {
+            return toUInt32((double) number);
+        } else if (number instanceof SafeInteger) {
+            return toUInt32(((SafeInteger) number).longValue());
         }
-        return toUInt32(longValue(number));
+        return toUInt32(longValueVirtual(number));
     }
 
     public static long toUInt32(long value) {
