@@ -1226,6 +1226,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             @Cached("create(LAZY_REGEX_RESULT_ID)") HasHiddenKeyCacheNode hasLazyRegexResult,
                             @Cached("createCall()") JSFunctionCallNode callFunction,
                             @Cached InlinedBranchProfile growProfile,
+                            @Cached InlinedBranchProfile errorBranch,
                             @Cached InlinedConditionProfile unicodeProfile,
                             @Cached InlinedConditionProfile globalProfile,
                             @Cached InlinedConditionProfile noMatchProfile,
@@ -1247,47 +1248,26 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     fullUnicode = unicodeProfile.profile(node, Strings.indexOfAny(indexOfAnyNode, flags, 'u', 'v') != -1);
                     parent.setLastIndex(rx, 0);
                 }
-                SimpleArrayList<JSDynamicObject> results = null;
-                if (functionalReplace) {
-                    results = new SimpleArrayList<>();
-                }
-                int length = Strings.length(s);
-                var sb = parent.stringBuilderProfile.newStringBuilder(length + 16);
+                SimpleArrayList<Object> results = new SimpleArrayList<>();
+                int lengthS = Strings.length(s);
+                var sb = parent.stringBuilderProfile.newStringBuilder(lengthS + 16);
                 int nextSourcePosition = 0;
                 int matchLength = -1;
                 while (true) {
-                    JSDynamicObject result = (JSDynamicObject) parent.regexExecIntl(rx, s);
+                    Object result = parent.regexExecIntl(rx, s);
                     if (noMatchProfile.profile(node, result == Null.instance)) {
                         if (matchLength < 0) {
                             return s;
                         }
                         break;
                     }
-                    long resultLength = toLength.executeLong(getLength.getValue(result));
-                    if (lazyResultArrayProfile.profile(node, isLazyResultArray(result, hasLazyRegexResult))) {
-                        matchLength = getLazyLength(result, getLazyRegexResult, parent);
-                    } else {
-                        matchLength = processNonLazy(result, resultLength, parent);
-                    }
-                    if (functionalReplace) {
-                        results.add(result, node, growProfile);
-                    } else {
-                        int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), Strings.length(s)), 0);
-                        if (validPositionProfile.profile(node, position >= nextSourcePosition)) {
-                            parent.append(sb, s, nextSourcePosition, position);
-                            Object namedCaptures = getGroupsNode.getValue(result);
-                            if (namedCaptures != Undefined.instance) {
-                                namedCaptures = parent.toObject(namedCaptures);
-                            }
-                            int matchEnd = Math.min(position + matchLength, Strings.length(s));
-                            int groupCount = (int) resultLength;
-                            ReplaceStringParser.process(context, replaceString, groupCount, namedCaptures != Undefined.instance,
-                                            new ReplaceStringConsumer(sb, s, replaceString, position, matchEnd, result, (JSDynamicObject) namedCaptures),
-                                            parent, node, dollarProfile);
-                            nextSourcePosition = position + matchLength;
-                        }
-                    }
+                    results.add(result, node, growProfile);
                     if (global) {
+                        if (lazyResultArrayProfile.profile(node, isLazyResultArray(result, hasLazyRegexResult))) {
+                            matchLength = getLazyResultLength(result, 0, getLazyRegexResult, parent);
+                        } else {
+                            matchLength = Strings.length(readCaptureGroup0(result, parent));
+                        }
                         if (matchLength == 0) {
                             parent.advanceLastIndexAfterEmptyMatch(rx, s, fullUnicode, node, toLength, advanceStringIndex, lastIndexNotIntBranch);
                         }
@@ -1295,62 +1275,92 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         break;
                     }
                 }
-                if (functionalReplace) {
-                    for (int i = 0; i < results.size(); i++) {
-                        JSDynamicObject result = results.get(i);
-                        int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), Strings.length(s)), 0);
-                        int resultsLength = (int) toLength.executeLong(getLength.getValue(result));
-                        Object namedCaptures = getGroupsNode.getValue(result);
-                        boolean hasNamedCG = namedCaptures != Undefined.instance;
-                        Object[] arguments = JSArguments.createInitial(Undefined.instance, replaceFunction, resultsLength + 2 + (hasNamedCG ? 1 : 0));
-                        for (int i1 = 0; i1 < resultsLength; i1++) {
-                            JSArguments.setUserArgument(arguments, i1, parent.read(result, i1));
+                for (int i = 0; i < results.size(); i++) {
+                    Object result = results.get(i);
+                    int resultLength = toSafeArrayLength(toLength.executeLong(getLength.getValue(result)), node, errorBranch);
+                    int groupCount = Math.max(resultLength, 1);
+                    Object[] captures = new Object[groupCount];
+                    TruffleString matched = readCaptureGroup0(result, parent);
+                    captures[0] = matched;
+                    matchLength = Strings.length(matched);
+                    int position = Math.max(Math.min(toIntegerNode.executeInt(getIndexNode.getValue(result)), lengthS), 0);
+                    for (int n = 1; n < groupCount; n++) {
+                        captures[n] = readCaptureGroupN(result, n, parent);
+                    }
+                    Object namedCaptures = getGroupsNode.getValue(result);
+                    boolean hasNamedCG = namedCaptures != Undefined.instance;
+
+                    if (functionalReplace) {
+                        int replacerArgsCount = groupCount + 2 + (hasNamedCG ? 1 : 0);
+                        if (replacerArgsCount > context.getFunctionArgumentsLimit()) {
+                            errorBranch.enter(node);
+                            throw Errors.createRangeErrorTooManyArguments();
                         }
-                        JSArguments.setUserArgument(arguments, resultsLength, position);
-                        JSArguments.setUserArgument(arguments, resultsLength + 1, s);
+                        Object[] arguments = JSArguments.createInitial(Undefined.instance, replaceFunction, replacerArgsCount);
+                        JSArguments.setUserArguments(arguments, 0, captures);
+                        JSArguments.setUserArgument(arguments, groupCount, position);
+                        JSArguments.setUserArgument(arguments, groupCount + 1, s);
                         if (hasNamedCG) {
-                            JSArguments.setUserArgument(arguments, resultsLength + 2, namedCaptures);
+                            JSArguments.setUserArgument(arguments, groupCount + 2, namedCaptures);
                         }
                         Object callResult = callFunction.executeCall(arguments);
                         TruffleString replacement = parent.toString2(callResult);
                         if (validPositionProfile.profile(node, position >= nextSourcePosition)) {
                             parent.append(sb, s, nextSourcePosition, position);
                             parent.append(sb, replacement);
-                            if (lazyResultArrayProfile.profile(node, isLazyResultArray(result, hasLazyRegexResult))) {
-                                nextSourcePosition = position + getLazyLength(result, getLazyRegexResult, parent);
-                            } else {
-                                nextSourcePosition = position + Strings.length((TruffleString) parent.read(result, 0));
-                            }
+                            nextSourcePosition = position + matchLength;
+                        }
+                    } else {
+                        if (hasNamedCG) {
+                            namedCaptures = parent.toObject(namedCaptures);
+                        }
+                        if (validPositionProfile.profile(node, position >= nextSourcePosition)) {
+                            parent.append(sb, s, nextSourcePosition, position);
+                            int matchEnd = Math.min(position + matchLength, lengthS);
+                            ReplaceStringParser.process(context, replaceString, groupCount, hasNamedCG,
+                                            new ReplaceStringConsumer(sb, s, replaceString, position, matchEnd, captures, namedCaptures),
+                                            parent, node, dollarProfile);
+                            nextSourcePosition = position + matchLength;
                         }
                     }
                 }
-                if (nextSourcePosition < length) {
-                    parent.append(sb, s, nextSourcePosition, length);
+                if (nextSourcePosition < lengthS) {
+                    parent.append(sb, s, nextSourcePosition, lengthS);
                 }
                 return parent.builderToString(sb);
             }
 
-            private static boolean isLazyResultArray(JSDynamicObject result, HasHiddenKeyCacheNode hasLazyRegexResultNode) {
+            private static boolean isLazyResultArray(Object result, HasHiddenKeyCacheNode hasLazyRegexResultNode) {
                 boolean isLazyResultArray = hasLazyRegexResultNode.executeHasHiddenKey(result);
-                assert isLazyResultArray == JSDynamicObject.hasProperty(result, JSArray.LAZY_REGEX_RESULT_ID);
+                assert isLazyResultArray == (result instanceof JSObject jso && JSDynamicObject.hasProperty(jso, JSArray.LAZY_REGEX_RESULT_ID));
                 return isLazyResultArray;
             }
 
-            private static int getLazyLength(JSDynamicObject obj, DynamicObjectLibrary lazyRegexResultNode, JSRegExpReplaceNode parent) {
-                Object regexResult = JSAbstractArray.arrayGetRegexResult(obj, lazyRegexResultNode);
-                return TRegexResultAccessor.captureGroupLength(regexResult, 0, null, parent.getStartNode, parent.getEndNode);
+            private static int getLazyResultLength(Object obj, int groupNumber, DynamicObjectLibrary lazyRegexResultNode, JSRegExpReplaceNode parent) {
+                Object regexResult = JSAbstractArray.arrayGetRegexResult((JSArrayObject) obj, lazyRegexResultNode);
+                return TRegexResultAccessor.captureGroupLength(regexResult, groupNumber, null, parent.getStartNode, parent.getEndNode);
             }
 
-            private static int processNonLazy(JSDynamicObject result, long resultLength, JSRegExpReplaceNode parent) {
-                TruffleString result0Str = parent.toString3(parent.read(result, 0));
-                parent.write(result, 0, result0Str);
-                for (long n = 1; n < resultLength; n++) {
-                    Object value = parent.read(result, n);
-                    if (value != Undefined.instance) {
-                        parent.write(result, n, parent.toString3(value));
-                    }
+            private static TruffleString readCaptureGroup0(Object result, JSRegExpReplaceNode parent) {
+                return parent.toString3(parent.read(result, 0));
+            }
+
+            private static Object readCaptureGroupN(Object result, int groupNumber, JSRegExpReplaceNode parent) {
+                assert groupNumber != 0;
+                Object value = parent.read(result, groupNumber);
+                if (value == Undefined.instance) {
+                    return value;
                 }
-                return Strings.length(result0Str);
+                return parent.toString3(value);
+            }
+
+            private static int toSafeArrayLength(long length, Node node, InlinedBranchProfile errorBranch) {
+                assert length >= 0 : length;
+                if (length > JSConfig.SOFT_MAX_ARRAY_LENGTH) {
+                    errorBranch.enter(node);
+                    throw Errors.outOfMemoryError();
+                }
+                return (int) length;
             }
         }
 
@@ -1451,16 +1461,17 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         private final TruffleString replaceStr;
         private final int startPos;
         private final int endPos;
-        private final JSDynamicObject result;
-        private final JSDynamicObject namedCaptures;
+        private final Object[] captures;
+        private final Object namedCaptures;
 
-        private ReplaceStringConsumer(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString replaceStr, int startPos, int endPos, JSDynamicObject result, JSDynamicObject namedCaptures) {
+        private ReplaceStringConsumer(TruffleStringBuilderUTF16 sb, TruffleString input, TruffleString replaceStr, int startPos, int endPos,
+                        Object[] captures, Object namedCaptures) {
             this.sb = sb;
             this.input = input;
             this.replaceStr = replaceStr;
             this.startPos = startPos;
             this.endPos = endPos;
-            this.result = result;
+            this.captures = captures;
             this.namedCaptures = namedCaptures;
         }
 
@@ -1471,7 +1482,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public void match(JSRegExpReplaceNode node) {
-            node.append(sb, (TruffleString) node.read(result, 0));
+            node.append(sb, (TruffleString) captures[0]);
         }
 
         @Override
@@ -1486,7 +1497,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Override
         public void captureGroup(JSRegExpReplaceNode node, int groupNumber, int literalStart, int literalEnd) {
-            Object capture = node.read(result, groupNumber);
+            Object capture = captures[groupNumber];
             if (capture != Undefined.instance) {
                 node.append(sb, (TruffleString) capture);
             }
