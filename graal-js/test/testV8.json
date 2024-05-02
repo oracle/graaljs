@@ -4006,9 +4006,8 @@
     "filePath" : "mjsunit/regress/wasm/regress-985154.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Wrong order of property keys in sloppy functions."
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-crbug-1047368.js",
     "status" : "SKIP",

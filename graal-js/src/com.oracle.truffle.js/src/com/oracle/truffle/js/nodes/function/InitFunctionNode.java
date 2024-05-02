@@ -142,10 +142,6 @@ public class InitFunctionNode extends JavaScriptBaseNode {
         Properties.putConstant(setNameNode, function, JSFunction.NAME, JSFunction.NAME_PROXY, nameFlags);
         assert function instanceof JSFunctionObject.BoundOrWrapped || Strings.equals(name, (TruffleString) JSFunction.NAME_PROXY.get(function));
 
-        if (setPrototypeNode != null) {
-            Properties.putConstant(setPrototypeNode, function, JSObject.PROTOTYPE, JSFunction.PROTOTYPE_PROXY, prototypeFlags);
-        }
-
         if (context.getEcmaScriptVersion() >= 6) {
             if (!strictProperties) {
                 if (context.isOptionV8CompatibilityMode()) {
@@ -163,6 +159,11 @@ public class InitFunctionNode extends JavaScriptBaseNode {
                 Properties.putWithFlags(setCallerNode, function, JSFunction.CALLER, throwerAccessor, argumentsCallerFlags);
             }
         }
+
+        if (setPrototypeNode != null) {
+            Properties.putConstant(setPrototypeNode, function, JSObject.PROTOTYPE, JSFunction.PROTOTYPE_PROXY, prototypeFlags);
+        }
+
         return function;
     }
 }
