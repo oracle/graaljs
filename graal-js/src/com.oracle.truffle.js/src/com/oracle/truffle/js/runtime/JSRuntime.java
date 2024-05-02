@@ -2065,13 +2065,6 @@ public final class JSRuntime {
         return n.longValue();
     }
 
-    /**
-     * Convert JS number to long.
-     */
-    public static long toLong(Number value) {
-        return longValue(value);
-    }
-
     // ES2015, 6.2.4.4, FromPropertyDescriptor
     @TruffleBoundary
     public static JSDynamicObject fromPropertyDescriptor(PropertyDescriptor desc, JSContext context) {
