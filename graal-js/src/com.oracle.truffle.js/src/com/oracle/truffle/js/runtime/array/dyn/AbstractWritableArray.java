@@ -253,7 +253,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, newCapacity > JSConfig.SOFT_MAX_ARRAY_LENGTH)) {
                 if (JSConfig.SOFT_MAX_ARRAY_LENGTH < minCapacity) {
                     profile.enterArrayTooLargeBranch(node);
-                    throw outOfMemoryError();
+                    throw Errors.outOfMemoryError();
                 }
                 newCapacity = JSConfig.SOFT_MAX_ARRAY_LENGTH;
             }
@@ -269,11 +269,6 @@ public abstract class AbstractWritableArray extends DynamicArray {
             resizeArray(object, (int) newCapacity, capacity, offset);
             return offset;
         }
-    }
-
-    @TruffleBoundary
-    private static OutOfMemoryError outOfMemoryError() {
-        return new OutOfMemoryError();
     }
 
     private int ensureCapacityContiguous(JSDynamicObject object, int internalIndex, Node node, SetSupportedProfileAccess profile) {
