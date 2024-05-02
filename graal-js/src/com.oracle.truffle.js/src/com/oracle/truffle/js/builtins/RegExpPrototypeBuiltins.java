@@ -1263,10 +1263,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                         }
                         break;
                     }
+                    long resultLength = toLength.executeLong(getLength.getValue(result));
                     if (lazyResultArrayProfile.profile(node, isLazyResultArray(result, hasLazyRegexResult))) {
                         matchLength = getLazyLength(result, getLazyRegexResult, parent);
                     } else {
-                        matchLength = processNonLazy(result, toLength, getLength, parent);
+                        matchLength = processNonLazy(result, resultLength, parent);
                     }
                     if (functionalReplace) {
                         results.add(result, node, growProfile);
@@ -1278,8 +1279,10 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                             if (namedCaptures != Undefined.instance) {
                                 namedCaptures = parent.toObject(namedCaptures);
                             }
-                            ReplaceStringParser.process(context, replaceString, (int) toLength.executeLong(getLength.getValue(result)), namedCaptures != Undefined.instance,
-                                            new ReplaceStringConsumer(sb, s, replaceString, position, Math.min(position + matchLength, Strings.length(s)), result, (JSDynamicObject) namedCaptures),
+                            int matchEnd = Math.min(position + matchLength, Strings.length(s));
+                            int groupCount = (int) resultLength;
+                            ReplaceStringParser.process(context, replaceString, groupCount, namedCaptures != Undefined.instance,
+                                            new ReplaceStringConsumer(sb, s, replaceString, position, matchEnd, result, (JSDynamicObject) namedCaptures),
                                             parent, node, dollarProfile);
                             nextSourcePosition = position + matchLength;
                         }
@@ -1338,8 +1341,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return TRegexResultAccessor.captureGroupLength(regexResult, 0, null, parent.getStartNode, parent.getEndNode);
             }
 
-            private static int processNonLazy(JSDynamicObject result, JSToLengthNode toLength, PropertyGetNode getLength, JSRegExpReplaceNode parent) {
-                long resultLength = toLength.executeLong(getLength.getValue(result));
+            private static int processNonLazy(JSDynamicObject result, long resultLength, JSRegExpReplaceNode parent) {
                 TruffleString result0Str = parent.toString3(parent.read(result, 0));
                 parent.write(result, 0, result0Str);
                 for (long n = 1; n < resultLength; n++) {
