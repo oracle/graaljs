@@ -749,6 +749,9 @@ public final class JSRuntime {
         if (number instanceof Integer) {
             return (int) number;
         }
+        if (number instanceof SafeInteger) {
+            return (int) number.longValue();
+        }
         if (number instanceof Long) {
             return (int) (long) number;
         }
