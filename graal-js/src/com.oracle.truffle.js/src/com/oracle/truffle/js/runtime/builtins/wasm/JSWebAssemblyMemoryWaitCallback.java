@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -71,21 +69,10 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
     private static final int BIGINT64_BYTES_PER_ELEMENT = 8;
     private final JSRealm realm;
     private final JSContext context;
-    private final Object memSetWaitCallbackFunction;
 
-    public JSWebAssemblyMemoryWaitCallback(JSRealm realm, JSContext context, Object memSetWaitCallbackFunction) {
+    public JSWebAssemblyMemoryWaitCallback(JSRealm realm, JSContext context) {
         this.realm = realm;
         this.context = context;
-        this.memSetWaitCallbackFunction = memSetWaitCallbackFunction;
-    }
-
-    public void attachToMemory(Object wasmMemory) {
-        InteropLibrary lib = InteropLibrary.getUncached();
-        try {
-            lib.execute(memSetWaitCallbackFunction, wasmMemory, this);
-        } catch (InteropException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
-        }
     }
 
     @SuppressWarnings("static-method")
@@ -97,9 +84,7 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
     @ExportMessage
     Object execute(Object[] arguments) {
         assert arguments.length == 5;
-        final Object embedderData = JSWebAssembly.getEmbedderData(realm, arguments[0]);
-        assert embedderData instanceof JSWebAssemblyMemoryObject;
-        final JSWebAssemblyMemoryObject memoryObject = (JSWebAssemblyMemoryObject) embedderData;
+        final JSWebAssemblyMemoryObject memoryObject = JSWebAssemblyMemory.create(context, realm, arguments[0], true);
         final long address = (long) arguments[1];
         final long expected = (long) arguments[2];
         final long timeout = (long) arguments[3];

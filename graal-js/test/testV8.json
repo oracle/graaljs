@@ -2269,9 +2269,8 @@
     "filePath" : "mjsunit/regress/wasm/regress-10898.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Notify instruction used from Wasm not instantiated via JS."
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-1101304.js",
     "status" : "SKIP",
@@ -2870,9 +2869,8 @@
     "filePath" : "mjsunit/regress/wasm/regress-1432453.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "memory.atomic.wait32 doesn't work with memories which are not exported/imported from JavaScript."
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-14356.js",
     "status" : "SKIP",
