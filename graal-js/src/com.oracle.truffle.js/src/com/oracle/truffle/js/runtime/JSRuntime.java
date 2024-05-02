@@ -662,63 +662,6 @@ public final class JSRuntime {
     }
 
     /**
-     * Implementation of ECMA 7.1.10 "ToUInt8".
-     *
-     * @param value an Object to be converted to a UInt8
-     * @return an Object representing the Number value of the parameter
-     */
-    public static int toUInt8(Object value) {
-        Number number = toNumber(value);
-        return toUInt8(number);
-    }
-
-    @TruffleBoundary
-    public static int toUInt8(Number number) {
-        if (number instanceof Double) {
-            Double d = (Double) number;
-            if (isPositiveInfinity(d)) {
-                return 0;
-            }
-        }
-        return toUInt8(number.longValue());
-    }
-
-    public static int toUInt8(long number) {
-        return (int) (number & 0x000000FF);
-    }
-
-    /**
-     * Implementation of ECMA 7.1.9 "ToInt8".
-     *
-     * @param value an Object to be converted to a Int8
-     * @return an Object representing the Number value of the parameter
-     */
-    public static int toInt8(Object value) {
-        Number number = toNumber(value);
-        return toInt8(number);
-    }
-
-    @TruffleBoundary
-    public static int toInt8(Number number) {
-        if (number instanceof Double) {
-            Double d = (Double) number;
-            if (isPositiveInfinity(d)) {
-                return 0;
-            }
-        }
-        return toInt8(number.longValue());
-    }
-
-    @TruffleBoundary
-    public static int toInt8(long number) {
-        int res = floorMod(number, 256);
-        if (res >= 128) {
-            res = res - 256;
-        }
-        return res;
-    }
-
-    /**
      * Implementation of ECMA 9.7 "ToUInt16".
      *
      * @param value an Object to be converted to a UInt16
@@ -741,43 +684,6 @@ public final class JSRuntime {
 
     public static int toUInt16(long number) {
         return (int) (number & 0x0000FFFF);
-    }
-
-    /**
-     * Implementation of ECMA 7.1.7 "ToInt16".
-     *
-     * @param value an Object to be converted to a Int16
-     * @return an Object representing the Number value of the parameter
-     */
-    public static int toInt16(Object value) {
-        Number number = toNumber(value);
-        return toInt16(number);
-    }
-
-    @TruffleBoundary()
-    public static int toInt16(Number number) {
-        if (number instanceof Double) {
-            Double d = (Double) number;
-            if (isPositiveInfinity(d)) {
-                return 0;
-            }
-        }
-        return toInt16(number.longValue());
-    }
-
-    @TruffleBoundary()
-    public static int toInt16(long number) {
-        int res = floorMod(number, 65536);
-        if (res >= 32768) {
-            res = res - 65536;
-        }
-        return res;
-    }
-
-    public static int floorMod(long x, int y) {
-        // Result cannot overflow the range of int.
-        long divisor = y;
-        return (int) Math.floorMod(x, divisor);
     }
 
     /**
