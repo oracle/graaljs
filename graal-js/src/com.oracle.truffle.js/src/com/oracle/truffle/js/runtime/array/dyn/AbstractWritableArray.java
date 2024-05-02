@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -254,7 +254,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, newCapacity > SimpleArrayList.MAX_ARRAY_SIZE)) {
                 if (SimpleArrayList.MAX_ARRAY_SIZE < minCapacity) {
                     profile.enterArrayTooLargeBranch(node);
-                    throw outOfMemoryError();
+                    throw Errors.outOfMemoryError();
                 }
                 newCapacity = SimpleArrayList.MAX_ARRAY_SIZE;
             }
@@ -270,11 +270,6 @@ public abstract class AbstractWritableArray extends DynamicArray {
             resizeArray(object, (int) newCapacity, capacity, offset);
             return offset;
         }
-    }
-
-    @TruffleBoundary
-    private static OutOfMemoryError outOfMemoryError() {
-        return new OutOfMemoryError();
     }
 
     private int ensureCapacityContiguous(JSDynamicObject object, int internalIndex, Node node, SetSupportedProfileAccess profile) {

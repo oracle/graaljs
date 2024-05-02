@@ -740,6 +740,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static OutOfMemoryError outOfMemoryError() {
+        return new OutOfMemoryError();
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorConfigurableExpected() {
         return createTypeError("configurable expected");
     }
