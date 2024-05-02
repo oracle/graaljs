@@ -3201,6 +3201,10 @@
     }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-647649.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    },
     "runInIsolation" : true,
     "comment" : "test with (expected) high memory usage that might influence other tests"
   }, {
@@ -3829,7 +3833,9 @@
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-916869.js",
     "status" : "SKIP",
-    "comment" : "Uses i32.extend8_s instruction"
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-917412.js",
     "status" : "SKIP",
@@ -3851,7 +3857,9 @@
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-918149.js",
     "status" : "SKIP",
-    "comment" : "Uses i64.extend8_s instruction"
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-918284.js",
     "status" : "SKIP",
@@ -3946,7 +3954,9 @@
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-952342.js",
     "status" : "SKIP",
-    "comment" : "Uses i32.trunc_sat_f32_s instruction"
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-956771.js",
     "status" : "SKIP",
@@ -3957,7 +3967,9 @@
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-957405.js",
     "status" : "SKIP",
-    "comment" : "Uses i32.trunc_sat_f32_s instruction"
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-964607.js",
     "status" : "SKIP",
@@ -5309,8 +5321,11 @@
     }
   }, {
     "filePath" : "mjsunit/wasm/gc-typecheck-reducer.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gdbjit.js",
     "status" : "SKIP",
@@ -5853,7 +5868,10 @@
     }
   }, {
     "filePath" : "mjsunit/wasm/shared-arraybuffer-worker-simple-gc.js",
-    "status" : "FAIL",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
     "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/wasm/shared-memory-gc-stress.js",
@@ -6231,8 +6249,11 @@
     "comment" : "new failures 2024-01-19"
   }, {
     "filePath" : "mjsunit/wasm/wasm-gc-inlining-load-elimination.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/wasm-gc-inlining-nested.js",
     "status" : "SKIP",
