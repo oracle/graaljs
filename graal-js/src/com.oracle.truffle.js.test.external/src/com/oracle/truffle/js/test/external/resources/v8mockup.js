@@ -81,10 +81,14 @@ load = (function() {
     return path => originalLoad(path.startsWith('test/') ? ('lib/testv8/' + path) : path);
 })();
 
+// Save `load` function in another binding so that tests that re-write ``load` binding can still
+// use d8.file.execute.
+let d8_file_execute_load = load;
+
 var d8 = {
     file: {
         execute: function(path) {
-            load(path);
+            d8_file_execute_load(path);
             // Ensures that assertTraps() checks just the error type
             // (WebAssembly.RuntimeError) and not the exact error message
             if (path.endsWith('wasm-module-builder.js')) {

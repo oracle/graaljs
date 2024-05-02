@@ -2382,9 +2382,8 @@
     "filePath" : "mjsunit/regress/wasm/regress-1179065.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "Uses %WasmTierUpFunction and %IsLiftoffFunction natives."
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/regress/wasm/regress-11809.js",
     "status" : "SKIP",
@@ -4808,9 +4807,8 @@
     "filePath" : "mjsunit/wasm/bounds-check-turbofan.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "new failures 2023-10-09"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/bulk-memory.js",
     "status" : "SKIP",
