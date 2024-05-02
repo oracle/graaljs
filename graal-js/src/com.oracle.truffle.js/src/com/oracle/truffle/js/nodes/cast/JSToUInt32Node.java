@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import java.util.Set;
 import com.oracle.truffle.api.HostCompilerDirectives.InliningCutoff;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Idempotent;
+import com.oracle.truffle.api.dsl.ImportStatic;
 import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -70,6 +71,7 @@ import com.oracle.truffle.js.runtime.Symbol;
 import com.oracle.truffle.js.runtime.builtins.JSOverloadedOperatorsObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 
+@ImportStatic({JSRuntime.class})
 public abstract class JSToUInt32Node extends JavaScriptBaseNode {
 
     /**
@@ -138,9 +140,14 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         return JSRuntime.booleanToNumber(value);
     }
 
-    @Specialization
-    protected double doLong(long value) {
-        return JSRuntime.toUInt32(value);
+    @Specialization(guards = "isSafeInteger(value)")
+    protected static SafeInteger doLong(long value) {
+        return SafeInteger.valueOf(value & 0xFFFFFFFFL);
+    }
+
+    @Specialization(guards = "!isSafeInteger(value)")
+    protected static SafeInteger doLongNotSafeInteger(long value) {
+        return SafeInteger.valueOf((long) (double) value & 0xFFFFFFFFL);
     }
 
     @Specialization(guards = {"!isDoubleLargerThan2e32(value)"})
@@ -235,11 +242,12 @@ public abstract class JSToUInt32Node extends JavaScriptBaseNode {
         public static JavaScriptNode create(JavaScriptNode child, boolean unsignedRightShift, int shiftValue) {
             if (child instanceof JSConstantIntegerNode) {
                 int value = ((JSConstantIntegerNode) child).executeInt(null);
-                if (value < 0) {
-                    long lValue = JSRuntime.toUInt32(value);
-                    return JSRuntime.longIsRepresentableAsInt(lValue) ? JSConstantNode.createInt((int) lValue) : JSConstantNode.createDouble(lValue);
+                long unsignedValue = Integer.toUnsignedLong(value);
+                if (unsignedValue == value) {
+                    return child;
+                } else {
+                    return JSConstantNode.createDouble(unsignedValue);
                 }
-                return child;
             } else if (child instanceof JSConstantDoubleNode) {
                 double value = ((JSConstantDoubleNode) child).executeDouble(null);
                 return JSConstantNode.createDouble(JSRuntime.toUInt32(value));
