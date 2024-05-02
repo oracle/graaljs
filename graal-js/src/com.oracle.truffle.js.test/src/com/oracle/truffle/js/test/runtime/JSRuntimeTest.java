@@ -434,35 +434,11 @@ public class JSRuntimeTest extends JSTest {
     }
 
     @Test
-    public void testToUInt8() {
-        // toUInt8(Object)
-        assertTrue(JSRuntime.toUInt8((Object) 3) == 3);
-        assertTrue(JSRuntime.toUInt8((Object) 3.14) == 3);
-        assertTrue(JSRuntime.toUInt8((Object) Double.POSITIVE_INFINITY) == 0);
-    }
-
-    @Test
-    public void testToInt8() {
-        // toInt8(Object)
-        assertTrue(JSRuntime.toInt8((Object) 3) == 3);
-        assertTrue(JSRuntime.toInt8((Object) 3.14) == 3);
-        assertTrue(JSRuntime.toInt8((Object) Double.POSITIVE_INFINITY) == 0);
-    }
-
-    @Test
     public void testToUInt16() {
         // toUInt16(Object)
         assertTrue(JSRuntime.toUInt16((Object) 3) == 3);
         assertTrue(JSRuntime.toUInt16((Object) 3.14) == 3);
         assertTrue(JSRuntime.toUInt16((Object) Double.POSITIVE_INFINITY) == 0);
-    }
-
-    @Test
-    public void testToInt16() {
-        // toInt16(Object)
-        assertTrue(JSRuntime.toInt16((Object) 3) == 3);
-        assertTrue(JSRuntime.toInt16((Object) 3.14) == 3);
-        assertTrue(JSRuntime.toInt16((Object) Double.POSITIVE_INFINITY) == 0);
     }
 
     @Test
