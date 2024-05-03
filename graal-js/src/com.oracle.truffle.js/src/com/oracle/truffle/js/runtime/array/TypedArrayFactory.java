@@ -300,7 +300,11 @@ public enum TypedArrayFactory implements PrototypeSupplier {
     }
 
     public final boolean isBigInt() {
-        return this == TypedArrayFactory.BigInt64Array || this == TypedArrayFactory.BigUint64Array;
+        return this == BigInt64Array || this == BigUint64Array;
+    }
+
+    public final boolean isFloat() {
+        return this == Float64Array || this == Float32Array || this == Float16Array;
     }
 
     static final TypedArrayFactory[] FACTORIES_ALL = TypedArrayFactory.values();
