@@ -672,8 +672,8 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         @Cached @Shared InlinedConditionProfile arrayIndexIf) {
             JSDynamicObject targetObject = (JSDynamicObject) target;
             if (arrayIf.profile(this, isArray(targetObject))) {
-                ScriptArray array = JSObject.getArray(targetObject);
                 Object objIndex = toArrayIndex(index);
+                ScriptArray array = JSObject.getArray(targetObject);
 
                 if (arrayIndexIf.profile(this, objIndex instanceof Long)) {
                     long longIndex = (Long) objIndex;
