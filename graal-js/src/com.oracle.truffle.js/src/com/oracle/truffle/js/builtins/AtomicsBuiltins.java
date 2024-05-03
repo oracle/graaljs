@@ -518,54 +518,61 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
             TypedArray ta = validateIntegerTypedArray(target, false);
             int intIndex = validateAtomicAccess(target, toIndexNode.executeLong(index), index);
 
+            BigInt expectedBigInt = null;
+            BigInt replacementBigInt = null;
+            int expectedInt = 0;
+            int replacementInt = 0;
+            if (ta instanceof TypedBigIntArray) {
+                expectedBigInt = toBigInt(expected);
+                replacementBigInt = toBigInt(replacement);
+            } else {
+                expectedInt = toInt(expected);
+                replacementInt = toInt(replacement);
+            }
+
             if (!sharedArrayBuffer) {
                 notSharedArrayBuffer.enter(this);
+                checkDetached(target);
                 if (ta instanceof Int8Array || ta instanceof DirectInt8Array || ta instanceof InteropInt8Array) {
-                    return (int) (byte) doInt8(target, intIndex, toInt(expected), toIntChecked(replacement, target), true, (TypedIntArray) ta);
+                    return (int) (byte) doInt8(target, intIndex, expectedInt, replacementInt, true, (TypedIntArray) ta);
                 } else if (ta instanceof Uint8Array || ta instanceof DirectUint8Array || ta instanceof InteropUint8Array) {
-                    return doInt8(target, intIndex, toInt(expected), toIntChecked(replacement, target), false, (TypedIntArray) ta) & 0xff;
+                    return doInt8(target, intIndex, expectedInt, replacementInt, false, (TypedIntArray) ta) & 0xff;
                 } else if (ta instanceof Int16Array || ta instanceof DirectInt16Array || ta instanceof InteropInt16Array) {
-                    return (int) (short) doInt16(target, intIndex, toInt(expected), toIntChecked(replacement, target), true, (TypedIntArray) ta);
+                    return (int) (short) doInt16(target, intIndex, expectedInt, replacementInt, true, (TypedIntArray) ta);
                 } else if (ta instanceof Uint16Array || ta instanceof DirectUint16Array || ta instanceof InteropUint16Array) {
-                    return doInt16(target, intIndex, toInt(expected), toIntChecked(replacement, target), false, (TypedIntArray) ta) & 0xffff;
+                    return doInt16(target, intIndex, expectedInt, replacementInt, false, (TypedIntArray) ta) & 0xffff;
                 } else if (ta instanceof Int32Array || ta instanceof DirectInt32Array || ta instanceof InteropInt32Array) {
-                    return doInt32(target, intIndex, toInt(expected), toIntChecked(replacement, target), (TypedIntArray) ta);
+                    return doInt32(target, intIndex, expectedInt, replacementInt, (TypedIntArray) ta);
                 } else if (ta instanceof Uint32Array || ta instanceof DirectUint32Array || ta instanceof InteropUint32Array) {
-                    return SafeInteger.valueOf(Integer.toUnsignedLong(doInt32(target, intIndex, toInt(expected), toIntChecked(replacement, target), (TypedIntArray) ta)));
+                    return SafeInteger.valueOf(Integer.toUnsignedLong(doInt32(target, intIndex, expectedInt, replacementInt, (TypedIntArray) ta)));
                 } else if (ta instanceof BigInt64Array || ta instanceof DirectBigInt64Array || ta instanceof InteropBigInt64Array) {
-                    return doBigInt(target, intIndex, toBigInt(expected).toBigInt64(), toBigIntChecked(replacement, target), (TypedBigIntArray) ta);
+                    return doBigInt(target, intIndex, expectedBigInt.toBigInt64(), replacementBigInt, (TypedBigIntArray) ta);
                 } else if (ta instanceof BigUint64Array || ta instanceof DirectBigUint64Array || ta instanceof InteropBigUint64Array) {
-                    return doBigInt(target, intIndex, toBigInt(expected).toBigUint64(), toBigIntChecked(replacement, target), (TypedBigIntArray) ta);
+                    return doBigInt(target, intIndex, expectedBigInt.toBigUint64(), replacementBigInt, (TypedBigIntArray) ta);
                 } else {
                     throw Errors.shouldNotReachHereUnexpectedValue(ta);
                 }
             } else {
                 if (ta instanceof DirectInt8Array direct) {
-                    return (int) (byte) doCASInt(target, intIndex, toInt(expected), toInt(replacement), direct);
+                    return (int) (byte) doCASInt(target, intIndex, expectedInt, replacementInt, direct);
                 } else if (ta instanceof DirectUint8Array direct) {
-                    return doCASInt(target, intIndex, toInt(expected), toInt(replacement), direct) & 0xffff;
+                    return doCASInt(target, intIndex, expectedInt, replacementInt, direct) & 0xffff;
                 } else if (ta instanceof DirectInt16Array direct) {
-                    return (int) (short) doCASInt(target, intIndex, toInt(expected), toInt(replacement), direct);
+                    return (int) (short) doCASInt(target, intIndex, expectedInt, replacementInt, direct);
                 } else if (ta instanceof DirectUint16Array direct) {
-                    return doCASInt(target, intIndex, toInt(expected), toInt(replacement), direct) & 0xffff;
+                    return doCASInt(target, intIndex, expectedInt, replacementInt, direct) & 0xffff;
                 } else if (ta instanceof DirectInt32Array direct) {
-                    return doCASInt(target, intIndex, toInt(expected), toInt(replacement), direct);
+                    return doCASInt(target, intIndex, expectedInt, replacementInt, direct);
                 } else if (ta instanceof DirectUint32Array direct) {
-                    return doCASUint32(target, intIndex, toInt(expected), toInt(replacement), direct);
+                    return doCASUint32(target, intIndex, expectedInt, replacementInt, direct);
                 } else if (ta instanceof DirectBigInt64Array direct) {
-                    return doCASBigInt(target, intIndex, toBigInt(expected).toBigInt64(), toBigInt(replacement), direct);
+                    return doCASBigInt(target, intIndex, expectedBigInt.toBigInt64(), replacementBigInt, direct);
                 } else if (ta instanceof DirectBigUint64Array direct) {
-                    return doCASBigInt(target, intIndex, toBigInt(expected).toBigUint64(), toBigInt(replacement), direct);
+                    return doCASBigInt(target, intIndex, expectedBigInt.toBigUint64(), replacementBigInt, direct);
                 } else {
                     throw Errors.shouldNotReachHereUnexpectedValue(ta);
                 }
             }
-        }
-
-        private int toIntChecked(Object v, JSTypedArrayObject target) {
-            int value = toInt(v);
-            checkDetached(target);
-            return value;
         }
 
         private int toInt(Object v) {
@@ -574,12 +581,6 @@ public final class AtomicsBuiltins extends JSBuiltinsContainer.SwitchEnum<Atomic
                 toIntNode = insert(JSToInt32Node.create());
             }
             return toIntNode.executeInt(v);
-        }
-
-        private BigInt toBigIntChecked(Object v, JSTypedArrayObject target) {
-            BigInt result = toBigInt(v);
-            checkDetached(target);
-            return result;
         }
 
         private BigInt toBigInt(Object v) {
