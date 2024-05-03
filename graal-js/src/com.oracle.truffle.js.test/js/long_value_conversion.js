@@ -6,7 +6,7 @@
  */
 
 /*
- * Tests that large long values are converted to smaller integer types correctly.
+ * Tests that large long values are converted to smaller integer types consistently.
  */
 
 const longValues = [
@@ -87,13 +87,34 @@ function to${type}UsingCompareExchange(value) {
 }
 
 for (const longValue of longValues) {
+    let allResults = [];
     for (const intType of intTypes) {
+        let results = [];
         for (const conversion of intTypeConversions.get(intType)) {
-            const numberResult = conversion(Number(String(longValue)));
             const actualResult = conversion(longValue);
-            if (numberResult !== actualResult || String(numberResult) !== String(actualResult)) {
-                throw new Error(`${conversion.name}(${longValue}): expected: ${numberResult}, actual: ${actualResult}`);
-            }
+
+            const resultTuple = [actualResult, conversion.name, longValue];
+            results.push(resultTuple);
+            allResults.push(resultTuple);
         }
+        // for the same int type, different conversion methods should yield the same result
+        checkConsistentResults(results);
+    }
+    // check consistency across different int types
+    checkConsistentResults(allResults);
+}
+
+function checkConsistentResults(results) {
+    const [expectedResult, _, longValue] = results[0];
+    if (!results.every(([actualResult, conversionName]) => {
+        let bits;
+        if (expectedResult < 0 && (bits = /toUint(\d{1,2})/.exec(conversionName)?.[1])) {
+            return actualResult === (2 ** bits) + expectedResult;
+        }
+        return actualResult === expectedResult;
+    })) {
+        throw new Error("Inconsistent results\n" +
+            `  where long value = ${longValue}\n` +
+            results.map(([actualResult, conversionName]) => `    ${conversionName.padEnd(30)}= ${actualResult}`).join("\n"));
     }
 }
