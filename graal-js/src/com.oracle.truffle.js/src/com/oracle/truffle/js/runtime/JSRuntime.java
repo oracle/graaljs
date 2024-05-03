@@ -1934,6 +1934,9 @@ public final class JSRuntime {
         if (number instanceof Integer) {
             return ((Integer) number).doubleValue();
         }
+        if (number instanceof SafeInteger) {
+            return ((SafeInteger) number).doubleValue();
+        }
         return doubleValueVirtual(number);
     }
 
