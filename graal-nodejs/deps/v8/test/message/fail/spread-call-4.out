@@ -1,5 +1,0 @@
-*%(basename)s:5: TypeError: Found non-callable @@iterator
-console.log(1, ...x);
-                  ^
-TypeError: Found non-callable @@iterator
-    at *%(basename)s:5:9

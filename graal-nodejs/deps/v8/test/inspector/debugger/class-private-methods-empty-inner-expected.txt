@@ -1,4 +1,0 @@
-Test empty inner classes with private instance methods in the outer class
-
-Running test: testScopesPaused
-undefined
