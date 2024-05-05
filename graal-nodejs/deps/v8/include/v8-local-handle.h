@@ -10,6 +10,7 @@
 #include <type_traits>
 
 #include "v8-internal.h"  // NOLINT(build/include_directory)
+#include "../src/graal/graal_handle_content.h"
 
 namespace v8 {
 
@@ -199,6 +200,32 @@ class Local {
      * Local<Number>.
      */
     static_assert(std::is_base_of<T, S>::value, "type check");
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
+  }
+
+  V8_INLINE Local(const Local& local) : val_(local.val_) {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    };
+  }
+
+  V8_INLINE ~Local() {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceRemoved();
+    }
+  }
+
+  V8_INLINE Local<T>& operator=(const Local<T>& val) {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceRemoved();
+    }
+    val_ = val.val_;
+    if (val_) {
+        reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
+    return *this;
   }
 
   /**
@@ -211,7 +238,12 @@ class Local {
   /**
    * Sets the handle to be empty. IsEmpty() will then return true.
    */
-  V8_INLINE void Clear() { val_ = internal::ValueHelper::EmptyValue<T>(); }
+  V8_INLINE void Clear() {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceRemoved();
+    }
+    val_ = nullptr;
+  }
 
   V8_INLINE T* operator->() const { return val_; }
 
@@ -230,12 +262,20 @@ class Local {
 
   template <class S>
   V8_INLINE bool operator==(const Local<S>& that) const {
-    return internal::HandleHelper::EqualHandles(*this, that);
+    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(*that);
+    if (a == nullptr) return b == nullptr;
+    if (b == nullptr) return false;
+    return GraalHandleContent::SameData(a, b);
   }
 
   template <class S>
   V8_INLINE bool operator==(const PersistentBase<S>& that) const {
-    return internal::HandleHelper::EqualHandles(*this, that);
+    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(that.val_);
+    if (a == nullptr) return b == nullptr;
+    if (b == nullptr) return false;
+    return GraalHandleContent::SameData(a, b);
   }
 
   template <class S>
@@ -284,12 +324,12 @@ class Local {
 
   V8_INLINE static Local<T> New(Isolate* isolate,
                                 const PersistentBase<T>& that) {
-    return New(isolate, internal::ValueHelper::SlotAsValue<T>(that.val_));
+    return New(isolate, that.IsEmpty() ? nullptr : that.val_);
   }
 
   V8_INLINE static Local<T> New(Isolate* isolate,
                                 const BasicTracedReference<T>& that) {
-    return New(isolate, internal::ValueHelper::SlotAsValue<T>(*that));
+    return New(isolate, *that);
   }
 
  private:
@@ -328,7 +368,14 @@ class Local {
   friend class internal::HandleHelper;
   friend class debug::ConsoleCallArguments;
 
-  explicit V8_INLINE Local(T* that) : val_(that) {}
+public:
+  V8_INLINE Local(T* that)
+      : val_(that) {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
+  }
+private:
 
   V8_INLINE internal::Address address() const {
     return internal::ValueHelper::ValueAsAddress(val_);
@@ -339,14 +386,11 @@ class Local {
   }
 
   V8_INLINE static Local<T> New(Isolate* isolate, T* that) {
-#ifdef V8_ENABLE_CONSERVATIVE_STACK_SCANNING
-    return Local<T>(that);
-#else
     if (that == nullptr) return Local<T>();
-    internal::Address* p = reinterpret_cast<internal::Address*>(that);
+    T* that_ptr = that;
+    internal::Address p = reinterpret_cast<internal::Address>(that_ptr);
     return Local<T>(reinterpret_cast<T*>(HandleScope::CreateHandle(
-        reinterpret_cast<internal::Isolate*>(isolate), *p)));
-#endif
+       reinterpret_cast<internal::Isolate*>(isolate), p)));
   }
 
   T* val_;
@@ -375,6 +419,32 @@ class MaybeLocal {
   template <class S>
   V8_INLINE MaybeLocal(Local<S> that) : val_(reinterpret_cast<T*>(*that)) {
     static_assert(std::is_base_of<T, S>::value, "type check");
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
+  }
+
+  V8_INLINE MaybeLocal(const MaybeLocal& local) : val_(local.val_) {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    };
+  }
+
+  V8_INLINE ~MaybeLocal() {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceRemoved();
+    }
+  }
+
+  V8_INLINE MaybeLocal<T>& operator=(const MaybeLocal<T>& val) {
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceRemoved();
+    }
+    val_ = val.val_;
+    if (val_) {
+        reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
+    return *this;
   }
 
   V8_INLINE bool IsEmpty() const {
@@ -387,7 +457,13 @@ class MaybeLocal {
    */
   template <class S>
   V8_WARN_UNUSED_RESULT V8_INLINE bool ToLocal(Local<S>* out) const {
-    out->val_ = IsEmpty() ? internal::ValueHelper::EmptyValue<T>() : this->val_;
+    if (out->val_) {
+      reinterpret_cast<GraalHandleContent*> (out->val_)->ReferenceRemoved();
+    }
+    out->val_ = IsEmpty() ? nullptr : this->val_;
+    if (val_) {
+      reinterpret_cast<GraalHandleContent*> (val_)->ReferenceAdded();
+    }
     return !IsEmpty();
   }
 

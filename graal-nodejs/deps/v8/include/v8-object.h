@@ -734,53 +734,10 @@ class V8_EXPORT Object : public Value {
 // --- Implementation ---
 
 Local<Value> Object::GetInternalField(int index) {
-#ifndef V8_ENABLE_CHECKS
-  using A = internal::Address;
-  using I = internal::Internals;
-  A obj = internal::ValueHelper::ValueAsAddress(this);
-  // Fast path: If the object is a plain JSObject, which is the common case, we
-  // know where to find the internal fields and can return the value directly.
-  int instance_type = I::GetInstanceType(obj);
-  if (I::CanHaveInternalField(instance_type)) {
-    int offset = I::kJSObjectHeaderSize + (I::kEmbedderDataSlotSize * index);
-    A value = I::ReadRawField<A>(obj, offset);
-#ifdef V8_COMPRESS_POINTERS
-    // We read the full pointer value and then decompress it in order to avoid
-    // dealing with potential endiannes issues.
-    value = I::DecompressTaggedField(obj, static_cast<uint32_t>(value));
-#endif
-
-#ifdef V8_ENABLE_CONSERVATIVE_STACK_SCANNING
-    return Local<Value>(reinterpret_cast<Value*>(value));
-#else
-    internal::Isolate* isolate =
-        internal::IsolateFromNeverReadOnlySpaceObject(obj);
-    A* result = HandleScope::CreateHandle(isolate, value);
-    return Local<Value>(reinterpret_cast<Value*>(result));
-#endif
-  }
-#endif
   return SlowGetInternalField(index);
 }
 
 void* Object::GetAlignedPointerFromInternalField(int index) {
-#if !defined(V8_ENABLE_CHECKS)
-  using A = internal::Address;
-  using I = internal::Internals;
-  A obj = internal::ValueHelper::ValueAsAddress(this);
-  // Fast path: If the object is a plain JSObject, which is the common case, we
-  // know where to find the internal fields and can return the value directly.
-  auto instance_type = I::GetInstanceType(obj);
-  if (I::CanHaveInternalField(instance_type)) {
-    int offset = I::kJSObjectHeaderSize + (I::kEmbedderDataSlotSize * index) +
-                 I::kEmbedderDataSlotExternalPointerOffset;
-    Isolate* isolate = I::GetIsolateForSandbox(obj);
-    A value =
-        I::ReadExternalPointerField<internal::kEmbedderDataSlotPayloadTag>(
-            isolate, obj, offset);
-    return reinterpret_cast<void*>(value);
-  }
-#endif
   return SlowGetAlignedPointerFromInternalField(index);
 }
 

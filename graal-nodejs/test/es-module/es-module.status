@@ -6,6 +6,26 @@ prefix es-module
 
 [true] # This section applies to all platforms
 
+### Graal.js-specific ###
+
+# Different error message expected:
+# 'Unexpected token export' versus 'Expected an operand but found export'
+test-esm-cjs-exports                 : FAIL
+# 'Unexpected token }' verus ': expected'
+test-esm-invalid-pjson               : FAIL
+
+# Module doesn't see const variable created in global scope by a custom loader
+test-esm-loader-side-effect          : FAIL
+
+# WebAssembly is not enabled
+test-esm-extensionless-esm-and-wasm  : FAIL
+test-esm-type-flag-loose-files       : FAIL
+test-esm-type-flag-package-scopes    : FAIL
+test-esm-wasm                        : FAIL
+test-wasm-memory-out-of-bound        : FAIL
+test-wasm-simple                     : FAIL
+test-wasm-web-api                    : FAIL
+
 [$system==linux || $system==freebsd]
 # https://github.com/nodejs/node/issues/47836
 test-esm-loader-http-imports: PASS,FLAKY

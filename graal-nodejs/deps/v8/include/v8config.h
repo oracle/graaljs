@@ -765,6 +765,9 @@ V8 shared library set USING_V8_SHARED.
 #else
 #define V8_HOST_ARCH_32_BIT 1
 #endif
+#elif defined(__sparc__)
+#define V8_HOST_ARCH_SPARCV9 1
+#define V8_HOST_ARCH_64_BIT 1
 #elif defined(__riscv) || defined(__riscv__)
 #if __riscv_xlen == 64
 #define V8_HOST_ARCH_RISCV64 1
@@ -788,7 +791,7 @@ V8 shared library set USING_V8_SHARED.
     !V8_TARGET_ARCH_ARM64 && !V8_TARGET_ARCH_MIPS64 && !V8_TARGET_ARCH_PPC && \
     !V8_TARGET_ARCH_PPC64 && !V8_TARGET_ARCH_S390 &&                          \
     !V8_TARGET_ARCH_RISCV64 && !V8_TARGET_ARCH_LOONG64 &&                     \
-    !V8_TARGET_ARCH_RISCV32
+    !V8_TARGET_ARCH_RISCV32 && !V8_TARGET_ARCH_SPARCV9
 #if defined(_M_X64) || defined(__x86_64__)
 #define V8_TARGET_ARCH_X64 1
 #elif defined(_M_IX86) || defined(__i386__)
@@ -852,6 +855,8 @@ V8 shared library set USING_V8_SHARED.
 #else
 #define V8_TARGET_ARCH_32_BIT 1
 #endif
+#elif V8_TARGET_ARCH_SPARCV9
+#define V8_TARGET_ARCH_64_BIT 1
 #elif V8_TARGET_ARCH_RISCV64
 #define V8_TARGET_ARCH_64_BIT 1
 #elif V8_TARGET_ARCH_RISCV32
@@ -920,6 +925,8 @@ V8 shared library set USING_V8_SHARED.
 #else
 #define V8_TARGET_BIG_ENDIAN 1
 #endif
+#elif V8_TARGET_ARCH_SPARCV9
+#define V8_TARGET_BIG_ENDIAN 1
 #elif V8_TARGET_ARCH_RISCV32 || V8_TARGET_ARCH_RISCV64
 #define V8_TARGET_LITTLE_ENDIAN 1
 #elif defined(__BYTE_ORDER__)

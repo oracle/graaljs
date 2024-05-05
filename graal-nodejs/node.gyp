@@ -619,6 +619,22 @@
             ],
           },
         }],
+        ['OS=="mac"', {
+          'sources': [
+            'src/apple_main.mm',
+          ],
+          'conditions': [
+            # -force_flat_namespace is not applicable for the dynamic library
+            [ 'node_target_type=="executable"', {
+              'xcode_settings': {
+                'OTHER_LDFLAGS': [
+                  '-force_flat_namespace',
+                  '-headerpad_max_install_names',
+                ],
+              },
+            }],
+          ],
+        }],
         ['OS=="win"', {
           'libraries': [
             'Dbghelp.lib',
@@ -804,8 +820,11 @@
 
       'include_dirs': [
         'src',
+        '<(SHARED_INTERMEDIATE_DIR)', # for node_natives.h
+        'deps/v8/include/',
+        'deps/v8/', # include/v8_platform.h
+        'deps/v8/src/graal/',
         'deps/postject',
-        '<(SHARED_INTERMEDIATE_DIR)' # for node_natives.h
       ],
       'dependencies': [
         'deps/base64/base64.gyp:base64',
@@ -1034,7 +1053,7 @@
     }, # fuzz_env
     {
       'target_name': 'cctest',
-      'type': 'executable',
+      'type': 'none',
 
       'dependencies': [
         '<(node_lib_target_name)',

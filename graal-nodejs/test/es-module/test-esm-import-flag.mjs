@@ -146,7 +146,7 @@ describe('import modules using --import', { concurrency: true }, () => {
       ]
     );
 
-    assert.match(stderr, /SyntaxError: Unexpected token 'export'/);
+    assert.match(stderr, /SyntaxError: (?:Unexpected token 'export'|Expected an operand but found export)/);
     assert.match(stdout, /^\.mjs file\r?\n$/);
     assert.strictEqual(code, 1);
     assert.strictEqual(signal, null);

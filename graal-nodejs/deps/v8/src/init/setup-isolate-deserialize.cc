@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "src/base/logging.h"
-#include "src/execution/isolate.h"
 #include "src/init/setup-isolate.h"
 
 namespace v8 {

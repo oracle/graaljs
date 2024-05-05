@@ -98,7 +98,7 @@ struct V8Platform {
     tracing_file_writer_ = tracing_agent_->DefaultHandle();
     // Only start the tracing agent if we enabled any tracing categories.
     if (!per_process::cli_options->trace_event_categories.empty()) {
-      StartTracingAgent();
+//      StartTracingAgent();
     }
     // Tracing must be initialized before platform threads are created.
     platform_ = new NodePlatform(thread_pool_size, controller);

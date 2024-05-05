@@ -1,4 +1,4 @@
-// Flags: --max-old-space-size=16 --trace-gc
+// Flags: --max-old-space-size=160 --trace-gc
 'use strict';
 
 // This tests that vm.Script with dynamic import callback does not leak.

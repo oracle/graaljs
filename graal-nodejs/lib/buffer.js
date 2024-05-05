@@ -54,6 +54,7 @@ const {
   Uint8ArrayPrototype,
 } = primordials;
 
+const graalBuffer = require('internal/graal/buffer');
 const {
   byteLengthUtf8,
   compare: _compare,
@@ -148,6 +149,8 @@ const constants = ObjectDefineProperties({}, {
 
 Buffer.poolSize = 8 * 1024;
 let poolSize, poolOffset, allocPool;
+
+graalBuffer.install(Buffer.prototype);
 
 function createPool() {
   poolSize = Buffer.poolSize;

@@ -272,6 +272,13 @@ function patchProcessObject(expandArgv1) {
   addReadOnlyProcessAlias('_breakFirstLine', '--inspect-brk', false);
   addReadOnlyProcessAlias('_breakNodeFirstLine', '--inspect-brk-node', false);
 
+  if (process._breakFirstLine) {
+    process.binding('inspector').callAndPauseOnStart = function(fn, self, ...args) {
+      require('internal/graal/debug').setBreakPoint(fn, 0, 0, undefined, true);
+      return fn.apply(self, args);
+    }
+  }
+
   return mainEntry;
 }
 
@@ -322,6 +329,8 @@ function setupUndici() {
   if (!getEmbedderOptions().noBrowserGlobals && getOptionValue('--experimental-websocket')) {
     exposeLazyInterfaces(globalThis, 'internal/deps/undici/undici', ['WebSocket']);
   }
+
+  require('internal/graal/wasm');
 }
 
 // TODO(aduh95): move this to internal/bootstrap/web/* when the CLI flag is

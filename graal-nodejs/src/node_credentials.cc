@@ -15,7 +15,13 @@
 #ifdef __linux__
 #include <dlfcn.h>  // dlsym()
 #include <linux/capability.h>
-#include <sys/auxv.h>
+#include <elf.h>
+#ifdef __LP64__
+#define Elf_auxv_t Elf64_auxv_t
+#else
+#define Elf_auxv_t Elf32_auxv_t
+#endif  // __LP64__
+extern char** environ;
 #include <sys/syscall.h>
 #endif  // __linux__
 
@@ -37,7 +43,17 @@ bool linux_at_secure() {
   // and returns the correct value,  e.g. even in static
   // initialization code in other files.
 #ifdef __linux__
-  static const bool value = getauxval(AT_SECURE);
+  bool linux_at_secure_value = false;
+  char** envp = environ;
+  while (*envp++ != nullptr) {}
+  Elf_auxv_t* auxv = reinterpret_cast<Elf_auxv_t*>(envp);
+  for (; auxv->a_type != AT_NULL; auxv++) {
+    if (auxv->a_type == AT_SECURE) {
+      linux_at_secure_value = auxv->a_un.a_val;
+      break;
+    }
+  }
+  static const bool value = linux_at_secure_value;
   return value;
 #else
   return false;

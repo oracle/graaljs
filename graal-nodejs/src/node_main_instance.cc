@@ -98,6 +98,10 @@ ExitCode NodeMainInstance::Run() {
 
   Context::Scope context_scope(env->context());
   Run(&exit_code, env.get());
+
+  env.reset(); // graal-nodejs: Trigger cleanup hooks before the process is terminated by the next line
+  isolate_->Dispose(true, static_cast<int>(exit_code));
+
   return exit_code;
 }
 

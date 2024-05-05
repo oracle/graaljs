@@ -9,6 +9,7 @@
 #include "v8-local-handle.h"        // NOLINT(build/include_directory)
 #include "v8-weak-callback-info.h"  // NOLINT(build/include_directory)
 #include "v8config.h"               // NOLINT(build/include_directory)
+#include "../src/graal/graal_handle_content.h"
 
 namespace v8 {
 
@@ -117,7 +118,9 @@ class PersistentBase {
   template <class S>
   V8_INLINE void Reset(Isolate* isolate, const PersistentBase<S>& other);
 
-  V8_INLINE bool IsEmpty() const { return val_ == nullptr; }
+  V8_INLINE bool IsEmpty() const {
+      return (val_ == nullptr) ? true : reinterpret_cast<GraalHandleContent*>(val_)->IsEmpty();
+  }
   V8_INLINE void Empty() { val_ = 0; }
 
   V8_INLINE Local<T> Get(Isolate* isolate) const {
@@ -126,12 +129,20 @@ class PersistentBase {
 
   template <class S>
   V8_INLINE bool operator==(const PersistentBase<S>& that) const {
-    return internal::HandleHelper::EqualHandles(*this, that);
+    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(that.val_);
+    if (a == nullptr) return b == nullptr;
+    if (b == nullptr) return false;
+    return GraalHandleContent::SameData(a, b);
   }
 
   template <class S>
   V8_INLINE bool operator==(const Local<S>& that) const {
-    return internal::HandleHelper::EqualHandles(*this, that);
+    GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(*that);
+    if (a == nullptr) return b == nullptr;
+    if (b == nullptr) return false;
+    return GraalHandleContent::SameData(a, b);
   }
 
   template <class S>
@@ -472,15 +483,14 @@ void Persistent<T, M>::Copy(const Persistent<S, M2>& that) {
 
 template <class T>
 bool PersistentBase<T>::IsWeak() const {
-  using I = internal::Internals;
-  if (this->IsEmpty()) return false;
-  return I::GetNodeState(reinterpret_cast<internal::Address*>(this->val_)) ==
-         I::kNodeStateIsWeakValue;
+  if (val_ == nullptr) return false;
+  GraalHandleContent* handle = reinterpret_cast<GraalHandleContent*>(this->val_);
+  return handle->IsWeak();
 }
 
 template <class T>
 void PersistentBase<T>::Reset() {
-  if (this->IsEmpty()) return;
+  if (val_ == nullptr) return;
   api_internal::DisposeGlobal(reinterpret_cast<internal::Address*>(this->val_));
   val_ = nullptr;
 }
@@ -549,20 +559,21 @@ void PersistentBase<T>::AnnotateStrongRetainer(const char* label) {
 
 template <class T>
 void PersistentBase<T>::SetWrapperClassId(uint16_t class_id) {
-  using I = internal::Internals;
-  if (this->IsEmpty()) return;
-  internal::Address* obj = reinterpret_cast<internal::Address*>(this->val_);
-  uint8_t* addr = reinterpret_cast<uint8_t*>(obj) + I::kNodeClassIdOffset;
-  *reinterpret_cast<uint16_t*>(addr) = class_id;
+//  using I = internal::Internals;
+//  if (this->IsEmpty()) return;
+//  internal::Address* obj = reinterpret_cast<internal::Address*>(this->val_);
+//  uint8_t* addr = reinterpret_cast<uint8_t*>(obj) + I::kNodeClassIdOffset;
+//  *reinterpret_cast<uint16_t*>(addr) = class_id;
 }
 
 template <class T>
 uint16_t PersistentBase<T>::WrapperClassId() const {
-  using I = internal::Internals;
-  if (this->IsEmpty()) return 0;
-  internal::Address* obj = reinterpret_cast<internal::Address*>(this->val_);
-  uint8_t* addr = reinterpret_cast<uint8_t*>(obj) + I::kNodeClassIdOffset;
-  return *reinterpret_cast<uint16_t*>(addr);
+//  using I = internal::Internals;
+//  if (this->IsEmpty()) return 0;
+//  internal::Address* obj = reinterpret_cast<internal::Address*>(this->val_);
+//  uint8_t* addr = reinterpret_cast<uint8_t*>(obj) + I::kNodeClassIdOffset;
+//  return *reinterpret_cast<uint16_t*>(addr);
+  return 0;
 }
 
 template <class T>

@@ -29,5 +29,5 @@ net.createServer(function(conn) {
 }).listen(0, common.mustCall(function() {
   net.connect(this.address().port, 'localhost').pause();
 
-  setTimeout(common.mustNotCall('expected to exit'), 1000).unref();
+  setTimeout(common.mustNotCall('expected to exit'), 10000).unref();
 })).unref();

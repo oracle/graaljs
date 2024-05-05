@@ -1195,7 +1195,7 @@ extern "C" NODE_EXTERN void node_module_register(void* mod);
   extern "C" {                                                        \
     static node::node_module _module =                                \
     {                                                                 \
-      NODE_MODULE_VERSION,                                            \
+      -NODE_MODULE_VERSION,                                            \
       flags,                                                          \
       NULL,  /* NOLINT (readability/null_usage) */                    \
       __FILE__,                                                       \
@@ -1214,7 +1214,7 @@ extern "C" NODE_EXTERN void node_module_register(void* mod);
   extern "C" {                                                        \
     static node::node_module _module =                                \
     {                                                                 \
-      NODE_MODULE_VERSION,                                            \
+      -NODE_MODULE_VERSION,                                            \
       flags,                                                          \
       NULL,  /* NOLINT (readability/null_usage) */                    \
       __FILE__,                                                       \
@@ -1540,6 +1540,10 @@ void RegisterSignalHandler(int signal,
 NODE_EXTERN void SetCppgcReference(v8::Isolate* isolate,
                                    v8::Local<v8::Object> object,
                                    void* wrappable);
+
+// GRAAL EXTENSIONS
+
+long GraalArgumentsPreprocessing(int argc, char *argv[]);
 
 }  // namespace node
 
