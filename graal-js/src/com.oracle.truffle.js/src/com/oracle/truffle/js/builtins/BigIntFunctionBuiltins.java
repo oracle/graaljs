@@ -112,14 +112,17 @@ public final class BigIntFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             long bits = toIndexNode.executeLong(bitsObj);
             BigInt bigint = toBigIntNode.executeBigInteger(bigIntObj);
-            if (bits > JSRuntime.MAX_BIG_INT_EXPONENT) {
-                if (bigint.signum() >= 0) {
-                    return bigint;
-                } else {
-                    throw Errors.createRangeErrorBigIntMaxSizeExceeded();
-                }
-            } else {
-                return bigint.mod((BigInt.TWO).pow((int) bits));
+            if (bits == 0) {
+                return BigInt.ZERO;
+            }
+            if (bigint.signum() >= 0 && bigint.bitLength() <= bits) {
+                return bigint;
+            }
+            try {
+                int bitsAsInt = Math.toIntExact(bits);
+                return bigint.mod(BigInt.ONE.shiftLeft(bitsAsInt));
+            } catch (ArithmeticException e) {
+                throw Errors.createRangeErrorBigIntMaxSizeExceeded();
             }
         }
     }
@@ -137,21 +140,27 @@ public final class BigIntFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             long bits = toIndexNode.executeLong(bitsObj);
             BigInt bigint = toBigIntNode.executeBigInteger(bigIntObj);
-            if (bits > JSRuntime.MAX_BIG_INT_EXPONENT) {
-                return bigint;
-            }
-            BigInt twoPowBits = BigInt.TWO.pow((int) bits);
-            BigInt mod = bigint.mod(twoPowBits);
-            if (bits > 0) {
-                if (mod.compareTo(BigInt.TWO.pow((int) bits - 1)) >= 0) {
-                    return mod.subtract(twoPowBits);
-                } else {
-                    return mod;
-                }
-            } else {
+            if (bits == 0) {
                 return BigInt.ZERO;
             }
-
+            if (bigint.bitLength() < bits) {
+                return bigint;
+            }
+            try {
+                assert JSRuntime.longIsRepresentableAsInt(bits);
+                int bitsAsInt = (int) bits;
+                BigInt twoPowBits = BigInt.ONE.shiftLeft(bitsAsInt);
+                BigInt mod = bigint.mod(twoPowBits);
+                if (mod.bitLength() == bitsAsInt) {
+                    assert mod.compareTo(BigInt.ONE.shiftLeft(bitsAsInt - 1)) >= 0 : mod;
+                    return mod.subtract(twoPowBits);
+                } else {
+                    assert mod.compareTo(BigInt.ONE.shiftLeft(bitsAsInt - 1)) < 0 && mod.bitLength() < bitsAsInt : mod;
+                    return mod;
+                }
+            } catch (ArithmeticException e) {
+                throw Errors.createRangeErrorBigIntMaxSizeExceeded();
+            }
         }
     }
 }
