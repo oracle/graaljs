@@ -765,7 +765,7 @@ globalThis['%StringMaxLength'] = function() {
 };
 
 globalThis['%GetCallable'] = function() {
-    throw new Error("v8 internal method not implemented");
+    return (a, b) => a - b;
 };
 
 globalThis['%GetDefaultICULocale'] = function() {
