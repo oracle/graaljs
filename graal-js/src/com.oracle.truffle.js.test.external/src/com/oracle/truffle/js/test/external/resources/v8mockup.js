@@ -1235,3 +1235,10 @@ globalThis['%IsEfficiencyModeEnabled'] = function() {
 globalThis['%GetFunctionForCurrentFrame'] = function() {
     return v8IgnoreResult;
 };
+
+globalThis['%FlushWasmCode'] = function() {
+};
+
+globalThis['%IsUncompiledWasmFunction'] = function() {
+    return v8IgnoreResult;
+};
