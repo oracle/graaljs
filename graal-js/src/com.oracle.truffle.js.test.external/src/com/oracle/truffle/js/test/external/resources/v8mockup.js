@@ -764,8 +764,14 @@ globalThis['%StringMaxLength'] = function() {
   return TestV8.stringMaxLength;
 };
 
-globalThis['%GetCallable'] = function() {
-    return (a, b) => a - b;
+globalThis['%GetCallable'] = function(target_function_name) {
+    if (target_function_name) {
+        // This is the upcoming behavior of the native.
+        return globalThis[target_function_name];
+    } else {
+        // This is the current behavior of the native.
+        return (a, b) => a - b;
+    }
 };
 
 globalThis['%GetDefaultICULocale'] = function() {
