@@ -1247,3 +1247,13 @@ globalThis['%FlushWasmCode'] = function() {
 globalThis['%IsUncompiledWasmFunction'] = function() {
     return v8IgnoreResult;
 };
+
+globalThis['%WasmEnterDebugging'] = function() {
+};
+
+globalThis['%WasmLeaveDebugging'] = function() {
+};
+
+globalThis['%IsWasmDebugFunction'] = function() {
+    return v8IgnoreResult;
+};
