@@ -126,7 +126,6 @@ public final class JSRuntime {
     public static final int MAX_SAFE_INTEGER_DIGITS = 16;
     public static final int MAX_SAFE_INTEGER_IN_FLOAT = 1 << 24;
     public static final int MIN_SAFE_INTEGER_IN_FLOAT = -MAX_SAFE_INTEGER_IN_FLOAT;
-    public static final long MAX_BIG_INT_EXPONENT = Integer.MAX_VALUE;
     public static final long INVALID_SAFE_INTEGER = Long.MIN_VALUE;
 
     public static final TruffleString VALUE = Strings.constant("value");
