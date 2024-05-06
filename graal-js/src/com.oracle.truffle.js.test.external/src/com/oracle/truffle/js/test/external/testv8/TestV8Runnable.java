@@ -89,6 +89,7 @@ public class TestV8Runnable extends TestRunnable {
 
     private static final Set<String> UNSUPPORTED_FLAGS = featureSet(new String[]{
                     "--experimental-wasm-compilation-hints",
+                    "--experimental-wasm-exnref",
                     "--experimental-wasm-stringref",
                     "--experimental-wasm-type-reflection",
                     "--expose-fast-api",

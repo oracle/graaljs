@@ -5074,28 +5074,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
-  }, {
-    "filePath" : "mjsunit/wasm/exnref-global.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "new failures 2024-01-19"
-  }, {
-    "filePath" : "mjsunit/wasm/exnref-rethrow.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "new failures 2024-01-19"
-  }, {
-    "filePath" : "mjsunit/wasm/exnref.js",
-    "status" : "SKIP",
-    "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/wasm/export-global.js",
     "status" : "SKIP",
