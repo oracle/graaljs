@@ -530,4 +530,9 @@ public final class BigInt implements Comparable<BigInt>, TruffleObject {
         }
         return new BigInt(value, foreign);
     }
+
+    @TruffleBoundary(allowInlining = true)
+    public int bitLength() {
+        return value.bitLength();
+    }
 }
