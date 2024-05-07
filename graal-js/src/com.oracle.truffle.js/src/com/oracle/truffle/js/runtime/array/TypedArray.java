@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -1234,6 +1234,14 @@ public abstract class TypedArray extends ScriptArray {
 
         public BigInt getBigIntImpl(JSArrayBufferObject buffer, int offset, int index, InteropLibrary interop) {
             return BigInt.valueOf(getLongImpl(buffer, offset, index, interop));
+        }
+
+        public final long getLong(JSDynamicObject object, int index, InteropLibrary interop) {
+            return getLongImpl(getBufferFromTypedArray(object), getOffset(object), index, interop);
+        }
+
+        public final void setLong(JSDynamicObject object, int index, long value, InteropLibrary interop) {
+            setLongImpl(getBufferFromTypedArray(object), getOffset(object), index, value, interop);
         }
 
         public abstract long getLongImpl(JSArrayBufferObject buffer, int offset, int index, InteropLibrary interop);

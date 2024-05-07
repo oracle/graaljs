@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -45,6 +45,7 @@ import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArra
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Comparator;
 import java.util.EnumSet;
 
 import com.oracle.truffle.api.CompilerDirectives;
@@ -59,6 +60,7 @@ import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.api.profiles.ValueProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferOperation;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferSliceNode;
+import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.AbstractArraySortNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArrayForEachIndexCallOperation;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.JSArrayOperation;
@@ -77,7 +79,6 @@ import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayMapNo
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayReduceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySomeNodeGen;
-import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArraySortNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltinsFactory.JSArrayToLocaleStringNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.GetTypedArrayBufferOrNameNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.GetTypedArrayLengthOrOffsetNodeGen;
@@ -87,10 +88,12 @@ import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArray
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewReverseNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewSetNodeGen;
 import com.oracle.truffle.js.builtins.TypedArrayPrototypeBuiltinsFactory.JSArrayBufferViewSubarrayNodeGen;
+import com.oracle.truffle.js.builtins.sort.SortComparator;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResult;
 import com.oracle.truffle.js.nodes.access.ForEachIndexCallNode.MaybeResultNode;
 import com.oracle.truffle.js.nodes.array.JSGetLengthNode;
+import com.oracle.truffle.js.nodes.array.JSTypedArraySortNode;
 import com.oracle.truffle.js.nodes.cast.JSToBigIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
@@ -236,8 +239,6 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 return JSArrayReduceNodeGen.create(context, builtin, true, true, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
             case reduceRight:
                 return JSArrayReduceNodeGen.create(context, builtin, true, false, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
-            case sort:
-                return JSArraySortNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case slice:
                 return JSArraySliceNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case every:
@@ -281,8 +282,10 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
             case toReversed:
                 return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, true, args().withThis().fixedArgs(0).createArgumentNodes(context));
+            case sort:
             case toSorted:
-                return ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return TypedArrayPrototypeBuiltinsFactory.TypedArraySortMethodNodeGen.create(context, builtin, builtinEnum == TypedArrayPrototype.toSorted,
+                                args().withThis().fixedArgs(1).createArgumentNodes(context));
             case with:
                 return ArrayPrototypeBuiltinsFactory.JSArrayWithNodeGen.create(context, builtin, true, args().withThis().fixedArgs(2).createArgumentNodes(context));
         }
@@ -871,6 +874,43 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 TruffleSafepoint.poll(this);
             }
             return thisJSObj;
+        }
+    }
+
+    public abstract static class TypedArraySortMethodNode extends AbstractArraySortNode {
+
+        private final boolean toSorted;
+
+        protected TypedArraySortMethodNode(JSContext context, JSBuiltin builtin, boolean toSorted) {
+            super(context, builtin, true);
+            this.toSorted = toSorted;
+        }
+
+        @Specialization
+        protected final JSTypedArrayObject sortTypedArray(Object thisObj, Object compare,
+                        @Cached JSTypedArraySortNode typedArraySortNode,
+                        @Cached InlinedConditionProfile isCompareUndefined) {
+            checkCompareCallableOrUndefined(compare);
+            JSTypedArrayObject thisArray = validateTypedArray(thisObj);
+            long len = getLength(thisArray);
+
+            JSTypedArrayObject resultArray;
+            if (toSorted) {
+                resultArray = typedArrayCreateSameType(thisArray, len);
+                if (len == 0) {
+                    return resultArray;
+                }
+            } else {
+                resultArray = thisArray;
+                if (len <= 1) {
+                    // nothing to do
+                    return resultArray;
+                }
+            }
+
+            Comparator<Object> comparator = isCompareUndefined.profile(this, compare == Undefined.instance) ? null : new SortComparator(compare);
+            typedArraySortNode.execute(thisArray, resultArray, len, comparator);
+            return resultArray;
         }
     }
 

@@ -45,7 +45,6 @@ import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arrayGetLen
 import static com.oracle.truffle.js.runtime.builtins.JSAbstractArray.arraySetArrayType;
 import static com.oracle.truffle.js.runtime.builtins.JSArrayBufferView.typedArrayGetLength;
 
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.EnumSet;
 
@@ -160,6 +159,7 @@ import com.oracle.truffle.js.nodes.interop.ImportValueNode;
 import com.oracle.truffle.js.nodes.unary.IsCallableNode;
 import com.oracle.truffle.js.nodes.unary.IsConstructorNode;
 import com.oracle.truffle.js.nodes.unary.JSIsArrayNode;
+import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
@@ -319,7 +319,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             case map:
                 return JSArrayMapNodeGen.create(context, builtin, false, args().withThis().fixedArgs(2).createArgumentNodes(context));
             case sort:
-                return JSArraySortNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return JSArraySortNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case reduce:
                 return JSArrayReduceNodeGen.create(context, builtin, false, true, args().withThis().fixedArgs(1).varArgs().createArgumentNodes(context));
             case reduceRight:
@@ -360,7 +360,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             case toReversed:
                 return ArrayPrototypeBuiltinsFactory.JSArrayToReversedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case toSorted:
-                return ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                return ArrayPrototypeBuiltinsFactory.JSArrayToSortedNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case toSpliced:
                 return JSArrayToSplicedNodeGen.create(context, builtin, args().withThis().varArgs().createArgumentNodes(context));
             case with:
@@ -786,7 +786,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
         }
 
-        private JSTypedArrayObject typedArrayCreateSameType(JSTypedArrayObject thisObj, long length) {
+        protected final JSTypedArrayObject typedArrayCreateSameType(JSTypedArrayObject thisObj, long length) {
             return getArraySpeciesConstructorNode().typedArrayCreateSameType(thisObj, JSRuntime.longToIntOrDouble(length));
         }
 
@@ -2733,12 +2733,12 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class JSArrayAbstractSortNode extends JSArrayOperation {
+    public abstract static class AbstractArraySortNode extends JSArrayOperation {
 
         @Child private InteropLibrary interopNode;
         @Child private ImportValueNode importValueNode;
 
-        public JSArrayAbstractSortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
+        public AbstractArraySortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
         }
 
@@ -2753,7 +2753,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return list.toArray();
         }
 
-        protected Object[] foreignArrayToObjectArray(Object thisObj, int len) {
+        protected final Object[] foreignArrayToObjectArray(Object thisObj, int len) {
             InteropLibrary interop = interopNode;
             ImportValueNode importValue = importValueNode;
             if (interop == null || importValue == null) {
@@ -2768,52 +2768,17 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return array;
         }
 
-        @TruffleBoundary
-        protected static void arraySort(Object[] array, Comparator<Object> comparator) {
-            try {
-                Arrays.sort(array, comparator);
-            } catch (IllegalArgumentException e) {
-                // Collections.sort throws IllegalArgumentException when
-                // Comparison method violates its general contract
-
-                // See ECMA spec 15.4.4.11 Array.prototype.sort (comparefn).
-                // If "comparefn" is not undefined and is not a consistent
-                // comparison function for the elements of this array, the
-                // behaviour of sort is implementation-defined.
-            }
-        }
-
         protected final void checkCompareCallableOrUndefined(Object compare) {
             if (!(compare == Undefined.instance || isCallable(compare))) {
                 errorBranch.enter();
                 throw Errors.createTypeError("The comparison function must be either a function or undefined");
             }
         }
-
-        protected static void prepareForDefaultComparator(Object[] array) {
-            // Default comparator (based on Comparable.compareTo) cannot be used
-            // for elements of different type (for example, Integer.compareTo()
-            // accepts Integers only, not Doubles).
-            boolean needsConversion = false;
-            Class<?> clazz = array[0].getClass();
-            for (Object element : array) {
-                Class<?> c = element.getClass();
-                if (clazz != c) {
-                    needsConversion = true;
-                    break;
-                }
-            }
-            if (needsConversion) {
-                for (int i = 0; i < array.length; i++) {
-                    array[i] = JSRuntime.toDouble(array[i]);
-                }
-            }
-        }
     }
 
-    public abstract static class JSArrayToSortedNode extends JSArrayAbstractSortNode {
-        public JSArrayToSortedNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
-            super(context, builtin, isTypedArrayImplementation);
+    public abstract static class JSArrayToSortedNode extends AbstractArraySortNode {
+        public JSArrayToSortedNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, false);
         }
 
         @Specialization
@@ -2821,7 +2786,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached InlinedBranchProfile growProfile,
                         @Cached InlinedConditionProfile isJSObject) {
             checkCompareCallableOrUndefined(compare);
-            Object obj = toObjectOrValidateTypedArray(thisObj);
+            Object obj = toObject(thisObj);
             long length = getLength(obj);
             Object result = createEmpty(obj, length);
 
@@ -2837,13 +2802,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 array = foreignArrayToObjectArray(thisObj, (int) length);
             }
             Comparator<Object> comparator = compare == Undefined.instance
-                            ? (isTypedArrayImplementation ? null : JSArray.DEFAULT_JSARRAY_COMPARATOR)
+                            ? JSArray.DEFAULT_JSARRAY_COMPARATOR
                             : new SortComparator(compare);
-            if (isTypedArrayImplementation && compare == Undefined.instance) {
-                assert comparator == null;
-                prepareForDefaultComparator(array);
-            }
-            arraySort(array, comparator);
+            Boundaries.arraySort(array, comparator);
 
             assert length == array.length;
             for (int i = 0; i < array.length; i++) {
@@ -2853,19 +2814,19 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
     }
 
-    public abstract static class JSArraySortNode extends JSArrayAbstractSortNode {
+    public abstract static class JSArraySortNode extends AbstractArraySortNode {
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
         private final ConditionProfile isSparse = ConditionProfile.create();
         private final BranchProfile hasCompareFnBranch = BranchProfile.create();
         private final BranchProfile noCompareFnBranch = BranchProfile.create();
 
-        public JSArraySortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
-            super(context, builtin, isTypedArrayImplementation);
+        public JSArraySortNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin, false);
         }
 
-        @Specialization(guards = {"!isTypedArrayImplementation", "isJSFastArray(thisObj)"}, assumptions = "getContext().getArrayPrototypeNoElementsAssumption()")
-        protected JSObject sortArray(JSObject thisObj, final Object compare,
+        @Specialization(guards = {"isJSFastArray(thisObj)"}, assumptions = "getContext().getArrayPrototypeNoElementsAssumption()")
+        protected JSArrayObject sortArray(JSArrayObject thisObj, Object compare,
                         @Cached("create(getContext())") JSArrayToDenseObjectArrayNode arrayToObjectArrayNode,
                         @Cached("create(getContext(), true)") JSArrayDeleteRangeNode arrayDeleteRangeNode) {
             checkCompareCallableOrUndefined(compare);
@@ -2879,12 +2840,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             ScriptArray scriptArray = arrayGetArrayType(thisObj);
             Object[] array = arrayToObjectArrayNode.executeObjectArray(thisObj, scriptArray, len);
 
-            arraySort(array, getComparator(thisObj, compare));
-            reportLoopCount(len); // best effort guess, let's not go for n*log(n)
-
-            for (int i = 0; i < array.length; i++) {
-                write(thisObj, i, array[i]);
-            }
+            sortAndWriteBack(array, thisObj, compare);
 
             if (isSparse.profile(array.length < len)) {
                 arrayDeleteRangeNode.execute(thisObj, scriptArray, array.length, len);
@@ -2906,7 +2862,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                         @Cached InlinedConditionProfile isJSObject,
                         @Cached InlinedBranchProfile growProfile) {
             checkCompareCallableOrUndefined(comparefn);
-            Object obj = toObjectOrValidateTypedArray(thisObj);
+            Object obj = toObject(thisObj);
             if (isJSObject.profile(this, obj instanceof JSObject)) {
                 return sortJSObject(comparefn, (JSObject) obj, growProfile);
             } else {
@@ -2924,17 +2880,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             Object[] array = jsobjectToArray(thisJSObj, len, true, this, growProfile);
 
-            Comparator<Object> comparator = getComparator(thisJSObj, comparefn);
-            if (isTypedArrayImplementation && comparefn == Undefined.instance) {
-                assert comparator == null;
-                prepareForDefaultComparator(array);
-            }
-            arraySort(array, comparator);
-            reportLoopCount(len);
-
-            for (int i = 0; i < array.length; i++) {
-                write(thisJSObj, i, array[i]);
-            }
+            sortAndWriteBack(array, thisJSObj, comparefn);
 
             if (isSparse.profile(array.length < len)) {
                 deleteGenericElements(thisJSObj, array.length, len);
@@ -2958,14 +2904,20 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
             Object[] array = foreignArrayToObjectArray(thisObj, (int) len);
 
+            sortAndWriteBack(array, thisObj, comparefn);
+
+            return thisObj;
+        }
+
+        private void sortAndWriteBack(Object[] array, Object thisObj, Object comparefn) {
             Comparator<Object> comparator = getComparator(thisObj, comparefn);
-            arraySort(array, comparator);
-            reportLoopCount(len);
+            Boundaries.arraySort(array, comparator);
 
             for (int i = 0; i < array.length; i++) {
                 write(thisObj, i, array[i]);
             }
-            return thisObj;
+
+            reportLoopCount(array.length); // best effort guess, let's not go for n*log(n)
         }
 
         private Comparator<Object> getComparator(Object thisObj, Object compare) {
