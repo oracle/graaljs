@@ -1240,6 +1240,14 @@ public abstract class TypedArray extends ScriptArray {
             return BigInt.valueOf(getLongImpl(buffer, offset, index, interop));
         }
 
+        public final long getLong(JSDynamicObject object, int index, InteropLibrary interop) {
+            return getLongImpl(getBufferFromTypedArray(object), getOffset(object), index, interop);
+        }
+
+        public final void setLong(JSDynamicObject object, int index, long value, InteropLibrary interop) {
+            setLongImpl(getBufferFromTypedArray(object), getOffset(object), index, value, interop);
+        }
+
         public abstract long getLongImpl(JSArrayBufferObject buffer, int offset, int index, InteropLibrary interop);
 
         public abstract void setLongImpl(JSArrayBufferObject buffer, int offset, int index, long value, InteropLibrary interop);
