@@ -2769,7 +2769,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @TruffleBoundary
-        protected static void sortIntl(Comparator<Object> comparator, Object[] array) {
+        protected static void arraySort(Object[] array, Comparator<Object> comparator) {
             try {
                 Arrays.sort(array, comparator);
             } catch (IllegalArgumentException e) {
@@ -2780,6 +2780,33 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 // If "comparefn" is not undefined and is not a consistent
                 // comparison function for the elements of this array, the
                 // behaviour of sort is implementation-defined.
+            }
+        }
+
+        protected final void checkCompareCallableOrUndefined(Object compare) {
+            if (!(compare == Undefined.instance || isCallable(compare))) {
+                errorBranch.enter();
+                throw Errors.createTypeError("The comparison function must be either a function or undefined");
+            }
+        }
+
+        protected static void prepareForDefaultComparator(Object[] array) {
+            // Default comparator (based on Comparable.compareTo) cannot be used
+            // for elements of different type (for example, Integer.compareTo()
+            // accepts Integers only, not Doubles).
+            boolean needsConversion = false;
+            Class<?> clazz = array[0].getClass();
+            for (Object element : array) {
+                Class<?> c = element.getClass();
+                if (clazz != c) {
+                    needsConversion = true;
+                    break;
+                }
+            }
+            if (needsConversion) {
+                for (int i = 0; i < array.length; i++) {
+                    array[i] = JSRuntime.toDouble(array[i]);
+                }
             }
         }
     }
@@ -2793,18 +2820,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         public Object toSorted(final Object thisObj, final Object compare,
                         @Cached InlinedBranchProfile growProfile,
                         @Cached InlinedConditionProfile isJSObject) {
-            if (!(compare == Undefined.instance || isCallable(compare))) {
-                errorBranch.enter();
-                throw Errors.createTypeError("The comparison function must be either a function or undefined");
-            }
-            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
-            long length = getLength(thisJSObj);
-            Object result = createEmpty(thisJSObj, length);
+            checkCompareCallableOrUndefined(compare);
+            Object obj = toObjectOrValidateTypedArray(thisObj);
+            long length = getLength(obj);
+            Object result = createEmpty(obj, length);
 
             // TODO optimize the fast array case
             Object[] array;
-            if (isJSObject.profile(this, JSDynamicObject.isJSDynamicObject(thisJSObj))) {
-                array = jsobjectToArray((JSDynamicObject) thisJSObj, length, false, this, growProfile);
+            if (isJSObject.profile(this, obj instanceof JSObject)) {
+                array = jsobjectToArray((JSObject) obj, length, false, this, growProfile);
             } else {
                 if (length >= Integer.MAX_VALUE) {
                     errorBranch.enter();
@@ -2812,10 +2836,14 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 }
                 array = foreignArrayToObjectArray(thisObj, (int) length);
             }
-
-            Comparator<Object> comparator = compare == Undefined.instance ? (isTypedArrayImplementation ? null : JSArray.DEFAULT_JSARRAY_COMPARATOR)
+            Comparator<Object> comparator = compare == Undefined.instance
+                            ? (isTypedArrayImplementation ? null : JSArray.DEFAULT_JSARRAY_COMPARATOR)
                             : new SortComparator(compare);
-            sortIntl(comparator, array);
+            if (isTypedArrayImplementation && compare == Undefined.instance) {
+                assert comparator == null;
+                prepareForDefaultComparator(array);
+            }
+            arraySort(array, comparator);
 
             assert length == array.length;
             for (int i = 0; i < array.length; i++) {
@@ -2837,10 +2865,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization(guards = {"!isTypedArrayImplementation", "isJSFastArray(thisObj)"}, assumptions = "getContext().getArrayPrototypeNoElementsAssumption()")
-        protected JSDynamicObject sortArray(final JSDynamicObject thisObj, final Object compare,
+        protected JSObject sortArray(JSObject thisObj, final Object compare,
                         @Cached("create(getContext())") JSArrayToDenseObjectArrayNode arrayToObjectArrayNode,
                         @Cached("create(getContext(), true)") JSArrayDeleteRangeNode arrayDeleteRangeNode) {
-            checkCompareFunction(compare);
+            checkCompareCallableOrUndefined(compare);
             long len = getLength(thisObj);
 
             if (len < 2) {
@@ -2851,7 +2879,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             ScriptArray scriptArray = arrayGetArrayType(thisObj);
             Object[] array = arrayToObjectArrayNode.executeObjectArray(thisObj, scriptArray, len);
 
-            sortIntl(getComparator(thisObj, compare), array);
+            arraySort(array, getComparator(thisObj, compare));
             reportLoopCount(len); // best effort guess, let's not go for n*log(n)
 
             for (int i = 0; i < array.length; i++) {
@@ -2874,19 +2902,19 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         }
 
         @Specialization
-        protected Object sort(Object thisObj, final Object comparefn,
+        protected final Object sort(Object thisObj, final Object comparefn,
                         @Cached InlinedConditionProfile isJSObject,
                         @Cached InlinedBranchProfile growProfile) {
-            checkCompareFunction(comparefn);
-            Object thisJSObj = toObjectOrValidateTypedArray(thisObj);
-            if (isJSObject.profile(this, JSDynamicObject.isJSDynamicObject(thisJSObj))) {
-                return sortJSObject(comparefn, (JSDynamicObject) thisJSObj, growProfile);
+            checkCompareCallableOrUndefined(comparefn);
+            Object obj = toObjectOrValidateTypedArray(thisObj);
+            if (isJSObject.profile(this, obj instanceof JSObject)) {
+                return sortJSObject(comparefn, (JSObject) obj, growProfile);
             } else {
-                return sortForeignObject(comparefn, thisJSObj);
+                return sortForeignObject(comparefn, obj);
             }
         }
 
-        private JSDynamicObject sortJSObject(Object comparefn, JSDynamicObject thisJSObj, InlinedBranchProfile growProfile) {
+        private JSDynamicObject sortJSObject(Object comparefn, JSObject thisJSObj, InlinedBranchProfile growProfile) {
             long len = getLength(thisJSObj);
 
             if (len == 0) {
@@ -2901,7 +2929,7 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 assert comparator == null;
                 prepareForDefaultComparator(array);
             }
-            sortIntl(comparator, array);
+            arraySort(array, comparator);
             reportLoopCount(len);
 
             for (int i = 0; i < array.length; i++) {
@@ -2931,20 +2959,13 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object[] array = foreignArrayToObjectArray(thisObj, (int) len);
 
             Comparator<Object> comparator = getComparator(thisObj, comparefn);
-            sortIntl(comparator, array);
+            arraySort(array, comparator);
             reportLoopCount(len);
 
             for (int i = 0; i < array.length; i++) {
                 write(thisObj, i, array[i]);
             }
             return thisObj;
-        }
-
-        private void checkCompareFunction(Object compare) {
-            if (!(compare == Undefined.instance || isCallable(compare))) {
-                errorBranch.enter();
-                throw Errors.createTypeError("The comparison function must be either a function or undefined");
-            }
         }
 
         private Comparator<Object> getComparator(Object thisObj, Object compare) {
@@ -2970,26 +2991,6 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
         private void deleteGenericElements(Object obj, long fromIndex, long toIndex) {
             for (long index = fromIndex; index < toIndex; index++) {
                 delete(obj, index);
-            }
-        }
-
-        private static void prepareForDefaultComparator(Object[] array) {
-            // Default comparator (based on Comparable.compareTo) cannot be used
-            // for elements of different type (for example, Integer.compareTo()
-            // accepts Integers only, not Doubles).
-            boolean needsConversion = false;
-            Class<?> clazz = array[0].getClass();
-            for (Object element : array) {
-                Class<?> c = element.getClass();
-                if (clazz != c) {
-                    needsConversion = true;
-                    break;
-                }
-            }
-            if (needsConversion) {
-                for (int i = 0; i < array.length; i++) {
-                    array[i] = JSRuntime.toDouble(array[i]);
-                }
             }
         }
     }
