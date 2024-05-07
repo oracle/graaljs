@@ -47,6 +47,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -106,7 +107,9 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
 
     private TruffleString atomicsWait(JSArrayBufferObject buffer, int address, long expected, double timeout, boolean is64) {
         final JSAgent agent = realm.getAgent();
-        assert agent.canBlock();
+        if (!agent.canBlock()) {
+            throw Errors.createRuntimeError("wait instruction used by agent which cannot block", realm);
+        }
         final JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(buffer);
         final JSAgentWaiterList.JSAgentWaiterListEntry wl;
         if (!is64) {
