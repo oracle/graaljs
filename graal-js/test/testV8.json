@@ -4687,27 +4687,28 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/array-copy-benchmark.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/array-init-from-segment.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-exception-in-tonumber.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Different file path in error message."
   }, {
     "filePath" : "mjsunit/wasm/asm-wasm-heap.js",
     "status" : "PASS",
@@ -4719,27 +4720,29 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Different file path in error message."
   }, {
     "filePath" : "mjsunit/wasm/async-compile.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Different error message for stack mismatch."
   }, {
     "filePath" : "mjsunit/wasm/atomic-alignment-checks.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Different error message for illegal alignment."
   }, {
     "filePath" : "mjsunit/wasm/atomic-wait-multi-memory.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Uses Worker."
   }, {
     "filePath" : "mjsunit/wasm/atomics-memory64.js",
     "status" : "SKIP",
@@ -4759,21 +4762,21 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Uses Worker."
   }, {
     "filePath" : "mjsunit/wasm/atomics.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Different error message for unknown opcode."
   }, {
     "filePath" : "mjsunit/wasm/atomics64-stress.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Uses Worker."
   }, {
     "filePath" : "mjsunit/wasm/bigint-i64-to-imported-js-func.js",
     "status" : "SKIP",
@@ -4786,7 +4789,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Tests implementation-specific range limits on BigInts."
   }, {
     "filePath" : "mjsunit/wasm/bigint-rematerialize.js",
     "status" : "SKIP",
@@ -4823,14 +4826,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "Fails with LinkError instead of RuntimeError"
+    "comment" : "Fails with LinkError instead of RuntimeError. The failure occurs in module instantiation and the spec for the WebAssembly JS interface states that errors from instantiation are to be signalled using LinkError (except for when the error originates from the start function, which should use RuntimeError). In this case, the error does not originate from the start function, but from the memory initialization using an active data segment. Apart from this and one different error message, we pass all tests in the file."
   }, {
     "filePath" : "mjsunit/wasm/call_indirect.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Uses return_call_indirect from the tail calls proposal."
   }, {
     "filePath" : "mjsunit/wasm/calls.js",
     "status" : "SKIP",
@@ -4841,9 +4844,8 @@
     "filePath" : "mjsunit/wasm/code-flushing.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "new failures 2023-10-09"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/code-space-overflow.js",
     "status" : "SKIP",
@@ -4862,14 +4864,14 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Uses Worker."
   }, {
     "filePath" : "mjsunit/wasm/compare-exchange64-stress.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Uses Worker."
   }, {
     "filePath" : "mjsunit/wasm/compilation-hints-ignored.js",
     "status" : "SKIP",
@@ -4881,7 +4883,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Tests implementation-specific compiler limits."
   }, {
     "filePath" : "mjsunit/wasm/compiled-module-management.js",
     "status" : "SKIP",
@@ -4893,7 +4896,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Tests %SerializeWasmModule and %DeserializeWasmModule."
   }, {
     "filePath" : "mjsunit/wasm/data-segments.js",
     "status" : "SKIP",
@@ -4905,7 +4909,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Tests that wasm module compilation can be disabled using implementation-specific switch."
   }, {
     "filePath" : "mjsunit/wasm/divrem-trap.js",
     "status" : "SKIP",
@@ -4918,7 +4923,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Typed function references proposal."
   }, {
     "filePath" : "mjsunit/wasm/embenchen/box2d.js",
     "status" : "SKIP",
@@ -4990,84 +4995,83 @@
     "filePath" : "mjsunit/wasm/ensure-wasm-binaries-up-to-date.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/enter-and-leave-debug-state.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "new failures 2023-10-09"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/enter-debug-state.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "new failures 2023-10-09"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/errors.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Different error messages."
   }, {
     "filePath" : "mjsunit/wasm/exceptions-api.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/wasm/exceptions-export.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/wasm/exceptions-externref.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/wasm/exceptions-gc.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "Exception handling proposal and GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/exceptions-import.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/wasm/exceptions-rethrow.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/wasm/exceptions-shared.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/wasm/exceptions-simd.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-11-28"
+    "comment" : "Exception handling proposal."
   }, {
     "filePath" : "mjsunit/wasm/exceptions.js",
     "status" : "SKIP",
@@ -5099,21 +5103,21 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Different error message for duplicate function name. All other tests in the file pass."
   }, {
     "filePath" : "mjsunit/wasm/extended-constants.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "PASS"
-    },
-    "comment" : "V8 test update 2022-08-10"
+    }
   }, {
     "filePath" : "mjsunit/wasm/externref-globals.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 does not stick to the WASM API spec and supports globals with externref and anyfunc as imports"
+    "comment" : "V8 does not stick to the WASM API spec and supports values other WebAssembly.Global, numbers or bigints when passing values to imported globals with externref and anyfunc types. Other tests in the file pass."
   }, {
     "filePath" : "mjsunit/wasm/externref.js",
     "status" : "SKIP",
@@ -5125,13 +5129,15 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Different error message when validating imports. Other tests in the file pass."
   }, {
     "filePath" : "mjsunit/wasm/ffi.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "GR-53938: Error when importing one function from JS under different type signatures"
   }, {
     "filePath" : "mjsunit/wasm/float-constant-folding.js",
     "status" : "SKIP",
@@ -5143,7 +5149,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Missing stack frames in exceptions from wasm."
   }, {
     "filePath" : "mjsunit/wasm/function-prototype.js",
     "status" : "SKIP",
@@ -5154,9 +5161,8 @@
     "filePath" : "mjsunit/wasm/futex.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
-    },
-    "comment" : "V8 test update 2022-11-28"
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/gc-buffer.js",
     "status" : "SKIP",
@@ -5169,21 +5175,21 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-casts-invalid.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-experiments.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-frame.js",
     "status" : "SKIP",
@@ -5196,21 +5202,21 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-async.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-collections.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-export.mjs",
     "status" : "SKIP",
@@ -5221,7 +5227,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-helpers.js",
     "status" : "SKIP",
@@ -5232,28 +5238,28 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-numeric.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop-objects.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-js-interop.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-memory.js",
     "status" : "SKIP",
@@ -5266,28 +5272,28 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-null-traps.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-optimizations.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-ref-eq.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/gc-stress.js",
     "status" : "SKIP",
@@ -5342,7 +5348,8 @@
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Memory instance size exceeded 2GB. GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
   }, {
     "filePath" : "mjsunit/wasm/grow-memory-detaching.js",
     "status" : "SKIP",
@@ -5379,31 +5386,33 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "V8 test update 2022-08-10"
+    "comment" : "Uses Worker."
   }, {
     "filePath" : "mjsunit/wasm/huge-memory.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Memory instance size exceeded 2GB. GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
   }, {
     "filePath" : "mjsunit/wasm/huge-typedarray.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
-    }
+    },
+    "comment" : "Memory instance size exceeded 2GB. GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
   }, {
     "filePath" : "mjsunit/wasm/i31ref.js",
     "status" : "SKIP",
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "new failures 2024-01-19"
+    "comment" : "GC proposal."
   }, {
     "filePath" : "mjsunit/wasm/import-function.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "FAIL"
+      "POLYGLOT" : "PASS"
     }
   }, {
     "filePath" : "mjsunit/wasm/import-memory.js",
