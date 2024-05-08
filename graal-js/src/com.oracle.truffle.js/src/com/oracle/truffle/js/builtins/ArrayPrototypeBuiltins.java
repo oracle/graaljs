@@ -2736,37 +2736,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
     public abstract static class AbstractArraySortNode extends JSArrayOperation {
 
-        @Child private InteropLibrary interopNode;
-        @Child private ImportValueNode importValueNode;
-
         public AbstractArraySortNode(JSContext context, JSBuiltin builtin, boolean isTypedArrayImplementation) {
             super(context, builtin, isTypedArrayImplementation);
-        }
-
-        @TruffleBoundary
-        protected static Object[] jsobjectToArray(JSDynamicObject thisObj, long len, boolean skipHoles, Node node, InlinedBranchProfile growProfile) {
-            SimpleArrayList<Object> list = SimpleArrayList.create(len);
-            for (long k = 0; k < len; k++) {
-                if (!skipHoles || JSObject.hasProperty(thisObj, k)) {
-                    list.add(JSObject.get(thisObj, k), node, growProfile);
-                }
-            }
-            return list.toArray();
-        }
-
-        protected final Object[] foreignArrayToObjectArray(Object thisObj, int len) {
-            InteropLibrary interop = interopNode;
-            ImportValueNode importValue = importValueNode;
-            if (interop == null || importValue == null) {
-                CompilerDirectives.transferToInterpreterAndInvalidate();
-                interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
-                importValueNode = importValue = insert(ImportValueNode.create());
-            }
-            Object[] array = new Object[len];
-            for (int index = 0; index < len; index++) {
-                array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
-            }
-            return array;
         }
 
         protected final void checkCompareCallableOrUndefined(Object compare) {
@@ -2812,6 +2783,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     public abstract static class JSArraySortNode extends AbstractArraySortNode {
 
         @Child private DeletePropertyNode deletePropertyNode; // DeletePropertyOrThrow
+        @Child private InteropLibrary interopNode;
+        @Child private ImportValueNode importValueNode;
         private final ConditionProfile isSparse = ConditionProfile.create();
         private final BranchProfile hasCompareFnBranch = BranchProfile.create();
         private final BranchProfile noCompareFnBranch = BranchProfile.create();
@@ -2913,6 +2886,32 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
 
             reportLoopCount(array.length); // best effort guess, let's not go for n*log(n)
+        }
+
+        @TruffleBoundary
+        private static Object[] jsobjectToArray(JSDynamicObject thisObj, long len, boolean skipHoles, Node node, InlinedBranchProfile growProfile) {
+            SimpleArrayList<Object> list = SimpleArrayList.create(len);
+            for (long k = 0; k < len; k++) {
+                if (!skipHoles || JSObject.hasProperty(thisObj, k)) {
+                    list.add(JSObject.get(thisObj, k), node, growProfile);
+                }
+            }
+            return list.toArray();
+        }
+
+        private Object[] foreignArrayToObjectArray(Object thisObj, int len) {
+            InteropLibrary interop = interopNode;
+            ImportValueNode importValue = importValueNode;
+            if (interop == null || importValue == null) {
+                CompilerDirectives.transferToInterpreterAndInvalidate();
+                interopNode = interop = insert(InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit));
+                importValueNode = importValue = insert(ImportValueNode.create());
+            }
+            Object[] array = new Object[len];
+            for (int index = 0; index < len; index++) {
+                array[index] = JSInteropUtil.readArrayElementOrDefault(thisObj, index, Undefined.instance, interop, importValue, this);
+            }
+            return array;
         }
 
         private Comparator<Object> getComparator(Object thisObj, Object compare) {
