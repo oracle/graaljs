@@ -147,6 +147,7 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsLongNode;
 import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
+import com.oracle.truffle.js.nodes.cast.JSToObjectArrayNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
@@ -2777,37 +2778,31 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
     }
 
     public abstract static class JSArrayToSortedNode extends AbstractArraySortNode {
-        public JSArrayToSortedNode(JSContext context, JSBuiltin builtin) {
+        protected JSArrayToSortedNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin, false);
         }
 
         @Specialization
-        public Object toSorted(final Object thisObj, final Object compare,
-                        @Cached InlinedBranchProfile growProfile,
-                        @Cached InlinedConditionProfile isJSObject) {
+        protected final JSArrayObject toSorted(Object thisObj, Object compare,
+                        @Cached JSToObjectArrayNode toObjectArray) {
             checkCompareCallableOrUndefined(compare);
             Object obj = toObject(thisObj);
-            long length = getLength(obj);
-            Object result = createEmpty(obj, length);
+            // Performs LengthOfArrayLike(obj), too.
+            Object[] array = toObjectArray.executeObjectArray(obj);
+            int length = array.length;
+            /*
+             * According to the spec, ArrayCreate should be performed before getting the elements,
+             * but since ArrayCreate is side-effect-free (not considering out-of-memory errors) for
+             * valid array lengths, it is alright to do it after.
+             */
+            JSArrayObject result = arrayCreate(length);
 
-            // TODO optimize the fast array case
-            Object[] array;
-            if (isJSObject.profile(this, obj instanceof JSObject)) {
-                array = jsobjectToArray((JSObject) obj, length, false, this, growProfile);
-            } else {
-                if (length >= Integer.MAX_VALUE) {
-                    errorBranch.enter();
-                    throw Errors.createRangeErrorInvalidArrayLength(this);
-                }
-                array = foreignArrayToObjectArray(thisObj, (int) length);
-            }
             Comparator<Object> comparator = compare == Undefined.instance
                             ? JSArray.DEFAULT_JSARRAY_COMPARATOR
                             : new SortComparator(compare);
             Boundaries.arraySort(array, comparator);
 
-            assert length == array.length;
-            for (int i = 0; i < array.length; i++) {
+            for (int i = 0; i < length; i++) {
                 write(result, i, array[i]);
             }
             return result;
