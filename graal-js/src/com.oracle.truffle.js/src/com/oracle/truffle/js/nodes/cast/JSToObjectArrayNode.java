@@ -40,11 +40,9 @@
  */
 package com.oracle.truffle.js.nodes.cast;
 
-import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 
-import com.oracle.truffle.api.CompilerDirectives.TruffleBoundary;
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Cached.Exclusive;
@@ -215,18 +213,6 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
             throw Errors.createRangeErrorTooManyArguments();
         }
         return array;
-    }
-
-    @TruffleBoundary
-    @Specialization(guards = "isList(value)")
-    protected Object[] doList(Object value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
-        List<?> list = ((List<?>) value);
-        if (list.size() > context.getLanguageOptions().maxApplyArgumentLength()) {
-            errorBranch.enter(this);
-            throw Errors.createRangeErrorTooManyArguments();
-        }
-        return list.toArray();
     }
 
     @SuppressWarnings("truffle-static-method")
