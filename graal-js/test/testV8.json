@@ -4749,7 +4749,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
-    "comment" : "Memory instance size exceeded beyond 4GB. In the current spec, the JS WebAssembly API should not allow such large memory instances. Furhtermore, GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
+    "comment" : "Memory instance size exceeded beyond 4GB. In the current spec, the JS WebAssembly API should not allow such large memory instances. Furthermore, GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
   }, {
     "filePath" : "mjsunit/wasm/atomics-non-shared.js",
     "status" : "SKIP",
