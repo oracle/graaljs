@@ -45,10 +45,10 @@ import java.util.Set;
 
 import com.oracle.truffle.api.dsl.Bind;
 import com.oracle.truffle.api.dsl.Cached;
-import com.oracle.truffle.api.dsl.Cached.Exclusive;
 import com.oracle.truffle.api.dsl.Cached.Shared;
 import com.oracle.truffle.api.dsl.Fallback;
 import com.oracle.truffle.api.dsl.ImportStatic;
+import com.oracle.truffle.api.dsl.NeverDefault;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.frame.VirtualFrame;
 import com.oracle.truffle.api.instrumentation.Tag;
@@ -58,7 +58,6 @@ import com.oracle.truffle.api.interop.UnsupportedMessageException;
 import com.oracle.truffle.api.library.CachedLibrary;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
-import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.JavaScriptNode;
 import com.oracle.truffle.js.nodes.access.ReadElementNode;
@@ -94,10 +93,12 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
 
     public abstract Object[] executeObjectArray(Object value);
 
+    @NeverDefault
     public static JSToObjectArrayNode create(JSContext context) {
         return create(context, false);
     }
 
+    @NeverDefault
     public static JSToObjectArrayNode create(JSContext context, boolean nullOrUndefinedAsEmptyArray) {
         return JSToObjectArrayNodeGen.create(context, nullOrUndefinedAsEmptyArray);
     }
@@ -152,57 +153,20 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     }
 
     @Specialization(guards = "isUndefined(value)")
-    protected Object[] doUndefined(Object value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
-        return emptyArrayOrObjectError(value, errorBranch);
+    protected Object[] doUndefined(Object value) {
+        return emptyArrayOrObjectError(value);
     }
 
     @Specialization(guards = "isJSNull(value)")
-    protected Object[] doNull(Object value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
-        return emptyArrayOrObjectError(value, errorBranch);
+    protected Object[] doNull(Object value) {
+        return emptyArrayOrObjectError(value);
     }
 
-    @Specialization
-    protected Object[] toArrayString(TruffleString value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
-        return notAnObjectError(value, errorBranch);
-    }
-
-    @Specialization
-    protected Object[] toArrayInt(int value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
-        return notAnObjectError(value, errorBranch);
-    }
-
-    @Specialization
-    protected Object[] toArrayDouble(double value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
-        return notAnObjectError(value, errorBranch);
-    }
-
-    @Specialization
-    protected Object[] toArrayBoolean(boolean value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
-        return notAnObjectError(value, errorBranch);
-    }
-
-    private Object[] emptyArrayOrObjectError(Object value,
-                    InlinedBranchProfile errorBranch) {
+    private Object[] emptyArrayOrObjectError(Object value) {
         if (nullOrUndefinedAsEmptyArray) {
             return ScriptArray.EMPTY_OBJECT_ARRAY;
         }
-        return notAnObjectError(value, errorBranch);
-    }
-
-    private Object[] notAnObjectError(Object value,
-                    InlinedBranchProfile errorBranch) {
-        errorBranch.enter(this);
-        if (context.isOptionNashornCompatibilityMode()) {
-            throw Errors.createTypeError("Function.prototype.apply expects an Array for second argument");
-        } else {
-            throw Errors.createTypeErrorNotAnObject(value);
-        }
+        throw Errors.createTypeErrorNotAnObject(value);
     }
 
     @Specialization
@@ -221,12 +185,11 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
                     @Bind("this") Node node,
                     @CachedLibrary("obj") InteropLibrary interop,
                     @Cached @Shared("error") InlinedBranchProfile errorBranch,
-                    @Cached @Exclusive InlinedBranchProfile hasPropertiesBranch,
                     @Cached ImportValueNode foreignConvertNode) {
         try {
             if (!interop.hasArrayElements(obj)) {
                 errorBranch.enter(node);
-                throw Errors.createTypeError("foreign Object reports not to have a SIZE");
+                throw Errors.createTypeError("foreign object must be an array", this);
             }
 
             long len = interop.getArraySize(obj);
@@ -236,11 +199,8 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
             }
             int iLen = (int) len;
             Object[] arr = new Object[iLen];
-            if (len > 0) {
-                hasPropertiesBranch.enter(node);
-                for (int i = 0; i < iLen; i++) {
-                    arr[i] = foreignConvertNode.executeWithTarget(interop.readArrayElement(obj, i));
-                }
+            for (int i = 0; i < iLen; i++) {
+                arr[i] = foreignConvertNode.executeWithTarget(interop.readArrayElement(obj, i));
             }
             return arr;
         } catch (InvalidArrayIndexException | UnsupportedMessageException e) {
@@ -250,9 +210,12 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     }
 
     @Fallback
-    protected Object[] doFallback(Object value,
-                    @Cached @Shared("error") InlinedBranchProfile errorBranch) {
-        assert !JSRuntime.isObject(value);
-        return notAnObjectError(value, errorBranch);
+    protected Object[] doFallback(Object value) {
+        assert !JSRuntime.isObject(value) && !JSRuntime.isNullOrUndefined(value);
+        if (nullOrUndefinedAsEmptyArray && getJSContext().isOptionNashornCompatibilityMode()) {
+            throw Errors.createTypeError("Function.prototype.apply expects an Array for second argument");
+        } else {
+            throw Errors.createTypeErrorNotAnObject(value);
+        }
     }
 }
