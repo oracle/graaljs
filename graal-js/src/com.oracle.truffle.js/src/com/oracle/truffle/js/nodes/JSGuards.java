@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.nodes;
 
-import java.util.List;
-
 import com.oracle.truffle.api.dsl.Idempotent;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.object.Shape;
@@ -409,10 +407,6 @@ public final class JSGuards {
     @Idempotent
     public static boolean isValidPrototype(Object prototype) {
         return isJSObject(prototype) || isJSNull(prototype);
-    }
-
-    public static boolean isList(Object value) {
-        return value instanceof List;
     }
 
     public static boolean isJavaPackage(Object target) {
