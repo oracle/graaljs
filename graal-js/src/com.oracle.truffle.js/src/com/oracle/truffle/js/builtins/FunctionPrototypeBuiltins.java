@@ -460,7 +460,7 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         public JSApplyNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
             this.call = JSFunctionCallNode.createCall();
-            this.toObjectArray = JSToObjectArrayNode.create(context, true);
+            this.toObjectArray = JSToObjectArrayNode.create(true);
         }
 
         @Specialization(guards = "isJSFunction(function)")
@@ -475,8 +475,9 @@ public final class FunctionPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         }
 
         private Object apply(Object function, Object target, Object args) {
-            Object[] applyUserArgs = toObjectArray.executeObjectArray(args);
-            assert applyUserArgs.length <= getContext().getLanguageOptions().maxApplyArgumentLength();
+            int maxApplyArgumentLength = getContext().getLanguageOptions().maxApplyArgumentLength();
+            Object[] applyUserArgs = toObjectArray.executeObjectArray(args, maxApplyArgumentLength);
+            assert applyUserArgs.length <= maxApplyArgumentLength;
             Object[] passedOnArguments = JSArguments.create(target, function, applyUserArgs);
             return call.executeCall(passedOnArguments);
         }
