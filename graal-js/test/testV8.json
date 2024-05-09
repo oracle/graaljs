@@ -1227,15 +1227,11 @@
   }, {
     "filePath" : "mjsunit/regress/regress-1376663.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/regress/regress-1394663.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/regress/regress-1432470.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "Uses console.profile(), console.profileEnd(), and d8.profiler.setOnProfileEndListener()"
   }, {
     "filePath" : "mjsunit/regress/regress-14333.js",
     "ecmaVersion" : {
