@@ -887,7 +887,7 @@ public final class TypedArrayPrototypeBuiltins extends JSBuiltinsContainer.Switc
                         @Cached InlinedConditionProfile isCompareUndefined) {
             checkCompareCallableOrUndefined(compare);
             JSTypedArrayObject thisArray = validateTypedArray(thisObj);
-            long len = getLength(thisArray);
+            int len = thisArray.getLength();
 
             JSTypedArrayObject resultArray;
             if (toSorted) {

@@ -56,7 +56,6 @@ import com.oracle.truffle.js.runtime.BigInt;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSConfig;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.SafeInteger;
 import com.oracle.truffle.js.runtime.array.TypedArray;
 import com.oracle.truffle.js.runtime.array.TypedArray.AbstractUint32Array;
@@ -82,12 +81,6 @@ public abstract class JSTypedArraySortNode extends JavaScriptBaseNode {
     static final int CACHE_LIMIT = 6;
 
     protected JSTypedArraySortNode() {
-    }
-
-    public final void execute(JSTypedArrayObject fromArray, JSTypedArrayObject toArray, long length, Comparator<Object> comparator) {
-        assert JSRuntime.longIsRepresentableAsInt(length);
-        int iLen = (int) length;
-        execute(fromArray, toArray, iLen, comparator);
     }
 
     public abstract void execute(JSTypedArrayObject fromArray, JSTypedArrayObject toArray, int length, Comparator<Object> comparator);
