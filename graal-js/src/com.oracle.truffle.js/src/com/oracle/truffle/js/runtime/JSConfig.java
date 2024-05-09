@@ -48,6 +48,9 @@ import com.oracle.truffle.api.TruffleOptions;
  */
 public final class JSConfig {
 
+    /** See jdk.internal.util.ArraysSupport#SOFT_MAX_ARRAY_LENGTH. */
+    public static final int SOFT_MAX_ARRAY_LENGTH = Integer.MAX_VALUE - 8;
+
     /** When printing to console/inspector, only print that many properties. */
     public static final int MaxConsolePrintProperties = 20;
 
