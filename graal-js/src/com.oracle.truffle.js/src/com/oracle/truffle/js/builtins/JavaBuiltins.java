@@ -428,7 +428,7 @@ public final class JavaBuiltins extends JSBuiltinsContainer.SwitchEnum<JavaBuilt
 
         JavaToNode(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
-            this.toObjectArrayNode = JSToObjectArrayNode.create(context);
+            this.toObjectArrayNode = JSToObjectArrayNode.create();
             this.exportValue = ExportValueNode.create();
             this.newArray = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
             this.arrayElements = InteropLibrary.getFactory().createDispatched(JSConfig.InteropLibraryLimit);
