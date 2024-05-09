@@ -70,6 +70,15 @@ public abstract class ToWebAssemblyIndexOrSizeNode extends JavaScriptBaseNode {
     public abstract int executeInt(Object value);
 
     @Specialization
+    protected int convertInt(int intValue) {
+        if (intValue < 0) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorFormat("%s must be non-negative", this, errorMessagePrefix);
+        }
+        return intValue;
+    }
+
+    @Specialization(replaces = "convertInt")
     protected int convert(Object value) {
         Number valueNumber = toNumberNode.executeNumber(value);
         double valueDouble = JSRuntime.doubleValue(valueNumber);
@@ -91,14 +100,5 @@ public abstract class ToWebAssemblyIndexOrSizeNode extends JavaScriptBaseNode {
             throw Errors.createRangeErrorFormat("%s must be in the int range", this, errorMessagePrefix);
         }
         return (int) valueDouble;
-    }
-
-    @Specialization
-    protected int doInt(int intValue) {
-        if (intValue < 0) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be non-negative", this, errorMessagePrefix);
-        }
-        return intValue;
     }
 }
