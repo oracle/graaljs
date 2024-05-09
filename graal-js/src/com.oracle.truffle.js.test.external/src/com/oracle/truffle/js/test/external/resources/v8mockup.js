@@ -1005,10 +1005,6 @@ globalThis['%ArrayBufferMaxByteLength'] = function() {
     return 0x7fff_fff7;
 };
 
-globalThis['%TypedArrayMaxLength'] = function() {
-    return 0x7fff_fff7;
-};
-
 globalThis['%MinSMI'] = function() {
     return -2147483648;
 };
