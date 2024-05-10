@@ -164,7 +164,6 @@ suite = {
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npm>",
           "file:mx.graal-nodejs/graalvm_launchers/<cmd:npx>",
         ],
-        "include/src/graal/" : "file:deps/v8/src/graal/graal_handle_content.h",
       },
       "os" : {
         "windows" : {},
