@@ -45,7 +45,6 @@
 
 import codecs
 import errno
-import js2c
 import os
 import sys
 
@@ -82,13 +81,18 @@ def ProcessModules(sources, outdir):
             modules.append(s)
 
     for m in modules:
-        contents = js2c.ReadFile(m)
+        contents = ReadFile(m)
         contents = WrapModule(m, contents)
 
         outpath = os.path.join(outdir, m)
         EnsureDirExists(os.path.split(outpath)[0])
         with codecs.open(outpath, 'w', 'utf-8') as outfile:
             outfile.write(contents)
+
+def ReadFile(filename):
+  with codecs.open(filename, "r", "utf-8") as f:
+    lines = f.read()
+    return lines
 
 def main():
     outdir = sys.argv[1]
