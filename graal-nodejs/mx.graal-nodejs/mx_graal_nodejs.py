@@ -207,7 +207,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
 
         # put headers for native modules into out/headers
         _setEnvVar('HEADERS_ONLY', '1', build_env)
-        _mxrun(['python3', join('tools', 'install.py'), 'install', join('out', 'headers'), sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
+        _mxrun(['python3', join('tools', 'install.py'), 'install', '--dest-dir', join('out', 'headers'), '--prefix', sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
 
         if not _is_windows:
             # copy libjsig.so from the jdk for inclusion in the standalone and `mx node`
