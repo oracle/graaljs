@@ -297,6 +297,7 @@ public class Parser extends AbstractParser {
     private static final String MSG_ILLEGAL_BREAK_STMT = "illegal.break.stmt";
     private static final String MSG_ILLEGAL_CONTINUE_STMT = "illegal.continue.stmt";
     private static final String MSG_INVALID_ARROW_PARAMETER = "invalid.arrow.parameter";
+    private static final String MSG_INVALID_AWAIT = "invalid.await";
     private static final String MSG_INVALID_EXPORT = "invalid.export";
     private static final String MSG_INVALID_FOR_AWAIT_OF = "invalid.for.await.of";
     private static final String MSG_INVALID_LVALUE = "invalid.lvalue";
@@ -6690,10 +6691,20 @@ public class Parser extends AbstractParser {
             case EOF:
                 break;
             default:
-                if (last != EOL) {
-                    expect(SEMICOLON);
+                if (last == EOL) {
+                    // automatic semicolon insertion
+                    break;
                 }
-                break;
+                /*
+                 * Provide a more helpful error message for what looks like an await expression
+                 * outside of a valid async function or top-level module scope.
+                 *
+                 * e.g.: `let test = await import('test');`
+                 */
+                if (last == AWAIT && isES2017()) {
+                    throw error(AbstractParser.message(MSG_INVALID_AWAIT), previousToken);
+                }
+                throw error(expectMessage(SEMICOLON));
         }
     }
 
