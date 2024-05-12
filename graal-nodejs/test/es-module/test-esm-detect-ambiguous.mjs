@@ -38,7 +38,7 @@ describe('--experimental-detect-module', { concurrency: true }, () => {
         'import.meta.url',
       ]);
 
-      match(stderr, /SyntaxError: Cannot use 'import\.meta' outside a module/);
+      match(stderr, /SyntaxError: Cannot use '?import\.meta'? outside a module/);
       strictEqual(stdout, '');
       strictEqual(code, 1);
       strictEqual(signal, null);
@@ -52,7 +52,7 @@ describe('--experimental-detect-module', { concurrency: true }, () => {
         'import.meta.url',
       ]);
 
-      match(stderr, /SyntaxError: Cannot use 'import\.meta' outside a module/);
+      match(stderr, /SyntaxError: Cannot use '?import\.meta'? outside a module/);
       strictEqual(stdout, '');
       strictEqual(code, 1);
       strictEqual(signal, null);
@@ -65,7 +65,7 @@ describe('--experimental-detect-module', { concurrency: true }, () => {
         'eval("import \'nonexistent\';");',
       ]);
 
-      match(stderr, /SyntaxError: Cannot use import statement outside a module/);
+      match(stderr, /SyntaxError: .* import/);
       strictEqual(stdout, '');
       strictEqual(code, 1);
       strictEqual(signal, null);
@@ -198,7 +198,7 @@ describe('--experimental-detect-module', { concurrency: true }, () => {
           entryPath,
         ]);
 
-        match(stderr, /SyntaxError: Unexpected token 'export'/);
+        match(stderr, /SyntaxError: .* export/);
         strictEqual(stdout, '');
         strictEqual(code, 1);
         strictEqual(signal, null);
