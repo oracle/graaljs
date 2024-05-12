@@ -1397,9 +1397,12 @@ Local<Object> ContextifyContext::CompileFunctionAndCacheResult(
 // While top-level `await` is not permitted in CommonJS, it returns the same
 // error message as when `await` is used in a sync function, so we don't use it
 // as a disambiguation.
-constexpr std::array<std::string_view, 3> esm_syntax_error_messages = {
+constexpr std::array<std::string_view, 6> esm_syntax_error_messages = {
+    "Expected an operand but found import",
     "Cannot use import statement outside a module",  // `import` statements
+    "Expected an operand but found export",
     "Unexpected token 'export'",                     // `export` statements
+    "Cannot use import.meta outside a module",
     "Cannot use 'import.meta' outside a module"};    // `import.meta` references
 
 void ContextifyContext::ContainsModuleSyntax(
