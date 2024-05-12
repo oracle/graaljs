@@ -14,6 +14,10 @@ test-esm-cjs-exports                 : FAIL
 # 'Unexpected token }' verus ': expected'
 test-esm-invalid-pjson               : FAIL
 
+# missing support for source maps
+test-esm-loader-hooks                : FAIL
+test-esm-source-map                  : FAIL
+
 # Module doesn't see const variable created in global scope by a custom loader
 test-esm-loader-side-effect          : FAIL
 
