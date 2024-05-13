@@ -612,6 +612,7 @@ public:
         handle->ReferenceAdded();
     }
 
+    static v8::Isolate* TryGetCurrent();
     static inline v8::Isolate* GetCurrent() {
         return reinterpret_cast<v8::Isolate*> (CurrentIsolate());
     }

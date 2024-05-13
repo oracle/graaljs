@@ -135,9 +135,14 @@ extern "C" int uv__cloexec(int fd, int set) WEAK_ATTRIBUTE;
 
 // Key for the current (per-thread) isolate
 static uv_key_t current_isolate_key;
+static bool current_isolate_initialized = false;
 
 GraalIsolate* CurrentIsolate() {
     return reinterpret_cast<GraalIsolate*> (uv_key_get(&current_isolate_key));
+}
+
+v8::Isolate* GraalIsolate::TryGetCurrent() {
+    return current_isolate_initialized ? GetCurrent() : nullptr;
 }
 
 #define ACCESS_METHOD(id, name, signature) \
@@ -1154,6 +1159,7 @@ void GraalIsolate::EnsureValidWorkingDir() {
 
 void GraalIsolate::InitThreadLocals() {
     uv_key_create(&current_isolate_key);
+    current_isolate_initialized = true;
 }
 
 void GraalIsolate::SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback) {

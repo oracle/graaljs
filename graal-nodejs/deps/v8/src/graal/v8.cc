@@ -463,7 +463,7 @@ namespace v8 {
     }
 
     Isolate* Isolate::TryGetCurrent() {
-        return GraalIsolate::GetCurrent();
+        return GraalIsolate::TryGetCurrent();
     }
 
     Local<Context> Isolate::GetCurrentContext() {
