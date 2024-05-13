@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 
 /**
@@ -56,7 +57,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
  */
 public class SimpleArrayList<E> {
 
-    public static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+    private static final int MAX_ARRAY_SIZE = JSConfig.SOFT_MAX_ARRAY_LENGTH;
     private static final int DEFAULT_CAPACITY = 8;
 
     private Object[] elements;

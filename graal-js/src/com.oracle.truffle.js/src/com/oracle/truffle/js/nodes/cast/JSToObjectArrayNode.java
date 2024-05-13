@@ -69,7 +69,6 @@ import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
 import com.oracle.truffle.js.runtime.objects.JSObject;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * Converts an arbitrary array-like object to an Object[], with an optional array length limit.
@@ -90,7 +89,7 @@ public abstract class JSToObjectArrayNode extends JavaScriptBaseNode {
     }
 
     public final Object[] executeObjectArray(Object value) {
-        return executeObjectArray(value, SimpleArrayList.MAX_ARRAY_SIZE);
+        return executeObjectArray(value, JSConfig.SOFT_MAX_ARRAY_LENGTH);
     }
 
     public abstract Object[] executeObjectArray(Object value, int arrayLengthLimit);

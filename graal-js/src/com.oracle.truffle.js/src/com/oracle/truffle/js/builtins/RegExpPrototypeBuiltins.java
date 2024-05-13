@@ -1391,7 +1391,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
             private static int toSafeArrayLength(long length, Node node, InlinedBranchProfile errorBranch) {
                 assert length >= 0 : length;
-                if (length > SimpleArrayList.MAX_ARRAY_SIZE) {
+                if (length > JSConfig.SOFT_MAX_ARRAY_LENGTH) {
                     errorBranch.enter(node);
                     throw Errors.outOfMemoryError();
                 }

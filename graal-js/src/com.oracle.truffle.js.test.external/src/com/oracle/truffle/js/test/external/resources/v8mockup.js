@@ -1002,11 +1002,7 @@ globalThis['%IsBeingInterpreted'] = function() {
 };
 
 globalThis['%ArrayBufferMaxByteLength'] = function() {
-    return 0x3fff_ffff;
-};
-
-globalThis['%TypedArrayMaxLength'] = function() {
-    return 0x3fff_ffff;
+    return 0x7fff_fff7;
 };
 
 globalThis['%MinSMI'] = function() {
