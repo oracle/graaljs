@@ -1170,7 +1170,7 @@ bool GraalIsolate::AbortOnUncaughtExceptionCallbackValue() {
 bool GraalIsolate::abort_on_uncaught_exception_ = false;
 
 void GraalIsolate::Dispose() {
-    Dispose(main_, 0);
+    Dispose(false, 0);
 }
 
 void GraalIsolate::Dispose(bool exit, int status) {
