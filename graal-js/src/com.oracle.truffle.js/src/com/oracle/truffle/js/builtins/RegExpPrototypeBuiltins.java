@@ -74,6 +74,7 @@ import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpMat
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpReplaceNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSearchNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpSplitNodeGen;
+import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpTestES5NodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpTestNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.JSRegExpToStringNodeGen;
 import com.oracle.truffle.js.builtins.RegExpPrototypeBuiltinsFactory.RegExpFlagsGetterNodeGen;
@@ -96,7 +97,6 @@ import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerAsIntNode;
 import com.oracle.truffle.js.nodes.cast.JSToLengthNode;
 import com.oracle.truffle.js.nodes.cast.JSToObjectNode;
-import com.oracle.truffle.js.nodes.cast.JSToPrimitiveNode;
 import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.cast.JSToUInt32Node;
 import com.oracle.truffle.js.nodes.cast.LongToIntOrDoubleNode;
@@ -108,7 +108,6 @@ import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSArguments;
 import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
-import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.Strings;
@@ -238,7 +237,11 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                     return JSRegExpExecES5NodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
                 }
             case test:
-                return JSRegExpTestNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                if (context.getEcmaScriptVersion() >= 6) {
+                    return JSRegExpTestNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                } else {
+                    return JSRegExpTestES5NodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
+                }
             case toString:
                 return JSRegExpToStringNodeGen.create(context, builtin, args().withThis().fixedArgs(0).createArgumentNodes(context));
             case _match:
@@ -268,12 +271,6 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
                 return CompiledRegexFlagPropertyAccessor.create(context, builtin, builtinEnum.name(), args().withThis().fixedArgs(0).createArgumentNodes(context));
         }
         return null;
-    }
-
-    @TruffleBoundary
-    private static JSException createNoRegExpError(Object obj) {
-        TruffleString objName = Strings.fromObject(JSRuntime.toPrimitive(obj, JSToPrimitiveNode.Hint.String));
-        return Errors.createTypeError(Strings.toJavaString(objName) + " is not a RegExp");
     }
 
     /**
@@ -331,12 +328,12 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Fallback
         protected Object compile(Object thisObj, @SuppressWarnings("unused") Object pattern, @SuppressWarnings("unused") Object flags) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorNotARegExp(thisObj);
         }
     }
 
     /**
-     * This implements the RegExp.prototype.exec() method as defined by ECMAScript 6, 21.2.5.2.
+     * This implements the RegExp.prototype.exec() method.
      */
     public abstract static class JSRegExpExecNode extends JSBuiltinNode {
 
@@ -349,19 +346,19 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
         }
 
         @Specialization
-        JSDynamicObject doString(JSRegExpObject thisRegExp, TruffleString inputStr) {
-            return (JSDynamicObject) regExpNode.execute(thisRegExp, inputStr);
+        Object doString(JSRegExpObject thisRegExp, TruffleString inputStr) {
+            return regExpNode.execute(thisRegExp, inputStr);
         }
 
         @Specialization(replaces = {"doString"})
-        JSDynamicObject doObject(JSRegExpObject thisRegExp, Object input,
+        Object doObject(JSRegExpObject thisRegExp, Object input,
                         @Cached JSToStringNode toStringNode) {
-            return (JSDynamicObject) regExpNode.execute(thisRegExp, toStringNode.executeString(input));
+            return regExpNode.execute(thisRegExp, toStringNode.executeString(input));
         }
 
         @Fallback
         Object doNoRegExp(Object thisObj, @SuppressWarnings("unused") Object input) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorNotARegExp(thisObj);
         }
     }
 
@@ -410,7 +407,7 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
 
         @Fallback
         protected static JSDynamicObject exec(Object thisObj, @SuppressWarnings("unused") Object input) {
-            throw createNoRegExpError(thisObj);
+            throw Errors.createTypeErrorNotARegExp(thisObj);
         }
 
         @NeverDefault
@@ -422,34 +419,60 @@ public final class RegExpPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnu
     /**
      * This implements the RegExp.prototype.test() method as defined by ECMAScript 5.1 15.10.6.3.
      */
-    public abstract static class JSRegExpTestNode extends JSBuiltinNode {
+    public abstract static class JSRegExpTestES5Node extends JSBuiltinNode {
 
-        protected JSRegExpTestNode(JSContext context, JSBuiltin builtin) {
+        protected JSRegExpTestES5Node(JSContext context, JSBuiltin builtin) {
             super(context, builtin);
+            assert context.getEcmaScriptVersion() < 6;
         }
 
-        @SuppressWarnings("truffle-static-method")
-        @Specialization(guards = "isObjectNode.executeBoolean(thisObj)", limit = "1")
-        protected Object testGeneric(JSDynamicObject thisObj, Object input,
-                        @Bind("this") Node node,
-                        @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
+        @Specialization
+        protected final Object doRegExp(JSRegExpObject thisObj, Object input,
                         @Cached JSToStringNode toStringNode,
                         @Cached("create(getContext())") JSRegExpExecIntlNode regExpNode,
                         @Cached(inline = true) TRegexUtil.InteropReadBooleanMemberNode readIsMatch) {
             TruffleString inputStr = toStringNode.executeString(input);
             Object result = regExpNode.execute(thisObj, inputStr);
-            if (getContext().getEcmaScriptVersion() >= 6) {
-                return (result != Null.instance);
-            } else {
-                return readIsMatch.execute(node, result, TRegexUtil.Props.RegexResult.IS_MATCH);
-            }
+            return readIsMatch.execute(this, result, TRegexUtil.Props.RegexResult.IS_MATCH);
         }
 
         @Fallback
-        protected Object testError(Object thisNonObj, @SuppressWarnings("unused") Object input) {
-            throw Errors.createTypeErrorIncompatibleReceiver("RegExp.prototype.test", thisNonObj);
+        protected final Object doNotRegExp(Object thisObj, @SuppressWarnings("unused") Object input) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
+        }
+    }
+
+    /**
+     * This implements the RegExp.prototype.test() method.
+     */
+    public abstract static class JSRegExpTestNode extends JSBuiltinNode {
+
+        protected JSRegExpTestNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+            assert context.getEcmaScriptVersion() >= 6;
         }
 
+        @Specialization
+        protected static Object doRegExpString(JSRegExpObject thisObj, TruffleString inputStr,
+                        @Cached("create(getContext())") @Shared JSRegExpExecIntlNode regExpNode) {
+            Object result = regExpNode.execute(thisObj, inputStr);
+            return result != Null.instance;
+        }
+
+        @Specialization(guards = {"isObjectNode.executeBoolean(thisObj)"}, limit = "1", replaces = "doRegExpString")
+        protected static Object doObject(Object thisObj, Object input,
+                        @Cached @SuppressWarnings("unused") IsJSObjectNode isObjectNode,
+                        @Cached JSToStringNode toStringNode,
+                        @Cached("create(getContext())") @Shared JSRegExpExecIntlNode regExpNode) {
+            TruffleString inputStr = toStringNode.executeString(input);
+            Object result = regExpNode.execute(thisObj, inputStr);
+            return result != Null.instance;
+        }
+
+        @Fallback
+        protected final Object doNotObject(Object thisObj, @SuppressWarnings("unused") Object input) {
+            throw Errors.createTypeErrorIncompatibleReceiver(getBuiltin().getFullName(), thisObj);
+        }
     }
 
     /**
