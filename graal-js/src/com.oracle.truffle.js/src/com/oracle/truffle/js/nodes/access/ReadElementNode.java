@@ -1128,7 +1128,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Specialization(rewriteOn = UnexpectedResultException.class)
         protected int doTypedIntArrayInt(JSDynamicObject target, TypedArray.TypedIntArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue, JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds) throws UnexpectedResultException {
-            if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(this, typedArray.hasElement(target, index))) {
+            if (inBounds.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index, interop);
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1140,7 +1140,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected double doTypedIntArrayDouble(JSDynamicObject target, TypedArray.TypedIntArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue,
                         JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds) throws UnexpectedResultException {
-            if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(this, typedArray.hasElement(target, index))) {
+            if (inBounds.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index, interop);
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1151,7 +1151,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         @Specialization
         protected Object doTypedIntArray(JSDynamicObject target, TypedArray.TypedIntArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue, JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds) {
-            if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(this, typedArray.hasElement(target, index))) {
+            if (inBounds.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index, interop);
             } else {
                 return defaultValue;
@@ -1171,7 +1171,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         @Cached @Shared InlinedConditionProfile inBounds,
                         @Cached @Shared InlinedConditionProfile notNegative)
                         throws UnexpectedResultException {
-            if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(this, typedArray.hasElement(target, index))) {
+            if (inBounds.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, context) && typedArray.hasElement(target, index))) {
                 int intValue = typedArray.getInt(target, (int) index, interop);
                 if (notNegative.profile(this, intValue >= 0)) {
                     return intValue;
@@ -1190,7 +1190,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds)
                         throws UnexpectedResultException {
-            if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(this, typedArray.hasElement(target, index))) {
+            if (inBounds.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getInt(target, (int) index, interop) & 0xffff_ffffL;
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1203,7 +1203,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds,
                         @Cached @Shared InlinedConditionProfile notNegative) {
-            if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(this, typedArray.hasElement(target, index))) {
+            if (inBounds.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, context) && typedArray.hasElement(target, index))) {
                 int intValue = typedArray.getInt(target, (int) index, interop);
                 if (notNegative.profile(this, intValue >= 0)) {
                     return intValue;
@@ -1227,7 +1227,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
                         JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds)
                         throws UnexpectedResultException {
-            if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(this, typedArray.hasElement(target, index))) {
+            if (inBounds.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getDouble(target, (int) index, interop);
             } else {
                 CompilerDirectives.transferToInterpreterAndInvalidate();
@@ -1239,7 +1239,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object doTypedFloatArray(JSDynamicObject target, TypedArray.TypedFloatArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue,
                         JSContext context,
                         @Cached @Shared InlinedConditionProfile inBounds) {
-            if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(this, typedArray.hasElement(target, index))) {
+            if (inBounds.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getDouble(target, (int) index, interop);
             } else {
                 return defaultValue;
@@ -1258,7 +1258,7 @@ public class ReadElementNode extends JSTargetableNode implements ReadNode {
         protected Object doTypedBigIntArray(JSDynamicObject target, TypedArray.TypedBigIntArray typedArray, long index, @SuppressWarnings("unused") Object receiver, Object defaultValue,
                         JSContext context,
                         @Cached InlinedConditionProfile inBounds) {
-            if (!JSArrayBufferView.hasDetachedBuffer(target, context) && inBounds.profile(this, typedArray.hasElement(target, index))) {
+            if (inBounds.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, context) && typedArray.hasElement(target, index))) {
                 return typedArray.getBigInt(target, (int) index, interop);
             } else {
                 return defaultValue;
