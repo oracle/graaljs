@@ -64,7 +64,7 @@ public abstract class HypotNode extends MathOperation {
     protected final double hypot2(Object[] args) {
         double x = toDouble(args[0]);
         double y = toDouble(args[1]);
-        return Math.hypot(x, y);
+        return hypot2(x, y);
     }
 
     @Specialization(guards = {"args.length >= 3"})
@@ -104,5 +104,30 @@ public abstract class HypotNode extends MathOperation {
         }
 
         return Math.sqrt(sum) * max;
+    }
+
+    /**
+     * Note: We don't use {@link Math#hypot} because some of its results deviate from those of V8.
+     */
+    private static double hypot2(double x, double y) {
+        double absx = Math.abs(x);
+        double absy = Math.abs(y);
+        double max = Math.max(absx, absy);
+        if (Double.isInfinite(x) || Double.isInfinite(y)) {
+            return Double.POSITIVE_INFINITY;
+        }
+
+        // Avoid division by zero
+        if (max == 0 || Double.isNaN(max)) {
+            return max;
+        }
+
+        // Unrolled version of generic hypot.
+        // Normalize to avoid overflow/underflow during squaring.
+        double normalizedX = absx / max;
+        double squareX = normalizedX * normalizedX;
+        double normalizedY = absy / max;
+        double squareY = normalizedY * normalizedY;
+        return Math.sqrt(squareX + squareY) * max;
     }
 }
