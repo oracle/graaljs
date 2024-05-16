@@ -3979,6 +3979,7 @@ namespace v8 {
 
     WrapperDescriptor CppHeap::wrapper_descriptor() const {
         TRACE
+        return WrapperDescriptor(0,0,0);
     }
 
     void CppHeap::Terminate() {
