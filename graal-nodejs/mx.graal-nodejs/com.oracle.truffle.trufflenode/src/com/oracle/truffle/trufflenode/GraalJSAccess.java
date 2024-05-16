@@ -3355,9 +3355,16 @@ public final class GraalJSAccess {
         @Override
         public JSDynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
             Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, false);
-            TruffleString resourceName = Strings.fromJavaString(referrer.getSource().getName());
-            GraalJSAccess graalJSAccess = ((RealmData) realm.getEmbedderData()).getGraalJSAccess();
-            Object hostDefinedOptions = graalJSAccess.scriptOrModuleGetHostDefinedOptions(referrer);
+            Object resourceName;
+            Object hostDefinedOptions;
+            if (referrer == null) {
+                resourceName = Undefined.instance;
+                hostDefinedOptions = new Object[0];
+            } else {
+                GraalJSAccess graalJSAccess = ((RealmData) realm.getEmbedderData()).getGraalJSAccess();
+                resourceName = Strings.fromJavaString(referrer.getSource().getName());
+                hostDefinedOptions = graalJSAccess.scriptOrModuleGetHostDefinedOptions(referrer);
+            }
             return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.getSpecifier(), importAssertions);
         }
     }
