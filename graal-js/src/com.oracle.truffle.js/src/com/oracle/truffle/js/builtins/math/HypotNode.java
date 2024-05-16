@@ -49,7 +49,25 @@ public abstract class HypotNode extends MathOperation {
         super(context, builtin);
     }
 
-    @Specialization
+    @Specialization(guards = "args.length == 0")
+    protected static double hypot0(@SuppressWarnings("unused") Object[] args) {
+        return 0;
+    }
+
+    @Specialization(guards = "args.length == 1")
+    protected final double hypot1(Object[] args) {
+        double x = toDouble(args[0]);
+        return Math.abs(x);
+    }
+
+    @Specialization(guards = {"args.length == 2"})
+    protected final double hypot2(Object[] args) {
+        double x = toDouble(args[0]);
+        double y = toDouble(args[1]);
+        return Math.hypot(x, y);
+    }
+
+    @Specialization(guards = {"args.length >= 3"})
     protected final double hypot(Object[] args) {
         int length = args.length;
         double[] values = new double[length];
