@@ -2054,10 +2054,6 @@
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
   }, {
-    "filePath" : "mjsunit/regress/regress-v8-11360.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "mjsunit/regress/regress-v8-12122.js",
     "status" : "FAIL",
     "comment" : "V8 test update 2022-08-10"
