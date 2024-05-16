@@ -201,7 +201,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             Object numericIndex = JSRuntime.canonicalNumericIndexString(name);
             if (numericIndex != Undefined.instance) {
                 if (thisObj == receiver) {
-                    // IntegerIndexedElementSet
+                    // TypedArraySetElement
                     Object numValue = convertValue(thisObj, value);
                     long index = validIntegerIndex(thisObj, (Number) numericIndex);
                     if (index != -1) {
@@ -432,8 +432,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             if (numericIndex != Undefined.instance) {
                 boolean success = defineOwnPropertyIndex(thisObj, (Number) numericIndex, descriptor);
                 if (doThrow && !success) {
-                    // path only hit in V8CompatibilityMode; see JSRuntime.definePropertyOrThrow
-                    throw Errors.createTypeError("Cannot defineOwnProperty on TypedArray");
+                    throw Errors.createTypeErrorCannotRedefineProperty(numericIndex);
                 }
                 return success;
             }
@@ -460,7 +459,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             return false;
         }
         if (desc.hasValue()) {
-            // IntegerIndexedElementSet
+            // TypedArraySetElement
             Object value = desc.getValue();
             Object numValue = convertValue(thisObj, value);
             if (!JSArrayBufferView.hasDetachedBuffer(thisObj)) {
