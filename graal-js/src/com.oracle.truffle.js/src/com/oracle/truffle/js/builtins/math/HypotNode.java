@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -50,26 +50,25 @@ public abstract class HypotNode extends MathOperation {
     }
 
     @Specialization
-    protected double hypot(Object... args) {
+    protected final double hypot(Object[] args) {
         int length = args.length;
         double[] values = new double[length];
         boolean isInfinite = false;
         double max = 0;
         for (int i = 0; i < length; i++) {
             double value = toDouble(args[i]);
-            isInfinite = isInfinite || Double.isInfinite(value);
-            if (value > max) {
-                max = value;
-            }
-            values[i] = value;
+            double absValue = Math.abs(value);
+            isInfinite |= Double.isInfinite(absValue);
+            max = Math.max(max, absValue);
+            values[i] = absValue;
         }
         if (isInfinite) {
             return Double.POSITIVE_INFINITY;
         }
 
         // Avoid division by zero
-        if (max == 0) {
-            max = 1;
+        if (max == 0 || Double.isNaN(max)) {
+            return max;
         }
 
         double sum = 0;
