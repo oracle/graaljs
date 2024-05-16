@@ -113,6 +113,7 @@ public abstract class HypotNode extends MathOperation {
         double absx = Math.abs(x);
         double absy = Math.abs(y);
         double max = Math.max(absx, absy);
+        double min = Math.min(absx, absy);
         if (Double.isInfinite(x) || Double.isInfinite(y)) {
             return Double.POSITIVE_INFINITY;
         }
@@ -122,12 +123,11 @@ public abstract class HypotNode extends MathOperation {
             return max;
         }
 
-        // Unrolled version of generic hypot.
+        // Unrolled and optimized version of generic hypot.
         // Normalize to avoid overflow/underflow during squaring.
-        double normalizedX = absx / max;
-        double squareX = normalizedX * normalizedX;
-        double normalizedY = absy / max;
-        double squareY = normalizedY * normalizedY;
-        return Math.sqrt(squareX + squareY) * max;
+        double normalizedMin = min / max;
+        double normalizedMinSquared = normalizedMin * normalizedMin;
+        double normalizedMaxSquared = 1.0; // (max / max) ** 2
+        return Math.sqrt(normalizedMinSquared + normalizedMaxSquared) * max;
     }
 }
