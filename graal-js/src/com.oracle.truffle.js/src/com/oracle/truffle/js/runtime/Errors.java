@@ -636,6 +636,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorNotARegExp(Object value) {
+        return Errors.createTypeError(JSRuntime.safeToString(value) + " is not a RegExp");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorGlobalObjectNotExtensible(Node originatingNode) {
         return Errors.createTypeError("Global object is not extensible", originatingNode);
     }
