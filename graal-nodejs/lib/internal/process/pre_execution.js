@@ -318,19 +318,20 @@ function setupWarningHandler() {
 // https://fetch.spec.whatwg.org/
 // https://websockets.spec.whatwg.org/
 function setupUndici() {
-  if (getOptionValue('--no-experimental-fetch')) {
+  if (getOptionValue('--no-experimental-fetch') || typeof WebAssembly === 'undefined') {
     delete globalThis.fetch;
     delete globalThis.FormData;
     delete globalThis.Headers;
     delete globalThis.Request;
     delete globalThis.Response;
+  } else {
+    require('internal/graal/wasm');
   }
 
   if (!getEmbedderOptions().noBrowserGlobals && getOptionValue('--experimental-websocket')) {
     exposeLazyInterfaces(globalThis, 'internal/deps/undici/undici', ['WebSocket']);
   }
 
-  require('internal/graal/wasm');
 }
 
 // TODO(aduh95): move this to internal/bootstrap/web/* when the CLI flag is
