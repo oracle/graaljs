@@ -98,6 +98,9 @@ void GraalHandleContent::ClearWeak() {
 }
 
 void GraalHandleContent::MakeWeak() {
+    if (IsWeak()) {
+        return;
+    }
     jobject java_object = java_object_;
     JNIEnv* env = isolate_->GetJNIEnv();
     java_object_ = env->NewWeakGlobalRef(java_object);
