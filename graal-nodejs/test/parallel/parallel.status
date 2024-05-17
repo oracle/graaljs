@@ -24,8 +24,6 @@ test-repl-pretty-custom-stack: FAIL
 test-repl-pretty-stack: FAIL
 # Cannot convert undefined or null to object versus String.prototype.match called on null or undefined
 test-errors-systemerror: FAIL
-# Cannot read properties of null (reading 'byteLength') versus Cannot read property 'byteLength' of null
-test-fs-read: FAIL
 # Invalid array buffer length versus Array buffer allocation failed
 test-fs-write-buffer-large: FAIL
 # Invalid regular expression flags versus Invalid flags supplied to RegExp constructor ...
@@ -56,6 +54,12 @@ test-worker-memory: SKIP
 # Sometimes crashes on svm due to an intentional stack overflow
 test-error-serdes: PASS, CRASH
 
+# Uses --harmony-struct (Structs proposal)
+test-experimental-shared-value-conveyor: FAIL
+
+# Callback of FinalizationRegistry called too late (after exit event)
+test-finalization-registry-shutdown: FAIL
+
 # Uses v8 extension (--expose_externalize_string flag that exposes two additional functions)
 test-fs-write: FAIL
 
@@ -82,6 +86,19 @@ test-source-map-api: FAIL
 test-node-output-sourcemaps: FAIL
 test-vm-source-map-url: FAIL
 
+# checks v8-specific asm-related warning
+test-node-output-v8-warning: FAIL
+
+# ShadowRealm
+test-shadow-realm-allowed-builtin-modules: FAIL
+test-shadow-realm-gc: FAIL
+test-shadow-realm-gc-module: FAIL
+test-shadow-realm-import-value-resolve: FAIL
+test-shadow-realm-globals: FAIL
+test-shadow-realm-module: FAIL
+test-shadow-realm-prepare-stack-trace: FAIL
+test-shadow-realm-custom-loaders: FAIL
+
 # Worker resource limits are not supported
 test-worker-resource-limits: FAIL
 test-worker-nearheaplimit-deadlock: SKIP
@@ -90,7 +107,7 @@ test-worker-nearheaplimit-deadlock: SKIP
 test-worker-sharedarraybuffer-from-worker-thread: SKIP
 
 # Profiling is not supported
-test-cli-node-options: FAIL
+test-cli-node-options: SKIP
 test-tick-processor-arguments: FAIL
 
 # v8::Object::GetConstructorName() returns `Klass` for
@@ -112,12 +129,17 @@ test-vm-basic: FAIL
 # Missing support for lineOffset and columnOffset in ScriptOrigin
 test-vm-context: FAIL
 
+# JS Proxy as vm context not handled well
+test-vm-proxy-failure-CP: FAIL
+test-vm-set-property-proxy: SKIP
+
 # WebAssembly is not enabled by default
+test-blob: FAIL
 test-fetch: FAIL
 test-fetch-disabled: FAIL
 test-http-response-setheaders: FAIL
-test-single-executable-application: SKIP
 test-vm-codegen: FAIL
+test-websocket: FAIL
 test-whatwg-webstreams-transfer: FAIL
 test-worker-message-port-wasm-module: FAIL
 test-worker-message-port-wasm-threads: FAIL
@@ -131,7 +153,10 @@ test-vm-timeout-escape-promise-2: FAIL
 test-snapshot-api: FAIL
 test-snapshot-argv1: FAIL
 test-snapshot-basic: FAIL
+test-snapshot-child-process-sync: FAIL
 test-snapshot-cjs-main: FAIL
+test-snapshot-config: FAIL
+test-snapshot-cwd: FAIL
 test-snapshot-dns-lookup-localhost: FAIL
 test-snapshot-dns-lookup-localhost-promise: FAIL
 test-snapshot-dns-resolve-localhost: FAIL
@@ -141,10 +166,12 @@ test-snapshot-eval: FAIL
 test-snapshot-gzip: FAIL
 test-snapshot-incompatible: FAIL
 test-snapshot-namespaced-builtin: FAIL
+test-snapshot-net: FAIL
 test-snapshot-typescript: FAIL
 test-snapshot-umd: FAIL
 test-snapshot-warning: FAIL
 test-snapshot-weak-reference: FAIL
+test-snapshot-worker: FAIL
 
 # Contains an unused invalid regular expression
 # (which works on V8 where the regexp syntax check is lazy).
@@ -170,6 +197,7 @@ test-trace-events-fs-sync: SKIP
 test-trace-events-http: SKIP
 test-trace-events-metadata: SKIP
 test-trace-events-net: SKIP
+test-trace-events-net-abstract-socket: SKIP
 test-trace-events-none: SKIP
 test-trace-events-process-exit: SKIP
 test-trace-events-promises: SKIP
@@ -223,8 +251,9 @@ test-http-server-request-timeouts-mixed: PASS,FLAKY
 test-http2-server-rst-stream: SKIP
 test-signal-args: PASS,FAIL
 # GC-based random failures
-test-domain-async-id-map-leak: SKIP
 test-async-hooks-destroy-on-gc: SKIP
+test-domain-async-id-map-leak: SKIP
+test-https-server-connections-checking-leak: SKIP
 
 # Random OutOfMemoryError: Garbage-collected heap size exceeded.
 test-worker-init-failure: SKIP
