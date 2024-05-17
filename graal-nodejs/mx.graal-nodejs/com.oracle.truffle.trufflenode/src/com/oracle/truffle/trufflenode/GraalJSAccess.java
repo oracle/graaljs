@@ -2797,7 +2797,6 @@ public final class GraalJSAccess {
         }
 
         updateWeakCallback(object, reference, data, callbackPointer, type);
-        pollWeakCallbackQueue(false);
     }
 
     public long clearWeak(Object object, long reference) {
