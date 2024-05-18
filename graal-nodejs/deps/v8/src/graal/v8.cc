@@ -3498,6 +3498,10 @@ namespace v8 {
         exit(1);
     }
 
+    SnapshotCreator::SnapshotCreator(const intptr_t* external_references, const StartupData* existing_blob) : SnapshotCreator(nullptr, external_references, existing_blob) {
+        TRACE
+    }
+
     void SnapshotCreator::SetDefaultContext(Local<Context> context, SerializeInternalFieldsCallback callback) {
         TRACE
     }
@@ -4062,6 +4066,34 @@ namespace cppgc {
     void ShutdownProcess() {
         TRACE
     }
+
+    TracingController* Platform::GetTracingController() {
+        TRACE
+        return nullptr;
+    }
+
+    namespace internal {
+
+        void WriteBarrier::DijkstraMarkingBarrierSlowWithSentinelCheck(const void* value) {
+            TRACE
+        }
+
+        void WriteBarrier::DijkstraMarkingBarrierRangeSlow(
+                HeapHandle& heap_handle,
+                const void* first_element,
+                size_t element_size,
+                size_t number_of_elements,
+                TraceCallback trace_callback) {
+            TRACE
+        }
+
+        void WriteBarrier::SteeleMarkingBarrierSlowWithSentinelCheck(const void* value) {
+            TRACE
+        }
+
+        AtomicEntryFlag WriteBarrier::write_barrier_enabled_;
+    }
+
 }
 
 void V8_Fatal(const char* format, ...) {
