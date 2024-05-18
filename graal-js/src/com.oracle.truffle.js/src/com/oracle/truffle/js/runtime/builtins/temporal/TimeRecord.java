@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,20 +44,21 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
  * A Time Record is used to represent a valid clock time, together with a number of overflow days
  * such as might occur in BalanceTime. For any Time Record t, IsValidTime(t.[[Hour]], t.[[Minute]],
  * t.[[Second]], t.[[Millisecond]], t.[[Microsecond]], t.[[Nanosecond]]) must return true.
+ * 
+ * @param days A number of overflow days. An integer >= 0.
+ * @param hour The number of the hour. An integer in the inclusive range 0 to 23.
+ * @param minute The number of the minute. An integer in the inclusive range 0 to 59.
+ * @param second The number of the second. An integer in the inclusive range 0 to 59.
+ * @param millisecond The number of the millisecond. An integer in the inclusive range 0 to 999.
+ * @param microsecond The number of the microsecond. An integer in the inclusive range 0 to 999.
+ * @param nanosecond The number of the nanosecond. An integer in the inclusive range 0 to 999.
  */
 public record TimeRecord(
-                /** A number of overflow days. An integer >= 0. */
                 double days,
-                /** The number of the hour. An integer in the inclusive range 0 to 23. */
                 int hour,
-                /** The number of the minute. An integer in the inclusive range 0 to 59. */
                 int minute,
-                /** The number of the second. An integer in the inclusive range 0 to 59. */
                 int second,
-                /** The number of the millisecond. An integer in the inclusive range 0 to 999. */
                 int millisecond,
-                /** The number of the microsecond. An integer in the inclusive range 0 to 999. */
                 int microsecond,
-                /** The number of the nanosecond. An integer in the inclusive range 0 to 999. */
                 int nanosecond) {
 }

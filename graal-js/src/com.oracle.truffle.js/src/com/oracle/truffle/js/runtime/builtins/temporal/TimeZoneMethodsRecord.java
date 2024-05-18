@@ -45,24 +45,19 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
  *
  * Field values may be null in case they have not been read, and therefore must not be used.
  * Conversely, fields that have been read must not be null. The receiver must never be null.
+ * 
+ * @param receiver The time zone object, or a string indicating a built-in time zone. A String or
+ *            Object.
+ * @param getOffsetNanosecondsFor The time zone's getOffsetNanosecondsFor method. For a built-in
+ *            time zone this is always %Temporal.TimeZone.prototype.getOffsetNanosecondsFor%. A
+ *            function object or null.
+ * @param getPossibleInstantsFor The time zone's getPossibleInstantsFor method. For a built-in time
+ *            zone this is always %Temporal.TimeZone.prototype.getPossibleInstantsFor%. A function
+ *            object or null.
  */
 public record TimeZoneMethodsRecord(
-                /**
-                 * A String or Object. The time zone object, or a string indicating a built-in time
-                 * zone.
-                 */
                 Object receiver,
-                /**
-                 * A function object or undefined. The time zone's getOffsetNanosecondsFor method.
-                 * For a built-in time zone this is always
-                 * %Temporal.TimeZone.prototype.getOffsetNanosecondsFor%.
-                 */
                 Object getOffsetNanosecondsFor,
-                /**
-                 * A function object or undefined. The time zone's getPossibleInstantsFor method.
-                 * For a built-in time zone this is always
-                 * %Temporal.TimeZone.prototype.getPossibleInstantsFor%.
-                 */
                 Object getPossibleInstantsFor) {
 
     public TimeZoneMethodsRecord(Object receiver, Object getOffsetNanosecondsFor) {

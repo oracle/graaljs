@@ -33,6 +33,7 @@ import java.math.BigInteger;
 /**
  * This file is from Mozilla Rhino, published under MPL 2.0.
  */
+@SuppressWarnings("dangling-doc-comments")
 public class DToA {
 
     private DToA() {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -44,12 +44,13 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
  * An ISO Date Record is used to represent a valid calendar date in the ISO 8601 calendar, although
  * the year may be outside of the allowed range for Temporal. ISO Date Records are produced by the
  * abstract operation CreateISODateRecord.
+ * 
+ * @param year The year in the ISO 8601 calendar. An integer.
+ * @param month The number of the month. An integer between 1 and 12, inclusive.
+ * @param day The number of the day of the month. An integer between 1 and 31, inclusive.
  */
 public record ISODateRecord(
-                /** The year in the ISO 8601 calendar. An integer. */
                 int year,
-                /** The number of the month. An integer between 1 and 12, inclusive. */
                 int month,
-                /** The number of the day of the month. An integer between 1 and 31, inclusive. */
                 int day) {
 }
