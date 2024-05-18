@@ -45,54 +45,36 @@ package com.oracle.truffle.js.runtime.builtins.temporal;
  *
  * Field values may be null in case they have not been read, and therefore must not be used.
  * Conversely, fields that have been read must not be null. The receiver must never be null.
+ * 
+ * @param receiver The calendar object, or a string indicating a built-in time zone. A String or
+ *            Object.
+ * @param dateAdd The calendar's dateAdd method. For a built-in calendar this is always
+ *            %Temporal.Calendar.prototype.dateAdd%. A function object or null.
+ * @param dateFromFields The calendar's dateFromFields method. For a built-in calendar this is
+ *            always %Temporal.Calendar.prototype.dateFromFields%. A function object or null.
+ * @param dateUntil The calendar's dateUntil method. For a built-in calendar this is always
+ *            %Temporal.Calendar.prototype.dateUntil%. A function object or null.
+ * @param day The calendar's day method. For a built-in calendar this is always
+ *            %Temporal.Calendar.prototype.day%. A function object or null.
+ * @param fields The calendar's fields method. For a built-in calendar this is always
+ *            %Temporal.Calendar.prototype.fields%. A function object or null.
+ * @param mergeFields The calendar's mergeFields method. For a built-in calendar this is always
+ *            %Temporal.Calendar.prototype.mergeFields%. A function object or null.
+ * @param monthDayFromFields The calendar's monthDayFromFields method. For a built-in calendar this
+ *            is always %Temporal.Calendar.prototype.monthDayFromFields%. A function object or null.
+ * @param yearMonthFromFields The calendar's yearMonthFromFields method. For a built-in calendar
+ *            this is always %Temporal.Calendar.prototype.yearMonthFromFields%. A function object or
+ *            null.
  */
 public record CalendarMethodsRecord(
-                /**
-                 * A String or Object. The calendar object, or a string indicating a built-in time
-                 * zone.
-                 */
                 Object receiver,
-                /**
-                 * A function object or undefined. The calendar's dateAdd method. For a built-in
-                 * calendar this is always %Temporal.Calendar.prototype.dateAdd%.
-                 */
                 Object dateAdd,
-                /**
-                 * A function object or undefined. The calendar's dateFromFields method. For a
-                 * built-in calendar this is always %Temporal.Calendar.prototype.dateFromFields%.
-                 */
                 Object dateFromFields,
-                /**
-                 * A function object or undefined. The calendar's dateUntil method. For a built-in
-                 * calendar this is always %Temporal.Calendar.prototype.dateUntil%.
-                 */
                 Object dateUntil,
-                /**
-                 * A function object or undefined. The calendar's day method. For a built-in
-                 * calendar this is always %Temporal.Calendar.prototype.day%.
-                 */
                 Object day,
-                /**
-                 * A function object or undefined. The calendar's fields method. For a built-in
-                 * calendar this is always %Temporal.Calendar.prototype.fields%.
-                 */
                 Object fields,
-                /**
-                 * A function object or undefined. The calendar's mergeFields method. For a built-in
-                 * calendar this is always %Temporal.Calendar.prototype.mergeFields%.
-                 */
                 Object mergeFields,
-                /**
-                 * A function object or undefined. The calendar's monthDayFromFields method. For a
-                 * built-in calendar this is always
-                 * %Temporal.Calendar.prototype.monthDayFromFields%.
-                 */
                 Object monthDayFromFields,
-                /**
-                 * A function object or undefined. The calendar's yearMonthFromFields method. For a
-                 * built-in calendar this is always
-                 * %Temporal.Calendar.prototype.yearMonthFromFields%.
-                 */
                 Object yearMonthFromFields) {
 
     public static CalendarMethodsRecord forDateAdd(Object receiver, Object dateAdd) {

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -55,11 +55,11 @@ import com.oracle.truffle.js.test.JSTest;
  */
 public class MapTest {
 
-    @Test
     /**
      * Regression test for github.com/graalvm/graaljs/issues/214 is actually working when a Context
      * is used.
      */
+    @Test
     public void testJavaScriptArrayViaContext() {
         try (Context context = JSTest.newContextBuilder("js").build()) {
             Value result = context.eval("js", "['a', 'b', 'c']");
@@ -72,13 +72,13 @@ public class MapTest {
         }
     }
 
-    @Test
     /**
      * Regression test for github.com/graalvm/graaljs/issues/211.
      *
      * JavaScript's Map type is no supported type in interop, so it does not automatically translate
      * to a Java Map.
      */
+    @Test
     public void testJavaScriptMapNoInterop() {
         String sourceJSMap = "var map = new Map(); map.set('mapkey', 'mapvalue'); map;";
         String sourceObject = "var obj = {}; obj.objkey = 'objvalue'; obj;";
