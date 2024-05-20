@@ -107,7 +107,6 @@ const {
   getOptions,
   getValidatedFd,
   getValidatedPath,
-  getValidMode,
   handleErrorFromBinding,
   preprocessSymlinkDestination,
   Stats,
@@ -179,12 +178,6 @@ function showTruncateDeprecation() {
   }
 }
 
-function maybeCallback(cb) {
-  validateFunction(cb, 'cb');
-
-  return cb;
-}
-
 // Ensure that callbacks run in the global context. Only use this function
 // for callbacks that are passed to the binding layer, callbacks that are
 // invoked from JS already run in the proper scope.
@@ -232,7 +225,6 @@ function access(path, mode, callback) {
   }
 
   path = getValidatedPath(path);
-  mode = getValidMode(mode, 'access');
   callback = makeCallback(callback);
 
   const req = new FSReqCallback();
@@ -249,8 +241,6 @@ function access(path, mode, callback) {
  */
 function accessSync(path, mode) {
   path = getValidatedPath(path);
-  mode = getValidMode(mode, 'access');
-
   binding.access(pathModule.toNamespacedPath(path), mode);
 }
 
@@ -261,7 +251,7 @@ function accessSync(path, mode) {
  * @returns {void}
  */
 function exists(path, callback) {
-  maybeCallback(callback);
+  validateFunction(callback, 'cb');
 
   function suppressedCallback(err) {
     callback(err ? false : true);
@@ -371,7 +361,8 @@ function checkAborted(signal, callback) {
  * @returns {void}
  */
 function readFile(path, options, callback) {
-  callback = maybeCallback(callback || options);
+  callback ||= options;
+  validateFunction(callback, 'cb');
   options = getOptions(options, { flag: 'r' });
   const ReadFileContext = require('internal/fs/read/context');
   const context = new ReadFileContext(callback, options.encoding);
@@ -522,7 +513,7 @@ function close(fd, callback = defaultCloseCallback) {
 
   const req = new FSReqCallback();
   req.oncomplete = callback;
-  binding.close(getValidatedFd(fd), req);
+  binding.close(fd, req);
 }
 
 /**
@@ -531,7 +522,7 @@ function close(fd, callback = defaultCloseCallback) {
  * @returns {void}
  */
 function closeSync(fd) {
-  binding.close(getValidatedFd(fd));
+  binding.close(fd);
 }
 
 /**
@@ -608,7 +599,11 @@ function openAsBlob(path, options = kEmptyObject) {
  * Reads file from the specified `fd` (file descriptor).
  * @param {number} fd
  * @param {Buffer | TypedArray | DataView} buffer
- * @param {number} offsetOrOptions
+ * @param {number | {
+ *   offset?: number;
+ *   length?: number;
+ *   position?: number | bigint | null;
+ *   }} [offsetOrOptions]
  * @param {number} length
  * @param {number | bigint | null} position
  * @param {(
@@ -654,7 +649,7 @@ function read(fd, buffer, offsetOrOptions, length, position, callback) {
   }
 
   validateBuffer(buffer);
-  callback = maybeCallback(callback);
+  validateFunction(callback, 'cb');
 
   if (offset == null) {
     offset = 0;
@@ -701,7 +696,7 @@ ObjectDefineProperty(read, kCustomPromisifyArgsSymbol,
  * specified `fd` (file descriptor).
  * @param {number} fd
  * @param {Buffer | TypedArray | DataView} buffer
- * @param {{
+ * @param {number | {
  *   offset?: number;
  *   length?: number;
  *   position?: number | bigint | null;
@@ -775,7 +770,8 @@ function readv(fd, buffers, position, callback) {
 
   fd = getValidatedFd(fd);
   validateBufferArray(buffers);
-  callback = maybeCallback(callback || position);
+  callback ||= position;
+  validateFunction(callback, 'cb');
 
   const req = new FSReqCallback();
   req.oncomplete = wrapper;
@@ -832,7 +828,8 @@ function write(fd, buffer, offsetOrOptions, length, position, callback) {
 
   let offset = offsetOrOptions;
   if (isArrayBufferView(buffer)) {
-    callback = maybeCallback(callback || position || length || offset);
+    callback ||= position || length || offset;
+    validateFunction(callback, 'cb');
 
     if (typeof offset === 'object') {
       ({
@@ -873,7 +870,8 @@ function write(fd, buffer, offsetOrOptions, length, position, callback) {
 
   const str = buffer;
   validateEncoding(str, length);
-  callback = maybeCallback(position);
+  callback = position;
+  validateFunction(callback, 'cb');
 
   const req = new FSReqCallback();
   req.oncomplete = wrapper;
@@ -954,7 +952,8 @@ function writev(fd, buffers, position, callback) {
 
   fd = getValidatedFd(fd);
   validateBufferArray(buffers);
-  callback = maybeCallback(callback || position);
+  callback ||= position;
+  validateFunction(callback, 'cb');
 
   if (buffers.length === 0) {
     process.nextTick(callback, null, 0, buffers);
@@ -1055,7 +1054,7 @@ function truncate(path, len, callback) {
 
   validateInteger(len, 'len');
   len = MathMax(0, len);
-  callback = maybeCallback(callback);
+  validateFunction(callback, 'cb');
   fs.open(path, 'r+', (er, fd) => {
     if (er) return callback(er);
     const req = new FSReqCallback();
@@ -1589,7 +1588,7 @@ function statfs(path, options = { bigint: false }, callback) {
     callback = options;
     options = kEmptyObject;
   }
-  callback = maybeCallback(callback);
+  validateFunction(callback, 'cb');
   path = getValidatedPath(path);
   const req = new FSReqCallback(options.bigint);
   req.oncomplete = (err, stats) => {
@@ -1796,7 +1795,11 @@ function symlinkSync(target, path, type) {
   if (permission.isEnabled()) {
     // The permission model's security guarantees fall apart in the presence of
     // relative symbolic links. Thus, we have to prevent their creation.
-    if (typeof target !== 'string' || !isAbsolute(toPathIfFileURL(target))) {
+    if (BufferIsBuffer(target)) {
+      if (!isAbsolute(BufferToString(target))) {
+        throw new ERR_ACCESS_DENIED('relative symbolic link target');
+      }
+    } else if (typeof target !== 'string' || !isAbsolute(toPathIfFileURL(target))) {
       throw new ERR_ACCESS_DENIED('relative symbolic link target');
     }
   }
@@ -1911,7 +1914,7 @@ function fchmodSync(fd, mode) {
  * @returns {void}
  */
 function lchmod(path, mode, callback) {
-  callback = maybeCallback(callback);
+  validateFunction(callback, 'cb');
   mode = parseFileMode(mode, 'mode');
   fs.open(path, O_WRONLY | O_SYMLINK, (err, fd) => {
     if (err) {
@@ -2032,7 +2035,7 @@ function fchown(fd, uid, gid, callback) {
 
   const req = new FSReqCallback();
   req.oncomplete = callback;
-  binding.fchown(getValidatedFd(fd), uid, gid, req);
+  binding.fchown(fd, uid, gid, req);
 }
 
 /**
@@ -2046,7 +2049,7 @@ function fchownSync(fd, uid, gid) {
   validateInteger(uid, 'uid', -1, kMaxUserId);
   validateInteger(gid, 'gid', -1, kMaxUserId);
 
-  binding.fchown(getValidatedFd(fd), uid, gid);
+  binding.fchown(fd, uid, gid);
 }
 
 /**
@@ -2269,7 +2272,8 @@ function writeAll(fd, isUserFd, buffer, offset, length, signal, flush, callback)
  * @returns {void}
  */
 function writeFile(path, data, options, callback) {
-  callback = maybeCallback(callback || options);
+  callback ||= options;
+  validateFunction(callback, 'cb');
   options = getOptions(options, {
     encoding: 'utf8',
     mode: 0o666,
@@ -2385,7 +2389,8 @@ function writeFileSync(path, data, options) {
  * @returns {void}
  */
 function appendFile(path, data, options, callback) {
-  callback = maybeCallback(callback || options);
+  callback ||= options;
+  validateFunction(callback, 'cb');
   options = getOptions(options, { encoding: 'utf8', mode: 0o666, flag: 'a' });
 
   // Don't make changes directly on options object
@@ -2780,7 +2785,11 @@ realpathSync.native = (path, options) => {
  * @returns {void}
  */
 function realpath(p, options, callback) {
-  callback = typeof options === 'function' ? options : maybeCallback(callback);
+  if (typeof options === 'function') {
+    callback = options;
+  } else {
+    validateFunction(callback, 'cb');
+  }
   options = getOptions(options);
   p = toPathIfFileURL(p);
 
@@ -2982,7 +2991,6 @@ function copyFile(src, dest, mode, callback) {
 
   src = pathModule.toNamespacedPath(src);
   dest = pathModule.toNamespacedPath(dest);
-  mode = getValidMode(mode, 'copyFile');
   callback = makeCallback(callback);
 
   const req = new FSReqCallback();
@@ -3005,7 +3013,7 @@ function copyFileSync(src, dest, mode) {
   binding.copyFile(
     pathModule.toNamespacedPath(src),
     pathModule.toNamespacedPath(dest),
-    getValidMode(mode, 'copyFile'),
+    mode,
   );
 }
 

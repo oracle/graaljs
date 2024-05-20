@@ -1,5 +1,56 @@
 # Changelog
 
+## [0.28.0](https://github.com/nodejs/corepack/compare/v0.27.0...v0.28.0) (2024-04-20)
+
+
+### ⚠ BREAKING CHANGES
+
+* call `executePackageManagerRequest` directly ([#430](https://github.com/nodejs/corepack/issues/430))
+
+### Bug Fixes
+
+* call `executePackageManagerRequest` directly ([#430](https://github.com/nodejs/corepack/issues/430)) ([0f9b748](https://github.com/nodejs/corepack/commit/0f9b74864048d5dc150a63cc582966af0c5f363f))
+
+## [0.27.0](https://github.com/nodejs/corepack/compare/v0.26.0...v0.27.0) (2024-04-19)
+
+
+### ⚠ BREAKING CHANGES
+
+* attempting to download a version from the npm registry (or a mirror) that was published using the now deprecated PGP signature without providing a hash will trigger an error. Users can disable the signature verification using a environment variable.
+
+### Features
+
+* separate read and write operations on lastKnownGood.json ([#446](https://github.com/nodejs/corepack/issues/446)) ([c449adc](https://github.com/nodejs/corepack/commit/c449adc81822a604ee8f00ae2b53fc411535f96d))
+* update package manager versions ([#425](https://github.com/nodejs/corepack/issues/425)) ([1423190](https://github.com/nodejs/corepack/commit/142319056424b1e0da2bdbe801c52c5910023707))
+* update package manager versions ([#462](https://github.com/nodejs/corepack/issues/462)) ([56816c2](https://github.com/nodejs/corepack/commit/56816c2b7ebc9926f07048b0ec4ff6025bb4e293))
+* verify integrity signature when downloading from npm registry ([#432](https://github.com/nodejs/corepack/issues/432)) ([e561dd0](https://github.com/nodejs/corepack/commit/e561dd00bbacc5bc15a492fc36574fa0e37bff7b))
+
+
+### Bug Fixes
+
+* add path to `package.json` in error message ([#456](https://github.com/nodejs/corepack/issues/456)) ([32a93ea](https://github.com/nodejs/corepack/commit/32a93ea4f51eb7db7dc95a16c5719695edf4b53e))
+* correctly set `Dispatcher` prototype for `ProxyAgent` ([#451](https://github.com/nodejs/corepack/issues/451)) ([73d9a1e](https://github.com/nodejs/corepack/commit/73d9a1e2d2f84906bf01952f1dca8adab576b7bf))
+* download fewer metadata from npm registry ([#436](https://github.com/nodejs/corepack/issues/436)) ([082fabf](https://github.com/nodejs/corepack/commit/082fabf8b15658e69e4fb62bb854fe9aace78b70))
+* hash check when downloading Yarn Berry from npm ([#439](https://github.com/nodejs/corepack/issues/439)) ([4672162](https://github.com/nodejs/corepack/commit/467216281e1719a739d0eeea370b335adfb37b8d))
+* Incorrect authorization prefix for basic auth, and undocumented env var ([#454](https://github.com/nodejs/corepack/issues/454)) ([2d63536](https://github.com/nodejs/corepack/commit/2d63536413971d43f570deb035845aa0bd5202f0))
+* re-add support for custom registries with auth ([#397](https://github.com/nodejs/corepack/issues/397)) ([d267753](https://github.com/nodejs/corepack/commit/d2677538cdb613fcab6d2a45bb07f349bdc65c2b))
+
+## [0.26.0](https://github.com/nodejs/corepack/compare/v0.25.2...v0.26.0) (2024-03-08)
+
+
+### Features
+
+* Pins the package manager as it's used for the first time ([#413](https://github.com/nodejs/corepack/issues/413)) ([8b6c6d4](https://github.com/nodejs/corepack/commit/8b6c6d4b2b7a9d61ae6c33c07e12354bd5afc2ba))
+* update package manager versions ([#415](https://github.com/nodejs/corepack/issues/415)) ([e8edba7](https://github.com/nodejs/corepack/commit/e8edba771bca6fb10c855c04eee8102ffa792d58))
+
+
+### Bug Fixes
+
+* group the download prompt together ([#391](https://github.com/nodejs/corepack/issues/391)) ([00506b2](https://github.com/nodejs/corepack/commit/00506b2a15dd87ec03240578077a35b7980e00c1))
+* ignore `EROFS` errors ([#421](https://github.com/nodejs/corepack/issues/421)) ([b7ec137](https://github.com/nodejs/corepack/commit/b7ec137210efd35c3461321b6434e3e13a87d42f))
+* improve support for `COREPACK_NPM_REGISTRY` with Yarn Berry ([#396](https://github.com/nodejs/corepack/issues/396)) ([47be27c](https://github.com/nodejs/corepack/commit/47be27c9db988e10f651d23b3f53bcf55318a894))
+* Windows malicious file analysis waiting problem ([#398](https://github.com/nodejs/corepack/issues/398)) ([295a1cd](https://github.com/nodejs/corepack/commit/295a1cdb9cbbbce8434e8d82b96eb63e57c46c1a))
+
 ## [0.25.2](https://github.com/nodejs/corepack/compare/v0.25.1...v0.25.2) (2024-02-21)
 
 

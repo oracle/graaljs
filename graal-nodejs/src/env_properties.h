@@ -54,6 +54,8 @@
 // Strings are per-isolate primitives but Environment proxies them
 // for the sake of convenience.  Strings should be ASCII-only.
 #define PER_ISOLATE_STRING_PROPERTIES(V)                                       \
+  V(__filename_string, "__filename")                                           \
+  V(__dirname_string, "__dirname")                                             \
   V(ack_string, "ack")                                                         \
   V(address_string, "address")                                                 \
   V(aliases_string, "aliases")                                                 \
@@ -425,6 +427,7 @@
   V(performance_entry_callback, v8::Function)                                  \
   V(prepare_stack_trace_callback, v8::Function)                                \
   V(process_object, v8::Object)                                                \
+  V(process_emit_warning_sync, v8::Function)                                   \
   V(primordials, v8::Object)                                                   \
   V(primordials_safe_map_prototype_object, v8::Object)                         \
   V(primordials_safe_set_prototype_object, v8::Object)                         \

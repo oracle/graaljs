@@ -133,6 +133,7 @@ class EnvironmentOptions : public Options {
   int64_t heap_snapshot_near_heap_limit = 0;
   std::string heap_snapshot_signal;
   bool network_family_autoselection = true;
+  uint64_t network_family_autoselection_attempt_timeout = 250;
   uint64_t max_http_header_size = 16 * 1024;
   bool deprecation = true;
   bool force_async_hooks_checks = true;
@@ -216,6 +217,8 @@ class EnvironmentOptions : public Options {
   std::vector<std::string> preload_esm_modules;
 
   std::vector<std::string> user_argv;
+
+  bool report_exclude_network = false;
 
   inline DebugOptions* get_debug_options() { return &debug_options_; }
   inline const DebugOptions& debug_options() const { return debug_options_; }

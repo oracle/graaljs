@@ -80,6 +80,7 @@
       'src/handle_wrap.cc',
       'src/heap_utils.cc',
       'src/histogram.cc',
+      'src/internal_only_v8.cc',
       'src/js_native_api.h',
       'src/js_native_api_types.h',
       'src/js_native_api_v8.cc',
@@ -193,7 +194,7 @@
       'src/dataqueue/queue.h',
       'src/debug_utils.h',
       'src/debug_utils-inl.h',
-      'src/embeded_data.h',
+      'src/embedded_data.h',
       'src/encoding_binding.h',
       'src/env_properties.h',
       'src/env.h',
@@ -384,6 +385,7 @@
       'test/cctest/test_environment.cc',
       'test/cctest/test_linked_binding.cc',
       'test/cctest/test_node_api.cc',
+      'test/cctest/test_path.cc',
       'test/cctest/test_per_process.cc',
       'test/cctest/test_platform.cc',
       'test/cctest/test_report.cc',
@@ -464,6 +466,21 @@
     },
 
     'conditions': [
+      # Pointer authentication for ARM64.
+      ['target_arch=="arm64"', {
+          'target_conditions': [
+              ['_toolset=="host"', {
+                  'conditions': [
+                      ['host_arch=="arm64"', {
+                          'cflags': ['-mbranch-protection=standard'],
+                      }],
+                  ],
+              }],
+              ['_toolset=="target"', {
+                  'cflags': ['-mbranch-protection=standard'],
+              }],
+          ],
+      }],
       ['OS in "aix os400"', {
         'ldflags': [
           '-Wl,-bnoerrmsg',

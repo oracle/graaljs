@@ -179,8 +179,8 @@ port.on('message', (message) => {
       }
 
       case 'module': {
-        const { evalModule } = require('internal/process/execution');
-        PromisePrototypeThen(evalModule(filename), undefined, (e) => {
+        const { evalModuleEntryPoint } = require('internal/process/execution');
+        PromisePrototypeThen(evalModuleEntryPoint(filename), undefined, (e) => {
           workerOnGlobalUncaughtException(e, true);
         });
         break;

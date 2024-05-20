@@ -41,6 +41,7 @@ const {
 } = primordials;
 
 const EventEmitter = require('events');
+const { addAbortListener } = require('internal/events/abort_listener');
 const stream = require('stream');
 let debug = require('internal/util/debuglog').debuglog('net', (fn) => {
   debug = fn;
@@ -133,7 +134,7 @@ let dns;
 let BlockList;
 let SocketAddress;
 let autoSelectFamilyDefault = getOptionValue('--network-family-autoselection');
-let autoSelectFamilyAttemptTimeoutDefault = 250;
+let autoSelectFamilyAttemptTimeoutDefault = getOptionValue('--network-family-autoselection-attempt-timeout');
 
 const { clearTimeout, setTimeout } = require('timers');
 const { kTimeout } = require('internal/timers');
@@ -1631,7 +1632,7 @@ function addClientAbortSignalOption(self, options) {
     process.nextTick(onAbort);
   } else {
     process.nextTick(() => {
-      disposable = EventEmitter.addAbortListener(signal, onAbort);
+      disposable = addAbortListener(signal, onAbort);
     });
   }
 }
@@ -1723,7 +1724,7 @@ function addServerAbortSignalOption(self, options) {
   if (signal.aborted) {
     process.nextTick(onAborted);
   } else {
-    const disposable = EventEmitter.addAbortListener(signal, onAborted);
+    const disposable = addAbortListener(signal, onAborted);
     self.once('close', disposable[SymbolDispose]);
   }
 }
@@ -1969,7 +1970,11 @@ function listenInCluster(server, address, port, addressType,
       const ex = new ExceptionWithHostPort(err, 'bind', address, port);
       return server.emit('error', ex);
     }
-
+    // If there was a handle, just close it to avoid fd leak
+    // but it doesn't look like that's going to happen right now
+    if (server._handle) {
+      server._handle.close();
+    }
     // Reuse primary's server handle
     server._handle = handle;
     // _listen2 sets up the listened handle, it is still named like this
@@ -1998,11 +2003,13 @@ Server.prototype.listen = function(...args) {
 
   options = options._handle || options.handle || options;
   const flags = getFlags(options.ipv6Only);
+  //  Refresh the id to make the previous call invalid
+  this._listeningId++;
   // (handle[, backlog][, cb]) where handle is an object with a handle
   if (options instanceof TCP) {
     this._handle = options;
     this[async_id_symbol] = this._handle.getAsyncId();
-    listenInCluster(this, null, -1, -1, backlogFromArgs);
+    listenInCluster(this, null, -1, -1, backlogFromArgs, undefined, true);
     return this;
   }
   addServerAbortSignalOption(this, options);

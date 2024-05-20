@@ -6,7 +6,7 @@ const runScript = require('@npmcli/run-script')
 const pacote = require('pacote')
 const npa = require('npm-package-arg')
 const npmFetch = require('npm-registry-fetch')
-const replaceInfo = require('../utils/replace-info.js')
+const { redactLog: replaceInfo } = require('@npmcli/redact')
 
 const otplease = require('../utils/otplease.js')
 const { getContents, logTar } = require('../utils/tar.js')
@@ -220,7 +220,12 @@ class Publish extends BaseCommand {
       })
     }
     if (manifest.publishConfig) {
-      flatten(manifest.publishConfig, opts)
+      const cliFlags = this.npm.config.data.get('cli').raw
+      // Filter out properties set in CLI flags to prioritize them over
+      // corresponding `publishConfig` settings
+      const filteredPublishConfig = Object.fromEntries(
+        Object.entries(manifest.publishConfig).filter(([key]) => !(key in cliFlags)))
+      flatten(filteredPublishConfig, opts)
     }
     return manifest
   }

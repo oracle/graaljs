@@ -6,6 +6,7 @@ const {
   ArrayPrototypeShift,
   ArrayPrototypeSlice,
   ArrayPrototypeSome,
+  ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
   FunctionPrototype,
   MathMax,
@@ -25,7 +26,7 @@ const {
   Symbol,
 } = primordials;
 const { getCallerLocation } = internalBinding('util');
-const { addAbortListener } = require('events');
+const { addAbortListener } = require('internal/events/abort_listener');
 const { AsyncResource } = require('async_hooks');
 const { AbortController } = require('internal/abort_controller');
 const {
@@ -176,19 +177,23 @@ class TestContext {
   }
 
   before(fn, options) {
-    this.#test.createHook('before', fn, options);
+    this.#test
+      .createHook('before', fn, { __proto__: null, ...options, hookType: 'before', loc: getCallerLocation() });
   }
 
   after(fn, options) {
-    this.#test.createHook('after', fn, options);
+    this.#test
+      .createHook('after', fn, { __proto__: null, ...options, hookType: 'after', loc: getCallerLocation() });
   }
 
   beforeEach(fn, options) {
-    this.#test.createHook('beforeEach', fn, options);
+    this.#test
+      .createHook('beforeEach', fn, { __proto__: null, ...options, hookType: 'beforeEach', loc: getCallerLocation() });
   }
 
   afterEach(fn, options) {
-    this.#test.createHook('afterEach', fn, options);
+    this.#test
+      .createHook('afterEach', fn, { __proto__: null, ...options, hookType: 'afterEach', loc: getCallerLocation() });
   }
 }
 
@@ -246,6 +251,7 @@ class Test extends AsyncResource {
         after: [],
         beforeEach: [],
         afterEach: [],
+        ownAfterEachCount: 0,
       };
     } else {
       const nesting = parent.parent === null ? parent.nesting :
@@ -265,6 +271,7 @@ class Test extends AsyncResource {
         after: [],
         beforeEach: ArrayPrototypeSlice(parent.hooks.beforeEach),
         afterEach: ArrayPrototypeSlice(parent.hooks.afterEach),
+        ownAfterEachCount: 0,
       };
     }
 
@@ -412,10 +419,6 @@ class Test extends AsyncResource {
         return;
       }
 
-      if (i === 1 && this.parent !== null) {
-        this.reportStarted();
-      }
-
       // Report the subtest's results and remove it from the ready map.
       subtest.finalize();
       this.readySubtests.delete(i);
@@ -454,7 +457,6 @@ class Test extends AsyncResource {
     }
 
     if (preventAddingSubtests) {
-      test.startTime = test.startTime || hrtime();
       test.fail(
         new ERR_TEST_FAILURE(
           'test could not be started because its parent finished',
@@ -474,7 +476,7 @@ class Test extends AsyncResource {
   };
 
   #cancel(error) {
-    if (this.endTime !== null) {
+    if (this.endTime !== null || this.error !== null) {
       return;
     }
 
@@ -484,7 +486,6 @@ class Test extends AsyncResource {
         kCancelledByParent,
       ),
     );
-    this.startTime = this.startTime || this.endTime; // If a test was canceled before it was started, e.g inside a hook
     this.cancelled = true;
     this.abortController.abort();
   }
@@ -496,7 +497,23 @@ class Test extends AsyncResource {
     if (name === 'before' || name === 'after') {
       hook.run = runOnce(hook.run);
     }
-    ArrayPrototypePush(this.hooks[name], hook);
+    if (name === 'before' && this.startTime !== null) {
+      // Test has already started, run the hook immediately
+      PromisePrototypeThen(hook.run(this.getRunArgs()), () => {
+        if (hook.error != null) {
+          this.fail(hook.error);
+        }
+      });
+    }
+    if (name === 'afterEach') {
+      // afterEach hooks for the current test should run in the order that they
+      // are created. However, the current test's afterEach hooks should run
+      // prior to any ancestor afterEach hooks.
+      ArrayPrototypeSplice(this.hooks[name], this.hooks.ownAfterEachCount, 0, hook);
+      this.hooks.ownAfterEachCount++;
+    } else {
+      ArrayPrototypePush(this.hooks[name], hook);
+    }
     return hook;
   }
 
@@ -505,17 +522,15 @@ class Test extends AsyncResource {
       return;
     }
 
-    this.endTime = hrtime();
     this.passed = false;
     this.error = err;
   }
 
   pass() {
-    if (this.endTime !== null) {
+    if (this.error !== null) {
       return;
     }
 
-    this.endTime = hrtime();
     this.passed = true;
   }
 
@@ -586,22 +601,23 @@ class Test extends AsyncResource {
     if (this.parent !== null) {
       this.parent.activeSubtests++;
     }
-    this.startTime = hrtime();
+    this.startTime ??= hrtime();
 
     if (this[kShouldAbort]()) {
       this.postRun();
       return;
     }
 
-    const { args, ctx } = this.getRunArgs();
+    const hookArgs = this.getRunArgs();
+    const { args, ctx } = hookArgs;
     const after = async () => {
       if (this.hooks.after.length > 0) {
-        await this.runHook('after', { __proto__: null, args, ctx });
+        await this.runHook('after', hookArgs);
       }
     };
     const afterEach = runOnce(async () => {
-      if (this.parent?.hooks.afterEach.length > 0) {
-        await this.parent.runHook('afterEach', { __proto__: null, args, ctx });
+      if (this.parent?.hooks.afterEach.length > 0 && !this.skipped) {
+        await this.parent.runHook('afterEach', hookArgs);
       }
     });
 
@@ -609,10 +625,11 @@ class Test extends AsyncResource {
 
     try {
       if (this.parent?.hooks.before.length > 0) {
+        // This hook usually runs immediately, we need to wait for it to finish
         await this.parent.runHook('before', this.parent.getRunArgs());
       }
-      if (this.parent?.hooks.beforeEach.length > 0) {
-        await this.parent.runHook('beforeEach', { __proto__: null, args, ctx });
+      if (this.parent?.hooks.beforeEach.length > 0 && !this.skipped) {
+        await this.parent.runHook('beforeEach', hookArgs);
       }
       stopPromise = stopTest(this.timeout, this.signal);
       const runArgs = ArrayPrototypeSlice(args);
@@ -646,15 +663,8 @@ class Test extends AsyncResource {
       }
 
       this.pass();
-      try {
-        await afterEach();
-        await after();
-      } catch (err) {
-        // If one of the after hooks has thrown unset endTime so that the
-        // catch below can do its cancel/fail logic.
-        this.endTime = null;
-        throw err;
-      }
+      await afterEach();
+      await after();
     } catch (err) {
       if (isTestFailureError(err)) {
         if (err.failureType === kTestTimeoutFailure) {
@@ -690,11 +700,9 @@ class Test extends AsyncResource {
   }
 
   postRun(pendingSubtestsError) {
-    // If the test was failed before it even started, then the end time will
-    // be earlier than the start time. Correct that here.
-    if (this.endTime < this.startTime) {
-      this.endTime = hrtime();
-    }
+    // If the test was cancelled before it started, then the start and end
+    // times need to be corrected.
+    this.endTime ??= hrtime();
     this.startTime ??= this.endTime;
 
     // The test has run, so recursively cancel any outstanding subtests and
@@ -724,6 +732,10 @@ class Test extends AsyncResource {
     this.mock?.reset();
 
     if (this.parent !== null) {
+      const report = this.getReportDetails();
+      report.details.passed = this.passed;
+      this.reporter.complete(this.nesting, this.loc, this.testNumber, this.name, report.details, report.directive);
+
       this.parent.activeSubtests--;
       this.parent.addReadySubtest(this);
       this.parent.processReadySubtestRange(false);
@@ -771,7 +783,12 @@ class Test extends AsyncResource {
         reporter.coverage(nesting, loc, coverage);
       }
 
-      reporter.end();
+      if (harness.watching) {
+        this.reported = false;
+        harness.resetCounters();
+      } else {
+        reporter.end();
+      }
     }
   }
 
@@ -804,13 +821,7 @@ class Test extends AsyncResource {
     return Number(this.endTime - this.startTime) / 1_000_000;
   }
 
-  report() {
-    countCompletedTest(this);
-    if (this.subtests.length > 0) {
-      this.reporter.plan(this.subtests[0].nesting, this.loc, this.subtests.length);
-    } else {
-      this.reportStarted();
-    }
+  getReportDetails() {
     let directive;
     const details = { __proto__: null, duration_ms: this.duration() };
 
@@ -823,12 +834,25 @@ class Test extends AsyncResource {
     if (this.reportedType) {
       details.type = this.reportedType;
     }
+    if (!this.passed) {
+      details.error = this.error;
+    }
+    return { __proto__: null, details, directive };
+  }
+
+  report() {
+    countCompletedTest(this);
+    if (this.subtests.length > 0) {
+      this.reporter.plan(this.subtests[0].nesting, this.loc, this.subtests.length);
+    } else {
+      this.reportStarted();
+    }
+    const report = this.getReportDetails();
 
     if (this.passed) {
-      this.reporter.ok(this.nesting, this.loc, this.testNumber, this.name, details, directive);
+      this.reporter.ok(this.nesting, this.loc, this.testNumber, this.name, report.details, report.directive);
     } else {
-      details.error = this.error;
-      this.reporter.fail(this.nesting, this.loc, this.testNumber, this.name, details, directive);
+      this.reporter.fail(this.nesting, this.loc, this.testNumber, this.name, report.details, report.directive);
     }
 
     for (let i = 0; i < this.diagnostics.length; i++) {
@@ -887,6 +911,7 @@ class TestHook extends Test {
         error.failureType = kHookFailure;
       }
 
+      this.endTime ??= hrtime();
       parent.reporter.fail(0, loc, parent.subtests.length + 1, loc.file, {
         __proto__: null,
         duration_ms: this.duration(),

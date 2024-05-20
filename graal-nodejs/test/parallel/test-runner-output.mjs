@@ -70,11 +70,13 @@ const specTransform = snapshot.transform(
   replaceSpecDuration,
   snapshot.replaceWindowsLineEndings,
   snapshot.replaceStackTrace,
+  snapshot.replaceWindowsPaths,
 );
 const junitTransform = snapshot.transform(
   replaceJunitDuration,
   snapshot.replaceWindowsLineEndings,
   snapshot.replaceStackTrace,
+  snapshot.replaceWindowsPaths,
 );
 const lcovTransform = snapshot.transform(
   snapshot.replaceWindowsLineEndings,
@@ -91,10 +93,16 @@ const tests = [
   { name: 'test-runner/output/abort_hooks.js' },
   { name: 'test-runner/output/describe_it.js' },
   { name: 'test-runner/output/describe_nested.js' },
+  { name: 'test-runner/output/eval_dot.js' },
+  { name: 'test-runner/output/eval_spec.js', transform: specTransform },
+  { name: 'test-runner/output/eval_tap.js' },
   { name: 'test-runner/output/hooks.js' },
   { name: 'test-runner/output/hooks_spec_reporter.js', transform: specTransform },
+  { name: 'test-runner/output/skip-each-hooks.js', transform: specTransform },
+  { name: 'test-runner/output/suite-skip-hooks.js', transform: specTransform },
   { name: 'test-runner/output/timeout_in_before_each_should_not_affect_further_tests.js' },
   { name: 'test-runner/output/hooks-with-no-global-test.js' },
+  { name: 'test-runner/output/global-hooks-with-no-tests.js' },
   { name: 'test-runner/output/before-and-after-each-too-many-listeners.js' },
   { name: 'test-runner/output/before-and-after-each-with-timeout-too-many-listeners.js' },
   { name: 'test-runner/output/global_after_should_fail_the_test.js' },
@@ -111,6 +119,7 @@ const tests = [
   { name: 'test-runner/output/output_cli.js' },
   { name: 'test-runner/output/name_pattern.js' },
   { name: 'test-runner/output/name_pattern_with_only.js' },
+  { name: 'test-runner/output/unfinished-suite-async-error.js' },
   { name: 'test-runner/output/unresolved_promise.js' },
   { name: 'test-runner/output/default_output.js', transform: specTransform, tty: true },
   { name: 'test-runner/output/arbitrary-output.js' },

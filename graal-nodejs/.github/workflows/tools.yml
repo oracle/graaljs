@@ -25,6 +25,7 @@ on:
           - eslint
           - github_reporter
           - googletest
+          - gyp-next
           - histogram
           - icu
           # - libuv
@@ -42,7 +43,7 @@ on:
           - zlib
 
 env:
-  PYTHON_VERSION: '3.11'
+  PYTHON_VERSION: '3.12'
 
 permissions:
   contents: read
@@ -154,6 +155,14 @@ jobs:
             label: dependencies, test
             run: |
               ./tools/dep_updaters/update-googletest.sh > temp-output
+              cat temp-output
+              tail -n1 temp-output | grep "NEW_VERSION=" >> "$GITHUB_ENV" || true
+              rm temp-output
+          - id: gyp-next
+            subsystem: tools
+            label: tools
+            run: |
+              ./tools/dep_updaters/update-gyp-next.sh > temp-output
               cat temp-output
               tail -n1 temp-output | grep "NEW_VERSION=" >> "$GITHUB_ENV" || true
               rm temp-output
@@ -294,7 +303,7 @@ jobs:
           persist-credentials: false
       - name: Set up Python ${{ env.PYTHON_VERSION }}
         if: matrix.id == 'icu' && (github.event_name == 'schedule' || inputs.id == 'all' || inputs.id == matrix.id)
-        uses: actions/setup-python@0a5c61591373683505ea898e09a3ea4f39ef2b9c  # v5.0.0
+        uses: actions/setup-python@82c7e631bb3cdc910f68e0081d67478d79c6982d  # v5.1.0
         with:
           python-version: ${{ env.PYTHON_VERSION }}
       - run: ${{ matrix.run }}

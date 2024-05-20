@@ -83,6 +83,7 @@ const {
   validateNumber,
   validateString,
 } = require('internal/validators');
+const { addAbortListener } = require('internal/events/abort_listener');
 
 const kCapture = Symbol('kCapture');
 const kErrorMonitor = Symbol('events.errorMonitor');
@@ -1050,8 +1051,8 @@ function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
  * @param {{
  *    signal: AbortSignal;
  *    close?: string[];
- *    highWatermark?: number,
- *    lowWatermark?: number
+ *    highWaterMark?: number,
+ *    lowWaterMark?: number
  *   }} [options]
  * @returns {AsyncIterator}
  */
@@ -1061,10 +1062,12 @@ function on(emitter, event, options = kEmptyObject) {
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)
     throw new AbortError(undefined, { cause: signal?.reason });
-  const highWatermark = options.highWatermark ?? NumberMAX_SAFE_INTEGER;
-  validateInteger(highWatermark, 'options.highWatermark', 1);
-  const lowWatermark = options.lowWatermark ?? 1;
-  validateInteger(lowWatermark, 'options.lowWatermark', 1);
+  // Support both highWaterMark and highWatermark for backward compatibility
+  const highWatermark = options.highWaterMark ?? options.highWatermark ?? NumberMAX_SAFE_INTEGER;
+  validateInteger(highWatermark, 'options.highWaterMark', 1);
+  // Support both lowWaterMark and lowWatermark for backward compatibility
+  const lowWatermark = options.lowWaterMark ?? options.lowWatermark ?? 1;
+  validateInteger(lowWatermark, 'options.lowWaterMark', 1);
 
   // Preparing controlling queues and variables
   FixedQueue ??= require('internal/fixed_queue');
@@ -1164,14 +1167,8 @@ function on(emitter, event, options = kEmptyObject) {
       addEventListener(emitter, closeEvents[i], closeHandler);
     }
   }
-  if (signal) {
-    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
-    eventTargetAgnosticAddListener(
-      signal,
-      'abort',
-      abortListener,
-      { __proto__: null, once: true, [kResistStopPropagation]: true });
-  }
+
+  const abortListenerDisposable = signal ? addAbortListener(signal, abortListener) : null;
 
   return iterator;
 
@@ -1198,6 +1195,7 @@ function on(emitter, event, options = kEmptyObject) {
   }
 
   function closeHandler() {
+    abortListenerDisposable?.[SymbolDispose]();
     removeAll();
     finished = true;
     const doneResult = createIterResult(undefined, true);
@@ -1221,35 +1219,6 @@ function listenersController() {
       while (listeners.length > 0) {
         ReflectApply(eventTargetAgnosticRemoveListener, undefined, ArrayPrototypePop(listeners));
       }
-    },
-  };
-}
-
-let queueMicrotask;
-
-function addAbortListener(signal, listener) {
-  if (signal === undefined) {
-    throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
-  }
-  validateAbortSignal(signal, 'signal');
-  validateFunction(listener, 'listener');
-
-  let removeEventListener;
-  if (signal.aborted) {
-    queueMicrotask ??= require('internal/process/task_queues').queueMicrotask;
-    queueMicrotask(() => listener());
-  } else {
-    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
-    // TODO(atlowChemi) add { subscription: true } and return directly
-    signal.addEventListener('abort', listener, { __proto__: null, once: true, [kResistStopPropagation]: true });
-    removeEventListener = () => {
-      signal.removeEventListener('abort', listener);
-    };
-  }
-  return {
-    __proto__: null,
-    [SymbolDispose]() {
-      removeEventListener?.();
     },
   };
 }

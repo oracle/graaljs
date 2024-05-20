@@ -1,11 +1,12 @@
 'use strict';
 const {
-  ArrayPrototypeFilter,
   ArrayPrototypeForEach,
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
+  ArrayPrototypePush,
   ArrayPrototypePushApply,
   ArrayPrototypeSlice,
+  StringPrototypeIncludes,
   StringPrototypeStartsWith,
 } = primordials;
 
@@ -18,7 +19,6 @@ const {
   exitCodes: { kNoFailure },
 } = internalBinding('errors');
 const { getOptionValue } = require('internal/options');
-const { emitExperimentalWarning } = require('internal/util');
 const { FilesWatcher } = require('internal/watch_mode/files_watcher');
 const { green, blue, red, white, clear } = require('internal/util/colors');
 
@@ -26,7 +26,7 @@ const { spawn } = require('child_process');
 const { inspect } = require('util');
 const { setTimeout, clearTimeout } = require('timers');
 const { resolve } = require('path');
-const { once, on } = require('events');
+const { once } = require('events');
 
 prepareMainThreadExecution(false, false);
 markBootstrapComplete();
@@ -38,11 +38,21 @@ const kWatchedPaths = ArrayPrototypeMap(getOptionValue('--watch-path'), (path) =
 const kPreserveOutput = getOptionValue('--watch-preserve-output');
 const kCommand = ArrayPrototypeSlice(process.argv, 1);
 const kCommandStr = inspect(ArrayPrototypeJoin(kCommand, ' '));
-const args = ArrayPrototypeFilter(process.execArgv, (arg, i, arr) =>
-  !StringPrototypeStartsWith(arg, '--watch-path') &&
-  (!arr[i - 1] || !StringPrototypeStartsWith(arr[i - 1], '--watch-path')) &&
-  arg !== '--watch' && !StringPrototypeStartsWith(arg, '--watch=') && arg !== '--watch-preserve-output');
-ArrayPrototypePushApply(args, kCommand);
+
+const argsWithoutWatchOptions = [];
+
+for (let i = 0; i < process.execArgv.length; i++) {
+  const arg = process.execArgv[i];
+  if (StringPrototypeStartsWith(arg, '--watch')) {
+    if (!StringPrototypeIncludes(arg, '=')) {
+      i++;
+    }
+    continue;
+  }
+  ArrayPrototypePush(argsWithoutWatchOptions, arg);
+}
+
+ArrayPrototypePushApply(argsWithoutWatchOptions, kCommand);
 
 const watcher = new FilesWatcher({ debounce: 200, mode: kShouldFilterModules ? 'filter' : 'all' });
 ArrayPrototypeForEach(kWatchedPaths, (p) => watcher.watchPath(p));
@@ -54,7 +64,13 @@ let exited;
 function start() {
   exited = false;
   const stdio = kShouldFilterModules ? ['inherit', 'inherit', 'inherit', 'ipc'] : 'inherit';
-  child = spawn(process.execPath, args, { stdio, env: { ...process.env, WATCH_REPORT_DEPENDENCIES: '1' } });
+  child = spawn(process.execPath, argsWithoutWatchOptions, {
+    stdio,
+    env: {
+      ...process.env,
+      WATCH_REPORT_DEPENDENCIES: '1',
+    },
+  });
   watcher.watchChildProcessModules(child);
   child.once('exit', (code) => {
     exited = true;
@@ -103,27 +119,27 @@ async function stop() {
   clearGraceReport();
 }
 
+let restarting = false;
 async function restart() {
-  if (!kPreserveOutput) process.stdout.write(clear);
-  process.stdout.write(`${green}Restarting ${kCommandStr}${white}\n`);
-  await stop();
-  start();
+  if (restarting) return;
+  restarting = true;
+  try {
+    if (!kPreserveOutput) process.stdout.write(clear);
+    process.stdout.write(`${green}Restarting ${kCommandStr}${white}\n`);
+    await stop();
+    start();
+  } finally {
+    restarting = false;
+  }
 }
 
-(async () => {
-  emitExperimentalWarning('Watch mode');
-
-  try {
-    start();
-
-    // eslint-disable-next-line no-unused-vars
-    for await (const _ of on(watcher, 'changed')) {
-      await restart();
-    }
-  } catch (error) {
+start();
+watcher
+  .on('changed', restart)
+  .on('error', (error) => {
+    watcher.off('changed', restart);
     triggerUncaughtException(error, true /* fromPromise */);
-  }
-})();
+  });
 
 // Exiting gracefully to avoid stdout/stderr getting written after
 // parent process is killed.

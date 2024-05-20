@@ -361,6 +361,7 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--dns-result-order",
             "set default value of verbatim in dns.lookup. Options are "
             "'ipv4first' (IPv4 addresses are placed before IPv6 addresses) "
+            "'ipv6first' (IPv6 addresses are placed before IPv4 addresses) "
             "'verbatim' (addresses are in the order the DNS resolver "
             "returned)",
             &EnvironmentOptions::dns_result_order,
@@ -370,6 +371,11 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::network_family_autoselection,
             kAllowedInEnvvar,
             true);
+  AddOption("--network-family-autoselection-attempt-timeout",
+            "Sets the default value for the network family autoselection "
+            "attempt timeout.",
+            &EnvironmentOptions::network_family_autoselection_attempt_timeout,
+            kAllowedInEnvvar);
   AddAlias("--enable-network-family-autoselection",
            "--network-family-autoselection");
   AddOption("--enable-source-maps",
@@ -780,6 +786,12 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--tls-max-v1.3",
             "set default TLS maximum to TLSv1.3 (default: TLSv1.3)",
             &EnvironmentOptions::tls_max_v1_3,
+            kAllowedInEnvvar);
+
+  AddOption("--report-exclude-network",
+            "exclude network interface diagnostics."
+            " (default: false)",
+            &EnvironmentOptions::report_exclude_network,
             kAllowedInEnvvar);
 }
 
@@ -1301,6 +1313,12 @@ void GetEmbedderOptions(const FunctionCallbackInfo<Value>& args) {
   if (ret->Set(context,
                FIXED_ONE_BYTE_STRING(env->isolate(), "noBrowserGlobals"),
                Boolean::New(isolate, env->no_browser_globals()))
+          .IsNothing())
+    return;
+
+  if (ret->Set(context,
+               FIXED_ONE_BYTE_STRING(env->isolate(), "hasEmbedderPreload"),
+               Boolean::New(isolate, env->embedder_preload() != nullptr))
           .IsNothing())
     return;
 

@@ -29,7 +29,11 @@ function lazyTypes() {
   return _TYPES = require('internal/util/types');
 }
 
-const { containsModuleSyntax } = internalBinding('contextify');
+const {
+  containsModuleSyntax,
+  compileFunctionForCJSLoader,
+} = internalBinding('contextify');
+
 const { BuiltinModule } = require('internal/bootstrap/realm');
 const assert = require('internal/assert');
 const { readFileSync } = require('fs');
@@ -55,12 +59,8 @@ const {
 const { maybeCacheSourceMap } = require('internal/source_map/source_map_cache');
 const moduleWrap = internalBinding('module_wrap');
 const { ModuleWrap } = moduleWrap;
-const asyncESM = require('internal/process/esm_loader');
 const { emitWarningSync } = require('internal/process/warning');
-const { internalCompileFunction } = require('internal/vm');
-const {
-  vm_dynamic_import_default_internal,
-} = internalBinding('symbols');
+
 // Lazy-loading to avoid circular dependencies.
 let getSourceSync;
 /**
@@ -157,7 +157,8 @@ function errPath(url) {
  * @returns {Promise<import('internal/modules/esm/loader.js').ModuleExports>} The imported module.
  */
 async function importModuleDynamically(specifier, { url }, attributes) {
-  return asyncESM.esmLoader.import(specifier, url, attributes);
+  const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
+  return cascadedLoader.import(specifier, url, attributes);
 }
 
 // Strategy for loading a standard JavaScript module.
@@ -210,28 +211,8 @@ function enrichCJSError(err, content, filename) {
  */
 function loadCJSModule(module, source, url, filename) {
   let compileResult;
-  const hostDefinedOptionId = vm_dynamic_import_default_internal;
-  const importModuleDynamically = vm_dynamic_import_default_internal;
   try {
-    compileResult = internalCompileFunction(
-      source,                         // code,
-      filename,                       // filename
-      0,                              // lineOffset
-      0,                              // columnOffset,
-      undefined,                      // cachedData
-      false,                          // produceCachedData
-      undefined,                      // parsingContext
-      undefined,                      // contextExtensions
-      [                               // params
-        'exports',
-        'require',
-        'module',
-        '__filename',
-        '__dirname',
-      ],
-      hostDefinedOptionId,           // hostDefinedOptionsId
-      importModuleDynamically,       // importModuleDynamically
-    );
+    compileResult = compileFunctionForCJSLoader(source, filename);
   } catch (err) {
     enrichCJSError(err, source, filename);
     throw err;
@@ -243,6 +224,7 @@ function loadCJSModule(module, source, url, filename) {
 
   const compiledWrapper = compileResult.function;
 
+  const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
   const __dirname = dirname(filename);
   // eslint-disable-next-line func-name-matching,func-style
   const requireFn = function require(specifier) {
@@ -261,7 +243,7 @@ function loadCJSModule(module, source, url, filename) {
       }
       specifier = `${pathToFileURL(path)}`;
     }
-    const job = asyncESM.esmLoader.getModuleJobSync(specifier, url, importAttributes);
+    const job = cascadedLoader.getModuleJobSync(specifier, url, importAttributes);
     job.runSync();
     return cjsCache.get(job.url).exports;
   };
@@ -272,7 +254,7 @@ function loadCJSModule(module, source, url, filename) {
         specifier = `${pathToFileURL(path)}`;
       }
     }
-    const { url: resolvedURL } = asyncESM.esmLoader.resolveSync(specifier, url, kEmptyObject);
+    const { url: resolvedURL } = cascadedLoader.resolveSync(specifier, url, kEmptyObject);
     return StringPrototypeStartsWith(resolvedURL, 'file://') ? fileURLToPath(resolvedURL) : resolvedURL;
   });
   setOwnProperty(requireFn, 'main', process.mainModule);

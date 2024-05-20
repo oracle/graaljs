@@ -83,8 +83,8 @@ class SpecReporter extends Transform {
     const error = this.#formatError(data.details?.error, indent);
     if (hasChildren) {
       // If this test has had children - it was already reported, so slightly modify the output
-      const err = data.details?.error?.failureType === 'subtestsFailed' ? '' : error;
-      return `${prefix}${indent}${color}${symbols['arrow:right']}${colors.white}${title}\n${err}`;
+      const err = !error || data.details?.error?.failureType === 'subtestsFailed' ? '' : `\n${error}`;
+      return `${prefix}${indent}${color}${symbols['arrow:right']}${colors.white}${title}${err}`;
     }
     if (skip !== undefined) {
       color = colors.gray;
@@ -148,11 +148,16 @@ class SpecReporter extends Transform {
     const results = [`\n${this.#colors['test:fail']}${symbols['test:fail']}failing tests:${colors.white}\n`];
     for (let i = 0; i < this.#failedTests.length; i++) {
       const test = this.#failedTests[i];
-      const relPath = relative(this.#cwd, test.file);
       const formattedErr = this.#formatTestReport('test:fail', test);
-      const location = `test at ${relPath}:${test.line}:${test.column}`;
 
-      ArrayPrototypePush(results, location, formattedErr);
+      if (test.file) {
+        const relPath = relative(this.#cwd, test.file);
+        const location = `test at ${relPath}:${test.line}:${test.column}`;
+
+        ArrayPrototypePush(results, location);
+      }
+
+      ArrayPrototypePush(results, formattedErr);
     }
     callback(null, ArrayPrototypeJoin(results, '\n'));
   }

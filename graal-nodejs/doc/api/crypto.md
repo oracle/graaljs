@@ -891,6 +891,11 @@ When passing a string as the `buffer`, please consider
 <!-- YAML
 added: v1.0.0
 changes:
+  - version: v20.13.0
+    pr-url: https://github.com/nodejs/node/pull/52345
+    description: Using GCM tag lengths other than 128 bits without specifying
+                 the `authTagLength` option when creating `decipher` is
+                 deprecated.
   - version: v15.0.0
     pr-url: https://github.com/nodejs/node/pull/35093
     description: The buffer argument can be a string or ArrayBuffer and is
@@ -3630,7 +3635,7 @@ Computes the Diffie-Hellman secret based on a `privateKey` and a `publicKey`.
 Both keys must have the same `asymmetricKeyType`, which must be one of `'dh'`
 (for Diffie-Hellman), `'ec'` (for ECDH), `'x448'`, or `'x25519'` (for ECDH-ES).
 
-### `crypto.hash(algorith, data[, outputEncoding])`
+### `crypto.hash(algorithm, data[, outputEncoding])`
 
 <!-- YAML
 added:
@@ -3640,7 +3645,7 @@ added:
 > Stability: 1.2 - Release candidate
 
 * `algorithm` {string|undefined}
-* `data` {string|ArrayBuffer|Buffer|TypedArray|DataView} When `data` is a
+* `data` {string|Buffer|TypedArray|DataView} When `data` is a
   string, it will be encoded as UTF-8 before being hashed. If a different
   input encoding is desired for a string input, user could encode the string
   into a `TypedArray` using either `TextEncoder` or `Buffer.from()` and passing
@@ -5929,7 +5934,7 @@ See the [list of SSL OP Flags][] for details.
   </tr>
   <tr>
     <td><code>SSL_OP_CISCO_ANYCONNECT</code></td>
-    <td>Instructs OpenSSL to use Cisco's "speshul" version of DTLS_BAD_VER.</td>
+    <td>Instructs OpenSSL to use Cisco's version identifier of DTLS_BAD_VER.</td>
   </tr>
   <tr>
     <td><code>SSL_OP_COOKIE_EXCHANGE</code></td>

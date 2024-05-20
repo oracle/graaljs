@@ -147,6 +147,7 @@ const {
     ERR_CANNOT_WATCH_SIGINT,
     ERR_INVALID_REPL_EVAL_CONFIG,
     ERR_INVALID_REPL_INPUT,
+    ERR_MISSING_ARGS,
     ERR_SCRIPT_EXECUTION_INTERRUPTED,
   },
   isErrorStackTraceLimitWritable,
@@ -462,9 +463,8 @@ function REPLServer(prompt,
       // Continue regardless of error.
     }
     async function importModuleDynamically(specifier, _, importAttributes) {
-      const asyncESM = require('internal/process/esm_loader');
-      return asyncESM.esmLoader.import(specifier, parentURL,
-                                       importAttributes);
+      const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
+      return cascadedLoader.import(specifier, parentURL, importAttributes);
     }
     // `experimentalREPLAwait` is set to true by default.
     // Shall be false in case `--no-experimental-repl-await` flag is used.
@@ -1793,10 +1793,17 @@ function defineDefaultCommands(repl) {
     help: 'Save all evaluated commands in this REPL session to a file',
     action: function(file) {
       try {
+        if (file === '') {
+          throw new ERR_MISSING_ARGS('file');
+        }
         fs.writeFileSync(file, ArrayPrototypeJoin(this.lines, '\n'));
         this.output.write(`Session saved to: ${file}\n`);
-      } catch {
-        this.output.write(`Failed to save: ${file}\n`);
+      } catch (error) {
+        if (error instanceof ERR_MISSING_ARGS) {
+          this.output.write(`${error.message}\n`);
+        } else {
+          this.output.write(`Failed to save: ${file}\n`);
+        }
       }
       this.displayPrompt();
     },
@@ -1806,6 +1813,9 @@ function defineDefaultCommands(repl) {
     help: 'Load JS from a file into the REPL session',
     action: function(file) {
       try {
+        if (file === '') {
+          throw new ERR_MISSING_ARGS('file');
+        }
         const stats = fs.statSync(file);
         if (stats && stats.isFile()) {
           _turnOnEditorMode(this);
@@ -1820,8 +1830,12 @@ function defineDefaultCommands(repl) {
             `Failed to load: ${file} is not a valid file\n`,
           );
         }
-      } catch {
-        this.output.write(`Failed to load: ${file}\n`);
+      } catch (error) {
+        if (error instanceof ERR_MISSING_ARGS) {
+          this.output.write(`${error.message}\n`);
+        } else {
+          this.output.write(`Failed to load: ${file}\n`);
+        }
       }
       this.displayPrompt();
     },

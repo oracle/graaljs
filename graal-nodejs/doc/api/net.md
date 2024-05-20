@@ -20,6 +20,14 @@ const net = require('node:net');
 
 ## IPC support
 
+<!-- YAML
+changes:
+  - version: v20.8.0
+    pr-url: https://github.com/nodejs/node/pull/49667
+    description: Support binding to abstract Unix domain socket path like `\0abstract`.
+                 We can bind '\0' for Node.js `< v20.4.0`.
+-->
+
 The `node:net` module supports IPC with named pipes on Windows, and Unix domain
 sockets on other operating systems.
 
@@ -466,21 +474,22 @@ changes:
 -->
 
 * `options` {Object} Required. Supports the following properties:
-  * `port` {number}
-  * `host` {string}
-  * `path` {string} Will be ignored if `port` is specified. See
-    [Identifying paths for IPC connections][].
   * `backlog` {number} Common parameter of [`server.listen()`][]
     functions.
   * `exclusive` {boolean} **Default:** `false`
-  * `readableAll` {boolean} For IPC servers makes the pipe readable
-    for all users. **Default:** `false`.
-  * `writableAll` {boolean} For IPC servers makes the pipe writable
-    for all users. **Default:** `false`.
+  * `host` {string}
   * `ipv6Only` {boolean} For TCP servers, setting `ipv6Only` to `true` will
     disable dual-stack support, i.e., binding to host `::` won't make
     `0.0.0.0` be bound. **Default:** `false`.
-  * `signal` {AbortSignal} An AbortSignal that may be used to close a listening server.
+  * `path` {string} Will be ignored if `port` is specified. See
+    [Identifying paths for IPC connections][].
+  * `port` {number}
+  * `readableAll` {boolean} For IPC servers makes the pipe readable
+    for all users. **Default:** `false`.
+  * `signal` {AbortSignal} An AbortSignal that may be used to close a listening
+    server.
+  * `writableAll` {boolean} For IPC servers makes the pipe writable
+    for all users. **Default:** `false`.
 * `callback` {Function}
   functions.
 * Returns: {net.Server}
@@ -645,18 +654,18 @@ changes:
 -->
 
 * `options` {Object} Available options are:
-  * `fd` {number} If specified, wrap around an existing socket with
-    the given file descriptor, otherwise a new socket will be created.
   * `allowHalfOpen` {boolean} If set to `false`, then the socket will
     automatically end the writable side when the readable side ends. See
     [`net.createServer()`][] and the [`'end'`][] event for details. **Default:**
     `false`.
+  * `fd` {number} If specified, wrap around an existing socket with
+    the given file descriptor, otherwise a new socket will be created.
   * `readable` {boolean} Allow reads on the socket when an `fd` is passed,
-    otherwise ignored. **Default:** `false`.
-  * `writable` {boolean} Allow writes on the socket when an `fd` is passed,
     otherwise ignored. **Default:** `false`.
   * `signal` {AbortSignal} An Abort signal that may be used to destroy the
     socket.
+  * `writable` {boolean} Allow writes on the socket when an `fd` is passed,
+    otherwise ignored. **Default:** `false`.
 * Returns: {net.Socket}
 
 Creates a new socket object.
@@ -706,7 +715,7 @@ added: v20.12.0
 * `ip` {string} The IP which the socket attempted to connect to.
 * `port` {number} The port which the socket attempted to connect to.
 * `family` {number} The family of the IP. It can be `6` for IPv6 or `4` for IPv4.
-  \* `error` {Error} The error associated with the failure.
+* `error` {Error} The error associated with the failure.
 
 Emitted when a connection attempt failed. This may be emitted multiple times
 if the family autoselection algorithm is enabled in [`socket.connect(options)`][].
@@ -971,37 +980,40 @@ this only when implementing a custom Socket.
 
 For TCP connections, available `options` are:
 
-* `port` {number} Required. Port the socket should connect to.
-* `host` {string} Host the socket should connect to. **Default:** `'localhost'`.
-* `localAddress` {string} Local address the socket should connect from.
-* `localPort` {number} Local port the socket should connect from.
+* `autoSelectFamily` {boolean}: If set to `true`, it enables a family
+  autodetection algorithm that loosely implements section 5 of [RFC 8305][]. The
+  `all` option passed to lookup is set to `true` and the sockets attempts to
+  connect to all obtained IPv6 and IPv4 addresses, in sequence, until a
+  connection is established. The first returned AAAA address is tried first,
+  then the first returned A address, then the second returned AAAA address and
+  so on. Each connection attempt (but the last one) is given the amount of time
+  specified by the `autoSelectFamilyAttemptTimeout` option before timing out and
+  trying the next address. Ignored if the `family` option is not `0` or if
+  `localAddress` is set. Connection errors are not emitted if at least one
+  connection succeeds. If all connections attempts fails, a single
+  `AggregateError` with all failed attempts is emitted. **Default:**
+  [`net.getDefaultAutoSelectFamily()`][].
+* `autoSelectFamilyAttemptTimeout` {number}: The amount of time in milliseconds
+  to wait for a connection attempt to finish before trying the next address when
+  using the `autoSelectFamily` option. If set to a positive integer less than
+  `10`, then the value `10` will be used instead. **Default:**
+  [`net.getDefaultAutoSelectFamilyAttemptTimeout()`][].
 * `family` {number}: Version of IP stack. Must be `4`, `6`, or `0`. The value
   `0` indicates that both IPv4 and IPv6 addresses are allowed. **Default:** `0`.
 * `hints` {number} Optional [`dns.lookup()` hints][].
+* `host` {string} Host the socket should connect to. **Default:** `'localhost'`.
+* `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality on
+  the socket immediately after the connection is established, similarly on what
+  is done in [`socket.setKeepAlive()`][]. **Default:** `false`.
+* `keepAliveInitialDelay` {number} If set to a positive number, it sets the
+  initial delay before the first keepalive probe is sent on an idle socket.
+  **Default:** `0`.
+* `localAddress` {string} Local address the socket should connect from.
+* `localPort` {number} Local port the socket should connect from.
 * `lookup` {Function} Custom lookup function. **Default:** [`dns.lookup()`][].
-* `noDelay` {boolean} If set to `true`, it disables the use of Nagle's algorithm immediately
-  after the socket is established. **Default:** `false`.
-* `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality on the socket
-  immediately after the connection is established, similarly on what is done in
-  [`socket.setKeepAlive([enable][, initialDelay])`][`socket.setKeepAlive(enable, initialDelay)`].
-  **Default:** `false`.
-* `keepAliveInitialDelay` {number} If set to a positive number, it sets the initial delay before
-  the first keepalive probe is sent on an idle socket.**Default:** `0`.
-* `autoSelectFamily` {boolean}: If set to `true`, it enables a family autodetection algorithm
-  that loosely implements section 5 of [RFC 8305][].
-  The `all` option passed to lookup is set to `true` and the sockets attempts to connect to all
-  obtained IPv6 and IPv4 addresses, in sequence, until a connection is established.
-  The first returned AAAA address is tried first, then the first returned A address,
-  then the second returned AAAA address and so on.
-  Each connection attempt (but the last one) is given the amount of time specified by the `autoSelectFamilyAttemptTimeout` option before timing out and trying the next address.
-  Ignored if the `family` option is not `0` or if `localAddress` is set.
-  Connection errors are not emitted if at least one connection succeeds.
-  If all connections attempts fails, a single `AggregateError` with all failed attempts is emitted.
-  **Default:** [`net.getDefaultAutoSelectFamily()`][]
-* `autoSelectFamilyAttemptTimeout` {number}: The amount of time in milliseconds to wait
-  for a connection attempt to finish before trying the next address when using the `autoSelectFamily` option.
-  If set to a positive integer less than `10`, then the value `10` will be used instead.
-  **Default:** [`net.getDefaultAutoSelectFamilyAttemptTimeout()`][]
+* `noDelay` {boolean} If set to `true`, it disables the use of Nagle's algorithm
+  immediately after the socket is established. **Default:** `false`.
+* `port` {number} Required. Port the socket should connect to.
 
 For [IPC][] connections, available `options` are:
 
@@ -1613,16 +1625,18 @@ changes:
   * `highWaterMark` {number} Optionally overrides all [`net.Socket`][]s'
     `readableHighWaterMark` and `writableHighWaterMark`.
     **Default:** See [`stream.getDefaultHighWaterMark()`][].
+  * `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality
+    on the socket immediately after a new incoming connection is received,
+    similarly on what is done in [`socket.setKeepAlive()`][]. **Default:**
+    `false`.
+  * `keepAliveInitialDelay` {number} If set to a positive number, it sets the
+    initial delay before the first keepalive probe is sent on an idle socket.
+    **Default:** `0`.
+  * `noDelay` {boolean} If set to `true`, it disables the use of Nagle's
+    algorithm immediately after a new incoming connection is received.
+    **Default:** `false`.
   * `pauseOnConnect` {boolean} Indicates whether the socket should be
     paused on incoming connections. **Default:** `false`.
-  * `noDelay` {boolean} If set to `true`, it disables the use of Nagle's algorithm immediately
-    after a new incoming connection is received. **Default:** `false`.
-  * `keepAlive` {boolean} If set to `true`, it enables keep-alive functionality on the socket
-    immediately after a new incoming connection is received, similarly on what is done in
-    [`socket.setKeepAlive([enable][, initialDelay])`][`socket.setKeepAlive(enable, initialDelay)`].
-    **Default:** `false`.
-  * `keepAliveInitialDelay` {number} If set to a positive number, it sets the initial delay before
-    the first keepalive probe is sent on an idle socket.**Default:** `0`.
 
 * `connectionListener` {Function} Automatically set as a listener for the
   [`'connection'`][] event.
@@ -1696,7 +1710,7 @@ nc -U /tmp/echo.sock
 added: v19.4.0
 -->
 
-Gets the current default value of the `autoSelectFamily` option of [`socket.connect(options)`][].
+Gets the current default value of the `autoSelectFamily` option of [`socket.connect(options)`][].
 The initial default value is `true`, unless the command line option
 `--no-network-family-autoselection` is provided.
 
@@ -1708,9 +1722,9 @@ The initial default value is `true`, unless the command line option
 added: v19.4.0
 -->
 
-Sets the default value of the `autoSelectFamily` option of [`socket.connect(options)`][].
+Sets the default value of the `autoSelectFamily` option of [`socket.connect(options)`][].
 
-* `value` {boolean} The new default value. The initial default value is `false`.
+* `value` {boolean} The new default value. The initial default value is `false`.
 
 ## `net.getDefaultAutoSelectFamilyAttemptTimeout()`
 
@@ -1718,8 +1732,9 @@ Sets the default value of the `autoSelectFamily` option of [`socket.connect(opt
 added: v19.8.0
 -->
 
-Gets the current default value of the `autoSelectFamilyAttemptTimeout` option of [`socket.connect(options)`][].
-The initial default value is `250`.
+Gets the current default value of the `autoSelectFamilyAttemptTimeout` option of [`socket.connect(options)`][].
+The initial default value is `250` or the value specified via the command line
+option `--network-family-autoselection-attempt-timeout`.
 
 * Returns: {number} The current default value of the `autoSelectFamilyAttemptTimeout` option.
 
@@ -1729,10 +1744,11 @@ The initial default value is `250`.
 added: v19.8.0
 -->
 
-Sets the default value of the `autoSelectFamilyAttemptTimeout` option of [`socket.connect(options)`][].
+Sets the default value of the `autoSelectFamilyAttemptTimeout` option of [`socket.connect(options)`][].
 
-* `value` {number} The new default value, which must be a positive number. If the number is less than `10`,
-  the value `10` is used instead. The initial default value is `250`.
+* `value` {number} The new default value, which must be a positive number. If the number is less than `10`,
+  the value `10` is used instead. The initial default value is `250` or the value specified via the command line
+  option `--network-family-autoselection-attempt-timeout`.
 
 ## `net.isIP(input)`
 
@@ -1839,7 +1855,7 @@ net.isIPv6('fhqwhgads'); // returns false
 [`socket.pause()`]: #socketpause
 [`socket.resume()`]: #socketresume
 [`socket.setEncoding()`]: #socketsetencodingencoding
-[`socket.setKeepAlive(enable, initialDelay)`]: #socketsetkeepaliveenable-initialdelay
+[`socket.setKeepAlive()`]: #socketsetkeepaliveenable-initialdelay
 [`socket.setTimeout()`]: #socketsettimeouttimeout-callback
 [`socket.setTimeout(timeout)`]: #socketsettimeouttimeout-callback
 [`stream.getDefaultHighWaterMark()`]: stream.md#streamgetdefaulthighwatermarkobjectmode

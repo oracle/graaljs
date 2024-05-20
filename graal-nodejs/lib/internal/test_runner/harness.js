@@ -10,6 +10,7 @@ const {
   createHook,
   executionAsyncId,
 } = require('async_hooks');
+const { relative } = require('path');
 const {
   codes: {
     ERR_TEST_FAILURE,
@@ -51,19 +52,26 @@ function createProcessEventHandler(eventName, rootTest) {
       throw err;
     }
 
-    // Check if this error is coming from a test. If it is, fail the test.
-    if (!test || test.finished) {
+    // Check if this error is coming from a test or test hook. If it is, fail the test.
+    if (!test || test.finished || test.hookType) {
       // If the test is already finished or the resource that created the error
       // is not mapped to a Test, report this as a top level diagnostic.
       let msg;
 
       if (test) {
-        msg = `Warning: Test "${test.name}" generated asynchronous ` +
+        const name = test.hookType ? `Test hook "${test.hookType}"` : `Test "${test.name}"`;
+        let locInfo = '';
+        if (test.loc) {
+          const relPath = relative(process.cwd(), test.loc.file);
+          locInfo = ` at ${relPath}:${test.loc.line}:${test.loc.column}`;
+        }
+
+        msg = `Error: ${name}${locInfo} generated asynchronous ` +
           'activity after the test ended. This activity created the error ' +
           `"${err}" and would have caused the test to fail, but instead ` +
           `triggered an ${eventName} event.`;
       } else {
-        msg = 'Warning: A resource generated asynchronous activity after ' +
+        msg = 'Error: A resource generated asynchronous activity after ' +
           `the test ended. This activity created the error "${err}" which ` +
           `triggered an ${eventName} event, caught by the test runner.`;
       }
@@ -74,7 +82,7 @@ function createProcessEventHandler(eventName, rootTest) {
     }
 
     test.fail(new ERR_TEST_FAILURE(err, eventName));
-    test.postRun();
+    test.abortController.abort();
   };
 }
 
@@ -151,7 +159,11 @@ function setup(root) {
   const rejectionHandler =
     createProcessEventHandler('unhandledRejection', root);
   const coverage = configureCoverage(root, globalOptions);
-  const exitHandler = () => {
+  const exitHandler = async () => {
+    if (root.subtests.length === 0 && (root.hooks.before.length > 0 || root.hooks.after.length > 0)) {
+      // Run global before/after hooks in case there are no tests
+      await root.run();
+    }
     root.postRun(new ERR_TEST_FAILURE(
       'Promise resolution is still pending but the event loop has already resolved',
       kCancelledByParent));
@@ -178,20 +190,25 @@ function setup(root) {
   root.harness = {
     __proto__: null,
     bootstrapComplete: false,
+    watching: false,
     coverage: FunctionPrototypeBind(collectCoverage, null, root, coverage),
-    counters: {
-      __proto__: null,
-      all: 0,
-      failed: 0,
-      passed: 0,
-      cancelled: 0,
-      skipped: 0,
-      todo: 0,
-      topLevel: 0,
-      suites: 0,
+    resetCounters() {
+      root.harness.counters = {
+        __proto__: null,
+        all: 0,
+        failed: 0,
+        passed: 0,
+        cancelled: 0,
+        skipped: 0,
+        todo: 0,
+        topLevel: 0,
+        suites: 0,
+      };
     },
+    counters: null,
     shouldColorizeTestFiles: false,
   };
+  root.harness.resetCounters();
   root.startTime = hrtime();
   return root;
 }
@@ -266,8 +283,7 @@ function hook(hook) {
 module.exports = {
   createTestTree,
   test: runInParentContext(Test),
-  describe: runInParentContext(Suite),
-  it: runInParentContext(Test),
+  suite: runInParentContext(Suite),
   before: hook('before'),
   after: hook('after'),
   beforeEach: hook('beforeEach'),

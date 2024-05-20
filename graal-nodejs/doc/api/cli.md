@@ -588,16 +588,20 @@ added:
   - v16.4.0
   - v14.18.0
 changes:
+  - version: v20.13.0
+    pr-url: https://github.com/nodejs/node/pull/52492
+    description: The `ipv6first` is supported now.
   - version: v17.0.0
     pr-url: https://github.com/nodejs/node/pull/39987
     description: Changed default value to `verbatim`.
 -->
 
-Set the default value of `verbatim` in [`dns.lookup()`][] and
+Set the default value of `order` in [`dns.lookup()`][] and
 [`dnsPromises.lookup()`][]. The value could be:
 
-* `ipv4first`: sets default `verbatim` `false`.
-* `verbatim`: sets default `verbatim` `true`.
+* `ipv4first`: sets default `order` to `ipv4first`.
+* `ipv6first`: sets default `order` to `ipv6first`.
+* `verbatim`: sets default `order` to `verbatim`.
 
 The default is `verbatim` and [`dns.setDefaultResultOrder()`][] have higher
 priority than `--dns-result-order`.
@@ -688,7 +692,7 @@ Any text after a `#` is treated as a comment:
 PORT=3000 # This is also a comment
 ```
 
-Values can start and end with the following quotes: `\`, `"` or `'`.
+Values can start and end with the following quotes: `` ` ``, `"` or `'`.
 They are omitted from the values.
 
 ```text
@@ -763,7 +767,7 @@ added:
   - v20.10.0
 -->
 
-> Stability: 1.0 - Early development
+> Stability: 1.1 - Active development
 
 Node.js will inspect the source code of ambiguous input to determine whether it
 contains ES module syntax; if such syntax is detected, the input will be treated
@@ -778,9 +782,15 @@ Ambiguous input is defined as:
   `--experimental-default-type` are specified.
 
 ES module syntax is defined as syntax that would throw when evaluated as
-CommonJS. This includes `import` and `export` statements and `import.meta`
-references. It does _not_ include `import()` expressions, which are valid in
-CommonJS.
+CommonJS. This includes the following:
+
+* `import` statements (but _not_ `import()` expressions, which are valid in
+  CommonJS).
+* `export` statements.
+* `import.meta` references.
+* `await` at the top level of a module.
+* Lexical redeclarations of the CommonJS wrapper variables (`require`, `module`,
+  `exports`, `__dirname`, `__filename`).
 
 ### `--experimental-import-meta-resolve`
 
@@ -852,6 +862,8 @@ following permissions are restricted:
 <!-- YAML
 added: v11.8.0
 -->
+
+> Stability: 0 - Deprecated: Will be removed shortly.
 
 Use the specified file as a security policy.
 
@@ -1278,6 +1290,15 @@ added: v7.10.0
 
 This option is a no-op. It is kept for compatibility.
 
+### `--network-family-autoselection-attempt-timeout`
+
+<!-- YAML
+added: v20.13.0
+-->
+
+Sets the default value for the network family autoselection attempt timeout.
+For more information, see [`net.getDefaultAutoSelectFamilyAttemptTimeout()`][].
+
 ### `--no-addons`
 
 <!-- YAML
@@ -1450,7 +1471,7 @@ developers may leverage to detect deprecated API usage.
 added: v12.7.0
 -->
 
-> Stability: 1 - Experimental
+> Stability: 0 - Deprecated: Will be removed shortly.
 
 Instructs Node.js to error prior to running any code if the policy does not have
 the specified integrity. It expects a [Subresource Integrity][] string as a
@@ -1701,6 +1722,15 @@ changes:
 Enables report to be generated when the process exits due to an uncaught
 exception. Useful when inspecting the JavaScript stack in conjunction with
 native stack and other runtime environment data.
+
+### `--report-exclude-network`
+
+<!-- YAML
+added: v20.13.0
+-->
+
+Exclude `header.networkInterfaces` from the diagnostic report. By default
+this is not set and the network interfaces are included.
 
 ### `-r`, `--require module`
 
@@ -2241,6 +2271,9 @@ added:
   - v18.11.0
   - v16.19.0
 changes:
+  - version: v20.13.0
+    pr-url: https://github.com/nodejs/node/pull/52074
+    description: Watch mode is now stable.
   - version:
       - v19.2.0
       - v18.13.0
@@ -2248,7 +2281,7 @@ changes:
     description: Test runner now supports running in watch mode.
 -->
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 Starts Node.js in watch mode.
 When in watch mode, changes in the watched files cause the Node.js process to
@@ -2270,9 +2303,13 @@ node --watch index.js
 added:
   - v18.11.0
   - v16.19.0
+changes:
+  - version: v20.13.0
+    pr-url: https://github.com/nodejs/node/pull/52074
+    description: Watch mode is now stable.
 -->
 
-> Stability: 1 - Experimental
+> Stability: 2 - Stable
 
 Starts Node.js in watch mode and specifies what paths to watch.
 When in watch mode, changes in the watched paths cause the Node.js process to
@@ -2424,7 +2461,9 @@ NODE_OPTIONS='--require "./a.js"' node --require "./b.js"
 node --require "./a.js" --require "./b.js"
 ```
 
-Node.js options that are allowed are:
+Node.js options that are allowed are in the following list. If an option
+supports both --XX and --no-XX variants, they are both supported but only
+one is included in the list below.
 
 <!-- node-options-node start -->
 
@@ -2477,6 +2516,7 @@ Node.js options that are allowed are:
 * `--max-http-header-size`
 * `--napi-modules`
 * `--native`
+* `--network-family-autoselection-attempt-timeout`
 * `--no-addons`
 * `--no-deprecation`
 * `--no-experimental-fetch`
@@ -2501,6 +2541,7 @@ Node.js options that are allowed are:
 * `--redirect-warnings`
 * `--report-compact`
 * `--report-dir`, `--report-directory`
+* `--report-exclude-network`
 * `--report-filename`
 * `--report-on-fatalerror`
 * `--report-on-signal`
@@ -2956,6 +2997,7 @@ done
 [`dns.setDefaultResultOrder()`]: dns.md#dnssetdefaultresultorderorder
 [`dnsPromises.lookup()`]: dns.md#dnspromiseslookuphostname-options
 [`import` specifier]: esm.md#import-specifiers
+[`net.getDefaultAutoSelectFamilyAttemptTimeout()`]: net.md#netgetdefaultautoselectfamilyattempttimeout
 [`process.setUncaughtExceptionCaptureCallback()`]: process.md#processsetuncaughtexceptioncapturecallbackfn
 [`process.setuid()`]: process.md#processsetuidid
 [`setuid(2)`]: https://man7.org/linux/man-pages/man2/setuid.2.html
