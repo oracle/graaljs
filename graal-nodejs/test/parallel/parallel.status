@@ -119,6 +119,9 @@ test-util-format: FAIL
 # some differences in the handling of weak collections
 test-util-inspect: FAIL
 
+# v8.queryObjects (based on v8::HeapProfiler::QueryObjects()) not supported
+test-v8-query-objects: FAIL
+
 # v8.cachedDataVersionTag() not supported
 test-v8-version-tag: FAIL
 
@@ -137,6 +140,7 @@ test-vm-set-property-proxy: SKIP
 test-blob: FAIL
 test-fetch: FAIL
 test-fetch-disabled: FAIL
+test-fetch-mock: FAIL
 test-http-response-setheaders: FAIL
 test-vm-codegen: FAIL
 test-websocket: FAIL
