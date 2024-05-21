@@ -1426,12 +1426,17 @@ constexpr std::array<std::string_view, 6> esm_syntax_error_messages = {
 // - Top-level `await`: if the user writes `await` at the top level of a
 //   CommonJS module, it will throw a syntax error; but the same code is valid
 //   in ESM.
-constexpr std::array<std::string_view, 6> throws_only_in_cjs_error_messages = {
+constexpr std::array<std::string_view, 11> throws_only_in_cjs_error_messages = {
     "Identifier 'module' has already been declared",
+    "Variable \"module\" has already been declared",
     "Identifier 'exports' has already been declared",
+    "Variable \"exports\" has already been declared",
     "Identifier 'require' has already been declared",
+    "Variable \"require\" has already been declared",
     "Identifier '__filename' has already been declared",
+    "Variable \"__filename\" has already been declared",
     "Identifier '__dirname' has already been declared",
+    "Variable \"__dirname\" has already been declared",
     "await is only valid in async functions and "
     "the top level bodies of modules"};
 
