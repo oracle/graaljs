@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,9 @@ import com.oracle.truffle.api.TruffleOptions;
  *
  */
 public final class JSConfig {
+
+    /** See jdk.internal.util.ArraysSupport#SOFT_MAX_ARRAY_LENGTH. */
+    public static final int SOFT_MAX_ARRAY_LENGTH = Integer.MAX_VALUE - 8;
 
     /** When printing to console/inspector, only print that many properties. */
     public static final int MaxConsolePrintProperties = 20;
@@ -138,7 +141,8 @@ public final class JSConfig {
     public static final boolean EagerStackTrace = false;
     static final int StackTraceLimit = 10;
     static final int StringLengthLimit = (1 << 30) - 1 - 24; // v8::String::kMaxLength
-    static final int MaxTypedArrayLength = 0x3fff_ffff;
+    /** Limited by Java array length. */
+    static final int MaxTypedArrayLength = SOFT_MAX_ARRAY_LENGTH;
     static final int MaxApplyArgumentLength = 10_000_000;
     static final int MaxPrototypeChainLength = 32766; // regress-578775.js
 

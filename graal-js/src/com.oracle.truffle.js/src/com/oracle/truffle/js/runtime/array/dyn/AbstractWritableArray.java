@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -66,7 +66,6 @@ import com.oracle.truffle.js.runtime.builtins.JSAbstractArray;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.InlinedProfileBag;
-import com.oracle.truffle.js.runtime.util.SimpleArrayList;
 
 /**
  * Base class of a javascript dynamic writable array. The array implementation uses three write
@@ -251,12 +250,12 @@ public abstract class AbstractWritableArray extends DynamicArray {
                 minCapacity = internalIndex + 1L;
             }
             long newCapacity = Math.max(minCapacity, (long) capacity + (capacity >>> 1));
-            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, newCapacity > SimpleArrayList.MAX_ARRAY_SIZE)) {
-                if (SimpleArrayList.MAX_ARRAY_SIZE < minCapacity) {
+            if (CompilerDirectives.injectBranchProbability(CompilerDirectives.SLOWPATH_PROBABILITY, newCapacity > JSConfig.SOFT_MAX_ARRAY_LENGTH)) {
+                if (JSConfig.SOFT_MAX_ARRAY_LENGTH < minCapacity) {
                     profile.enterArrayTooLargeBranch(node);
                     throw outOfMemoryError();
                 }
-                newCapacity = SimpleArrayList.MAX_ARRAY_SIZE;
+                newCapacity = JSConfig.SOFT_MAX_ARRAY_LENGTH;
             }
 
             int offset = 0;

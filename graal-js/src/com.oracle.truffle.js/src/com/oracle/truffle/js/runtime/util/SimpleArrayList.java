@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -48,6 +48,7 @@ import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.runtime.array.ScriptArray;
+import com.oracle.truffle.js.runtime.JSConfig;
 
 /**
  * A simple array-based quasi list. Prepared for use-cases in Graal/Truffle to avoid
@@ -55,7 +56,7 @@ import com.oracle.truffle.js.runtime.array.ScriptArray;
  */
 public class SimpleArrayList<E> {
 
-    public static final int MAX_ARRAY_SIZE = Integer.MAX_VALUE - 8;
+    private static final int MAX_ARRAY_SIZE = JSConfig.SOFT_MAX_ARRAY_LENGTH;
     private static final int DEFAULT_CAPACITY = 8;
 
     private Object[] elements;
