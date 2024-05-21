@@ -11,8 +11,8 @@
 #include "src/wasm/wasm-arguments.h"
 #include "src/wasm/wasm-objects.h"
 #include "test/cctest/cctest.h"
-#include "test/cctest/compiler/value-helper.h"
 #include "test/cctest/wasm/wasm-run-utils.h"
+#include "test/common/value-helper.h"
 #include "test/common/wasm/wasm-macro-gen.h"
 
 namespace v8 {
@@ -80,7 +80,7 @@ class CWasmEntryArgTester {
   Isolate* isolate_;
   std::function<ReturnType(Args...)> expected_fn_;
   const FunctionSig* sig_;
-  Handle<CodeT> c_wasm_entry_;
+  Handle<Code> c_wasm_entry_;
   WasmCode* wasm_code_;
 };
 

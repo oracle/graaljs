@@ -75,7 +75,6 @@ void ConcurrentMarkingTask::Run(JobDelegate* job_delegate) {
   StatsCollector::EnabledConcurrentScope stats_scope(
       concurrent_marker_.heap().stats_collector(),
       StatsCollector::kConcurrentMark);
-
   if (!HasWorkForConcurrentMarking(concurrent_marker_.marking_worklists()))
     return;
   ConcurrentMarkingState concurrent_marking_state(
@@ -143,20 +142,6 @@ void ConcurrentMarkingTask::ProcessWorklists(
              &concurrent_marking_visitor](HeapObjectHeader* header) {
               BasePage::FromPayload(header)->SynchronizedLoad();
               concurrent_marking_state.AccountMarkedBytes(*header);
-              DynamicallyTraceMarkedObject<AccessMode::kAtomic>(
-                  concurrent_marking_visitor, *header);
-            })) {
-      return;
-    }
-
-    if (!DrainWorklistWithYielding(
-            job_delegate, concurrent_marking_state,
-            concurrent_marker_.incremental_marking_schedule(),
-            concurrent_marking_state.retrace_marked_objects_worklist(),
-            [&concurrent_marking_visitor](HeapObjectHeader* header) {
-              BasePage::FromPayload(header)->SynchronizedLoad();
-              // Retracing does not increment marked bytes as the object has
-              // already been processed before.
               DynamicallyTraceMarkedObject<AccessMode::kAtomic>(
                   concurrent_marking_visitor, *header);
             })) {
@@ -234,6 +219,13 @@ void ConcurrentMarkerBase::NotifyIncrementalMutatorStepCompleted() {
     // Notifies the scheduler that max concurrency might have increased.
     // This will adjust the number of markers if necessary.
     IncreaseMarkingPriorityIfNeeded();
+    concurrent_marking_handle_->NotifyConcurrencyIncrease();
+  }
+}
+
+void ConcurrentMarkerBase::NotifyOfWorkIfNeeded(cppgc::TaskPriority priority) {
+  if (HasWorkForConcurrentMarking(marking_worklists_)) {
+    concurrent_marking_handle_->UpdatePriority(priority);
     concurrent_marking_handle_->NotifyConcurrencyIncrease();
   }
 }

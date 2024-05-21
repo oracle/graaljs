@@ -3,16 +3,12 @@
 // found in the LICENSE file.
 
 #include "src/compiler/constant-folding-reducer.h"
-#include "src/codegen/code-factory.h"
-#include "src/compiler/access-builder.h"
+
 #include "src/compiler/compilation-dependencies.h"
 #include "src/compiler/js-graph.h"
 #include "src/compiler/js-operator.h"
 #include "src/compiler/machine-operator.h"
-#include "src/compiler/node-properties.h"
-#include "src/compiler/operator-properties.h"
 #include "src/execution/isolate-inl.h"
-#include "test/unittests/compiler/compiler-test-utils.h"
 #include "test/unittests/compiler/graph-unittest.h"
 #include "test/unittests/compiler/node-test-utils.h"
 #include "testing/gmock-support.h"
@@ -97,7 +93,7 @@ class ConstantFoldingReducerTest : public TypedGraphTest {
 TEST_F(ConstantFoldingReducerTest, ParameterWithMinusZero) {
   {
     Node* node = Parameter(
-        Type::Constant(broker(), factory()->minus_zero_value(), zone()));
+        Type::Constant(broker(), broker()->minus_zero_value(), zone()));
     Node* use_value = UseValue(node);
     Reduction r = Reduce(node);
     ASSERT_TRUE(r.Changed());
@@ -152,7 +148,7 @@ TEST_F(ConstantFoldingReducerTest, ParameterWithNaN) {
   }
   {
     Node* node =
-        Parameter(Type::Constant(broker(), factory()->nan_value(), zone()));
+        Parameter(Type::Constant(broker(), broker()->nan_value(), zone()));
     Node* use_value = UseValue(node);
     Reduction r = Reduce(node);
     ASSERT_TRUE(r.Changed());
@@ -219,7 +215,7 @@ TEST_F(ConstantFoldingReducerTest, ToBooleanWithFalsish) {
                       Type::Union(
                           Type::Undetectable(),
                           Type::Union(
-                              Type::Constant(broker(), factory()->false_value(),
+                              Type::Constant(broker(), broker()->false_value(),
                                              zone()),
                               Type::Range(0.0, 0.0, zone()), zone()),
                           zone()),
@@ -238,7 +234,7 @@ TEST_F(ConstantFoldingReducerTest, ToBooleanWithFalsish) {
 TEST_F(ConstantFoldingReducerTest, ToBooleanWithTruish) {
   Node* input = Parameter(
       Type::Union(
-          Type::Constant(broker(), factory()->true_value(), zone()),
+          Type::Constant(broker(), broker()->true_value(), zone()),
           Type::Union(Type::DetectableReceiver(), Type::Symbol(), zone()),
           zone()),
       0);

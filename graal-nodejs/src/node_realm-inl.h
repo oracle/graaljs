@@ -42,6 +42,10 @@ inline v8::Isolate* Realm::isolate() const {
   return isolate_;
 }
 
+inline Realm::Kind Realm::kind() const {
+  return kind_;
+}
+
 inline bool Realm::has_run_bootstrapping_code() const {
   return has_run_bootstrapping_code_;
 }
@@ -62,35 +66,36 @@ inline T* Realm::GetBindingData(
 // static
 template <typename T>
 inline T* Realm::GetBindingData(v8::Local<v8::Context> context) {
-  BindingDataStore* map =
-      static_cast<BindingDataStore*>(context->GetAlignedPointerFromEmbedderData(
-          ContextEmbedderIndex::kBindingDataStoreIndex));
-  DCHECK_NOT_NULL(map);
-  constexpr size_t binding_index = static_cast<size_t>(T::binding_type_int);
-  static_assert(binding_index < std::tuple_size_v<BindingDataStore>);
-  auto ptr = (*map)[binding_index];
-  if (UNLIKELY(!ptr)) return nullptr;
-  T* result = static_cast<T*>(ptr.get());
-  DCHECK_NOT_NULL(result);
-  DCHECK_EQ(result->realm(), GetCurrent(context));
-  return result;
+  Realm* realm = GetCurrent(context);
+  return realm->GetBindingData<T>();
 }
 
 template <typename T>
-inline T* Realm::AddBindingData(v8::Local<v8::Context> context,
-                                v8::Local<v8::Object> target) {
-  DCHECK_EQ(GetCurrent(context), this);
-  // This won't compile if T is not a BaseObject subclass.
-  BaseObjectPtr<T> item = MakeDetachedBaseObject<T>(this, target);
-  BindingDataStore* map =
-      static_cast<BindingDataStore*>(context->GetAlignedPointerFromEmbedderData(
-          ContextEmbedderIndex::kBindingDataStoreIndex));
-  DCHECK_NOT_NULL(map);
+inline T* Realm::GetBindingData() {
   constexpr size_t binding_index = static_cast<size_t>(T::binding_type_int);
   static_assert(binding_index < std::tuple_size_v<BindingDataStore>);
-  CHECK(!(*map)[binding_index]);  // Should not insert the binding twice.
-  (*map)[binding_index] = item;
-  DCHECK_EQ(GetBindingData<T>(context), item.get());
+  auto ptr = binding_data_store_[binding_index];
+  if (UNLIKELY(!ptr)) return nullptr;
+  T* result = static_cast<T*>(ptr.get());
+  DCHECK_NOT_NULL(result);
+  return result;
+}
+
+template <typename T, typename... Args>
+inline T* Realm::AddBindingData(v8::Local<v8::Object> target, Args&&... args) {
+  // This won't compile if T is not a BaseObject subclass.
+  static_assert(std::is_base_of_v<BaseObject, T>);
+  // The binding data must be weak so that it won't keep the realm reachable
+  // from strong GC roots indefinitely. The wrapper object of binding data
+  // should be referenced from JavaScript, thus the binding data should be
+  // reachable throughout the lifetime of the realm.
+  BaseObjectWeakPtr<T> item =
+      MakeWeakBaseObject<T>(this, target, std::forward<Args>(args)...);
+  constexpr size_t binding_index = static_cast<size_t>(T::binding_type_int);
+  static_assert(binding_index < std::tuple_size_v<BindingDataStore>);
+  // Each slot is expected to be assigned only once.
+  CHECK(!binding_data_store_[binding_index]);
+  binding_data_store_[binding_index] = item;
   return item.get();
 }
 
@@ -113,20 +118,6 @@ int64_t Realm::base_object_created_after_bootstrap() const {
 
 int64_t Realm::base_object_count() const {
   return base_object_count_;
-}
-
-#define V(PropertyName, TypeName)                                              \
-  inline v8::Local<TypeName> Realm::PropertyName() const {                     \
-    return PersistentToLocal::Strong(PropertyName##_);                         \
-  }                                                                            \
-  inline void Realm::set_##PropertyName(v8::Local<TypeName> value) {           \
-    PropertyName##_.Reset(isolate(), value);                                   \
-  }
-PER_REALM_STRONG_PERSISTENT_VALUES(V)
-#undef V
-
-v8::Local<v8::Context> Realm::context() const {
-  return PersistentToLocal::Strong(context_);
 }
 
 void Realm::AddCleanupHook(CleanupQueue::Callback fn, void* arg) {

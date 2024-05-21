@@ -12,7 +12,6 @@
 #include "src/compiler/opcodes.h"
 #include "src/compiler/operator-properties.h"
 #include "src/compiler/simplified-operator.h"
-#include "src/compiler/type-cache.h"
 #include "src/numbers/conversions-inl.h"
 
 namespace v8 {
@@ -66,7 +65,7 @@ Reduction SimplifiedOperatorReducer::Reduce(Node* node) {
       HeapObjectMatcher m(node->InputAt(0));
       if (m.HasResolvedValue()) {
         base::Optional<bool> maybe_result =
-            m.Ref(broker()).TryGetBooleanValue();
+            m.Ref(broker()).TryGetBooleanValue(broker());
         if (maybe_result.has_value()) return ReplaceInt32(*maybe_result);
       }
       if (m.IsChangeBitToTagged()) return Replace(m.InputAt(0));

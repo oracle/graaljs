@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 #include "src/base/bits.h"
-#include "src/base/platform/wrappers.h"
 #include "src/codegen/machine-type.h"
 #include "src/compiler/backend/instruction-selector-impl.h"
 #include "src/compiler/node-matchers.h"
@@ -36,10 +35,14 @@ class Loong64OperandGenerator final : public OperandGenerator {
   InstructionOperand UseRegisterOrImmediateZero(Node* node) {
     if ((IsIntegerConstant(node) && (GetIntegerConstantValue(node) == 0)) ||
         (IsFloatConstant(node) &&
-         (bit_cast<int64_t>(GetFloatConstantValue(node)) == 0))) {
+         (base::bit_cast<int64_t>(GetFloatConstantValue(node)) == 0))) {
       return UseImmediate(node);
     }
     return UseRegister(node);
+  }
+
+  MachineRepresentation GetRepresentation(Node* node) {
+    return sequence()->GetRepresentation(selector()->GetVirtualRegister(node));
   }
 
   bool IsIntegerConstant(Node* node) {
@@ -75,6 +78,9 @@ class Loong64OperandGenerator final : public OperandGenerator {
 
   bool CanBeImmediate(int64_t value, InstructionCode opcode) {
     switch (ArchOpcodeField::decode(opcode)) {
+      case kLoong64Cmp32:
+      case kLoong64Cmp64:
+        return true;
       case kLoong64Sll_w:
       case kLoong64Srl_w:
       case kLoong64Sra_w:
@@ -361,7 +367,7 @@ void EmitLoad(InstructionSelector* selector, Node* node, InstructionCode opcode,
       selector->CanAddressRelativeToRootsRegister(m.ResolvedValue())) {
     ptrdiff_t const delta =
         g.GetIntegerConstantValue(index) +
-        TurboAssemblerBase::RootRegisterOffsetForExternalReference(
+        MacroAssemblerBase::RootRegisterOffsetForExternalReference(
             selector->isolate(), m.ResolvedValue());
     // Check that the delta is a 32-bit integer due to the limitations of
     // immediate operands.
@@ -372,6 +378,13 @@ void EmitLoad(InstructionSelector* selector, Node* node, InstructionCode opcode,
                      g.UseImmediate(static_cast<int32_t>(delta)));
       return;
     }
+  }
+
+  if (base != nullptr && base->opcode() == IrOpcode::kLoadRootRegister) {
+    selector->Emit(opcode | AddressingModeField::encode(kMode_Root),
+                   g.DefineAsRegister(output == nullptr ? node : output),
+                   g.UseImmediate(index));
+    return;
   }
 
   if (g.CanBeImmediate(index, opcode)) {
@@ -459,18 +472,37 @@ void InstructionSelector::VisitLoad(Node* node) {
     case MachineRepresentation::kWord32:
       opcode = kLoong64Ld_w;
       break;
+#ifdef V8_COMPRESS_POINTERS
+    case MachineRepresentation::kTaggedSigned:
+      opcode = kLoong64LoadDecompressTaggedSigned;
+      break;
+    case MachineRepresentation::kTaggedPointer:
+    case MachineRepresentation::kTagged:
+      opcode = kLoong64LoadDecompressTagged;
+      break;
+#else
     case MachineRepresentation::kTaggedSigned:   // Fall through.
     case MachineRepresentation::kTaggedPointer:  // Fall through.
     case MachineRepresentation::kTagged:         // Fall through.
+#endif
     case MachineRepresentation::kWord64:
       opcode = kLoong64Ld_d;
       break;
     case MachineRepresentation::kCompressedPointer:  // Fall through.
+#ifdef V8_COMPRESS_POINTERS
+      opcode = kLoong64Ld_wu;
+      break;
+#endif
     case MachineRepresentation::kCompressed:         // Fall through.
+#ifdef V8_COMPRESS_POINTERS
+      opcode = kLoong64Ld_wu;
+      break;
+#endif
     case MachineRepresentation::kSandboxedPointer:   // Fall through.
     case MachineRepresentation::kMapWord:            // Fall through.
-    case MachineRepresentation::kNone:
-    case MachineRepresentation::kSimd128:
+    case MachineRepresentation::kNone:               // Fall through.
+    case MachineRepresentation::kSimd128:            // Fall through.
+    case MachineRepresentation::kSimd256:
       UNREACHABLE();
   }
 
@@ -492,13 +524,15 @@ void InstructionSelector::VisitStore(Node* node) {
   WriteBarrierKind write_barrier_kind = store_rep.write_barrier_kind();
   MachineRepresentation rep = store_rep.representation();
 
-  if (FLAG_enable_unconditional_write_barriers && CanBeTaggedPointer(rep)) {
+  if (v8_flags.enable_unconditional_write_barriers &&
+      CanBeTaggedOrCompressedPointer(rep)) {
     write_barrier_kind = kFullWriteBarrier;
   }
 
   // TODO(loong64): I guess this could be done in a better way.
-  if (write_barrier_kind != kNoWriteBarrier && !FLAG_disable_write_barriers) {
-    DCHECK(CanBeTaggedPointer(rep));
+  if (write_barrier_kind != kNoWriteBarrier &&
+      !v8_flags.disable_write_barriers) {
+    DCHECK(CanBeTaggedOrCompressedPointer(rep));
     AddressingMode addressing_mode;
     InstructionOperand inputs[3];
     size_t input_count = 0;
@@ -517,7 +551,7 @@ void InstructionSelector::VisitStore(Node* node) {
         WriteBarrierKindToRecordWriteMode(write_barrier_kind);
     InstructionCode code = kArchStoreWithWriteBarrier;
     code |= AddressingModeField::encode(addressing_mode);
-    code |= MiscField::encode(static_cast<int>(record_write_mode));
+    code |= RecordWriteModeField::encode(record_write_mode);
     Emit(code, 0, nullptr, input_count, inputs);
   } else {
     ArchOpcode opcode;
@@ -538,18 +572,25 @@ void InstructionSelector::VisitStore(Node* node) {
       case MachineRepresentation::kWord32:
         opcode = kLoong64St_w;
         break;
-      case MachineRepresentation::kTaggedSigned:   // Fall through.
-      case MachineRepresentation::kTaggedPointer:  // Fall through.
-      case MachineRepresentation::kTagged:         // Fall through.
       case MachineRepresentation::kWord64:
         opcode = kLoong64St_d;
         break;
+      case MachineRepresentation::kTaggedSigned:   // Fall through.
+      case MachineRepresentation::kTaggedPointer:  // Fall through.
+      case MachineRepresentation::kTagged:         // Fall through.
+        opcode = kLoong64StoreCompressTagged;
+        break;
       case MachineRepresentation::kCompressedPointer:  // Fall through.
       case MachineRepresentation::kCompressed:         // Fall through.
+#ifdef V8_COMPRESS_POINTERS
+        opcode = kLoong64StoreCompressTagged;
+        break;
+#endif
       case MachineRepresentation::kSandboxedPointer:   // Fall through.
       case MachineRepresentation::kMapWord:            // Fall through.
-      case MachineRepresentation::kNone:
-      case MachineRepresentation::kSimd128:
+      case MachineRepresentation::kNone:               // Fall through.
+      case MachineRepresentation::kSimd128:            // Fall through.
+      case MachineRepresentation::kSimd256:
         UNREACHABLE();
     }
 
@@ -558,16 +599,23 @@ void InstructionSelector::VisitStore(Node* node) {
         CanAddressRelativeToRootsRegister(m.ResolvedValue())) {
       ptrdiff_t const delta =
           g.GetIntegerConstantValue(index) +
-          TurboAssemblerBase::RootRegisterOffsetForExternalReference(
+          MacroAssemblerBase::RootRegisterOffsetForExternalReference(
               isolate(), m.ResolvedValue());
       // Check that the delta is a 32-bit integer due to the limitations of
       // immediate operands.
       if (is_int32(delta)) {
         Emit(opcode | AddressingModeField::encode(kMode_Root), g.NoOutput(),
-             g.UseImmediate(static_cast<int32_t>(delta)), g.UseImmediate(0),
+             g.UseImmediate(static_cast<int32_t>(delta)),
              g.UseRegisterOrImmediateZero(value));
         return;
       }
+    }
+
+    if (base != nullptr && base->opcode() == IrOpcode::kLoadRootRegister) {
+      // This will only work if {index} is a constant.
+      Emit(opcode | AddressingModeField::encode(kMode_Root), g.NoOutput(),
+           g.UseImmediate(index), g.UseRegisterOrImmediateZero(value));
+      return;
     }
 
     if (g.CanBeImmediate(index, opcode)) {
@@ -802,25 +850,32 @@ void InstructionSelector::VisitWord32Shr(Node* node) {
 
 void InstructionSelector::VisitWord32Sar(Node* node) {
   Int32BinopMatcher m(node);
-  if (m.left().IsWord32Shl() && CanCover(node, m.left().node())) {
-    Int32BinopMatcher mleft(m.left().node());
-    if (m.right().HasResolvedValue() && mleft.right().HasResolvedValue()) {
-      Loong64OperandGenerator g(this);
-      uint32_t sar = m.right().ResolvedValue();
-      uint32_t shl = mleft.right().ResolvedValue();
-      if ((sar == shl) && (sar == 16)) {
-        Emit(kLoong64Ext_w_h, g.DefineAsRegister(node),
-             g.UseRegister(mleft.left().node()));
-        return;
-      } else if ((sar == shl) && (sar == 24)) {
-        Emit(kLoong64Ext_w_b, g.DefineAsRegister(node),
-             g.UseRegister(mleft.left().node()));
-        return;
-      } else if ((sar == shl) && (sar == 32)) {
-        Emit(kLoong64Sll_w, g.DefineAsRegister(node),
-             g.UseRegister(mleft.left().node()), g.TempImmediate(0));
-        return;
+  if (CanCover(node, m.left().node())) {
+    Loong64OperandGenerator g(this);
+    if (m.left().IsWord32Shl()) {
+      Int32BinopMatcher mleft(m.left().node());
+      if (m.right().HasResolvedValue() && mleft.right().HasResolvedValue()) {
+        uint32_t sar = m.right().ResolvedValue();
+        uint32_t shl = mleft.right().ResolvedValue();
+        if ((sar == shl) && (sar == 16)) {
+          Emit(kLoong64Ext_w_h, g.DefineAsRegister(node),
+               g.UseRegister(mleft.left().node()));
+          return;
+        } else if ((sar == shl) && (sar == 24)) {
+          Emit(kLoong64Ext_w_b, g.DefineAsRegister(node),
+               g.UseRegister(mleft.left().node()));
+          return;
+        } else if ((sar == shl) && (sar == 32)) {
+          Emit(kLoong64Sll_w, g.DefineAsRegister(node),
+               g.UseRegister(mleft.left().node()), g.TempImmediate(0));
+          return;
+        }
       }
+    } else if (m.left().IsTruncateInt64ToInt32()) {
+      Emit(kLoong64Sra_w, g.DefineAsRegister(node),
+           g.UseRegister(m.left().InputAt(0)),
+           g.UseOperand(node->InputAt(1), kLoong64Sra_w));
+      return;
     }
   }
   VisitRRO(this, kLoong64Sra_w, node);
@@ -893,6 +948,21 @@ void InstructionSelector::VisitWord64Shr(Node* node) {
 
 void InstructionSelector::VisitWord64Sar(Node* node) {
   if (TryEmitExtendingLoad(this, node, node)) return;
+
+  Int64BinopMatcher m(node);
+  if (m.left().IsChangeInt32ToInt64() && m.right().HasResolvedValue() &&
+      is_uint5(m.right().ResolvedValue()) && CanCover(node, m.left().node())) {
+    if ((m.left().InputAt(0)->opcode() != IrOpcode::kLoad &&
+         m.left().InputAt(0)->opcode() != IrOpcode::kLoadImmutable) ||
+        !CanCover(m.left().node(), m.left().InputAt(0))) {
+      Loong64OperandGenerator g(this);
+      Emit(kLoong64Sra_w, g.DefineAsRegister(node),
+           g.UseRegister(m.left().node()->InputAt(0)),
+           g.UseImmediate(m.right().node()));
+      return;
+    }
+  }
+
   VisitRRO(this, kLoong64Sra_d, node);
 }
 
@@ -1078,8 +1148,16 @@ void InstructionSelector::VisitInt32MulHigh(Node* node) {
   VisitRRR(this, kLoong64Mulh_w, node);
 }
 
+void InstructionSelector::VisitInt64MulHigh(Node* node) {
+  VisitRRR(this, kLoong64Mulh_d, node);
+}
+
 void InstructionSelector::VisitUint32MulHigh(Node* node) {
   VisitRRR(this, kLoong64Mulh_wu, node);
+}
+
+void InstructionSelector::VisitUint64MulHigh(Node* node) {
+  VisitRRR(this, kLoong64Mulh_du, node);
 }
 
 void InstructionSelector::VisitInt64Mul(Node* node) {
@@ -1351,26 +1429,75 @@ void InstructionSelector::VisitTryTruncateFloat64ToUint64(Node* node) {
   Emit(kLoong64Float64ToUint64, output_count, outputs, 1, inputs);
 }
 
+void InstructionSelector::VisitTryTruncateFloat64ToInt32(Node* node) {
+  Loong64OperandGenerator g(this);
+  InstructionOperand inputs[] = {g.UseRegister(node->InputAt(0))};
+  InstructionOperand temps[] = {g.TempDoubleRegister()};
+  InstructionOperand outputs[2];
+  size_t output_count = 0;
+  outputs[output_count++] = g.DefineAsRegister(node);
+
+  Node* success_output = NodeProperties::FindProjection(node, 1);
+  if (success_output) {
+    outputs[output_count++] = g.DefineAsRegister(success_output);
+  }
+
+  Emit(kLoong64Float64ToInt32, output_count, outputs, 1, inputs, 1, temps);
+}
+
+void InstructionSelector::VisitTryTruncateFloat64ToUint32(Node* node) {
+  Loong64OperandGenerator g(this);
+  InstructionOperand inputs[] = {g.UseRegister(node->InputAt(0))};
+  InstructionOperand temps[] = {g.TempDoubleRegister()};
+  InstructionOperand outputs[2];
+  size_t output_count = 0;
+  outputs[output_count++] = g.DefineAsRegister(node);
+
+  Node* success_output = NodeProperties::FindProjection(node, 1);
+  if (success_output) {
+    outputs[output_count++] = g.DefineAsRegister(success_output);
+  }
+
+  Emit(kLoong64Float64ToUint32, output_count, outputs, 1, inputs, 1, temps);
+}
+
 void InstructionSelector::VisitBitcastWord32ToWord64(Node* node) {
-  UNIMPLEMENTED();
+  DCHECK(SmiValuesAre31Bits());
+  DCHECK(COMPRESS_POINTERS_BOOL);
+  EmitIdentity(node);
 }
 
 void InstructionSelector::VisitChangeInt32ToInt64(Node* node) {
-  // On LoongArch64, int32 values should all be sign-extended to 64-bit, so
-  // no need to sign-extend them here.
-  // But when call to a host function in simulator, if the function return an
-  // int32 value, the simulator do not sign-extend to int64, because in
-  // simulator we do not know the function whether return an int32 or int64.
-#ifdef USE_SIMULATOR
   Node* value = node->InputAt(0);
-  if (value->opcode() == IrOpcode::kCall) {
+  if ((value->opcode() == IrOpcode::kLoad ||
+       value->opcode() == IrOpcode::kLoadImmutable) &&
+      CanCover(node, value)) {
+    // Generate sign-extending load.
+    LoadRepresentation load_rep = LoadRepresentationOf(value->op());
+    InstructionCode opcode = kArchNop;
+    switch (load_rep.representation()) {
+      case MachineRepresentation::kBit:  // Fall through.
+      case MachineRepresentation::kWord8:
+        opcode = load_rep.IsUnsigned() ? kLoong64Ld_bu : kLoong64Ld_b;
+        break;
+      case MachineRepresentation::kWord16:
+        opcode = load_rep.IsUnsigned() ? kLoong64Ld_hu : kLoong64Ld_h;
+        break;
+      case MachineRepresentation::kTaggedSigned:
+      case MachineRepresentation::kTagged:
+      case MachineRepresentation::kWord32:
+        opcode = kLoong64Ld_w;
+        break;
+      default:
+        UNREACHABLE();
+    }
+    EmitLoad(this, value, opcode, node);
+  } else {
     Loong64OperandGenerator g(this);
     Emit(kLoong64Sll_w, g.DefineAsRegister(node), g.UseRegister(value),
          g.TempImmediate(0));
     return;
   }
-#endif
-  EmitIdentity(node);
 }
 
 bool InstructionSelector::ZeroExtendsWord32ToWord64NoPhis(Node* node) {
@@ -1664,6 +1791,23 @@ void InstructionSelector::VisitFloat64Ieee754Unop(Node* node,
       ->MarkAsCall();
 }
 
+void InstructionSelector::EmitMoveParamToFPR(Node* node, int32_t index) {
+  OperandGenerator g(this);
+  int count = linkage()->GetParameterLocation(index).GetLocation();
+  InstructionOperand out_op = g.TempRegister(-count);
+  Emit(kArchNop, out_op);
+  Emit(kLoong64BitcastLD, g.DefineAsRegister(node), out_op);
+}
+
+void InstructionSelector::EmitMoveFPRToParam(InstructionOperand* op,
+                                             LinkageLocation location) {
+  OperandGenerator g(this);
+  int count = location.GetLocation();
+  InstructionOperand new_op = g.TempRegister(-count);
+  Emit(kLoong64BitcastDL, new_op, *op);
+  *op = new_op;
+}
+
 void InstructionSelector::EmitPrepareArguments(
     ZoneVector<PushParameter>* arguments, const CallDescriptor* call_descriptor,
     Node* node) {
@@ -1671,8 +1815,10 @@ void InstructionSelector::EmitPrepareArguments(
 
   // Prepare for C function call.
   if (call_descriptor->IsCFunctionCall()) {
-    Emit(kArchPrepareCallCFunction | MiscField::encode(static_cast<int>(
-                                         call_descriptor->ParameterCount())),
+    int gp_param_count = static_cast<int>(call_descriptor->GPParameterCount());
+    int fp_param_count = static_cast<int>(call_descriptor->FPParameterCount());
+    Emit(kArchPrepareCallCFunction | ParamField::encode(gp_param_count) |
+             FPParamField::encode(fp_param_count),
          0, nullptr, 0, nullptr);
 
     // Poke any stack arguments.
@@ -1742,6 +1888,16 @@ namespace {
 static void VisitCompare(InstructionSelector* selector, InstructionCode opcode,
                          InstructionOperand left, InstructionOperand right,
                          FlagsContinuation* cont) {
+#ifdef V8_COMPRESS_POINTERS
+  if (opcode == kLoong64Cmp32) {
+    Loong64OperandGenerator g(selector);
+    InstructionOperand temps[] = {g.TempRegister(), g.TempRegister()};
+    InstructionOperand inputs[] = {left, right};
+    selector->EmitWithContinuation(opcode, 0, nullptr, arraysize(inputs),
+                                   inputs, arraysize(temps), temps, cont);
+    return;
+  }
+#endif
   selector->EmitWithContinuation(opcode, left, right, cont);
 }
 
@@ -1796,23 +1952,23 @@ void VisitWordCompare(InstructionSelector* selector, Node* node,
         case kEqual:
         case kNotEqual:
           if (cont->IsSet()) {
-            VisitCompare(selector, opcode, g.UseRegister(left),
+            VisitCompare(selector, opcode, g.UseUniqueRegister(left),
                          g.UseImmediate(right), cont);
           } else {
-            VisitCompare(selector, opcode, g.UseRegister(left),
-                         g.UseRegister(right), cont);
+            VisitCompare(selector, opcode, g.UseUniqueRegister(left),
+                         g.UseImmediate(right), cont);
           }
           break;
         case kSignedLessThan:
         case kSignedGreaterThanOrEqual:
         case kUnsignedLessThan:
         case kUnsignedGreaterThanOrEqual:
-          VisitCompare(selector, opcode, g.UseRegister(left),
+          VisitCompare(selector, opcode, g.UseUniqueRegister(left),
                        g.UseImmediate(right), cont);
           break;
         default:
-          VisitCompare(selector, opcode, g.UseRegister(left),
-                       g.UseRegister(right), cont);
+          VisitCompare(selector, opcode, g.UseUniqueRegister(left),
+                       g.UseUniqueRegister(right), cont);
       }
     }
   } else if (g.CanBeImmediate(left, opcode)) {
@@ -1825,28 +1981,28 @@ void VisitWordCompare(InstructionSelector* selector, Node* node,
         case kEqual:
         case kNotEqual:
           if (cont->IsSet()) {
-            VisitCompare(selector, opcode, g.UseRegister(right),
+            VisitCompare(selector, opcode, g.UseUniqueRegister(right),
                          g.UseImmediate(left), cont);
           } else {
-            VisitCompare(selector, opcode, g.UseRegister(right),
-                         g.UseRegister(left), cont);
+            VisitCompare(selector, opcode, g.UseUniqueRegister(right),
+                         g.UseImmediate(left), cont);
           }
           break;
         case kSignedLessThan:
         case kSignedGreaterThanOrEqual:
         case kUnsignedLessThan:
         case kUnsignedGreaterThanOrEqual:
-          VisitCompare(selector, opcode, g.UseRegister(right),
+          VisitCompare(selector, opcode, g.UseUniqueRegister(right),
                        g.UseImmediate(left), cont);
           break;
         default:
-          VisitCompare(selector, opcode, g.UseRegister(right),
-                       g.UseRegister(left), cont);
+          VisitCompare(selector, opcode, g.UseUniqueRegister(right),
+                       g.UseUniqueRegister(left), cont);
       }
     }
   } else {
-    VisitCompare(selector, opcode, g.UseRegister(left), g.UseRegister(right),
-                 cont);
+    VisitCompare(selector, opcode, g.UseUniqueRegister(left),
+                 g.UseUniqueRegister(right), cont);
   }
 }
 
@@ -1886,23 +2042,16 @@ void VisitWord32Compare(InstructionSelector* selector, Node* node,
   // so we need do a full word32 compare in this case.
   if (node->InputAt(0)->opcode() == IrOpcode::kCall ||
       node->InputAt(1)->opcode() == IrOpcode::kCall) {
-    VisitFullWord32Compare(selector, node, kLoong64Cmp, cont);
+    VisitFullWord32Compare(selector, node, kLoong64Cmp64, cont);
     return;
   }
 #endif
-  VisitOptimizedWord32Compare(selector, node, kLoong64Cmp, cont);
+  VisitOptimizedWord32Compare(selector, node, kLoong64Cmp32, cont);
 }
 
 void VisitWord64Compare(InstructionSelector* selector, Node* node,
                         FlagsContinuation* cont) {
-  VisitWordCompare(selector, node, kLoong64Cmp, cont, false);
-}
-
-void EmitWordCompareZero(InstructionSelector* selector, Node* value,
-                         FlagsContinuation* cont) {
-  Loong64OperandGenerator g(selector);
-  selector->EmitWithContinuation(kLoong64Cmp, g.UseRegister(value),
-                                 g.TempImmediate(0), cont);
+  VisitWordCompare(selector, node, kLoong64Cmp64, cont, false);
 }
 
 void VisitAtomicLoad(InstructionSelector* selector, Node* node,
@@ -1931,11 +2080,25 @@ void VisitAtomicLoad(InstructionSelector* selector, Node* node,
     case MachineRepresentation::kWord64:
       code = kLoong64Word64AtomicLoadUint64;
       break;
+#ifdef V8_COMPRESS_POINTERS
+    case MachineRepresentation::kTaggedSigned:
+      code = kLoong64AtomicLoadDecompressTaggedSigned;
+      break;
+    case MachineRepresentation::kTaggedPointer:
+    case MachineRepresentation::kTagged:
+      code = kLoong64AtomicLoadDecompressTagged;
+      break;
+#else
     case MachineRepresentation::kTaggedSigned:   // Fall through.
     case MachineRepresentation::kTaggedPointer:  // Fall through.
     case MachineRepresentation::kTagged:
-      DCHECK_EQ(kTaggedSize, 8);
       code = kLoong64Word64AtomicLoadUint64;
+      break;
+#endif
+    case MachineRepresentation::kCompressedPointer:  // Fall through.
+    case MachineRepresentation::kCompressed:
+      DCHECK(COMPRESS_POINTERS_BOOL);
+      code = kLoong64Word64AtomicLoadUint32;
       break;
     default:
       UNREACHABLE();
@@ -1969,21 +2132,22 @@ void VisitAtomicStore(InstructionSelector* selector, Node* node,
   WriteBarrierKind write_barrier_kind = store_params.write_barrier_kind();
   MachineRepresentation rep = store_params.representation();
 
-  if (FLAG_enable_unconditional_write_barriers &&
+  if (v8_flags.enable_unconditional_write_barriers &&
       CanBeTaggedOrCompressedPointer(rep)) {
     write_barrier_kind = kFullWriteBarrier;
   }
 
   InstructionCode code;
 
-  if (write_barrier_kind != kNoWriteBarrier && !FLAG_disable_write_barriers) {
+  if (write_barrier_kind != kNoWriteBarrier &&
+      !v8_flags.disable_write_barriers) {
     DCHECK(CanBeTaggedPointer(rep));
     DCHECK_EQ(kTaggedSize, 8);
 
     RecordWriteMode record_write_mode =
         WriteBarrierKindToRecordWriteMode(write_barrier_kind);
     code = kArchAtomicStoreWithWriteBarrier;
-    code |= MiscField::encode(static_cast<int>(record_write_mode));
+    code |= RecordWriteModeField::encode(record_write_mode);
   } else {
     switch (rep) {
       case MachineRepresentation::kWord8:
@@ -2002,8 +2166,14 @@ void VisitAtomicStore(InstructionSelector* selector, Node* node,
       case MachineRepresentation::kTaggedSigned:   // Fall through.
       case MachineRepresentation::kTaggedPointer:  // Fall through.
       case MachineRepresentation::kTagged:
-        DCHECK_EQ(kTaggedSize, 8);
-        code = kLoong64StoreCompressTagged;
+        DCHECK_EQ(AtomicWidthSize(width), kTaggedSize);
+        code = kLoong64AtomicStoreCompressTagged;
+        break;
+      case MachineRepresentation::kCompressedPointer:  // Fall through.
+      case MachineRepresentation::kCompressed:
+        DCHECK(COMPRESS_POINTERS_BOOL);
+        DCHECK_EQ(width, AtomicWidth::kWord32);
+        code = kLoong64AtomicStoreCompressTagged;
         break;
       default:
         UNREACHABLE();
@@ -2137,22 +2307,13 @@ void InstructionSelector::VisitStackPointerGreaterThan(
 // Shared routine for word comparisons against zero.
 void InstructionSelector::VisitWordCompareZero(Node* user, Node* value,
                                                FlagsContinuation* cont) {
+  Loong64OperandGenerator g(this);
   // Try to combine with comparisons against 0 by simply inverting the branch.
-  while (CanCover(user, value)) {
-    if (value->opcode() == IrOpcode::kWord32Equal) {
-      Int32BinopMatcher m(value);
-      if (!m.right().Is(0)) break;
-      user = value;
-      value = m.left().node();
-    } else if (value->opcode() == IrOpcode::kWord64Equal) {
-      Int64BinopMatcher m(value);
-      if (!m.right().Is(0)) break;
-      user = value;
-      value = m.left().node();
-    } else {
-      break;
-    }
-
+  while (value->opcode() == IrOpcode::kWord32Equal && CanCover(user, value)) {
+    Int32BinopMatcher m(value);
+    if (!m.right().Is(0)) break;
+    user = value;
+    value = m.left().node();
     cont->Negate();
   }
 
@@ -2228,6 +2389,9 @@ void InstructionSelector::VisitWordCompareZero(Node* user, Node* value,
               case IrOpcode::kInt32MulWithOverflow:
                 cont->OverwriteAndNegateIfEqual(kOverflow);
                 return VisitBinop(this, node, kLoong64MulOvf_w, cont);
+              case IrOpcode::kInt64MulWithOverflow:
+                cont->OverwriteAndNegateIfEqual(kOverflow);
+                return VisitBinop(this, node, kLoong64MulOvf_d, cont);
               case IrOpcode::kInt64AddWithOverflow:
                 cont->OverwriteAndNegateIfEqual(kOverflow);
                 return VisitBinop(this, node, kLoong64AddOvf_d, cont);
@@ -2252,7 +2416,8 @@ void InstructionSelector::VisitWordCompareZero(Node* user, Node* value,
   }
 
   // Continuation could not be combined with a compare, emit compare against 0.
-  EmitWordCompareZero(this, value, cont);
+  VisitCompare(this, kLoong64Cmp32, g.UseRegister(value), g.TempImmediate(0),
+               cont);
 }
 
 void InstructionSelector::VisitSwitch(Node* node, const SwitchInfo& sw) {
@@ -2345,6 +2510,15 @@ void InstructionSelector::VisitInt32MulWithOverflow(Node* node) {
   VisitBinop(this, node, kLoong64MulOvf_w, &cont);
 }
 
+void InstructionSelector::VisitInt64MulWithOverflow(Node* node) {
+  if (Node* ovf = NodeProperties::FindProjection(node, 1)) {
+    FlagsContinuation cont = FlagsContinuation::ForSet(kOverflow, ovf);
+    return VisitBinop(this, node, kLoong64MulOvf_d, &cont);
+  }
+  FlagsContinuation cont;
+  VisitBinop(this, node, kLoong64MulOvf_d, &cont);
+}
+
 void InstructionSelector::VisitInt64AddWithOverflow(Node* node) {
   if (Node* ovf = NodeProperties::FindProjection(node, 1)) {
     FlagsContinuation cont = FlagsContinuation::ForSet(kOverflow, ovf);
@@ -2365,11 +2539,6 @@ void InstructionSelector::VisitInt64SubWithOverflow(Node* node) {
 
 void InstructionSelector::VisitWord64Equal(Node* const node) {
   FlagsContinuation cont = FlagsContinuation::ForSet(kEqual, node);
-  Int64BinopMatcher m(node);
-  if (m.right().Is(0)) {
-    return VisitWordCompareZero(m.node(), m.left().node(), &cont);
-  }
-
   VisitWord64Compare(this, node, &cont);
 }
 
@@ -2632,63 +2801,65 @@ void InstructionSelector::VisitInt64AbsWithOverflow(Node* node) {
   V(I16x8)                \
   V(I8x16)
 
-#define SIMD_UNOP_LIST(V)                                     \
-  V(F64x2Abs, kLoong64F64x2Abs)                               \
-  V(F64x2Neg, kLoong64F64x2Neg)                               \
-  V(F64x2Sqrt, kLoong64F64x2Sqrt)                             \
-  V(F64x2Ceil, kLoong64F64x2Ceil)                             \
-  V(F64x2Floor, kLoong64F64x2Floor)                           \
-  V(F64x2Trunc, kLoong64F64x2Trunc)                           \
-  V(F64x2NearestInt, kLoong64F64x2NearestInt)                 \
-  V(I64x2Neg, kLoong64I64x2Neg)                               \
-  V(I64x2BitMask, kLoong64I64x2BitMask)                       \
-  V(F64x2ConvertLowI32x4S, kLoong64F64x2ConvertLowI32x4S)     \
-  V(F64x2ConvertLowI32x4U, kLoong64F64x2ConvertLowI32x4U)     \
-  V(F64x2PromoteLowF32x4, kLoong64F64x2PromoteLowF32x4)       \
-  V(F32x4SConvertI32x4, kLoong64F32x4SConvertI32x4)           \
-  V(F32x4UConvertI32x4, kLoong64F32x4UConvertI32x4)           \
-  V(F32x4Abs, kLoong64F32x4Abs)                               \
-  V(F32x4Neg, kLoong64F32x4Neg)                               \
-  V(F32x4Sqrt, kLoong64F32x4Sqrt)                             \
-  V(F32x4RecipApprox, kLoong64F32x4RecipApprox)               \
-  V(F32x4RecipSqrtApprox, kLoong64F32x4RecipSqrtApprox)       \
-  V(F32x4Ceil, kLoong64F32x4Ceil)                             \
-  V(F32x4Floor, kLoong64F32x4Floor)                           \
-  V(F32x4Trunc, kLoong64F32x4Trunc)                           \
-  V(F32x4NearestInt, kLoong64F32x4NearestInt)                 \
-  V(F32x4DemoteF64x2Zero, kLoong64F32x4DemoteF64x2Zero)       \
-  V(I64x2Abs, kLoong64I64x2Abs)                               \
-  V(I64x2SConvertI32x4Low, kLoong64I64x2SConvertI32x4Low)     \
-  V(I64x2SConvertI32x4High, kLoong64I64x2SConvertI32x4High)   \
-  V(I64x2UConvertI32x4Low, kLoong64I64x2UConvertI32x4Low)     \
-  V(I64x2UConvertI32x4High, kLoong64I64x2UConvertI32x4High)   \
-  V(I32x4SConvertF32x4, kLoong64I32x4SConvertF32x4)           \
-  V(I32x4UConvertF32x4, kLoong64I32x4UConvertF32x4)           \
-  V(I32x4Neg, kLoong64I32x4Neg)                               \
-  V(I32x4SConvertI16x8Low, kLoong64I32x4SConvertI16x8Low)     \
-  V(I32x4SConvertI16x8High, kLoong64I32x4SConvertI16x8High)   \
-  V(I32x4UConvertI16x8Low, kLoong64I32x4UConvertI16x8Low)     \
-  V(I32x4UConvertI16x8High, kLoong64I32x4UConvertI16x8High)   \
-  V(I32x4Abs, kLoong64I32x4Abs)                               \
-  V(I32x4BitMask, kLoong64I32x4BitMask)                       \
-  V(I32x4TruncSatF64x2SZero, kLoong64I32x4TruncSatF64x2SZero) \
-  V(I32x4TruncSatF64x2UZero, kLoong64I32x4TruncSatF64x2UZero) \
-  V(I16x8Neg, kLoong64I16x8Neg)                               \
-  V(I16x8SConvertI8x16Low, kLoong64I16x8SConvertI8x16Low)     \
-  V(I16x8SConvertI8x16High, kLoong64I16x8SConvertI8x16High)   \
-  V(I16x8UConvertI8x16Low, kLoong64I16x8UConvertI8x16Low)     \
-  V(I16x8UConvertI8x16High, kLoong64I16x8UConvertI8x16High)   \
-  V(I16x8Abs, kLoong64I16x8Abs)                               \
-  V(I16x8BitMask, kLoong64I16x8BitMask)                       \
-  V(I8x16Neg, kLoong64I8x16Neg)                               \
-  V(I8x16Abs, kLoong64I8x16Abs)                               \
-  V(I8x16Popcnt, kLoong64I8x16Popcnt)                         \
-  V(I8x16BitMask, kLoong64I8x16BitMask)                       \
-  V(S128Not, kLoong64S128Not)                                 \
-  V(I64x2AllTrue, kLoong64I64x2AllTrue)                       \
-  V(I32x4AllTrue, kLoong64I32x4AllTrue)                       \
-  V(I16x8AllTrue, kLoong64I16x8AllTrue)                       \
-  V(I8x16AllTrue, kLoong64I8x16AllTrue)                       \
+#define SIMD_UNOP_LIST(V)                                             \
+  V(F64x2Abs, kLoong64F64x2Abs)                                       \
+  V(F64x2Neg, kLoong64F64x2Neg)                                       \
+  V(F64x2Sqrt, kLoong64F64x2Sqrt)                                     \
+  V(F64x2Ceil, kLoong64F64x2Ceil)                                     \
+  V(F64x2Floor, kLoong64F64x2Floor)                                   \
+  V(F64x2Trunc, kLoong64F64x2Trunc)                                   \
+  V(F64x2NearestInt, kLoong64F64x2NearestInt)                         \
+  V(I64x2Neg, kLoong64I64x2Neg)                                       \
+  V(I64x2BitMask, kLoong64I64x2BitMask)                               \
+  V(F64x2ConvertLowI32x4S, kLoong64F64x2ConvertLowI32x4S)             \
+  V(F64x2ConvertLowI32x4U, kLoong64F64x2ConvertLowI32x4U)             \
+  V(F64x2PromoteLowF32x4, kLoong64F64x2PromoteLowF32x4)               \
+  V(F32x4SConvertI32x4, kLoong64F32x4SConvertI32x4)                   \
+  V(F32x4UConvertI32x4, kLoong64F32x4UConvertI32x4)                   \
+  V(F32x4Abs, kLoong64F32x4Abs)                                       \
+  V(F32x4Neg, kLoong64F32x4Neg)                                       \
+  V(F32x4Sqrt, kLoong64F32x4Sqrt)                                     \
+  V(F32x4Ceil, kLoong64F32x4Ceil)                                     \
+  V(F32x4Floor, kLoong64F32x4Floor)                                   \
+  V(F32x4Trunc, kLoong64F32x4Trunc)                                   \
+  V(F32x4NearestInt, kLoong64F32x4NearestInt)                         \
+  V(F32x4DemoteF64x2Zero, kLoong64F32x4DemoteF64x2Zero)               \
+  V(I64x2Abs, kLoong64I64x2Abs)                                       \
+  V(I64x2SConvertI32x4Low, kLoong64I64x2SConvertI32x4Low)             \
+  V(I64x2SConvertI32x4High, kLoong64I64x2SConvertI32x4High)           \
+  V(I64x2UConvertI32x4Low, kLoong64I64x2UConvertI32x4Low)             \
+  V(I64x2UConvertI32x4High, kLoong64I64x2UConvertI32x4High)           \
+  V(I32x4SConvertF32x4, kLoong64I32x4SConvertF32x4)                   \
+  V(I32x4UConvertF32x4, kLoong64I32x4UConvertF32x4)                   \
+  V(I32x4Neg, kLoong64I32x4Neg)                                       \
+  V(I32x4SConvertI16x8Low, kLoong64I32x4SConvertI16x8Low)             \
+  V(I32x4SConvertI16x8High, kLoong64I32x4SConvertI16x8High)           \
+  V(I32x4UConvertI16x8Low, kLoong64I32x4UConvertI16x8Low)             \
+  V(I32x4UConvertI16x8High, kLoong64I32x4UConvertI16x8High)           \
+  V(I32x4Abs, kLoong64I32x4Abs)                                       \
+  V(I32x4BitMask, kLoong64I32x4BitMask)                               \
+  V(I32x4TruncSatF64x2SZero, kLoong64I32x4TruncSatF64x2SZero)         \
+  V(I32x4TruncSatF64x2UZero, kLoong64I32x4TruncSatF64x2UZero)         \
+  V(I32x4RelaxedTruncF32x4S, kLoong64I32x4RelaxedTruncF32x4S)         \
+  V(I32x4RelaxedTruncF32x4U, kLoong64I32x4RelaxedTruncF32x4U)         \
+  V(I32x4RelaxedTruncF64x2SZero, kLoong64I32x4RelaxedTruncF64x2SZero) \
+  V(I32x4RelaxedTruncF64x2UZero, kLoong64I32x4RelaxedTruncF64x2UZero) \
+  V(I16x8Neg, kLoong64I16x8Neg)                                       \
+  V(I16x8SConvertI8x16Low, kLoong64I16x8SConvertI8x16Low)             \
+  V(I16x8SConvertI8x16High, kLoong64I16x8SConvertI8x16High)           \
+  V(I16x8UConvertI8x16Low, kLoong64I16x8UConvertI8x16Low)             \
+  V(I16x8UConvertI8x16High, kLoong64I16x8UConvertI8x16High)           \
+  V(I16x8Abs, kLoong64I16x8Abs)                                       \
+  V(I16x8BitMask, kLoong64I16x8BitMask)                               \
+  V(I8x16Neg, kLoong64I8x16Neg)                                       \
+  V(I8x16Abs, kLoong64I8x16Abs)                                       \
+  V(I8x16Popcnt, kLoong64I8x16Popcnt)                                 \
+  V(I8x16BitMask, kLoong64I8x16BitMask)                               \
+  V(S128Not, kLoong64S128Not)                                         \
+  V(I64x2AllTrue, kLoong64I64x2AllTrue)                               \
+  V(I32x4AllTrue, kLoong64I32x4AllTrue)                               \
+  V(I16x8AllTrue, kLoong64I16x8AllTrue)                               \
+  V(I8x16AllTrue, kLoong64I8x16AllTrue)                               \
   V(V128AnyTrue, kLoong64V128AnyTrue)
 
 #define SIMD_SHIFT_OP_LIST(V) \
@@ -2716,6 +2887,8 @@ void InstructionSelector::VisitInt64AbsWithOverflow(Node* node) {
   V(F64x2Ne, kLoong64F64x2Ne)                             \
   V(F64x2Lt, kLoong64F64x2Lt)                             \
   V(F64x2Le, kLoong64F64x2Le)                             \
+  V(F64x2RelaxedMin, kLoong64F64x2RelaxedMin)             \
+  V(F64x2RelaxedMax, kLoong64F64x2RelaxedMax)             \
   V(I64x2Eq, kLoong64I64x2Eq)                             \
   V(I64x2Ne, kLoong64I64x2Ne)                             \
   V(I64x2Add, kLoong64I64x2Add)                           \
@@ -2733,6 +2906,8 @@ void InstructionSelector::VisitInt64AbsWithOverflow(Node* node) {
   V(F32x4Ne, kLoong64F32x4Ne)                             \
   V(F32x4Lt, kLoong64F32x4Lt)                             \
   V(F32x4Le, kLoong64F32x4Le)                             \
+  V(F32x4RelaxedMin, kLoong64F32x4RelaxedMin)             \
+  V(F32x4RelaxedMax, kLoong64F32x4RelaxedMax)             \
   V(I32x4Add, kLoong64I32x4Add)                           \
   V(I32x4Sub, kLoong64I32x4Sub)                           \
   V(I32x4Mul, kLoong64I32x4Mul)                           \
@@ -2768,6 +2943,7 @@ void InstructionSelector::VisitInt64AbsWithOverflow(Node* node) {
   V(I16x8SConvertI32x4, kLoong64I16x8SConvertI32x4)       \
   V(I16x8UConvertI32x4, kLoong64I16x8UConvertI32x4)       \
   V(I16x8Q15MulRSatS, kLoong64I16x8Q15MulRSatS)           \
+  V(I16x8RelaxedQ15MulRS, kLoong64I16x8RelaxedQ15MulRS)   \
   V(I8x16Add, kLoong64I8x16Add)                           \
   V(I8x16AddSatS, kLoong64I8x16AddSatS)                   \
   V(I8x16AddSatU, kLoong64I8x16AddSatU)                   \
@@ -2869,6 +3045,37 @@ SIMD_BINOP_LIST(SIMD_VISIT_BINOP)
 void InstructionSelector::VisitS128Select(Node* node) {
   VisitRRRR(this, kLoong64S128Select, node);
 }
+
+void InstructionSelector::VisitI8x16RelaxedLaneSelect(Node* node) {
+  VisitS128Select(node);
+}
+
+void InstructionSelector::VisitI16x8RelaxedLaneSelect(Node* node) {
+  VisitS128Select(node);
+}
+
+void InstructionSelector::VisitI32x4RelaxedLaneSelect(Node* node) {
+  VisitS128Select(node);
+}
+
+void InstructionSelector::VisitI64x2RelaxedLaneSelect(Node* node) {
+  VisitS128Select(node);
+}
+
+#define SIMD_UNIMP_OP_LIST(V) \
+  V(F64x2Qfma)                \
+  V(F64x2Qfms)                \
+  V(F32x4Qfma)                \
+  V(F32x4Qfms)                \
+  V(I16x8DotI8x16I7x16S)      \
+  V(I32x4DotI8x16I7x16AddS)
+
+#define SIMD_VISIT_UNIMP_OP(Name) \
+  void InstructionSelector::Visit##Name(Node* node) { UNIMPLEMENTED(); }
+SIMD_UNIMP_OP_LIST(SIMD_VISIT_UNIMP_OP)
+
+#undef SIMD_VISIT_UNIMP_OP
+#undef SIMD_UNIMP_OP_LIST
 
 #if V8_ENABLE_WEBASSEMBLY
 namespace {

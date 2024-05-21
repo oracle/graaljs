@@ -31,11 +31,13 @@ TEST(WeakReferencesBasic) {
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   Factory* factory = isolate->factory();
+  i::DisableConservativeStackScanningScopeForTesting no_stack_scanning(
+      CcTest::heap());
   HandleScope outer_scope(isolate);
 
   Handle<LoadHandler> lh = CreateLoadHandlerForTest(factory);
 
-  if (!FLAG_single_generation) CHECK(Heap::InYoungGeneration(*lh));
+  if (!v8_flags.single_generation) CHECK(Heap::InYoungGeneration(*lh));
 
   MaybeObject code_object = lh->data1();
   CHECK(code_object->IsSmi());
@@ -51,10 +53,9 @@ TEST(WeakReferencesBasic) {
     assm.nop();  // supported on all architectures
     CodeDesc desc;
     assm.GetCode(isolate, &desc);
-    Handle<CodeT> code = ToCodeT(
-        Factory::CodeBuilder(isolate, desc, CodeKind::FOR_TESTING).Build(),
-        isolate);
-    CHECK(code->IsCodeT());
+    Handle<Code> code =
+        Factory::CodeBuilder(isolate, desc, CodeKind::FOR_TESTING).Build();
+    CHECK(code->IsCode());
 
     lh->set_data1(HeapObjectReference::Weak(*code));
     HeapObject code_heap_object;
@@ -72,11 +73,11 @@ TEST(WeakReferencesBasic) {
 }
 
 TEST(WeakReferencesOldToOld) {
-  if (FLAG_enable_third_party_heap) return;
+  if (v8_flags.enable_third_party_heap) return;
   // Like WeakReferencesBasic, but the updated weak slot is in the old space,
   // and referring to an old space object.
   ManualGCScope manual_gc_scope;
-  FLAG_manual_evacuation_candidates_selection = true;
+  v8_flags.manual_evacuation_candidates_selection = true;
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   Factory* factory = isolate->factory();
@@ -106,7 +107,7 @@ TEST(WeakReferencesOldToOld) {
 TEST(WeakReferencesOldToNew) {
   // Like WeakReferencesBasic, but the updated weak slot is in the old space,
   // and referring to an new space object.
-  if (FLAG_single_generation) return;
+  if (v8_flags.single_generation) return;
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   Factory* factory = isolate->factory();
@@ -130,7 +131,7 @@ TEST(WeakReferencesOldToNew) {
 }
 
 TEST(WeakReferencesOldToNewScavenged) {
-  if (FLAG_single_generation) return;
+  if (v8_flags.single_generation) return;
   // Like WeakReferencesBasic, but the updated weak slot is in the old space,
   // and referring to an new space object, which is then scavenged.
   CcTest::InitializeVM();
@@ -159,7 +160,7 @@ TEST(WeakReferencesOldToCleared) {
   // Like WeakReferencesBasic, but the updated weak slot is in the old space,
   // and is cleared.
   ManualGCScope manual_gc_scope;
-  FLAG_manual_evacuation_candidates_selection = true;
+  v8_flags.manual_evacuation_candidates_selection = true;
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   Factory* factory = isolate->factory();
@@ -176,8 +177,8 @@ TEST(WeakReferencesOldToCleared) {
 }
 
 TEST(ObjectMovesBeforeClearingWeakField) {
-  if (!FLAG_incremental_marking || FLAG_single_generation ||
-      FLAG_separate_gc_phases) {
+  if (!v8_flags.incremental_marking || v8_flags.single_generation ||
+      v8_flags.separate_gc_phases) {
     return;
   }
   ManualGCScope manual_gc_scope;
@@ -185,6 +186,7 @@ TEST(ObjectMovesBeforeClearingWeakField) {
   Isolate* isolate = CcTest::i_isolate();
   Factory* factory = isolate->factory();
   Heap* heap = isolate->heap();
+  i::DisableConservativeStackScanningScopeForTesting no_stack_scanning(heap);
 
   HandleScope outer_scope(isolate);
   Handle<LoadHandler> lh = CreateLoadHandlerForTest(factory);
@@ -216,7 +218,7 @@ TEST(ObjectMovesBeforeClearingWeakField) {
 }
 
 TEST(ObjectWithWeakFieldDies) {
-  if (!FLAG_incremental_marking) {
+  if (!v8_flags.incremental_marking) {
     return;
   }
   ManualGCScope manual_gc_scope;
@@ -252,7 +254,7 @@ TEST(ObjectWithWeakFieldDies) {
 }
 
 TEST(ObjectWithWeakReferencePromoted) {
-  if (FLAG_single_generation) return;
+  if (v8_flags.single_generation) return;
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   Factory* factory = isolate->factory();
@@ -267,8 +269,7 @@ TEST(ObjectWithWeakReferencePromoted) {
   CHECK(Heap::InYoungGeneration(*fixed_array));
   lh->set_data1(HeapObjectReference::Weak(*fixed_array));
 
-  CcTest::CollectGarbage(NEW_SPACE);
-  CcTest::CollectGarbage(NEW_SPACE);
+  CcTest::CollectGarbage(OLD_SPACE);
   CHECK(heap->InOldSpace(*lh));
   CHECK(heap->InOldSpace(*fixed_array));
 
@@ -278,7 +279,7 @@ TEST(ObjectWithWeakReferencePromoted) {
 }
 
 TEST(ObjectWithClearedWeakReferencePromoted) {
-  if (FLAG_single_generation || FLAG_stress_incremental_marking) return;
+  if (v8_flags.single_generation || v8_flags.stress_incremental_marking) return;
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   Factory* factory = isolate->factory();
@@ -290,11 +291,7 @@ TEST(ObjectWithClearedWeakReferencePromoted) {
 
   lh->set_data1(HeapObjectReference::ClearedValue(isolate));
 
-  CcTest::CollectGarbage(NEW_SPACE);
-  CHECK(Heap::InYoungGeneration(*lh));
-  CHECK(lh->data1()->IsCleared());
-
-  CcTest::CollectGarbage(NEW_SPACE);
+  CcTest::CollectGarbage(OLD_SPACE);
   CHECK(heap->InOldSpace(*lh));
   CHECK(lh->data1()->IsCleared());
 
@@ -303,7 +300,7 @@ TEST(ObjectWithClearedWeakReferencePromoted) {
 }
 
 TEST(WeakReferenceWriteBarrier) {
-  if (!FLAG_incremental_marking) {
+  if (!v8_flags.incremental_marking) {
     return;
   }
 
@@ -354,13 +351,14 @@ TEST(EmptyWeakArray) {
 }
 
 TEST(WeakArraysBasic) {
-  if (FLAG_single_generation) return;
+  if (v8_flags.single_generation) return;
 
   ManualGCScope manual_gc_scope;
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   Factory* factory = isolate->factory();
   Heap* heap = isolate->heap();
+  i::DisableConservativeStackScanningScopeForTesting no_stack_scanning(heap);
   HandleScope outer_scope(isolate);
 
   const int length = 4;
@@ -425,13 +423,14 @@ TEST(WeakArraysBasic) {
 }
 
 TEST(WeakArrayListBasic) {
-  if (FLAG_single_generation) return;
+  if (v8_flags.single_generation) return;
 
   ManualGCScope manual_gc_scope;
   CcTest::InitializeVM();
   Isolate* isolate = CcTest::i_isolate();
   Factory* factory = isolate->factory();
   Heap* heap = isolate->heap();
+  i::DisableConservativeStackScanningScopeForTesting no_stack_scanning(heap);
   HandleScope outer_scope(isolate);
 
   Handle<WeakArrayList> array(ReadOnlyRoots(heap).empty_weak_array_list(),
@@ -585,9 +584,9 @@ TEST(WeakArrayListRemove) {
 }
 
 TEST(Regress7768) {
-  i::FLAG_allow_natives_syntax = true;
-  i::FLAG_turbo_inlining = false;
-  if (!FLAG_incremental_marking) {
+  i::v8_flags.allow_natives_syntax = true;
+  i::v8_flags.turbo_inlining = false;
+  if (!v8_flags.incremental_marking) {
     return;
   }
   ManualGCScope manual_gc_scope;
@@ -622,7 +621,7 @@ TEST(Regress7768) {
 
   // Make sure the memory where it's stored is invalidated, so that we'll crash
   // if we try to access it.
-  HeapTester::UncommitFromSpace(heap);
+  HeapTester::UncommitUnusedMemory(heap);
 
   // This used to crash when processing the dead weak reference.
   CcTest::CollectAllGarbage();
@@ -728,6 +727,7 @@ TEST(PrototypeUsersCompacted) {
   Isolate* isolate = CcTest::i_isolate();
   Factory* factory = isolate->factory();
   Heap* heap = isolate->heap();
+  i::DisableConservativeStackScanningScopeForTesting no_stack_scanning(heap);
   HandleScope outer_scope(isolate);
 
   Handle<WeakArrayList> array(ReadOnlyRoots(heap).empty_weak_array_list(),

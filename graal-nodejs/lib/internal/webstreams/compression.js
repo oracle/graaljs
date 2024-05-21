@@ -2,6 +2,7 @@
 
 const {
   ObjectDefineProperties,
+  SymbolToStringTag,
   Symbol,
 } = primordials;
 
@@ -50,13 +51,16 @@ function isDecompressionStream(value) {
 
 class CompressionStream {
   /**
-   * @param {'deflate'|'gzip'} format
+   * @param {'deflate'|'deflate-raw'|'gzip'} format
    */
   constructor(format) {
     this[kType] = 'CompressionStream';
     switch (format) {
       case 'deflate':
         this[kHandle] = lazyZlib().createDeflate();
+        break;
+      case 'deflate-raw':
+        this[kHandle] = lazyZlib().createDeflateRaw();
         break;
       case 'gzip':
         this[kHandle] = lazyZlib().createGzip();
@@ -99,13 +103,16 @@ class CompressionStream {
 
 class DecompressionStream {
   /**
-   * @param {'deflate'|'gzip'} format
+   * @param {'deflate'|'deflate-raw'|'gzip'} format
    */
   constructor(format) {
     this[kType] = 'DecompressionStream';
     switch (format) {
       case 'deflate':
         this[kHandle] = lazyZlib().createInflate();
+        break;
+      case 'deflate-raw':
+        this[kHandle] = lazyZlib().createInflateRaw();
         break;
       case 'gzip':
         this[kHandle] = lazyZlib().createGunzip();
@@ -149,11 +156,21 @@ class DecompressionStream {
 ObjectDefineProperties(CompressionStream.prototype, {
   readable: kEnumerableProperty,
   writable: kEnumerableProperty,
+  [SymbolToStringTag]: {
+    __proto__: null,
+    configurable: true,
+    value: 'CompressionStream',
+  },
 });
 
 ObjectDefineProperties(DecompressionStream.prototype, {
   readable: kEnumerableProperty,
   writable: kEnumerableProperty,
+  [SymbolToStringTag]: {
+    __proto__: null,
+    configurable: true,
+    value: 'DecompressionStream',
+  },
 });
 
 module.exports = {

@@ -24,6 +24,10 @@ SafepointTable::SafepointTable(Isolate* isolate, Address pc, Code code)
     : SafepointTable(code.InstructionStart(isolate, pc),
                      code.SafepointTableAddress()) {}
 
+SafepointTable::SafepointTable(Isolate* isolate, Address pc, GcSafeCode code)
+    : SafepointTable(code.InstructionStart(isolate, pc),
+                     code.SafepointTableAddress()) {}
+
 #if V8_ENABLE_WEBASSEMBLY
 SafepointTable::SafepointTable(const wasm::WasmCode* code)
     : SafepointTable(
@@ -73,6 +77,13 @@ SafepointEntry SafepointTable::FindEntry(Address pc) const {
   UNREACHABLE();
 }
 
+// static
+SafepointEntry SafepointTable::FindEntry(Isolate* isolate, GcSafeCode code,
+                                         Address pc) {
+  SafepointTable table(isolate, pc, code);
+  return table.FindEntry(pc);
+}
+
 void SafepointTable::Print(std::ostream& os) const {
   os << "Safepoints (entries = " << length_ << ", byte size = " << byte_size()
      << ")\n";
@@ -111,7 +122,7 @@ void SafepointTable::Print(std::ostream& os) const {
 
 SafepointTableBuilder::Safepoint SafepointTableBuilder::DefineSafepoint(
     Assembler* assembler) {
-  entries_.push_back(EntryBuilder(zone_, assembler->pc_offset_for_safepoint()));
+  entries_.emplace_back(zone_, assembler->pc_offset_for_safepoint());
   return SafepointTableBuilder::Safepoint(&entries_.back(), this);
 }
 
@@ -120,7 +131,7 @@ int SafepointTableBuilder::UpdateDeoptimizationInfo(int pc, int trampoline,
                                                     int deopt_index) {
   DCHECK_NE(SafepointEntry::kNoTrampolinePC, trampoline);
   DCHECK_NE(SafepointEntry::kNoDeoptIndex, deopt_index);
-  auto it = entries_.Find(start);
+  auto it = entries_.begin() + start;
   DCHECK(std::any_of(it, entries_.end(),
                      [pc](auto& entry) { return entry.pc == pc; }));
   int index = start;
@@ -164,15 +175,15 @@ void SafepointTableBuilder::Emit(Assembler* assembler, int tagged_slots_size) {
 #endif
 
   // Make sure the safepoint table is properly aligned. Pad with nops.
-  assembler->Align(Code::kMetadataAlignment);
+  assembler->Align(InstructionStream::kMetadataAlignment);
   assembler->RecordComment(";;; Safepoint table.");
-  safepoint_table_offset_ = assembler->pc_offset();
+  set_safepoint_table_offset(assembler->pc_offset());
 
   // Compute the required sizes of the fields.
   int used_register_indexes = 0;
-  STATIC_ASSERT(SafepointEntry::kNoTrampolinePC == -1);
+  static_assert(SafepointEntry::kNoTrampolinePC == -1);
   int max_pc = SafepointEntry::kNoTrampolinePC;
-  STATIC_ASSERT(SafepointEntry::kNoDeoptIndex == -1);
+  static_assert(SafepointEntry::kNoDeoptIndex == -1);
   int max_deopt_index = SafepointEntry::kNoDeoptIndex;
   for (const EntryBuilder& entry : entries_) {
     used_register_indexes |= entry.register_indexes;
@@ -193,8 +204,8 @@ void SafepointTableBuilder::Emit(Assembler* assembler, int tagged_slots_size) {
   int register_indexes_size = value_to_bytes(used_register_indexes);
   // Add 1 so all values (including kNoDeoptIndex and kNoTrampolinePC) are
   // non-negative.
-  STATIC_ASSERT(SafepointEntry::kNoDeoptIndex == -1);
-  STATIC_ASSERT(SafepointEntry::kNoTrampolinePC == -1);
+  static_assert(SafepointEntry::kNoDeoptIndex == -1);
+  static_assert(SafepointEntry::kNoTrampolinePC == -1);
   int pc_size = value_to_bytes(max_pc + 1);
   int deopt_index_size = value_to_bytes(max_deopt_index + 1);
   int tagged_slots_bytes =
@@ -203,10 +214,10 @@ void SafepointTableBuilder::Emit(Assembler* assembler, int tagged_slots_size) {
   // Add a CHECK to ensure we never overflow the space in the bitfield, even for
   // huge functions which might not be covered by tests.
   CHECK(SafepointTable::RegisterIndexesSizeField::is_valid(
-            register_indexes_size) &&
-        SafepointTable::PcSizeField::is_valid(pc_size) &&
-        SafepointTable::DeoptIndexSizeField::is_valid(deopt_index_size) &&
-        SafepointTable::TaggedSlotsBytesField::is_valid(tagged_slots_bytes));
+      register_indexes_size));
+  CHECK(SafepointTable::PcSizeField::is_valid(pc_size));
+  CHECK(SafepointTable::DeoptIndexSizeField::is_valid(deopt_index_size));
+  CHECK(SafepointTable::TaggedSlotsBytesField::is_valid(tagged_slots_bytes));
 
   uint32_t entry_configuration =
       SafepointTable::HasDeoptDataField::encode(has_deopt_data) |
@@ -216,9 +227,9 @@ void SafepointTableBuilder::Emit(Assembler* assembler, int tagged_slots_size) {
       SafepointTable::TaggedSlotsBytesField::encode(tagged_slots_bytes);
 
   // Emit the table header.
-  STATIC_ASSERT(SafepointTable::kLengthOffset == 0 * kIntSize);
-  STATIC_ASSERT(SafepointTable::kEntryConfigurationOffset == 1 * kIntSize);
-  STATIC_ASSERT(SafepointTable::kHeaderSize == 2 * kIntSize);
+  static_assert(SafepointTable::kLengthOffset == 0 * kIntSize);
+  static_assert(SafepointTable::kEntryConfigurationOffset == 1 * kIntSize);
+  static_assert(SafepointTable::kHeaderSize == 2 * kIntSize);
   int length = static_cast<int>(entries_.size());
   assembler->dd(length);
   assembler->dd(entry_configuration);
@@ -234,8 +245,8 @@ void SafepointTableBuilder::Emit(Assembler* assembler, int tagged_slots_size) {
     if (has_deopt_data) {
       // Add 1 so all values (including kNoDeoptIndex and kNoTrampolinePC) are
       // non-negative.
-      STATIC_ASSERT(SafepointEntry::kNoDeoptIndex == -1);
-      STATIC_ASSERT(SafepointEntry::kNoTrampolinePC == -1);
+      static_assert(SafepointEntry::kNoDeoptIndex == -1);
+      static_assert(SafepointEntry::kNoTrampolinePC == -1);
       emit_bytes(entry.deopt_index + 1, deopt_index_size);
       emit_bytes(entry.trampoline + 1, pc_size);
     }
@@ -282,10 +293,9 @@ void SafepointTableBuilder::RemoveDuplicates() {
   };
 
   auto remaining_it = entries_.begin();
-  size_t remaining = 0;
+  auto end = entries_.end();
 
-  for (auto it = entries_.begin(), end = entries_.end(); it != end;
-       ++remaining_it, ++remaining) {
+  for (auto it = entries_.begin(); it != end; ++remaining_it) {
     if (remaining_it != it) *remaining_it = *it;
     // Merge identical entries.
     do {
@@ -293,7 +303,7 @@ void SafepointTableBuilder::RemoveDuplicates() {
     } while (it != end && is_identical_except_for_pc(*it, *remaining_it));
   }
 
-  entries_.Rewind(remaining);
+  entries_.erase(remaining_it, end);
 }
 
 }  // namespace internal

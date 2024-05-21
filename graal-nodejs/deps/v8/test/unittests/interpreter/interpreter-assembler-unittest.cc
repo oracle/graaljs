@@ -46,6 +46,9 @@ InterpreterAssemblerTest::InterpreterAssemblerForTest::
   if (Bytecodes::WritesAccumulator(bytecode())) {
     SetAccumulator(NullConstant());
   }
+  if (Bytecodes::ClobbersAccumulator(bytecode())) {
+    ClobberAccumulator(NullConstant());
+  }
   if (Bytecodes::WritesImplicitRegister(bytecode())) {
     StoreRegisterForShortStar(NullConstant(), IntPtrConstant(2));
   }
@@ -317,7 +320,11 @@ TARGET_TEST_F(InterpreterAssemblerTest, BytecodeOperand) {
                         m.IsUnsignedOperand(offset, operand_size));
             break;
           case interpreter::OperandType::kFlag8:
-            EXPECT_THAT(m.BytecodeOperandFlag(i),
+            EXPECT_THAT(m.BytecodeOperandFlag8(i),
+                        m.IsUnsignedOperand(offset, operand_size));
+            break;
+          case interpreter::OperandType::kFlag16:
+            EXPECT_THAT(m.BytecodeOperandFlag16(i),
                         m.IsUnsignedOperand(offset, operand_size));
             break;
           case interpreter::OperandType::kIdx:

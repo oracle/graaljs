@@ -186,15 +186,16 @@ export class Script {
     (async () => {
       try {
         let sourceMapPayload;
+        const options = { timeout: 15 };
         try {
-          sourceMapPayload = await fetch(sourceMapURL);
+          sourceMapPayload = await fetch(sourceMapURL, options);
         } catch (e) {
           if (e instanceof TypeError && sourceMapFetchPrefix) {
             // Try again with fetch prefix.
             // TODO(leszeks): Remove the retry once the prefix is
             // configurable.
             sourceMapPayload =
-                await fetch(sourceMapFetchPrefix + sourceMapURL);
+                await fetch(sourceMapFetchPrefix + sourceMapURL, options);
           } else {
             throw e;
           }
@@ -304,13 +305,17 @@ const kProfileOperationTick = 2;
  * @constructor
  */
 export class Profile {
-  codeMap_ = new CodeMap();
   topDownTree_ = new CallTree();
   bottomUpTree_ = new CallTree();
   c_entries_ = {__proto__:null};
   scripts_ = [];
   urlToScript_ = new Map();
   warnings = new Set();
+
+  constructor(useBigInt=false) {
+    this.useBigInt = useBigInt;
+    this.codeMap_ = new CodeMap(useBigInt);
+  }
 
   serializeVMSymbols() {
     let result = this.codeMap_.getAllStaticEntriesWithAddresses();
@@ -350,7 +355,8 @@ export class Profile {
   static CodeState = {
     COMPILED: 0,
     IGNITION: 1,
-    BASELINE: 2,
+    SPARKPLUG: 2,
+    MAGLEV: 4,
     TURBOFAN: 5,
   }
 
@@ -359,7 +365,7 @@ export class Profile {
     GC: 1,
     PARSER: 2,
     BYTECODE_COMPILER: 3,
-    // TODO(cbruni): add BASELINE_COMPILER
+    // TODO(cbruni): add SPARKPLUG_COMPILER
     COMPILER: 4,
     OTHER: 5,
     EXTERNAL: 6,
@@ -381,7 +387,9 @@ export class Profile {
       case '~':
         return this.CodeState.IGNITION;
       case '^':
-        return this.CodeState.BASELINE;
+        return this.CodeState.SPARKPLUG;
+      case '+':
+        return this.CodeState.MAGLEV;
       case '*':
         return this.CodeState.TURBOFAN;
     }
@@ -393,8 +401,10 @@ export class Profile {
       return "Builtin";
     } else if (state === this.CodeState.IGNITION) {
       return "Unopt";
-    } else if (state === this.CodeState.BASELINE) {
-      return "Baseline";
+    } else if (state === this.CodeState.SPARKPLUG) {
+      return "Sparkplug";
+    } else if (state === this.CodeState.MAGLEV) {
+      return "Maglev";
     } else if (state === this.CodeState.TURBOFAN) {
       return "Opt";
     }
@@ -425,7 +435,7 @@ export class Profile {
 
   /**
    * Called whenever the specified operation has failed finding a function
-   * containing the specified address. Should be overriden by subclasses.
+   * containing the specified address. Should be overridden by subclasses.
    * See the Profile.Operation enum for the list of
    * possible operations.
    *
@@ -478,6 +488,21 @@ export class Profile {
   }
 
   /**
+   * Registers dynamic (JIT-compiled) code entry or entries that overlap with
+   * static entries (like builtins).
+   *
+   * @param {string} type Code entry type.
+   * @param {string} name Code entry name.
+   * @param {number} start Starting address.
+   * @param {number} size Code entry size.
+   */
+  addAnyCode(type, name, timestamp, start, size) {
+    const entry = new DynamicCodeEntry(size, type, name);
+    this.codeMap_.addAnyCode(start, entry);
+    return entry;
+  }
+
+  /**
    * Registers dynamic (JIT-compiled) code entry.
    *
    * @param {string} type Code entry type.
@@ -492,7 +517,7 @@ export class Profile {
     // it is safe to put them in a single code map.
     let func = this.codeMap_.findDynamicEntryByStartAddress(funcAddr);
     if (func === null) {
-      func = new FunctionEntry(name);
+      func = new FunctionEntry(name, this.useBigInt);
       this.codeMap_.addCode(funcAddr, func);
     } else if (func.name !== name) {
       // Function object has been overwritten with a new one.
@@ -633,7 +658,7 @@ export class Profile {
    * Records a tick event. Stack must contain a sequence of
    * addresses starting with the program counter value.
    *
-   * @param {Array<number>} stack Stack sample.
+   * @param {number[]} stack Stack sample.
    */
   recordTick(time_ns, vmState, stack) {
     const {nameStack, entryStack} = this.resolveAndFilterFuncs_(stack);
@@ -647,7 +672,7 @@ export class Profile {
    * Translates addresses into function names and filters unneeded
    * functions.
    *
-   * @param {Array<number>} stack Stack sample.
+   * @param {number[]} stack Stack sample.
    */
   resolveAndFilterFuncs_(stack) {
     const nameStack = [];
@@ -937,10 +962,11 @@ class DynamicFuncCodeEntry extends CodeEntry {
 class FunctionEntry extends CodeEntry {
 
   // Contains the list of generated code for this function.
+  /** @type {Set<DynamicCodeEntry>} */
   _codeEntries = new Set();
 
-  constructor(name) {
-    super(0, name);
+  constructor(name, useBigInt=false) {
+    super(useBigInt ? 0n : 0, name);
     const index = name.lastIndexOf(' ');
     this.functionName = 1 <= index ? name.substring(0, index) : '<anonymous>';
   }
@@ -1000,7 +1026,7 @@ class CallTree {
   /**
    * Adds the specified call path, constructing nodes as necessary.
    *
-   * @param {Array<string>} path Call path.
+   * @param {string[]} path Call path.
    */
   addPath(path) {
     if (path.length == 0) return;
@@ -1208,7 +1234,7 @@ class CallTreeNode {
   /**
    * Tries to find a node with the specified path.
    *
-   * @param {Array<string>} labels The path.
+   * @param {string[]} labels The path.
    * @param {function(CallTreeNode)} opt_f Visitor function.
    */
   descendToChild(labels, opt_f) {

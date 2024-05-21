@@ -32,6 +32,7 @@ const {
   DatePrototypeGetMonth,
   DatePrototypeGetSeconds,
   Error,
+  ErrorCaptureStackTrace,
   FunctionPrototypeBind,
   NumberIsSafeInteger,
   ObjectDefineProperties,
@@ -43,6 +44,7 @@ const {
   ObjectValues,
   ReflectApply,
   StringPrototypePadStart,
+  StringPrototypeToWellFormed,
 } = primordials;
 
 const {
@@ -51,9 +53,9 @@ const {
     ERR_INVALID_ARG_TYPE,
     ERR_OUT_OF_RANGE,
   },
-  errnoException,
-  exceptionWithHostPort,
-  hideStackFrames,
+  isErrorStackTraceLimitWritable,
+  ErrnoException,
+  ExceptionWithHostPort,
 } = require('internal/errors');
 const {
   format,
@@ -65,16 +67,18 @@ const { debuglog } = require('internal/util/debuglog');
 const {
   validateFunction,
   validateNumber,
+  validateString,
+  validateOneOf,
 } = require('internal/validators');
 const { isBuffer } = require('buffer').Buffer;
 const types = require('internal/util/types');
+const binding = internalBinding('util');
 
 const {
   deprecate,
   getSystemErrorMap,
   getSystemErrorName: internalErrorName,
   promisify,
-  toUSVString,
   defineLazyProperties,
 } = require('internal/util');
 
@@ -194,6 +198,43 @@ function pad(n) {
   return StringPrototypePadStart(n.toString(), 2, '0');
 }
 
+/**
+ * @param {string} code
+ * @returns {string}
+ */
+function escapeStyleCode(code) {
+  return `\u001b[${code}m`;
+}
+
+/**
+ * @param {string | string[]} format
+ * @param {string} text
+ * @returns {string}
+ */
+function styleText(format, text) {
+  validateString(text, 'text');
+  if (ArrayIsArray(format)) {
+    let left = '';
+    let right = '';
+    for (const key of format) {
+      const formatCodes = inspect.colors[key];
+      if (formatCodes == null) {
+        validateOneOf(key, 'format', ObjectKeys(inspect.colors));
+      }
+      left += escapeStyleCode(formatCodes[0]);
+      right = `${escapeStyleCode(formatCodes[1])}${right}`;
+    }
+
+    return `${left}${text}${right}`;
+  }
+
+  const formatCodes = inspect.colors[format];
+  if (formatCodes == null) {
+    validateOneOf(format, 'format', ObjectKeys(inspect.colors));
+  }
+  return `${escapeStyleCode(formatCodes[0])}${text}${escapeStyleCode(formatCodes[1])}`;
+}
+
 const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep',
                 'Oct', 'Nov', 'Dec'];
 
@@ -278,16 +319,17 @@ function _extend(target, source) {
   return target;
 }
 
-const callbackifyOnRejected = hideStackFrames((reason, cb) => {
+const callbackifyOnRejected = (reason, cb) => {
   // `!reason` guard inspired by bluebird (Ref: https://goo.gl/t5IS6M).
   // Because `null` is a special error value in callbacks which means "no error
   // occurred", we error-wrap so the callback consumer can distinguish between
   // "the promise rejected with null" or "the promise fulfilled with undefined".
   if (!reason) {
-    reason = new ERR_FALSY_VALUE_REJECTION(reason);
+    reason = new ERR_FALSY_VALUE_REJECTION.HideStackFramesError(reason);
+    ErrorCaptureStackTrace(reason, callbackifyOnRejected);
   }
   return cb(reason);
-});
+};
 
 /**
  * @template {(...args: any[]) => Promise<any>} T
@@ -345,16 +387,51 @@ function getSystemErrorName(err) {
   return internalErrorName(err);
 }
 
+function _errnoException(...args) {
+  if (isErrorStackTraceLimitWritable()) {
+    const limit = Error.stackTraceLimit;
+    Error.stackTraceLimit = 0;
+    const e = new ErrnoException(...args);
+    Error.stackTraceLimit = limit;
+    ErrorCaptureStackTrace(e, _exceptionWithHostPort);
+    return e;
+  }
+  return new ErrnoException(...args);
+}
+
+function _exceptionWithHostPort(...args) {
+  if (isErrorStackTraceLimitWritable()) {
+    const limit = Error.stackTraceLimit;
+    Error.stackTraceLimit = 0;
+    const e = new ExceptionWithHostPort(...args);
+    Error.stackTraceLimit = limit;
+    ErrorCaptureStackTrace(e, _exceptionWithHostPort);
+    return e;
+  }
+  return new ExceptionWithHostPort(...args);
+}
+
+/**
+ * Parses the content of a `.env` file.
+ * @param {string} content
+ * @returns {Record<string, string>}
+ */
+function parseEnv(content) {
+  validateString(content, 'content');
+  return binding.parseEnv(content);
+}
+
 // Keep the `exports =` so that various functions can still be monkeypatched
 module.exports = {
-  _errnoException: errnoException,
-  _exceptionWithHostPort: exceptionWithHostPort,
+  _errnoException,
+  _exceptionWithHostPort,
   _extend,
   callbackify,
   debug: debuglog,
   debuglog,
   deprecate,
   format,
+  styleText,
   formatWithOptions,
   getSystemErrorMap,
   getSystemErrorName,
@@ -385,7 +462,9 @@ module.exports = {
   log,
   promisify,
   stripVTControlCharacters,
-  toUSVString,
+  toUSVString(input) {
+    return StringPrototypeToWellFormed(`${input}`);
+  },
   get transferableAbortSignal() {
     return lazyAbortController().transferableAbortSignal;
   },
@@ -396,6 +475,7 @@ module.exports = {
     return lazyAbortController().aborted;
   },
   types,
+  parseEnv,
 };
 
 defineLazyProperties(

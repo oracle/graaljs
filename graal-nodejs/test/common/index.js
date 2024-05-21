@@ -26,6 +26,7 @@ const process = global.process;  // Some tests tamper with the process global.
 const assert = require('assert');
 const { exec, execSync, spawn, spawnSync } = require('child_process');
 const fs = require('fs');
+const net = require('net');
 // Do not require 'os' until needed so that test-os-checked-function can
 // monkey patch it. If 'os' is required here, that test will fail.
 const path = require('path');
@@ -127,7 +128,7 @@ const isFreeBSD = process.platform === 'freebsd';
 const isOpenBSD = process.platform === 'openbsd';
 const isLinux = process.platform === 'linux';
 const isOSX = process.platform === 'darwin';
-const isAsan = process.env.ASAN !== undefined;
+const isASan = process.config.variables.asan === 1;
 const isPi = (() => {
   try {
     // Normal Raspberry Pi detection is to find the `Raspberry Pi` string in
@@ -143,6 +144,10 @@ const isPi = (() => {
 })();
 
 const isDumbTerminal = process.env.TERM === 'dumb';
+
+// When using high concurrency or in the CI we need much more time for each connection attempt
+net.setDefaultAutoSelectFamilyAttemptTimeout(platformTimeout(net.getDefaultAutoSelectFamilyAttemptTimeout() * 10));
+const defaultAutoSelectFamilyAttemptTimeout = net.getDefaultAutoSelectFamilyAttemptTimeout();
 
 const buildType = process.config.target_defaults ?
   process.config.target_defaults.default_configuration :
@@ -353,6 +358,9 @@ if (global.ReadableStream) {
     global.DecompressionStream,
   );
 }
+if (global.WebSocket) {
+  knownGlobals.push(WebSocket);
+}
 
 function allowGlobals(...allowlist) {
   knownGlobals = knownGlobals.concat(allowlist);
@@ -368,7 +376,9 @@ if (process.env.NODE_TEST_KNOWN_GLOBALS !== '0') {
     const leaked = [];
 
     for (const val in global) {
-      if (!knownGlobals.includes(global[val])) {
+      // globalThis.crypto is a getter that throws if Node.js was compiled
+      // without OpenSSL.
+      if (val !== 'crypto' && !knownGlobals.includes(global[val])) {
         leaked.push(val);
       }
     }
@@ -641,12 +651,12 @@ function _expectWarning(name, expected, code) {
     expected = [[expected, code]];
   } else if (!Array.isArray(expected)) {
     expected = Object.entries(expected).map(([a, b]) => [b, a]);
-  } else if (!(Array.isArray(expected[0]))) {
+  } else if (expected.length !== 0 && !Array.isArray(expected[0])) {
     expected = [[expected[0], expected[1]]];
   }
   // Deprecation codes are mandatory, everything else is not.
   if (name === 'DeprecationWarning') {
-    expected.forEach(([_, code]) => assert(code, expected));
+    expected.forEach(([_, code]) => assert(code, `Missing deprecation code: ${expected}`));
   }
   return mustCall((warning) => {
     const expectedProperties = expected.shift();
@@ -701,9 +711,8 @@ function expectsError(validator, exact) {
       assert.fail(`Expected one argument, got ${inspect(args)}`);
     }
     const error = args.pop();
-    const descriptor = Object.getOwnPropertyDescriptor(error, 'message');
     // The error message should be non-enumerable
-    assert.strictEqual(descriptor.enumerable, false);
+    assert.strictEqual(Object.prototype.propertyIsEnumerable.call(error, 'message'), false);
 
     assert.throws(() => { throw error; }, validator);
     return true;
@@ -796,7 +805,7 @@ function invalidArgTypeHelper(input) {
   if (input == null) {
     return ` Received ${input}`;
   }
-  if (typeof input === 'function' && input.name) {
+  if (typeof input === 'function') {
     return ` Received function ${input.name}`;
   }
   if (typeof input === 'object') {
@@ -886,18 +895,59 @@ function spawnPromisified(...args) {
   });
 }
 
+function getPrintedStackTrace(stderr) {
+  const lines = stderr.split('\n');
+
+  let state = 'initial';
+  const result = {
+    message: [],
+    nativeStack: [],
+    jsStack: [],
+  };
+  for (let i = 0; i < lines.length; ++i) {
+    const line = lines[i].trim();
+    if (line.length === 0) {
+      continue;  // Skip empty lines.
+    }
+
+    switch (state) {
+      case 'initial':
+        result.message.push(line);
+        if (line.includes('Native stack trace')) {
+          state = 'native-stack';
+        } else {
+          result.message.push(line);
+        }
+        break;
+      case 'native-stack':
+        if (line.includes('JavaScript stack trace')) {
+          state = 'js-stack';
+        } else {
+          result.nativeStack.push(line);
+        }
+        break;
+      case 'js-stack':
+        result.jsStack.push(line);
+        break;
+    }
+  }
+  return result;
+}
+
 const common = {
   allowGlobals,
   buildType,
   canCreateSymLink,
   childShouldThrowAndAbort,
   createZeroFilledFile,
+  defaultAutoSelectFamilyAttemptTimeout,
   expectsError,
   expectWarning,
   gcUntil,
   getArrayBufferViews,
   getBufferSources,
   getCallSite,
+  getPrintedStackTrace,
   getTTYfd,
   hasIntl,
   hasCrypto,
@@ -907,7 +957,7 @@ const common = {
   hasMultiLocalhost,
   invalidArgTypeHelper,
   isAlive,
-  isAsan,
+  isASan,
   isDumbTerminal,
   isFreeBSD,
   isLinux,

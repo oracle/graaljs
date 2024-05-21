@@ -8,25 +8,7 @@
 #include "src/api/api-inl.h"
 #include "src/heap/heap.h"
 
-namespace v8 {
-namespace internal {
-namespace heap {
-
-class V8_NODISCARD TemporaryEmbedderHeapTracerScope {
- public:
-  TemporaryEmbedderHeapTracerScope(v8::Isolate* isolate,
-                                   v8::EmbedderHeapTracer* tracer)
-      : isolate_(isolate) {
-    isolate_->SetEmbedderHeapTracer(tracer);
-  }
-
-  ~TemporaryEmbedderHeapTracerScope() {
-    isolate_->SetEmbedderHeapTracer(nullptr);
-  }
-
- private:
-  v8::Isolate* const isolate_;
-};
+namespace v8::internal::heap {
 
 void SealCurrentObjects(Heap* heap);
 
@@ -42,16 +24,12 @@ std::vector<Handle<FixedArray>> CreatePadding(
     Heap* heap, int padding_size, AllocationType allocation,
     int object_size = kMaxRegularHeapObjectSize);
 
-bool FillCurrentPage(v8::internal::NewSpace* space,
+void FillCurrentPage(v8::internal::NewSpace* space,
                      std::vector<Handle<FixedArray>>* out_handles = nullptr);
 
-bool FillCurrentPageButNBytes(
+void FillCurrentPageButNBytes(
     v8::internal::NewSpace* space, int extra_bytes,
     std::vector<Handle<FixedArray>>* out_handles = nullptr);
-
-// Helper function that simulates a full new-space in the heap.
-void SimulateFullSpace(v8::internal::NewSpace* space,
-                       std::vector<Handle<FixedArray>>* out_handles = nullptr);
 
 // Helper function that simulates many incremental marking steps until
 // marking is completed.
@@ -91,8 +69,6 @@ bool InCorrectGeneration(v8::Isolate* isolate,
   return InCorrectGeneration(*v8::Utils::OpenHandle(*tmp));
 }
 
-}  // namespace heap
-}  // namespace internal
-}  // namespace v8
+}  // namespace v8::internal::heap
 
 #endif  // HEAP_HEAP_UTILS_H_

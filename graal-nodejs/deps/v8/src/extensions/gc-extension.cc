@@ -5,6 +5,7 @@
 #include "src/extensions/gc-extension.h"
 
 #include "include/v8-isolate.h"
+#include "include/v8-microtask-queue.h"
 #include "include/v8-object.h"
 #include "include/v8-persistent-handle.h"
 #include "include/v8-primitive.h"
@@ -93,9 +94,8 @@ void InvokeGC(v8::Isolate* isolate, ExecutionType execution_type,
               ? EmbedderStackStateScope::kImplicitThroughTask
               : EmbedderStackStateScope::kExplicitInvocation,
           execution_type == ExecutionType::kAsync
-              ? v8::EmbedderHeapTracer::EmbedderStackState::kNoHeapPointers
-              : v8::EmbedderHeapTracer::EmbedderStackState::
-                    kMayContainHeapPointers);
+              ? StackState::kNoHeapPointers
+              : StackState::kMayContainHeapPointers);
       heap->PreciseCollectAllGarbage(i::Heap::kNoGCFlags,
                                      i::GarbageCollectionReason::kTesting,
                                      kGCCallbackFlagForced);
@@ -122,6 +122,8 @@ class AsyncGC final : public CancelableTask {
     InvokeGC(isolate_, ExecutionType::kAsync, type_);
     auto resolver = v8::Local<v8::Promise::Resolver>::New(isolate_, resolver_);
     auto ctx = Local<v8::Context>::New(isolate_, ctx_);
+    v8::MicrotasksScope microtasks_scope(
+        ctx, v8::MicrotasksScope::kDoNotRunMicrotasks);
     resolver->Resolve(ctx, v8::Undefined(isolate_)).ToChecked();
   }
 

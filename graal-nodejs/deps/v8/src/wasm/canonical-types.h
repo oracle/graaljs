@@ -11,7 +11,6 @@
 
 #include <unordered_map>
 
-#include "src/base/lazy-instance.h"
 #include "src/wasm/wasm-module.h"
 
 namespace v8 {
@@ -22,8 +21,8 @@ namespace wasm {
 // types.
 // A recursive group is a subsequence of types explicitly marked in the type
 // section of a wasm module. Identical recursive groups have to be canonicalized
-// to a single canonical group and are are considered identical. Respective
-// types in two identical groups are considered identical for all purposes.
+// to a single canonical group. Respective types in two identical groups are
+// considered identical for all purposes.
 // Two groups are considered identical if they have the same shape, and all
 // type indices referenced in the same position in both groups reference:
 // - identical types, if those do not belong to the rec. group,
@@ -39,10 +38,24 @@ class TypeCanonicalizer {
   TypeCanonicalizer(TypeCanonicalizer&& other) = delete;
   TypeCanonicalizer& operator=(TypeCanonicalizer&& other) = delete;
 
-  // Registers the last {size} types of {module} as a recursive group, and
-  // possibly canonicalizes it if an identical one has been found.
-  // Modifies {module->isorecursive_canonical_type_ids}.
+  // Registers {size} types of {module} as a recursive group, starting at
+  // {start_index}, and possibly canonicalizes it if an identical one has been
+  // found. Modifies {module->isorecursive_canonical_type_ids}.
+  V8_EXPORT_PRIVATE void AddRecursiveGroup(WasmModule* module, uint32_t size,
+                                           uint32_t start_index);
+
+  // Same as above, except it registers the last {size} types in the module.
   V8_EXPORT_PRIVATE void AddRecursiveGroup(WasmModule* module, uint32_t size);
+
+  // Adds a module-independent signature as a recursive group, and canonicalizes
+  // it if an identical is found. Returns the canonical index of the added
+  // signature.
+  V8_EXPORT_PRIVATE uint32_t AddRecursiveGroup(const FunctionSig* sig);
+
+  // Returns if {canonical_sub_index} is a canonical subtype of
+  // {canonical_super_index}.
+  V8_EXPORT_PRIVATE bool IsCanonicalSubtype(uint32_t canonical_sub_index,
+                                            uint32_t canonical_super_index);
 
   // Returns if the type at {sub_index} in {sub_module} is a subtype of the
   // type at {super_index} in {super_module} after canonicalization.
@@ -67,8 +80,11 @@ class TypeCanonicalizer {
              is_relative_supertype != other.is_relative_supertype;
     }
 
+    // TODO(manoskouk): Improve this.
     size_t hash_value() const {
-      return base::hash_combine(type_def.kind,
+      return base::hash_combine(base::hash_value(type_def.kind),
+                                base::hash_value(type_def.supertype),
+                                base::hash_value(type_def.is_final),
                                 base::hash_value(is_relative_supertype));
     }
   };
@@ -100,9 +116,15 @@ class TypeCanonicalizer {
 
   int FindCanonicalGroup(CanonicalGroup&) const;
 
+  // Canonicalize all types present in {type} (including supertype) according to
+  // {CanonicalizeValueType}.
   CanonicalType CanonicalizeTypeDef(const WasmModule* module,
                                     TypeDefinition type,
                                     uint32_t recursive_group_start);
+
+  // An indexed type gets mapped to a {ValueType::CanonicalWithRelativeIndex}
+  // if its index points inside the new canonical group; otherwise, the index
+  // gets mapped to its canonical representative.
   ValueType CanonicalizeValueType(const WasmModule* module, ValueType type,
                                   uint32_t recursive_group_start) const;
 

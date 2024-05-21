@@ -42,7 +42,6 @@ action("protocol_compatibility") {
 }
 
 inspector_protocol_generate("protocol_generated_sources") {
-  visibility = [ ":*" ]  # Only targets in this file can depend on this.
   deps = [ ":protocol_compatibility" ]
 
   inspector_protocol_dir = _inspector_protocol
@@ -103,6 +102,8 @@ v8_source_set("inspector") {
     "../../include/v8-inspector.h",
   ]
   sources += [
+    "crc32.cc",
+    "crc32.h",
     "custom-preview.cc",
     "custom-preview.h",
     "injected-script.cc",
@@ -126,6 +127,8 @@ v8_source_set("inspector") {
     "v8-console.h",
     "v8-debugger-agent-impl.cc",
     "v8-debugger-agent-impl.h",
+    "v8-debugger-barrier.cc",
+    "v8-debugger-barrier.h",
     "v8-debugger-id.cc",
     "v8-debugger-id.h",
     "v8-debugger-script.cc",

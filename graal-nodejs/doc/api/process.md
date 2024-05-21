@@ -180,7 +180,9 @@ See [Advanced serialization for `child_process`][] for more details.
 
 <!-- YAML
 added: v10.12.0
-deprecated: v17.6.0
+deprecated:
+  - v17.6.0
+  - v16.15.0
 -->
 
 > Stability: 0 - Deprecated
@@ -358,12 +360,13 @@ exit with 0.
 
 ```mjs
 import process from 'node:process';
+import fs from 'node:fs';
 
 process.on('uncaughtException', (err, origin) => {
   fs.writeSync(
     process.stderr.fd,
     `Caught exception: ${err}\n` +
-    `Exception origin: ${origin}`,
+    `Exception origin: ${origin}\n`,
   );
 });
 
@@ -378,12 +381,13 @@ console.log('This will not run.');
 
 ```cjs
 const process = require('node:process');
+const fs = require('node:fs');
 
 process.on('uncaughtException', (err, origin) => {
   fs.writeSync(
     process.stderr.fd,
     `Caught exception: ${err}\n` +
-    `Exception origin: ${origin}`,
+    `Exception origin: ${origin}\n`,
   );
 });
 
@@ -604,7 +608,10 @@ process.on('warning', (warning) => {
 
 By default, Node.js will print process warnings to `stderr`. The `--no-warnings`
 command-line option can be used to suppress the default console output but the
-`'warning'` event will still be emitted by the `process` object.
+`'warning'` event will still be emitted by the `process` object. Currently, it
+is not possible to suppress specific warning types other than deprecation
+warnings. To suppress deprecation warnings, check out the [`--no-deprecation`][]
+flag.
 
 The following example illustrates the warning that is printed to `stderr` when
 too many listeners have been added to an event:
@@ -645,18 +652,6 @@ of the custom deprecation.
 The `*-deprecation` command-line flags only affect warnings that use the name
 `'DeprecationWarning'`.
 
-### Event: `'worker'`
-
-<!-- YAML
-added:
-  - v16.2.0
-  - v14.18.0
--->
-
-* `worker` {Worker} The {Worker} that was created.
-
-The `'worker'` event is emitted after a new {Worker} thread has been created.
-
 #### Emitting custom warnings
 
 See the [`process.emitWarning()`][process_emit_warning] method for issuing
@@ -684,6 +679,18 @@ A few of the warning types that are most common include:
 * `'UnsupportedWarning'` - Indicates use of an unsupported option or feature
   that will be ignored rather than treated as an error. One example is use of
   the HTTP response status message when using the HTTP/2 compatibility API.
+
+### Event: `'worker'`
+
+<!-- YAML
+added:
+  - v16.2.0
+  - v14.18.0
+-->
+
+* `worker` {Worker} The {Worker} that was created.
+
+The `'worker'` event is emitted after a new {Worker} thread has been created.
 
 ### Signal events
 
@@ -868,8 +875,8 @@ added: v0.5.0
 * {string}
 
 The operating system CPU architecture for which the Node.js binary was compiled.
-Possible values are: `'arm'`, `'arm64'`, `'ia32'`, `'mips'`,`'mipsel'`, `'ppc'`,
-`'ppc64'`, `'s390'`, `'s390x'`, and `'x64'`.
+Possible values are: `'arm'`, `'arm64'`, `'ia32'`, `'loong64'`, `'mips'`,
+`'mipsel'`, `'ppc'`, `'ppc64'`, `'riscv64'`, `'s390'`, `'s390x'`, and `'x64'`.
 
 ```mjs
 import { arch } from 'node:process';
@@ -920,8 +927,8 @@ argv.forEach((val, index) => {
 
 Launching the Node.js process as:
 
-```console
-$ node process-args.js one two=three four
+```bash
+node process-args.js one two=three four
 ```
 
 Would generate the output:
@@ -1039,6 +1046,9 @@ This feature is not available in [`Worker`][] threads.
 <!-- YAML
 added: v0.7.7
 changes:
+  - version: v19.0.0
+    pr-url: https://github.com/nodejs/node/pull/43627
+    description: The `process.config` object is now frozen.
   - version: v16.0.0
     pr-url: https://github.com/nodejs/node/pull/36902
     description: Modifying process.config has been deprecated.
@@ -1046,10 +1056,10 @@ changes:
 
 * {Object}
 
-The `process.config` property returns an `Object` containing the JavaScript
-representation of the configure options used to compile the current Node.js
-executable. This is the same as the `config.gypi` file that was produced when
-running the `./configure` script.
+The `process.config` property returns a frozen `Object` containing the
+JavaScript representation of the configure options used to compile the current
+Node.js executable. This is the same as the `config.gypi` file that was produced
+when running the `./configure` script.
 
 An example of the possible output looks like:
 
@@ -1073,7 +1083,6 @@ An example of the possible output looks like:
      node_shared_http_parser: 'false',
      node_shared_libuv: 'false',
      node_shared_zlib: 'false',
-     node_use_dtrace: 'false',
      node_use_openssl: 'true',
      node_shared_openssl: 'false',
      strict_aliasing: 'true',
@@ -1082,14 +1091,6 @@ An example of the possible output looks like:
    }
 }
 ```
-
-The `process.config` property is **not** read-only and there are existing
-modules in the ecosystem that are known to extend, modify, or entirely replace
-the value of `process.config`.
-
-Modifying the `process.config` property, or any child-property of the
-`process.config` object has been deprecated. The `process.config` will be made
-read-only in a future release.
 
 ## `process.connected`
 
@@ -1110,18 +1111,40 @@ over the IPC channel using `process.send()`.
 ## `process.constrainedMemory()`
 
 <!-- YAML
-added: v18.15.0
+added:
+  - v19.6.0
+  - v18.15.0
+changes:
+  - version: v20.13.0
+    pr-url: https://github.com/nodejs/node/pull/52039
+    description: Aligned return value with `uv_get_constrained_memory`.
 -->
 
 > Stability: 1 - Experimental
 
-* {number|undefined}
+* {number}
 
 Gets the amount of memory available to the process (in bytes) based on
 limits imposed by the OS. If there is no such constraint, or the constraint
-is unknown, `undefined` is returned.
+is unknown, `0` is returned.
 
 See [`uv_get_constrained_memory`][uv_get_constrained_memory] for more
+information.
+
+## `process.availableMemory()`
+
+<!-- YAML
+added: v20.13.0
+-->
+
+> Stability: 1 - Experimental
+
+* {number}
+
+Gets the amount of free memory that is still available to the process
+(in bytes).
+
+See [`uv_get_available_memory`][uv_get_available_memory] for more
 information.
 
 ## `process.cpuUsage([previousValue])`
@@ -1579,8 +1602,8 @@ reflected outside the Node.js process, or (unless explicitly requested)
 to other [`Worker`][] threads.
 In other words, the following example would not work:
 
-```console
-$ node -e 'process.env.foo = "bar"' && echo $foo
+```bash
+node -e 'process.env.foo = "bar"' && echo $foo
 ```
 
 While the following will:
@@ -1687,21 +1710,19 @@ include the Node.js executable, the name of the script, or any options following
 the script name. These options are useful in order to spawn child processes with
 the same execution environment as the parent.
 
-```console
-$ node --harmony script.js --version
+```bash
+node --icu-data-dir=./foo --require ./bar.js script.js --version
 ```
 
 Results in `process.execArgv`:
 
-<!-- eslint-disable semi -->
-
-```js
-['--harmony']
+```json
+["--icu-data-dir=./foo", "--require", "./bar.js"]
 ```
 
 And `process.argv`:
 
-<!-- eslint-disable semi -->
+<!-- eslint-disable @stylistic/js/semi -->
 
 ```js
 ['/usr/local/bin/node', 'script.js', '--version']
@@ -1721,7 +1742,7 @@ added: v0.1.100
 The `process.execPath` property returns the absolute pathname of the executable
 that started the Node.js process. Symbolic links, if any, are resolved.
 
-<!-- eslint-disable semi -->
+<!-- eslint-disable @stylistic/js/semi -->
 
 ```js
 '/usr/local/bin/node'
@@ -1731,9 +1752,15 @@ that started the Node.js process. Symbolic links, if any, are resolved.
 
 <!-- YAML
 added: v0.1.13
+changes:
+  - version: v20.0.0
+    pr-url: https://github.com/nodejs/node/pull/43716
+    description: Only accepts a code of type number, or of type string if it
+                 represents an integer.
 -->
 
-* `code` {integer} The exit code. **Default:** `0`.
+* `code` {integer|string|null|undefined} The exit code. For string type, only
+  integer strings (e.g.,'1') are allowed. **Default:** `0`.
 
 The `process.exit()` method instructs Node.js to terminate the process
 synchronously with an exit status of `code`. If `code` is omitted, exit uses
@@ -1833,9 +1860,15 @@ than the current process.
 
 <!-- YAML
 added: v0.11.8
+changes:
+  - version: v20.0.0
+    pr-url: https://github.com/nodejs/node/pull/43716
+    description: Only accepts a code of type number, or of type string if it
+                 represents an integer.
 -->
 
-* {integer}
+* {integer|string|null|undefined} The exit code. For string type, only
+  integer strings (e.g.,'1') are allowed. **Default:** `undefined`.
 
 A number which will be the process exit code, when the process either
 exits gracefully, or is exited via [`process.exit()`][] without specifying
@@ -2247,6 +2280,29 @@ process.kill(process.pid, 'SIGHUP');
 When `SIGUSR1` is received by a Node.js process, Node.js will start the
 debugger. See [Signal Events][].
 
+## `process.loadEnvFile(path)`
+
+<!-- YAML
+added: v20.12.0
+-->
+
+> Stability: 1.1 - Active development
+
+* `path` {string | URL | Buffer | undefined}. **Default:** `'./.env'`
+
+Loads the `.env` file into `process.env`. Usage of `NODE_OPTIONS`
+in the `.env` file will not have any effect on Node.js.
+
+```cjs
+const { loadEnvFile } = require('node:process');
+loadEnvFile();
+```
+
+```mjs
+import { loadEnvFile } from 'node:process';
+loadEnvFile();
+```
+
 ## `process.mainModule`
 
 <!-- YAML
@@ -2611,6 +2667,53 @@ flag is set on the current Node.js process. See the documentation for
 the [`'warning'` event][process_warning] and the
 [`emitWarning()` method][process_emit_warning] for more information about this
 flag's behavior.
+
+## `process.permission`
+
+<!-- YAML
+added: v20.0.0
+-->
+
+* {Object}
+
+This API is available through the [`--experimental-permission`][] flag.
+
+`process.permission` is an object whose methods are used to manage permissions
+for the current process. Additional documentation is available in the
+[Permission Model][].
+
+### `process.permission.has(scope[, reference])`
+
+<!-- YAML
+added: v20.0.0
+-->
+
+* `scope` {string}
+* `reference` {string}
+* Returns: {boolean}
+
+Verifies that the process is able to access the given scope and reference.
+If no reference is provided, a global scope is assumed, for instance,
+`process.permission.has('fs.read')` will check if the process has ALL
+file system read permissions.
+
+The reference has a meaning based on the provided scope. For example,
+the reference when the scope is File System means files and folders.
+
+The available scopes are:
+
+* `fs` - All File System
+* `fs.read` - File System read operations
+* `fs.write` - File System write operations
+* `child` - Child process spawning operations
+* `worker` - Worker thread spawning operation
+
+```js
+// Check if the process has permission to read the README file
+process.permission.has('fs.read', './README.md');
+// Check if the process has read permission operations
+process.permission.has('fs.read');
+```
 
 ## `process.pid`
 
@@ -3463,7 +3566,7 @@ Using this function is mutually exclusive with using the deprecated
 ## `process.sourceMapsEnabled`
 
 <!-- YAML
-added: v18.19.0
+added: v20.7.0
 -->
 
 > Stability: 1 - Experimental
@@ -3801,21 +3904,30 @@ console.log(versions);
 Will generate an object similar to:
 
 ```console
-{ node: '11.13.0',
-  v8: '7.0.276.38-node.18',
-  uv: '1.27.0',
-  zlib: '1.2.11',
-  brotli: '1.0.7',
-  ares: '1.15.0',
-  modules: '67',
-  nghttp2: '1.34.0',
-  napi: '4',
-  llhttp: '1.1.1',
-  openssl: '1.1.1b',
-  cldr: '34.0',
-  icu: '63.1',
-  tz: '2018e',
-  unicode: '11.0' }
+{ node: '20.2.0',
+  acorn: '8.8.2',
+  ada: '2.4.0',
+  ares: '1.19.0',
+  base64: '0.5.0',
+  brotli: '1.0.9',
+  cjs_module_lexer: '1.2.2',
+  cldr: '43.0',
+  icu: '73.1',
+  llhttp: '8.1.0',
+  modules: '115',
+  napi: '8',
+  nghttp2: '1.52.0',
+  nghttp3: '0.7.0',
+  ngtcp2: '0.8.1',
+  openssl: '3.0.8+quic',
+  simdutf: '3.2.9',
+  tz: '2023c',
+  undici: '5.22.0',
+  unicode: '15.0',
+  uv: '1.44.2',
+  uvwasi: '0.0.16',
+  v8: '11.3.244.8-node.9',
+  zlib: '1.2.13' }
 ```
 
 ## Exit codes
@@ -3875,8 +3987,9 @@ cases:
 [Child Process]: child_process.md
 [Cluster]: cluster.md
 [Duplex]: stream.md#duplex-and-transform-streams
-[Event Loop]: https://nodejs.org/en/docs/guides/event-loop-timers-and-nexttick/#process-nexttick
+[Event Loop]: https://nodejs.org/en/learn/asynchronous-work/event-loop-timers-and-nexttick#understanding-processnexttick
 [LTS]: https://github.com/nodejs/Release
+[Permission Model]: permissions.md#permission-model
 [Readable]: stream.md#readable-streams
 [Signal Events]: #signal-events
 [Source Map]: https://sourcemaps.info/spec.html
@@ -3886,6 +3999,8 @@ cases:
 [`'exit'`]: #event-exit
 [`'message'`]: child_process.md#event-message
 [`'uncaughtException'`]: #event-uncaughtexception
+[`--experimental-permission`]: cli.md#--experimental-permission
+[`--no-deprecation`]: cli.md#--no-deprecation
 [`--unhandled-rejections`]: cli.md#--unhandled-rejectionsmode
 [`Buffer`]: buffer.md
 [`ChildProcess.disconnect()`]: child_process.md#subprocessdisconnect
@@ -3927,6 +4042,7 @@ cases:
 [process_warning]: #event-warning
 [report documentation]: report.md
 [terminal raw mode]: tty.md#readstreamsetrawmodemode
+[uv_get_available_memory]: https://docs.libuv.org/en/v1.x/misc.html#c.uv_get_available_memory
 [uv_get_constrained_memory]: https://docs.libuv.org/en/v1.x/misc.html#c.uv_get_constrained_memory
 [uv_rusage_t]: https://docs.libuv.org/en/v1.x/misc.html#c.uv_rusage_t
 [wikipedia_major_fault]: https://en.wikipedia.org/wiki/Page_fault#Major

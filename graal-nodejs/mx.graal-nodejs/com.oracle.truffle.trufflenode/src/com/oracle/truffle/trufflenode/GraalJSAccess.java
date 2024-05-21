@@ -1009,7 +1009,7 @@ public final class GraalJSAccess {
         JSDynamicObject dynamicObject = (JSDynamicObject) object;
         JSContext context = JSObject.getJSContext(dynamicObject);
         int flags = propertyAttributes(attributes);
-        Accessor accessor = new Accessor(accessorIdGenerator.getAsInt(), name, getterPtr, setterPtr, data, null, flags);
+        Accessor accessor = new Accessor(accessorIdGenerator.getAsInt(), name, getterPtr, setterPtr, data, flags);
         Pair<JSFunctionData, JSFunctionData> accessorFunctions = accessor.getFunctions(context);
         JSRealm realm = getCurrentRealm();
         JSDynamicObject getter = instantiateAccessorFunction(realm, accessorFunctions.getFirst(), dynamicObject, accessor);
@@ -2105,9 +2105,9 @@ public final class GraalJSAccess {
         }
     }
 
-    public void objectTemplateSetAccessor(Object templateObj, Object name, long getterPtr, long setterPtr, Object data, Object signature, int attributes) {
+    public void objectTemplateSetAccessor(Object templateObj, Object name, long getterPtr, long setterPtr, Object data, int attributes) {
         ObjectTemplate template = (ObjectTemplate) templateObj;
-        template.addAccessor(new Accessor(accessorIdGenerator.getAsInt(), name, getterPtr, setterPtr, data, (FunctionTemplate) signature, propertyAttributes(attributes)));
+        template.addAccessor(new Accessor(accessorIdGenerator.getAsInt(), name, getterPtr, setterPtr, data, propertyAttributes(attributes)));
     }
 
     public void objectTemplateSetHandler(Object templateObj, long getter, long setter, long query, long deleter, long enumerator, long definer, long descriptor, Object data, boolean named,
@@ -2797,7 +2797,6 @@ public final class GraalJSAccess {
         }
 
         updateWeakCallback(object, reference, data, callbackPointer, type);
-        pollWeakCallbackQueue(false);
     }
 
     public long clearWeak(Object object, long reference) {
@@ -2999,7 +2998,13 @@ public final class GraalJSAccess {
                 if (type == ExceptionType.INTERRUPT || type == ExceptionType.EXIT) {
                     throw atex;
                 }
-                mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, atex);
+                Object errorObject;
+                if (atex instanceof GraalJSException jsex) {
+                    errorObject = jsex.getErrorObject();
+                } else {
+                    errorObject = atex;
+                }
+                mainJSContext.notifyPromiseRejectionTracker(JSPromise.create(mainJSContext, getCurrentRealm()), JSPromise.REJECTION_TRACKER_OPERATION_REJECT, errorObject);
             }
         } catch (Exception ex) {
             ex.printStackTrace();
@@ -3349,9 +3354,16 @@ public final class GraalJSAccess {
         @Override
         public JSDynamicObject importModuleDynamically(JSRealm realm, ScriptOrModule referrer, ModuleRequest moduleRequest) {
             Object importAssertions = moduleRequestGetImportAssertionsImpl(moduleRequest, false);
-            String resourceName = referrer.getSource().getName();
-            GraalJSAccess graalJSAccess = ((RealmData) realm.getEmbedderData()).getGraalJSAccess();
-            Object hostDefinedOptions = graalJSAccess.scriptOrModuleGetHostDefinedOptions(referrer);
+            Object resourceName;
+            Object hostDefinedOptions;
+            if (referrer == null) {
+                resourceName = Undefined.instance;
+                hostDefinedOptions = new Object[0];
+            } else {
+                GraalJSAccess graalJSAccess = ((RealmData) realm.getEmbedderData()).getGraalJSAccess();
+                resourceName = Strings.fromJavaString(referrer.getSource().getName());
+                hostDefinedOptions = graalJSAccess.scriptOrModuleGetHostDefinedOptions(referrer);
+            }
             return (JSDynamicObject) NativeAccess.executeImportModuleDynamicallyCallback(realm, hostDefinedOptions, resourceName, moduleRequest.getSpecifier(), importAssertions);
         }
     }

@@ -139,7 +139,7 @@ async function ecGenerateKey(algorithm, extractable, keyUsages) {
       privateUsages,
       extractable);
 
-  return { publicKey, privateKey };
+  return { __proto__: null, publicKey, privateKey };
 }
 
 function ecExportKey(key, format) {

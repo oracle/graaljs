@@ -23,7 +23,11 @@ class PYTestCase(testcase.TestCase):
     return super(PYTestCase, self).get_command()
 
   def _get_cmd_params(self):
-    return self._get_files_params() + ['--', os.path.join(self._test_config.shell_dir, 'd8')] + self._get_source_flags()
+    return (
+        self._get_files_params() +
+        ['--', os.path.join(self.test_config.shell_dir, 'd8')] +
+        self._get_source_flags()
+    )
 
   def _get_shell_flags(self):
     return []
@@ -94,7 +98,3 @@ class TestSuite(testsuite.TestSuite):
 
   def _test_class(self):
     return TestCase
-
-
-def GetSuite(*args, **kwargs):
-  return TestSuite(*args, **kwargs)

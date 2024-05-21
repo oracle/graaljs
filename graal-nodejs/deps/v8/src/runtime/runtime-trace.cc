@@ -61,7 +61,7 @@ void PrintRegisters(UnoptimizedFrame* frame, std::ostream& os, bool is_input,
   static const char* kOutputColourCode = "\033[0;35m";
   static const char* kNormalColourCode = "\033[0;m";
   const char* kArrowDirection = is_input ? " -> " : " <- ";
-  if (FLAG_log_colour) {
+  if (v8_flags.log_colour) {
     os << (is_input ? kInputColourCode : kOutputColourCode);
   }
 
@@ -69,7 +69,8 @@ void PrintRegisters(UnoptimizedFrame* frame, std::ostream& os, bool is_input,
 
   // Print accumulator.
   if ((is_input && interpreter::Bytecodes::ReadsAccumulator(bytecode)) ||
-      (!is_input && interpreter::Bytecodes::WritesAccumulator(bytecode))) {
+      (!is_input &&
+       interpreter::Bytecodes::WritesOrClobbersAccumulator(bytecode))) {
     os << "      [ " << kAccumulator << kArrowDirection;
     accumulator->ShortPrint(os);
     os << " ]" << std::endl;
@@ -97,7 +98,7 @@ void PrintRegisters(UnoptimizedFrame* frame, std::ostream& os, bool is_input,
                        kArrowDirection,
                        interpreter::Register::FromShortStar(bytecode), 1);
   }
-  if (FLAG_log_colour) {
+  if (v8_flags.log_colour) {
     os << kNormalColourCode;
   }
 }
@@ -105,18 +106,18 @@ void PrintRegisters(UnoptimizedFrame* frame, std::ostream& os, bool is_input,
 }  // namespace
 
 RUNTIME_FUNCTION(Runtime_TraceUnoptimizedBytecodeEntry) {
-  if (!FLAG_trace_ignition && !FLAG_trace_baseline_exec) {
+  if (!v8_flags.trace_ignition && !v8_flags.trace_baseline_exec) {
     return ReadOnlyRoots(isolate).undefined_value();
   }
 
-  JavaScriptFrameIterator frame_iterator(isolate);
+  JavaScriptStackFrameIterator frame_iterator(isolate);
   UnoptimizedFrame* frame =
       reinterpret_cast<UnoptimizedFrame*>(frame_iterator.frame());
 
-  if (frame->is_interpreted() && !FLAG_trace_ignition) {
+  if (frame->is_interpreted() && !v8_flags.trace_ignition) {
     return ReadOnlyRoots(isolate).undefined_value();
   }
-  if (frame->is_baseline() && !FLAG_trace_baseline_exec) {
+  if (frame->is_baseline() && !v8_flags.trace_baseline_exec) {
     return ReadOnlyRoots(isolate).undefined_value();
   }
 
@@ -155,18 +156,18 @@ RUNTIME_FUNCTION(Runtime_TraceUnoptimizedBytecodeEntry) {
 }
 
 RUNTIME_FUNCTION(Runtime_TraceUnoptimizedBytecodeExit) {
-  if (!FLAG_trace_ignition && !FLAG_trace_baseline_exec) {
+  if (!v8_flags.trace_ignition && !v8_flags.trace_baseline_exec) {
     return ReadOnlyRoots(isolate).undefined_value();
   }
 
-  JavaScriptFrameIterator frame_iterator(isolate);
+  JavaScriptStackFrameIterator frame_iterator(isolate);
   UnoptimizedFrame* frame =
       reinterpret_cast<UnoptimizedFrame*>(frame_iterator.frame());
 
-  if (frame->is_interpreted() && !FLAG_trace_ignition) {
+  if (frame->is_interpreted() && !v8_flags.trace_ignition) {
     return ReadOnlyRoots(isolate).undefined_value();
   }
-  if (frame->is_baseline() && !FLAG_trace_baseline_exec) {
+  if (frame->is_baseline() && !v8_flags.trace_baseline_exec) {
     return ReadOnlyRoots(isolate).undefined_value();
   }
 
@@ -199,7 +200,7 @@ RUNTIME_FUNCTION(Runtime_TraceUnoptimizedBytecodeExit) {
 #ifdef V8_TRACE_FEEDBACK_UPDATES
 
 RUNTIME_FUNCTION(Runtime_TraceUpdateFeedback) {
-  if (!FLAG_trace_feedback_updates) {
+  if (!v8_flags.trace_feedback_updates) {
     return ReadOnlyRoots(isolate).undefined_value();
   }
 

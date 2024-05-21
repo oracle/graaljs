@@ -35,7 +35,6 @@ void ExpectMessage(const char* expected, const Message& message) {
 }  // namespace
 
 TEST_F(WasmCapiTest, Traps) {
-  FLAG_experimental_wasm_eh = true;
   ValueType i32_type[] = {kWasmI32};
   FunctionSig sig(1, 0, i32_type);
   uint32_t callback_index =
@@ -67,13 +66,8 @@ TEST_F(WasmCapiTest, Traps) {
 
   // Use internal machinery to parse the module to find the function offsets.
   // This makes the test more robust than hardcoding them.
-  i::Isolate* isolate =
-      reinterpret_cast<::wasm::StoreImpl*>(store())->i_isolate();
-  ModuleResult result = DecodeWasmModule(
-      WasmFeatures::All(), wire_bytes()->begin(), wire_bytes()->end(), false,
-      ModuleOrigin::kWasmOrigin, isolate->counters(),
-      isolate->metrics_recorder(), v8::metrics::Recorder::ContextId::Empty(),
-      DecodingMethod::kSync, GetWasmEngine()->allocator());
+  ModuleResult result = DecodeWasmModule(WasmFeatures::All(), wire_bytes(),
+                                         false, ModuleOrigin::kWasmOrigin);
   ASSERT_TRUE(result.ok());
   const WasmFunction* func1 = &result.value()->functions[1];
   const WasmFunction* func2 = &result.value()->functions[2];

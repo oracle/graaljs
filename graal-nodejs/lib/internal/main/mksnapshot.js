@@ -9,19 +9,31 @@ const {
   SafeSet,
 } = primordials;
 
-const binding = internalBinding('mksnapshot');
 const { BuiltinModule: { normalizeRequirableId } } = require('internal/bootstrap/realm');
 const {
   compileSerializeMain,
-} = binding;
+  anonymousMainPath,
+} = internalBinding('mksnapshot');
+
+const { isExperimentalSeaWarningNeeded } = internalBinding('sea');
+
+const { emitExperimentalWarning } = require('internal/util');
+const { emitWarningSync } = require('internal/process/warning');
 
 const {
-  getOptionValue,
-} = require('internal/options');
+  initializeCallbacks,
+  namespace: {
+    addSerializeCallback,
+    addDeserializeCallback,
+    isBuildingSnapshot,
+  },
+} = require('internal/v8/startup_snapshot');
 
 const {
-  readFileSync,
-} = require('fs');
+  prepareMainThreadExecution,
+} = require('internal/process/pre_execution');
+
+const path = require('path');
 
 const supportedModules = new SafeSet(new SafeArrayIterator([
   // '_http_agent',
@@ -48,7 +60,7 @@ const supportedModules = new SafeSet(new SafeArrayIterator([
   'constants',
   'crypto',
   // 'dgram',
-  // 'diagnostics_channel',
+  'diagnostics_channel',
   'dns',
   // 'dns/promises',
   // 'domain',
@@ -60,7 +72,7 @@ const supportedModules = new SafeSet(new SafeArrayIterator([
   // 'https',
   // 'inspector',
   // 'module',
-  // 'net',
+  'net',
   'os',
   'path',
   'path/posix',
@@ -104,10 +116,18 @@ function requireForUserSnapshot(id) {
     err.code = 'MODULE_NOT_FOUND';
     throw err;
   }
-  if (!supportedInUserSnapshot(normalizedId)) {
+  if (isBuildingSnapshot() && !supportedInUserSnapshot(normalizedId)) {
     if (!warnedModules.has(normalizedId)) {
-      process.emitWarning(
-        `built-in module ${id} is not yet supported in user snapshots`);
+      // Emit the warning synchronously in case we don't get to process
+      // the tick and print it before the unsupported built-in causes a
+      // crash.
+      emitWarningSync(
+        `It's not yet fully verified whether built-in module "${id}" ` +
+        'works in user snapshot builder scripts.\n' +
+        'It may still work in some cases, but in other cases certain ' +
+        'run-time states may be out-of-sync after snapshot deserialization.\n' +
+        'To request support for the module, use the Node.js issue tracker: ' +
+        'https://github.com/nodejs/node/issues');
       warnedModules.add(normalizedId);
     }
   }
@@ -115,27 +135,9 @@ function requireForUserSnapshot(id) {
   return require(normalizedId);
 }
 
+
 function main() {
-  const {
-    prepareMainThreadExecution,
-  } = require('internal/process/pre_execution');
-
-  prepareMainThreadExecution(true, false);
-
-  const file = process.argv[1];
-  const path = require('path');
-  const filename = path.resolve(file);
-  const dirname = path.dirname(filename);
-  const source = readFileSync(file, 'utf-8');
-  const serializeMainFunction = compileSerializeMain(filename, source);
-
-  const {
-    initializeCallbacks,
-    namespace: {
-      addSerializeCallback,
-      addDeserializeCallback,
-    },
-  } = require('internal/v8/startup_snapshot');
+  prepareMainThreadExecution(false, false);
   initializeCallbacks();
 
   let stackTraceLimitDesc;
@@ -144,15 +146,6 @@ function main() {
       ObjectDefineProperty(Error, 'stackTraceLimit', stackTraceLimitDesc);
     }
   });
-
-  if (getOptionValue('--inspect-brk')) {
-    internalBinding('inspector').callAndPauseOnStart(
-      serializeMainFunction, undefined,
-      requireForUserSnapshot, filename, dirname);
-  } else {
-    serializeMainFunction(requireForUserSnapshot, filename, dirname);
-  }
-
   addSerializeCallback(() => {
     stackTraceLimitDesc = ObjectGetOwnPropertyDescriptor(Error, 'stackTraceLimit');
 
@@ -165,6 +158,28 @@ function main() {
       delete Error.stackTraceLimit;
     }
   });
+
+  // TODO(addaleax): Make this `embedderRunCjs` once require('module')
+  // is supported in snapshots.
+  function minimalRunCjs(source) {
+    let filename;
+    let dirname;
+    if (process.argv[1] === anonymousMainPath) {
+      filename = dirname = process.argv[1];
+    } else {
+      filename = path.resolve(process.argv[1]);
+      dirname = path.dirname(filename);
+    }
+
+    const fn = compileSerializeMain(filename, source);
+    return fn(requireForUserSnapshot, filename, dirname);
+  }
+
+  if (isExperimentalSeaWarningNeeded()) {
+    emitExperimentalWarning('Single executable application');
+  }
+
+  return [process, requireForUserSnapshot, minimalRunCjs];
 }
 
-main();
+return main();

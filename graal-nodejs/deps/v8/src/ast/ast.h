@@ -236,6 +236,8 @@ class Expression : public AstNode {
   // True iff the expression is the null literal.
   bool IsNullLiteral() const;
 
+  bool IsBooleanLiteral() const;
+
   // True iff the expression is the hole literal.
   bool IsTheHoleLiteral() const;
 
@@ -254,7 +256,7 @@ class Expression : public AstNode {
   bool IsCompileTimeValue();
 
   bool IsPattern() {
-    STATIC_ASSERT(kObjectLiteral + 1 == kArrayLiteral);
+    static_assert(kObjectLiteral + 1 == kArrayLiteral);
     return base::IsInRange(node_type(), kObjectLiteral, kArrayLiteral);
   }
 
@@ -633,7 +635,7 @@ class ReturnStatement final : public JumpStatement {
   // This constant is used to indicate that the return position
   // from the FunctionLiteral should be used when emitting code.
   static constexpr int kFunctionLiteralReturnPosition = -2;
-  STATIC_ASSERT(kFunctionLiteralReturnPosition == kNoSourcePosition - 1);
+  static_assert(kFunctionLiteralReturnPosition == kNoSourcePosition - 1);
 
   int end_position() const { return end_position_; }
 
@@ -955,6 +957,11 @@ class Literal final : public Expression {
     return Smi::FromInt(smi_);
   }
 
+  bool AsBooleanLiteral() const {
+    DCHECK_EQ(kBoolean, type());
+    return boolean_;
+  }
+
   // Returns true if literal represents a Number.
   bool IsNumber() const { return type() == kHeapNumber || type() == kSmi; }
   double AsNumber() const {
@@ -999,7 +1006,7 @@ class Literal final : public Expression {
   friend class AstNodeFactory;
   friend Zone;
 
-  using TypeField = Expression::NextBitField<Type, 4>;
+  using TypeField = Expression::NextBitField<Type, 3>;
 
   Literal(int smi, int position) : Expression(position, kLiteral), smi_(smi) {
     bit_field_ = TypeField::update(bit_field_, kSmi);
@@ -1100,7 +1107,7 @@ class LiteralBoilerplateBuilder {
   enum DepthKind { kUninitialized, kShallow, kNotShallow };
 
   static constexpr int kDepthKindBits = 2;
-  STATIC_ASSERT((1 << kDepthKindBits) > kNotShallow);
+  static_assert((1 << kDepthKindBits) > kNotShallow);
 
   bool is_initialized() const {
     return kUninitialized != DepthField::decode(bit_field_);
@@ -1347,7 +1354,7 @@ class ObjectLiteral final : public AggregateLiteral {
     kFastElements = 1 << 3,
     kHasNullPrototype = 1 << 4,
   };
-  STATIC_ASSERT(
+  static_assert(
       static_cast<int>(AggregateLiteral::kNeedsInitialAllocationSite) <
       static_cast<int>(kFastElements));
 
@@ -1606,7 +1613,9 @@ enum AssignType {
   PRIVATE_METHOD,        // obj.#key: #key is a private method
   PRIVATE_GETTER_ONLY,   // obj.#key: #key only has a getter defined
   PRIVATE_SETTER_ONLY,   // obj.#key: #key only has a setter defined
-  PRIVATE_GETTER_AND_SETTER  // obj.#key: #key has both accessors defined
+  PRIVATE_GETTER_AND_SETTER,  // obj.#key: #key has both accessors defined
+  PRIVATE_DEBUG_DYNAMIC,      // obj.#key: #key is private that requries dynamic
+                              // lookup in debug-evaluate.
 };
 
 class Property final : public Expression {
@@ -1643,6 +1652,9 @@ class Property final : public Expression {
           return PRIVATE_SETTER_ONLY;
         case VariableMode::kPrivateGetterAndSetter:
           return PRIVATE_GETTER_AND_SETTER;
+        case VariableMode::kDynamic:
+          // From debug-evaluate.
+          return PRIVATE_DEBUG_DYNAMIC;
         default:
           UNREACHABLE();
       }
@@ -1963,6 +1975,7 @@ class CompareOperation final : public Expression {
 
   // Match special cases.
   bool IsLiteralCompareTypeof(Expression** expr, Literal** literal);
+  bool IsLiteralStrictCompareBoolean(Expression** expr, Literal** literal);
   bool IsLiteralCompareUndefined(Expression** expr);
   bool IsLiteralCompareNull(Expression** expr);
 

@@ -8,7 +8,6 @@
 #include <map>
 
 #include "src/codegen/cpu-features.h"
-#include "src/common/globals.h"
 #include "src/compiler/backend/instruction-scheduler.h"
 #include "src/compiler/backend/instruction.h"
 #include "src/compiler/common-operator.h"
@@ -16,6 +15,7 @@
 #include "src/compiler/linkage.h"
 #include "src/compiler/machine-operator.h"
 #include "src/compiler/node.h"
+#include "src/utils/bit-vector.h"
 #include "src/zone/zone-containers.h"
 
 #if V8_ENABLE_WEBASSEMBLY
@@ -78,9 +78,8 @@ class FlagsContinuation final {
   }
 
   // Creates a new flags continuation for a wasm trap.
-  static FlagsContinuation ForTrap(FlagsCondition condition, TrapId trap_id,
-                                   Node* result) {
-    return FlagsContinuation(condition, trap_id, result);
+  static FlagsContinuation ForTrap(FlagsCondition condition, TrapId trap_id) {
+    return FlagsContinuation(condition, trap_id);
   }
 
   static FlagsContinuation ForSelect(FlagsCondition condition, Node* result,
@@ -218,13 +217,8 @@ class FlagsContinuation final {
     DCHECK_NOT_NULL(result);
   }
 
-  FlagsContinuation(FlagsCondition condition, TrapId trap_id, Node* result)
-      : mode_(kFlags_trap),
-        condition_(condition),
-        frame_state_or_result_(result),
-        trap_id_(trap_id) {
-    DCHECK_NOT_NULL(result);
-  }
+  FlagsContinuation(FlagsCondition condition, TrapId trap_id)
+      : mode_(kFlags_trap), condition_(condition), trap_id_(trap_id) {}
 
   FlagsContinuation(FlagsCondition condition, Node* result, Node* true_value,
                     Node* false_value)
@@ -292,7 +286,7 @@ class V8_EXPORT_PRIVATE InstructionSelector final {
       size_t* max_pushed_argument_count,
       SourcePositionMode source_position_mode = kCallSourcePositions,
       Features features = SupportedFeatures(),
-      EnableScheduling enable_scheduling = FLAG_turbo_instruction_scheduling
+      EnableScheduling enable_scheduling = v8_flags.turbo_instruction_scheduling
                                                ? kEnableScheduling
                                                : kDisableScheduling,
       EnableRootsRelativeAddressing enable_roots_relative_addressing =
@@ -300,7 +294,7 @@ class V8_EXPORT_PRIVATE InstructionSelector final {
       EnableTraceTurboJson trace_turbo = kDisableTraceTurboJson);
 
   // Visit code for the entire graph with the included schedule.
-  bool SelectInstructions();
+  base::Optional<BailoutReason> SelectInstructions();
 
   void StartBlock(RpoNumber rpo);
   void EndBlock(RpoNumber rpo);
@@ -525,6 +519,9 @@ class V8_EXPORT_PRIVATE InstructionSelector final {
   void MarkAsSimd128(Node* node) {
     MarkAsRepresentation(MachineRepresentation::kSimd128, node);
   }
+  void MarkAsSimd256(Node* node) {
+    MarkAsRepresentation(MachineRepresentation::kSimd256, node);
+  }
   void MarkAsTagged(Node* node) {
     MarkAsRepresentation(MachineRepresentation::kTagged, node);
   }
@@ -595,7 +592,8 @@ class V8_EXPORT_PRIVATE InstructionSelector final {
 
 #define DECLARE_GENERATOR(x) void Visit##x(Node* node);
   MACHINE_OP_LIST(DECLARE_GENERATOR)
-  MACHINE_SIMD_OP_LIST(DECLARE_GENERATOR)
+  MACHINE_SIMD128_OP_LIST(DECLARE_GENERATOR)
+  MACHINE_SIMD256_OP_LIST(DECLARE_GENERATOR)
 #undef DECLARE_GENERATOR
 
   // Visit the load node with a value and opcode to replace with.
@@ -628,6 +626,8 @@ class V8_EXPORT_PRIVATE InstructionSelector final {
   void VisitStaticAssert(Node* node);
   void VisitDeadValue(Node* node);
 
+  void TryPrepareScheduleFirstProjection(Node* maybe_projection);
+
   void VisitStackPointerGreaterThan(Node* node, FlagsContinuation* cont);
 
   void VisitWordCompareZero(Node* user, Node* value, FlagsContinuation* cont);
@@ -636,6 +636,16 @@ class V8_EXPORT_PRIVATE InstructionSelector final {
                             const CallDescriptor* call_descriptor, Node* node);
   void EmitPrepareResults(ZoneVector<compiler::PushParameter>* results,
                           const CallDescriptor* call_descriptor, Node* node);
+
+  // In LOONG64, calling convention uses free GP param register to pass
+  // floating-point arguments when no FP param register is available. But
+  // gap does not support moving from FPR to GPR, so we add EmitMoveFPRToParam
+  // to complete movement.
+  void EmitMoveFPRToParam(InstructionOperand* op, LinkageLocation location);
+  // Moving floating-point param from GP param register to FPR to participate in
+  // subsequent operations, whether CallCFunction or normal floating-point
+  // operations.
+  void EmitMoveParamToFPR(Node* node, int index);
 
   bool CanProduceSignalingNaN(Node* node);
 
@@ -733,8 +743,8 @@ class V8_EXPORT_PRIVATE InstructionSelector final {
   InstructionOperandVector continuation_inputs_;
   InstructionOperandVector continuation_outputs_;
   InstructionOperandVector continuation_temps_;
-  BoolVector defined_;
-  BoolVector used_;
+  BitVector defined_;
+  BitVector used_;
   IntVector effect_level_;
   int current_effect_level_;
   IntVector virtual_registers_;

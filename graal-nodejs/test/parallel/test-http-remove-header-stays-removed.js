@@ -37,8 +37,6 @@ const server = http.createServer(function(request, response) {
   response.setHeader('date', 'coffee o clock');
 
   response.end('beep boop\n');
-
-  this.close();
 });
 
 let response = '';

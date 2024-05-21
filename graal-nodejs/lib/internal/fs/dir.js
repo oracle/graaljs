@@ -155,16 +155,16 @@ class Dir {
           path,
           result[i],
           result[i + 1],
-          true, // Quirk to not introduce a breaking change.
         ),
       );
     }
   }
 
   readSyncRecursive(dirent) {
-    const ctx = { path: dirent.path };
+    const path = pathModule.join(dirent.parentPath, dirent.name);
+    const ctx = { path };
     const handle = dirBinding.opendir(
-      pathModule.toNamespacedPath(dirent.path),
+      pathModule.toNamespacedPath(path),
       this[kDirOptions].encoding,
       undefined,
       ctx,
@@ -178,7 +178,7 @@ class Dir {
     );
 
     if (result) {
-      this.processReadResult(dirent.path, result);
+      this.processReadResult(path, result);
     }
 
     handle.close(undefined, ctx);
@@ -322,18 +322,11 @@ function opendir(path, options, callback) {
 
 function opendirSync(path, options) {
   path = getValidatedPath(path);
-  options = getOptions(options, {
-    encoding: 'utf8',
-  });
+  options = getOptions(options, { encoding: 'utf8' });
 
-  const ctx = { path };
-  const handle = dirBinding.opendir(
+  const handle = dirBinding.opendirSync(
     pathModule.toNamespacedPath(path),
-    options.encoding,
-    undefined,
-    ctx,
   );
-  handleErrorFromBinding(ctx);
 
   return new Dir(handle, path, options);
 }

@@ -7,18 +7,20 @@ const {
   PerformanceObserver,
   PerformanceEntry,
   PerformanceResourceTiming,
-  performance: {
-    clearResourceTimings,
-    markResourceTiming,
-  },
+  performance,
 } = require('perf_hooks');
 
 assert(PerformanceObserver);
 assert(PerformanceEntry);
 assert.throws(() => new PerformanceEntry(), { code: 'ERR_ILLEGAL_CONSTRUCTOR' });
 assert(PerformanceResourceTiming);
-assert(clearResourceTimings);
-assert(markResourceTiming);
+assert(performance.clearResourceTimings);
+assert(performance.markResourceTiming);
+
+assert.deepStrictEqual(
+  Object.getOwnPropertyDescriptor(PerformanceResourceTiming.prototype, Symbol.toStringTag),
+  { configurable: true, enumerable: false, value: 'PerformanceResourceTiming', writable: false },
+);
 
 function createTimingInfo({
   startTime = 0,
@@ -78,7 +80,7 @@ function createTimingInfo({
   const requestedUrl = 'http://localhost:8080';
   const cacheMode = 'local';
   const initiatorType = 'fetch';
-  const resource = markResourceTiming(
+  const resource = performance.markResourceTiming(
     timingInfo,
     requestedUrl,
     initiatorType,
@@ -107,7 +109,7 @@ function createTimingInfo({
     assert(entries[0] instanceof PerformanceResourceTiming);
   }
 
-  clearResourceTimings();
+  performance.clearResourceTimings();
   assert.strictEqual(performance.getEntries().length, 0);
 }
 
@@ -120,7 +122,7 @@ function createTimingInfo({
   const requestedUrl = 'http://localhost:8080';
   const cacheMode = 'local';
   const initiatorType = 'fetch';
-  const resource = markResourceTiming(
+  const resource = performance.markResourceTiming(
     timingInfo,
     requestedUrl,
     initiatorType,
@@ -228,7 +230,7 @@ function createTimingInfo({
   assert(resource instanceof PerformanceEntry);
   assert(resource instanceof PerformanceResourceTiming);
 
-  clearResourceTimings();
+  performance.clearResourceTimings();
   const entries = performance.getEntries();
   assert.strictEqual(entries.length, 0);
 }
@@ -244,7 +246,7 @@ function createTimingInfo({
   const requestedUrl = 'http://localhost:8080';
   const cacheMode = '';
   const initiatorType = 'fetch';
-  const resource = markResourceTiming(
+  const resource = performance.markResourceTiming(
     timingInfo,
     requestedUrl,
     initiatorType,
@@ -267,7 +269,7 @@ function createTimingInfo({
   assert(resource instanceof PerformanceEntry);
   assert(resource instanceof PerformanceResourceTiming);
 
-  clearResourceTimings();
+  performance.clearResourceTimings();
   const entries = performance.getEntries();
   assert.strictEqual(entries.length, 0);
 }
@@ -299,7 +301,7 @@ function createTimingInfo({
   const requestedUrl = 'http://localhost:8080';
   const cacheMode = 'local';
   const initiatorType = 'fetch';
-  const resource = markResourceTiming(
+  const resource = performance.markResourceTiming(
     timingInfo,
     requestedUrl,
     initiatorType,
@@ -310,7 +312,7 @@ function createTimingInfo({
   assert(resource instanceof PerformanceEntry);
   assert(resource instanceof PerformanceResourceTiming);
 
-  clearResourceTimings();
+  performance.clearResourceTimings();
   const entries = performance.getEntries();
   assert.strictEqual(entries.length, 0);
 }

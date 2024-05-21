@@ -8,7 +8,7 @@ if (!common.hasCrypto)
 
 const assert = require('assert');
 const crypto = require('crypto');
-const { subtle } = crypto.webcrypto;
+const { subtle } = globalThis.crypto;
 
 const sizes = [1024, 2048, 4096];
 
@@ -565,11 +565,11 @@ const testVectors = [
       'spki',
       ecPublic.export({ format: 'der', type: 'spki' }),
       { name, hash: 'SHA-256' },
-      true, [publicUsage]), { message: /Invalid key type/ });
+      true, [publicUsage]), { message: /Invalid key type/ }).then(common.mustCall());
     assert.rejects(subtle.importKey(
       'pkcs8',
       ecPrivate.export({ format: 'der', type: 'pkcs8' }),
       { name, hash: 'SHA-256' },
-      true, [privateUsage]), { message: /Invalid key type/ });
+      true, [privateUsage]), { message: /Invalid key type/ }).then(common.mustCall());
   }
 }

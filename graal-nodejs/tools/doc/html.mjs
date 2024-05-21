@@ -35,7 +35,7 @@ import * as common from './common.mjs';
 import * as typeParser from './type-parser.mjs';
 import buildCSSForFlavoredJS from './buildCSSForFlavoredJS.mjs';
 
-const dynamicSizes = Object.create(null);
+const dynamicSizes = { __proto__: null };
 
 const { highlight, getLanguage } = highlightJs;
 
@@ -250,7 +250,7 @@ export function preprocessElements({ filename }) {
             const actualCharCount = Math.max(charCountFirstTwoLines, previousNode.charCountFirstTwoLines);
             (dynamicSizes[filename] ??= new Set()).add(actualCharCount);
             node.value = `<pre class="with-${actualCharCount}-chars">` +
-              '<input class="js-flavor-selector" type="checkbox"' +
+              '<input class="js-flavor-toggle" type="checkbox"' +
               // If CJS comes in second, ESM should display by default.
               (node.lang === 'cjs' ? ' checked' : '') +
               ' aria-label="Show modern ES modules syntax">' +
@@ -402,8 +402,8 @@ function versionSort(a, b) {
 const DEPRECATION_HEADING_PATTERN = /^DEP\d+:/;
 export function buildToc({ filename, apilinks }) {
   return (tree, file) => {
-    const idCounters = Object.create(null);
-    const legacyIdCounters = Object.create(null);
+    const idCounters = { __proto__: null };
+    const legacyIdCounters = { __proto__: null };
     let toc = '';
     let depth = 0;
 
@@ -467,7 +467,7 @@ export function buildToc({ filename, apilinks }) {
         .use(htmlStringify)
         .processSync(toc).toString();
 
-      file.toc = `<details id="toc" open><summary>Table of contents</summary>${inner}</details>`;
+      file.toc = `<details role="navigation" id="toc" open><summary>Table of contents</summary>${inner}</details>`;
       file.tocPicker = `<div class="toc">${inner}</div>`;
     } else {
       file.toc = file.tocPicker = '<!-- TOC -->';
@@ -528,7 +528,7 @@ function altDocs(filename, docCreated, versions) {
   return list ? `
     <li class="picker-header">
       <a href="#">
-        <span class="collapsed-arrow">&#x25ba;</span><span class="expanded-arrow">&#x25bc;</span>
+        <span class="picker-arrow"></span>
         Other versions
       </a>
       <div class="picker"><ol id="alt-docs">${list}</ol></div>
@@ -558,7 +558,7 @@ function gtocPicker(id) {
   return `
     <li class="picker-header">
       <a href="#">
-        <span class="collapsed-arrow">&#x25ba;</span><span class="expanded-arrow">&#x25bc;</span>
+        <span class="picker-arrow"></span>
         Index
       </a>
 
@@ -575,7 +575,7 @@ function tocPicker(id, content) {
   return `
     <li class="picker-header">
       <a href="#">
-        <span class="collapsed-arrow">&#x25ba;</span><span class="expanded-arrow">&#x25bc;</span>
+        <span class="picker-arrow"></span>
         Table of contents
       </a>
 

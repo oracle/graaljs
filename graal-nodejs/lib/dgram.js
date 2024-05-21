@@ -40,7 +40,6 @@ const {
   _createSocketHandle,
   newHandle,
 } = require('internal/dgram');
-const { guessHandleType } = internalBinding('util');
 const {
   ERR_BUFFER_OUT_OF_BOUNDS,
   ERR_INVALID_ARG_TYPE,
@@ -61,9 +60,10 @@ const {
   validatePort,
 } = require('internal/validators');
 const { Buffer } = require('buffer');
-const { deprecate, promisify } = require('internal/util');
+const { deprecate, guessHandleType, promisify } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
 const EventEmitter = require('events');
+const { addAbortListener } = require('internal/events/abort_listener');
 const {
   defaultTriggerAsyncIdScope,
   symbols: { async_id_symbol, owner_symbol },
@@ -97,9 +97,10 @@ function lazyLoadCluster() {
   return _cluster;
 }
 
-const errnoException = errors.errnoException;
-const exceptionWithHostPort = errors.exceptionWithHostPort;
-
+const {
+  ErrnoException,
+  ExceptionWithHostPort,
+} = errors;
 
 function Socket(type, listener) {
   FunctionPrototypeCall(EventEmitter, this);
@@ -146,7 +147,7 @@ function Socket(type, listener) {
     if (signal.aborted) {
       onAborted();
     } else {
-      const disposable = EventEmitter.addAbortListener(signal, onAborted);
+      const disposable = addAbortListener(signal, onAborted);
       this.once('close', disposable[SymbolDispose]);
     }
   }
@@ -287,7 +288,7 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
         flags: null,
       }, (err) => {
         // Callback to handle error.
-        const ex = errnoException(err, 'open');
+        const ex = new ErrnoException(err, 'open');
         state.bindState = BIND_STATE_UNBOUND;
         this.emit('error', ex);
       });
@@ -300,7 +301,7 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
     const err = state.handle.open(fd);
 
     if (err)
-      throw errnoException(err, 'open');
+      throw new ErrnoException(err, 'open');
 
     startListening(this);
     return this;
@@ -328,6 +329,9 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
 
   // Resolve address first
   state.handle.lookup(address, (err, ip) => {
+    if (!state.handle)
+      return; // Handle has been closed in the mean time
+
     if (err) {
       state.bindState = BIND_STATE_UNBOUND;
       this.emit('error', err);
@@ -351,17 +355,14 @@ Socket.prototype.bind = function(port_, address_ /* , callback */) {
         flags: flags,
       }, (err) => {
         // Callback to handle error.
-        const ex = exceptionWithHostPort(err, 'bind', ip, port);
+        const ex = new ExceptionWithHostPort(err, 'bind', ip, port);
         state.bindState = BIND_STATE_UNBOUND;
         this.emit('error', ex);
       });
     } else {
-      if (!state.handle)
-        return; // Handle has been closed in the mean time
-
       const err = state.handle.bind(ip, port || 0, flags);
       if (err) {
-        const ex = exceptionWithHostPort(err, 'bind', ip, port);
+        const ex = new ExceptionWithHostPort(err, 'bind', ip, port);
         state.bindState = BIND_STATE_UNBOUND;
         this.emit('error', ex);
         // Todo: close?
@@ -430,7 +431,7 @@ function doConnect(ex, self, ip, address, port, callback) {
   if (!ex) {
     const err = state.handle.connect(ip, port);
     if (err) {
-      ex = exceptionWithHostPort(err, 'connect', address, port);
+      ex = new ExceptionWithHostPort(err, 'connect', address, port);
     }
   }
 
@@ -458,7 +459,7 @@ Socket.prototype.disconnect = function() {
 
   const err = state.handle.disconnect();
   if (err)
-    throw errnoException(err, 'connect');
+    throw new ErrnoException(err, 'connect');
   else
     state.connectState = CONNECT_STATE_DISCONNECTED;
 };
@@ -715,14 +716,14 @@ function doSend(ex, self, ip, list, address, port, callback) {
 
   if (err && callback) {
     // Don't emit as error, dgram_legacy.js compatibility
-    const ex = exceptionWithHostPort(err, 'send', address, port);
+    const ex = new ExceptionWithHostPort(err, 'send', address, port);
     process.nextTick(callback, ex);
   }
 }
 
 function afterSend(err, sent) {
   if (err) {
-    err = exceptionWithHostPort(err, 'send', this.address, this.port);
+    err = new ExceptionWithHostPort(err, 'send', this.address, this.port);
   } else {
     err = null;
   }
@@ -773,7 +774,7 @@ Socket.prototype.address = function() {
   const out = {};
   const err = this[kStateSymbol].handle.getsockname(out);
   if (err) {
-    throw errnoException(err, 'getsockname');
+    throw new ErrnoException(err, 'getsockname');
   }
 
   return out;
@@ -789,7 +790,7 @@ Socket.prototype.remoteAddress = function() {
   const out = {};
   const err = state.handle.getpeername(out);
   if (err)
-    throw errnoException(err, 'getpeername');
+    throw new ErrnoException(err, 'getpeername');
 
   return out;
 };
@@ -798,7 +799,7 @@ Socket.prototype.remoteAddress = function() {
 Socket.prototype.setBroadcast = function(arg) {
   const err = this[kStateSymbol].handle.setBroadcast(arg ? 1 : 0);
   if (err) {
-    throw errnoException(err, 'setBroadcast');
+    throw new ErrnoException(err, 'setBroadcast');
   }
 };
 
@@ -808,7 +809,7 @@ Socket.prototype.setTTL = function(ttl) {
 
   const err = this[kStateSymbol].handle.setTTL(ttl);
   if (err) {
-    throw errnoException(err, 'setTTL');
+    throw new ErrnoException(err, 'setTTL');
   }
 
   return ttl;
@@ -820,7 +821,7 @@ Socket.prototype.setMulticastTTL = function(ttl) {
 
   const err = this[kStateSymbol].handle.setMulticastTTL(ttl);
   if (err) {
-    throw errnoException(err, 'setMulticastTTL');
+    throw new ErrnoException(err, 'setMulticastTTL');
   }
 
   return ttl;
@@ -830,7 +831,7 @@ Socket.prototype.setMulticastTTL = function(ttl) {
 Socket.prototype.setMulticastLoopback = function(arg) {
   const err = this[kStateSymbol].handle.setMulticastLoopback(arg ? 1 : 0);
   if (err) {
-    throw errnoException(err, 'setMulticastLoopback');
+    throw new ErrnoException(err, 'setMulticastLoopback');
   }
 
   return arg; // 0.4 compatibility
@@ -843,7 +844,7 @@ Socket.prototype.setMulticastInterface = function(interfaceAddress) {
 
   const err = this[kStateSymbol].handle.setMulticastInterface(interfaceAddress);
   if (err) {
-    throw errnoException(err, 'setMulticastInterface');
+    throw new ErrnoException(err, 'setMulticastInterface');
   }
 };
 
@@ -858,7 +859,7 @@ Socket.prototype.addMembership = function(multicastAddress,
   const { handle } = this[kStateSymbol];
   const err = handle.addMembership(multicastAddress, interfaceAddress);
   if (err) {
-    throw errnoException(err, 'addMembership');
+    throw new ErrnoException(err, 'addMembership');
   }
 };
 
@@ -874,7 +875,7 @@ Socket.prototype.dropMembership = function(multicastAddress,
   const { handle } = this[kStateSymbol];
   const err = handle.dropMembership(multicastAddress, interfaceAddress);
   if (err) {
-    throw errnoException(err, 'dropMembership');
+    throw new ErrnoException(err, 'dropMembership');
   }
 };
 
@@ -891,7 +892,7 @@ Socket.prototype.addSourceSpecificMembership = function(sourceAddress,
                                                           groupAddress,
                                                           interfaceAddress);
   if (err) {
-    throw errnoException(err, 'addSourceSpecificMembership');
+    throw new ErrnoException(err, 'addSourceSpecificMembership');
   }
 };
 
@@ -909,7 +910,7 @@ Socket.prototype.dropSourceSpecificMembership = function(sourceAddress,
                                                            groupAddress,
                                                            interfaceAddress);
   if (err) {
-    throw errnoException(err, 'dropSourceSpecificMembership');
+    throw new ErrnoException(err, 'dropSourceSpecificMembership');
   }
 };
 
@@ -936,7 +937,7 @@ function stopReceiving(socket) {
 function onMessage(nread, handle, buf, rinfo) {
   const self = handle[owner_symbol];
   if (nread < 0) {
-    return self.emit('error', errnoException(nread, 'recvmsg'));
+    return self.emit('error', new ErrnoException(nread, 'recvmsg'));
   }
   rinfo.size = buf.length; // compatibility
   self.emit('message', buf, rinfo);

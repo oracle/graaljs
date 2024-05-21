@@ -5,48 +5,40 @@
 #ifndef V8_HEAP_INCREMENTAL_MARKING_INL_H_
 #define V8_HEAP_INCREMENTAL_MARKING_INL_H_
 
-#include "src/heap/incremental-marking.h"
-
+#include "src/common/globals.h"
 #include "src/execution/isolate.h"
-#include "src/heap/mark-compact-inl.h"
-#include "src/objects/maybe-object.h"
-#include "src/objects/objects-inl.h"
+#include "src/heap/heap-inl.h"
+#include "src/heap/incremental-marking.h"
+#include "src/heap/marking-state-inl.h"
+#include "src/objects/descriptor-array.h"
 
 namespace v8 {
 namespace internal {
 
 void IncrementalMarking::TransferColor(HeapObject from, HeapObject to) {
-  if (atomic_marking_state()->IsBlack(to)) {
+  if (atomic_marking_state()->IsMarked(to)) {
     DCHECK(black_allocation());
     return;
   }
 
-  DCHECK(atomic_marking_state()->IsWhite(to));
+  DCHECK(atomic_marking_state()->IsUnmarked(to));
   if (atomic_marking_state()->IsGrey(from)) {
-    bool success = atomic_marking_state()->WhiteToGrey(to);
+    bool success = atomic_marking_state()->TryMark(to);
     DCHECK(success);
     USE(success);
-  } else if (atomic_marking_state()->IsBlack(from)) {
-    bool success = atomic_marking_state()->WhiteToBlack(to);
+  } else if (atomic_marking_state()->IsMarked(from)) {
+    bool success = atomic_marking_state()->TryMark(to);
     DCHECK(success);
     USE(success);
-  }
-}
-
-bool IncrementalMarking::WhiteToGreyAndPush(HeapObject obj) {
-  if (marking_state()->WhiteToGrey(obj)) {
-    local_marking_worklists()->Push(obj);
-    return true;
-  }
-  return false;
-}
-
-void IncrementalMarking::RestartIfNotMarking() {
-  if (state_ == COMPLETE) {
-    state_ = MARKING;
-    if (FLAG_trace_incremental_marking) {
-      heap()->isolate()->PrintWithTimestamp(
-          "[IncrementalMarking] Restarting (new grey objects)\n");
+    success = atomic_marking_state()->GreyToBlack(to);
+    DCHECK(success);
+    USE(success);
+    if (!to.IsDescriptorArray() ||
+        (DescriptorArrayMarkingState::Marked::decode(
+             DescriptorArray::cast(to).raw_gc_state(kRelaxedLoad)) != 0)) {
+      atomic_marking_state()->IncrementLiveBytes(
+          MemoryChunk::cast(BasicMemoryChunk::FromHeapObject(to)),
+          ALIGN_TO_ALLOCATION_ALIGNMENT(to.Size()));
     }
   }
 }

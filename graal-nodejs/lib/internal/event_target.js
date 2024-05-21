@@ -2,6 +2,7 @@
 
 const {
   ArrayFrom,
+  ArrayPrototypeReduce,
   Boolean,
   Error,
   FunctionPrototypeCall,
@@ -34,7 +35,13 @@ const {
     ERR_INVALID_THIS,
   },
 } = require('internal/errors');
-const { validateObject, validateString } = require('internal/validators');
+const {
+  validateAbortSignal,
+  validateObject,
+  validateString,
+  validateInternalField,
+  kValidateObjectAllowObjects,
+} = require('internal/validators');
 
 const {
   customInspectSymbol,
@@ -124,6 +131,23 @@ class Event {
 
     this[kTarget] = null;
     this[kIsBeingDispatched] = false;
+  }
+
+  /**
+   * @param {string} type
+   * @param {boolean} [bubbles]
+   * @param {boolean} [cancelable]
+   */
+  initEvent(type, bubbles = false, cancelable = false) {
+    if (arguments.length === 0)
+      throw new ERR_MISSING_ARGS('type');
+
+    if (this[kIsBeingDispatched]) {
+      return;
+    }
+    this[kType] = `${type}`;
+    this.#bubbles = !!bubbles;
+    this.#cancelable = !!cancelable;
   }
 
   [customInspectSymbol](depth, options) {
@@ -285,7 +309,7 @@ class Event {
     if (!isEvent(this))
       throw new ERR_INVALID_THIS('Event');
     if (value) {
-      this.stopPropagation();
+      this.#propagationStopped = true;
     }
   }
 
@@ -294,11 +318,6 @@ class Event {
       throw new ERR_INVALID_THIS('Event');
     this.#propagationStopped = true;
   }
-
-  static NONE = 0;
-  static CAPTURING_PHASE = 1;
-  static AT_TARGET = 2;
-  static BUBBLING_PHASE = 3;
 }
 
 ObjectDefineProperties(
@@ -310,6 +329,7 @@ ObjectDefineProperties(
       configurable: true,
       value: 'Event',
     },
+    initEvent: kEnumerableProperty,
     stopImmediatePropagation: kEnumerableProperty,
     preventDefault: kEnumerableProperty,
     target: kEnumerableProperty,
@@ -332,6 +352,22 @@ ObjectDefineProperties(
     // browsers.
     isTrusted: isTrustedDescriptor,
   });
+
+const staticProps = ['NONE', 'CAPTURING_PHASE', 'AT_TARGET', 'BUBBLING_PHASE'];
+
+ObjectDefineProperties(
+  Event,
+  ArrayPrototypeReduce(staticProps, (result, staticProp, index = 0) => {
+    result[staticProp] = {
+      __proto__: null,
+      writable: false,
+      configurable: false,
+      enumerable: true,
+      value: index,
+    };
+    return result;
+  }, {}),
+);
 
 function isCustomEvent(value) {
   return isEvent(value) && (value?.[kDetail] !== undefined);
@@ -512,6 +548,7 @@ function initEventTarget(self) {
   self[kEvents] = new SafeMap();
   self[kMaxEventTargetListeners] = EventEmitter.defaultMaxListeners;
   self[kMaxEventTargetListenersWarned] = false;
+  self[kHandlers] = new SafeMap();
 }
 
 class EventTarget {
@@ -580,6 +617,8 @@ class EventTarget {
       weak,
       resistStopPropagation,
     } = validateEventListenerOptions(options);
+
+    validateAbortSignal(signal, 'options.signal');
 
     if (!validateEventListener(listener)) {
       // The DOM silently allows passing undefined as a second argument
@@ -1020,9 +1059,7 @@ function validateEventListenerOptions(options) {
 
   if (options === null)
     return kEmptyObject;
-  validateObject(options, 'options', {
-    allowArray: true, allowFunction: true,
-  });
+  validateObject(options, 'options', kValidateObjectAllowObjects);
   return {
     once: Boolean(options.once),
     capture: Boolean(options.capture),
@@ -1075,36 +1112,48 @@ function makeEventHandler(handler) {
   return eventHandler;
 }
 
-function defineEventHandler(emitter, name) {
+function defineEventHandler(emitter, name, event = name) {
   // 8.1.5.1 Event handlers - basically `on[eventName]` attributes
-  ObjectDefineProperty(emitter, `on${name}`, {
+  const propName = `on${name}`;
+  function get() {
+    validateInternalField(this, kHandlers, 'EventTarget');
+    return this[kHandlers]?.get(event)?.handler ?? null;
+  }
+  ObjectDefineProperty(get, 'name', {
     __proto__: null,
-    get() {
-      return this[kHandlers]?.get(name)?.handler ?? null;
-    },
-    set(value) {
-      if (!this[kHandlers]) {
-        this[kHandlers] = new SafeMap();
+    value: `get ${propName}`,
+  });
+
+  function set(value) {
+    validateInternalField(this, kHandlers, 'EventTarget');
+    let wrappedHandler = this[kHandlers]?.get(event);
+    if (wrappedHandler) {
+      if (typeof wrappedHandler.handler === 'function') {
+        this[kEvents].get(event).size--;
+        const size = this[kEvents].get(event).size;
+        this[kRemoveListener](size, event, wrappedHandler.handler, false);
       }
-      let wrappedHandler = this[kHandlers]?.get(name);
-      if (wrappedHandler) {
-        if (typeof wrappedHandler.handler === 'function') {
-          this[kEvents].get(name).size--;
-          const size = this[kEvents].get(name).size;
-          this[kRemoveListener](size, name, wrappedHandler.handler, false);
-        }
-        wrappedHandler.handler = value;
-        if (typeof wrappedHandler.handler === 'function') {
-          this[kEvents].get(name).size++;
-          const size = this[kEvents].get(name).size;
-          this[kNewListener](size, name, value, false, false, false, false);
-        }
-      } else {
-        wrappedHandler = makeEventHandler(value);
-        this.addEventListener(name, wrappedHandler);
+      wrappedHandler.handler = value;
+      if (typeof wrappedHandler.handler === 'function') {
+        this[kEvents].get(event).size++;
+        const size = this[kEvents].get(event).size;
+        this[kNewListener](size, event, value, false, false, false, false);
       }
-      this[kHandlers].set(name, wrappedHandler);
-    },
+    } else {
+      wrappedHandler = makeEventHandler(value);
+      this.addEventListener(event, wrappedHandler);
+    }
+    this[kHandlers].set(event, wrappedHandler);
+  }
+  ObjectDefineProperty(set, 'name', {
+    __proto__: null,
+    value: `set ${propName}`,
+  });
+
+  ObjectDefineProperty(emitter, propName, {
+    __proto__: null,
+    get,
+    set,
     configurable: true,
     enumerable: true,
   });

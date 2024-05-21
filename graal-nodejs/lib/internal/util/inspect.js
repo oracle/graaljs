@@ -43,7 +43,6 @@ const {
   NumberPrototypeValueOf,
   Object,
   ObjectAssign,
-  ObjectCreate,
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
   ObjectGetOwnPropertyNames,
@@ -155,6 +154,7 @@ const { BuiltinModule } = require('internal/bootstrap/realm');
 const {
   validateObject,
   validateString,
+  kValidateObjectAllowArray,
 } = require('internal/validators');
 
 let hexSlice;
@@ -459,7 +459,7 @@ defineColorAlias('doubleunderline', 'doubleUnderline');
 
 // TODO(BridgeAR): Add function style support for more complex styles.
 // Don't use 'blue' not visible on cmd.exe
-inspect.styles = ObjectAssign(ObjectCreate(null), {
+inspect.styles = ObjectAssign({ __proto__: null }, {
   special: 'cyan',
   number: 'yellow',
   bigint: 'yellow',
@@ -1016,7 +1016,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
     } else if (isModuleNamespaceObject(value)) {
       braces[0] = `${getPrefix(constructor, tag, 'Module')}{`;
       // Special handle keys for namespace objects.
-      formatter = FunctionPrototypeBind(formatNamespaceObject, null, keys);
+      formatter = formatNamespaceObject.bind(null, keys);
     } else if (isBoxedPrimitive(value)) {
       base = getBoxedBase(value, ctx, keys, constructor, tag);
       if (keys.length === 0 && protoProps === undefined) {
@@ -1042,7 +1042,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
   }
   recurseTimes += 1;
 
-  ArrayPrototypePush(ctx.seen, value);
+  ctx.seen.push(value);
   ctx.currentDepth = recurseTimes;
   let output;
   const indentationLvl = ctx.indentationLvl;
@@ -1073,7 +1073,7 @@ function formatRaw(ctx, value, recurseTimes, typedArray) {
       }
     }
   }
-  ArrayPrototypePop(ctx.seen);
+  ctx.seen.pop();
 
   if (ctx.sorted) {
     const comparator = ctx.sorted === true ? undefined : ctx.sorted;
@@ -1544,7 +1544,7 @@ function groupArrayElements(ctx, output, value) {
 
 function handleMaxCallStackSize(ctx, err, constructorName, indentationLvl) {
   if (isStackOverflowError(err)) {
-    ArrayPrototypePop(ctx.seen);
+    ctx.seen.pop();
     ctx.indentationLvl = indentationLvl;
     return ctx.stylize(
       `[${constructorName}: Inspection interrupted ` +
@@ -1578,6 +1578,8 @@ function addNumericSeparatorEnd(integerString) {
     integerString :
     `${result}${StringPrototypeSlice(integerString, i)}`;
 }
+
+const remainingText = (remaining) => `... ${remaining} more item${remaining > 1 ? 's' : ''}`;
 
 function formatNumber(fn, number, numericSeparator) {
   if (!numericSeparator) {
@@ -1711,7 +1713,7 @@ function formatSpecialArray(ctx, value, recurseTimes, maxLength, output, i) {
       ArrayPrototypePush(output, ctx.stylize(message, 'undefined'));
     }
   } else if (remaining > 0) {
-    ArrayPrototypePush(output, `... ${remaining} more item${remaining > 1 ? 's' : ''}`);
+    ArrayPrototypePush(output, remainingText(remaining));
   }
   return output;
 }
@@ -1750,7 +1752,7 @@ function formatArray(ctx, value, recurseTimes) {
     ArrayPrototypePush(output, formatProperty(ctx, value, recurseTimes, i, kArrayType));
   }
   if (remaining > 0) {
-    ArrayPrototypePush(output, `... ${remaining} more item${remaining > 1 ? 's' : ''}`);
+    ArrayPrototypePush(output, remainingText(remaining));
   }
   return output;
 }
@@ -1766,7 +1768,7 @@ function formatTypedArray(value, length, ctx, ignored, recurseTimes) {
     output[i] = elementFormatter(ctx.stylize, value[i], ctx.numericSeparator);
   }
   if (remaining > 0) {
-    output[maxLength] = `... ${remaining} more item${remaining > 1 ? 's' : ''}`;
+    output[maxLength] = remainingText(remaining);
   }
   if (ctx.showHidden) {
     // .buffer goes last, it's not a primitive like the others.
@@ -1788,23 +1790,41 @@ function formatTypedArray(value, length, ctx, ignored, recurseTimes) {
 }
 
 function formatSet(value, ctx, ignored, recurseTimes) {
+  const length = value.size;
+  const maxLength = MathMin(MathMax(0, ctx.maxArrayLength), length);
+  const remaining = length - maxLength;
   const output = [];
   ctx.indentationLvl += 2;
+  let i = 0;
   for (const v of value) {
+    if (i >= maxLength) break;
     ArrayPrototypePush(output, formatValue(ctx, v, recurseTimes));
+    i++;
+  }
+  if (remaining > 0) {
+    ArrayPrototypePush(output, remainingText(remaining));
   }
   ctx.indentationLvl -= 2;
   return output;
 }
 
 function formatMap(value, ctx, ignored, recurseTimes) {
+  const length = value.size;
+  const maxLength = MathMin(MathMax(0, ctx.maxArrayLength), length);
+  const remaining = length - maxLength;
   const output = [];
   ctx.indentationLvl += 2;
+  let i = 0;
   for (const { 0: k, 1: v } of value) {
+    if (i >= maxLength) break;
     ArrayPrototypePush(
       output,
       `${formatValue(ctx, k, recurseTimes)} => ${formatValue(ctx, v, recurseTimes)}`,
     );
+    i++;
+  }
+  if (remaining > 0) {
+    ArrayPrototypePush(output, remainingText(remaining));
   }
   ctx.indentationLvl -= 2;
   return output;
@@ -1827,8 +1847,7 @@ function formatSetIterInner(ctx, recurseTimes, entries, state) {
   }
   const remaining = entries.length - maxLength;
   if (remaining > 0) {
-    ArrayPrototypePush(output,
-                       `... ${remaining} more item${remaining > 1 ? 's' : ''}`);
+    ArrayPrototypePush(output, remainingText(remaining));
   }
   return output;
 }
@@ -1866,7 +1885,7 @@ function formatMapIterInner(ctx, recurseTimes, entries, state) {
   }
   ctx.indentationLvl -= 2;
   if (remaining > 0) {
-    ArrayPrototypePush(output, `... ${remaining} more item${remaining > 1 ? 's' : ''}`);
+    ArrayPrototypePush(output, remainingText(remaining));
   }
   return output;
 }
@@ -2137,7 +2156,7 @@ function format(...args) {
 }
 
 function formatWithOptions(inspectOptions, ...args) {
-  validateObject(inspectOptions, 'inspectOptions', { allowArray: true });
+  validateObject(inspectOptions, 'inspectOptions', kValidateObjectAllowArray);
   return formatWithOptionsInternal(inspectOptions, args);
 }
 
@@ -2311,7 +2330,7 @@ if (internalBinding('config').hasIntl) {
     for (let i = 0; i < str.length; i++) {
       // Try to avoid calling into C++ by first handling the ASCII portion of
       // the string. If it is fully ASCII, we skip the C++ part.
-      const code = StringPrototypeCharCodeAt(str, i);
+      const code = str.charCodeAt(i);
       if (code >= 127) {
         width += icu.getStringWidth(StringPrototypeNormalize(StringPrototypeSlice(str, i), 'NFC'));
         break;

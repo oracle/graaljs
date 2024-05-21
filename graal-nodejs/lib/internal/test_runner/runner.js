@@ -35,6 +35,7 @@ const { createInterface } = require('readline');
 const { deserializeError } = require('internal/error_serdes');
 const { Buffer } = require('buffer');
 const { FilesWatcher } = require('internal/watch_mode/files_watcher');
+const { queueMicrotask } = require('internal/process/task_queues');
 const console = require('internal/console/global');
 const {
   codes: {
@@ -70,11 +71,13 @@ const {
   countCompletedTest,
   doesPathMatchFilter,
   isSupportedFileType,
+  shouldColorizeTestFiles,
 } = require('internal/test_runner/utils');
 const { basename, join, resolve } = require('path');
 const { once } = require('events');
 const {
   triggerUncaughtException,
+  exitCodes: { kGenericUserError },
 } = internalBinding('errors');
 
 const kFilterArgs = ['--test', '--experimental-test-coverage', '--watch'];
@@ -134,15 +137,12 @@ function createTestFileList() {
     for (let i = 0; i < testPaths.length; i++) {
       const absolutePath = resolve(testPaths[i]);
 
-      processPath(absolutePath, testFiles, {
-        __proto__: null,
-        userSupplied: true,
-      });
+      processPath(absolutePath, testFiles, { __proto__: null, userSupplied: true });
     }
   } catch (err) {
     if (err?.code === 'ENOENT') {
       console.error(`Could not find '${err.path}'`);
-      process.exit(1);
+      process.exit(kGenericUserError);
     }
 
     throw err;
@@ -363,7 +363,7 @@ class FileTest extends Test {
 
 function runTestFile(path, filesWatcher, opts) {
   const watchMode = filesWatcher != null;
-  const subtest = opts.root.createSubtest(FileTest, path, async (t) => {
+  const subtest = opts.root.createSubtest(FileTest, path, { __proto__: null, signal: opts.signal }, async (t) => {
     const args = getRunArgs(path, opts);
     const stdio = ['pipe', 'pipe', 'pipe'];
     const env = { __proto__: null, ...process.env, NODE_TEST_CONTEXT: 'child-v8' };
@@ -419,6 +419,7 @@ function runTestFile(path, filesWatcher, opts) {
       filesWatcher.runningSubtests.delete(path);
       if (filesWatcher.runningSubtests.size === 0) {
         opts.root.reporter[kEmitMessage]('test:watch:drained');
+        queueMicrotask(() => opts.root.postRun());
       }
     }
 
@@ -446,6 +447,7 @@ function watchFiles(testFiles, opts) {
   const runningSubtests = new SafeMap();
   const watcher = new FilesWatcher({ __proto__: null, debounce: 200, mode: 'filter', signal: opts.signal });
   const filesWatcher = { __proto__: null, watcher, runningProcesses, runningSubtests };
+  opts.root.harness.watching = true;
 
   watcher.on('changed', ({ owners }) => {
     watcher.unfilterFilesOwnedBy(owners);
@@ -472,7 +474,10 @@ function watchFiles(testFiles, opts) {
     kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
     opts.signal.addEventListener(
       'abort',
-      () => opts.root.postRun(),
+      () => {
+        opts.root.harness.watching = false;
+        opts.root.postRun();
+      },
       { __proto__: null, once: true, [kResistStopPropagation]: true },
     );
   }
@@ -533,6 +538,13 @@ function run(options) {
   }
 
   const root = createTestTree({ __proto__: null, concurrency, timeout, signal });
+  root.harness.shouldColorizeTestFiles ||= shouldColorizeTestFiles(root);
+
+  if (process.env.NODE_TEST_CONTEXT !== undefined) {
+    process.emitWarning('node:test run() is being called recursively within a test file. skipping running files.');
+    root.postRun();
+    return root.reporter;
+  }
   let testFiles = files ?? createTestFileList();
 
   if (shard) {
@@ -555,7 +567,7 @@ function run(options) {
     });
   };
 
-  PromisePrototypeThen(PromisePrototypeThen(PromiseResolve(setup?.(root)), runFiles), postRun);
+  PromisePrototypeThen(PromisePrototypeThen(PromiseResolve(setup?.(root.reporter)), runFiles), postRun);
 
   return root.reporter;
 }

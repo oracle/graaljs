@@ -206,6 +206,10 @@ A [`TypeError`][] is thrown if `path` is not a string.
 
 <!-- YAML
 added: v0.11.15
+changes:
+  - version: v19.0.0
+    pr-url: https://github.com/nodejs/node/pull/44349
+    description: The dot will be added if it is not specified in `ext`.
 -->
 
 * `pathObject` {Object} Any JavaScript object having the following properties:
@@ -253,6 +257,14 @@ path.format({
   root: '/',
   name: 'file',
   ext: '.txt',
+});
+// Returns: '/file.txt'
+
+// The dot will be added if it is not specified in `ext`.
+path.format({
+  root: '/',
+  name: 'file',
+  ext: 'txt',
 });
 // Returns: '/file.txt'
 ```
@@ -348,6 +360,14 @@ instance of the platform-specific path segment separator (`/` on POSIX and
 
 If the `path` is a zero-length string, `'.'` is returned, representing the
 current working directory.
+
+On POSIX, the types of normalization applied by this function do not strictly
+adhere to the POSIX specification. For example, this function will replace two
+leading forward slashes with a single slash as if it was a regular absolute
+path, whereas a few POSIX systems assign special meaning to paths beginning with
+exactly two forward slashes. Similarly, other substitutions performed by this
+function, such as removing `..` segments, may change how the underlying system
+resolves the path.
 
 For example, on POSIX:
 

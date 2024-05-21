@@ -8,7 +8,6 @@ const {
   FunctionPrototypeBind,
   JSONStringify,
   MathMax,
-  ObjectCreate,
   ObjectEntries,
   Promise,
   PromiseResolve,
@@ -28,7 +27,9 @@ const {
 const EventEmitter = require('events');
 const assert = require('internal/assert');
 const path = require('path');
-const { now } = require('internal/perf/utils');
+const {
+  internalEventLoopUtilization,
+} = require('internal/perf/event_loop_utilization');
 
 const errorCodes = require('internal/errors').codes;
 const {
@@ -59,7 +60,9 @@ const { deserializeError } = require('internal/error_serdes');
 const { fileURLToPath, isURL, pathToFileURL } = require('internal/url');
 const { kEmptyObject } = require('internal/util');
 const { validateArray, validateString } = require('internal/validators');
-
+const {
+  throwIfBuildingSnapshot,
+} = require('internal/v8/startup_snapshot');
 const {
   ownsProcessState,
   isMainThread,
@@ -89,6 +92,9 @@ const SHARE_ENV = SymbolFor('nodejs.worker_threads.SHARE_ENV');
 let debug = require('internal/util/debuglog').debuglog('worker', (fn) => {
   debug = fn;
 });
+
+const dc = require('diagnostics_channel');
+const workerThreadsChannel = dc.channel('worker_threads');
 
 let cwdCounter;
 
@@ -125,6 +131,7 @@ function assignEnvironmentData(data) {
 
 class Worker extends EventEmitter {
   constructor(filename, options = kEmptyObject) {
+    throwIfBuildingSnapshot('Creating workers');
     super();
     const isInternal = arguments[2] === kIsInternal;
     debug(
@@ -182,7 +189,7 @@ class Worker extends EventEmitter {
 
     let env;
     if (typeof options.env === 'object' && options.env !== null) {
-      env = ObjectCreate(null);
+      env = { __proto__: null };
       ArrayPrototypeForEach(
         ObjectEntries(options.env),
         ({ 0: key, 1: value }) => { env[key] = `${value}`; },
@@ -284,6 +291,11 @@ class Worker extends EventEmitter {
     this[kHandle].startThread();
 
     process.nextTick(() => process.emit('worker', this));
+    if (workerThreadsChannel.hasSubscribers) {
+      workerThreadsChannel.publish({
+        worker: this,
+      });
+    }
   }
 
   [kOnExit](code, customErr, customErrReason) {
@@ -430,12 +442,16 @@ class Worker extends EventEmitter {
     return makeResourceLimits(this[kHandle].getResourceLimits());
   }
 
-  getHeapSnapshot() {
-    const heapSnapshotTaker = this[kHandle] && this[kHandle].takeHeapSnapshot();
+  getHeapSnapshot(options) {
+    const {
+      HeapSnapshotStream,
+      getHeapSnapshotOptions,
+    } = require('internal/heap_utils');
+    const optionsArray = getHeapSnapshotOptions(options);
+    const heapSnapshotTaker = this[kHandle]?.takeHeapSnapshot(optionsArray);
     return new Promise((resolve, reject) => {
       if (!heapSnapshotTaker) return reject(new ERR_WORKER_NOT_RUNNING());
       heapSnapshotTaker.ondone = (handle) => {
-        const { HeapSnapshotStream } = require('internal/heap_utils');
         resolve(new HeapSnapshotStream(handle));
       };
     });
@@ -510,28 +526,12 @@ function eventLoopUtilization(util1, util2) {
       return { idle: 0, active: 0, utilization: 0 };
   }
 
-  if (util2) {
-    const idle = util1.idle - util2.idle;
-    const active = util1.active - util2.active;
-    return { idle, active, utilization: active / (idle + active) };
-  }
-
-  const idle = this[kHandle].loopIdleTime();
-
-  // Using performance.now() here is fine since it's always the time from
-  // the beginning of the process, and is why it needs to be offset by the
-  // loopStart time (which is also calculated from the beginning of the
-  // process).
-  const active = now() - this[kLoopStartTime] - idle;
-
-  if (!util1) {
-    return { idle, active, utilization: active / (idle + active) };
-  }
-
-  const idle_delta = idle - util1.idle;
-  const active_delta = active - util1.active;
-  const utilization = active_delta / (idle_delta + active_delta);
-  return { idle: idle_delta, active: active_delta, utilization };
+  return internalEventLoopUtilization(
+    this[kLoopStartTime],
+    this[kHandle].loopIdleTime(),
+    util1,
+    util2,
+  );
 }
 
 module.exports = {

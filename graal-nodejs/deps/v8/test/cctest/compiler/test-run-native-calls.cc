@@ -12,11 +12,10 @@
 #include "src/compiler/raw-machine-assembler.h"
 #include "src/objects/objects-inl.h"
 #include "src/wasm/wasm-linkage.h"
-
 #include "test/cctest/cctest.h"
 #include "test/cctest/compiler/codegen-tester.h"
 #include "test/cctest/compiler/graph-and-builders.h"
-#include "test/cctest/compiler/value-helper.h"
+#include "test/common/value-helper.h"
 
 namespace v8 {
 namespace internal {
@@ -242,8 +241,8 @@ class Int32Signature : public MachineSignature {
   }
 };
 
-Handle<CodeT> CompileGraph(const char* name, CallDescriptor* call_descriptor,
-                           Graph* graph, Schedule* schedule = nullptr) {
+Handle<Code> CompileGraph(const char* name, CallDescriptor* call_descriptor,
+                          Graph* graph, Schedule* schedule = nullptr) {
   Isolate* isolate = CcTest::InitIsolateOnce();
   OptimizedCompilationInfo info(base::ArrayVector("testing"), graph->zone(),
                                 CodeKind::FOR_TESTING);
@@ -252,17 +251,17 @@ Handle<CodeT> CompileGraph(const char* name, CallDescriptor* call_descriptor,
                           AssemblerOptions::Default(isolate), schedule)
                           .ToHandleChecked();
 #ifdef ENABLE_DISASSEMBLER
-  if (FLAG_print_opt_code) {
+  if (v8_flags.print_opt_code) {
     StdoutStream os;
     code->Disassemble(name, os, isolate);
   }
 #endif
-  return ToCodeT(code, isolate);
+  return code;
 }
 
-Handle<CodeT> WrapWithCFunction(Handle<CodeT> inner,
-                                CallDescriptor* call_descriptor) {
-  Zone zone(inner->GetIsolate()->allocator(), ZONE_NAME, kCompressGraphZone);
+Handle<Code> WrapWithCFunction(Isolate* isolate, Handle<Code> inner,
+                               CallDescriptor* call_descriptor) {
+  Zone zone(isolate->allocator(), ZONE_NAME, kCompressGraphZone);
   int param_count = static_cast<int>(call_descriptor->ParameterCount());
   GraphAndBuilders caller(&zone);
   {
@@ -425,7 +424,7 @@ class Computer {
     CHECK_LE(num_params, kMaxParamCount);
     Isolate* isolate = CcTest::InitIsolateOnce();
     HandleScope scope(isolate);
-    Handle<CodeT> inner;
+    Handle<Code> inner;
     {
       // Build the graph for the computation.
       Zone zone(isolate->allocator(), ZONE_NAME, kCompressGraphZone);
@@ -440,7 +439,7 @@ class Computer {
 
     {
       // constant mode.
-      Handle<CodeT> wrapper;
+      Handle<Code> wrapper;
       {
         // Wrap the above code with a callable function that passes constants.
         Zone zone(isolate->allocator(), ZONE_NAME, kCompressGraphZone);
@@ -474,7 +473,7 @@ class Computer {
 
     {
       // buffer mode.
-      Handle<CodeT> wrapper;
+      Handle<Code> wrapper;
       {
         // Wrap the above code with a callable function that loads from {input}.
         Zone zone(isolate->allocator(), ZONE_NAME, kCompressGraphZone);
@@ -534,8 +533,8 @@ static void TestInt32Sub(CallDescriptor* desc) {
     b.graph()->SetEnd(ret);
   }
 
-  Handle<CodeT> inner_code = CompileGraph("Int32Sub", desc, inner.graph());
-  Handle<CodeT> wrapper = WrapWithCFunction(inner_code, desc);
+  Handle<Code> inner_code = CompileGraph("Int32Sub", desc, inner.graph());
+  Handle<Code> wrapper = WrapWithCFunction(isolate, inner_code, desc);
   MachineSignature* msig = desc->GetMachineSignature(&zone);
   CodeRunner<int32_t> runnable(isolate, wrapper,
                                CSignature::FromMachine(&zone, msig));
@@ -557,7 +556,7 @@ static void CopyTwentyInt32(CallDescriptor* desc) {
   int32_t output[kNumParams];
   Isolate* isolate = CcTest::InitIsolateOnce();
   HandleScope scope(isolate);
-  Handle<CodeT> inner;
+  Handle<Code> inner;
   {
     // Writes all parameters into the output buffer.
     Zone zone(isolate->allocator(), ZONE_NAME, kCompressGraphZone);
@@ -574,7 +573,7 @@ static void CopyTwentyInt32(CallDescriptor* desc) {
   }
 
   CSignatureOf<int32_t> csig;
-  Handle<CodeT> wrapper;
+  Handle<Code> wrapper;
   {
     // Loads parameters from the input buffer and calls the above code.
     Zone zone(isolate->allocator(), ZONE_NAME, kCompressGraphZone);
@@ -583,7 +582,7 @@ static void CopyTwentyInt32(CallDescriptor* desc) {
     RawMachineAssembler raw(isolate, &graph, cdesc);
     Node* base = raw.PointerConstant(input);
     Node* target = raw.HeapConstant(inner);
-    Node** inputs = zone.NewArray<Node*>(kNumParams + 1);
+    Node** inputs = zone.NewArray<Node*>(JSParameterCount(kNumParams));
     int input_count = 0;
     inputs[input_count++] = target;
     for (int i = 0; i < kNumParams; i++) {
@@ -940,7 +939,7 @@ TEST(Float64Select_stack_params_return_reg) {
 template <typename CType, int which>
 static void Build_Select_With_Call(CallDescriptor* desc,
                                    RawMachineAssembler* raw) {
-  Handle<CodeT> inner;
+  Handle<Code> inner;
   int num_params = ParamCount(desc);
   CHECK_LE(num_params, kMaxParamCount);
   {
@@ -952,7 +951,7 @@ static void Build_Select_With_Call(CallDescriptor* desc,
     r.Return(r.Parameter(which));
     inner = CompileGraph("Select-indirection", desc, &graph, r.ExportForTest());
     CHECK(!inner.is_null());
-    CHECK(inner->IsCodeT());
+    CHECK(inner->IsCode());
   }
 
   {
@@ -1039,7 +1038,7 @@ void MixedParamTest(int start) {
     MachineSignature* sig = builder.Build();
     CallDescriptor* desc = config.Create(&zone, sig);
 
-    Handle<CodeT> select;
+    Handle<Code> select;
     {
       // build the select.
       Zone select_zone(&allocator, ZONE_NAME, kCompressGraphZone);
@@ -1051,7 +1050,7 @@ void MixedParamTest(int start) {
 
     {
       // call the select.
-      Handle<CodeT> wrapper;
+      Handle<Code> wrapper;
       int32_t expected_ret;
       char bytes[kDoubleSize];
       alignas(8) char output[kDoubleSize];
@@ -1158,7 +1157,7 @@ void TestStackSlot(MachineType slot_type, T expected) {
 
   // Create inner function g. g has lots of parameters so that they are passed
   // over the stack.
-  Handle<CodeT> inner;
+  Handle<Code> inner;
   Graph graph(&zone);
   RawMachineAssembler g(isolate, &graph, desc);
 

@@ -24,12 +24,14 @@
 const {
   ArrayIsArray,
   Error,
+  FunctionPrototypeCall,
   MathMin,
   ObjectKeys,
   ObjectSetPrototypeOf,
   RegExpPrototypeExec,
   ReflectApply,
   Symbol,
+  SymbolAsyncDispose,
   SymbolFor,
 } = primordials;
 
@@ -67,7 +69,7 @@ const {
 } = require('internal/async_hooks');
 const { IncomingMessage } = require('_http_incoming');
 const {
-  connResetException,
+  ConnResetException,
   codes,
 } = require('internal/errors');
 const {
@@ -75,11 +77,14 @@ const {
   ERR_HTTP_HEADERS_SENT,
   ERR_HTTP_INVALID_STATUS_CODE,
   ERR_HTTP_SOCKET_ENCODING,
-  ERR_INVALID_ARG_TYPE,
   ERR_HTTP_SOCKET_ASSIGNED,
   ERR_INVALID_ARG_VALUE,
   ERR_INVALID_CHAR,
 } = codes;
+const {
+  kEmptyObject,
+  promisify,
+} = require('internal/util');
 const {
   validateInteger,
   validateBoolean,
@@ -87,10 +92,6 @@ const {
   validateObject,
 } = require('internal/validators');
 const Buffer = require('buffer').Buffer;
-const {
-  DTRACE_HTTP_SERVER_REQUEST,
-  DTRACE_HTTP_SERVER_RESPONSE,
-} = require('internal/dtrace');
 const { setInterval, clearInterval } = require('timers');
 let debug = require('internal/util/debuglog').debuglog('http', (fn) => {
   debug = fn;
@@ -229,7 +230,6 @@ ObjectSetPrototypeOf(ServerResponse.prototype, OutgoingMessage.prototype);
 ObjectSetPrototypeOf(ServerResponse, OutgoingMessage);
 
 ServerResponse.prototype._finish = function _finish() {
-  DTRACE_HTTP_SERVER_RESPONSE(this.socket);
   if (this[kServerResponseStatistics] && hasObserver('http')) {
     stopPerf(this, kServerResponseStatistics, {
       detail: {
@@ -340,6 +340,11 @@ ServerResponse.prototype._implicitHeader = function _implicitHeader() {
 
 ServerResponse.prototype.writeHead = writeHead;
 function writeHead(statusCode, reason, obj) {
+
+  if (this._header) {
+    throw new ERR_HTTP_HEADERS_SENT('write');
+  }
+
   const originalStatusCode = statusCode;
 
   statusCode |= 0;
@@ -380,9 +385,6 @@ function writeHead(statusCode, reason, obj) {
         k = keys[i];
         if (k) this.setHeader(k, obj[k]);
       }
-    }
-    if (k === undefined && this._header) {
-      throw new ERR_HTTP_HEADERS_SENT('render');
     }
     // Only progressive api is used
     headers = this[kOutHeaders];
@@ -439,9 +441,6 @@ function storeHTTPOptions(options) {
     validateBoolean(insecureHTTPParser, 'options.insecureHTTPParser');
   this.insecureHTTPParser = insecureHTTPParser;
 
-  if (options.noDelay === undefined)
-    options.noDelay = true;
-
   const requestTimeout = options.requestTimeout;
   if (requestTimeout !== undefined) {
     validateInteger(requestTimeout, 'requestTimeout', 0);
@@ -478,6 +477,14 @@ function storeHTTPOptions(options) {
     this.connectionsCheckingInterval = 30_000; // 30 seconds
   }
 
+  const requireHostHeader = options.requireHostHeader;
+  if (requireHostHeader !== undefined) {
+    validateBoolean(requireHostHeader, 'options.requireHostHeader');
+    this.requireHostHeader = requireHostHeader;
+  } else {
+    this.requireHostHeader = true;
+  }
+
   const joinDuplicateHeaders = options.joinDuplicateHeaders;
   if (joinDuplicateHeaders !== undefined) {
     validateBoolean(joinDuplicateHeaders, 'options.joinDuplicateHeaders');
@@ -499,6 +506,9 @@ function setupConnectionsTracking() {
     this[kConnections] = new ConnectionsList();
   }
 
+  if (this[kConnectionsCheckingInterval]) {
+    clearInterval(this[kConnectionsCheckingInterval]);
+  }
   // This checker is started without checking whether any headersTimeout or requestTimeout is non zero
   // otherwise it would not be started if such timeouts are modified after createServer.
   this[kConnectionsCheckingInterval] =
@@ -515,17 +525,17 @@ function Server(options, requestListener) {
 
   if (typeof options === 'function') {
     requestListener = options;
-    options = {};
-  } else if (options == null || typeof options === 'object') {
-    options = { ...options };
+    options = kEmptyObject;
+  } else if (options == null) {
+    options = kEmptyObject;
   } else {
-    throw new ERR_INVALID_ARG_TYPE('options', 'object', options);
+    validateObject(options, 'options');
   }
 
   storeHTTPOptions.call(this, options);
   net.Server.call(
     this,
-    { allowHalfOpen: true, noDelay: options.noDelay,
+    { allowHalfOpen: true, noDelay: options.noDelay ?? true,
       keepAlive: options.keepAlive,
       keepAliveInitialDelay: options.keepAliveInitialDelay,
       highWaterMark: options.highWaterMark });
@@ -554,6 +564,11 @@ ObjectSetPrototypeOf(Server, net.Server);
 Server.prototype.close = function() {
   httpServerPreClose(this);
   ReflectApply(net.Server.prototype.close, this, arguments);
+  return this;
+};
+
+Server.prototype[SymbolAsyncDispose] = async function() {
+  return FunctionPrototypeCall(promisify(this.close), this);
 };
 
 Server.prototype.closeAllConnections = function() {
@@ -779,7 +794,7 @@ function socketOnClose(socket, state) {
 function abortIncoming(incoming) {
   while (incoming.length) {
     const req = incoming.shift();
-    req.destroy(connResetException('aborted'));
+    req.destroy(new ConnResetException('aborted'));
   }
   // Abort socket._httpMessage ?
 }
@@ -851,27 +866,12 @@ const requestChunkExtensionsTooLargeResponse = Buffer.from(
   'Connection: close\r\n\r\n', 'ascii',
 );
 
-function warnUnclosedSocket() {
-  if (warnUnclosedSocket.emitted) {
-    return;
-  }
-
-  warnUnclosedSocket.emitted = true;
-  process.emitWarning(
-    'An error event has already been emitted on the socket. ' +
-    'Please use the destroy method on the socket while handling ' +
-    "a 'clientError' event.",
-  );
-}
-
 function socketOnError(e) {
   // Ignore further errors
   this.removeListener('error', socketOnError);
 
   if (this.listenerCount('error', noop) === 0) {
     this.on('error', noop);
-  } else {
-    warnUnclosedSocket();
   }
 
   if (!this.server.emit('clientError', e, this)) {
@@ -1062,7 +1062,6 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
 
   res.shouldKeepAlive = keepAlive;
   res[kUniqueHeaders] = server[kUniqueHeaders];
-  DTRACE_HTTP_SERVER_REQUEST(req, socket);
 
   if (onRequestStartChannel.hasSubscribers) {
     onRequestStartChannel.publish({
@@ -1088,7 +1087,18 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
 
   let handled = false;
 
+
   if (req.httpVersionMajor === 1 && req.httpVersionMinor === 1) {
+
+    // From RFC 7230 5.4 https://datatracker.ietf.org/doc/html/rfc7230#section-5.4
+    // A server MUST respond with a 400 (Bad Request) status code to any
+    // HTTP/1.1 request message that lacks a Host header field
+    if (server.requireHostHeader && req.headers.host === undefined) {
+      res.writeHead(400, ['Connection', 'close']);
+      res.end();
+      return 0;
+    }
+
     const isRequestsLimitSet = (
       typeof server.maxRequestsPerSocket === 'number' &&
       server.maxRequestsPerSocket > 0
@@ -1111,7 +1121,6 @@ function parserOnIncoming(server, socket, state, req, keepAlive) {
 
       if (RegExpPrototypeExec(continueExpression, req.headers.expect) !== null) {
         res._expect_continue = true;
-
         if (server.listenerCount('checkContinue') > 0) {
           server.emit('checkContinue', req, res);
         } else {

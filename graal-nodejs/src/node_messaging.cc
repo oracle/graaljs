@@ -30,7 +30,9 @@ using v8::Maybe;
 using v8::MaybeLocal;
 using v8::Nothing;
 using v8::Object;
+using v8::ObjectTemplate;
 using v8::SharedArrayBuffer;
+using v8::SharedValueConveyor;
 using v8::String;
 using v8::Symbol;
 using v8::Value;
@@ -92,10 +94,12 @@ class DeserializerDelegate : public ValueDeserializer::Delegate {
       Environment* env,
       const std::vector<BaseObjectPtr<BaseObject>>& host_objects,
       const std::vector<Local<SharedArrayBuffer>>& shared_array_buffers,
-      const std::vector<CompiledWasmModule>& wasm_modules)
+      const std::vector<CompiledWasmModule>& wasm_modules,
+      const std::optional<SharedValueConveyor>& shared_value_conveyor)
       : host_objects_(host_objects),
         shared_array_buffers_(shared_array_buffers),
-        wasm_modules_(wasm_modules) {}
+        wasm_modules_(wasm_modules),
+        shared_value_conveyor_(shared_value_conveyor) {}
 
   MaybeLocal<Object> ReadHostObject(Isolate* isolate) override {
     // Identifying the index in the message's BaseObject array is sufficient.
@@ -128,12 +132,18 @@ class DeserializerDelegate : public ValueDeserializer::Delegate {
         isolate, wasm_modules_[transfer_id]);
   }
 
+  const SharedValueConveyor* GetSharedValueConveyor(Isolate* isolate) override {
+    CHECK(shared_value_conveyor_.has_value());
+    return &shared_value_conveyor_.value();
+  }
+
   ValueDeserializer* deserializer = nullptr;
 
  private:
   const std::vector<BaseObjectPtr<BaseObject>>& host_objects_;
   const std::vector<Local<SharedArrayBuffer>>& shared_array_buffers_;
   const std::vector<CompiledWasmModule>& wasm_modules_;
+  const std::optional<SharedValueConveyor>& shared_value_conveyor_;
 };
 
 }  // anonymous namespace
@@ -198,8 +208,12 @@ MaybeLocal<Value> Message::Deserialize(Environment* env,
     shared_array_buffers.push_back(sab);
   }
 
-  DeserializerDelegate delegate(
-      this, env, host_objects, shared_array_buffers, wasm_modules_);
+  DeserializerDelegate delegate(this,
+                                env,
+                                host_objects,
+                                shared_array_buffers,
+                                wasm_modules_,
+                                shared_value_conveyor_);
   ValueDeserializer deserializer(
       env->isolate(),
       reinterpret_cast<const uint8_t*>(main_message_buf_.data),
@@ -241,6 +255,10 @@ void Message::AddTransferable(std::unique_ptr<TransferData>&& data) {
 uint32_t Message::AddWASMModule(CompiledWasmModule&& mod) {
   wasm_modules_.emplace_back(std::move(mod));
   return wasm_modules_.size() - 1;
+}
+
+void Message::AdoptSharedValueConveyor(SharedValueConveyor&& conveyor) {
+  shared_value_conveyor_.emplace(std::move(conveyor));
 }
 
 namespace {
@@ -301,7 +319,7 @@ class SerializerDelegate : public ValueSerializer::Delegate {
   }
 
   Maybe<bool> WriteHostObject(Isolate* isolate, Local<Object> object) override {
-    if (env_->base_object_ctor_template()->HasInstance(object)) {
+    if (BaseObject::IsBaseObject(env_->isolate_data(), object)) {
       return WriteHostObject(
           BaseObjectPtr<BaseObject> { Unwrap<BaseObject>(object) });
     }
@@ -345,6 +363,12 @@ class SerializerDelegate : public ValueSerializer::Delegate {
   Maybe<uint32_t> GetWasmModuleTransferId(
       Isolate* isolate, Local<WasmModuleObject> module) override {
     return Just(msg_->AddWASMModule(module->GetCompiledModule()));
+  }
+
+  bool AdoptSharedValueConveyor(Isolate* isolate,
+                                SharedValueConveyor&& conveyor) override {
+    msg_->AdoptSharedValueConveyor(std::move(conveyor));
+    return true;
   }
 
   Maybe<bool> Finish(Local<Context> context) {
@@ -490,7 +514,9 @@ Maybe<bool> Message::Serialize(Environment* env,
       array_buffers.push_back(ab);
       serializer.TransferArrayBuffer(id, ab);
       continue;
-    } else if (env->base_object_ctor_template()->HasInstance(entry)) {
+    } else if (entry->IsObject() &&
+               BaseObject::IsBaseObject(env->isolate_data(),
+                                        entry.As<Object>())) {
       // Check if the source MessagePort is being transferred.
       if (!source_port.IsEmpty() && entry == source_port) {
         ThrowDataCloneException(
@@ -544,7 +570,7 @@ Maybe<bool> Message::Serialize(Environment* env,
   for (Local<ArrayBuffer> ab : array_buffers) {
     // If serialization succeeded, we render it inaccessible in this Isolate.
     std::shared_ptr<BackingStore> backing_store = ab->GetBackingStore();
-    ab->Detach();
+    ab->Detach(Local<Value>()).Check();
 
     array_buffers_.emplace_back(std::move(backing_store));
   }
@@ -682,7 +708,8 @@ MessagePort* MessagePort::New(
     std::unique_ptr<MessagePortData> data,
     std::shared_ptr<SiblingGroup> sibling_group) {
   Context::Scope context_scope(context);
-  Local<FunctionTemplate> ctor_templ = GetMessagePortConstructorTemplate(env);
+  Local<FunctionTemplate> ctor_templ =
+      GetMessagePortConstructorTemplate(env->isolate_data());
 
   // Construct a new instance, then assign the listener instance and possibly
   // the MessagePortData to it.
@@ -754,13 +781,20 @@ MaybeLocal<Value> MessagePort::ReceiveMessage(Local<Context> context,
 
 void MessagePort::OnMessage(MessageProcessingMode mode) {
   Debug(this, "Running MessagePort::OnMessage()");
+  // Maybe the async handle was triggered empty or more than needed.
+  // The data_ could be freed or, the handle has been/is being closed.
+  // A possible case for this, is transfer the MessagePort to another
+  // context, it will call the constructor and trigger the async handle empty.
+  // Because all data was sent from the preivous context.
+  if (IsDetached()) return;
+
   HandleScope handle_scope(env()->isolate());
   Local<Context> context =
-      object(env()->isolate())->GetCreationContext().ToLocalChecked();
+      object(env()->isolate())->GetCreationContextChecked();
 
   size_t processing_limit;
   if (mode == MessageProcessingMode::kNormalOperation) {
-    Mutex::ScopedLock(data_->mutex_);
+    Mutex::ScopedLock lock(data_->mutex_);
     processing_limit = std::max(data_->incoming_messages_.size(),
                                 static_cast<size_t>(1000));
   } else {
@@ -963,48 +997,69 @@ static Maybe<bool> ReadIterable(Environment* env,
     entries.push_back(val);
   }
 
-  transfer_list.AllocateSufficientStorage(entries.size());
-  std::copy(entries.begin(), entries.end(), &transfer_list[0]);
+  if (!entries.empty()) {
+    transfer_list.AllocateSufficientStorage(entries.size());
+    std::copy(entries.begin(), entries.end(), &transfer_list[0]);
+  }
+
   return Just(true);
+}
+
+bool GetTransferList(Environment* env,
+                     Local<Context> context,
+                     Local<Value> transfer_list_v,
+                     TransferList* transfer_list_out) {
+  if (transfer_list_v->IsNullOrUndefined()) {
+    // Browsers ignore null or undefined, and otherwise accept an array or an
+    // options object.
+    return true;
+  }
+
+  if (!transfer_list_v->IsObject()) {
+    THROW_ERR_INVALID_ARG_TYPE(
+        env, "Optional transferList argument must be an iterable");
+    return false;
+  }
+
+  bool was_iterable;
+  if (!ReadIterable(env, context, *transfer_list_out, transfer_list_v)
+           .To(&was_iterable))
+    return false;
+  if (!was_iterable) {
+    Local<Value> transfer_option;
+    if (!transfer_list_v.As<Object>()
+             ->Get(context, env->transfer_string())
+             .ToLocal(&transfer_option))
+      return false;
+    if (!transfer_option->IsUndefined()) {
+      if (!ReadIterable(env, context, *transfer_list_out, transfer_option)
+               .To(&was_iterable))
+        return false;
+      if (!was_iterable) {
+        THROW_ERR_INVALID_ARG_TYPE(
+            env, "Optional options.transfer argument must be an iterable");
+        return false;
+      }
+    }
+  }
+
+  return true;
 }
 
 void MessagePort::PostMessage(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   Local<Object> obj = args.This();
-  Local<Context> context = obj->GetCreationContext().ToLocalChecked();
+  Local<Context> context = obj->GetCreationContextChecked();
 
   if (args.Length() == 0) {
     return THROW_ERR_MISSING_ARGS(env, "Not enough arguments to "
                                        "MessagePort.postMessage");
   }
 
-  if (!args[1]->IsNullOrUndefined() && !args[1]->IsObject()) {
-    // Browsers ignore null or undefined, and otherwise accept an array or an
-    // options object.
-    return THROW_ERR_INVALID_ARG_TYPE(env,
-        "Optional transferList argument must be an iterable");
-  }
-
   TransferList transfer_list;
-  if (args[1]->IsObject()) {
-    bool was_iterable;
-    if (!ReadIterable(env, context, transfer_list, args[1]).To(&was_iterable))
-      return;
-    if (!was_iterable) {
-      Local<Value> transfer_option;
-      if (!args[1].As<Object>()->Get(context, env->transfer_string())
-          .ToLocal(&transfer_option)) return;
-      if (!transfer_option->IsUndefined()) {
-        if (!ReadIterable(env, context, transfer_list, transfer_option)
-            .To(&was_iterable)) return;
-        if (!was_iterable) {
-          return THROW_ERR_INVALID_ARG_TYPE(env,
-              "Optional options.transfer argument must be an iterable");
-        }
-      }
-    }
+  if (!GetTransferList(env, context, args[1], &transfer_list)) {
+    return;
   }
-
   MessagePort* port = Unwrap<MessagePort>(args.This());
   // Even if the backing MessagePort object has already been deleted, we still
   // want to serialize the message to ensure spec-compliant behavior w.r.t.
@@ -1057,7 +1112,8 @@ void MessagePort::Stop(const FunctionCallbackInfo<Value>& args) {
 void MessagePort::CheckType(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   args.GetReturnValue().Set(
-      GetMessagePortConstructorTemplate(env)->HasInstance(args[0]));
+      GetMessagePortConstructorTemplate(env->isolate_data())
+          ->HasInstance(args[0]));
 }
 
 void MessagePort::Drain(const FunctionCallbackInfo<Value>& args) {
@@ -1090,9 +1146,9 @@ void MessagePort::ReceiveMessage(const FunctionCallbackInfo<Value>& args) {
     return;
   }
 
-  MaybeLocal<Value> payload = port->ReceiveMessage(
-      port->object()->GetCreationContext().ToLocalChecked(),
-      MessageProcessingMode::kForceReadMessages);
+  MaybeLocal<Value> payload =
+      port->ReceiveMessage(port->object()->GetCreationContextChecked(),
+                           MessageProcessingMode::kForceReadMessages);
   if (!payload.IsEmpty())
     args.GetReturnValue().Set(payload.ToLocalChecked());
 }
@@ -1143,29 +1199,31 @@ void MessagePort::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackField("emit_message_fn", emit_message_fn_);
 }
 
-Local<FunctionTemplate> GetMessagePortConstructorTemplate(Environment* env) {
+Local<FunctionTemplate> GetMessagePortConstructorTemplate(
+    IsolateData* isolate_data) {
   // Factor generating the MessagePort JS constructor into its own piece
   // of code, because it is needed early on in the child environment setup.
-  Local<FunctionTemplate> templ = env->message_port_constructor_template();
+  Local<FunctionTemplate> templ =
+      isolate_data->message_port_constructor_template();
   if (!templ.IsEmpty())
     return templ;
 
   {
-    Isolate* isolate = env->isolate();
+    Isolate* isolate = isolate_data->isolate();
     Local<FunctionTemplate> m = NewFunctionTemplate(isolate, MessagePort::New);
-    m->SetClassName(env->message_port_constructor_string());
+    m->SetClassName(isolate_data->message_port_constructor_string());
     m->InstanceTemplate()->SetInternalFieldCount(
         MessagePort::kInternalFieldCount);
-    m->Inherit(HandleWrap::GetConstructorTemplate(env));
+    m->Inherit(HandleWrap::GetConstructorTemplate(isolate_data));
 
     SetProtoMethod(isolate, m, "postMessage", MessagePort::PostMessage);
     SetProtoMethod(isolate, m, "start", MessagePort::Start);
     SetProtoMethod(isolate, m, "messageData", MessagePort::MessageData);
 
-    env->set_message_port_constructor_template(m);
+    isolate_data->set_message_port_constructor_template(m);
   }
 
-  return GetMessagePortConstructorTemplate(env);
+  return GetMessagePortConstructorTemplate(isolate_data);
 }
 
 JSTransferable::JSTransferable(Environment* env, Local<Object> obj)
@@ -1270,7 +1328,8 @@ JSTransferable::NestedTransferables() const {
     Local<Value> value;
     if (!list->Get(context, i).ToLocal(&value))
       return Nothing<BaseObjectList>();
-    if (env()->base_object_ctor_template()->HasInstance(value))
+    if (value->IsObject() &&
+        BaseObject::IsBaseObject(env()->isolate_data(), value.As<Object>()))
       ret.emplace_back(Unwrap<BaseObject>(value));
   }
   return Just(ret);
@@ -1322,9 +1381,11 @@ BaseObjectPtr<BaseObject> JSTransferable::Data::Deserialize(
 
   Local<Value> ret;
   CHECK(!env->messaging_deserialize_create_object().IsEmpty());
-  if (!env->messaging_deserialize_create_object()->Call(
-          context, Null(env->isolate()), 1, &info).ToLocal(&ret) ||
-      !env->base_object_ctor_template()->HasInstance(ret)) {
+  if (!env->messaging_deserialize_create_object()
+           ->Call(context, Null(env->isolate()), 1, &info)
+           .ToLocal(&ret) ||
+      !ret->IsObject() ||
+      !BaseObject::IsBaseObject(env->isolate_data(), ret.As<Object>())) {
     return {};
   }
 
@@ -1450,6 +1511,48 @@ static void SetDeserializerCreateObjectFunction(
   env->set_messaging_deserialize_create_object(args[0].As<Function>());
 }
 
+static void StructuredClone(const FunctionCallbackInfo<Value>& args) {
+  Isolate* isolate = args.GetIsolate();
+  Local<Context> context = isolate->GetCurrentContext();
+  Realm* realm = Realm::GetCurrent(context);
+  Environment* env = realm->env();
+
+  if (args.Length() == 0) {
+    return THROW_ERR_MISSING_ARGS(env, "The value argument must be specified");
+  }
+
+  Local<Value> value = args[0];
+
+  TransferList transfer_list;
+  if (!args[1]->IsNullOrUndefined()) {
+    if (!args[1]->IsObject()) {
+      return THROW_ERR_INVALID_ARG_TYPE(
+          env, "The options argument must be either an object or undefined");
+    }
+    Local<Object> options = args[1].As<Object>();
+    Local<Value> transfer_list_v;
+    if (!options->Get(context, env->transfer_string())
+             .ToLocal(&transfer_list_v)) {
+      return;
+    }
+
+    // TODO(joyeecheung): implement this in JS land to avoid the C++ -> JS
+    // cost to convert a sequence into an array.
+    if (!GetTransferList(env, context, transfer_list_v, &transfer_list)) {
+      return;
+    }
+  }
+
+  std::shared_ptr<Message> msg = std::make_shared<Message>();
+  Local<Value> result;
+  if (msg->Serialize(env, context, value, transfer_list, Local<Object>())
+          .IsNothing() ||
+      !msg->Deserialize(env, context, nullptr).ToLocal(&result)) {
+    return;
+  }
+  args.GetReturnValue().Set(result);
+}
+
 static void MessageChannel(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
   if (!args.IsConstructCall()) {
@@ -1457,7 +1560,7 @@ static void MessageChannel(const FunctionCallbackInfo<Value>& args) {
     return;
   }
 
-  Local<Context> context = args.This()->GetCreationContext().ToLocalChecked();
+  Local<Context> context = args.This()->GetCreationContextChecked();
   Context::Scope context_scope(context);
 
   MessagePort* port1 = MessagePort::New(env, context);
@@ -1488,15 +1591,12 @@ static void BroadcastChannel(const FunctionCallbackInfo<Value>& args) {
   }
 }
 
-static void InitMessaging(Local<Object> target,
-                          Local<Value> unused,
-                          Local<Context> context,
-                          void* priv) {
-  Environment* env = Environment::GetCurrent(context);
-  Isolate* isolate = env->isolate();
+static void CreatePerIsolateProperties(IsolateData* isolate_data,
+                                       Local<ObjectTemplate> target) {
+  Isolate* isolate = isolate_data->isolate();
 
   {
-    SetConstructorFunction(context,
+    SetConstructorFunction(isolate,
                            target,
                            "MessageChannel",
                            NewFunctionTemplate(isolate, MessageChannel));
@@ -1505,35 +1605,40 @@ static void InitMessaging(Local<Object> target,
   {
     Local<FunctionTemplate> t =
         NewFunctionTemplate(isolate, JSTransferable::New);
-    t->Inherit(BaseObject::GetConstructorTemplate(env));
     t->InstanceTemplate()->SetInternalFieldCount(
         JSTransferable::kInternalFieldCount);
     t->SetClassName(OneByteString(isolate, "JSTransferable"));
     SetConstructorFunction(
-        context, target, "JSTransferable", t, SetConstructorFunctionFlag::NONE);
+        isolate, target, "JSTransferable", t, SetConstructorFunctionFlag::NONE);
   }
 
-  SetConstructorFunction(context,
+  SetConstructorFunction(isolate,
                          target,
-                         env->message_port_constructor_string(),
-                         GetMessagePortConstructorTemplate(env),
-                         SetConstructorFunctionFlag::NONE);
+                         isolate_data->message_port_constructor_string(),
+                         GetMessagePortConstructorTemplate(isolate_data));
 
   // These are not methods on the MessagePort prototype, because
   // the browser equivalents do not provide them.
-  SetMethod(context, target, "stopMessagePort", MessagePort::Stop);
-  SetMethod(context, target, "checkMessagePort", MessagePort::CheckType);
-  SetMethod(context, target, "drainMessagePort", MessagePort::Drain);
+  SetMethod(isolate, target, "stopMessagePort", MessagePort::Stop);
+  SetMethod(isolate, target, "checkMessagePort", MessagePort::CheckType);
+  SetMethod(isolate, target, "drainMessagePort", MessagePort::Drain);
   SetMethod(
-      context, target, "receiveMessageOnPort", MessagePort::ReceiveMessage);
+      isolate, target, "receiveMessageOnPort", MessagePort::ReceiveMessage);
   SetMethod(
-      context, target, "moveMessagePortToContext", MessagePort::MoveToContext);
-  SetMethod(context,
+      isolate, target, "moveMessagePortToContext", MessagePort::MoveToContext);
+  SetMethod(isolate,
             target,
             "setDeserializerCreateObjectFunction",
             SetDeserializerCreateObjectFunction);
-  SetMethod(context, target, "broadcastChannel", BroadcastChannel);
+  SetMethod(isolate, target, "broadcastChannel", BroadcastChannel);
+  SetMethod(isolate, target, "structuredClone", StructuredClone);
+}
 
+static void CreatePerContextProperties(Local<Object> target,
+                                       Local<Value> unused,
+                                       Local<Context> context,
+                                       void* priv) {
+  Environment* env = Environment::GetCurrent(context);
   {
     Local<Function> domexception = GetDOMException(context).ToLocalChecked();
     target
@@ -1557,6 +1662,7 @@ static void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(MessagePort::ReceiveMessage);
   registry->Register(MessagePort::MoveToContext);
   registry->Register(SetDeserializerCreateObjectFunction);
+  registry->Register(StructuredClone);
 }
 
 }  // anonymous namespace
@@ -1564,6 +1670,9 @@ static void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 }  // namespace worker
 }  // namespace node
 
-NODE_BINDING_CONTEXT_AWARE_INTERNAL(messaging, node::worker::InitMessaging)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(messaging,
+                                    node::worker::CreatePerContextProperties)
+NODE_BINDING_PER_ISOLATE_INIT(messaging,
+                              node::worker::CreatePerIsolateProperties)
 NODE_BINDING_EXTERNAL_REFERENCE(messaging,
                                 node::worker::RegisterExternalReferences)

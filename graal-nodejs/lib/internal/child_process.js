@@ -17,7 +17,7 @@ const {
 } = primordials;
 
 const {
-  errnoException,
+  ErrnoException,
   codes: {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
@@ -60,6 +60,8 @@ const { convertToValidSignal, deprecate } = require('internal/util');
 const { isArrayBufferView } = require('internal/util/types');
 const spawn_sync = internalBinding('spawn_sync');
 const { kStateSymbol } = require('internal/dgram');
+const dc = require('diagnostics_channel');
+const childProcessChannel = dc.channel('child_process');
 
 const {
   UV_EACCES,
@@ -281,7 +283,7 @@ function ChildProcess() {
 
     if (exitCode < 0) {
       const syscall = this.spawnfile ? 'spawn ' + this.spawnfile : 'spawn';
-      const err = errnoException(exitCode, syscall);
+      const err = new ErrnoException(exitCode, syscall);
 
       if (this.spawnfile)
         err.path = this.spawnfile;
@@ -302,6 +304,11 @@ function ChildProcess() {
 
     maybeClose(this);
   };
+  if (childProcessChannel.hasSubscribers) {
+    childProcessChannel.publish({
+      process: this,
+    });
+  }
 }
 ObjectSetPrototypeOf(ChildProcess.prototype, EventEmitter.prototype);
 ObjectSetPrototypeOf(ChildProcess, EventEmitter);
@@ -415,7 +422,7 @@ ChildProcess.prototype.spawn = function(options) {
 
     this._handle.close();
     this._handle = null;
-    throw errnoException(err, 'spawn');
+    throw new ErrnoException(err, 'spawn');
   } else {
     process.nextTick(onSpawnNT, this);
   }
@@ -503,10 +510,10 @@ ChildProcess.prototype.kill = function(sig) {
       /* Already dead. */
     } else if (err === UV_EINVAL || err === UV_ENOSYS) {
       /* The underlying platform doesn't support this signal. */
-      throw errnoException(err, 'kill');
+      throw new ErrnoException(err, 'kill');
     } else {
       /* Other error, almost certainly EPERM. */
-      this.emit('error', errnoException(err, 'kill'));
+      this.emit('error', new ErrnoException(err, 'kill'));
     }
   }
 
@@ -873,7 +880,7 @@ function setupChannel(target, channel, serializationMode) {
         obj.postSend(message, handle, options, callback);
 
       if (!options.swallowErrors) {
-        const ex = errnoException(err, 'write');
+        const ex = new ErrnoException(err, 'write');
         if (typeof callback === 'function') {
           process.nextTick(callback, ex);
         } else {
@@ -1118,7 +1125,7 @@ function spawnSync(options) {
   result.stderr = result.output && result.output[2];
 
   if (result.error) {
-    result.error = errnoException(result.error, 'spawnSync ' + options.file);
+    result.error = new ErrnoException(result.error, 'spawnSync ' + options.file);
     result.error.path = options.file;
     result.error.spawnargs = ArrayPrototypeSlice(options.args, 1);
   }

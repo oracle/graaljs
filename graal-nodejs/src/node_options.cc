@@ -10,9 +10,8 @@
 #include "openssl/opensslv.h"
 #endif
 
-#include <errno.h>
 #include <algorithm>
-#include <cstdlib>  // strtoul, errno
+#include <charconv>
 #include <limits>
 #include <sstream>
 #include <string_view>
@@ -124,14 +123,6 @@ void EnvironmentOptions::CheckOptions(std::vector<std::string>* errors,
     if (type != "commonjs" && type != "module") {
       errors->push_back("--experimental-default-type must be "
                         "\"module\" or \"commonjs\"");
-    }
-  }
-
-  if (!experimental_specifier_resolution.empty()) {
-    if (experimental_specifier_resolution != "node" &&
-        experimental_specifier_resolution != "explicit") {
-      errors->push_back(
-        "invalid value for --experimental-specifier-resolution");
     }
   }
 
@@ -357,6 +348,11 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::conditions,
             kAllowedInEnvvar);
   AddAlias("-C", "--conditions");
+  AddOption("--experimental-detect-module",
+            "when ambiguous modules fail to evaluate because they contain "
+            "ES module syntax, try again to evaluate them as ES modules",
+            &EnvironmentOptions::detect_module,
+            kAllowedInEnvvar);
   AddOption("--diagnostic-dir",
             "set dir for all output files"
             " (default: current working directory)",
@@ -365,14 +361,23 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--dns-result-order",
             "set default value of verbatim in dns.lookup. Options are "
             "'ipv4first' (IPv4 addresses are placed before IPv6 addresses) "
+            "'ipv6first' (IPv6 addresses are placed before IPv4 addresses) "
             "'verbatim' (addresses are in the order the DNS resolver "
             "returned)",
             &EnvironmentOptions::dns_result_order,
             kAllowedInEnvvar);
-  AddOption("--enable-network-family-autoselection",
-            "Enable network address family autodetection algorithm",
-            &EnvironmentOptions::enable_network_family_autoselection,
+  AddOption("--network-family-autoselection",
+            "Disable network address family autodetection algorithm",
+            &EnvironmentOptions::network_family_autoselection,
+            kAllowedInEnvvar,
+            true);
+  AddOption("--network-family-autoselection-attempt-timeout",
+            "Sets the default value for the network family autoselection "
+            "attempt timeout.",
+            &EnvironmentOptions::network_family_autoselection_attempt_timeout,
             kAllowedInEnvvar);
+  AddAlias("--enable-network-family-autoselection",
+           "--network-family-autoselection");
   AddOption("--enable-source-maps",
             "Source Map V3 support for stack traces",
             &EnvironmentOptions::enable_source_maps,
@@ -383,14 +388,21 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::experimental_fetch,
             kAllowedInEnvvar,
             true);
+  AddOption("--experimental-websocket",
+            "experimental WebSocket API",
+            &EnvironmentOptions::experimental_websocket,
+            kAllowedInEnvvar,
+            true);
   AddOption("--experimental-global-customevent",
             "expose experimental CustomEvent on the global scope",
             &EnvironmentOptions::experimental_global_customevent,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            true);
   AddOption("--experimental-global-webcrypto",
             "expose experimental Web Crypto API on the global scope",
             &EnvironmentOptions::experimental_global_web_crypto,
-            kAllowedInEnvvar);
+            kAllowedInEnvvar,
+            true);
   AddOption("--experimental-json-modules", "", NoOp{}, kAllowedInEnvvar);
   AddOption("--experimental-loader",
             "use the specified module as a custom loader",
@@ -410,6 +422,11 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "experimental ES Module import.meta.resolve() parentURL support",
             &EnvironmentOptions::experimental_import_meta_resolve,
             kAllowedInEnvvar);
+  AddOption("--experimental-permission",
+            "enable the permission system",
+            &EnvironmentOptions::experimental_permission,
+            kAllowedInEnvvar,
+            false);
   AddOption("--experimental-policy",
             "use the specified file as a "
             "security policy",
@@ -424,6 +441,26 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::experimental_policy_integrity,
             kAllowedInEnvvar);
   Implies("--policy-integrity", "[has_policy_integrity_string]");
+  AddOption("--allow-fs-read",
+            "allow permissions to read the filesystem",
+            &EnvironmentOptions::allow_fs_read,
+            kAllowedInEnvvar);
+  AddOption("--allow-fs-write",
+            "allow permissions to write in the filesystem",
+            &EnvironmentOptions::allow_fs_write,
+            kAllowedInEnvvar);
+  AddOption("--allow-addons",
+            "allow use of addons when any permissions are set",
+            &EnvironmentOptions::allow_addons,
+            kAllowedInEnvvar);
+  AddOption("--allow-child-process",
+            "allow use of child process when any permissions are set",
+            &EnvironmentOptions::allow_child_process,
+            kAllowedInEnvvar);
+  AddOption("--allow-worker",
+            "allow worker threads when any permissions are set",
+            &EnvironmentOptions::allow_worker_threads,
+            kAllowedInEnvvar);
   AddOption("--experimental-repl-await",
             "experimental await keyword support in REPL",
             &EnvironmentOptions::experimental_repl_await,
@@ -461,11 +498,8 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "set module type for string input",
             &EnvironmentOptions::input_type,
             kAllowedInEnvvar);
-  AddOption("--experimental-specifier-resolution",
-            "Select extension resolution algorithm for es modules; "
-            "either 'explicit' (default) or 'node'",
-            &EnvironmentOptions::experimental_specifier_resolution,
-            kAllowedInEnvvar);
+  AddOption(
+      "--experimental-specifier-resolution", "", NoOp{}, kAllowedInEnvvar);
   AddAlias("--es-module-specifier-resolution",
            "--experimental-specifier-resolution");
   AddOption("--deprecation",
@@ -499,6 +533,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             &EnvironmentOptions::warnings,
             kAllowedInEnvvar,
             true);
+  AddOption("--disable-warning",
+            "silence specific process warnings",
+            &EnvironmentOptions::disable_warnings,
+            kAllowedInEnvvar);
   AddOption("--force-context-aware",
             "disable loading non-context-aware addons",
             &EnvironmentOptions::force_context_aware,
@@ -568,12 +606,21 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "write warnings to file instead of stderr",
             &EnvironmentOptions::redirect_warnings,
             kAllowedInEnvvar);
+  AddOption(
+      "[has_env_file_string]", "", &EnvironmentOptions::has_env_file_string);
+  AddOption("--env-file",
+            "set environment variables from supplied file",
+            &EnvironmentOptions::env_file);
+  Implies("--env-file", "[has_env_file_string]");
   AddOption("--test",
             "launch test runner on startup",
             &EnvironmentOptions::test_runner);
   AddOption("--test-concurrency",
             "specify test runner concurrency",
             &EnvironmentOptions::test_runner_concurrency);
+  AddOption("--test-timeout",
+            "specify test runner timeout",
+            &EnvironmentOptions::test_runner_timeout);
   AddOption("--experimental-test-coverage",
             "enable code coverage in the test runner",
             &EnvironmentOptions::test_runner_coverage);
@@ -630,6 +677,10 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--trace-warnings",
             "show stack traces on process warnings",
             &EnvironmentOptions::trace_warnings,
+            kAllowedInEnvvar);
+  AddOption("--trace-promises",
+            "show stack traces on promise initialization and resolution",
+            &EnvironmentOptions::trace_promises,
             kAllowedInEnvvar);
   AddOption("--experimental-default-type",
             "set module system to use by default",
@@ -694,7 +745,7 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
   AddOption("--import",
             "ES module to preload (option can be repeated)",
             &EnvironmentOptions::preload_esm_modules,
-            kAllowedInEnvironment);
+            kAllowedInEnvvar);
   AddOption("--interactive",
             "always enter the REPL even if stdin does not appear "
             "to be a terminal",
@@ -736,6 +787,12 @@ EnvironmentOptionsParser::EnvironmentOptionsParser() {
             "set default TLS maximum to TLSv1.3 (default: TLSv1.3)",
             &EnvironmentOptions::tls_max_v1_3,
             kAllowedInEnvvar);
+
+  AddOption("--report-exclude-network",
+            "exclude network interface diagnostics."
+            " (default: false)",
+            &EnvironmentOptions::report_exclude_network,
+            kAllowedInEnvvar);
 }
 
 PerIsolateOptionsParser::PerIsolateOptionsParser(
@@ -753,15 +810,10 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
             kAllowedInEnvvar);
   AddOption("--interpreted-frames-native-stack",
             "help system profilers to translate JavaScript interpreted frames",
-            V8Option{}, kAllowedInEnvvar);
-  AddOption("--max-old-space-size", "", V8Option{}, kAllowedInEnvvar);
-  AddOption("--max-semi-space-size", "", V8Option{}, kAllowedInEnvvar);
-  AddOption("--perf-basic-prof", "", V8Option{}, kAllowedInEnvvar);
-  AddOption("--perf-basic-prof-only-functions",
-            "",
             V8Option{},
             kAllowedInEnvvar);
   AddOption("--max-old-space-size", "", V8Option{}, kAllowedInEnvvar);
+  AddOption("--max-semi-space-size", "", V8Option{}, kAllowedInEnvvar);
   AddOption("--perf-basic-prof", "", V8Option{}, kAllowedInEnvvar);
   AddOption(
       "--perf-basic-prof-only-functions", "", V8Option{}, kAllowedInEnvvar);
@@ -798,7 +850,7 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
   AddOption("--enable-etw-stack-walking",
             "provides heap data to ETW Windows native tracing",
             V8Option{},
-            kAllowedInEnvironment);
+            kAllowedInEnvvar);
 
   AddOption("--experimental-top-level-await", "", NoOp{}, kAllowedInEnvvar);
 
@@ -810,6 +862,16 @@ PerIsolateOptionsParser::PerIsolateOptionsParser(
   Implies("--experimental-shadow-realm", "--harmony-shadow-realm");
   Implies("--harmony-shadow-realm", "--experimental-shadow-realm");
   ImpliesNot("--no-harmony-shadow-realm", "--experimental-shadow-realm");
+  AddOption("--build-snapshot",
+            "Generate a snapshot blob when the process exits.",
+            &PerIsolateOptions::build_snapshot,
+            kDisallowedInEnvvar);
+  AddOption("--build-snapshot-config",
+            "Generate a snapshot blob when the process exits using a"
+            "JSON configuration in the specified path.",
+            &PerIsolateOptions::build_snapshot_config,
+            kDisallowedInEnvvar);
+  Implies("--build-snapshot-config", "--build-snapshot");
 
   Insert(eop, &PerIsolateOptions::get_per_env_options);
 }
@@ -848,11 +910,6 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             "disable Object.prototype.__proto__",
             &PerProcessOptions::disable_proto,
             kAllowedInEnvvar);
-  AddOption("--build-snapshot",
-            "Generate a snapshot blob when the process exits."
-            " Currently only supported in the node_mksnapshot binary.",
-            &PerProcessOptions::build_snapshot,
-            kDisallowedInEnvvar);
   AddOption("--node-snapshot",
             "",  // It's a debug-only option.
             &PerProcessOptions::node_snapshot,
@@ -1000,6 +1057,11 @@ PerProcessOptionsParser::PerProcessOptionsParser(
             kAllowedInEnvvar);
   Implies("--node-memory-debug", "--debug-arraybuffer-allocations");
   Implies("--node-memory-debug", "--verify-base-objects");
+
+  AddOption("--experimental-sea-config",
+            "Generate a blob that can be embedded into the single executable "
+            "application",
+            &PerProcessOptions::experimental_sea_config);
 }
 
 inline std::string RemoveBrackets(const std::string& host) {
@@ -1009,17 +1071,17 @@ inline std::string RemoveBrackets(const std::string& host) {
     return host;
 }
 
-inline int ParseAndValidatePort(const std::string& port,
-                                std::vector<std::string>* errors) {
-  char* endptr;
-  errno = 0;
-  const unsigned long result =                 // NOLINT(runtime/int)
-    strtoul(port.c_str(), &endptr, 10);
-  if (errno != 0 || *endptr != '\0'||
-      (result != 0 && result < 1024) || result > 65535) {
+inline uint16_t ParseAndValidatePort(const std::string_view port,
+                                     std::vector<std::string>* errors) {
+  uint16_t result{};
+  auto r = std::from_chars(port.data(), port.data() + port.size(), result);
+
+  if (r.ec == std::errc::result_out_of_range ||
+      (result != 0 && result < 1024)) {
     errors->push_back(" must be 0 or in range 1024 to 65535.");
   }
-  return static_cast<int>(result);
+
+  return result;
 }
 
 HostPort SplitHostPort(const std::string& arg,
@@ -1247,6 +1309,18 @@ void GetEmbedderOptions(const FunctionCallbackInfo<Value>& args) {
            FIXED_ONE_BYTE_STRING(env->isolate(), "noGlobalSearchPaths"),
            Boolean::New(isolate, env->no_global_search_paths()))
       .IsNothing()) return;
+
+  if (ret->Set(context,
+               FIXED_ONE_BYTE_STRING(env->isolate(), "noBrowserGlobals"),
+               Boolean::New(isolate, env->no_browser_globals()))
+          .IsNothing())
+    return;
+
+  if (ret->Set(context,
+               FIXED_ONE_BYTE_STRING(env->isolate(), "hasEmbedderPreload"),
+               Boolean::New(isolate, env->embedder_preload() != nullptr))
+          .IsNothing())
+    return;
 
   args.GetReturnValue().Set(ret);
 }

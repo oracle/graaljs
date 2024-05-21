@@ -64,16 +64,14 @@ public class Accessor {
     private final long getterPtr;
     private final long setterPtr;
     private final Object data;
-    private final FunctionTemplate signature;
     private final int id;
     private final int attributes;
 
-    public Accessor(int accessorId, Object name, long getterPtr, long setterPtr, Object data, FunctionTemplate signature, int attributes) {
+    public Accessor(int accessorId, Object name, long getterPtr, long setterPtr, Object data, int attributes) {
         this.name = name;
         this.getterPtr = getterPtr;
         this.setterPtr = setterPtr;
         this.data = data;
-        this.signature = signature;
         this.id = accessorId;
         this.attributes = attributes;
     }
@@ -92,14 +90,6 @@ public class Accessor {
 
     public Object getData() {
         return data;
-    }
-
-    public FunctionTemplate getSignature() {
-        return signature;
-    }
-
-    public boolean hasSignature() {
-        return signature != null;
     }
 
     public int getAttributes() {
@@ -140,13 +130,11 @@ public class Accessor {
         private final Object name;
         private final int attributes;
         private final boolean getter;
-        private final boolean hasSignature;
 
         public Descriptor(Accessor accessor, boolean getter) {
             this.name = accessor.name;
             this.attributes = accessor.attributes;
             this.getter = getter;
-            this.hasSignature = accessor.hasSignature();
         }
 
         @Override
@@ -160,16 +148,14 @@ public class Accessor {
             Descriptor that = (Descriptor) o;
             return Objects.equals(this.name, that.name) &&
                             this.attributes == that.attributes &&
-                            this.getter == that.getter &&
-                            this.hasSignature == that.hasSignature;
+                            this.getter == that.getter;
         }
 
         @Override
         public int hashCode() {
             return Objects.hash(this.name,
                             this.attributes,
-                            this.getter,
-                            this.hasSignature);
+                            this.getter);
         }
     }
 }

@@ -825,6 +825,59 @@ void Reference::WeakCallback(const v8::WeakCallbackInfo<Reference>& data) {
   reference->env_->InvokeFinalizerFromGC(reference);
 }
 
+/**
+ * A wrapper for `v8::External` to support type-tagging. `v8::External` doesn't
+ * support defining any properties and private properties on it, even though it
+ * is an object. This wrapper is used to store the type tag and the data of the
+ * external value.
+ */
+class ExternalWrapper {
+ private:
+  explicit ExternalWrapper(void* data) : data_(data), type_tag_{0, 0} {}
+
+  static void WeakCallback(const v8::WeakCallbackInfo<ExternalWrapper>& data) {
+    ExternalWrapper* wrapper = data.GetParameter();
+    delete wrapper;
+  }
+
+ public:
+  static v8::Local<v8::External> New(napi_env env, void* data) {
+    ExternalWrapper* wrapper = new ExternalWrapper(data);
+    v8::Local<v8::External> external = v8::External::New(env->isolate, wrapper);
+    wrapper->persistent_.Reset(env->isolate, external);
+    wrapper->persistent_.SetWeak(
+        wrapper, WeakCallback, v8::WeakCallbackType::kParameter);
+
+    return external;
+  }
+
+  static ExternalWrapper* From(v8::Local<v8::External> external) {
+    return static_cast<ExternalWrapper*>(external->Value());
+  }
+
+  void* Data() { return data_; }
+
+  bool TypeTag(const napi_type_tag* type_tag) {
+    if (has_tag_) {
+      return false;
+    }
+    type_tag_ = *type_tag;
+    has_tag_ = true;
+    return true;
+  }
+
+  bool CheckTypeTag(const napi_type_tag* type_tag) {
+    return has_tag_ && type_tag->lower == type_tag_.lower &&
+           type_tag->upper == type_tag_.upper;
+  }
+
+ private:
+  v8impl::Persistent<v8::Value> persistent_;
+  void* data_;
+  napi_type_tag type_tag_;
+  bool has_tag_ = false;
+};
+
 }  // end of namespace v8impl
 
 // Warning: Keep in-sync with napi_status enum
@@ -969,11 +1022,8 @@ napi_define_class(napi_env env,
             env, p->setter, p->data, &setter_tpl));
       }
 
-      tpl->PrototypeTemplate()->SetAccessorProperty(property_name,
-                                                    getter_tpl,
-                                                    setter_tpl,
-                                                    attributes,
-                                                    v8::AccessControl::DEFAULT);
+      tpl->PrototypeTemplate()->SetAccessorProperty(
+          property_name, getter_tpl, setter_tpl, attributes);
     } else if (p->method != nullptr) {
       v8::Local<v8::FunctionTemplate> t;
       STATUS_CALL(v8impl::FunctionCallbackWrapper::NewTemplate(
@@ -1657,6 +1707,18 @@ napi_status NAPI_CDECL node_api_create_external_string_utf16(
             env, str, length, finalize_callback, finalize_hint);
         return v8::String::NewExternalTwoByte(isolate, resource);
       });
+}
+
+napi_status NAPI_CDECL node_api_create_property_key_utf16(napi_env env,
+                                                          const char16_t* str,
+                                                          size_t length,
+                                                          napi_value* result) {
+  return v8impl::NewString(env, str, length, result, [&](v8::Isolate* isolate) {
+    return v8::String::NewFromTwoByte(isolate,
+                                      reinterpret_cast<const uint16_t*>(str),
+                                      v8::NewStringType::kInternalized,
+                                      static_cast<int>(length));
+  });
 }
 
 napi_status NAPI_CDECL napi_create_double(napi_env env,
@@ -2530,9 +2592,8 @@ napi_create_external(napi_env env,
   NAPI_PREAMBLE(env);
   CHECK_ARG(env, result);
 
-  v8::Isolate* isolate = env->isolate;
-
-  v8::Local<v8::Value> external_value = v8::External::New(isolate, data);
+  v8::Local<v8::External> external_value =
+      v8impl::ExternalWrapper::New(env, data);
 
   if (finalize_cb) {
     // The Reference object will delete itself after invoking the finalizer
@@ -2552,12 +2613,24 @@ napi_create_external(napi_env env,
 }
 
 napi_status NAPI_CDECL napi_type_tag_object(napi_env env,
-                                            napi_value object,
+                                            napi_value object_or_external,
                                             const napi_type_tag* type_tag) {
   NAPI_PREAMBLE(env);
   v8::Local<v8::Context> context = env->context();
+
+  CHECK_ARG(env, object_or_external);
+  v8::Local<v8::Value> val =
+      v8impl::V8LocalValueFromJsValue(object_or_external);
+  if (val->IsExternal()) {
+    v8impl::ExternalWrapper* wrapper =
+        v8impl::ExternalWrapper::From(val.As<v8::External>());
+    RETURN_STATUS_IF_FALSE_WITH_PREAMBLE(
+        env, wrapper->TypeTag(type_tag), napi_invalid_arg);
+    return GET_RETURN_STATUS(env);
+  }
+
   v8::Local<v8::Object> obj;
-  CHECK_TO_OBJECT_WITH_PREAMBLE(env, context, obj, object);
+  CHECK_TO_OBJECT_WITH_PREAMBLE(env, context, obj, object_or_external);
   CHECK_ARG_WITH_PREAMBLE(env, type_tag);
 
   auto key = NAPI_PRIVATE_KEY(context, type_tag);
@@ -2579,13 +2652,24 @@ napi_status NAPI_CDECL napi_type_tag_object(napi_env env,
 }
 
 napi_status NAPI_CDECL napi_check_object_type_tag(napi_env env,
-                                                  napi_value object,
+                                                  napi_value object_or_external,
                                                   const napi_type_tag* type_tag,
                                                   bool* result) {
   NAPI_PREAMBLE(env);
   v8::Local<v8::Context> context = env->context();
+
+  CHECK_ARG(env, object_or_external);
+  v8::Local<v8::Value> obj_val =
+      v8impl::V8LocalValueFromJsValue(object_or_external);
+  if (obj_val->IsExternal()) {
+    v8impl::ExternalWrapper* wrapper =
+        v8impl::ExternalWrapper::From(obj_val.As<v8::External>());
+    *result = wrapper->CheckTypeTag(type_tag);
+    return GET_RETURN_STATUS(env);
+  }
+
   v8::Local<v8::Object> obj;
-  CHECK_TO_OBJECT_WITH_PREAMBLE(env, context, obj, object);
+  CHECK_TO_OBJECT_WITH_PREAMBLE(env, context, obj, object_or_external);
   CHECK_ARG_WITH_PREAMBLE(env, type_tag);
   CHECK_ARG_WITH_PREAMBLE(env, result);
 
@@ -2630,7 +2714,7 @@ napi_status NAPI_CDECL napi_get_value_external(napi_env env,
   RETURN_STATUS_IF_FALSE(env, val->IsExternal(), napi_invalid_arg);
 
   v8::Local<v8::External> external_value = val.As<v8::External>();
-  *result = external_value->Value();
+  *result = v8impl::ExternalWrapper::From(external_value)->Data();
 
   return napi_clear_last_error(env);
 }
@@ -3434,7 +3518,7 @@ napi_status NAPI_CDECL napi_detach_arraybuffer(napi_env env,
   RETURN_STATUS_IF_FALSE(
       env, it->IsDetachable(), napi_detachable_arraybuffer_expected);
 
-  it->Detach();
+  it->Detach(v8::Local<v8::Value>()).Check();
 
   return napi_clear_last_error(env);
 }

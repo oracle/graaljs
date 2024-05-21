@@ -5,11 +5,10 @@
 #include "src/compiler/memory-optimizer.h"
 
 #include "src/base/logging.h"
-#include "src/codegen/interface-descriptors.h"
 #include "src/codegen/tick-counter.h"
+#include "src/compiler/common-operator.h"
 #include "src/compiler/js-graph.h"
 #include "src/compiler/linkage.h"
-#include "src/compiler/node-matchers.h"
 #include "src/compiler/node-properties.h"
 #include "src/compiler/node.h"
 #include "src/roots/roots-inl.h"
@@ -25,6 +24,7 @@ bool CanAllocate(const Node* node) {
     case IrOpcode::kAbortCSADcheck:
     case IrOpcode::kBitcastTaggedToWord:
     case IrOpcode::kBitcastWordToTagged:
+    case IrOpcode::kCheckTurboshaftTypeOf:
     case IrOpcode::kComment:
     case IrOpcode::kDebugBreak:
     case IrOpcode::kDeoptimizeIf:
@@ -41,7 +41,9 @@ bool CanAllocate(const Node* node) {
     case IrOpcode::kLoadTransform:
     case IrOpcode::kMemoryBarrier:
     case IrOpcode::kProtectedLoad:
+    case IrOpcode::kLoadTrapOnNull:
     case IrOpcode::kProtectedStore:
+    case IrOpcode::kStoreTrapOnNull:
     case IrOpcode::kRetain:
     case IrOpcode::kStackPointerGreaterThan:
     case IrOpcode::kStaticAssert:
@@ -53,11 +55,13 @@ bool CanAllocate(const Node* node) {
     case IrOpcode::kStoreField:
     case IrOpcode::kStoreLane:
     case IrOpcode::kStoreToObject:
+    case IrOpcode::kTraceInstruction:
     case IrOpcode::kInitializeImmutableInObject:
+    case IrOpcode::kTrapIf:
+    case IrOpcode::kTrapUnless:
     case IrOpcode::kUnalignedLoad:
     case IrOpcode::kUnalignedStore:
     case IrOpcode::kUnreachable:
-    case IrOpcode::kUnsafePointerAdd:
     case IrOpcode::kWord32AtomicAdd:
     case IrOpcode::kWord32AtomicAnd:
     case IrOpcode::kWord32AtomicCompareExchange:
@@ -180,10 +184,10 @@ void WriteBarrierAssertFailed(Node* node, Node* object, const char* name,
 }  // namespace
 
 MemoryOptimizer::MemoryOptimizer(
-    JSGraph* jsgraph, Zone* zone,
+    JSHeapBroker* broker, JSGraph* jsgraph, Zone* zone,
     MemoryLowering::AllocationFolding allocation_folding,
     const char* function_debug_name, TickCounter* tick_counter)
-    : graph_assembler_(jsgraph, zone),
+    : graph_assembler_(broker, jsgraph, zone, BranchSemantics::kMachine),
       memory_lowering_(jsgraph, zone, &graph_assembler_, allocation_folding,
                        WriteBarrierAssertFailed, function_debug_name),
       jsgraph_(jsgraph),
@@ -342,12 +346,11 @@ void MemoryOptimizer::VisitLoadField(Node* node, AllocationState const* state) {
   EnqueueUses(node, state);
 
   // Node can be replaced under two cases:
-  //   1. V8_SANDBOXED_EXTERNAL_POINTERS_BOOL is enabled and loading an external
-  //   pointer value.
+  //   1. V8_ENABLE_SANDBOX is true and loading an external pointer value.
   //   2. V8_MAP_PACKING_BOOL is enabled.
-  DCHECK_IMPLIES(!V8_SANDBOXED_EXTERNAL_POINTERS_BOOL && !V8_MAP_PACKING_BOOL,
+  DCHECK_IMPLIES(!V8_ENABLE_SANDBOX_BOOL && !V8_MAP_PACKING_BOOL,
                  reduction.replacement() == node);
-  if ((V8_SANDBOXED_EXTERNAL_POINTERS_BOOL || V8_MAP_PACKING_BOOL) &&
+  if ((V8_ENABLE_SANDBOX_BOOL || V8_MAP_PACKING_BOOL) &&
       reduction.replacement() != node) {
     ReplaceUsesAndKillNode(node, reduction.replacement());
   }

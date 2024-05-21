@@ -795,7 +795,7 @@ function spawn(file, args, options) {
     if (signal.aborted) {
       process.nextTick(onAbortListener);
     } else {
-      addAbortListener ??= require('events').addAbortListener;
+      addAbortListener ??= require('internal/events/abort_listener').addAbortListener;
       const disposable = addAbortListener(signal, onAbortListener);
       child.once('exit', disposable[SymbolDispose]);
     }

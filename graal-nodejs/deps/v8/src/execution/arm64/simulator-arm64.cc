@@ -34,6 +34,11 @@
 #include "src/trap-handler/trap-handler-simulator.h"
 #endif  // V8_ENABLE_WEBASSEMBLY
 
+#if defined(_MSC_VER)
+// define full memory barrier for msvc
+#define __sync_synchronize _ReadWriteBarrier
+#endif
+
 namespace v8 {
 namespace internal {
 
@@ -57,17 +62,17 @@ namespace internal {
 #define WHITE "37"
 
 using TEXT_COLOUR = char const* const;
-TEXT_COLOUR clr_normal = FLAG_log_colour ? COLOUR(NORMAL) : "";
-TEXT_COLOUR clr_flag_name = FLAG_log_colour ? COLOUR_BOLD(WHITE) : "";
-TEXT_COLOUR clr_flag_value = FLAG_log_colour ? COLOUR(NORMAL) : "";
-TEXT_COLOUR clr_reg_name = FLAG_log_colour ? COLOUR_BOLD(CYAN) : "";
-TEXT_COLOUR clr_reg_value = FLAG_log_colour ? COLOUR(CYAN) : "";
-TEXT_COLOUR clr_vreg_name = FLAG_log_colour ? COLOUR_BOLD(MAGENTA) : "";
-TEXT_COLOUR clr_vreg_value = FLAG_log_colour ? COLOUR(MAGENTA) : "";
-TEXT_COLOUR clr_memory_address = FLAG_log_colour ? COLOUR_BOLD(BLUE) : "";
-TEXT_COLOUR clr_debug_number = FLAG_log_colour ? COLOUR_BOLD(YELLOW) : "";
-TEXT_COLOUR clr_debug_message = FLAG_log_colour ? COLOUR(YELLOW) : "";
-TEXT_COLOUR clr_printf = FLAG_log_colour ? COLOUR(GREEN) : "";
+TEXT_COLOUR clr_normal = v8_flags.log_colour ? COLOUR(NORMAL) : "";
+TEXT_COLOUR clr_flag_name = v8_flags.log_colour ? COLOUR_BOLD(WHITE) : "";
+TEXT_COLOUR clr_flag_value = v8_flags.log_colour ? COLOUR(NORMAL) : "";
+TEXT_COLOUR clr_reg_name = v8_flags.log_colour ? COLOUR_BOLD(CYAN) : "";
+TEXT_COLOUR clr_reg_value = v8_flags.log_colour ? COLOUR(CYAN) : "";
+TEXT_COLOUR clr_vreg_name = v8_flags.log_colour ? COLOUR_BOLD(MAGENTA) : "";
+TEXT_COLOUR clr_vreg_value = v8_flags.log_colour ? COLOUR(MAGENTA) : "";
+TEXT_COLOUR clr_memory_address = v8_flags.log_colour ? COLOUR_BOLD(BLUE) : "";
+TEXT_COLOUR clr_debug_number = v8_flags.log_colour ? COLOUR_BOLD(YELLOW) : "";
+TEXT_COLOUR clr_debug_message = v8_flags.log_colour ? COLOUR(YELLOW) : "";
+TEXT_COLOUR clr_printf = v8_flags.log_colour ? COLOUR(GREEN) : "";
 
 DEFINE_LAZY_LEAKY_OBJECT_GETTER(Simulator::GlobalMonitor,
                                 Simulator::GlobalMonitor::Get)
@@ -86,9 +91,9 @@ bool Simulator::ProbeMemory(uintptr_t address, uintptr_t access_size) {
 #endif
 }
 
-// This is basically the same as PrintF, with a guard for FLAG_trace_sim.
+// This is basically the same as PrintF, with a guard for v8_flags.trace_sim.
 void Simulator::TraceSim(const char* format, ...) {
-  if (FLAG_trace_sim) {
+  if (v8_flags.trace_sim) {
     va_list arguments;
     va_start(arguments, format);
     base::OS::VFPrint(stream_, format, arguments);
@@ -128,7 +133,7 @@ Simulator* Simulator::current(Isolate* isolate) {
 
   Simulator* sim = isolate_data->simulator();
   if (sim == nullptr) {
-    if (FLAG_trace_sim || FLAG_debug_sim) {
+    if (v8_flags.trace_sim || v8_flags.debug_sim) {
       sim = new Simulator(new Decoder<DispatchingDecoderVisitor>(), isolate);
     } else {
       sim = new Decoder<Simulator>();
@@ -336,7 +341,7 @@ Simulator::Simulator(Decoder<DispatchingDecoderVisitor>* decoder,
 
   Init(stream);
 
-  if (FLAG_trace_sim) {
+  if (v8_flags.trace_sim) {
     decoder_->InsertVisitorBefore(print_disasm_, this);
     log_parameters_ = LOG_ALL;
   }
@@ -349,14 +354,14 @@ Simulator::Simulator()
       log_parameters_(NO_PARAM),
       isolate_(nullptr) {
   Init(stdout);
-  CHECK(!FLAG_trace_sim);
+  CHECK(!v8_flags.trace_sim);
 }
 
 void Simulator::Init(FILE* stream) {
   ResetState();
 
   // Allocate and setup the simulator stack.
-  stack_size_ = (FLAG_sim_stack_size * KB) + (2 * stack_protection_size_);
+  stack_size_ = (v8_flags.sim_stack_size * KB) + (2 * stack_protection_size_);
   stack_ = reinterpret_cast<uintptr_t>(new byte[stack_size_]);
   stack_limit_ = stack_ + stack_protection_size_;
   uintptr_t tos = stack_ + stack_size_ - stack_protection_size_;
@@ -411,19 +416,19 @@ void Simulator::Run() {
 
   pc_modified_ = false;
 
-  if (::v8::internal::FLAG_stop_sim_at == 0) {
+  if (v8_flags.stop_sim_at == 0) {
     // Fast version of the dispatch loop without checking whether the simulator
     // should be stopping at a particular executed instruction.
     while (pc_ != kEndOfSimAddress) {
       ExecuteInstruction();
     }
   } else {
-    // FLAG_stop_sim_at is at the non-default value. Stop in the debugger when
-    // we reach the particular instruction count.
+    // v8_flags.stop_sim_at is at the non-default value. Stop in the debugger
+    // when we reach the particular instruction count.
     while (pc_ != kEndOfSimAddress) {
       icount_for_stop_sim_at_ =
           base::AddWithWraparound(icount_for_stop_sim_at_, 1);
-      if (icount_for_stop_sim_at_ == ::v8::internal::FLAG_stop_sim_at) {
+      if (icount_for_stop_sim_at_ == v8_flags.stop_sim_at) {
         Debug();
       }
       ExecuteInstruction();
@@ -678,7 +683,7 @@ void Simulator::DoRuntimeCall(Instruction* instr) {
   const int64_t arg17 = stack_pointer[9];
   const int64_t arg18 = stack_pointer[10];
   const int64_t arg19 = stack_pointer[11];
-  STATIC_ASSERT(kMaxCParameters == 20);
+  static_assert(kMaxCParameters == 20);
 
   switch (redirection->type()) {
     default:
@@ -872,7 +877,7 @@ void Simulator::DoRuntimeCall(Instruction* instr) {
     case ExternalReference::PROFILING_API_CALL: {
       // void f(v8::FunctionCallbackInfo&, v8::FunctionCallback)
       TraceSim("Type: PROFILING_API_CALL\n");
-      void* arg1 = Redirection::ReverseRedirection(xreg(1));
+      void* arg1 = Redirection::UnwrapRedirection(xreg(1));
       TraceSim("Arguments: 0x%016" PRIx64 ", %p\n", xreg(0), arg1);
       UnsafeProfilingApiCall(external, xreg(0), arg1);
       TraceSim("No return value.");
@@ -888,7 +893,7 @@ void Simulator::DoRuntimeCall(Instruction* instr) {
       TraceSim("Type: PROFILING_GETTER_CALL\n");
       SimulatorRuntimeProfilingGetterCall target =
           reinterpret_cast<SimulatorRuntimeProfilingGetterCall>(external);
-      void* arg2 = Redirection::ReverseRedirection(xreg(2));
+      void* arg2 = Redirection::UnwrapRedirection(xreg(2));
       TraceSim("Arguments: 0x%016" PRIx64 ", 0x%016" PRIx64 ", %p\n", xreg(0),
                xreg(1), arg2);
       target(xreg(0), xreg(1), arg2);
@@ -2390,6 +2395,48 @@ void Simulator::VisitLoadStoreAcquireRelease(Instruction* instr) {
   unsigned rn = instr->Rn();
   LoadStoreAcquireReleaseOp op = static_cast<LoadStoreAcquireReleaseOp>(
       instr->Mask(LoadStoreAcquireReleaseMask));
+
+  switch (op) {
+    case CAS_w:
+    case CASA_w:
+    case CASL_w:
+    case CASAL_w:
+      CompareAndSwapHelper<uint32_t>(instr);
+      return;
+    case CAS_x:
+    case CASA_x:
+    case CASL_x:
+    case CASAL_x:
+      CompareAndSwapHelper<uint64_t>(instr);
+      return;
+    case CASB:
+    case CASAB:
+    case CASLB:
+    case CASALB:
+      CompareAndSwapHelper<uint8_t>(instr);
+      return;
+    case CASH:
+    case CASAH:
+    case CASLH:
+    case CASALH:
+      CompareAndSwapHelper<uint16_t>(instr);
+      return;
+    case CASP_w:
+    case CASPA_w:
+    case CASPL_w:
+    case CASPAL_w:
+      CompareAndSwapPairHelper<uint32_t>(instr);
+      return;
+    case CASP_x:
+    case CASPA_x:
+    case CASPL_x:
+    case CASPAL_x:
+      CompareAndSwapPairHelper<uint64_t>(instr);
+      return;
+    default:
+      break;
+  }
+
   int32_t is_acquire_release = instr->LoadStoreXAcquireRelease();
   int32_t is_exclusive = (instr->LoadStoreXNotExclusive() == 0);
   int32_t is_load = instr->LoadStoreXLoad();
@@ -2401,6 +2448,8 @@ void Simulator::VisitLoadStoreAcquireRelease(Instruction* instr) {
   unsigned access_size = 1 << instr->LoadStoreXSizeLog2();
   uintptr_t address = LoadStoreAddress(rn, 0, AddrMode::Offset);
   DCHECK_EQ(address % access_size, 0);
+  // First, check whether the memory is accessible (for wasm trap handling).
+  if (!ProbeMemory(address, access_size)) return;
   base::MutexGuard lock_guard(&GlobalMonitor::Get()->mutex);
   if (is_load != 0) {
     if (is_exclusive) {
@@ -2481,6 +2530,319 @@ void Simulator::VisitLoadStoreAcquireRelease(Instruction* instr) {
           UNIMPLEMENTED();
       }
     }
+  }
+}
+
+template <typename T>
+void Simulator::CompareAndSwapHelper(const Instruction* instr) {
+  unsigned rs = instr->Rs();
+  unsigned rt = instr->Rt();
+  unsigned rn = instr->Rn();
+
+  unsigned element_size = sizeof(T);
+  uint64_t address = reg<uint64_t>(rn, Reg31IsStackPointer);
+
+  // First, check whether the memory is accessible (for wasm trap handling).
+  if (!ProbeMemory(address, element_size)) return;
+
+  bool is_acquire = instr->Bit(22) == 1;
+  bool is_release = instr->Bit(15) == 1;
+
+  T comparevalue = reg<T>(rs);
+  T newvalue = reg<T>(rt);
+
+  // The architecture permits that the data read clears any exclusive monitors
+  // associated with that location, even if the compare subsequently fails.
+  local_monitor_.NotifyLoad();
+
+  T data = MemoryRead<T>(address);
+  if (is_acquire) {
+    // Approximate load-acquire by issuing a full barrier after the load.
+    __sync_synchronize();
+  }
+
+  if (data == comparevalue) {
+    base::MutexGuard lock_guard(&GlobalMonitor::Get()->mutex);
+
+    if (is_release) {
+      local_monitor_.NotifyStore();
+      GlobalMonitor::Get()->NotifyStore_Locked(&global_monitor_processor_);
+      // Approximate store-release by issuing a full barrier before the store.
+      __sync_synchronize();
+    }
+
+    MemoryWrite<T>(address, newvalue);
+    LogWrite(address, rt, GetPrintRegisterFormatForSize(element_size));
+  }
+
+  set_reg<T>(rs, data);
+  LogRead(address, rs, GetPrintRegisterFormatForSize(element_size));
+}
+
+template <typename T>
+void Simulator::CompareAndSwapPairHelper(const Instruction* instr) {
+  DCHECK((sizeof(T) == 4) || (sizeof(T) == 8));
+  unsigned rs = instr->Rs();
+  unsigned rt = instr->Rt();
+  unsigned rn = instr->Rn();
+
+  DCHECK((rs % 2 == 0) && (rt % 2 == 0));
+
+  unsigned element_size = sizeof(T);
+  uint64_t address = reg<uint64_t>(rn, Reg31IsStackPointer);
+
+  uint64_t address2 = address + element_size;
+
+  // First, check whether the memory is accessible (for wasm trap handling).
+  if (!ProbeMemory(address, element_size)) return;
+  if (!ProbeMemory(address2, element_size)) return;
+
+  bool is_acquire = instr->Bit(22) == 1;
+  bool is_release = instr->Bit(15) == 1;
+
+  T comparevalue_high = reg<T>(rs + 1);
+  T comparevalue_low = reg<T>(rs);
+  T newvalue_high = reg<T>(rt + 1);
+  T newvalue_low = reg<T>(rt);
+
+  // The architecture permits that the data read clears any exclusive monitors
+  // associated with that location, even if the compare subsequently fails.
+  local_monitor_.NotifyLoad();
+
+  T data_low = MemoryRead<T>(address);
+  T data_high = MemoryRead<T>(address2);
+
+  if (is_acquire) {
+    // Approximate load-acquire by issuing a full barrier after the load.
+    __sync_synchronize();
+  }
+
+  bool same =
+      (data_high == comparevalue_high) && (data_low == comparevalue_low);
+  if (same) {
+    base::MutexGuard lock_guard(&GlobalMonitor::Get()->mutex);
+
+    if (is_release) {
+      local_monitor_.NotifyStore();
+      GlobalMonitor::Get()->NotifyStore_Locked(&global_monitor_processor_);
+      // Approximate store-release by issuing a full barrier before the store.
+      __sync_synchronize();
+    }
+
+    MemoryWrite<T>(address, newvalue_low);
+    MemoryWrite<T>(address2, newvalue_high);
+  }
+
+  set_reg<T>(rs + 1, data_high);
+  set_reg<T>(rs, data_low);
+
+  PrintRegisterFormat format = GetPrintRegisterFormatForSize(element_size);
+  LogRead(address, rs, format);
+  LogRead(address2, rs + 1, format);
+
+  if (same) {
+    LogWrite(address, rt, format);
+    LogWrite(address2, rt + 1, format);
+  }
+}
+
+template <typename T>
+void Simulator::AtomicMemorySimpleHelper(const Instruction* instr) {
+  unsigned rs = instr->Rs();
+  unsigned rt = instr->Rt();
+  unsigned rn = instr->Rn();
+
+  bool is_acquire = (instr->Bit(23) == 1) && (rt != kZeroRegCode);
+  bool is_release = instr->Bit(22) == 1;
+
+  unsigned element_size = sizeof(T);
+  uint64_t address = xreg(rn, Reg31IsStackPointer);
+  DCHECK_EQ(address % element_size, 0);
+
+  // First, check whether the memory is accessible (for wasm trap handling).
+  if (!ProbeMemory(address, element_size)) return;
+
+  local_monitor_.NotifyLoad();
+
+  T value = reg<T>(rs);
+
+  T data = MemoryRead<T>(address);
+
+  if (is_acquire) {
+    // Approximate load-acquire by issuing a full barrier after the load.
+    __sync_synchronize();
+  }
+
+  T result = 0;
+  switch (instr->Mask(AtomicMemorySimpleOpMask)) {
+    case LDADDOp:
+      result = data + value;
+      break;
+    case LDCLROp:
+      DCHECK(!std::numeric_limits<T>::is_signed);
+      result = data & ~value;
+      break;
+    case LDEOROp:
+      DCHECK(!std::numeric_limits<T>::is_signed);
+      result = data ^ value;
+      break;
+    case LDSETOp:
+      DCHECK(!std::numeric_limits<T>::is_signed);
+      result = data | value;
+      break;
+
+    // Signed/Unsigned difference is done via the templated type T.
+    case LDSMAXOp:
+    case LDUMAXOp:
+      result = (data > value) ? data : value;
+      break;
+    case LDSMINOp:
+    case LDUMINOp:
+      result = (data > value) ? value : data;
+      break;
+  }
+
+  if (is_release) {
+    base::MutexGuard lock_guard(&GlobalMonitor::Get()->mutex);
+    local_monitor_.NotifyStore();
+    GlobalMonitor::Get()->NotifyStore_Locked(&global_monitor_processor_);
+    // Approximate store-release by issuing a full barrier before the store.
+    __sync_synchronize();
+  }
+
+  MemoryWrite<T>(address, result);
+  set_reg<T>(rt, data);
+
+  PrintRegisterFormat format = GetPrintRegisterFormatForSize(element_size);
+  LogRead(address, rt, format);
+  LogWrite(address, rs, format);
+}
+
+template <typename T>
+void Simulator::AtomicMemorySwapHelper(const Instruction* instr) {
+  unsigned rs = instr->Rs();
+  unsigned rt = instr->Rt();
+  unsigned rn = instr->Rn();
+
+  bool is_acquire = (instr->Bit(23) == 1) && (rt != kZeroRegCode);
+  bool is_release = instr->Bit(22) == 1;
+
+  unsigned element_size = sizeof(T);
+  uint64_t address = xreg(rn, Reg31IsStackPointer);
+
+  // First, check whether the memory is accessible (for wasm trap handling).
+  if (!ProbeMemory(address, element_size)) return;
+
+  local_monitor_.NotifyLoad();
+
+  T data = MemoryRead<T>(address);
+  if (is_acquire) {
+    // Approximate load-acquire by issuing a full barrier after the load.
+    __sync_synchronize();
+  }
+
+  if (is_release) {
+    base::MutexGuard lock_guard(&GlobalMonitor::Get()->mutex);
+    local_monitor_.NotifyStore();
+    GlobalMonitor::Get()->NotifyStore_Locked(&global_monitor_processor_);
+    // Approximate store-release by issuing a full barrier before the store.
+    __sync_synchronize();
+  }
+  MemoryWrite<T>(address, reg<T>(rs));
+
+  set_reg<T>(rt, data);
+
+  PrintRegisterFormat format = GetPrintRegisterFormatForSize(element_size);
+  LogRead(address, rt, format);
+  LogWrite(address, rs, format);
+}
+
+#define ATOMIC_MEMORY_SIMPLE_UINT_LIST(V) \
+  V(LDADD)                                \
+  V(LDCLR)                                \
+  V(LDEOR)                                \
+  V(LDSET)                                \
+  V(LDUMAX)                               \
+  V(LDUMIN)
+
+#define ATOMIC_MEMORY_SIMPLE_INT_LIST(V) \
+  V(LDSMAX)                              \
+  V(LDSMIN)
+
+void Simulator::VisitAtomicMemory(Instruction* instr) {
+  switch (instr->Mask(AtomicMemoryMask)) {
+// clang-format off
+#define SIM_FUNC_B(A) \
+    case A##B:        \
+    case A##AB:       \
+    case A##LB:       \
+    case A##ALB:
+#define SIM_FUNC_H(A) \
+    case A##H:        \
+    case A##AH:       \
+    case A##LH:       \
+    case A##ALH:
+#define SIM_FUNC_w(A) \
+    case A##_w:       \
+    case A##A_w:      \
+    case A##L_w:      \
+    case A##AL_w:
+#define SIM_FUNC_x(A) \
+    case A##_x:       \
+    case A##A_x:      \
+    case A##L_x:      \
+    case A##AL_x:
+
+    ATOMIC_MEMORY_SIMPLE_UINT_LIST(SIM_FUNC_B)
+      AtomicMemorySimpleHelper<uint8_t>(instr);
+      break;
+    ATOMIC_MEMORY_SIMPLE_INT_LIST(SIM_FUNC_B)
+      AtomicMemorySimpleHelper<int8_t>(instr);
+      break;
+    ATOMIC_MEMORY_SIMPLE_UINT_LIST(SIM_FUNC_H)
+      AtomicMemorySimpleHelper<uint16_t>(instr);
+      break;
+    ATOMIC_MEMORY_SIMPLE_INT_LIST(SIM_FUNC_H)
+      AtomicMemorySimpleHelper<int16_t>(instr);
+      break;
+    ATOMIC_MEMORY_SIMPLE_UINT_LIST(SIM_FUNC_w)
+      AtomicMemorySimpleHelper<uint32_t>(instr);
+      break;
+    ATOMIC_MEMORY_SIMPLE_INT_LIST(SIM_FUNC_w)
+      AtomicMemorySimpleHelper<int32_t>(instr);
+      break;
+    ATOMIC_MEMORY_SIMPLE_UINT_LIST(SIM_FUNC_x)
+      AtomicMemorySimpleHelper<uint64_t>(instr);
+      break;
+    ATOMIC_MEMORY_SIMPLE_INT_LIST(SIM_FUNC_x)
+      AtomicMemorySimpleHelper<int64_t>(instr);
+      break;
+      // clang-format on
+
+    case SWPB:
+    case SWPAB:
+    case SWPLB:
+    case SWPALB:
+      AtomicMemorySwapHelper<uint8_t>(instr);
+      break;
+    case SWPH:
+    case SWPAH:
+    case SWPLH:
+    case SWPALH:
+      AtomicMemorySwapHelper<uint16_t>(instr);
+      break;
+    case SWP_w:
+    case SWPA_w:
+    case SWPL_w:
+    case SWPAL_w:
+      AtomicMemorySwapHelper<uint32_t>(instr);
+      break;
+    case SWP_x:
+    case SWPA_x:
+    case SWPL_x:
+    case SWPAL_x:
+      AtomicMemorySwapHelper<uint64_t>(instr);
+      break;
   }
 }
 
@@ -2691,27 +3053,6 @@ void Simulator::VisitDataProcessing2Source(Instruction* instr) {
   }
 }
 
-// The algorithm used is described in section 8.2 of
-//   Hacker's Delight, by Henry S. Warren, Jr.
-// It assumes that a right shift on a signed integer is an arithmetic shift.
-static int64_t MultiplyHighSigned(int64_t u, int64_t v) {
-  uint64_t u0, v0, w0;
-  int64_t u1, v1, w1, w2, t;
-
-  u0 = u & 0xFFFFFFFFLL;
-  u1 = u >> 32;
-  v0 = v & 0xFFFFFFFFLL;
-  v1 = v >> 32;
-
-  w0 = u0 * v0;
-  t = u1 * v0 + (w0 >> 32);
-  w1 = t & 0xFFFFFFFFLL;
-  w2 = t >> 32;
-  w1 = u0 * v1 + w1;
-
-  return u1 * v1 + w2 + (w1 >> 32);
-}
-
 void Simulator::VisitDataProcessing3Source(Instruction* instr) {
   int64_t result = 0;
   // Extract and sign- or zero-extend 32-bit arguments for widening operations.
@@ -2746,7 +3087,13 @@ void Simulator::VisitDataProcessing3Source(Instruction* instr) {
       break;
     case SMULH_x:
       DCHECK_EQ(instr->Ra(), kZeroRegCode);
-      result = MultiplyHighSigned(xreg(instr->Rn()), xreg(instr->Rm()));
+      result =
+          base::bits::SignedMulHigh64(xreg(instr->Rn()), xreg(instr->Rm()));
+      break;
+    case UMULH_x:
+      DCHECK_EQ(instr->Ra(), kZeroRegCode);
+      result =
+          base::bits::UnsignedMulHigh64(xreg(instr->Rn()), xreg(instr->Rm()));
       break;
     default:
       UNIMPLEMENTED();
@@ -3453,7 +3800,7 @@ bool Simulator::PrintValue(const char* desc) {
   if (desc[0] == 'v') {
     PrintF(stream_, "%s %s:%s 0x%016" PRIx64 "%s (%s%s:%s %g%s %s:%s %g%s)\n",
            clr_vreg_name, VRegNameForCode(i), clr_vreg_value,
-           bit_cast<uint64_t>(dreg(i)), clr_normal, clr_vreg_name,
+           base::bit_cast<uint64_t>(dreg(i)), clr_normal, clr_vreg_name,
            DRegNameForCode(i), clr_vreg_value, dreg(i), clr_vreg_name,
            SRegNameForCode(i), clr_vreg_value, sreg(i), clr_normal);
     return true;
@@ -3479,6 +3826,10 @@ bool Simulator::PrintValue(const char* desc) {
 }
 
 void Simulator::Debug() {
+  if (v8_flags.correctness_fuzzer_suppressions) {
+    PrintF("Debugger disabled for differential fuzzing.\n");
+    return;
+  }
   bool done = false;
   while (!done) {
     // Disassemble the next instruction to execute before doing anything else.
@@ -3832,7 +4183,8 @@ void Simulator::VisitException(Instruction* instr) {
         // Always print something when we hit a debug point that breaks.
         // We are going to break, so printing something is not an issue in
         // terms of speed.
-        if (FLAG_trace_sim_messages || FLAG_trace_sim || (parameters & BREAK)) {
+        if (v8_flags.trace_sim_messages || v8_flags.trace_sim ||
+            (parameters & BREAK)) {
           if (message != nullptr) {
             PrintF(stream_, "# %sDebugger hit %d: %s%s%s\n", clr_debug_number,
                    code, clr_debug_message, message, clr_normal);
@@ -5273,10 +5625,10 @@ void Simulator::VisitNEONModifiedImmediate(Instruction* instr) {
       } else {  // cmode_0 == 1, cmode == 0xF.
         if (op_bit == 0) {
           vform = q ? kFormat4S : kFormat2S;
-          imm = bit_cast<uint32_t>(instr->ImmNEONFP32());
+          imm = base::bit_cast<uint32_t>(instr->ImmNEONFP32());
         } else if (q == 1) {
           vform = kFormat2D;
-          imm = bit_cast<uint64_t>(instr->ImmNEONFP64());
+          imm = base::bit_cast<uint64_t>(instr->ImmNEONFP64());
         } else {
           DCHECK((q == 0) && (op_bit == 1) && (cmode == 0xF));
           VisitUnallocated(instr);
@@ -6050,7 +6402,7 @@ void Simulator::DoPrintf(Instruction* instr) {
   // Read the arguments encoded inline in the instruction stream.
   uint32_t arg_count;
   uint32_t arg_pattern_list;
-  STATIC_ASSERT(sizeof(*instr) == 1);
+  static_assert(sizeof(*instr) == 1);
   memcpy(&arg_count, instr + kPrintfArgCountOffset, sizeof(arg_count));
   memcpy(&arg_pattern_list, instr + kPrintfArgPatternListOffset,
          sizeof(arg_pattern_list));

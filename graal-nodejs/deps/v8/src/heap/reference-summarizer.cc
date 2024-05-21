@@ -48,13 +48,11 @@ class ReferenceSummarizerMarkingState final {
 
   // Standard marking visitor functions:
 
-  bool IsWhite(HeapObject obj) const { return true; }
-
+  bool GreyToBlack(HeapObject obj) { return true; }
   bool IsBlackOrGrey(HeapObject obj) const { return false; }
 
-  bool WhiteToGrey(HeapObject obj) { return true; }
-
-  bool GreyToBlack(HeapObject obj) { return true; }
+  bool TryMark(HeapObject obj) { return true; }
+  bool IsUnmarked(HeapObject obj) const { return true; }
 
   // Adds a retaining relationship found by the marking visitor.
   void AddStrongReferenceForReferenceSummarizer(HeapObject host,
@@ -77,9 +75,8 @@ class ReferenceSummarizerMarkingState final {
   WeakObjects::Local* local_weak_objects() { return &local_weak_objects_; }
 
  private:
-  void AddReference(
-      HeapObject host, HeapObject obj,
-      std::unordered_set<HeapObject, Object::Hasher>& references) {
+  void AddReference(HeapObject host, HeapObject obj,
+                    ReferenceSummary::UnorderedHeapObjectSet& references) {
     // It's possible that the marking visitor handles multiple objects at once,
     // such as a Map and its DescriptorArray, but we're only interested in
     // references from the primary object.

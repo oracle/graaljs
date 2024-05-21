@@ -18,10 +18,9 @@
 #include "src/handles/handles.h"
 
 namespace v8 {
+class Value;
+
 namespace internal {
-namespace wasm {
-class WasmCode;
-}  // namespace wasm
 
 // Forward declarations.
 class AbstractCode;
@@ -123,11 +122,11 @@ class MessageFormatter {
  public:
   V8_EXPORT_PRIVATE static const char* TemplateString(MessageTemplate index);
 
-  V8_EXPORT_PRIVATE static MaybeHandle<String> Format(Isolate* isolate,
-                                                      MessageTemplate index,
-                                                      Handle<String> arg0,
-                                                      Handle<String> arg1,
-                                                      Handle<String> arg2);
+  V8_EXPORT_PRIVATE static MaybeHandle<String> TryFormat(Isolate* isolate,
+                                                         MessageTemplate index,
+                                                         Handle<String> arg0,
+                                                         Handle<String> arg1,
+                                                         Handle<String> arg2);
 
   static Handle<String> Format(Isolate* isolate, MessageTemplate index,
                                Handle<Object> arg0,

@@ -80,7 +80,7 @@ class TestCase(testcase.D8TestCase):
       ]
     ]
 
-    if self._test_config.isolates:
+    if self.test_config.isolates:
       files += ['--isolate'] + files
     return files
 
@@ -92,7 +92,3 @@ class TestCase(testcase.D8TestCase):
 
   def _get_source_path(self):
     return os.path.join(self.suite.root, self.path + self._get_suffix())
-
-
-def GetSuite(*args, **kwargs):
-  return TestSuite(*args, **kwargs)

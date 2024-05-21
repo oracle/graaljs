@@ -10,6 +10,7 @@
 * [Running benchmarks](#running-benchmarks)
   * [Running individual benchmarks](#running-individual-benchmarks)
   * [Running all benchmarks](#running-all-benchmarks)
+  * [Specifying CPU Cores for Benchmarks with run.js](#specifying-cpu-cores-for-benchmarks-with-runjs)
   * [Filtering benchmarks](#filtering-benchmarks)
   * [Comparing Node.js versions](#comparing-nodejs-versions)
   * [Comparing parameters](#comparing-parameters)
@@ -159,9 +160,36 @@ assert/deepequal-object.js method="notDeepEqual" strict=0 size=100 n=5000: 9,734
 
 It is possible to execute more groups by adding extra process arguments.
 
-```console
-$ node benchmark/run.js assert async_hooks
+```bash
+node benchmark/run.js assert async_hooks
 ```
+
+#### Specifying CPU Cores for Benchmarks with run.js
+
+When using `run.js` to execute a group of benchmarks,
+you can specify on which CPU cores the
+benchmarks should execute
+by using the `--set CPUSET=value` option.
+This controls the CPU core
+affinity for the benchmark process,
+potentially reducing
+interference from other processes and allowing
+for performance
+testing under specific hardware configurations.
+
+The `CPUSET` option utilizes the `taskset` command's format
+for setting CPU affinity, where `value` can be a single core
+number or a range of cores.
+
+Examples:
+
+* `node benchmark/run.js --set CPUSET=0` ... runs benchmarks on CPU core 0.
+* `node benchmark/run.js --set CPUSET=0-2` ...
+  specifies that benchmarks should run on CPU cores 0 to 2.
+
+Note: This option is only applicable when using `run.js`.
+Ensure the `taskset` command is available on your system
+and the specified `CPUSET` format matches its requirements.
 
 #### Filtering benchmarks
 
@@ -263,20 +291,20 @@ First build two versions of Node.js, one from the `main` branch (here called
 To run multiple compiled versions in parallel you need to copy the output of the
 build: `cp ./out/Release/node ./node-main`. Check out the following example:
 
-```console
-$ git checkout main
-$ ./configure && make -j4
-$ cp ./out/Release/node ./node-main
+```bash
+git checkout main
+./configure && make -j4
+cp ./out/Release/node ./node-main
 
-$ git checkout pr-5134
-$ ./configure && make -j4
-$ cp ./out/Release/node ./node-pr-5134
+git checkout pr-5134
+./configure && make -j4
+cp ./out/Release/node ./node-pr-5134
 ```
 
 The `compare.js` tool will then produce a csv file with the benchmark results.
 
-```console
-$ node benchmark/compare.js --old ./node-main --new ./node-pr-5134 string_decoder > compare-pr-5134.csv
+```bash
+node benchmark/compare.js --old ./node-main --new ./node-pr-5134 string_decoder > compare-pr-5134.csv
 ```
 
 _Tips: there are some useful options of `benchmark/compare.js`. For example,
@@ -288,8 +316,16 @@ module, you can use the `--filter` option:_
   --old      ./old-node-binary  old node binary (required)
   --runs     30                 number of samples
   --filter   pattern            string to filter benchmark scripts
+  --exclude  pattern            excludes scripts matching <pattern> (can be
+                                repeated)
   --set      variable=value     set benchmark variable (can be repeated)
   --no-progress                 don't show benchmark progress indicator
+
+    Examples:
+    --set CPUSET=0            Runs benchmarks on CPU core 0.
+    --set CPUSET=0-2          Specifies that benchmarks should run on CPU cores 0 to 2.
+
+  Note: The CPUSET format should match the specifications of the 'taskset' command
 ```
 
 For analyzing the benchmark results, use [node-benchmark-compare][] or the R
@@ -361,8 +397,8 @@ To do this use the `scatter.js` tool, this will run a benchmark multiple times
 and generate a csv with the results. To see how to use this script,
 run `node benchmark/scatter.js`.
 
-```console
-$ node benchmark/scatter.js benchmark/string_decoder/string-decoder.js > scatter.csv
+```bash
+node benchmark/scatter.js benchmark/string_decoder/string-decoder.js > scatter.csv
 ```
 
 After generating the csv, a comparison table can be created using the

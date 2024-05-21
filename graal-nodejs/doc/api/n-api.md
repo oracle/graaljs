@@ -252,11 +252,32 @@ experimental and stable APIs.
 
 ## Node-API version matrix
 
-Node-API versions are additive and versioned independently from Node.js.
-Version 4 is an extension to version 3 in that it has all of the APIs
-from version 3 with some additions. This means that it is not necessary
-to recompile for new versions of Node.js which are
-listed as supporting a later version.
+Up until version 9, Node-API versions were additive and versioned
+independently from Node.js. This meant that any version was
+an extension to the previous version in that it had all of
+the APIs from the previous version with some additions. Each
+Node.js version only supported a single Node-API version.
+For example v18.15.0 supports only Node-API version 8. ABI stability was
+achieved because 8 was a strict superset of all previous versions.
+
+As of version 9, while Node-API versions continue to be versioned
+independently an add-on that ran with Node-API version 9 may need
+code updates to run with Node-API version 10. ABI stability
+is maintained, however, because Node.js versions that support
+Node-API versions higher than 8 will support all versions
+between 8 and the highest version they support and will default
+to providing the version 8 APIs unless an add-on opts into a
+higher Node-API version. This approach provides the flexibility
+of better optimizing existing Node-API functions while
+maintaining ABI stability. Existing add-ons can continue to run without
+recompilation using an earlier version of Node-API. If an add-on
+needs functionality from a newer Node-API version, changes to existing
+code and recompilation will be needed to use those new functions anyway.
+
+In versions of Node.js that support Node-API version 9 and later, defining
+`NAPI_VERSION=X` and using the existing add-on initialization macros
+will bake in the requested Node-API version that will be used at runtime
+into the add-on. If `NAPI_VERSION` is not set it will default to 8.
 
 This table may not be up to date in older streams, the most up to date
 information is in the latest API documentation in:
@@ -773,7 +794,7 @@ handle and/or callback scope inside a `napi_callback` is not necessary.
 #### `node_api_nogc_finalize`
 
 <!-- YAML
-added: v18.20.0
+added: v20.12.0
 -->
 
 > Stability: 1 - Experimental
@@ -930,7 +951,9 @@ handle and/or callback scope inside the function body is not necessary.
 #### `napi_cleanup_hook`
 
 <!-- YAML
-added: v18.13.0
+added:
+  - v19.2.0
+  - v18.13.0
 napiVersion: 3
 -->
 
@@ -2192,9 +2215,9 @@ typedef enum {
 } napi_key_conversion;
 ```
 
-`napi_key_numbers_to_strings` will convert integer indices to
+`napi_key_numbers_to_strings` will convert integer indexes to
 strings. `napi_key_keep_numbers` will return numbers for integer
-indices.
+indexes.
 
 #### `napi_valuetype`
 
@@ -2603,7 +2626,9 @@ of the ECMAScript Language Specification.
 #### `node_api_symbol_for`
 
 <!-- YAML
-added: v17.5.0
+added:
+  - v17.5.0
+  - v16.15.0
 napiVersion: 9
 -->
 
@@ -2903,7 +2928,7 @@ The JavaScript `string` type is described in
 #### `node_api_create_external_string_latin1`
 
 <!-- YAML
-added: v18.18.0
+added: v20.4.0
 -->
 
 > Stability: 1 - Experimental
@@ -2981,7 +3006,7 @@ The JavaScript `string` type is described in
 #### `node_api_create_external_string_utf16`
 
 <!-- YAML
-added: v18.18.0
+added: v20.4.0
 -->
 
 > Stability: 1 - Experimental
@@ -3052,6 +3077,50 @@ Returns `napi_ok` if the API succeeded.
 
 This API creates a JavaScript `string` value from a UTF8-encoded C string.
 The native string is copied.
+
+The JavaScript `string` type is described in
+[Section 6.1.4][] of the ECMAScript Language Specification.
+
+#### `node_api_create_property_key_utf16`
+
+<!-- YAML
+added: v20.12.0
+-->
+
+> Stability: 1 - Experimental
+
+```c
+napi_status NAPI_CDECL node_api_create_property_key_utf16(napi_env env,
+                                                          const char16_t* str,
+                                                          size_t length,
+                                                          napi_value* result);
+```
+
+* `[in] env`: The environment that the API is invoked under.
+* `[in] str`: Character buffer representing a UTF16-LE-encoded string.
+* `[in] length`: The length of the string in two-byte code units, or
+  `NAPI_AUTO_LENGTH` if it is null-terminated.
+* `[out] result`: A `napi_value` representing an optimized JavaScript `string`
+  to be used as a property key for objects.
+
+Returns `napi_ok` if the API succeeded.
+
+This API creates an optimized JavaScript `string` value from
+a UTF16-LE-encoded C string to be used as a property key for objects.
+The native string is copied.
+
+Many JavaScript engines including V8 use internalized strings as keys
+to set and get property values. They typically use a hash table to create
+and lookup such strings. While it adds some cost per key creation, it improves
+the performance after that by enabling comparison of string pointers instead
+of the whole strings.
+
+If a new JavaScript string is intended to be used as a property key, then for
+some JavaScript engines it will be more efficient to use
+the `node_api_create_property_key_utf16` function.
+Otherwise, use the `napi_create_string_utf16` or
+`node_api_create_external_string_utf16` functions as there may be additional
+overhead in creating/storing strings with this method.
 
 The JavaScript `string` type is described in
 [Section 6.1.4][] of the ECMAScript Language Specification.
@@ -5487,7 +5556,7 @@ required in order to enable correct disposal of the reference.
 #### `node_api_post_finalizer`
 
 <!-- YAML
-added: v18.19.0
+added: v20.10.0
 -->
 
 > Stability: 1 - Experimental
@@ -6583,7 +6652,7 @@ the add-on's file name during loading.
 [`Number.MIN_SAFE_INTEGER`]: https://tc39.github.io/ecma262/#sec-number.min_safe_integer
 [`Worker`]: worker_threads.md#class-worker
 [`async_hooks.executionAsyncResource()`]: async_hooks.md#async_hooksexecutionasyncresource
-[`build_with_cmake`]: https://github.com/nodejs/node-addon-examples/tree/main/build_with_cmake
+[`build_with_cmake`]: https://github.com/nodejs/node-addon-examples/tree/main/src/8-tooling/build_with_cmake
 [`global`]: globals.md#global
 [`init` hooks]: async_hooks.md#initasyncid-type-triggerasyncid-resource
 [`napi_add_async_cleanup_hook`]: #napi_add_async_cleanup_hook

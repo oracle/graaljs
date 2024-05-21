@@ -5,10 +5,10 @@
 #ifndef V8_CODEGEN_X64_ASSEMBLER_X64_INL_H_
 #define V8_CODEGEN_X64_ASSEMBLER_X64_INL_H_
 
-#include "src/codegen/x64/assembler-x64.h"
-
 #include "src/base/cpu.h"
 #include "src/base/memory.h"
+#include "src/codegen/flush-instruction-cache.h"
+#include "src/codegen/x64/assembler-x64.h"
 #include "src/debug/debug.h"
 #include "src/objects/objects-inl.h"
 
@@ -19,44 +19,6 @@ bool CpuFeatures::SupportsOptimizer() { return true; }
 
 // -----------------------------------------------------------------------------
 // Implementation of Assembler
-
-void Assembler::emitl(uint32_t x) {
-  WriteUnalignedValue(reinterpret_cast<Address>(pc_), x);
-  pc_ += sizeof(uint32_t);
-}
-
-void Assembler::emitq(uint64_t x) {
-  WriteUnalignedValue(reinterpret_cast<Address>(pc_), x);
-  pc_ += sizeof(uint64_t);
-}
-
-void Assembler::emitw(uint16_t x) {
-  WriteUnalignedValue(reinterpret_cast<Address>(pc_), x);
-  pc_ += sizeof(uint16_t);
-}
-
-// TODO(ishell): Rename accordingly once RUNTIME_ENTRY is renamed.
-void Assembler::emit_runtime_entry(Address entry, RelocInfo::Mode rmode) {
-  DCHECK(RelocInfo::IsRuntimeEntry(rmode));
-  DCHECK_NE(options().code_range_base, 0);
-  RecordRelocInfo(rmode);
-  uint32_t offset = static_cast<uint32_t>(entry - options().code_range_base);
-  emitl(offset);
-}
-
-void Assembler::emit(Immediate x) {
-  if (!RelocInfo::IsNoInfo(x.rmode_)) {
-    RecordRelocInfo(x.rmode_);
-  }
-  emitl(x.value_);
-}
-
-void Assembler::emit(Immediate64 x) {
-  if (!RelocInfo::IsNoInfo(x.rmode_)) {
-    RecordRelocInfo(x.rmode_);
-  }
-  emitq(static_cast<uint64_t>(x.value_));
-}
 
 void Assembler::emit_rex_64(Register reg, Register rm_reg) {
   emit(0x48 | reg.high_bit() << 2 | rm_reg.high_bit());
@@ -75,11 +37,11 @@ void Assembler::emit_rex_64(XMMRegister reg, XMMRegister rm_reg) {
 }
 
 void Assembler::emit_rex_64(Register reg, Operand op) {
-  emit(0x48 | reg.high_bit() << 2 | op.data().rex);
+  emit(0x48 | reg.high_bit() << 2 | op.rex());
 }
 
 void Assembler::emit_rex_64(XMMRegister reg, Operand op) {
-  emit(0x48 | (reg.code() & 0x8) >> 1 | op.data().rex);
+  emit(0x48 | (reg.code() & 0x8) >> 1 | op.rex());
 }
 
 void Assembler::emit_rex_64(Register rm_reg) {
@@ -87,19 +49,19 @@ void Assembler::emit_rex_64(Register rm_reg) {
   emit(0x48 | rm_reg.high_bit());
 }
 
-void Assembler::emit_rex_64(Operand op) { emit(0x48 | op.data().rex); }
+void Assembler::emit_rex_64(Operand op) { emit(0x48 | op.rex()); }
 
 void Assembler::emit_rex_32(Register reg, Register rm_reg) {
   emit(0x40 | reg.high_bit() << 2 | rm_reg.high_bit());
 }
 
 void Assembler::emit_rex_32(Register reg, Operand op) {
-  emit(0x40 | reg.high_bit() << 2 | op.data().rex);
+  emit(0x40 | reg.high_bit() << 2 | op.rex());
 }
 
 void Assembler::emit_rex_32(Register rm_reg) { emit(0x40 | rm_reg.high_bit()); }
 
-void Assembler::emit_rex_32(Operand op) { emit(0x40 | op.data().rex); }
+void Assembler::emit_rex_32(Operand op) { emit(0x40 | op.rex()); }
 
 void Assembler::emit_optional_rex_32(Register reg, Register rm_reg) {
   byte rex_bits = reg.high_bit() << 2 | rm_reg.high_bit();
@@ -107,12 +69,12 @@ void Assembler::emit_optional_rex_32(Register reg, Register rm_reg) {
 }
 
 void Assembler::emit_optional_rex_32(Register reg, Operand op) {
-  byte rex_bits = reg.high_bit() << 2 | op.data().rex;
+  byte rex_bits = reg.high_bit() << 2 | op.rex();
   if (rex_bits != 0) emit(0x40 | rex_bits);
 }
 
 void Assembler::emit_optional_rex_32(XMMRegister reg, Operand op) {
-  byte rex_bits = (reg.code() & 0x8) >> 1 | op.data().rex;
+  byte rex_bits = (reg.code() & 0x8) >> 1 | op.rex();
   if (rex_bits != 0) emit(0x40 | rex_bits);
 }
 
@@ -140,7 +102,7 @@ void Assembler::emit_optional_rex_32(XMMRegister rm_reg) {
 }
 
 void Assembler::emit_optional_rex_32(Operand op) {
-  if (op.data().rex != 0) emit(0x40 | op.data().rex);
+  if (op.rex() != 0) emit(0x40 | op.rex());
 }
 
 void Assembler::emit_optional_rex_8(Register reg) {
@@ -168,7 +130,7 @@ void Assembler::emit_vex3_byte1(XMMRegister reg, XMMRegister rm,
 
 // byte 1 of 3-byte VEX
 void Assembler::emit_vex3_byte1(XMMRegister reg, Operand rm, LeadingOpcode m) {
-  byte rxb = static_cast<byte>(~((reg.high_bit() << 2) | rm.data().rex)) << 5;
+  byte rxb = static_cast<byte>(~((reg.high_bit() << 2) | rm.rex())) << 5;
   emit(rxb | m);
 }
 
@@ -210,7 +172,7 @@ void Assembler::emit_vex_prefix(Register reg, Register vreg, Register rm,
 void Assembler::emit_vex_prefix(XMMRegister reg, XMMRegister vreg, Operand rm,
                                 VectorLength l, SIMDPrefix pp, LeadingOpcode mm,
                                 VexW w) {
-  if (rm.data().rex || mm != k0F || w != kW0) {
+  if (rm.rex() || mm != k0F || w != kW0) {
     emit_vex3_byte0();
     emit_vex3_byte1(reg, rm, mm);
     emit_vex3_byte2(w, vreg, l, pp);
@@ -264,7 +226,7 @@ int Assembler::deserialization_special_target_size(
   return kSpecialTargetSize;
 }
 
-Handle<CodeT> Assembler::code_target_object_handle_at(Address pc) {
+Handle<Code> Assembler::code_target_object_handle_at(Address pc) {
   return GetCodeTarget(ReadUnalignedValue<int32_t>(pc));
 }
 
@@ -272,8 +234,10 @@ Handle<HeapObject> Assembler::compressed_embedded_object_handle_at(Address pc) {
   return GetEmbeddedObject(ReadUnalignedValue<uint32_t>(pc));
 }
 
-Address Assembler::runtime_entry_at(Address pc) {
-  return ReadUnalignedValue<int32_t>(pc) + options().code_range_base;
+Builtin Assembler::target_builtin_at(Address pc) {
+  int32_t builtin_id = ReadUnalignedValue<int32_t>(pc);
+  DCHECK(Builtins::IsBuiltinId(builtin_id));
+  return static_cast<Builtin>(builtin_id);
 }
 
 // -----------------------------------------------------------------------------
@@ -281,7 +245,8 @@ Address Assembler::runtime_entry_at(Address pc) {
 
 // The modes possibly affected by apply must be in kApplyMask.
 void RelocInfo::apply(intptr_t delta) {
-  if (IsCodeTarget(rmode_) || IsRuntimeEntry(rmode_)) {
+  if (IsCodeTarget(rmode_) || IsNearBuiltinEntry(rmode_) ||
+      IsWasmStubCall(rmode_)) {
     WriteUnalignedValue(
         pc_, ReadUnalignedValue<int32_t>(pc_) - static_cast<int32_t>(delta));
   } else if (IsInternalReference(rmode_)) {
@@ -291,15 +256,15 @@ void RelocInfo::apply(intptr_t delta) {
 }
 
 Address RelocInfo::target_address() {
-  DCHECK(IsCodeTarget(rmode_) || IsRuntimeEntry(rmode_) || IsWasmCall(rmode_));
+  DCHECK(IsCodeTarget(rmode_) || IsNearBuiltinEntry(rmode_) ||
+         IsWasmCall(rmode_) || IsWasmStubCall(rmode_));
   return Assembler::target_address_at(pc_, constant_pool_);
 }
 
 Address RelocInfo::target_address_address() {
-  DCHECK(IsCodeTarget(rmode_) || IsRuntimeEntry(rmode_) || IsWasmCall(rmode_) ||
-         IsWasmStubCall(rmode_) || IsFullEmbeddedObject(rmode_) ||
-         IsCompressedEmbeddedObject(rmode_) || IsExternalReference(rmode_) ||
-         IsOffHeapTarget(rmode_));
+  DCHECK(IsCodeTarget(rmode_) || IsWasmCall(rmode_) || IsWasmStubCall(rmode_) ||
+         IsFullEmbeddedObject(rmode_) || IsCompressedEmbeddedObject(rmode_) ||
+         IsExternalReference(rmode_) || IsOffHeapTarget(rmode_));
   return pc_;
 }
 
@@ -319,14 +284,16 @@ HeapObject RelocInfo::target_object(PtrComprCageBase cage_base) {
   if (IsCompressedEmbeddedObject(rmode_)) {
     Tagged_t compressed = ReadUnalignedValue<Tagged_t>(pc_);
     DCHECK(!HAS_SMI_TAG(compressed));
-    Object obj(DecompressTaggedPointer(cage_base, compressed));
-    // Embedding of compressed Code objects must not happen when external code
-    // space is enabled, because CodeDataContainers must be used instead.
+    Object obj(
+        V8HeapCompressionScheme::DecompressTagged(cage_base, compressed));
+    // Embedding of compressed InstructionStream objects must not happen when
+    // external code space is enabled, because Codes must be used
+    // instead.
     DCHECK_IMPLIES(V8_EXTERNAL_CODE_SPACE_BOOL,
                    !IsCodeSpaceObject(HeapObject::cast(obj)));
     return HeapObject::cast(obj);
   }
-  DCHECK(IsFullEmbeddedObject(rmode_) || IsDataEmbeddedObject(rmode_));
+  DCHECK(IsFullEmbeddedObject(rmode_));
   return HeapObject::cast(Object(ReadUnalignedValue<Address>(pc_)));
 }
 
@@ -338,7 +305,7 @@ Handle<HeapObject> RelocInfo::target_object_handle(Assembler* origin) {
     if (IsCompressedEmbeddedObject(rmode_)) {
       return origin->compressed_embedded_object_handle_at(pc_);
     }
-    DCHECK(IsFullEmbeddedObject(rmode_) || IsDataEmbeddedObject(rmode_));
+    DCHECK(IsFullEmbeddedObject(rmode_));
     return Handle<HeapObject>::cast(ReadUnalignedValue<Handle<Object>>(pc_));
   }
 }
@@ -373,33 +340,23 @@ void RelocInfo::set_target_object(Heap* heap, HeapObject target,
   DCHECK(IsCodeTarget(rmode_) || IsEmbeddedObjectMode(rmode_));
   if (IsCompressedEmbeddedObject(rmode_)) {
     DCHECK(COMPRESS_POINTERS_BOOL);
-    Tagged_t tagged = CompressTagged(target.ptr());
+    Tagged_t tagged = V8HeapCompressionScheme::CompressObject(target.ptr());
     WriteUnalignedValue(pc_, tagged);
   } else {
-    DCHECK(IsFullEmbeddedObject(rmode_) || IsDataEmbeddedObject(rmode_));
+    DCHECK(IsFullEmbeddedObject(rmode_));
     WriteUnalignedValue(pc_, target.ptr());
   }
   if (icache_flush_mode != SKIP_ICACHE_FLUSH) {
     FlushInstructionCache(pc_, sizeof(Address));
   }
-  if (write_barrier_mode == UPDATE_WRITE_BARRIER && !host().is_null() &&
-      !FLAG_disable_write_barriers) {
-    WriteBarrierForCode(host(), this, target);
+  if (!instruction_stream().is_null() && !v8_flags.disable_write_barriers) {
+    WriteBarrierForCode(instruction_stream(), this, target, write_barrier_mode);
   }
 }
 
-Address RelocInfo::target_runtime_entry(Assembler* origin) {
-  DCHECK(IsRuntimeEntry(rmode_));
-  return origin->runtime_entry_at(pc_);
-}
-
-void RelocInfo::set_target_runtime_entry(Address target,
-                                         WriteBarrierMode write_barrier_mode,
-                                         ICacheFlushMode icache_flush_mode) {
-  DCHECK(IsRuntimeEntry(rmode_));
-  if (target_address() != target) {
-    set_target_address(target, write_barrier_mode, icache_flush_mode);
-  }
+Builtin RelocInfo::target_builtin_at(Assembler* origin) {
+  DCHECK(IsNearBuiltinEntry(rmode_));
+  return Assembler::target_builtin_at(pc_);
 }
 
 Address RelocInfo::target_off_heap_target() {
@@ -413,8 +370,9 @@ void RelocInfo::WipeOut() {
     WriteUnalignedValue(pc_, kNullAddress);
   } else if (IsCompressedEmbeddedObject(rmode_)) {
     Address smi_address = Smi::FromInt(0).ptr();
-    WriteUnalignedValue(pc_, CompressTagged(smi_address));
-  } else if (IsCodeTarget(rmode_) || IsRuntimeEntry(rmode_)) {
+    WriteUnalignedValue(pc_,
+                        V8HeapCompressionScheme::CompressObject(smi_address));
+  } else if (IsCodeTarget(rmode_) || IsNearBuiltinEntry(rmode_)) {
     // Effectively write zero into the relocation.
     Assembler::set_target_address_at(pc_, constant_pool_,
                                      pc_ + sizeof(int32_t));

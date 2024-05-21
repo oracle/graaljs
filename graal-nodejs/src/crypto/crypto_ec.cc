@@ -66,7 +66,6 @@ void ECDH::Initialize(Environment* env, Local<Object> target) {
   Local<Context> context = env->context();
 
   Local<FunctionTemplate> t = NewFunctionTemplate(isolate, New);
-  t->Inherit(BaseObject::GetConstructorTemplate(env));
 
   t->InstanceTemplate()->SetInternalFieldCount(ECDH::kInternalFieldCount);
 
@@ -131,8 +130,6 @@ void ECDH::MemoryInfo(MemoryTracker* tracker) const {
   tracker->TrackFieldWithSize("key", key_ ? kSizeOf_EC_KEY : 0);
 }
 
-ECDH::~ECDH() {}
-
 void ECDH::New(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
 
@@ -196,7 +193,7 @@ ECPointPointer ECDH::BufferToPoint(Environment* env,
 void ECDH::ComputeSecret(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
 
-  CHECK(IsAnyByteSource(args[0]));
+  CHECK(IsAnyBufferSource(args[0]));
 
   ECDH* ecdh;
   ASSIGN_OR_RETURN_UNWRAP(&ecdh, args.Holder());
@@ -350,7 +347,7 @@ void ECDH::SetPublicKey(const FunctionCallbackInfo<Value>& args) {
   ECDH* ecdh;
   ASSIGN_OR_RETURN_UNWRAP(&ecdh, args.Holder());
 
-  CHECK(IsAnyByteSource(args[0]));
+  CHECK(IsAnyBufferSource(args[0]));
 
   MarkPopErrorOnReturn mark_pop_error_on_return;
 
@@ -396,7 +393,7 @@ void ECDH::ConvertKey(const FunctionCallbackInfo<Value>& args) {
   Environment* env = Environment::GetCurrent(args);
 
   CHECK_EQ(args.Length(), 3);
-  CHECK(IsAnyByteSource(args[0]));
+  CHECK(IsAnyBufferSource(args[0]));
 
   ArrayBufferOrViewContents<char> args0(args[0]);
   if (UNLIKELY(!args0.CheckSizeInt32()))

@@ -6,7 +6,7 @@ if (!common.hasCrypto)
   common.skip('missing crypto');
 
 const assert = require('assert');
-const { subtle } = require('crypto').webcrypto;
+const { subtle } = globalThis.crypto;
 
 const vectors = require('../fixtures/crypto/ecdsa')();
 
@@ -227,10 +227,11 @@ async function testSign({ name,
 (async function() {
   const variations = [];
 
-  vectors.forEach((vector) => {
+  for (let i = 0; i < vectors.length; ++i) {
+    const vector = vectors[i];
     variations.push(testVerify(vector));
     variations.push(testSign(vector));
-  });
+  }
 
   await Promise.all(variations);
 })().then(common.mustCall());

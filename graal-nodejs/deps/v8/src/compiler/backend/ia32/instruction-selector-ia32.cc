@@ -14,12 +14,11 @@
 #include "src/base/iterator.h"
 #include "src/base/logging.h"
 #include "src/base/macros.h"
-#include "src/base/platform/wrappers.h"
 #include "src/codegen/cpu-features.h"
 #include "src/codegen/ia32/assembler-ia32.h"
 #include "src/codegen/ia32/register-ia32.h"
 #include "src/codegen/machine-type.h"
-#include "src/codegen/turbo-assembler.h"
+#include "src/codegen/macro-assembler-base.h"
 #include "src/common/globals.h"
 #include "src/compiler/backend/instruction-codes.h"
 #include "src/compiler/backend/instruction-selector-impl.h"
@@ -106,7 +105,7 @@ class IA32OperandGenerator final : public OperandGenerator {
         return true;
       case IrOpcode::kNumberConstant: {
         const double value = OpParameter<double>(node->op());
-        return bit_cast<int64_t>(value) == 0;
+        return base::bit_cast<int64_t>(value) == 0;
       }
       case IrOpcode::kHeapConstant: {
 // TODO(bmeurer): We must not dereference handles concurrently. If we
@@ -209,7 +208,7 @@ class IA32OperandGenerator final : public OperandGenerator {
               m.object().ResolvedValue())) {
         ptrdiff_t const delta =
             m.index().ResolvedValue() +
-            TurboAssemblerBase::RootRegisterOffsetForExternalReference(
+            MacroAssemblerBase::RootRegisterOffsetForExternalReference(
                 selector()->isolate(), m.object().ResolvedValue());
         if (is_int32(delta)) {
           inputs[(*input_count)++] = TempImmediate(static_cast<int32_t>(delta));
@@ -220,7 +219,14 @@ class IA32OperandGenerator final : public OperandGenerator {
 
     BaseWithIndexAndDisplacement32Matcher m(node, AddressOption::kAllowAll);
     DCHECK(m.matches());
-    if ((m.displacement() == nullptr || CanBeImmediate(m.displacement()))) {
+    if (m.base() != nullptr &&
+        m.base()->opcode() == IrOpcode::kLoadRootRegister) {
+      DCHECK_EQ(m.index(), nullptr);
+      DCHECK_EQ(m.scale(), 0);
+      inputs[(*input_count)++] = UseImmediate(m.displacement());
+      return kMode_Root;
+    } else if ((m.displacement() == nullptr ||
+                CanBeImmediate(m.displacement()))) {
       return GenerateMemoryOperandInputs(
           m.index(), m.scale(), m.base(), m.displacement(),
           m.displacement_mode(), inputs, input_count, register_mode);
@@ -276,6 +282,7 @@ ArchOpcode GetLoadOpcode(LoadRepresentation load_rep) {
     case MachineRepresentation::kSimd128:
       opcode = kIA32Movdqu;
       break;
+    case MachineRepresentation::kSimd256:            // Fall through.
     case MachineRepresentation::kCompressedPointer:  // Fall through.
     case MachineRepresentation::kCompressed:         // Fall through.
     case MachineRepresentation::kSandboxedPointer:   // Fall through.
@@ -632,6 +639,7 @@ ArchOpcode GetStoreOpcode(MachineRepresentation rep) {
       return kIA32Movl;
     case MachineRepresentation::kSimd128:
       return kIA32Movdqu;
+    case MachineRepresentation::kSimd256:            // Fall through.
     case MachineRepresentation::kCompressedPointer:  // Fall through.
     case MachineRepresentation::kCompressed:         // Fall through.
     case MachineRepresentation::kSandboxedPointer:   // Fall through.
@@ -694,11 +702,12 @@ void VisitStoreCommon(InstructionSelector* selector, Node* node,
   const bool is_seqcst =
       atomic_order && *atomic_order == AtomicMemoryOrder::kSeqCst;
 
-  if (FLAG_enable_unconditional_write_barriers && CanBeTaggedPointer(rep)) {
+  if (v8_flags.enable_unconditional_write_barriers && CanBeTaggedPointer(rep)) {
     write_barrier_kind = kFullWriteBarrier;
   }
 
-  if (write_barrier_kind != kNoWriteBarrier && !FLAG_disable_write_barriers) {
+  if (write_barrier_kind != kNoWriteBarrier &&
+      !v8_flags.disable_write_barriers) {
     DCHECK(CanBeTaggedPointer(rep));
     AddressingMode addressing_mode;
     InstructionOperand inputs[] = {
@@ -712,7 +721,7 @@ void VisitStoreCommon(InstructionSelector* selector, Node* node,
     InstructionCode code = is_seqcst ? kArchAtomicStoreWithWriteBarrier
                                      : kArchStoreWithWriteBarrier;
     code |= AddressingModeField::encode(addressing_mode);
-    code |= MiscField::encode(static_cast<int>(record_write_mode));
+    code |= RecordWriteModeField::encode(record_write_mode);
     selector->Emit(code, 0, nullptr, arraysize(inputs), inputs, temp_count,
                    temps);
   } else if (is_seqcst) {
@@ -1434,6 +1443,11 @@ void InstructionSelector::VisitFloat64Ieee754Unop(Node* node,
       ->MarkAsCall();
 }
 
+void InstructionSelector::EmitMoveParamToFPR(Node* node, int index) {}
+
+void InstructionSelector::EmitMoveFPRToParam(InstructionOperand* op,
+                                             LinkageLocation location) {}
+
 void InstructionSelector::EmitPrepareArguments(
     ZoneVector<PushParameter>* arguments, const CallDescriptor* call_descriptor,
     Node* node) {
@@ -1988,7 +2002,7 @@ void InstructionSelector::VisitFloat64InsertLowWord32(Node* node) {
   Node* right = node->InputAt(1);
   Float64Matcher mleft(left);
   if (mleft.HasResolvedValue() &&
-      (bit_cast<uint64_t>(mleft.ResolvedValue()) >> 32) == 0u) {
+      (base::bit_cast<uint64_t>(mleft.ResolvedValue()) >> 32) == 0u) {
     Emit(kIA32Float64LoadLowWord32, g.DefineAsRegister(node), g.Use(right));
     return;
   }
@@ -2011,8 +2025,15 @@ void InstructionSelector::VisitFloat64SilenceNaN(Node* node) {
 }
 
 void InstructionSelector::VisitMemoryBarrier(Node* node) {
-  IA32OperandGenerator g(this);
-  Emit(kIA32MFence, g.NoOutput());
+  // ia32 is no weaker than release-acquire and only needs to emit an
+  // instruction for SeqCst memory barriers.
+  AtomicMemoryOrder order = OpParameter<AtomicMemoryOrder>(node->op());
+  if (order == AtomicMemoryOrder::kSeqCst) {
+    IA32OperandGenerator g(this);
+    Emit(kIA32MFence, g.NoOutput());
+    return;
+  }
+  DCHECK_EQ(AtomicMemoryOrder::kAcqRel, order);
 }
 
 void InstructionSelector::VisitWord32AtomicLoad(Node* node) {
@@ -2359,15 +2380,14 @@ void InstructionSelector::VisitWord32AtomicPairCompareExchange(Node* node) {
   V(I16x8ExtMulHighI8x16S) \
   V(I16x8ExtMulLowI8x16U)  \
   V(I16x8ExtMulHighI8x16U) \
-  V(I16x8Q15MulRSatS)
+  V(I16x8Q15MulRSatS)      \
+  V(I16x8RelaxedQ15MulRS)
 
 #define SIMD_UNOP_LIST(V)   \
   V(F64x2ConvertLowI32x4S)  \
   V(F32x4DemoteF64x2Zero)   \
   V(F32x4Sqrt)              \
   V(F32x4SConvertI32x4)     \
-  V(F32x4RecipApprox)       \
-  V(F32x4RecipSqrtApprox)   \
   V(I64x2BitMask)           \
   V(I64x2SConvertI32x4Low)  \
   V(I64x2SConvertI32x4High) \
@@ -3248,23 +3268,22 @@ void InstructionSelector::VisitF64x2PromoteLowF32x4(Node* node) {
 }
 
 namespace {
-// pblendvb is a correct implementation for all the various relaxed lane select,
-// see https://github.com/WebAssembly/relaxed-simd/issues/17.
-void VisitRelaxedLaneSelect(InstructionSelector* selector, Node* node) {
+void VisitRelaxedLaneSelect(InstructionSelector* selector, Node* node,
+                            InstructionCode code = kIA32Pblendvb) {
   IA32OperandGenerator g(selector);
-  // pblendvb copies src2 when mask is set, opposite from Wasm semantics.
-  // node's inputs are: mask, lhs, rhs (determined in wasm-compiler.cc).
+  // pblendvb/blendvps/blendvpd copies src2 when mask is set, opposite from Wasm
+  // semantics. node's inputs are: mask, lhs, rhs (determined in
+  // wasm-compiler.cc).
   if (selector->IsSupported(AVX)) {
-    selector->Emit(kIA32Pblendvb, g.DefineAsRegister(node),
-                   g.UseRegister(node->InputAt(2)),
-                   g.UseRegister(node->InputAt(1)),
-                   g.UseRegister(node->InputAt(0)));
+    selector->Emit(
+        code, g.DefineAsRegister(node), g.UseRegister(node->InputAt(2)),
+        g.UseRegister(node->InputAt(1)), g.UseRegister(node->InputAt(0)));
   } else {
-    // SSE4.1 pblendvb requires xmm0 to hold the mask as an implicit operand.
-    selector->Emit(kIA32Pblendvb, g.DefineSameAsFirst(node),
-                   g.UseRegister(node->InputAt(2)),
-                   g.UseRegister(node->InputAt(1)),
-                   g.UseFixed(node->InputAt(0), xmm0));
+    // SSE4.1 pblendvb/blendvps/blendvpd requires xmm0 to hold the mask as an
+    // implicit operand.
+    selector->Emit(
+        code, g.DefineSameAsFirst(node), g.UseRegister(node->InputAt(2)),
+        g.UseRegister(node->InputAt(1)), g.UseFixed(node->InputAt(0), xmm0));
   }
 }
 }  // namespace
@@ -3276,10 +3295,10 @@ void InstructionSelector::VisitI16x8RelaxedLaneSelect(Node* node) {
   VisitRelaxedLaneSelect(this, node);
 }
 void InstructionSelector::VisitI32x4RelaxedLaneSelect(Node* node) {
-  VisitRelaxedLaneSelect(this, node);
+  VisitRelaxedLaneSelect(this, node, kIA32Blendvps);
 }
 void InstructionSelector::VisitI64x2RelaxedLaneSelect(Node* node) {
-  VisitRelaxedLaneSelect(this, node);
+  VisitRelaxedLaneSelect(this, node, kIA32Blendvpd);
 }
 
 void InstructionSelector::VisitF64x2Qfma(Node* node) {
@@ -3296,6 +3315,21 @@ void InstructionSelector::VisitF32x4Qfma(Node* node) {
 
 void InstructionSelector::VisitF32x4Qfms(Node* node) {
   VisitRRRR(this, node, kIA32F32x4Qfms);
+}
+
+void InstructionSelector::VisitI16x8DotI8x16I7x16S(Node* node) {
+  IA32OperandGenerator g(this);
+  Emit(kIA32I16x8DotI8x16I7x16S, g.DefineAsRegister(node),
+       g.UseUniqueRegister(node->InputAt(0)), g.UseRegister(node->InputAt(1)));
+}
+
+void InstructionSelector::VisitI32x4DotI8x16I7x16AddS(Node* node) {
+  IA32OperandGenerator g(this);
+  InstructionOperand temps[] = {g.TempSimd128Register()};
+  Emit(kIA32I32x4DotI8x16I7x16AddS, g.DefineSameAsInput(node, 2),
+       g.UseUniqueRegister(node->InputAt(0)),
+       g.UseUniqueRegister(node->InputAt(1)),
+       g.UseUniqueRegister(node->InputAt(2)), arraysize(temps), temps);
 }
 
 void InstructionSelector::AddOutputToSelectContinuation(OperandGenerator* g,

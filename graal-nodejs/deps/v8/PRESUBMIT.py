@@ -85,6 +85,7 @@ def _V8PresubmitChecks(input_api, output_api):
   sys.path.append(input_api.os_path.join(
         input_api.PresubmitLocalPath(), 'tools'))
   from v8_presubmit import CppLintProcessor
+  from v8_presubmit import GCMoleProcessor
   from v8_presubmit import JSLintProcessor
   from v8_presubmit import TorqueLintProcessor
   from v8_presubmit import SourceProcessor
@@ -126,6 +127,9 @@ def _V8PresubmitChecks(input_api, output_api):
   if not StatusFilesProcessor().RunOnFiles(
       input_api.AffectedFiles(include_deletes=True)):
     results.append(output_api.PresubmitError("Status file check failed"))
+  if not GCMoleProcessor().RunOnFiles(
+      input_api.AffectedFiles(include_deletes=False)):
+    results.append(output_api.PresubmitError("GCMole pattern check failed"))
   results.extend(input_api.canned_checks.CheckAuthorizedAuthor(
       input_api, output_api, bot_allowlist=[
         'v8-ci-autoroll-builder@chops-service-accounts.iam.gserviceaccount.com'
@@ -257,8 +261,9 @@ def _CheckHeadersHaveIncludeGuards(input_api, output_api):
       files_to_check=(file_inclusion_pattern, ),
       files_to_skip=files_to_skip)
 
-  leading_src_pattern = input_api.re.compile(r'^src/')
-  dash_dot_slash_pattern = input_api.re.compile(r'[-./]')
+  leading_src_pattern = input_api.re.compile(r'^src[\\\/]')
+  dash_dot_slash_pattern = input_api.re.compile(r'[-.\\\/]')
+
   def PathToGuardMacro(path):
     """Guards should be of the form V8_PATH_TO_FILE_WITHOUT_SRC_H_."""
     x = input_api.re.sub(leading_src_pattern, 'v8_', path)
@@ -486,14 +491,18 @@ def _CheckNoexceptAnnotations(input_api, output_api):
   """
 
   def FilterFile(affected_file):
-    return input_api.FilterSourceFile(
-        affected_file,
-        files_to_check=(r'src[\\\/].*', r'test[\\\/].*'),
+    files_to_skip = _EXCLUDED_PATHS + (
         # Skip api.cc since we cannot easily add the 'noexcept' annotation to
         # public methods.
+        r'src[\\\/]api[\\\/]api\.cc',
         # Skip src/bigint/ because it's meant to be V8-independent.
-        files_to_skip=(r'src[\\\/]api[\\\/]api\.cc',
-                       r'src[\\\/]bigint[\\\/].*'))
+        r'src[\\\/]bigint[\\\/].*',
+    )
+    return input_api.FilterSourceFile(
+        affected_file,
+        files_to_check=(r'src[\\\/].*\.cc', r'src[\\\/].*\.h',
+                        r'test[\\\/].*\.cc', r'test[\\\/].*\.h'),
+        files_to_skip=files_to_skip)
 
   # matches any class name.
   class_name = r'\b([A-Z][A-Za-z0-9_:]*)(?:::\1)?'

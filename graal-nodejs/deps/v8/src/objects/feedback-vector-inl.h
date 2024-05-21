@@ -38,21 +38,18 @@ INT32_ACCESSORS(FeedbackMetadata, slot_count, kSlotCountOffset)
 INT32_ACCESSORS(FeedbackMetadata, create_closure_slot_count,
                 kCreateClosureSlotCountOffset)
 
-RELEASE_ACQUIRE_WEAK_ACCESSORS(FeedbackVector, maybe_optimized_code,
-                               kMaybeOptimizedCodeOffset)
-
 int32_t FeedbackMetadata::slot_count(AcquireLoadTag) const {
   return ACQUIRE_READ_INT32_FIELD(*this, kSlotCountOffset);
 }
 
 int32_t FeedbackMetadata::get(int index) const {
-  DCHECK(index >= 0 && index < length());
+  CHECK_LT(static_cast<unsigned>(index), static_cast<unsigned>(length()));
   int offset = kHeaderSize + index * kInt32Size;
   return ReadField<int32_t>(offset);
 }
 
 void FeedbackMetadata::set(int index, int32_t value) {
-  DCHECK(index >= 0 && index < length());
+  DCHECK_LT(static_cast<unsigned>(index), static_cast<unsigned>(length()));
   int offset = kHeaderSize + index * kInt32Size;
   WriteField<int32_t>(offset, value);
 }
@@ -70,7 +67,7 @@ int FeedbackMetadata::GetSlotSize(FeedbackSlotKind kind) {
     case FeedbackSlotKind::kCompareOp:
     case FeedbackSlotKind::kBinaryOp:
     case FeedbackSlotKind::kLiteral:
-    case FeedbackSlotKind::kTypeProfile:
+    case FeedbackSlotKind::kJumpLoop:
       return 1;
 
     case FeedbackSlotKind::kCall:
@@ -93,10 +90,8 @@ int FeedbackMetadata::GetSlotSize(FeedbackSlotKind kind) {
       return 2;
 
     case FeedbackSlotKind::kInvalid:
-    case FeedbackSlotKind::kKindsNumber:
       UNREACHABLE();
   }
-  return 1;
 }
 
 Handle<FeedbackCell> ClosureFeedbackCellArray::GetFeedbackCell(int index) {
@@ -124,18 +119,49 @@ void FeedbackVector::clear_invocation_count(RelaxedStoreTag tag) {
   set_invocation_count(0, tag);
 }
 
-CodeT FeedbackVector::optimized_code() const {
-  MaybeObject slot = maybe_optimized_code(kAcquireLoad);
+int FeedbackVector::osr_urgency() const {
+  return OsrUrgencyBits::decode(osr_state());
+}
+
+void FeedbackVector::set_osr_urgency(int urgency) {
+  DCHECK(0 <= urgency && urgency <= FeedbackVector::kMaxOsrUrgency);
+  static_assert(FeedbackVector::kMaxOsrUrgency <= OsrUrgencyBits::kMax);
+  set_osr_state(OsrUrgencyBits::update(osr_state(), urgency));
+}
+
+void FeedbackVector::reset_osr_urgency() { set_osr_urgency(0); }
+
+void FeedbackVector::RequestOsrAtNextOpportunity() {
+  set_osr_urgency(kMaxOsrUrgency);
+}
+
+void FeedbackVector::reset_osr_state() { set_osr_state(0); }
+
+bool FeedbackVector::maybe_has_optimized_osr_code() const {
+  return MaybeHasOptimizedOsrCodeBit::decode(osr_state());
+}
+
+void FeedbackVector::set_maybe_has_optimized_osr_code(bool value) {
+  set_osr_state(MaybeHasOptimizedOsrCodeBit::update(osr_state(), value));
+}
+
+Code FeedbackVector::optimized_code() const {
+  MaybeObject slot = maybe_optimized_code();
   DCHECK(slot->IsWeakOrCleared());
   HeapObject heap_object;
-  CodeT code;
+  Code code;
   if (slot->GetHeapObject(&heap_object)) {
-    code = CodeT::cast(heap_object);
+    code = Code::cast(heap_object);
   }
   // It is possible that the maybe_optimized_code slot is cleared but the flags
   // haven't been updated yet. We update them when we execute the function next
   // time / when we create new closure.
-  DCHECK_IMPLIES(!code.is_null(), maybe_has_optimized_code());
+  DCHECK_IMPLIES(!code.is_null(),
+                 maybe_has_maglev_code() || maybe_has_turbofan_code());
+  DCHECK_IMPLIES(!code.is_null() && code.is_maglevved(),
+                 maybe_has_maglev_code());
+  DCHECK_IMPLIES(!code.is_null() && code.is_turbofanned(),
+                 maybe_has_turbofan_code());
   return code;
 }
 
@@ -144,16 +170,49 @@ TieringState FeedbackVector::tiering_state() const {
 }
 
 bool FeedbackVector::has_optimized_code() const {
-  DCHECK_IMPLIES(!optimized_code().is_null(), maybe_has_optimized_code());
+  DCHECK_IMPLIES(!optimized_code().is_null(),
+                 maybe_has_maglev_code() || maybe_has_turbofan_code());
   return !optimized_code().is_null();
 }
 
-bool FeedbackVector::maybe_has_optimized_code() const {
-  return MaybeHasOptimizedCodeBit::decode(flags());
+bool FeedbackVector::maybe_has_maglev_code() const {
+  return MaybeHasMaglevCodeBit::decode(flags());
 }
 
-void FeedbackVector::set_maybe_has_optimized_code(bool value) {
-  set_flags(MaybeHasOptimizedCodeBit::update(flags(), value));
+void FeedbackVector::set_maybe_has_maglev_code(bool value) {
+  set_flags(MaybeHasMaglevCodeBit::update(flags(), value));
+}
+
+bool FeedbackVector::maybe_has_turbofan_code() const {
+  return MaybeHasTurbofanCodeBit::decode(flags());
+}
+
+void FeedbackVector::set_maybe_has_turbofan_code(bool value) {
+  set_flags(MaybeHasTurbofanCodeBit::update(flags(), value));
+}
+
+bool FeedbackVector::log_next_execution() const {
+  return LogNextExecutionBit::decode(flags());
+}
+
+void FeedbackVector::set_log_next_execution(bool value) {
+  set_flags(LogNextExecutionBit::update(flags(), value));
+}
+
+base::Optional<Code> FeedbackVector::GetOptimizedOsrCode(Isolate* isolate,
+                                                         FeedbackSlot slot) {
+  MaybeObject maybe_code = Get(isolate, slot);
+  if (maybe_code->IsCleared()) return {};
+
+  Code code = Code::cast(maybe_code->GetHeapObject());
+  if (code.marked_for_deoptimization()) {
+    // Clear the cached Code object if deoptimized.
+    // TODO(jgruber): Add tracing.
+    Set(slot, HeapObjectReference::ClearedValue(isolate));
+    return {};
+  }
+
+  return code;
 }
 
 // Conversion from an integer index to either a slot or an ic slot.
@@ -258,6 +317,8 @@ BinaryOperationHint BinaryOperationHintFromFeedback(int type_feedback) {
       return BinaryOperationHint::kString;
     case BinaryOperationFeedback::kBigInt:
       return BinaryOperationHint::kBigInt;
+    case BinaryOperationFeedback::kBigInt64:
+      return BinaryOperationHint::kBigInt64;
     default:
       return BinaryOperationHint::kAny;
   }
@@ -296,7 +357,9 @@ CompareOperationHint CompareOperationHintFromFeedback(int type_feedback) {
     return CompareOperationHint::kReceiverOrNullOrUndefined;
   }
 
-  if (Is<CompareOperationFeedback::kBigInt>(type_feedback)) {
+  if (Is<CompareOperationFeedback::kBigInt64>(type_feedback)) {
+    return CompareOperationHint::kBigInt64;
+  } else if (Is<CompareOperationFeedback::kBigInt>(type_feedback)) {
     return CompareOperationHint::kBigInt;
   }
 

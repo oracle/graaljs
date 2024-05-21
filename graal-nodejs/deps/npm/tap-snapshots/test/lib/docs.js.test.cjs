@@ -2078,8 +2078,6 @@ Array [
   "color",
   "commit-hooks",
   "cpu",
-  "os",
-  "libc",
   "depth",
   "description",
   "dev",
@@ -2094,8 +2092,8 @@ Array [
   "dry-run",
   "editor",
   "engine-strict",
-  "expect-results",
   "expect-result-count",
+  "expect-results",
   "fetch-retries",
   "fetch-retry-factor",
   "fetch-retry-maxtimeout",
@@ -2135,10 +2133,9 @@ Array [
   "key",
   "legacy-bundling",
   "legacy-peer-deps",
+  "libc",
   "link",
   "local-address",
-  "sbom-format",
-  "sbom-type",
   "location",
   "lockfile-version",
   "loglevel",
@@ -2154,6 +2151,7 @@ Array [
   "omit-lockfile-registry-resolved",
   "only",
   "optional",
+  "os",
   "otp",
   "package",
   "package-lock",
@@ -2182,6 +2180,8 @@ Array [
   "save-peer",
   "save-prefix",
   "save-prod",
+  "sbom-format",
+  "sbom-type",
   "scope",
   "script-shell",
   "searchexclude",
@@ -2238,8 +2238,6 @@ Array [
   "color",
   "commit-hooks",
   "cpu",
-  "os",
-  "libc",
   "depth",
   "description",
   "dev",
@@ -2281,9 +2279,8 @@ Array [
   "key",
   "legacy-bundling",
   "legacy-peer-deps",
+  "libc",
   "local-address",
-  "sbom-format",
-  "sbom-type",
   "location",
   "lockfile-version",
   "loglevel",
@@ -2295,6 +2292,7 @@ Array [
   "omit-lockfile-registry-resolved",
   "only",
   "optional",
+  "os",
   "otp",
   "package",
   "package-lock",
@@ -2322,6 +2320,8 @@ Array [
   "save-peer",
   "save-prefix",
   "save-prod",
+  "sbom-format",
+  "sbom-type",
   "scope",
   "script-shell",
   "searchexclude",
@@ -2347,8 +2347,8 @@ Array [
 
 exports[`test/lib/docs.js TAP config > keys that are not flattened 1`] = `
 Array [
-  "expect-results",
   "expect-result-count",
+  "expect-results",
   "init-author-email",
   "init-author-name",
   "init-author-url",
@@ -4069,8 +4069,9 @@ npm search [search terms ...]
 
 Options:
 [-l|--long] [--json] [--color|--no-color|--color always] [-p|--parseable]
-[--no-description] [--searchopts <searchopts>] [--searchexclude <searchexclude>]
-[--registry <registry>] [--prefer-online] [--prefer-offline] [--offline]
+[--no-description] [--searchlimit <number>] [--searchopts <searchopts>]
+[--searchexclude <searchexclude>] [--registry <registry>] [--prefer-online]
+[--prefer-offline] [--offline]
 
 aliases: find, s, se
 
@@ -4089,6 +4090,7 @@ Note: This command is unaware of workspaces.
 #### \`color\`
 #### \`parseable\`
 #### \`description\`
+#### \`searchlimit\`
 #### \`searchopts\`
 #### \`searchexclude\`
 #### \`registry\`

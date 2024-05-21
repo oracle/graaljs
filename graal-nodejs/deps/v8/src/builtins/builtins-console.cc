@@ -148,7 +148,7 @@ void ConsoleCall(
   CHECK(!isolate->has_scheduled_exception());
   if (!isolate->console_delegate()) return;
   HandleScope scope(isolate);
-  debug::ConsoleCallArguments wrapper(args);
+  debug::ConsoleCallArguments wrapper(isolate, args);
   Handle<Object> context_id_obj = JSObject::GetDataProperty(
       isolate, args.target(), isolate->factory()->console_context_id_symbol());
   int context_id =
@@ -166,7 +166,7 @@ void ConsoleCall(
 
 void LogTimerEvent(Isolate* isolate, BuiltinArguments args,
                    v8::LogEventStatus se) {
-  if (!isolate->logger()->is_logging()) return;
+  if (!isolate->v8_file_logger()->is_logging()) return;
   HandleScope scope(isolate);
   std::unique_ptr<char[]> name;
   const char* raw_name = "default";

@@ -30,9 +30,16 @@ function createTmpFile(content = 'console.log("running");', ext = '.js', basenam
 }
 
 async function runWriteSucceed({
-  file, watchedFile, args = [file], completed = 'Completed running', restarts = 2
+  file,
+  watchedFile,
+  watchFlag = '--watch',
+  args = [file],
+  completed = 'Completed running',
+  restarts = 2,
+  options = {},
+  shouldFail = false
 }) {
-  const child = spawn(execPath, ['--watch', '--no-warnings', ...args], { encoding: 'utf8', stdio: 'pipe' });
+  const child = spawn(execPath, [watchFlag, '--no-warnings', ...args], { encoding: 'utf8', stdio: 'pipe', ...options });
   let completes = 0;
   let cancelRestarts = () => {};
   let stderr = '';
@@ -57,12 +64,16 @@ async function runWriteSucceed({
           cancelRestarts = restart(watchedFile);
         }
       }
+
+      if (!shouldFail && data.startsWith('Failed running')) {
+        break;
+      }
     }
   } finally {
     child.kill();
     cancelRestarts();
   }
-  return { stdout, stderr };
+  return { stdout, stderr, pid: child.pid };
 }
 
 async function failWriteSucceed({ file, watchedFile }) {
@@ -88,6 +99,22 @@ async function failWriteSucceed({ file, watchedFile }) {
 tmpdir.refresh();
 
 describe('watch mode', { concurrency: true, timeout: 60_000 }, () => {
+  it('should watch changes to a file', async () => {
+    const file = createTmpFile();
+    const { stderr, stdout } = await runWriteSucceed({ file, watchedFile: file, watchFlag: '--watch=true', options: {
+      timeout: 10000
+    } });
+
+    assert.strictEqual(stderr, '');
+    assert.deepStrictEqual(stdout, [
+      'running',
+      `Completed running ${inspect(file)}`,
+      `Restarting ${inspect(file)}`,
+      'running',
+      `Completed running ${inspect(file)}`,
+    ]);
+  });
+
   it('should watch changes to a file - event loop ended', async () => {
     const file = createTmpFile();
     const { stderr, stdout } = await runWriteSucceed({ file, watchedFile: file });
@@ -104,7 +131,12 @@ describe('watch mode', { concurrency: true, timeout: 60_000 }, () => {
 
   it('should watch changes to a failing file', async () => {
     const file = createTmpFile('throw new Error("fails");');
-    const { stderr, stdout } = await runWriteSucceed({ file, watchedFile: file, completed: 'Failed running' });
+    const { stderr, stdout } = await runWriteSucceed({
+      file,
+      watchedFile: file,
+      completed: 'Failed running',
+      shouldFail: true
+    });
 
     assert.match(stderr, /Error: fails\r?\n/);
     assert.deepStrictEqual(stdout, [
@@ -117,7 +149,7 @@ describe('watch mode', { concurrency: true, timeout: 60_000 }, () => {
   it('should watch changes to a file with watch-path', {
     skip: !supportsRecursive,
   }, async () => {
-    const dir = path.join(tmpdir.path, 'subdir1');
+    const dir = tmpdir.resolve('subdir1');
     mkdirSync(dir);
     const file = createTmpFile();
     const watchedFile = createTmpFile('', '.js', dir);
@@ -138,12 +170,18 @@ describe('watch mode', { concurrency: true, timeout: 60_000 }, () => {
   it('should watch when running an non-existing file - when specified under --watch-path', {
     skip: !supportsRecursive
   }, async () => {
-    const dir = path.join(tmpdir.path, 'subdir2');
+    const dir = tmpdir.resolve('subdir2');
     mkdirSync(dir);
     const file = path.join(dir, 'non-existing.js');
     const watchedFile = createTmpFile('', '.js', dir);
     const args = ['--watch-path', dir, file];
-    const { stderr, stdout } = await runWriteSucceed({ file, watchedFile, args, completed: 'Failed running' });
+    const { stderr, stdout } = await runWriteSucceed({
+      file,
+      watchedFile,
+      args,
+      completed: 'Failed running',
+      shouldFail: true
+    });
 
     assert.match(stderr, /Error: Cannot find module/g);
     assert.deepStrictEqual(stdout, [
@@ -156,12 +194,18 @@ describe('watch mode', { concurrency: true, timeout: 60_000 }, () => {
   it('should watch when running an non-existing file - when specified under --watch-path with equals', {
     skip: !supportsRecursive
   }, async () => {
-    const dir = path.join(tmpdir.path, 'subdir3');
+    const dir = tmpdir.resolve('subdir3');
     mkdirSync(dir);
     const file = path.join(dir, 'non-existing.js');
     const watchedFile = createTmpFile('', '.js', dir);
     const args = [`--watch-path=${dir}`, file];
-    const { stderr, stdout } = await runWriteSucceed({ file, watchedFile, args, completed: 'Failed running' });
+    const { stderr, stdout } = await runWriteSucceed({
+      file,
+      watchedFile,
+      args,
+      completed: 'Failed running',
+      shouldFail: true
+    });
 
     assert.match(stderr, /Error: Cannot find module/g);
     assert.deepStrictEqual(stdout, [
@@ -259,13 +303,14 @@ console.log(values.random);
     ]);
   });
 
-  it('should not load --require modules in main process', async () => {
+  it('should load --require modules in the watched process, and not in the orchestrator process', async () => {
     const file = createTmpFile();
-    const required = createTmpFile('setImmediate(() => process.exit(0));');
+    const required = createTmpFile('process._rawDebug(\'pid\', process.pid);');
     const args = ['--require', required, file];
-    const { stderr, stdout } = await runWriteSucceed({ file, watchedFile: file, args });
+    const { stdout, pid, stderr } = await runWriteSucceed({ file, watchedFile: file, args });
 
-    assert.strictEqual(stderr, '');
+    const importPid = parseInt(stderr[0].split(' ')[1], 10);
+    assert.notStrictEqual(pid, importPid);
     assert.deepStrictEqual(stdout, [
       'running',
       `Completed running ${inspect(file)}`,
@@ -275,15 +320,17 @@ console.log(values.random);
     ]);
   });
 
-  it('should not load --import modules in main process', {
-    skip: 'enable once --import is backported',
-  }, async () => {
+  it('should load --import modules in the watched process, and not in the orchestrator process', async () => {
     const file = createTmpFile();
-    const imported = pathToFileURL(createTmpFile('setImmediate(() => process.exit(0));'));
+    const imported = "data:text/javascript,process._rawDebug('pid', process.pid);";
     const args = ['--import', imported, file];
-    const { stderr, stdout } = await runWriteSucceed({ file, watchedFile: file, args });
+    const { stdout, pid, stderr } = await runWriteSucceed({ file, watchedFile: file, args });
 
-    assert.strictEqual(stderr, '');
+    const importPid = parseInt(stderr.split('\n', 1)[0].split(' ', 2)[1], 10);
+
+    assert.notStrictEqual(importPid, NaN);
+    assert.notStrictEqual(pid, importPid);
+
     assert.deepStrictEqual(stdout, [
       'running',
       `Completed running ${inspect(file)}`,
@@ -297,21 +344,21 @@ console.log(values.random);
   it('should not watch when running an missing file', {
     skip: !supportsRecursive
   }, async () => {
-    const nonExistingfile = path.join(tmpdir.path, `${tmpFiles++}.js`);
+    const nonExistingfile = tmpdir.resolve(`${tmpFiles++}.js`);
     await failWriteSucceed({ file: nonExistingfile, watchedFile: nonExistingfile });
   });
 
   it('should not watch when running an missing mjs file', {
     skip: !supportsRecursive
   }, async () => {
-    const nonExistingfile = path.join(tmpdir.path, `${tmpFiles++}.mjs`);
+    const nonExistingfile = tmpdir.resolve(`${tmpFiles++}.mjs`);
     await failWriteSucceed({ file: nonExistingfile, watchedFile: nonExistingfile });
   });
 
   it('should watch changes to previously missing dependency', {
     skip: !supportsRecursive
   }, async () => {
-    const dependency = path.join(tmpdir.path, `${tmpFiles++}.js`);
+    const dependency = tmpdir.resolve(`${tmpFiles++}.js`);
     const relativeDependencyPath = `./${path.basename(dependency)}`;
     const dependant = createTmpFile(`console.log(require('${relativeDependencyPath}'))`);
 
@@ -322,7 +369,7 @@ console.log(values.random);
     skip: !supportsRecursive
   }, async () => {
     const relativeDependencyPath = `./${tmpFiles++}.mjs`;
-    const dependency = path.join(tmpdir.path, relativeDependencyPath);
+    const dependency = tmpdir.resolve(relativeDependencyPath);
     const dependant = createTmpFile(`import ${JSON.stringify(relativeDependencyPath)}`, '.mjs');
 
     await failWriteSucceed({ file: dependant, watchedFile: dependency });
@@ -352,6 +399,134 @@ console.log(values.random);
       'running',
       `Completed running ${inspect(file)}`,
       `Restarting ${inspect(file)}`,
+      'running',
+      `Completed running ${inspect(file)}`,
+    ]);
+  });
+
+  it('should run when `--watch-path=./foo --require ./bar.js`', {
+    skip: !supportsRecursive,
+  }, async () => {
+    const projectDir = tmpdir.resolve('project2');
+    mkdirSync(projectDir);
+
+    const dir = path.join(projectDir, 'watched-dir');
+    mkdirSync(dir);
+
+    writeFileSync(path.join(projectDir, 'some.js'), 'console.log(\'hello\')');
+
+    const file = createTmpFile('console.log(\'running\');', '.js', projectDir);
+    const watchedFile = createTmpFile('', '.js', dir);
+    const args = [`--watch-path=${dir}`, '--require', './some.js', file];
+    const { stdout, stderr } = await runWriteSucceed({
+      file, watchedFile, args, options: {
+        cwd: projectDir
+      }
+    });
+
+    assert.strictEqual(stderr, '');
+    assert.deepStrictEqual(stdout, [
+      'hello',
+      'running',
+      `Completed running ${inspect(file)}`,
+      `Restarting ${inspect(file)}`,
+      'hello',
+      'running',
+      `Completed running ${inspect(file)}`,
+    ]);
+  });
+
+  it('should run when `--watch-path=./foo --require=./bar.js`', {
+    skip: !supportsRecursive,
+  }, async () => {
+    const projectDir = tmpdir.resolve('project3');
+    mkdirSync(projectDir);
+
+    const dir = path.join(projectDir, 'watched-dir');
+    mkdirSync(dir);
+
+    writeFileSync(path.join(projectDir, 'some.js'), "console.log('hello')");
+
+    const file = createTmpFile("console.log('running');", '.js', projectDir);
+    const watchedFile = createTmpFile('', '.js', dir);
+    const args = [`--watch-path=${dir}`, '--require=./some.js', file];
+    const { stdout, stderr } = await runWriteSucceed({
+      file, watchedFile, args, options: {
+        cwd: projectDir
+      }
+    });
+
+    assert.strictEqual(stderr, '');
+    assert.deepStrictEqual(stdout, [
+      'hello',
+      'running',
+      `Completed running ${inspect(file)}`,
+      `Restarting ${inspect(file)}`,
+      'hello',
+      'running',
+      `Completed running ${inspect(file)}`,
+    ]);
+  });
+
+  it('should run when `--watch-path ./foo --require ./bar.js`', {
+    skip: !supportsRecursive,
+  }, async () => {
+    const projectDir = tmpdir.resolve('project5');
+    mkdirSync(projectDir);
+
+    const dir = path.join(projectDir, 'watched-dir');
+    mkdirSync(dir);
+
+    writeFileSync(path.join(projectDir, 'some.js'), 'console.log(\'hello\')');
+
+    const file = createTmpFile('console.log(\'running\');', '.js', projectDir);
+    const watchedFile = createTmpFile('', '.js', dir);
+    const args = ['--watch-path', `${dir}`, '--require', './some.js', file];
+    const { stdout, stderr } = await runWriteSucceed({
+      file, watchedFile, args, options: {
+        cwd: projectDir
+      }
+    });
+
+    assert.strictEqual(stderr, '');
+    assert.deepStrictEqual(stdout, [
+      'hello',
+      'running',
+      `Completed running ${inspect(file)}`,
+      `Restarting ${inspect(file)}`,
+      'hello',
+      'running',
+      `Completed running ${inspect(file)}`,
+    ]);
+  });
+
+  it('should run when `--watch-path=./foo --require=./bar.js`', {
+    skip: !supportsRecursive,
+  }, async () => {
+    const projectDir = tmpdir.resolve('project6');
+    mkdirSync(projectDir);
+
+    const dir = path.join(projectDir, 'watched-dir');
+    mkdirSync(dir);
+
+    writeFileSync(path.join(projectDir, 'some.js'), "console.log('hello')");
+
+    const file = createTmpFile("console.log('running');", '.js', projectDir);
+    const watchedFile = createTmpFile('', '.js', dir);
+    const args = ['--watch-path', `${dir}`, '--require=./some.js', file];
+    const { stdout, stderr } = await runWriteSucceed({
+      file, watchedFile, args, options: {
+        cwd: projectDir
+      }
+    });
+
+    assert.strictEqual(stderr, '');
+    assert.deepStrictEqual(stdout, [
+      'hello',
+      'running',
+      `Completed running ${inspect(file)}`,
+      `Restarting ${inspect(file)}`,
+      'hello',
       'running',
       `Completed running ${inspect(file)}`,
     ]);

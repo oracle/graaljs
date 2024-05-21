@@ -159,13 +159,16 @@ public final class Options {
                         "harmony-proxies",
                         "harmony-shipping",
                         "harmony-weak-refs",
+                        "jitless",
                         "lazy",
                         "log-timer-events",
                         "no-concurrent-array-buffer-freeing",
                         "no-concurrent-array-buffer-sweeping",
+                        "no-freeze-flags-after-init",
                         "no-harmony-top-level-await",
                         "nolazy",
                         "nouse-idle-notification",
+                        "rehash-snapshot",
                         "stack-size",
                         "trace-gc",
                         "use-idle-notification"
@@ -198,6 +201,8 @@ public final class Options {
             // Node.js-specific defaults, may be overridden by command line arguments.
             polyglotOptions.put("js.print", "false");
             polyglotOptions.put("js.string-length-limit", Integer.toString((1 << 29) - 24)); // v8::String::kMaxLength
+            // until graal-js switches to 2024
+            polyglotOptions.put("js.ecmascript-version", "staging");
 
             List<String> unprocessedArguments = new ArrayList<>();
             Boolean optWebAssembly = null;

@@ -8,9 +8,6 @@ namespace v8 {
 namespace internal {
 namespace torque {
 
-DEFINE_CONTEXTUAL_VARIABLE(GlobalContext)
-DEFINE_CONTEXTUAL_VARIABLE(TargetArchitecture)
-
 GlobalContext::GlobalContext(Ast ast)
     : collect_language_server_data_(false),
       collect_kythe_data_(false),
@@ -31,8 +28,8 @@ TargetArchitecture::TargetArchitecture(bool force_32bit)
       smi_tag_and_shift_size_(
           kSmiTagSize + (force_32bit ? SmiTagging<kApiInt32Size>::kSmiShiftSize
                                      : kSmiShiftSize)),
-      external_ptr_size_(force_32bit ? sizeof(int32_t) : kExternalPointerSize) {
-}
+      external_ptr_size_(force_32bit ? sizeof(int32_t)
+                                     : kExternalPointerSlotSize) {}
 
 }  // namespace torque
 }  // namespace internal

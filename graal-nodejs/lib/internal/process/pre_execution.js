@@ -1,24 +1,34 @@
 'use strict';
 
 const {
+  ArrayPrototypeForEach,
+  Date,
+  DatePrototypeGetDate,
+  DatePrototypeGetFullYear,
+  DatePrototypeGetHours,
+  DatePrototypeGetMinutes,
+  DatePrototypeGetMonth,
+  DatePrototypeGetSeconds,
   NumberParseInt,
-  ObjectDefineProperties,
   ObjectDefineProperty,
+  ObjectFreeze,
+  ObjectGetOwnPropertyDescriptor,
   SafeMap,
+  String,
   StringPrototypeStartsWith,
   Symbol,
-  SymbolDispose,
   SymbolAsyncDispose,
+  SymbolDispose,
   globalThis,
 } = primordials;
 
 const {
   getOptionValue,
   refreshOptions,
+  getEmbedderOptions,
 } = require('internal/options');
 const { reconnectZeroFillToggle } = require('internal/buffer');
 const {
-  defineOperation,
   exposeInterface,
   exposeLazyInterfaces,
   defineReplaceableLazyAttribute,
@@ -26,7 +36,11 @@ const {
 } = require('internal/util');
 
 const {
+  ERR_INVALID_THIS,
   ERR_MANIFEST_ASSERT_INTEGRITY,
+  ERR_NO_CRYPTO,
+  ERR_MISSING_OPTION,
+  ERR_ACCESS_DENIED,
 } = require('internal/errors').codes;
 const assert = require('internal/assert');
 const {
@@ -52,6 +66,34 @@ function prepareWorkerThreadExecution() {
   });
 }
 
+function prepareShadowRealmExecution() {
+  // Patch the process object with legacy properties and normalizations.
+  // Do not expand argv1 as it is not available in ShadowRealm.
+  patchProcessObject(false);
+  setupDebugEnv();
+
+  // Disable custom loaders in ShadowRealm.
+  setupUserModules(true);
+  const {
+    privateSymbols: {
+      host_defined_option_symbol,
+    },
+  } = internalBinding('util');
+  const {
+    vm_dynamic_import_default_internal,
+  } = internalBinding('symbols');
+
+  // For ShadowRealm.prototype.importValue(), the referrer name is
+  // always null, so the native ImportModuleDynamically() callback would
+  // always fallback to look up the host-defined option from the
+  // global object using host_defined_option_symbol. Using
+  // vm_dynamic_import_default_internal as the host-defined option
+  // instructs the JS-land importModuleDynamicallyCallback() to
+  // proxy the request to defaultImportModuleDynamically().
+  globalThis[host_defined_option_symbol] =
+    vm_dynamic_import_default_internal;
+}
+
 function prepareExecution(options) {
   const { expandArgv1, initializeModules, isMainThread } = options;
 
@@ -61,16 +103,19 @@ function prepareExecution(options) {
   // Patch the process object and get the resolved main entry point.
   const mainEntry = patchProcessObject(expandArgv1);
   setupTraceCategoryState();
-  setupPerfHooks();
   setupInspectorHooks();
   setupWarningHandler();
-  setupFetch();
+  setupUndici();
   setupWebCrypto();
   setupCustomEvent();
   setupCodeCoverage();
   setupDebugEnv();
   // Process initial diagnostic reporting configuration, if present.
   initializeReport();
+
+  // Load permission system API
+  initializePermission();
+
   initializeSourceMapsHandlers();
   initializeDeprecations();
 
@@ -142,16 +187,24 @@ function setupSymbolDisposePolyfill() {
   }
 }
 
-function setupUserModules(isLoaderWorker = false) {
+function setupUserModules(forceDefaultLoader = false) {
   initializeCJSLoader();
-  initializeESMLoader(isLoaderWorker);
-  const CJSLoader = require('internal/modules/cjs/loader');
-  assert(!CJSLoader.hasLoadedAnyUserCJSModule);
-  // Loader workers are responsible for doing this themselves.
-  if (isLoaderWorker) {
-    return;
+  initializeESMLoader(forceDefaultLoader);
+  const {
+    hasStartedUserCJSExecution,
+    hasStartedUserESMExecution,
+  } = require('internal/modules/helpers');
+  assert(!hasStartedUserCJSExecution());
+  assert(!hasStartedUserESMExecution());
+  if (getEmbedderOptions().hasEmbedderPreload) {
+    runEmbedderPreload();
   }
-  loadPreloadModules();
+  // Do not enable preload modules if custom loaders are disabled.
+  // For example, loader workers are responsible for doing this themselves.
+  // And preload modules are not supported in ShadowRealm as well.
+  if (!forceDefaultLoader) {
+    loadPreloadModules();
+  }
   // Need to be done after --require setup.
   initializeFrozenIntrinsics();
 }
@@ -171,14 +224,12 @@ function patchProcessObject(expandArgv1) {
   const binding = internalBinding('process_methods');
   binding.patchProcessObject(process);
 
-  require('internal/process/per_thread').refreshHrtimeBuffer();
-
   // Since we replace process.argv[0] below, preserve the original value in case the user needs it.
   ObjectDefineProperty(process, 'argv0', {
     __proto__: null,
     enumerable: true,
     // Only set it to true during snapshot building.
-    configurable: getOptionValue('--build-snapshot'),
+    configurable: isBuildingSnapshot(),
     value: process.argv[0],
   });
 
@@ -268,73 +319,56 @@ function setupWarningHandler() {
 }
 
 // https://fetch.spec.whatwg.org/
-function setupFetch() {
-  if (process.config.variables.node_no_browser_globals ||
-      getOptionValue('--no-experimental-fetch')) {
-    return;
+// https://websockets.spec.whatwg.org/
+function setupUndici() {
+  if (getOptionValue('--no-experimental-fetch') || typeof WebAssembly === 'undefined') {
+    delete globalThis.fetch;
+    delete globalThis.FormData;
+    delete globalThis.Headers;
+    delete globalThis.Request;
+    delete globalThis.Response;
+  } else {
+    require('internal/graal/wasm');
   }
 
-  let undici;
-  function lazyUndici() {
-    if (undici) {
-      return undici;
-    }
-
-    undici = require('internal/deps/undici/undici');
-    return undici;
+  if (!getEmbedderOptions().noBrowserGlobals && getOptionValue('--experimental-websocket')) {
+    exposeLazyInterfaces(globalThis, 'internal/deps/undici/undici', ['WebSocket']);
   }
 
-  async function fetch(input, init = undefined) {
-    return lazyUndici().fetch(input, init);
-  }
-
-  defineOperation(globalThis, 'fetch', fetch);
-
-  function lazyInterface(name) {
-    return {
-      configurable: true,
-      enumerable: false,
-      get() {
-        return lazyUndici()[name];
-      },
-      set(value) {
-        exposeInterface(globalThis, name, value);
-      },
-    };
-  }
-
-  if (typeof WebAssembly !== 'undefined') {
-  ObjectDefineProperties(globalThis, {
-    FormData: lazyInterface('FormData'),
-    Headers: lazyInterface('Headers'),
-    Request: lazyInterface('Request'),
-    Response: lazyInterface('Response'),
-  });
-  }
-
-  // The WebAssembly Web API: https://webassembly.github.io/spec/web-api
-  internalBinding('wasm_web_api').setImplementation((streamState, source) => {
-    require('internal/wasm_web_api').wasmStreamingCallback(streamState, source);
-  });
-  require('internal/graal/wasm');
 }
 
-// TODO(aduh95): move this to internal/bootstrap/browser when the CLI flag is
+// TODO(aduh95): move this to internal/bootstrap/web/* when the CLI flag is
 //               removed.
 function setupWebCrypto() {
-  if (process.config.variables.node_no_browser_globals ||
-      !getOptionValue('--experimental-global-webcrypto')) {
+  if (getEmbedderOptions().noBrowserGlobals ||
+      getOptionValue('--no-experimental-global-webcrypto')) {
     return;
   }
 
   if (internalBinding('config').hasOpenSSL) {
     defineReplaceableLazyAttribute(
-      globalThis, 'internal/crypto/webcrypto', ['crypto'], false,
+      globalThis,
+      'internal/crypto/webcrypto',
+      ['crypto'],
+      false,
+      function cryptoThisCheck() {
+        if (this !== globalThis && this != null)
+          throw new ERR_INVALID_THIS(
+            'nullish or must be the global object');
+      },
     );
     exposeLazyInterfaces(
       globalThis, 'internal/crypto/webcrypto',
       ['Crypto', 'CryptoKey', 'SubtleCrypto'],
     );
+  } else {
+    ObjectDefineProperty(globalThis, 'crypto',
+                         { __proto__: null, ...ObjectGetOwnPropertyDescriptor({
+                           get crypto() {
+                             throw new ERR_NO_CRYPTO();
+                           },
+                         }, 'crypto') });
+
   }
 }
 
@@ -351,11 +385,11 @@ function setupCodeCoverage() {
   }
 }
 
-// TODO(daeyeon): move this to internal/bootstrap/browser when the CLI flag is
+// TODO(daeyeon): move this to internal/bootstrap/web/* when the CLI flag is
 //                removed.
 function setupCustomEvent() {
-  if (process.config.variables.node_no_browser_globals ||
-      !getOptionValue('--experimental-global-customevent')) {
+  if (getEmbedderOptions().noBrowserGlobals ||
+      getOptionValue('--no-experimental-global-customevent')) {
     return;
   }
   const { CustomEvent } = require('internal/event_target');
@@ -401,6 +435,7 @@ function initializeReportSignalHandlers() {
 
 function initializeHeapSnapshotSignalHandlers() {
   const signal = getOptionValue('--heapsnapshot-signal');
+  const diagnosticDir = getOptionValue('--diagnostic-dir');
 
   if (!signal)
     return;
@@ -409,7 +444,8 @@ function initializeHeapSnapshotSignalHandlers() {
   const { writeHeapSnapshot } = require('v8');
 
   function doWriteHeapSnapshot() {
-    writeHeapSnapshot();
+    const heapSnapshotFilename = getHeapSnapshotFilename(diagnosticDir);
+    writeHeapSnapshot(heapSnapshotFilename);
   }
   process.on(signal, doWriteHeapSnapshot);
 
@@ -426,10 +462,6 @@ function setupTraceCategoryState() {
   const { isTraceCategoryEnabled } = internalBinding('trace_events');
   const { toggleTraceCategoryState } = require('internal/process/per_thread');
   toggleTraceCategoryState(isTraceCategoryEnabled('node.async_hooks'));
-}
-
-function setupPerfHooks() {
-  require('internal/perf/utils').refreshTimeOrigin();
 }
 
 function setupInspectorHooks() {
@@ -539,6 +571,72 @@ function initializeClusterIPC() {
   }
 }
 
+function initializePermission() {
+  const experimentalPermission = getOptionValue('--experimental-permission');
+  if (experimentalPermission) {
+    process.binding = function binding(_module) {
+      throw new ERR_ACCESS_DENIED('process.binding');
+    };
+    // Guarantee path module isn't monkey-patched to bypass permission model
+    ObjectFreeze(require('path'));
+    process.emitWarning('Permission is an experimental feature',
+                        'ExperimentalWarning');
+    const { has, deny } = require('internal/process/permission');
+    const warnFlags = [
+      '--allow-addons',
+      '--allow-child-process',
+      '--allow-worker',
+    ];
+    for (const flag of warnFlags) {
+      if (getOptionValue(flag)) {
+        process.emitWarning(
+          `The flag ${flag} must be used with extreme caution. ` +
+        'It could invalidate the permission model.', 'SecurityWarning');
+      }
+    }
+    const warnCommaFlags = [
+      '--allow-fs-read',
+      '--allow-fs-write',
+    ];
+    for (const flag of warnCommaFlags) {
+      const value = getOptionValue(flag);
+      if (value.length === 1 && value[0].includes(',')) {
+        process.emitWarning(
+          `The ${flag} CLI flag has changed. ` +
+        'Passing a comma-separated list of paths is no longer valid. ' +
+        'Documentation can be found at ' +
+        'https://nodejs.org/api/permissions.html#file-system-permissions',
+          'Warning',
+        );
+      }
+    }
+
+    ObjectDefineProperty(process, 'permission', {
+      __proto__: null,
+      enumerable: true,
+      configurable: false,
+      value: {
+        has,
+        deny,
+      },
+    });
+  } else {
+    const availablePermissionFlags = [
+      '--allow-fs-read',
+      '--allow-fs-write',
+      '--allow-addons',
+      '--allow-child-process',
+      '--allow-worker',
+    ];
+    ArrayPrototypeForEach(availablePermissionFlags, (flag) => {
+      const value = getOptionValue(flag);
+      if (value.length) {
+        throw new ERR_MISSING_OPTION('--experimental-permission');
+      }
+    });
+  }
+}
+
 function readPolicyFromDisk() {
   const experimentalPolicy = getOptionValue('--experimental-policy');
   if (experimentalPolicy) {
@@ -594,9 +692,9 @@ function initializeCJSLoader() {
   initializeCJS();
 }
 
-function initializeESMLoader(isLoaderWorker) {
+function initializeESMLoader(forceDefaultLoader) {
   const { initializeESM } = require('internal/modules/esm/utils');
-  initializeESM(isLoaderWorker);
+  initializeESM(forceDefaultLoader);
 
   // Patch the vm module when --experimental-vm-modules is on.
   // Please update the comments in vm.js when this block changes.
@@ -626,6 +724,10 @@ function initializeFrozenIntrinsics() {
   }
 }
 
+function runEmbedderPreload() {
+  internalBinding('mksnapshot').runEmbedderPreload(process, require);
+}
+
 function loadPreloadModules() {
   // For user code, we preload modules if `-r` is passed
   const preloadModules = getOptionValue('--require');
@@ -643,10 +745,36 @@ function markBootstrapComplete() {
   internalBinding('performance').markBootstrapComplete();
 }
 
+// Sequence number for diagnostic filenames
+let sequenceNumOfheapSnapshot = 0;
+
+// To generate the HeapSnapshotFilename while using custom diagnosticDir
+function getHeapSnapshotFilename(diagnosticDir) {
+  if (!diagnosticDir) return undefined;
+
+  const date = new Date();
+
+  const year = DatePrototypeGetFullYear(date);
+  const month = String(DatePrototypeGetMonth(date) + 1).padStart(2, '0');
+  const day = String(DatePrototypeGetDate(date)).padStart(2, '0');
+  const hours = String(DatePrototypeGetHours(date)).padStart(2, '0');
+  const minutes = String(DatePrototypeGetMinutes(date)).padStart(2, '0');
+  const seconds = String(DatePrototypeGetSeconds(date)).padStart(2, '0');
+
+  const dateString = `${year}${month}${day}`;
+  const timeString = `${hours}${minutes}${seconds}`;
+  const pid = process.pid;
+  const threadId = internalBinding('worker').threadId;
+  const fileSequence = (++sequenceNumOfheapSnapshot).toString().padStart(3, '0');
+
+  return `${diagnosticDir}/Heap.${dateString}.${timeString}.${pid}.${threadId}.${fileSequence}.heapsnapshot`;
+}
+
 module.exports = {
   setupUserModules,
   prepareMainThreadExecution,
   prepareWorkerThreadExecution,
+  prepareShadowRealmExecution,
   markBootstrapComplete,
   loadPreloadModules,
   initializeFrozenIntrinsics,

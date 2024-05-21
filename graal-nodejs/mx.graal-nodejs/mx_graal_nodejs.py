@@ -180,7 +180,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
         if _is_windows:
             processDevkitRoot(env=build_env)
             _setEnvVar('PATH', pathsep.join([build_env['PATH']] + [mx.library(lib_name).get_path(True) for lib_name in ('NASM', 'NINJA')]), build_env)
-            extra_flags = ['--ninja', '--dest-cpu=x64', '--without-etw']
+            extra_flags = ['--ninja', '--dest-cpu=x64']
         elif _current_arch == 'aarch64':
             # we do not use compiler recent enough to support neon
             extra_flags = ['--with-arm-fpu=vfp']
@@ -189,7 +189,6 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
 
         _mxrun(['python3', join(_suite.dir, 'configure'),
                 '--partly-static',
-                '--without-dtrace',
                 '--without-inspector',
                 '--without-node-snapshot',
                 '--without-node-code-cache',
@@ -208,7 +207,7 @@ class GraalNodeJsBuildTask(mx.NativeBuildTask):
 
         # put headers for native modules into out/headers
         _setEnvVar('HEADERS_ONLY', '1', build_env)
-        _mxrun(['python3', join('tools', 'install.py'), 'install', join('out', 'headers'), sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
+        _mxrun(['python3', join('tools', 'install.py'), 'install', '--dest-dir', join('out', 'headers'), '--prefix', sep], quiet_if_successful=not mx.get_opts().verbose, env=build_env)
 
         if not _is_windows:
             # copy libjsig.so from the jdk for inclusion in the standalone and `mx node`

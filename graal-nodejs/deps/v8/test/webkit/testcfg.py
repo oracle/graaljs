@@ -81,7 +81,7 @@ class TestCase(testcase.D8TestCase):
 
   def _get_files_params(self):
     files = self._source_files
-    if self._test_config.isolates:
+    if self.test_config.isolates:
       files = files + ['--isolate'] + files
     return files
 
@@ -96,7 +96,3 @@ class TestCase(testcase.D8TestCase):
     return webkit.OutProc(
         self.expected_outcomes,
         os.path.join(self.suite.root, self.path) + '-expected.txt')
-
-
-def GetSuite(*args, **kwargs):
-  return TestSuite(*args, **kwargs)

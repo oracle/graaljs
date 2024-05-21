@@ -17,8 +17,10 @@ class JSFunction;
 
 class Maglev : public AllStatic {
  public:
-  static MaybeHandle<CodeT> Compile(Isolate* isolate,
-                                    Handle<JSFunction> function);
+  // TODO(v8:7700): This entry point is only used for testing. Consider
+  // removing it once BenchMaglev runtime functions are no longer useful.
+  static MaybeHandle<Code> Compile(Isolate* isolate,
+                                   Handle<JSFunction> function);
 };
 
 }  // namespace internal

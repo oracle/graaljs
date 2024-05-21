@@ -1,12 +1,15 @@
+#include <cstdlib>
 #include "node.h"
 #include "node_builtins.h"
 #include "node_context_data.h"
 #include "node_errors.h"
+#include "node_exit_code.h"
 #include "node_internals.h"
 #include "node_options-inl.h"
 #include "node_platform.h"
 #include "node_realm-inl.h"
 #include "node_shadow_realm.h"
+#include "node_snapshot_builder.h"
 #include "node_v8_platform-inl.h"
 #include "node_wasm_web_api.h"
 #include "uv.h"
@@ -90,8 +93,8 @@ MaybeLocal<Value> PrepareStackTraceCallback(Local<Context> context,
   // is what ReThrow gives us). Just returning the empty MaybeLocal would leave
   // us with a pending exception.
   TryCatchScope try_catch(env);
-  MaybeLocal<Value> result = prepare->Call(
-      context, Undefined(env->isolate()), arraysize(args), args);
+  MaybeLocal<Value> result =
+      prepare->Call(context, Undefined(env->isolate()), arraysize(args), args);
   if (try_catch.HasCaught() && !try_catch.HasTerminated()) {
     try_catch.ReThrow();
   }
@@ -278,8 +281,7 @@ void SetIsolateMiscHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
 
   auto* modify_code_generation_from_strings_callback =
       ModifyCodeGenerationFromStrings;
-  if (s.flags & ALLOW_MODIFY_CODE_GENERATION_FROM_STRINGS_CALLBACK &&
-      s.modify_code_generation_from_strings_callback) {
+  if (s.modify_code_generation_from_strings_callback != nullptr) {
     modify_code_generation_from_strings_callback =
         s.modify_code_generation_from_strings_callback;
   }
@@ -311,6 +313,8 @@ void SetIsolateMiscHandlers(v8::Isolate* isolate, const IsolateSettings& s) {
 
 void SetIsolateUpForNode(v8::Isolate* isolate,
                          const IsolateSettings& settings) {
+  Isolate::Scope isolate_scope(isolate);
+
   SetIsolateErrorHandlers(isolate, settings);
   SetIsolateMiscHandlers(isolate, settings);
 }
@@ -325,9 +329,15 @@ void SetIsolateUpForNode(v8::Isolate* isolate) {
 Isolate* NewIsolate(Isolate::CreateParams* params,
                     uv_loop_t* event_loop,
                     MultiIsolatePlatform* platform,
-                    bool has_snapshot_data) {
+                    const SnapshotData* snapshot_data,
+                    const IsolateSettings& settings) {
   Isolate* isolate = Isolate::Allocate();
   if (isolate == nullptr) return nullptr;
+
+  if (snapshot_data != nullptr) {
+    SnapshotBuilder::InitializeIsolateParams(snapshot_data, params);
+  }
+
 #ifdef NODE_V8_SHARED_RO_HEAP
   {
     // In shared-readonly-heap mode, V8 requires all snapshots used for
@@ -346,12 +356,15 @@ Isolate* NewIsolate(Isolate::CreateParams* params,
 
   SetIsolateCreateParamsForNode(params);
   Isolate::Initialize(isolate, *params);
-  if (!has_snapshot_data) {
+
+  Isolate::Scope isolate_scope(isolate);
+
+  if (snapshot_data == nullptr) {
     // If in deserialize mode, delay until after the deserialization is
     // complete.
-    SetIsolateUpForNode(isolate);
+    SetIsolateUpForNode(isolate, settings);
   } else {
-    SetIsolateMiscHandlers(isolate, {});
+    SetIsolateMiscHandlers(isolate, settings);
   }
 
   return isolate;
@@ -359,32 +372,46 @@ Isolate* NewIsolate(Isolate::CreateParams* params,
 
 Isolate* NewIsolate(ArrayBufferAllocator* allocator,
                     uv_loop_t* event_loop,
-                    MultiIsolatePlatform* platform) {
+                    MultiIsolatePlatform* platform,
+                    const EmbedderSnapshotData* snapshot_data,
+                    const IsolateSettings& settings) {
   Isolate::CreateParams params;
   if (allocator != nullptr) params.array_buffer_allocator = allocator;
-  return NewIsolate(&params, event_loop, platform);
+  return NewIsolate(&params,
+                    event_loop,
+                    platform,
+                    SnapshotData::FromEmbedderWrapper(snapshot_data),
+                    settings);
 }
 
 Isolate* NewIsolate(std::shared_ptr<ArrayBufferAllocator> allocator,
                     uv_loop_t* event_loop,
-                    MultiIsolatePlatform* platform) {
+                    MultiIsolatePlatform* platform,
+                    const EmbedderSnapshotData* snapshot_data,
+                    const IsolateSettings& settings) {
   Isolate::CreateParams params;
   if (allocator) params.array_buffer_allocator_shared = allocator;
-  return NewIsolate(&params, event_loop, platform);
+  return NewIsolate(&params,
+                    event_loop,
+                    platform,
+                    SnapshotData::FromEmbedderWrapper(snapshot_data),
+                    settings);
 }
 
-IsolateData* CreateIsolateData(Isolate* isolate,
-                               uv_loop_t* loop,
-                               MultiIsolatePlatform* platform,
-                               ArrayBufferAllocator* allocator) {
-  return new IsolateData(isolate, loop, platform, allocator);
+IsolateData* CreateIsolateData(
+    Isolate* isolate,
+    uv_loop_t* loop,
+    MultiIsolatePlatform* platform,
+    ArrayBufferAllocator* allocator,
+    const EmbedderSnapshotData* embedder_snapshot_data) {
+  const SnapshotData* snapshot_data =
+      SnapshotData::FromEmbedderWrapper(embedder_snapshot_data);
+  return new IsolateData(isolate, loop, platform, allocator, snapshot_data);
 }
 
 void FreeIsolateData(IsolateData* isolate_data) {
   delete isolate_data;
 }
-
-InspectorParentHandle::~InspectorParentHandle() {}
 
 // Hide the internal handle class from the public API.
 #if HAVE_INSPECTOR
@@ -405,13 +432,47 @@ Environment* CreateEnvironment(
     EnvironmentFlags::Flags flags,
     ThreadId thread_id,
     std::unique_ptr<InspectorParentHandle> inspector_parent_handle) {
-  Isolate* isolate = context->GetIsolate();
+  Isolate* isolate = isolate_data->isolate();
+
+  Isolate::Scope isolate_scope(isolate);
   HandleScope handle_scope(isolate);
-  Context::Scope context_scope(context);
+
+  const bool use_snapshot = context.IsEmpty();
+  const EnvSerializeInfo* env_snapshot_info = nullptr;
+  if (use_snapshot) {
+    CHECK_NOT_NULL(isolate_data->snapshot_data());
+    env_snapshot_info = &isolate_data->snapshot_data()->env_info;
+  }
+
   // TODO(addaleax): This is a much better place for parsing per-Environment
   // options than the global parse call.
-  Environment* env = new Environment(
-      isolate_data, context, args, exec_args, nullptr, flags, thread_id);
+  Environment* env = new Environment(isolate_data,
+                                     isolate,
+                                     args,
+                                     exec_args,
+                                     env_snapshot_info,
+                                     flags,
+                                     thread_id);
+  CHECK_NOT_NULL(env);
+
+  if (use_snapshot) {
+    context = Context::FromSnapshot(isolate,
+                                    SnapshotData::kNodeMainContextIndex,
+                                    {DeserializeNodeInternalFields, env})
+                  .ToLocalChecked();
+
+    CHECK(!context.IsEmpty());
+    Context::Scope context_scope(context);
+
+    if (InitializeContextRuntime(context).IsNothing()) {
+      FreeEnvironment(env);
+      return nullptr;
+    }
+    SetIsolateErrorHandlers(isolate, {});
+  }
+
+  Context::Scope context_scope(context);
+  env->InitializeMainContext(context, env_snapshot_info);
 
 #if HAVE_INSPECTOR
   if (env->should_create_inspector()) {
@@ -424,11 +485,12 @@ Environment* CreateEnvironment(
     }
   }
 #endif
+
   if (env->options()->debug_options().break_node_first_line) {
     isolate->SchedulePauseOnNextStatement();
   }
 
-  if (env->principal_realm()->RunBootstrapping().IsEmpty()) {
+  if (!use_snapshot && env->principal_realm()->RunBootstrapping().IsEmpty()) {
     FreeEnvironment(env);
     return nullptr;
   }
@@ -453,13 +515,6 @@ void FreeEnvironment(Environment* env) {
     env->RunCleanup();
     RunAtExit(env);
   }
-
-  // This call needs to be made while the `Environment` is still alive
-  // because we assume that it is available for async tracking in the
-  // NodePlatform implementation.
-  MultiIsolatePlatform* platform = env->isolate_data()->platform();
-  if (platform != nullptr)
-    platform->DrainTasks(isolate);
 
   delete env;
 }
@@ -487,27 +542,33 @@ NODE_EXTERN std::unique_ptr<InspectorParentHandle> GetInspectorParentHandle(
 #endif
 }
 
-MaybeLocal<Value> LoadEnvironment(
-    Environment* env,
-    StartExecutionCallback cb) {
+MaybeLocal<Value> LoadEnvironment(Environment* env,
+                                  StartExecutionCallback cb,
+                                  EmbedderPreloadCallback preload) {
   env->InitializeLibuv();
   env->InitializeDiagnostics();
+  if (preload) {
+    env->set_embedder_preload(std::move(preload));
+  }
 
   return StartExecution(env, cb);
 }
 
-MaybeLocal<Value> LoadEnvironment(
-    Environment* env,
-    const char* main_script_source_utf8) {
-  CHECK_NOT_NULL(main_script_source_utf8);
+MaybeLocal<Value> LoadEnvironment(Environment* env,
+                                  std::string_view main_script_source_utf8,
+                                  EmbedderPreloadCallback preload) {
+  // It could be empty when it's used by SEA to load an empty script.
+  CHECK_IMPLIES(main_script_source_utf8.size() > 0,
+                main_script_source_utf8.data());
   return LoadEnvironment(
-      env, [&](const StartExecutionCallbackInfo& info) -> MaybeLocal<Value> {
-        std::string name = "embedder_main_" + std::to_string(env->thread_id());
-        env->builtin_loader()->Add(name.c_str(), main_script_source_utf8);
-        Realm* realm = env->principal_realm();
-
-        return realm->ExecuteBootstrapper(name.c_str());
-      });
+      env,
+      [&](const StartExecutionCallbackInfo& info) -> MaybeLocal<Value> {
+        Local<Value> main_script =
+            ToV8Value(env->context(), main_script_source_utf8).ToLocalChecked();
+        return info.run_cjs->Call(
+            env->context(), Null(env->isolate()), 1, &main_script);
+      },
+      std::move(preload));
 }
 
 Environment* GetCurrentEnvironment(Local<Context> context) {
@@ -520,6 +581,10 @@ IsolateData* GetEnvironmentIsolateData(Environment* env) {
 
 ArrayBufferAllocator* GetArrayBufferAllocator(IsolateData* isolate_data) {
   return isolate_data->node_allocator();
+}
+
+Local<Context> GetMainContext(Environment* env) {
+  return env->context();
 }
 
 MultiIsolatePlatform* GetMultiIsolatePlatform(Environment* env) {
@@ -674,7 +739,7 @@ Maybe<bool> InitializeContextRuntime(Local<Context> context) {
     }
   } else if (per_process::cli_options->disable_proto != "") {
     // Validated in ProcessGlobalArgs
-    OnFatalError("InitializeContextRuntime()", "invalid --disable-proto mode");
+    UNREACHABLE("invalid --disable-proto mode");
   }
 
   return Just(true);
@@ -749,6 +814,9 @@ Maybe<bool> InitializePrimordials(Local<Context> context) {
   // relatively cheap and all the scripts that we may want to run at
   // startup are always present in it.
   thread_local builtins::BuiltinLoader builtin_loader;
+  // Primordials can always be just eagerly compiled.
+  builtin_loader.SetEagerCompile();
+
   for (const char** module = context_files; *module != nullptr; module++) {
     Local<Value> arguments[] = {exports, primordials};
     if (builtin_loader
@@ -839,7 +907,11 @@ ThreadId AllocateEnvironmentThreadId() {
   return ThreadId { next_thread_id++ };
 }
 
-void DefaultProcessExitHandler(Environment* env, int exit_code) {
+[[noreturn]] void Exit(ExitCode exit_code) {
+  exit(static_cast<int>(exit_code));
+}
+
+void DefaultProcessExitHandlerInternal(Environment* env, ExitCode exit_code) {
   env->set_stopping(true);
   env->set_can_call_into_js(false);
   env->stop_sub_worker_contexts();
@@ -855,13 +927,24 @@ void DefaultProcessExitHandler(Environment* env, int exit_code) {
   // in node_v8_platform-inl.h
   uv_library_shutdown();
   DisposePlatform();
-  exit(exit_code);
+  Exit(exit_code);
 }
 
+void DefaultProcessExitHandler(Environment* env, int exit_code) {
+  DefaultProcessExitHandlerInternal(env, static_cast<ExitCode>(exit_code));
+}
+
+void SetProcessExitHandler(
+    Environment* env, std::function<void(Environment*, ExitCode)>&& handler) {
+  env->set_process_exit_handler(std::move(handler));
+}
 
 void SetProcessExitHandler(Environment* env,
                            std::function<void(Environment*, int)>&& handler) {
-  env->set_process_exit_handler(std::move(handler));
+  auto movedHandler = std::move(handler);
+  env->set_process_exit_handler([=](Environment* env, ExitCode exit_code) {
+    movedHandler(env, static_cast<int>(exit_code));
+  });
 }
 
 }  // namespace node

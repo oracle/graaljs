@@ -232,7 +232,6 @@ There are some other files that touch the build chain. Changes in the following
 files also qualify as affecting the `node` binary:
 
 * `tools/*.py`
-* `tools/build-addons.mjs`
 * `*.gyp`
 * `*.gypi`
 * `configure`
@@ -532,9 +531,10 @@ The TSC serves as the final arbiter where required.
    [build](https://github.com/nodejs/build/issues) repositories, open new
    issues. Run a new CI any time someone pushes new code to the pull request.
 4. Check that the commit message adheres to [commit message guidelines][].
-5. Add all necessary [metadata](#metadata) to commit messages before landing. If
-   you are unsure exactly how to format the commit messages, use the commit log
-   as a reference. See [this commit][commit-example] as an example.
+5. Add all necessary [metadata][git-node-metadata] to commit messages before
+   landing. If you are unsure exactly how to format the commit messages, use
+   the commit log as a reference. See [this commit][commit-example] as an
+   example.
 
 For pull requests from first-time contributors, be
 [welcoming](#welcoming-first-time-contributors). Also, verify that their git
@@ -555,22 +555,23 @@ See the [commit queue guide][commit-queue.md].
 
 ### Using `git-node`
 
-In most cases, using [the `git-node` command][git-node] of [`node-core-utils`][]
-is enough to land a pull request. If you discover a problem when using
-this tool, please file an issue [to the issue tracker][node-core-utils-issues].
+In most cases, using [the `git-node` command][git-node] of
+[`@node-core/utils`][] is enough to land a pull request. If you discover a
+problem when using this tool, please file an issue
+[to the issue tracker][node-core-utils-issues].
 
 Quick example:
 
-```text
-$ npm install -g node-core-utils
-$ git node land $PRID
+```bash
+npm install -g @node-core/utils
+git node land $PRID
 ```
 
-To use `node-core-utils`, you will need a GitHub access token. If you do not
-have one, `node-core-utils` will create one for you the first time you use it.
+To use `@node-core/utils`, you will need a GitHub access token. If you do not
+have one, `@node-core/utils` will create one for you the first time you use it.
 To do this, it will ask for your GitHub password and two-factor authentication
 code. If you wish to create the token yourself in advance, see
-[the `node-core-utils` guide][node-core-utils-credentials].
+[the `@node-core/utils` guide][node-core-utils-credentials].
 
 ### Technical HOWTO
 
@@ -582,37 +583,37 @@ pull request rather than rely on `git-node`.
 
 Clear any `am`/`rebase` that might already be underway:
 
-```text
-$ git am --abort
-$ git rebase --abort
+```bash
+git am --abort
+git rebase --abort
 ```
 
 Checkout proper target branch:
 
-```text
-$ git checkout main
+```bash
+git checkout main
 ```
 
 Update the tree (assumes your repository is set up as detailed in
 [CONTRIBUTING.md](./pull-requests.md#step-1-fork)):
 
-```text
-$ git fetch upstream
-$ git merge --ff-only upstream/main
+```bash
+git fetch upstream
+git merge --ff-only upstream/main
 ```
 
 Apply external patches:
 
-```text
-$ curl -L https://github.com/nodejs/node/pull/xxx.patch | git am --whitespace=fix
+```bash
+curl -L https://github.com/nodejs/node/pull/xxx.patch | git am --whitespace=fix
 ```
 
 If the merge fails even though recent CI runs were successful, try a 3-way
 merge:
 
-```text
-$ git am --abort
-$ curl -L https://github.com/nodejs/node/pull/xxx.patch | git am -3 --whitespace=fix
+```bash
+git am --abort
+curl -L https://github.com/nodejs/node/pull/xxx.patch | git am -3 --whitespace=fix
 ```
 
 If the 3-way merge succeeds, check the results against the original pull
@@ -623,20 +624,20 @@ has landed since the CI run. You will have to ask the author to rebase.
 
 Check and re-review the changes:
 
-```text
-$ git diff upstream/main
+```bash
+git diff upstream/main
 ```
 
 Check the number of commits and commit messages:
 
-```text
-$ git log upstream/main...main
+```bash
+git log upstream/main...main
 ```
 
 Squash commits and add metadata:
 
-```text
-$ git rebase -i upstream/main
+```bash
+git rebase -i upstream/main
 ```
 
 This will open a screen like this (in the default shell editor):
@@ -712,8 +713,8 @@ precaution, run tests (`make -j4 test` or `vcbuild test`).
 Confirm that the commit message format is correct using
 [core-validate-commit](https://github.com/nodejs/core-validate-commit).
 
-```text
-$ git rev-list upstream/main...HEAD | xargs core-validate-commit
+```bash
+git rev-list upstream/main...HEAD | xargs core-validate-commit
 ```
 
 Optional: For your own commits, force push the amended commit to the pull
@@ -728,8 +729,8 @@ the issue with the red closed status.
 
 Time to push it:
 
-```text
-$ git push upstream main
+```bash
+git push upstream main
 ```
 
 Close the pull request with a "Landed in `<commit hash>`" comment. Even if
@@ -878,9 +879,13 @@ If you cannot find who to cc for a file, `git shortlog -n -s <file>` can help.
 
 * `confirmed-bug`: Bugs you have verified
 * `discuss`: Things that need larger discussion
+* `fast-track`: PRs that need to land faster - see
+  [Waiting for approvals](#waiting-for-approvals)
 * `feature request`: Any issue that requests a new feature
 * `good first issue`: Issues suitable for newcomers to fix
 * `meta`: Governance, policies, procedures, etc.
+* `request-ci`: When this label is added to a PR, CI will be started
+  automatically. See [Starting a Jenkins CI job](#starting-a-jenkins-ci-job)
 * `tsc-agenda`: Open issues and pull requests with this label will be added to
   the Technical Steering Committee meeting agenda
 
@@ -959,7 +964,7 @@ need to be attached anymore, as only important bugfixes will be included.
 [TSC]: https://github.com/nodejs/TSC
 [`--pending-deprecation`]: ../api/cli.md#--pending-deprecation
 [`--throw-deprecation`]: ../api/cli.md#--throw-deprecation
-[`node-core-utils`]: https://github.com/nodejs/node-core-utils
+[`@node-core/utils`]: https://github.com/nodejs/node-core-utils
 [backporting guide]: backporting-to-release-lines.md
 [commit message guidelines]: pull-requests.md#commit-message-guidelines
 [commit-example]: https://github.com/nodejs/node/commit/b636ba8186

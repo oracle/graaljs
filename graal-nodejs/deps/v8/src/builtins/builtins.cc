@@ -14,7 +14,7 @@
 #include "src/execution/isolate.h"
 #include "src/interpreter/bytecodes.h"
 #include "src/logging/code-events.h"  // For CodeCreateEvent.
-#include "src/logging/log.h"          // For Logger.
+#include "src/logging/log.h"          // For V8FileLogger.
 #include "src/objects/fixed-array.h"
 #include "src/objects/objects-inl.h"
 #include "src/objects/visitors.h"
@@ -42,9 +42,9 @@ struct BuiltinMetadata {
     interpreter::OperandScale scale : 8;
   };
 
-  STATIC_ASSERT(sizeof(interpreter::Bytecode) == 1);
-  STATIC_ASSERT(sizeof(interpreter::OperandScale) == 1);
-  STATIC_ASSERT(sizeof(BytecodeAndScale) <= sizeof(Address));
+  static_assert(sizeof(interpreter::Bytecode) == 1);
+  static_assert(sizeof(interpreter::OperandScale) == 1);
+  static_assert(sizeof(BytecodeAndScale) <= sizeof(Address));
 
   // The `data` field has kind-specific contents.
   union KindSpecificData {
@@ -114,14 +114,14 @@ const char* Builtins::Lookup(Address pc) {
   if (!initialized_) return nullptr;
   for (Builtin builtin_ix = Builtins::kFirst; builtin_ix <= Builtins::kLast;
        ++builtin_ix) {
-    if (FromCodeT(code(builtin_ix)).contains(isolate_, pc)) {
+    if (code(builtin_ix).contains(isolate_, pc)) {
       return name(builtin_ix);
     }
   }
   return nullptr;
 }
 
-Handle<CodeT> Builtins::CallFunction(ConvertReceiverMode mode) {
+Handle<Code> Builtins::CallFunction(ConvertReceiverMode mode) {
   switch (mode) {
     case ConvertReceiverMode::kNullOrUndefined:
       return code_handle(Builtin::kCallFunction_ReceiverIsNullOrUndefined);
@@ -133,7 +133,7 @@ Handle<CodeT> Builtins::CallFunction(ConvertReceiverMode mode) {
   UNREACHABLE();
 }
 
-Handle<CodeT> Builtins::Call(ConvertReceiverMode mode) {
+Handle<Code> Builtins::Call(ConvertReceiverMode mode) {
   switch (mode) {
     case ConvertReceiverMode::kNullOrUndefined:
       return code_handle(Builtin::kCall_ReceiverIsNullOrUndefined);
@@ -145,7 +145,7 @@ Handle<CodeT> Builtins::Call(ConvertReceiverMode mode) {
   UNREACHABLE();
 }
 
-Handle<CodeT> Builtins::NonPrimitiveToPrimitive(ToPrimitiveHint hint) {
+Handle<Code> Builtins::NonPrimitiveToPrimitive(ToPrimitiveHint hint) {
   switch (hint) {
     case ToPrimitiveHint::kDefault:
       return code_handle(Builtin::kNonPrimitiveToPrimitive_Default);
@@ -157,7 +157,7 @@ Handle<CodeT> Builtins::NonPrimitiveToPrimitive(ToPrimitiveHint hint) {
   UNREACHABLE();
 }
 
-Handle<CodeT> Builtins::OrdinaryToPrimitive(OrdinaryToPrimitiveHint hint) {
+Handle<Code> Builtins::OrdinaryToPrimitive(OrdinaryToPrimitiveHint hint) {
   switch (hint) {
     case OrdinaryToPrimitiveHint::kNumber:
       return code_handle(Builtin::kOrdinaryToPrimitive_Number);
@@ -179,24 +179,21 @@ FullObjectSlot Builtins::builtin_tier0_slot(Builtin builtin) {
   return FullObjectSlot(location);
 }
 
-void Builtins::set_code(Builtin builtin, CodeT code) {
+void Builtins::set_code(Builtin builtin, Code code) {
   DCHECK_EQ(builtin, code.builtin_id());
-  if (V8_EXTERNAL_CODE_SPACE_BOOL) {
-    DCHECK_EQ(builtin, FromCodeT(code).builtin_id());
-  }
   DCHECK(Internals::HasHeapObjectTag(code.ptr()));
   // The given builtin may be uninitialized thus we cannot check its type here.
   isolate_->builtin_table()[Builtins::ToInt(builtin)] = code.ptr();
 }
 
-CodeT Builtins::code(Builtin builtin) {
+Code Builtins::code(Builtin builtin) {
   Address ptr = isolate_->builtin_table()[Builtins::ToInt(builtin)];
-  return CodeT::cast(Object(ptr));
+  return Code::cast(Object(ptr));
 }
 
-Handle<CodeT> Builtins::code_handle(Builtin builtin) {
+Handle<Code> Builtins::code_handle(Builtin builtin) {
   Address* location = &isolate_->builtin_table()[Builtins::ToInt(builtin)];
-  return Handle<CodeT>(location);
+  return Handle<Code>(location);
 }
 
 // static
@@ -232,7 +229,7 @@ CallInterfaceDescriptor Builtins::CallInterfaceDescriptorFor(Builtin builtin) {
 
 // static
 Callable Builtins::CallableFor(Isolate* isolate, Builtin builtin) {
-  Handle<CodeT> code = isolate->builtins()->code_handle(builtin);
+  Handle<Code> code = isolate->builtins()->code_handle(builtin);
   return Callable{code, CallInterfaceDescriptorFor(builtin)};
 }
 
@@ -250,16 +247,16 @@ const char* Builtins::name(Builtin builtin) {
 }
 
 void Builtins::PrintBuiltinCode() {
-  DCHECK(FLAG_print_builtin_code);
+  DCHECK(v8_flags.print_builtin_code);
 #ifdef ENABLE_DISASSEMBLER
   for (Builtin builtin = Builtins::kFirst; builtin <= Builtins::kLast;
        ++builtin) {
     const char* builtin_name = name(builtin);
     if (PassesFilter(base::CStrVector(builtin_name),
-                     base::CStrVector(FLAG_print_builtin_code_filter))) {
+                     base::CStrVector(v8_flags.print_builtin_code_filter))) {
       CodeTracer::Scope trace_scope(isolate_->GetCodeTracer());
       OFStream os(trace_scope.file());
-      Code builtin_code = FromCodeT(code(builtin));
+      Code builtin_code = code(builtin);
       builtin_code.Disassemble(builtin_name, os, isolate_);
       os << "\n";
     }
@@ -268,12 +265,12 @@ void Builtins::PrintBuiltinCode() {
 }
 
 void Builtins::PrintBuiltinSize() {
-  DCHECK(FLAG_print_builtin_size);
+  DCHECK(v8_flags.print_builtin_size);
   for (Builtin builtin = Builtins::kFirst; builtin <= Builtins::kLast;
        ++builtin) {
     const char* builtin_name = name(builtin);
     const char* kind = KindNameOf(builtin);
-    Code code = FromCodeT(Builtins::code(builtin));
+    Code code = Builtins::code(builtin);
     PrintF(stdout, "%s Builtin, %s, %d\n", kind, builtin_name,
            code.InstructionSize());
   }
@@ -302,8 +299,8 @@ bool Builtins::IsBuiltinHandle(Handle<HeapObject> maybe_code,
 }
 
 // static
-bool Builtins::IsIsolateIndependentBuiltin(const Code code) {
-  const Builtin builtin = code.builtin_id();
+bool Builtins::IsIsolateIndependentBuiltin(Code code) {
+  Builtin builtin = code.builtin_id();
   return Builtins::IsBuiltinId(builtin) &&
          Builtins::IsIsolateIndependent(builtin);
 }
@@ -316,7 +313,7 @@ void Builtins::InitializeIsolateDataTables(Isolate* isolate) {
   // The entry table.
   for (Builtin i = Builtins::kFirst; i <= Builtins::kLast; ++i) {
     DCHECK(Builtins::IsBuiltinId(isolate->builtins()->code(i).builtin_id()));
-    DCHECK(isolate->builtins()->code(i).is_off_heap_trampoline());
+    DCHECK(!isolate->builtins()->code(i).has_instruction_stream());
     isolate_data->builtin_entry_table()[ToInt(i)] =
         embedded_data.InstructionStartOfBuiltin(i);
   }
@@ -332,7 +329,7 @@ void Builtins::InitializeIsolateDataTables(Isolate* isolate) {
 
 // static
 void Builtins::EmitCodeCreateEvents(Isolate* isolate) {
-  if (!isolate->logger()->is_listening_to_code_events() &&
+  if (!isolate->v8_file_logger()->is_listening_to_code_events() &&
       !isolate->is_profiling()) {
     return;  // No need to iterate the entire table in this case.
   }
@@ -341,106 +338,71 @@ void Builtins::EmitCodeCreateEvents(Isolate* isolate) {
   int i = 0;
   HandleScope scope(isolate);
   for (; i < ToInt(Builtin::kFirstBytecodeHandler); i++) {
-    Code builtin_code = FromCodeT(CodeT::cast(Object(builtins[i])));
-    Handle<AbstractCode> code(AbstractCode::cast(builtin_code), isolate);
-    PROFILE(isolate, CodeCreateEvent(CodeEventListener::BUILTIN_TAG, code,
+    Handle<Code> builtin_code(&builtins[i]);
+    Handle<AbstractCode> code = Handle<AbstractCode>::cast(builtin_code);
+    PROFILE(isolate, CodeCreateEvent(LogEventListener::CodeTag::kBuiltin, code,
                                      Builtins::name(FromInt(i))));
   }
 
-  STATIC_ASSERT(kLastBytecodeHandlerPlusOne == kBuiltinCount);
+  static_assert(kLastBytecodeHandlerPlusOne == kBuiltinCount);
   for (; i < kBuiltinCount; i++) {
-    Code builtin_code = FromCodeT(CodeT::cast(Object(builtins[i])));
-    Handle<AbstractCode> code(AbstractCode::cast(builtin_code), isolate);
+    Handle<Code> builtin_code(&builtins[i]);
+    Handle<AbstractCode> code = Handle<AbstractCode>::cast(builtin_code);
     interpreter::Bytecode bytecode =
         builtin_metadata[i].data.bytecode_and_scale.bytecode;
     interpreter::OperandScale scale =
         builtin_metadata[i].data.bytecode_and_scale.scale;
     PROFILE(isolate,
             CodeCreateEvent(
-                CodeEventListener::BYTECODE_HANDLER_TAG, code,
+                LogEventListener::CodeTag::kBytecodeHandler, code,
                 interpreter::Bytecodes::ToString(bytecode, scale).c_str()));
   }
 }
 
-namespace {
-enum TrampolineType { kAbort, kJump };
-
-class OffHeapTrampolineGenerator {
- public:
-  explicit OffHeapTrampolineGenerator(Isolate* isolate)
-      : isolate_(isolate),
-        masm_(isolate, AssemblerOptions::DefaultForOffHeapTrampoline(isolate),
-              CodeObjectRequired::kYes,
-              ExternalAssemblerBuffer(buffer_, kBufferSize)) {}
-
-  CodeDesc Generate(Address off_heap_entry, TrampolineType type) {
-    // Generate replacement code that simply tail-calls the off-heap code.
-    DCHECK(!masm_.has_frame());
-    {
-      FrameScope scope(&masm_, StackFrame::NO_FRAME_TYPE);
-      if (type == TrampolineType::kJump) {
-        masm_.CodeEntry();
-        masm_.JumpToOffHeapInstructionStream(off_heap_entry);
-      } else {
-        DCHECK_EQ(type, TrampolineType::kAbort);
-        masm_.Trap();
-      }
-    }
-
-    CodeDesc desc;
-    masm_.GetCode(isolate_, &desc);
-    return desc;
-  }
-
-  Handle<HeapObject> CodeObject() { return masm_.CodeObject(); }
-
- private:
-  Isolate* isolate_;
-  // Enough to fit the single jmp.
-  static constexpr int kBufferSize = 256;
-  byte buffer_[kBufferSize];
-  MacroAssembler masm_;
-};
-
-constexpr int OffHeapTrampolineGenerator::kBufferSize;
-
-}  // namespace
-
 // static
-Handle<Code> Builtins::GenerateOffHeapTrampolineFor(
-    Isolate* isolate, Address off_heap_entry, int32_t kind_specfic_flags,
-    bool generate_jump_to_instruction_stream) {
+Handle<Code> Builtins::CreateInterpreterEntryTrampolineForProfiling(
+    Isolate* isolate) {
   DCHECK_NOT_NULL(isolate->embedded_blob_code());
   DCHECK_NE(0, isolate->embedded_blob_code_size());
 
-  OffHeapTrampolineGenerator generator(isolate);
+  EmbeddedData d = EmbeddedData::FromBlob(isolate);
+  const Builtin builtin = Builtin::kInterpreterEntryTrampolineForProfiling;
 
-  CodeDesc desc =
-      generator.Generate(off_heap_entry, generate_jump_to_instruction_stream
-                                             ? TrampolineType::kJump
-                                             : TrampolineType::kAbort);
+  CodeDesc desc;
+  desc.buffer = reinterpret_cast<byte*>(d.InstructionStartOfBuiltin(builtin));
+
+  int instruction_size = d.InstructionSizeOfBuiltin(builtin);
+  desc.buffer_size = instruction_size;
+  desc.instr_size = instruction_size;
+
+  // Ensure the code doesn't require creation of metadata, otherwise respective
+  // fields of CodeDesc should be initialized.
+  DCHECK_EQ(d.SafepointTableSizeOf(builtin), 0);
+  DCHECK_EQ(d.HandlerTableSizeOf(builtin), 0);
+  DCHECK_EQ(d.ConstantPoolSizeOf(builtin), 0);
+  // TODO(v8:11036): currently the CodeDesc can't represent the state when the
+  // code metadata is stored separately from the instruction stream, therefore
+  // it cannot recreate code comments in the trampoline copy.
+  // The following DCHECK currently fails if the mksnapshot is run with enabled
+  // code comments.
+  DCHECK_EQ(d.CodeCommentsSizeOf(builtin), 0);
+  DCHECK_EQ(d.UnwindingInfoSizeOf(builtin), 0);
+
+  desc.safepoint_table_offset = instruction_size;
+  desc.handler_table_offset = instruction_size;
+  desc.constant_pool_offset = instruction_size;
+  desc.code_comments_offset = instruction_size;
+
+  CodeDesc::Verify(&desc);
+
+  const int kind_specific_flags =
+      isolate->builtins()->code(builtin).kind_specific_flags(kRelaxedLoad);
 
   return Factory::CodeBuilder(isolate, desc, CodeKind::BUILTIN)
-      .set_kind_specific_flags(kind_specfic_flags)
-      .set_read_only_data_container(!V8_EXTERNAL_CODE_SPACE_BOOL)
-      .set_self_reference(generator.CodeObject())
-      .set_is_executable(generate_jump_to_instruction_stream)
+      .set_kind_specific_flags(kind_specific_flags)
+      // Mimic the InterpreterEntryTrampoline.
+      .set_builtin(Builtin::kInterpreterEntryTrampoline)
       .Build();
-}
-
-// static
-Handle<ByteArray> Builtins::GenerateOffHeapTrampolineRelocInfo(
-    Isolate* isolate) {
-  OffHeapTrampolineGenerator generator(isolate);
-  // Generate a jump to a dummy address as we're not actually interested in the
-  // generated instruction stream.
-  CodeDesc desc = generator.Generate(kNullAddress, TrampolineType::kJump);
-
-  Handle<ByteArray> reloc_info = isolate->factory()->NewByteArray(
-      desc.reloc_size, AllocationType::kReadOnly);
-  Code::CopyRelocInfoToByteArray(*reloc_info, desc);
-
-  return reloc_info;
 }
 
 Builtins::Kind Builtins::KindOf(Builtin builtin) {
@@ -473,7 +435,7 @@ bool Builtins::IsCpp(Builtin builtin) {
 // static
 bool Builtins::AllowDynamicFunction(Isolate* isolate, Handle<JSFunction> target,
                                     Handle<JSObject> target_global_proxy) {
-  if (FLAG_allow_unsafe_function_constructor) return true;
+  if (v8_flags.allow_unsafe_function_constructor) return true;
   HandleScopeImplementer* impl = isolate->handle_scope_implementer();
   Handle<Context> responsible_context = impl->LastEnteredOrMicrotaskContext();
   // TODO(verwaest): Remove this.
@@ -482,63 +444,6 @@ bool Builtins::AllowDynamicFunction(Isolate* isolate, Handle<JSFunction> target,
   }
   if (*responsible_context == target->context()) return true;
   return isolate->MayAccess(responsible_context, target_global_proxy);
-}
-
-// static
-bool Builtins::CodeObjectIsExecutable(Builtin builtin) {
-  // If the runtime/optimized code always knows when executing a given builtin
-  // that it is a builtin, then that builtin does not need an executable Code
-  // object. Such Code objects can go in read_only_space (and can even be
-  // smaller with no branch instruction), thus saving memory.
-
-  // Builtins with JS linkage will always have executable Code objects since
-  // they can be called directly from jitted code with no way of determining
-  // that they are builtins at generation time. E.g.
-  //   f = Array.of;
-  //   f(1, 2, 3);
-  // TODO(delphick): This is probably too loose but for now Wasm can call any JS
-  // linkage builtin via its Code object. Once Wasm is fixed this can either be
-  // tighted or removed completely.
-  if (Builtins::KindOf(builtin) != BCH && HasJSLinkage(builtin)) {
-    return true;
-  }
-
-  // There are some other non-TF builtins that also have JS linkage like
-  // InterpreterEntryTrampoline which are explicitly allow-listed below.
-  // TODO(delphick): Some of these builtins do not fit with the above, but
-  // currently cause problems if they're not executable. This list should be
-  // pared down as much as possible.
-  switch (builtin) {
-    case Builtin::kInterpreterEntryTrampoline:
-    case Builtin::kCompileLazy:
-    case Builtin::kCompileLazyDeoptimizedCode:
-    case Builtin::kCallFunction_ReceiverIsNullOrUndefined:
-    case Builtin::kCallFunction_ReceiverIsNotNullOrUndefined:
-    case Builtin::kCallFunction_ReceiverIsAny:
-    case Builtin::kCallBoundFunction:
-    case Builtin::kCall_ReceiverIsNullOrUndefined:
-    case Builtin::kCall_ReceiverIsNotNullOrUndefined:
-    case Builtin::kCall_ReceiverIsAny:
-    case Builtin::kHandleApiCall:
-    case Builtin::kInstantiateAsmJs:
-#if V8_ENABLE_WEBASSEMBLY
-    case Builtin::kGenericJSToWasmWrapper:
-#endif  // V8_ENABLE_WEBASSEMBLY
-
-    // TODO(delphick): Remove this when calls to it have the trampoline inlined
-    // or are converted to use kCallBuiltinPointer.
-    case Builtin::kCEntry_Return1_DontSaveFPRegs_ArgvOnStack_NoBuiltinExit:
-      return true;
-    default:
-#if V8_TARGET_ARCH_MIPS || V8_TARGET_ARCH_MIPS64
-      // TODO(Loongson): Move non-JS linkage builtins code objects into RO_SPACE
-      // caused MIPS platform to crash, and we need some time to handle it. Now
-      // disable this change temporarily on MIPS platform.
-      return true;
-#else
-      return false;
-#endif  // V8_TARGET_ARCH_MIPS || V8_TARGET_ARCH_MIPS64
-  }
 }
 
 Builtin ExampleBuiltinForTorqueFunctionPointerType(

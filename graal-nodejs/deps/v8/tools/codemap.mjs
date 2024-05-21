@@ -38,8 +38,6 @@ const kPageSize =  1 << kPageAlignment;
 
 /**
  * Constructs a mapper that maps addresses into code entries.
- *
- * @constructor
  */
 export class CodeMap {
   /**
@@ -67,12 +65,40 @@ export class CodeMap {
    */
   pages_ = new Set();
 
+  constructor(useBigInt=false) {
+    this.useBigInt = useBigInt;
+    this.kPageSize = useBigInt ? BigInt(kPageSize) : kPageSize;
+    this.kOne = useBigInt ? 1n : 1;
+    this.kZero = useBigInt ? 0n : 0;
+  }
+
+  /**
+   * Adds a code entry that might overlap with static code (e.g. for builtins).
+   *
+   * @param {number} start The starting address.
+   * @param {CodeEntry} codeEntry Code entry object.
+   */
+  addAnyCode(start, codeEntry) {
+    const pageAddr = (start / this.kPageSize) | this.kZero;
+    if (!this.pages_.has(pageAddr)) return this.addCode(start, codeEntry);
+    // We might have loaded static code (builtins, bytecode handlers)
+    // and we get more information later in v8.log with code-creation events.
+    // Overwrite the existing entries in this case.
+    let result = this.findInTree_(this.statics_, start);
+    if (result === null) return this.addCode(start, codeEntry);
+
+    const removedNode = this.statics_.remove(start);
+    this.deleteAllCoveredNodes_(
+        this.statics_, start, start + removedNode.value.size);
+    this.statics_.insert(start, codeEntry);
+  }
+
 
   /**
    * Adds a dynamic (i.e. moveable and discardable) code entry.
    *
    * @param {number} start The starting address.
-   * @param {CodeMap.CodeEntry} codeEntry Code entry object.
+   * @param {CodeEntry} codeEntry Code entry object.
    */
   addCode(start, codeEntry) {
     this.deleteAllCoveredNodes_(this.dynamics_, start, start + codeEntry.size);
@@ -106,7 +132,7 @@ export class CodeMap {
    * Adds a library entry.
    *
    * @param {number} start The starting address.
-   * @param {CodeMap.CodeEntry} codeEntry Code entry object.
+   * @param {CodeEntry} codeEntry Code entry object.
    */
   addLibrary(start, codeEntry) {
     this.markPages_(start, start + codeEntry.size);
@@ -117,7 +143,7 @@ export class CodeMap {
    * Adds a static code entry.
    *
    * @param {number} start The starting address.
-   * @param {CodeMap.CodeEntry} codeEntry Code entry object.
+   * @param {CodeEntry} codeEntry Code entry object.
    */
   addStaticCode(start, codeEntry) {
     this.statics_.insert(start, codeEntry);
@@ -127,8 +153,8 @@ export class CodeMap {
    * @private
    */
   markPages_(start, end) {
-    for (let addr = start; addr <= end; addr += kPageSize) {
-      this.pages_.add((addr / kPageSize) | 0);
+    for (let addr = start; addr <= end; addr += this.kPageSize) {
+      this.pages_.add((addr / this.kPageSize) | this.kZero);
     }
   }
 
@@ -137,13 +163,13 @@ export class CodeMap {
    */
   deleteAllCoveredNodes_(tree, start, end) {
     const to_delete = [];
-    let addr = end - 1;
+    let addr = end - this.kOne;
     while (addr >= start) {
       const node = tree.findGreatestLessThan(addr);
       if (node === null) break;
       const start2 = node.key, end2 = start2 + node.value.size;
       if (start2 < end && start < end2) to_delete.push(start2);
-      addr = start2 - 1;
+      addr = start2 - this.kOne;
     }
     for (let i = 0, l = to_delete.length; i < l; ++i) tree.remove(to_delete[i]);
   }
@@ -171,7 +197,7 @@ export class CodeMap {
    * @param {number} addr Address.
    */
   findAddress(addr) {
-    const pageAddr = (addr / kPageSize) | 0;
+    const pageAddr = (addr / this.kPageSize) | this.kZero;
     if (this.pages_.has(pageAddr)) {
       // Static code entries can contain "holes" of unnamed code.
       // In this case, the whole library is assigned to this address.
@@ -264,21 +290,16 @@ export class CodeMap {
 }
 
 
-/**
- * Creates a code entry object.
- *
- * @param {number} size Code entry size in bytes.
- * @param {string} opt_name Code entry name.
- * @param {string} opt_type Code entry type, e.g. SHARED_LIB, CPP.
- * @param {object} source Optional source position information
- * @constructor
- */
 export class CodeEntry {
   constructor(size, opt_name, opt_type) {
+    /** @type {number} */
     this.size = size;
+    /** @type {string} */
     this.name = opt_name || '';
+    /** @type {string} */
     this.type = opt_type || '';
     this.nameUpdated_ = false;
+    /** @type {?string} */
     this.source = undefined;
   }
 
@@ -292,6 +313,10 @@ export class CodeEntry {
 
   getSourceCode() {
     return '';
+  }
+
+  get sourcePosition() {
+    return this.logEntry.sourcePosition;
   }
 }
 

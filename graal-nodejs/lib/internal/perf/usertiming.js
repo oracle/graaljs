@@ -1,13 +1,15 @@
 'use strict';
 
 const {
+  ObjectDefineProperties,
   SafeMap,
   SafeSet,
   SafeArrayIterator,
+  Symbol,
   SymbolToStringTag,
 } = primordials;
 
-const { InternalPerformanceEntry } = require('internal/perf/performance_entry');
+const { PerformanceEntry, kSkipThrow } = require('internal/perf/performance_entry');
 const { now } = require('internal/perf/utils');
 const { enqueue, bufferUserTiming } = require('internal/perf/observe');
 const nodeTiming = require('internal/perf/nodetiming');
@@ -16,21 +18,26 @@ const {
   validateNumber,
   validateObject,
   validateString,
+  validateInternalField,
 } = require('internal/validators');
 
 const {
   codes: {
+    ERR_ILLEGAL_CONSTRUCTOR,
     ERR_INVALID_ARG_VALUE,
+    ERR_MISSING_ARGS,
     ERR_PERFORMANCE_INVALID_TIMESTAMP,
     ERR_PERFORMANCE_MEASURE_INVALID_OPTIONS,
   },
 } = require('internal/errors');
 
-const { structuredClone } = require('internal/structured_clone');
+const { structuredClone } = internalBinding('messaging');
 const {
-  kEmptyObject,
   lazyDOMException,
+  kEnumerableProperty,
 } = require('internal/util');
+
+const kDetail = Symbol('kDetail');
 
 const markTimings = new SafeMap();
 
@@ -59,42 +66,95 @@ function getMark(name) {
   return ts;
 }
 
-class PerformanceMark extends InternalPerformanceEntry {
-  constructor(name, options) {
+class PerformanceMark extends PerformanceEntry {
+  constructor(name, options = undefined) {
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('name');
+    }
     name = `${name}`;
     if (nodeTimingReadOnlyAttributes.has(name))
       throw new ERR_INVALID_ARG_VALUE('name', name);
-    options ??= kEmptyObject;
-    validateObject(options, 'options');
-    const startTime = options.startTime ?? now();
+    if (options != null) {
+      validateObject(options, 'options');
+    }
+    const startTime = options?.startTime ?? now();
     validateNumber(startTime, 'startTime');
     if (startTime < 0)
       throw new ERR_PERFORMANCE_INVALID_TIMESTAMP(startTime);
     markTimings.set(name, startTime);
 
-    let detail = options.detail;
+    let detail = options?.detail;
     detail = detail != null ?
       structuredClone(detail) :
       null;
-    super(name, 'mark', startTime, 0, detail);
+
+    super(kSkipThrow, name, 'mark', startTime, 0);
+    this[kDetail] = detail;
   }
 
-  get [SymbolToStringTag]() {
-    return 'PerformanceMark';
+  get detail() {
+    validateInternalField(this, kDetail, 'PerformanceMark');
+    return this[kDetail];
+  }
+
+  toJSON() {
+    return {
+      name: this.name,
+      entryType: this.entryType,
+      startTime: this.startTime,
+      duration: this.duration,
+      detail: this[kDetail],
+    };
   }
 }
 
-class PerformanceMeasure extends InternalPerformanceEntry {
-  constructor(name, start, duration, detail) {
-    super(name, 'measure', start, duration, detail);
+ObjectDefineProperties(PerformanceMark.prototype, {
+  detail: kEnumerableProperty,
+  [SymbolToStringTag]: {
+    __proto__: null,
+    configurable: true,
+    value: 'PerformanceMark',
+  },
+});
+
+class PerformanceMeasure extends PerformanceEntry {
+  constructor(
+    skipThrowSymbol = undefined,
+    name = undefined,
+    type = undefined,
+    start = undefined,
+    duration = undefined,
+  ) {
+    if (skipThrowSymbol !== kSkipThrow) {
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
+    }
+
+    super(skipThrowSymbol, name, type, start, duration);
   }
 
-  get [SymbolToStringTag]() {
-    return 'PerformanceMeasure';
+  get detail() {
+    validateInternalField(this, kDetail, 'PerformanceMeasure');
+    return this[kDetail];
   }
 }
+ObjectDefineProperties(PerformanceMeasure.prototype, {
+  detail: kEnumerableProperty,
+  [SymbolToStringTag]: {
+    __proto__: null,
+    configurable: true,
+    value: 'PerformanceMeasure',
+  },
+});
 
-function mark(name, options = kEmptyObject) {
+function createPerformanceMeasure(name, start, duration, detail) {
+  const measure = new PerformanceMeasure(kSkipThrow, name, 'measure', start, duration);
+
+  measure[kDetail] = detail;
+
+  return measure;
+}
+
+function mark(name, options) {
   const mark = new PerformanceMark(name, options);
   enqueue(mark);
   bufferUserTiming(mark);
@@ -160,7 +220,7 @@ function measure(name, startOrMeasureOptions, endMark) {
   } = calculateStartDuration(startOrMeasureOptions, endMark);
   let detail = startOrMeasureOptions?.detail;
   detail = detail != null ? structuredClone(detail) : null;
-  const measure = new PerformanceMeasure(name, start, duration, detail);
+  const measure = createPerformanceMeasure(name, start, duration, detail);
   enqueue(measure);
   bufferUserTiming(measure);
   return measure;

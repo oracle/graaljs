@@ -2,14 +2,12 @@
 
 const {
   ArrayPrototypeForEach,
-  ArrayPrototypeJoin,
   ArrayPrototypeMap,
   ArrayPrototypePush,
   FunctionPrototypeBind,
   NumberParseInt,
   RegExpPrototypeExec,
   RegExpPrototypeSymbolReplace,
-  ObjectCreate,
   Symbol,
 } = primordials;
 
@@ -144,12 +142,15 @@ class ResolverBase {
   }
 
   [kSetServersInteral](newSet, servers) {
-    const orig = this._handle.getServers() || [];
+    const orig = ArrayPrototypeMap(this._handle.getServers() || [], (val) => {
+      val.unshift(isIP(val[0]));
+      return val;
+    });
     const errorNumber = this._handle.setServers(newSet);
 
     if (errorNumber !== 0) {
       // Reset the servers to the old servers, because ares probably unset them.
-      this._handle.setServers(ArrayPrototypeJoin(orig, ','));
+      this._handle.setServers(orig);
       const { strerror } = lazyBinding();
       const err = strerror(errorNumber);
       throw new ERR_DNS_SET_SERVERS_FAILED(err, servers);
@@ -206,6 +207,7 @@ function initializeDns() {
     dnsOrder ??= 'verbatim';
   } else {
     // Allow the deserialized application to override order from CLI.
+    validateOneOf(orderFromCLI, '--dns-result-order', ['verbatim', 'ipv4first', 'ipv6first']);
     dnsOrder = orderFromCLI;
   }
 
@@ -276,12 +278,8 @@ function emitInvalidHostnameWarning(hostname) {
   }
 }
 
-function getDefaultVerbatim() {
-  return dnsOrder !== 'ipv4first';
-}
-
 function setDefaultResultOrder(value) {
-  validateOneOf(value, 'dnsOrder', ['verbatim', 'ipv4first']);
+  validateOneOf(value, 'dnsOrder', ['verbatim', 'ipv4first', 'ipv6first']);
   dnsOrder = value;
 }
 
@@ -290,7 +288,7 @@ function getDefaultResultOrder() {
 }
 
 function createResolverClass(resolver) {
-  const resolveMap = ObjectCreate(null);
+  const resolveMap = { __proto__: null };
 
   class Resolver extends ResolverBase {}
 
@@ -350,7 +348,6 @@ module.exports = {
   validateTimeout,
   validateTries,
   emitInvalidHostnameWarning,
-  getDefaultVerbatim,
   getDefaultResultOrder,
   setDefaultResultOrder,
   errorCodes,

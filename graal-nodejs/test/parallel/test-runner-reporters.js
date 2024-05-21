@@ -6,7 +6,6 @@ const tmpdir = require('../common/tmpdir');
 const { describe, it } = require('node:test');
 const { spawnSync } = require('node:child_process');
 const assert = require('node:assert');
-const path = require('node:path');
 const fs = require('node:fs');
 
 const testFile = fixtures.path('test-runner/reporters.js');
@@ -56,7 +55,7 @@ describe('node:test reporters', { concurrency: true }, () => {
   });
 
   it('should support a file as a destination', async () => {
-    const file = path.join(tmpdir.path, `${tmpFiles++}.out`);
+    const file = tmpdir.resolve(`${tmpFiles++}.out`);
     const child = spawnSync(process.execPath,
                             ['--test', '--test-reporter', 'dot', '--test-reporter-destination', file, testFile]);
     assert.strictEqual(child.stderr.toString(), '');
@@ -72,8 +71,8 @@ describe('node:test reporters', { concurrency: true }, () => {
   });
 
   it('should support multiple reporters', async () => {
-    const file = path.join(tmpdir.path, `${tmpFiles++}.out`);
-    const file2 = path.join(tmpdir.path, `${tmpFiles++}.out`);
+    const file = tmpdir.resolve(`${tmpFiles++}.out`);
+    const file2 = tmpdir.resolve(`${tmpFiles++}.out`);
     const child = spawnSync(process.execPath,
                             ['--test',
                              '--test-reporter', 'dot', '--test-reporter-destination', file,
@@ -97,7 +96,7 @@ describe('node:test reporters', { concurrency: true }, () => {
                                testFile]);
       assert.strictEqual(child.stderr.toString(), '');
       const stdout = child.stdout.toString();
-      assert.match(stdout, /{"test:enqueue":5,"test:dequeue":5,"test:start":4,"test:pass":2,"test:fail":2,"test:plan":2,"test:diagnostic":\d+}$/);
+      assert.match(stdout, /{"test:enqueue":5,"test:dequeue":5,"test:complete":5,"test:start":4,"test:pass":2,"test:fail":2,"test:plan":2,"test:diagnostic":\d+}$/);
       assert.strictEqual(stdout.slice(0, filename.length + 2), `${filename} {`);
     });
   });
@@ -109,7 +108,7 @@ describe('node:test reporters', { concurrency: true }, () => {
     assert.strictEqual(child.stderr.toString(), '');
     assert.match(
       child.stdout.toString(),
-      /^package: reporter-cjs{"test:enqueue":5,"test:dequeue":5,"test:start":4,"test:pass":2,"test:fail":2,"test:plan":2,"test:diagnostic":\d+}$/,
+      /^package: reporter-cjs{"test:enqueue":5,"test:dequeue":5,"test:complete":5,"test:start":4,"test:pass":2,"test:fail":2,"test:plan":2,"test:diagnostic":\d+}$/,
     );
   });
 
@@ -120,7 +119,7 @@ describe('node:test reporters', { concurrency: true }, () => {
     assert.strictEqual(child.stderr.toString(), '');
     assert.match(
       child.stdout.toString(),
-      /^package: reporter-esm{"test:enqueue":5,"test:dequeue":5,"test:start":4,"test:pass":2,"test:fail":2,"test:plan":2,"test:diagnostic":\d+}$/,
+      /^package: reporter-esm{"test:enqueue":5,"test:dequeue":5,"test:complete":5,"test:start":4,"test:pass":2,"test:fail":2,"test:plan":2,"test:diagnostic":\d+}$/,
     );
   });
 
@@ -155,5 +154,24 @@ describe('node:test reporters', { concurrency: true }, () => {
     assert.strictEqual(child.signal, null);
     assert.strictEqual(child.stdout.toString(), 'Going to throw an error\n');
     assert.match(child.stderr.toString(), /Emitted 'error' event on Duplex instance/);
+  });
+
+  it('should support stdout as a destination with spec reporter', async () => {
+    process.env.FORCE_COLOR = '1';
+    const file = tmpdir.resolve(`${tmpFiles++}.txt`);
+    const child = spawnSync(process.execPath,
+                            ['--test', '--test-reporter', 'spec', '--test-reporter-destination', file, testFile]);
+    assert.strictEqual(child.stderr.toString(), '');
+    assert.strictEqual(child.stdout.toString(), '');
+    const fileConent = fs.readFileSync(file, 'utf8');
+    assert.match(fileConent, /▶ nested/);
+    assert.match(fileConent, /✔ ok/);
+    assert.match(fileConent, /✖ failing/);
+    assert.match(fileConent, /ℹ tests 4/);
+    assert.match(fileConent, /ℹ pass 2/);
+    assert.match(fileConent, /ℹ fail 2/);
+    assert.match(fileConent, /ℹ cancelled 0/);
+    assert.match(fileConent, /ℹ skipped 0/);
+    assert.match(fileConent, /ℹ todo 0/);
   });
 });

@@ -257,8 +257,8 @@ static void PrintRelocInfo(std::ostringstream& out, Isolate* isolate,
     out << "    ;; external reference (" << reference_name << ")";
   } else if (RelocInfo::IsCodeTargetMode(rmode)) {
     out << "    ;; code:";
-    Code code = isolate->heap()->GcSafeFindCodeForInnerPointer(
-        relocinfo->target_address());
+    Code code =
+        isolate->heap()->FindCodeForInnerPointer(relocinfo->target_address());
     CodeKind kind = code.kind();
     if (code.is_builtin()) {
       out << " Builtin::" << Builtins::name(code.builtin_id());
@@ -273,16 +273,6 @@ static void PrintRelocInfo(std::ostringstream& out, Isolate* isolate,
             relocinfo->wasm_stub_call_address()));
     out << "    ;; wasm stub: " << runtime_stub_name;
 #endif  // V8_ENABLE_WEBASSEMBLY
-  } else if (RelocInfo::IsRuntimeEntry(rmode) && isolate != nullptr) {
-    // A runtime entry relocinfo might be a deoptimization bailout.
-    Address addr = relocinfo->target_address();
-    DeoptimizeKind type;
-    if (Deoptimizer::IsDeoptimizationEntry(isolate, addr, &type)) {
-      out << "    ;; " << Deoptimizer::MessageFor(type)
-          << " deoptimization bailout";
-    } else {
-      out << "    ;; " << RelocInfo::RelocModeName(rmode);
-    }
   } else {
     out << "    ;; " << RelocInfo::RelocModeName(rmode);
   }
@@ -298,16 +288,8 @@ static int DecodeIt(Isolate* isolate, ExternalReferenceEncoder* ref_encoder,
   byte* pc = begin;
   disasm::Disassembler d(converter,
                          disasm::Disassembler::kContinueOnUnimplementedOpcode);
-  RelocIterator* it = nullptr;
+  RelocIterator rit(code);
   CodeCommentsIterator cit(code.code_comments(), code.code_comments_size());
-  // Relocation exists if we either have no isolate (wasm code),
-  // or we have an isolate and it is not an off-heap instruction stream.
-  if (!isolate || !OffHeapInstructionStream::PcIsOffHeap(
-                      isolate, bit_cast<Address>(begin))) {
-    it = new RelocIterator(code);
-  } else {
-    // No relocation information when printing code stubs.
-  }
   int constants = -1;  // no constants being decoded at the start
 
   while (pc < end) {
@@ -329,21 +311,20 @@ static int DecodeIt(Isolate* isolate, ExternalReferenceEncoder* ref_encoder,
             num_const);
         constants = num_const;
         pc += 4;
-      } else if (it != nullptr && !it->done() &&
-                 it->rinfo()->pc() == reinterpret_cast<Address>(pc) &&
-                 (it->rinfo()->rmode() == RelocInfo::INTERNAL_REFERENCE ||
-                  it->rinfo()->rmode() == RelocInfo::LITERAL_CONSTANT ||
-                  it->rinfo()->rmode() == RelocInfo::DATA_EMBEDDED_OBJECT)) {
+      } else if (!rit.done() &&
+                 rit.rinfo()->pc() == reinterpret_cast<Address>(pc) &&
+                 (rit.rinfo()->rmode() == RelocInfo::INTERNAL_REFERENCE ||
+                  rit.rinfo()->rmode() == RelocInfo::LITERAL_CONSTANT)) {
         // raw pointer embedded in code stream, e.g., jump table
         byte* ptr =
             base::ReadUnalignedValue<byte*>(reinterpret_cast<Address>(pc));
-        if (RelocInfo::IsInternalReference(it->rinfo()->rmode())) {
+        if (RelocInfo::IsInternalReference(rit.rinfo()->rmode())) {
           SNPrintF(decode_buffer,
                    "%08" V8PRIxPTR "       jump table entry %4zu",
                    reinterpret_cast<intptr_t>(ptr),
                    static_cast<size_t>(ptr - begin));
         } else {
-          const char* kType = RelocInfo::IsLiteralConstant(it->rinfo()->rmode())
+          const char* kType = RelocInfo::IsLiteralConstant(rit.rinfo()->rmode())
                                   ? "    literal constant"
                                   : "embedded data object";
           SNPrintF(decode_buffer, "%08" V8PRIxPTR "       %s 0x%08" V8PRIxPTR,
@@ -362,14 +343,12 @@ static int DecodeIt(Isolate* isolate, ExternalReferenceEncoder* ref_encoder,
     std::vector<Address> pcs;
     std::vector<RelocInfo::Mode> rmodes;
     std::vector<intptr_t> datas;
-    if (it != nullptr) {
-      while (!it->done() && it->rinfo()->pc() < reinterpret_cast<Address>(pc)) {
-        // Collect all data.
-        pcs.push_back(it->rinfo()->pc());
-        rmodes.push_back(it->rinfo()->rmode());
-        datas.push_back(it->rinfo()->data());
-        it->next();
-      }
+    while (!rit.done() && rit.rinfo()->pc() < reinterpret_cast<Address>(pc)) {
+      // Collect all data.
+      pcs.push_back(rit.rinfo()->pc());
+      rmodes.push_back(rit.rinfo()->rmode());
+      datas.push_back(rit.rinfo()->data());
+      rit.next();
     }
     while (cit.HasCurrent() &&
            cit.GetPCOffset() < static_cast<Address>(pc - begin)) {
@@ -384,7 +363,8 @@ static int DecodeIt(Isolate* isolate, ExternalReferenceEncoder* ref_encoder,
     }
 
     // Instruction address and instruction offset.
-    if (FLAG_log_colour && reinterpret_cast<Address>(prev_pc) == current_pc) {
+    if (v8_flags.log_colour &&
+        reinterpret_cast<Address>(prev_pc) == current_pc) {
       // If this is the given "current" pc, make it yellow and bold.
       out << "\033[33;1m";
     }
@@ -396,21 +376,21 @@ static int DecodeIt(Isolate* isolate, ExternalReferenceEncoder* ref_encoder,
 
     // Print all the reloc info for this instruction which are not comments.
     for (size_t i = 0; i < pcs.size(); i++) {
-      // Put together the reloc info
+      // Put together the reloc info.
       const CodeReference& host = code;
       Address constant_pool =
           host.is_null() ? kNullAddress : host.constant_pool();
-      Code code_pointer;
-      if (!host.is_null() && host.is_js()) {
-        code_pointer = *host.as_js_code();
+      Handle<Code> code_handle;
+      if (host.is_code()) {
+        code_handle = host.as_code();
+
+        RelocInfo relocinfo(pcs[i], rmodes[i], datas[i], *code_handle,
+                            code_handle->instruction_stream(), constant_pool);
+
+        bool first_reloc_info = (i == 0);
+        PrintRelocInfo(out, isolate, ref_encoder, os, code, &relocinfo,
+                       first_reloc_info);
       }
-
-      RelocInfo relocinfo(pcs[i], rmodes[i], datas[i], code_pointer,
-                          constant_pool);
-
-      bool first_reloc_info = (i == 0);
-      PrintRelocInfo(out, isolate, ref_encoder, os, code, &relocinfo,
-                     first_reloc_info);
     }
 
     // If this is a constant pool load and we haven't found any RelocInfo
@@ -422,7 +402,7 @@ static int DecodeIt(Isolate* isolate, ExternalReferenceEncoder* ref_encoder,
     // by IsInConstantPool() below.
     if (pcs.empty() && !code.is_null() && !decoding_constant_pool) {
       RelocInfo dummy_rinfo(reinterpret_cast<Address>(prev_pc),
-                            RelocInfo::NO_INFO, 0, Code());
+                            RelocInfo::NO_INFO, 0, Code(), InstructionStream());
       if (dummy_rinfo.IsInConstantPool()) {
         Address constant_pool_entry_address =
             dummy_rinfo.constant_pool_entry_address();
@@ -440,7 +420,8 @@ static int DecodeIt(Isolate* isolate, ExternalReferenceEncoder* ref_encoder,
       }
     }
 
-    if (FLAG_log_colour && reinterpret_cast<Address>(prev_pc) == current_pc) {
+    if (v8_flags.log_colour &&
+        reinterpret_cast<Address>(prev_pc) == current_pc) {
       out << "\033[m";
     }
 
@@ -448,20 +429,18 @@ static int DecodeIt(Isolate* isolate, ExternalReferenceEncoder* ref_encoder,
   }
 
   // Emit comments following the last instruction (if any).
-  while (cit.HasCurrent() &&
-         cit.GetPCOffset() < static_cast<Address>(pc - begin)) {
+  while (cit.HasCurrent()) {
     out << "                  " << cit.GetComment();
     DumpBuffer(os, out);
     cit.Next();
   }
 
-  delete it;
   return static_cast<int>(pc - begin);
 }
 
 int Disassembler::Decode(Isolate* isolate, std::ostream& os, byte* begin,
                          byte* end, CodeReference code, Address current_pc) {
-  DCHECK_WITH_MSG(FLAG_text_is_readable,
+  DCHECK_WITH_MSG(v8_flags.text_is_readable,
                   "Builtins disassembly requires a readable .text section");
   V8NameConverter v8NameConverter(isolate, code);
   if (isolate) {

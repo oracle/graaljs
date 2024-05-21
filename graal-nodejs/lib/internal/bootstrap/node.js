@@ -56,12 +56,12 @@
 const {
   FunctionPrototypeCall,
   JSONParse,
+  Number,
+  NumberIsNaN,
   ObjectDefineProperty,
   ObjectGetPrototypeOf,
-  ObjectPreventExtensions,
   ObjectSetPrototypeOf,
-  ReflectGet,
-  ReflectSet,
+  ObjectFreeze,
   SymbolToStringTag,
   globalThis,
 } = primordials;
@@ -70,11 +70,18 @@ const internalTimers = require('internal/timers');
 const {
   defineOperation,
   deprecate,
-  defineLazyProperties,
 } = require('internal/util');
 const {
+  validateInteger,
+} = require('internal/validators');
+const {
+  constants: {
+    kExitCode,
+    kExiting,
+    kHasExitCode,
+  },
   privateSymbols: {
-    exiting_aliased_Uint32Array,
+    exit_info_private_symbol,
   },
 } = internalBinding('util');
 
@@ -90,94 +97,64 @@ setupGlobalProxy();
 setupBuffer();
 
 process.domain = null;
+
+// process._exiting and process.exitCode
 {
-  const exitingAliasedUint32Array = process[exiting_aliased_Uint32Array];
+  const fields = process[exit_info_private_symbol];
   ObjectDefineProperty(process, '_exiting', {
     __proto__: null,
     get() {
-      return exitingAliasedUint32Array[0] === 1;
+      return fields[kExiting] === 1;
     },
     set(value) {
-      exitingAliasedUint32Array[0] = value ? 1 : 0;
+      fields[kExiting] = value ? 1 : 0;
     },
     enumerable: true,
     configurable: true,
   });
+
+  let exitCode;
+  ObjectDefineProperty(process, 'exitCode', {
+    __proto__: null,
+    get() {
+      return exitCode;
+    },
+    set(code) {
+      if (code !== null && code !== undefined) {
+        let value = code;
+        if (typeof code === 'string' && code !== '' &&
+          NumberIsNaN((value = Number(code)))) {
+          value = code;
+        }
+        validateInteger(value, 'code');
+        fields[kExitCode] = value;
+        fields[kHasExitCode] = 1;
+      } else {
+        fields[kHasExitCode] = 0;
+      }
+      exitCode = code;
+    },
+    enumerable: true,
+    configurable: false,
+  });
 }
 process._exiting = false;
-
-// TODO(@jasnell): Once this has gone through one full major
-// release cycle, remove the Proxy and setter and update the
-// getter to either return a read-only object or always return
-// a freshly parsed version of nativeModule.config.
-
-const deprecationHandler = {
-  warned: false,
-  message: 'Setting process.config is deprecated. ' +
-           'In the future the property will be read-only.',
-  code: 'DEP0150',
-  maybeWarn() {
-    if (!this.warned) {
-      process.emitWarning(this.message, {
-        type: 'DeprecationWarning',
-        code: this.code,
-      });
-      this.warned = true;
-    }
-  },
-
-  defineProperty(target, key, descriptor) {
-    this.maybeWarn();
-    return ObjectDefineProperty(target, key, descriptor);
-  },
-
-  deleteProperty(target, key) {
-    this.maybeWarn();
-    delete target[key];
-  },
-
-  preventExtensions(target) {
-    this.maybeWarn();
-    return ObjectPreventExtensions(target);
-  },
-
-  set(target, key, value) {
-    this.maybeWarn();
-    return ReflectSet(target, key, value);
-  },
-
-  get(target, key, receiver) {
-    const val = ReflectGet(target, key, receiver);
-    if (val != null && typeof val === 'object') {
-      // eslint-disable-next-line node-core/prefer-primordials
-      return new Proxy(val, deprecationHandler);
-    }
-    return val;
-  },
-
-  setPrototypeOf(target, proto) {
-    this.maybeWarn();
-    return ObjectSetPrototypeOf(target, proto);
-  },
-};
 
 // process.config is serialized config.gypi
 const binding = internalBinding('builtins');
 
-// eslint-disable-next-line node-core/prefer-primordials
-let processConfig = new Proxy(
-  JSONParse(binding.config),
-  deprecationHandler);
+const processConfig = JSONParse(binding.config, (_key, value) => {
+  // The `reviver` argument of the JSONParse method will visit all the values of
+  // the parsed config, including the "root" object, so there is no need to
+  // explicitly freeze the config outside of this method
+  return ObjectFreeze(value);
+});
 
 ObjectDefineProperty(process, 'config', {
   __proto__: null,
   enumerable: true,
   configurable: true,
-  get() { return processConfig; },
-  set(value) {
-    deprecationHandler.maybeWarn();
-    processConfig = value;
-  },
+  value: processConfig,
 });
 
 require('internal/worker/js_transferable').setup();
@@ -201,11 +178,13 @@ const rawMethods = internalBinding('process_methods');
   process._kill = rawMethods._kill;
 
   const wrapped = perThreadSetup.wrapProcessMethods(rawMethods);
+  process.loadEnvFile = wrapped.loadEnvFile;
   process._rawDebug = wrapped._rawDebug;
   process.cpuUsage = wrapped.cpuUsage;
   process.resourceUsage = wrapped.resourceUsage;
   process.memoryUsage = wrapped.memoryUsage;
   process.constrainedMemory = rawMethods.constrainedMemory;
+  process.availableMemory = rawMethods.availableMemory;
   process.kill = wrapped.kill;
   process.exit = wrapped.exit;
 
@@ -236,21 +215,11 @@ internalBinding('async_wrap').setupHooks(nativeHooks);
 
 const {
   setupTaskQueue,
-  queueMicrotask,
 } = require('internal/process/task_queues');
-
-// Non-standard extensions:
-defineOperation(globalThis, 'queueMicrotask', queueMicrotask);
-
 const timers = require('timers');
+// Non-standard extensions:
 defineOperation(globalThis, 'clearImmediate', timers.clearImmediate);
 defineOperation(globalThis, 'setImmediate', timers.setImmediate);
-
-defineLazyProperties(
-  globalThis,
-  'internal/structured_clone',
-  ['structuredClone'],
-);
 
 // Set the per-Environment callback that will be called
 // when the TrackingTraceStateObserver updates trace state.
@@ -335,8 +304,9 @@ ObjectDefineProperty(process, 'features', {
     hasUncaughtExceptionCaptureCallback;
 }
 
-const { emitWarning } = require('internal/process/warning');
+const { emitWarning, emitWarningSync } = require('internal/process/warning');
 process.emitWarning = emitWarning;
+internalBinding('process_methods').setEmitWarningSync(emitWarningSync);
 
 // We initialize the tick callbacks and the timer callbacks last during
 // bootstrap to make sure that any operation done before this are synchronous.
@@ -438,7 +408,6 @@ function setupBuffer() {
   // Only after this point can C++ use Buffer::New()
   bufferBinding.setBufferPrototype(Buffer.prototype);
   delete bufferBinding.setBufferPrototype;
-  delete bufferBinding.zeroFill;
 
   // Create global.Buffer as getters so that we have a
   // deprecation path for these in ES Modules.

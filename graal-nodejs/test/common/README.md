@@ -40,17 +40,16 @@ The `benchmark` module is used by tests to run benchmarks.
 
 The `child_process` module is used by tests that launch child processes.
 
-### `expectSyncExit(child, options)`
+### `spawnSyncAndExit(command[, args][, spawnOptions], expectations)`
 
-Checks if a _synchronous_ child process runs in the way expected. If it does
-not, print the stdout and stderr output from the child process and additional
-information about it to the stderr of the current process before throwing
-and error. This helps gathering more information about test failures
-coming from child processes.
+Spawns a child process synchronously using [`child_process.spawnSync()`][] and
+check if it runs in the way expected. If it does not, print the stdout and
+stderr output from the child process and additional information about it to
+the stderr of the current process before throwing and error. This helps
+gathering more information about test failures coming from child processes.
 
-* `child` [\<ChildProcess>][<ChildProcess>]: a `ChildProcess` instance
-  returned by `child_process.spawnSync()`.
-* `options` [\<Object>][<Object>]
+* `command`, `args`, `spawnOptions` See [`child_process.spawnSync()`][]
+* `expectations` [\<Object>][<Object>]
   * `status` [\<number>][<number>] Expected `child.status`
   * `signal` [\<string>][<string>] | `null` Expected `child.signal`
   * `stderr` [\<string>][<string>] | [\<RegExp>][<RegExp>] |
@@ -65,12 +64,21 @@ coming from child processes.
   * `trim` [\<boolean>][<boolean>] Optional. Whether this method should trim
     out the whitespace characters when checking `stderr` and `stdout` outputs.
     Defaults to `false`.
+* return [\<Object>][<Object>]
+  * `child` [\<ChildProcess>][<ChildProcess>] The child process returned by
+    [`child_process.spawnSync()`][].
+  * `stderr` [\<string>][<string>] The output from the child process to stderr.
+  * `stdout` [\<string>][<string>] The output from the child process to stdout.
 
-### `expectSyncExitWithoutError(child[, options])`
+### `spawnSyncAndExitWithoutError(command[, args][, spawnOptions])`
 
 Similar to `expectSyncExit()` with the `status` expected to be 0 and
-`signal` expected to be `null`. Any other optional options are passed
-into `expectSyncExit()`.
+`signal` expected to be `null`.
+
+### `spawnSyncAndAssert(command[, args][, spawnOptions], expectations)`
+
+Similar to `spawnSyncAndExitWithoutError()`, but with an additional
+`expectations` parameter.
 
 ## Common Module API
 
@@ -716,6 +724,12 @@ The absolute path to the `test/fixtures/` directory.
 
 Returns the result of `path.join(fixtures.fixturesDir, ...args)`.
 
+### `fixtures.fileURL(...args)`
+
+* `...args` [\<string>][<string>]
+
+Returns the result of `url.pathToFileURL(fixtures.path(...args))`.
+
 ### `fixtures.readSync(args[, enc])`
 
 * `args` [\<string>][<string>] | [\<Array>][<Array>]
@@ -1028,6 +1042,24 @@ Validates the schema of a diagnostic report file whose path is specified in
 Validates the schema of a diagnostic report whose content is specified in
 `report`. If the report fails validation, an exception is thrown.
 
+## SEA Module
+
+The `sea` module provides helper functions for testing Single Executable
+Application functionality.
+
+### `skipIfSingleExecutableIsNotSupported()`
+
+Skip the rest of the tests if single executable applications are not supported
+in the current configuration.
+
+### `generateSEA(targetExecutable, sourceExecutable, seaBlob, verifyWorkflow)`
+
+Copy `sourceExecutable` to `targetExecutable`, use postject to inject `seaBlob`
+into `targetExecutable` and sign it if necessary.
+
+If `verifyWorkflow` is false (default) and any of the steps fails,
+it skips the tests. Otherwise, an error is thrown.
+
 ## tick Module
 
 The `tick` module provides a helper function that can be used to call a callback
@@ -1058,9 +1090,12 @@ Resolves a sequence of paths into absolute url in the temporary directory.
 When called without arguments, returns absolute url of the testing
 temporary directory with explicit trailing `/`.
 
-### `refresh()`
+### `refresh(useSpawn)`
 
-Deletes and recreates the testing temporary directory.
+* `useSpawn` [\<boolean>][<boolean>] default = false
+
+Deletes and recreates the testing temporary directory. When `useSpawn` is true
+this action is performed using `child_process.spawnSync`.
 
 The first time `refresh()` runs, it adds a listener to process `'exit'` that
 cleans the temporary directory. Thus, every file under `tmpdir.path` needs to
@@ -1135,6 +1170,7 @@ See [the WPT tests README][] for details.
 [<number>]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#Number_type
 [<string>]: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Data_structures#String_type
 [Web Platform Tests]: https://github.com/web-platform-tests/wpt
+[`child_process.spawnSync()`]: ../../doc/api/child_process.md#child_processspawnsynccommand-args-options
 [`hijackstdio.hijackStdErr()`]: #hijackstderrlistener
 [`hijackstdio.hijackStdOut()`]: #hijackstdoutlistener
 [internationalization]: ../../doc/api/intl.md

@@ -6,9 +6,7 @@ const {
   MathMin,
   ObjectDefineProperties,
   ObjectDefineProperty,
-  PromiseResolve,
   PromiseReject,
-  SafePromisePrototypeFinally,
   ReflectConstruct,
   RegExpPrototypeExec,
   RegExpPrototypeSymbolReplace,
@@ -22,14 +20,19 @@ const {
 
 const {
   createBlob: _createBlob,
-  FixedSizeBlobCopyJob,
+  createBlobFromFilePath: _createBlobFromFilePath,
+  concat,
   getDataObject,
 } = internalBinding('blob');
+const {
+  kMaxLength,
+} = internalBinding('buffer');
 
 const {
   TextDecoder,
   TextEncoder,
 } = require('internal/encoding');
+const { URL } = require('internal/url');
 
 const {
   makeTransferable,
@@ -47,37 +50,38 @@ const {
   customInspectSymbol: kInspect,
   kEmptyObject,
   kEnumerableProperty,
+  lazyDOMException,
 } = require('internal/util');
 const { inspect } = require('internal/util/inspect');
 
 const {
-  AbortError,
   codes: {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_THIS,
+    ERR_INVALID_STATE,
     ERR_BUFFER_TOO_LARGE,
   },
 } = require('internal/errors');
 
 const {
-  isUint32,
   validateDictionary,
 } = require('internal/validators');
 
+const {
+  CountQueuingStrategy,
+} = require('internal/webstreams/queuingstrategies');
+
+const { queueMicrotask } = require('internal/process/task_queues');
+
 const kHandle = Symbol('kHandle');
-const kState = Symbol('kState');
-const kIndex = Symbol('kIndex');
 const kType = Symbol('kType');
 const kLength = Symbol('kLength');
-const kArrayBufferPromise = Symbol('kArrayBufferPromise');
-
-const kMaxChunkSize = 65536;
+const kNotCloneable = Symbol('kNotCloneable');
 
 const disallowedTypeCharacters = /[^\u{0020}-\u{007E}]/u;
 
 let ReadableStream;
-let URL;
 
 const enc = new TextEncoder();
 let dec;
@@ -85,11 +89,6 @@ let dec;
 // Yes, lazy loading is annoying but because of circular
 // references between the url, internal/blob, and buffer
 // modules, lazy loading here makes sure that things work.
-
-function lazyURL(id) {
-  URL ??= require('internal/url').URL;
-  return new URL(id);
-}
 
 function lazyReadableStream(options) {
   // eslint-disable-next-line no-global-assign
@@ -161,8 +160,8 @@ class Blob {
       return src;
     });
 
-    if (!isUint32(length))
-      throw new ERR_BUFFER_TOO_LARGE(0xFFFFFFFF);
+    if (length > kMaxLength)
+      throw new ERR_BUFFER_TOO_LARGE(kMaxLength);
 
     this[kHandle] = _createBlob(sources_, length);
     this[kLength] = length;
@@ -191,6 +190,11 @@ class Blob {
   }
 
   [kClone]() {
+    if (this[kNotCloneable]) {
+      // We do not currently allow file-backed Blobs to be cloned or passed across
+      // worker threads.
+      throw new ERR_INVALID_STATE.TypeError('File-backed Blobs are not cloneable');
+    }
     const handle = this[kHandle];
     const type = this[kType];
     const length = this[kLength];
@@ -271,40 +275,31 @@ class Blob {
     if (!isBlob(this))
       return PromiseReject(new ERR_INVALID_THIS('Blob'));
 
-    // If there's already a promise in flight for the content,
-    // reuse it, but only while it's in flight. After the cached
-    // promise resolves it will be cleared, allowing it to be
-    // garbage collected as soon as possible.
-    if (this[kArrayBufferPromise])
-      return this[kArrayBufferPromise];
-
-    const job = new FixedSizeBlobCopyJob(this[kHandle]);
-
-    const ret = job.run();
-
-    // If the job returns a value immediately, the ArrayBuffer
-    // was generated synchronously and should just be returned
-    // directly.
-    if (ret !== undefined)
-      return PromiseResolve(ret);
-
-    const {
-      promise,
-      resolve,
-      reject,
-    } = createDeferredPromise();
-
-    job.ondone = (err, ab) => {
-      if (err !== undefined)
-        return reject(new AbortError(undefined, { cause: err }));
-      resolve(ab);
+    const { promise, resolve, reject } = createDeferredPromise();
+    const reader = this[kHandle].getReader();
+    const buffers = [];
+    const readNext = () => {
+      reader.pull((status, buffer) => {
+        if (status === 0) {
+          // EOS, concat & resolve
+          // buffer should be undefined here
+          resolve(concat(buffers));
+          return;
+        } else if (status < 0) {
+          // The read could fail for many different reasons when reading
+          // from a non-memory resident blob part (e.g. file-backed blob).
+          // The error details the system error code.
+          const error = lazyDOMException('The blob could not be read', 'NotReadableError');
+          reject(error);
+          return;
+        }
+        if (buffer !== undefined)
+          buffers.push(buffer);
+        queueMicrotask(() => readNext());
+      });
     };
-    this[kArrayBufferPromise] =
-    SafePromisePrototypeFinally(
-      promise,
-      () => this[kArrayBufferPromise] = undefined);
-
-    return this[kArrayBufferPromise];
+    readNext();
+    return promise;
   }
 
   /**
@@ -326,24 +321,79 @@ class Blob {
     if (!isBlob(this))
       throw new ERR_INVALID_THIS('Blob');
 
-    const self = this;
+    const reader = this[kHandle].getReader();
     return new lazyReadableStream({
-      async start() {
-        this[kState] = await self.arrayBuffer();
-        this[kIndex] = 0;
+      type: 'bytes',
+      start(c) {
+        // There really should only be one read at a time so using an
+        // array here is purely defensive.
+        this.pendingPulls = [];
       },
-
-      pull(controller) {
-        if (this[kState].byteLength - this[kIndex] <= kMaxChunkSize) {
-          controller.enqueue(new Uint8Array(this[kState], this[kIndex]));
-          controller.close();
-          this[kState] = undefined;
-        } else {
-          controller.enqueue(new Uint8Array(this[kState], this[kIndex], kMaxChunkSize));
-          this[kIndex] += kMaxChunkSize;
+      pull(c) {
+        const { promise, resolve, reject } = createDeferredPromise();
+        this.pendingPulls.push({ resolve, reject });
+        const readNext = () => {
+          reader.pull((status, buffer) => {
+            // If pendingPulls is empty here, the stream had to have
+            // been canceled, and we don't really care about the result.
+            // We can simply exit.
+            if (this.pendingPulls.length === 0) {
+              return;
+            }
+            if (status === 0) {
+              // EOS
+              c.close();
+              // This is to signal the end for byob readers
+              // see https://streams.spec.whatwg.org/#example-rbs-pull
+              c.byobRequest?.respond(0);
+              const pending = this.pendingPulls.shift();
+              pending.resolve();
+              return;
+            } else if (status < 0) {
+              // The read could fail for many different reasons when reading
+              // from a non-memory resident blob part (e.g. file-backed blob).
+              // The error details the system error code.
+              const error = lazyDOMException('The blob could not be read', 'NotReadableError');
+              const pending = this.pendingPulls.shift();
+              c.error(error);
+              pending.reject(error);
+              return;
+            }
+            // ReadableByteStreamController.enqueue errors if we submit a 0-length
+            // buffer. We need to check for that here.
+            if (buffer !== undefined && buffer.byteLength !== 0) {
+              c.enqueue(new Uint8Array(buffer));
+            }
+            // We keep reading until we either reach EOS, some error, or we
+            // hit the flow rate of the stream (c.desiredSize).
+            queueMicrotask(() => {
+              if (c.desiredSize < 0) {
+                // A manual backpressure check.
+                if (this.pendingPulls.length !== 0) {
+                  // A case of waiting pull finished (= not yet canceled)
+                  const pending = this.pendingPulls.shift();
+                  pending.resolve();
+                }
+                return;
+              }
+              readNext();
+            });
+          });
+        };
+        readNext();
+        return promise;
+      },
+      cancel(reason) {
+        // Reject any currently pending pulls here.
+        for (const pending of this.pendingPulls) {
+          pending.reject(reason);
         }
+        this.pendingPulls = [];
       },
-    });
+    // We set the highWaterMark to 0 because we do not want the stream to
+    // start reading immediately on creation. We want it to wait until read
+    // is called.
+    }, new CountQueuingStrategy({ highWaterMark: 0 }));
   }
 }
 
@@ -378,7 +428,7 @@ ObjectDefineProperties(Blob.prototype, {
 function resolveObjectURL(url) {
   url = `${url}`;
   try {
-    const parsed = new lazyURL(url);
+    const parsed = new URL(url);
 
     const split = StringPrototypeSplit(parsed.pathname, ':');
 
@@ -411,10 +461,24 @@ function resolveObjectURL(url) {
   }
 }
 
+// TODO(@jasnell): Now that the File class exists, we might consider having
+// this return a `File` instead of a `Blob`.
+function createBlobFromFilePath(path, options) {
+  const maybeBlob = _createBlobFromFilePath(path);
+  if (maybeBlob === undefined) {
+    return lazyDOMException('The blob could not be read', 'NotReadableError');
+  }
+  const { 0: blob, 1: length } = maybeBlob;
+  const res = createBlob(blob, length, options?.type);
+  res[kNotCloneable] = true;
+  return res;
+}
+
 module.exports = {
   Blob,
   ClonedBlob,
   createBlob,
+  createBlobFromFilePath,
   isBlob,
   kHandle,
   resolveObjectURL,

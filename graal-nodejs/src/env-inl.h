@@ -34,6 +34,7 @@
 #include "node_realm-inl.h"
 #include "util-inl.h"
 #include "uv.h"
+#include "v8-cppgc.h"
 #include "v8.h"
 
 #include <cstddef>
@@ -61,12 +62,49 @@ inline uv_loop_t* IsolateData::event_loop() const {
   return event_loop_;
 }
 
+inline void IsolateData::SetCppgcReference(v8::Isolate* isolate,
+                                           v8::Local<v8::Object> object,
+                                           void* wrappable) {
+  v8::CppHeap* heap = isolate->GetCppHeap();
+  CHECK_NOT_NULL(heap);
+  v8::WrapperDescriptor descriptor = heap->wrapper_descriptor();
+  uint16_t required_size = std::max(descriptor.wrappable_instance_index,
+                                    descriptor.wrappable_type_index);
+  CHECK_GT(object->InternalFieldCount(), required_size);
+
+  uint16_t* id_ptr = nullptr;
+  {
+    Mutex::ScopedLock lock(isolate_data_mutex_);
+    auto it =
+        wrapper_data_map_.find(descriptor.embedder_id_for_garbage_collected);
+    CHECK_NE(it, wrapper_data_map_.end());
+    id_ptr = &(it->second->cppgc_id);
+  }
+
+  object->SetAlignedPointerInInternalField(descriptor.wrappable_type_index,
+                                           id_ptr);
+  object->SetAlignedPointerInInternalField(descriptor.wrappable_instance_index,
+                                           wrappable);
+}
+
+inline uint16_t* IsolateData::embedder_id_for_cppgc() const {
+  return &(wrapper_data_->cppgc_id);
+}
+
+inline uint16_t* IsolateData::embedder_id_for_non_cppgc() const {
+  return &(wrapper_data_->non_cppgc_id);
+}
+
 inline NodeArrayBufferAllocator* IsolateData::node_allocator() const {
   return node_allocator_;
 }
 
 inline MultiIsolatePlatform* IsolateData::platform() const {
   return platform_;
+}
+
+inline const SnapshotData* IsolateData::snapshot_data() const {
+  return snapshot_data_;
 }
 
 inline void IsolateData::set_worker_context(worker::Worker* context) {
@@ -289,6 +327,10 @@ inline TickInfo* Environment::tick_info() {
   return &tick_info_;
 }
 
+inline permission::Permission* Environment::permission() {
+  return &permission_;
+}
+
 inline uint64_t Environment::timer_base() const {
   return timer_base_;
 }
@@ -326,11 +368,17 @@ inline bool Environment::force_context_aware() const {
 }
 
 inline void Environment::set_exiting(bool value) {
-  exiting_[0] = value ? 1 : 0;
+  exit_info_[kExiting] = value ? 1 : 0;
 }
 
-inline AliasedUint32Array& Environment::exiting() {
-  return exiting_;
+inline ExitCode Environment::exit_code(const ExitCode default_code) const {
+  return exit_info_[kHasExitCode] == 0
+             ? default_code
+             : static_cast<ExitCode>(exit_info_[kExitCode]);
+}
+
+inline AliasedInt32Array& Environment::exit_info() {
+  return exit_info_;
 }
 
 inline void Environment::set_abort_on_uncaught_exception(bool value) {
@@ -380,6 +428,14 @@ inline std::vector<double>* Environment::destroy_async_id_list() {
 
 inline builtins::BuiltinLoader* Environment::builtin_loader() {
   return &builtin_loader_;
+}
+
+inline const EmbedderPreloadCallback& Environment::embedder_preload() const {
+  return embedder_preload_;
+}
+
+inline void Environment::set_embedder_preload(EmbedderPreloadCallback fn) {
+  embedder_preload_ = std::move(fn);
 }
 
 inline double Environment::new_async_id() {
@@ -719,11 +775,16 @@ inline void Environment::ThrowRangeError(const char* errmsg) {
   ThrowError(v8::Exception::RangeError, errmsg);
 }
 
-inline void Environment::ThrowError(
-    v8::Local<v8::Value> (*fun)(v8::Local<v8::String>),
-    const char* errmsg) {
+inline void Environment::ThrowError(V8ExceptionConstructorOld fun,
+                                    const char* errmsg) {
   v8::HandleScope handle_scope(isolate());
   isolate()->ThrowException(fun(OneByteString(isolate(), errmsg)));
+}
+
+inline void Environment::ThrowError(V8ExceptionConstructorNew fun,
+                                    const char* errmsg) {
+  v8::HandleScope handle_scope(isolate());
+  isolate()->ThrowException(fun(OneByteString(isolate(), errmsg), {}));
 }
 
 inline void Environment::ThrowErrnoException(int errorno,
@@ -752,13 +813,14 @@ void Environment::RemoveCleanupHook(CleanupQueue::Callback fn, void* arg) {
 }
 
 void Environment::set_process_exit_handler(
-    std::function<void(Environment*, int)>&& handler) {
+    std::function<void(Environment*, ExitCode)>&& handler) {
   process_exit_handler_ = std::move(handler);
 }
 
 #define VP(PropertyName, StringValue) V(v8::Private, PropertyName)
 #define VY(PropertyName, StringValue) V(v8::Symbol, PropertyName)
 #define VS(PropertyName, StringValue) V(v8::String, PropertyName)
+#define VR(PropertyName, TypeName) V(v8::Private, per_realm_##PropertyName)
 #define V(TypeName, PropertyName)                                             \
   inline                                                                      \
   v8::Local<TypeName> IsolateData::PropertyName() const {                     \
@@ -767,12 +829,14 @@ void Environment::set_process_exit_handler(
   PER_ISOLATE_PRIVATE_SYMBOL_PROPERTIES(VP)
   PER_ISOLATE_SYMBOL_PROPERTIES(VY)
   PER_ISOLATE_STRING_PROPERTIES(VS)
+  PER_REALM_STRONG_PERSISTENT_VALUES(VR)
 #undef V
+#undef VR
 #undef VS
 #undef VY
 #undef VP
 
-#define VM(PropertyName) V(PropertyName##_binding, v8::FunctionTemplate)
+#define VM(PropertyName) V(PropertyName##_binding_template, v8::ObjectTemplate)
 #define V(PropertyName, TypeName)                                              \
   inline v8::Local<TypeName> IsolateData::PropertyName() const {               \
     return PropertyName##_.Get(isolate_);                                      \

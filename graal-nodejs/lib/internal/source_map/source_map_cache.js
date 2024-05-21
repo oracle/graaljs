@@ -1,22 +1,14 @@
 'use strict';
 
 const {
-  ArrayPrototypeMap,
+  ArrayPrototypePush,
   JSONParse,
-  ObjectCreate,
   ObjectKeys,
-  ObjectGetOwnPropertyDescriptor,
-  ObjectPrototypeHasOwnProperty,
   RegExpPrototypeExec,
-  RegExpPrototypeSymbolSplit,
   SafeMap,
+  StringPrototypeCodePointAt,
   StringPrototypeSplit,
 } = primordials;
-
-function ObjectGetValueSafe(obj, key) {
-  const desc = ObjectGetOwnPropertyDescriptor(obj, key);
-  return ObjectPrototypeHasOwnProperty(desc, 'value') ? desc.value : undefined;
-}
 
 // See https://sourcemaps.info/spec.html for SourceMap V3 specification.
 const { Buffer } = require('buffer');
@@ -27,8 +19,10 @@ let debug = require('internal/util/debuglog').debuglog('source_map', (fn) => {
 const { validateBoolean } = require('internal/validators');
 const {
   setSourceMapsEnabled: setSourceMapsNative,
-  setPrepareStackTraceCallback,
 } = internalBinding('errors');
+const {
+  setInternalPrepareStackTrace,
+} = require('internal/errors');
 const { getLazy } = require('internal/util');
 
 // Since the CJS module cache is mutable, which leads to memory leaks when
@@ -47,6 +41,7 @@ const kLeadingProtocol = /^\w+:\/\//;
 const kSourceMappingURLMagicComment = /\/[*/]#\s+sourceMappingURL=(?<sourceMappingURL>[^\s]+)/g;
 const kSourceURLMagicComment = /\/[*/]#\s+sourceURL=(?<sourceURL>[^\s]+)/g;
 
+const { isAbsolute } = require('path');
 const { fileURLToPath, pathToFileURL, URL } = require('internal/url');
 
 let SourceMap;
@@ -63,15 +58,15 @@ function setSourceMapsEnabled(val) {
   setSourceMapsNative(val);
   if (val) {
     const {
-      prepareStackTrace,
+      prepareStackTraceWithSourceMaps,
     } = require('internal/source_map/prepare_stack_trace');
-    setPrepareStackTraceCallback(prepareStackTrace);
+    setInternalPrepareStackTrace(prepareStackTraceWithSourceMaps);
   } else if (sourceMapsEnabled !== undefined) {
     // Reset prepare stack trace callback only when disabling source maps.
     const {
-      prepareStackTrace,
+      defaultPrepareStackTrace,
     } = require('internal/errors');
-    setPrepareStackTraceCallback(prepareStackTrace);
+    setInternalPrepareStackTrace(defaultPrepareStackTrace);
   }
 
   sourceMapsEnabled = val;
@@ -112,12 +107,10 @@ function extractSourceMapURLMagicComment(content) {
 function maybeCacheSourceMap(filename, content, cjsModuleInstance, isGeneratedSource, sourceURL, sourceMapURL) {
   const sourceMapsEnabled = getSourceMapsEnabled();
   if (!(process.env.NODE_V8_COVERAGE || sourceMapsEnabled)) return;
-  try {
-    const { normalizeReferrerURL } = require('internal/modules/helpers');
-    filename = normalizeReferrerURL(filename);
-  } catch (err) {
+  const { normalizeReferrerURL } = require('internal/modules/helpers');
+  filename = normalizeReferrerURL(filename);
+  if (filename === undefined) {
     // This is most likely an invalid filename in sourceURL of [eval]-wrapper.
-    debug(err);
     return;
   }
 
@@ -130,6 +123,8 @@ function maybeCacheSourceMap(filename, content, cjsModuleInstance, isGeneratedSo
     return;
   }
 
+  // FIXME: callers should obtain sourceURL from v8 and pass it
+  // rather than leaving it undefined and extract by regex.
   if (sourceURL === undefined) {
     sourceURL = extractSourceURLMagicComment(content);
   }
@@ -138,6 +133,7 @@ function maybeCacheSourceMap(filename, content, cjsModuleInstance, isGeneratedSo
   const url = data ? null : sourceMapURL;
   if (cjsModuleInstance) {
     getCjsSourceMapCache().set(cjsModuleInstance, {
+      __proto__: null,
       filename,
       lineLengths: lineLengths(content),
       data,
@@ -146,6 +142,7 @@ function maybeCacheSourceMap(filename, content, cjsModuleInstance, isGeneratedSo
     });
   } else if (isGeneratedSource) {
     const entry = {
+      __proto__: null,
       lineLengths: lineLengths(content),
       data,
       url,
@@ -159,6 +156,7 @@ function maybeCacheSourceMap(filename, content, cjsModuleInstance, isGeneratedSo
     // If there is no cjsModuleInstance and is not generated source assume we are in a
     // "modules/esm" context.
     const entry = {
+      __proto__: null,
       lineLengths: lineLengths(content),
       data,
       url,
@@ -210,13 +208,25 @@ function dataFromUrl(sourceURL, sourceMappingURL) {
 // from. This allows translation from byte offset V8 coverage reports,
 // to line/column offset Source Map V3.
 function lineLengths(content) {
-  // We purposefully keep \r as part of the line-length calculation, in
-  // cases where there is a \r\n separator, so that this can be taken into
-  // account in coverage calculations.
-  return ArrayPrototypeMap(RegExpPrototypeSymbolSplit(/\n|\u2028|\u2029/, content), (line) => {
-    return line.length;
-  });
+  const contentLength = content.length;
+  const output = [];
+  let lineLength = 0;
+  for (let i = 0; i < contentLength; i++, lineLength++) {
+    const codePoint = StringPrototypeCodePointAt(content, i);
+
+    // We purposefully keep \r as part of the line-length calculation, in
+    // cases where there is a \r\n separator, so that this can be taken into
+    // account in coverage calculations.
+    // codepoints for \n (new line), \u2028 (line separator) and \u2029 (paragraph separator)
+    if (codePoint === 10 || codePoint === 0x2028 || codePoint === 0x2029) {
+      ArrayPrototypePush(output, lineLength);
+      lineLength = -1; // To not count the matched codePoint such as \n character
+    }
+  }
+  ArrayPrototypePush(output, lineLength);
+  return output;
 }
+
 
 function sourceMapFromFile(mapURL) {
   try {
@@ -256,9 +266,13 @@ function sourceMapFromDataUrl(sourceURL, url) {
 // If the sources are not absolute URLs after prepending of the "sourceRoot",
 // the sources are resolved relative to the SourceMap (like resolving script
 // src in a html document).
+// If the sources are absolute paths, the sources are converted to absolute file URLs.
 function sourcesToAbsolute(baseURL, data) {
   data.sources = data.sources.map((source) => {
     source = (data.sourceRoot || '') + source;
+    if (isAbsolute(source)) {
+      return pathToFileURL(source).href;
+    }
     return new URL(source, baseURL).href;
   });
   // The sources array is now resolved to absolute URLs, sourceRoot should
@@ -275,7 +289,7 @@ function sourcesToAbsolute(baseURL, data) {
 // Get serialized representation of source-map cache, this is used
 // to persist a cache of source-maps to disk when NODE_V8_COVERAGE is enabled.
 function sourceMapCacheToObject() {
-  const obj = ObjectCreate(null);
+  const obj = { __proto__: null };
 
   for (const { 0: k, 1: v } of esmSourceMapCache) {
     obj[k] = v;
@@ -291,10 +305,11 @@ function sourceMapCacheToObject() {
 
 function appendCJSCache(obj) {
   for (const value of getCjsSourceMapCache()) {
-    obj[ObjectGetValueSafe(value, 'filename')] = {
-      lineLengths: ObjectGetValueSafe(value, 'lineLengths'),
-      data: ObjectGetValueSafe(value, 'data'),
-      url: ObjectGetValueSafe(value, 'url'),
+    obj[value.filename] = {
+      __proto__: null,
+      lineLengths: value.lineLengths,
+      data: value.data,
+      url: value.url,
     };
   }
 }
@@ -306,22 +321,25 @@ function findSourceMap(sourceURL) {
   if (!SourceMap) {
     SourceMap = require('internal/source_map/source_map').SourceMap;
   }
-  let sourceMap = esmSourceMapCache.get(sourceURL) ?? generatedSourceMapCache.get(sourceURL);
-  if (sourceMap === undefined) {
+  let entry = esmSourceMapCache.get(sourceURL) ?? generatedSourceMapCache.get(sourceURL);
+  if (entry === undefined) {
     for (const value of getCjsSourceMapCache()) {
-      const filename = ObjectGetValueSafe(value, 'filename');
-      const cachedSourceURL = ObjectGetValueSafe(value, 'sourceURL');
+      const filename = value.filename;
+      const cachedSourceURL = value.sourceURL;
       if (sourceURL === filename || sourceURL === cachedSourceURL) {
-        sourceMap = {
-          data: ObjectGetValueSafe(value, 'data'),
-        };
+        entry = value;
       }
     }
   }
-  if (sourceMap && sourceMap.data) {
-    return new SourceMap(sourceMap.data);
+  if (entry === undefined) {
+    return undefined;
   }
-  return undefined;
+  let sourceMap = entry.sourceMap;
+  if (sourceMap === undefined) {
+    sourceMap = new SourceMap(entry.data, { lineLengths: entry.lineLengths });
+    entry.sourceMap = sourceMap;
+  }
+  return sourceMap;
 }
 
 module.exports = {

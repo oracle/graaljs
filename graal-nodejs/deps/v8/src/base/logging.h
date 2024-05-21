@@ -46,8 +46,21 @@ V8_BASE_EXPORT V8_NOINLINE void V8_Dcheck(const char* file, int line,
 #endif  // !defined(OFFICIAL_BUILD)
 #endif  // DEBUG
 
-#define UNIMPLEMENTED() FATAL("unimplemented code")
-#define UNREACHABLE() FATAL("unreachable code")
+namespace v8::base {
+// These string constants are pattern-matched by fuzzers.
+constexpr const char* kUnimplementedCodeMessage = "unimplemented code";
+constexpr const char* kUnreachableCodeMessage = "unreachable code";
+}  // namespace v8::base
+
+#define UNIMPLEMENTED() FATAL(::v8::base::kUnimplementedCodeMessage)
+#define UNREACHABLE() FATAL(::v8::base::kUnreachableCodeMessage)
+// g++ versions <= 8 cannot use UNREACHABLE() in a constexpr function.
+// TODO(miladfarca): Remove once all compilers handle this properly.
+#if defined(__GNUC__) && !defined(__clang__) && (__GNUC__ <= 8)
+#define CONSTEXPR_UNREACHABLE() abort()
+#else
+#define CONSTEXPR_UNREACHABLE() UNREACHABLE()
+#endif
 
 namespace v8 {
 namespace base {

@@ -77,8 +77,7 @@ bool SyntheticModule::PrepareInstantiate(Isolate* isolate,
   for (int i = 0, n = export_names->length(); i < n; ++i) {
     // Spec step 7.1: Create a new mutable binding for export_name.
     // Spec step 7.2: Initialize the new mutable binding to undefined.
-    Handle<Cell> cell =
-        isolate->factory()->NewCell(isolate->factory()->undefined_value());
+    Handle<Cell> cell = isolate->factory()->NewCell();
     Handle<String> name(String::cast(export_names->get(i)), isolate);
     CHECK(exports->Lookup(name).IsTheHole(isolate));
     exports = ObjectHashTable::Put(exports, name, cell);
@@ -111,7 +110,7 @@ MaybeHandle<Object> SyntheticModule::Evaluate(Isolate* isolate,
            Utils::ToLocal(Handle<Module>::cast(module)))
            .ToLocal(&result)) {
     isolate->PromoteScheduledException();
-    Module::RecordErrorUsingPendingException(isolate, module);
+    module->RecordError(isolate, isolate->pending_exception());
     return MaybeHandle<Object>();
   }
 

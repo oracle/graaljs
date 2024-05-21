@@ -9,6 +9,7 @@
 
 #include "src/base/lazy-instance.h"
 #include "src/base/platform/mutex.h"
+#include "src/common/globals.h"
 #include "src/common/ptr-compr-inl.h"
 #include "src/heap/basic-memory-chunk.h"
 #include "src/heap/heap-write-barrier-inl.h"
@@ -76,8 +77,8 @@ void ReadOnlyHeap::SetUp(Isolate* isolate,
         artifacts = InitializeSharedReadOnlyArtifacts();
         artifacts->InitializeChecksum(read_only_snapshot_data);
         ro_heap = CreateInitalHeapForBootstrapping(isolate, artifacts);
-        ro_heap->DeseralizeIntoIsolate(isolate, read_only_snapshot_data,
-                                       can_rehash);
+        ro_heap->DeserializeIntoIsolate(isolate, read_only_snapshot_data,
+                                        can_rehash);
         read_only_heap_created = true;
       } else {
         // With pointer compression, there is one ReadOnlyHeap per Isolate.
@@ -98,25 +99,36 @@ void ReadOnlyHeap::SetUp(Isolate* isolate,
       artifacts = InitializeSharedReadOnlyArtifacts();
 
       ro_heap = CreateInitalHeapForBootstrapping(isolate, artifacts);
+
+      // Ensure the first read-only page ends up first in the cage.
+      ro_heap->read_only_space()->EnsurePage();
       artifacts->VerifyChecksum(read_only_snapshot_data, true);
     }
   } else {
     auto* ro_heap = new ReadOnlyHeap(new ReadOnlySpace(isolate->heap()));
     isolate->SetUpFromReadOnlyArtifacts(nullptr, ro_heap);
     if (read_only_snapshot_data != nullptr) {
-      ro_heap->DeseralizeIntoIsolate(isolate, read_only_snapshot_data,
-                                     can_rehash);
+      ro_heap->DeserializeIntoIsolate(isolate, read_only_snapshot_data,
+                                      can_rehash);
     }
   }
 }
 
-void ReadOnlyHeap::DeseralizeIntoIsolate(Isolate* isolate,
-                                         SnapshotData* read_only_snapshot_data,
-                                         bool can_rehash) {
+void ReadOnlyHeap::DeserializeIntoIsolate(Isolate* isolate,
+                                          SnapshotData* read_only_snapshot_data,
+                                          bool can_rehash) {
   DCHECK_NOT_NULL(read_only_snapshot_data);
   ReadOnlyDeserializer des(isolate, read_only_snapshot_data, can_rehash);
   des.DeserializeIntoIsolate();
+  OnCreateRootsComplete(isolate);
   InitFromIsolate(isolate);
+}
+
+void ReadOnlyHeap::OnCreateRootsComplete(Isolate* isolate) {
+  DCHECK_NOT_NULL(isolate);
+  DCHECK(!roots_init_complete_);
+  if (IsReadOnlySpaceShared()) InitializeFromIsolateRoots(isolate);
+  roots_init_complete_ = true;
 }
 
 void ReadOnlyHeap::OnCreateHeapObjectsComplete(Isolate* isolate) {
@@ -144,7 +156,8 @@ ReadOnlyHeap* ReadOnlyHeap::CreateInitalHeapForBootstrapping(
   } else {
     std::unique_ptr<SoleReadOnlyHeap> sole_ro_heap(
         new SoleReadOnlyHeap(ro_space));
-    // The global shared ReadOnlyHeap is only used without pointer compression.
+    // The global shared ReadOnlyHeap is used with shared cage and if pointer
+    // compression is disabled.
     SoleReadOnlyHeap::shared_ro_heap_ = sole_ro_heap.get();
     ro_heap = std::move(sole_ro_heap);
   }
@@ -168,10 +181,9 @@ void SoleReadOnlyHeap::InitializeFromIsolateRoots(Isolate* isolate) {
 }
 
 void ReadOnlyHeap::InitFromIsolate(Isolate* isolate) {
-  DCHECK(!init_complete_);
+  DCHECK(roots_init_complete_);
   read_only_space_->ShrinkPages();
   if (IsReadOnlySpaceShared()) {
-    InitializeFromIsolateRoots(isolate);
     std::shared_ptr<ReadOnlyArtifacts> artifacts(
         *read_only_artifacts_.Pointer());
 
@@ -186,7 +198,6 @@ void ReadOnlyHeap::InitFromIsolate(Isolate* isolate) {
   } else {
     read_only_space_->Seal(ReadOnlySpace::SealMode::kDoNotDetachFromHeap);
   }
-  init_complete_ = true;
 }
 
 void ReadOnlyHeap::OnHeapTearDown(Heap* heap) {
@@ -298,7 +309,7 @@ HeapObject ReadOnlyHeapObjectIterator::Next() {
     }
     HeapObject object = HeapObject::FromAddress(current_addr_);
     const int object_size = object.Size();
-    current_addr_ += object_size;
+    current_addr_ += ALIGN_TO_ALLOCATION_ALIGNMENT(object_size);
 
     if (object.IsFreeSpaceOrFiller()) {
       continue;

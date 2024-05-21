@@ -229,8 +229,7 @@ void SetFipsCrypto(const FunctionCallbackInfo<Value>& args) {
 
   CHECK(!per_process::cli_options->force_fips_crypto);
   Environment* env = Environment::GetCurrent(args);
-  // TODO(addaleax): This should not be possible to set from worker threads.
-  // CHECK(env->owns_process_state());
+  CHECK(env->owns_process_state());
   bool enable = args[0]->BooleanValue(env->isolate());
 
 #if OPENSSL_VERSION_MAJOR >= 3
@@ -403,8 +402,8 @@ ByteSource ByteSource::FromEncodedString(Environment* env,
 
 ByteSource ByteSource::FromStringOrBuffer(Environment* env,
                                           Local<Value> value) {
-  return IsAnyByteSource(value) ? FromBuffer(value)
-                                : FromString(env, value.As<String>());
+  return IsAnyBufferSource(value) ? FromBuffer(value)
+                                  : FromString(env, value.As<String>());
 }
 
 ByteSource ByteSource::FromString(Environment* env, Local<String> str,
@@ -430,9 +429,9 @@ ByteSource ByteSource::FromSecretKeyBytes(
   // A key can be passed as a string, buffer or KeyObject with type 'secret'.
   // If it is a string, we need to convert it to a buffer. We are not doing that
   // in JS to avoid creating an unprotected copy on the heap.
-  return value->IsString() || IsAnyByteSource(value) ?
-           ByteSource::FromStringOrBuffer(env, value) :
-           ByteSource::FromSymmetricKeyObjectHandle(value);
+  return value->IsString() || IsAnyBufferSource(value)
+             ? ByteSource::FromStringOrBuffer(env, value)
+             : ByteSource::FromSymmetricKeyObjectHandle(value);
 }
 
 ByteSource ByteSource::NullTerminatedCopy(Environment* env,
@@ -638,6 +637,13 @@ void SetEngine(const FunctionCallbackInfo<Value>& args) {
   if (!args[1]->Uint32Value(env->context()).To(&flags)) return;
 
   const node::Utf8Value engine_id(env->isolate(), args[0]);
+
+  if (UNLIKELY(env->permission()->enabled())) {
+    return THROW_ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED(
+        env,
+        "Programmatic selection of OpenSSL engines is unsupported while the "
+        "experimental permission model is enabled");
+  }
 
   args.GetReturnValue().Set(SetEngine(*engine_id, flags));
 }

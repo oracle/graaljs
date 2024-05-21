@@ -86,9 +86,9 @@ class ZoneBuffer : public ZoneObject {
     LEBHelper::write_u32v(&pos_, static_cast<uint32_t>(val));
   }
 
-  void write_f32(float val) { write_u32(bit_cast<uint32_t>(val)); }
+  void write_f32(float val) { write_u32(base::bit_cast<uint32_t>(val)); }
 
-  void write_f64(double val) { write_u64(bit_cast<uint64_t>(val)); }
+  void write_f64(double val) { write_u64(base::bit_cast<uint64_t>(val)); }
 
   void write(const byte* data, size_t size) {
     if (size == 0) return;
@@ -334,14 +334,16 @@ class V8_EXPORT_PRIVATE WasmModuleBuilder : public ZoneObject {
   // exceeded.
   uint32_t IncreaseTableMinSize(uint32_t table_index, uint32_t count);
   // Adds the signature to the module if it does not already exist.
-  uint32_t AddSignature(const FunctionSig* sig,
+  uint32_t AddSignature(const FunctionSig* sig, bool is_final,
                         uint32_t supertype = kNoSuperType);
   // Does not deduplicate function signatures.
-  uint32_t ForceAddSignature(const FunctionSig* sig,
+  uint32_t ForceAddSignature(const FunctionSig* sig, bool is_final,
                              uint32_t supertype = kNoSuperType);
   uint32_t AddException(const FunctionSig* type);
-  uint32_t AddStructType(StructType* type, uint32_t supertype = kNoSuperType);
-  uint32_t AddArrayType(ArrayType* type, uint32_t supertype = kNoSuperType);
+  uint32_t AddStructType(StructType* type, bool is_final,
+                         uint32_t supertype = kNoSuperType);
+  uint32_t AddArrayType(ArrayType* type, bool is_final,
+                        uint32_t supertype = kNoSuperType);
   uint32_t AddTable(ValueType type, uint32_t min_size);
   uint32_t AddTable(ValueType type, uint32_t min_size, uint32_t max_size);
   uint32_t AddTable(ValueType type, uint32_t min_size, uint32_t max_size,

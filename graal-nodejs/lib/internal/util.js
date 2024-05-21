@@ -8,8 +8,8 @@ const {
   ArrayPrototypeSlice,
   ArrayPrototypeSort,
   Error,
+  ErrorCaptureStackTrace,
   FunctionPrototypeCall,
-  ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
@@ -34,6 +34,7 @@ const {
   SafeMap,
   SafeSet,
   SafeWeakMap,
+  SafeWeakRef,
   StringPrototypeReplace,
   StringPrototypeToLowerCase,
   StringPrototypeToUpperCase,
@@ -44,44 +45,33 @@ const {
 } = primordials;
 
 const {
-  hideStackFrames,
   codes: {
     ERR_NO_CRYPTO,
     ERR_UNKNOWN_SIGNAL,
   },
+  isErrorStackTraceLimitWritable,
   uvErrmapGet,
   overrideStackTrace,
 } = require('internal/errors');
 const { signals } = internalBinding('constants').os;
 const {
   isArrayBufferDetached: _isArrayBufferDetached,
+  guessHandleType: _guessHandleType,
   privateSymbols: {
     arrow_message_private_symbol,
     decorated_private_symbol,
   },
   sleep: _sleep,
-  toUSVString: _toUSVString,
 } = internalBinding('util');
 const { isNativeError } = internalBinding('types');
 const { getOptionValue } = require('internal/options');
+const { encodings } = internalBinding('string_decoder');
 
 const noCrypto = !process.versions.openssl;
 
 const experimentalWarnings = new SafeSet();
 
 const colorRegExp = /\u001b\[\d\d?m/g; // eslint-disable-line no-control-regex
-
-const unpairedSurrogateRe =
-  /(?:[^\uD800-\uDBFF]|^)[\uDC00-\uDFFF]|[\uD800-\uDBFF](?![\uDC00-\uDFFF])/;
-function toUSVString(val) {
-  const str = `${val}`;
-  // As of V8 5.5, `str.search()` (and `unpairedSurrogateRe[@@search]()`) are
-  // slower than `unpairedSurrogateRe.exec()`.
-  const match = RegExpPrototypeExec(unpairedSurrogateRe, str);
-  if (!match)
-    return str;
-  return _toUSVString(str, match.index);
-}
 
 let uvBinding;
 
@@ -153,10 +143,6 @@ function pendingDeprecate(fn, msg, code) {
 // Returns a modified function which warns once by default.
 // If --no-deprecation is set, then it is a no-op.
 function deprecate(fn, msg, code, useEmitSync) {
-  if (process.noDeprecation === true) {
-    return fn;
-  }
-
   // Lazy-load to avoid a circular dependency.
   if (validateString === undefined)
     ({ validateString } = require('internal/validators'));
@@ -169,7 +155,10 @@ function deprecate(fn, msg, code, useEmitSync) {
   );
 
   function deprecated(...args) {
-    emitDeprecationWarning();
+    // TODO(joyeecheung): use getOptionValue('--no-deprecation') instead.
+    if (!process.noDeprecation) {
+      emitDeprecationWarning();
+    }
     if (new.target) {
       return ReflectConstruct(fn, args, new.target);
     }
@@ -218,13 +207,13 @@ function slowCases(enc) {
     case 4:
       if (enc === 'UTF8') return 'utf8';
       if (enc === 'ucs2' || enc === 'UCS2') return 'utf16le';
-      enc = `${enc}`.toLowerCase();
+      enc = StringPrototypeToLowerCase(enc);
       if (enc === 'utf8') return 'utf8';
       if (enc === 'ucs2') return 'utf16le';
       break;
     case 3:
       if (enc === 'hex' || enc === 'HEX' ||
-          `${enc}`.toLowerCase() === 'hex')
+      StringPrototypeToLowerCase(enc) === 'hex')
         return 'hex';
       break;
     case 5:
@@ -233,7 +222,7 @@ function slowCases(enc) {
       if (enc === 'UTF-8') return 'utf8';
       if (enc === 'ASCII') return 'ascii';
       if (enc === 'UCS-2') return 'utf16le';
-      enc = `${enc}`.toLowerCase();
+      enc = StringPrototypeToLowerCase(enc);
       if (enc === 'utf-8') return 'utf8';
       if (enc === 'ascii') return 'ascii';
       if (enc === 'ucs-2') return 'utf16le';
@@ -243,23 +232,23 @@ function slowCases(enc) {
       if (enc === 'latin1' || enc === 'binary') return 'latin1';
       if (enc === 'BASE64') return 'base64';
       if (enc === 'LATIN1' || enc === 'BINARY') return 'latin1';
-      enc = `${enc}`.toLowerCase();
+      enc = StringPrototypeToLowerCase(enc);
       if (enc === 'base64') return 'base64';
       if (enc === 'latin1' || enc === 'binary') return 'latin1';
       break;
     case 7:
       if (enc === 'utf16le' || enc === 'UTF16LE' ||
-          `${enc}`.toLowerCase() === 'utf16le')
+      StringPrototypeToLowerCase(enc) === 'utf16le')
         return 'utf16le';
       break;
     case 8:
       if (enc === 'utf-16le' || enc === 'UTF-16LE' ||
-        `${enc}`.toLowerCase() === 'utf-16le')
+      StringPrototypeToLowerCase(enc) === 'utf-16le')
         return 'utf16le';
       break;
     case 9:
       if (enc === 'base64url' || enc === 'BASE64URL' ||
-          `${enc}`.toLowerCase() === 'base64url')
+      StringPrototypeToLowerCase(enc) === 'base64url')
         return 'base64url';
       break;
     default:
@@ -322,7 +311,7 @@ function getSignalsToNamesMapping() {
   if (signalsToNamesMapping !== undefined)
     return signalsToNamesMapping;
 
-  signalsToNamesMapping = ObjectCreate(null);
+  signalsToNamesMapping = { __proto__: null };
   for (const key in signals) {
     signalsToNamesMapping[signals[key]] = key;
   }
@@ -575,6 +564,27 @@ function exposeInterface(target, name, interfaceObject) {
   });
 }
 
+// https://heycam.github.io/webidl/#es-namespaces
+function exposeNamespace(target, name, namespaceObject) {
+  ObjectDefineProperty(target, name, {
+    __proto__: null,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+    value: namespaceObject,
+  });
+}
+
+function exposeGetterAndSetter(target, name, getter, setter = undefined) {
+  ObjectDefineProperty(target, name, {
+    __proto__: null,
+    enumerable: false,
+    configurable: true,
+    get: getter,
+    set: setter,
+  });
+}
+
 function defineLazyProperties(target, id, keys, enumerable = true) {
   const descriptors = { __proto__: null };
   let mod;
@@ -615,7 +625,7 @@ function defineLazyProperties(target, id, keys, enumerable = true) {
   ObjectDefineProperties(target, descriptors);
 }
 
-function defineReplaceableLazyAttribute(target, id, keys, writable = true) {
+function defineReplaceableLazyAttribute(target, id, keys, writable = true, check) {
   let mod;
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
@@ -623,6 +633,9 @@ function defineReplaceableLazyAttribute(target, id, keys, writable = true) {
     let setterCalled = false;
 
     function get() {
+      if (check !== undefined) {
+        FunctionPrototypeCall(check, this);
+      }
       if (setterCalled) {
         return value;
       }
@@ -665,19 +678,28 @@ const lazyDOMExceptionClass = () => {
   return _DOMException;
 };
 
-const lazyDOMException = hideStackFrames((message, name) => {
+const lazyDOMException = (message, name) => {
   _DOMException ??= internalBinding('messaging').DOMException;
+  if (isErrorStackTraceLimitWritable()) {
+    const limit = Error.stackTraceLimit;
+    Error.stackTraceLimit = 0;
+    const ex = new _DOMException(message, name);
+    Error.stackTraceLimit = limit;
+    ErrorCaptureStackTrace(ex, lazyDOMException);
+    return ex;
+  }
   return new _DOMException(message, name);
-});
 
-const kEnumerableProperty = ObjectCreate(null);
+};
+
+const kEnumerableProperty = { __proto__: null };
 kEnumerableProperty.enumerable = true;
 ObjectFreeze(kEnumerableProperty);
 
-const kEmptyObject = ObjectFreeze(ObjectCreate(null));
+const kEmptyObject = ObjectFreeze({ __proto__: null });
 
 function filterOwnProperties(source, keys) {
-  const filtered = ObjectCreate(null);
+  const filtered = { __proto__: null };
   for (let i = 0; i < keys.length; i++) {
     const key = keys[i];
     if (ObjectPrototypeHasOwnProperty(source, key)) {
@@ -796,6 +818,49 @@ function setupCoverageHooks(dir) {
   return coverageDirectory;
 }
 
+
+const handleTypes = ['TCP', 'TTY', 'UDP', 'FILE', 'PIPE', 'UNKNOWN'];
+function guessHandleType(fd) {
+  const type = _guessHandleType(fd);
+  return handleTypes[type];
+}
+
+class WeakReference {
+  #weak = null;
+  #strong = null;
+  #refCount = 0;
+  constructor(object) {
+    this.#weak = new SafeWeakRef(object);
+  }
+
+  incRef() {
+    this.#refCount++;
+    if (this.#refCount === 1) {
+      const derefed = this.#weak.deref();
+      if (derefed !== undefined) {
+        this.#strong = derefed;
+      }
+    }
+    return this.#refCount;
+  }
+
+  decRef() {
+    this.#refCount--;
+    if (this.#refCount === 0) {
+      this.#strong = null;
+    }
+    return this.#refCount;
+  }
+
+  get() {
+    return this.#weak.deref();
+  }
+}
+
+const encodingsMap = { __proto__: null };
+for (let i = 0; i < encodings.length; ++i)
+  encodingsMap[encodings[i]] = i;
+
 module.exports = {
   getLazy,
   assertCrypto,
@@ -809,8 +874,11 @@ module.exports = {
   defineReplaceableLazyAttribute,
   deprecate,
   emitExperimentalWarning,
+  encodingsMap,
   exposeInterface,
   exposeLazyInterfaces,
+  exposeNamespace,
+  exposeGetterAndSetter,
   filterDuplicateStrings,
   filterOwnProperties,
   getConstructorOf,
@@ -818,6 +886,7 @@ module.exports = {
   getInternalGlobal,
   getSystemErrorMap,
   getSystemErrorName,
+  guessHandleType,
   isArrayBufferDetached,
   isError,
   isInsideNodeModules,
@@ -833,7 +902,6 @@ module.exports = {
   sleep,
   spliceOne,
   setupCoverageHooks,
-  toUSVString,
   removeColors,
 
   // Symbol used to customize promisify conversion
@@ -852,4 +920,5 @@ module.exports = {
   kEnumerableProperty,
   setOwnProperty,
   pendingDeprecate,
+  WeakReference,
 };

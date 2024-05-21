@@ -47,6 +47,9 @@ namespace compiler {
   V(S390_Mul32)                             \
   V(S390_Mul32WithOverflow)                 \
   V(S390_Mul64)                             \
+  V(S390_Mul64WithOverflow)                 \
+  V(S390_MulHighS64)                        \
+  V(S390_MulHighU64)                        \
   V(S390_MulHigh32)                         \
   V(S390_MulHighU32)                        \
   V(S390_MulFloat)                          \
@@ -208,8 +211,6 @@ namespace compiler {
   V(S390_F32x4Le)                           \
   V(S390_F32x4Abs)                          \
   V(S390_F32x4Neg)                          \
-  V(S390_F32x4RecipApprox)                  \
-  V(S390_F32x4RecipSqrtApprox)              \
   V(S390_F32x4SConvertI32x4)                \
   V(S390_F32x4UConvertI32x4)                \
   V(S390_F32x4Sqrt)                         \
@@ -286,6 +287,7 @@ namespace compiler {
   V(S390_I32x4ExtAddPairwiseI16x8U)         \
   V(S390_I32x4TruncSatF64x2SZero)           \
   V(S390_I32x4TruncSatF64x2UZero)           \
+  V(S390_I32x4DotI8x16AddS)                 \
   V(S390_I16x8Splat)                        \
   V(S390_I16x8ExtractLaneU)                 \
   V(S390_I16x8ExtractLaneS)                 \
@@ -327,6 +329,7 @@ namespace compiler {
   V(S390_I16x8ExtAddPairwiseI8x16S)         \
   V(S390_I16x8ExtAddPairwiseI8x16U)         \
   V(S390_I16x8Q15MulRSatS)                  \
+  V(S390_I16x8DotI8x16S)                    \
   V(S390_I8x16Splat)                        \
   V(S390_I8x16ExtractLaneU)                 \
   V(S390_I8x16ExtractLaneS)                 \
@@ -397,8 +400,7 @@ namespace compiler {
   V(S390_LoadSimd128)                       \
   V(S390_StoreCompressTagged)               \
   V(S390_LoadDecompressTaggedSigned)        \
-  V(S390_LoadDecompressTaggedPointer)       \
-  V(S390_LoadDecompressAnyTagged)
+  V(S390_LoadDecompressTagged)
 
 // Addressing modes represent the "shape" of inputs to an instruction.
 // Many instructions support multiple addressing modes. Addressing modes
@@ -417,7 +419,8 @@ namespace compiler {
   V(MR)   /* [%r0          ] */        \
   V(MRI)  /* [%r0       + K] */        \
   V(MRR)  /* [%r0 + %r1    ] */        \
-  V(MRRI) /* [%r0 + %r1 + K] */
+  V(MRRI) /* [%r0 + %r1 + K] */        \
+  V(Root) /* [%r0 + K] */
 
 }  // namespace compiler
 }  // namespace internal

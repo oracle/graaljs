@@ -4,6 +4,7 @@ const {
   DateNow,
   NumberIsNaN,
   ObjectDefineProperties,
+  StringPrototypeToWellFormed,
   SymbolToStringTag,
 } = primordials;
 
@@ -13,10 +14,8 @@ const {
 
 const {
   customInspectSymbol: kInspect,
-  emitExperimentalWarning,
   kEnumerableProperty,
   kEmptyObject,
-  toUSVString,
 } = require('internal/util');
 
 const {
@@ -37,8 +36,6 @@ class File extends Blob {
   #lastModified;
 
   constructor(fileBits, fileName, options = kEmptyObject) {
-    emitExperimentalWarning('buffer.File');
-
     if (arguments.length < 2) {
       throw new ERR_MISSING_ARGS('fileBits', 'fileName');
     }
@@ -58,7 +55,7 @@ class File extends Blob {
       lastModified = DateNow();
     }
 
-    this.#name = toUSVString(fileName);
+    this.#name = StringPrototypeToWellFormed(`${fileName}`);
     this.#lastModified = lastModified;
   }
 

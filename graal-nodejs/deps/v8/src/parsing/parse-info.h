@@ -32,7 +32,7 @@ class LazyCompileDispatcher;
 class DeclarationScope;
 class FunctionLiteral;
 class RuntimeCallStats;
-class Logger;
+class V8FileLogger;
 class SourceRangeMap;
 class Utf16CharacterStream;
 class Zone;
@@ -42,12 +42,12 @@ class Zone;
   V(is_toplevel, bool, 1, _)                                    \
   V(is_eager, bool, 1, _)                                       \
   V(is_eval, bool, 1, _)                                        \
+  V(is_reparse, bool, 1, _)                                     \
   V(outer_language_mode, LanguageMode, 1, _)                    \
   V(parse_restriction, ParseRestriction, 1, _)                  \
   V(is_module, bool, 1, _)                                      \
   V(allow_lazy_parsing, bool, 1, _)                             \
   V(is_lazy_compile, bool, 1, _)                                \
-  V(collect_type_profile, bool, 1, _)                           \
   V(coverage_enabled, bool, 1, _)                               \
   V(block_coverage_enabled, bool, 1, _)                         \
   V(is_asm_wasm_broken, bool, 1, _)                             \
@@ -55,13 +55,14 @@ class Zone;
   V(private_name_lookup_skips_outer_class, bool, 1, _)          \
   V(requires_instance_members_initializer, bool, 1, _)          \
   V(has_static_private_methods_or_accessors, bool, 1, _)        \
-  V(might_always_opt, bool, 1, _)                               \
+  V(might_always_turbofan, bool, 1, _)                          \
   V(allow_natives_syntax, bool, 1, _)                           \
   V(allow_lazy_compile, bool, 1, _)                             \
   V(post_parallel_compile_tasks_for_eager_toplevel, bool, 1, _) \
   V(post_parallel_compile_tasks_for_lazy, bool, 1, _)           \
   V(collect_source_positions, bool, 1, _)                       \
-  V(is_repl_mode, bool, 1, _)
+  V(is_repl_mode, bool, 1, _)                                   \
+  V(produce_compile_hints, bool, 1, _)
 
 class V8_EXPORT_PRIVATE UnoptimizedCompileFlags {
  public:
@@ -139,8 +140,7 @@ class V8_EXPORT_PRIVATE UnoptimizedCompileFlags {
   // SharedFunctionInfo |function|
   template <typename T>
   void SetFlagsFromFunction(T function);
-  void SetFlagsForToplevelCompile(bool is_collecting_type_profile,
-                                  bool is_user_javascript,
+  void SetFlagsForToplevelCompile(bool is_user_javascript,
                                   LanguageMode language_mode,
                                   REPLMode repl_mode, ScriptType type,
                                   bool lazy);
@@ -205,13 +205,14 @@ class V8_EXPORT_PRIVATE ReusableUnoptimizedCompileState {
   const AstStringConstants* ast_string_constants() const {
     return ast_string_constants_;
   }
-  Logger* logger() const { return logger_; }
+  // TODO(cbruni): Switch this back to the main logger.
+  V8FileLogger* v8_file_logger() const { return v8_file_logger_; }
   LazyCompileDispatcher* dispatcher() const { return dispatcher_; }
 
  private:
   uint64_t hash_seed_;
   AccountingAllocator* allocator_;
-  Logger* logger_;
+  V8FileLogger* v8_file_logger_;
   LazyCompileDispatcher* dispatcher_;
   const AstStringConstants* ast_string_constants_;
   Zone ast_raw_string_zone_;
@@ -251,7 +252,9 @@ class V8_EXPORT_PRIVATE ParseInfo {
   const AstStringConstants* ast_string_constants() const {
     return reusable_state_->ast_string_constants();
   }
-  Logger* logger() const { return reusable_state_->logger(); }
+  V8FileLogger* v8_file_logger() const {
+    return reusable_state_->v8_file_logger();
+  }
   LazyCompileDispatcher* dispatcher() const {
     return reusable_state_->dispatcher();
   }
@@ -336,13 +339,28 @@ class V8_EXPORT_PRIVATE ParseInfo {
 
   void CheckFlagsForFunctionFromScript(Script script);
 
+  bool is_background_compilation() const { return is_background_compilation_; }
+
+  void set_is_background_compilation() { is_background_compilation_ = true; }
+
+  bool is_streaming_compilation() const { return is_streaming_compilation_; }
+
+  void set_is_streaming_compilation() { is_streaming_compilation_ = true; }
+
+  CompileHintCallback compile_hint_callback() const {
+    return compile_hint_callback_;
+  }
+
+  void* compile_hint_callback_data() const {
+    return compile_hint_callback_data_;
+  }
+
  private:
   ParseInfo(const UnoptimizedCompileFlags flags, UnoptimizedCompileState* state,
             ReusableUnoptimizedCompileState* reusable_state,
             uintptr_t stack_limit, RuntimeCallStats* runtime_call_stats);
 
-  void CheckFlagsForToplevelCompileFromScript(Script script,
-                                              bool is_collecting_type_profile);
+  void CheckFlagsForToplevelCompileFromScript(Script script);
 
   //------------- Inputs to parsing and scope analysis -----------------------
   const UnoptimizedCompileFlags flags_;
@@ -354,6 +372,9 @@ class V8_EXPORT_PRIVATE ParseInfo {
   uintptr_t stack_limit_;
   int parameters_end_pos_;
   int max_function_literal_id_;
+
+  v8::CompileHintCallback compile_hint_callback_ = nullptr;
+  void* compile_hint_callback_data_ = nullptr;
 
   //----------- Inputs+Outputs of parsing and scope analysis -----------------
   std::unique_ptr<Utf16CharacterStream> character_stream_;
@@ -369,6 +390,8 @@ class V8_EXPORT_PRIVATE ParseInfo {
   bool contains_asm_module_ : 1;
 #endif  // V8_ENABLE_WEBASSEMBLY
   LanguageMode language_mode_ : 1;
+  bool is_background_compilation_ : 1;
+  bool is_streaming_compilation_ : 1;
 };
 
 }  // namespace internal

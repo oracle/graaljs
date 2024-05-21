@@ -54,20 +54,21 @@
 #include "util-inl.h"
 #include "v8.h"
 
-#include <unicode/utypes.h>
 #include <unicode/putil.h>
+#include <unicode/timezone.h>
 #include <unicode/uchar.h>
 #include <unicode/uclean.h>
+#include <unicode/ucnv.h>
 #include <unicode/udata.h>
 #include <unicode/uidna.h>
-#include <unicode/ucnv.h>
-#include <unicode/utf8.h>
-#include <unicode/utf16.h>
-#include <unicode/timezone.h>
 #include <unicode/ulocdata.h>
+#include <unicode/urename.h>
+#include <unicode/ustring.h>
+#include <unicode/utf16.h>
+#include <unicode/utf8.h>
+#include <unicode/utypes.h>
 #include <unicode/uvernum.h>
 #include <unicode/uversion.h>
-#include <unicode/ustring.h>
 
 #ifdef NODE_HAVE_SMALL_ICU
 /* if this is defined, we have a 'secondary' entry point.
@@ -569,8 +570,7 @@ ConverterObject::ConverterObject(
   }
 }
 
-
-bool InitializeICUDirectory(const std::string& path) {
+bool InitializeICUDirectory(const std::string& path, std::string* error) {
   UErrorCode status = U_ZERO_ERROR;
   if (path.empty()) {
 #ifdef NODE_HAVE_SMALL_ICU
@@ -583,7 +583,12 @@ bool InitializeICUDirectory(const std::string& path) {
     u_setDataDirectory(path.c_str());
     u_init(&status);
   }
-  return status == U_ZERO_ERROR;
+  if (status == U_ZERO_ERROR) {
+    return true;
+  }
+
+  *error = u_errorName(status);
+  return false;
 }
 
 void SetDefaultTimeZone(const char* tzid) {
@@ -859,35 +864,38 @@ static void GetStringWidth(const FunctionCallbackInfo<Value>& args) {
   args.GetReturnValue().Set(width);
 }
 
-void Initialize(Local<Object> target,
-                Local<Value> unused,
-                Local<Context> context,
-                void* priv) {
-  Environment* env = Environment::GetCurrent(context);
-  SetMethod(context, target, "toUnicode", ToUnicode);
-  SetMethod(context, target, "toASCII", ToASCII);
-  SetMethod(context, target, "getStringWidth", GetStringWidth);
+static void CreatePerIsolateProperties(IsolateData* isolate_data,
+                                       Local<ObjectTemplate> target) {
+  Isolate* isolate = isolate_data->isolate();
+
+  SetMethod(isolate, target, "toUnicode", ToUnicode);
+  SetMethod(isolate, target, "toASCII", ToASCII);
+  SetMethod(isolate, target, "getStringWidth", GetStringWidth);
 
   // One-shot converters
-  SetMethod(context, target, "icuErrName", ICUErrorName);
-  SetMethod(context, target, "transcode", Transcode);
+  SetMethod(isolate, target, "icuErrName", ICUErrorName);
+  SetMethod(isolate, target, "transcode", Transcode);
 
   // ConverterObject
   {
-    Local<FunctionTemplate> t = NewFunctionTemplate(env->isolate(), nullptr);
-    t->Inherit(BaseObject::GetConstructorTemplate(env));
+    Local<FunctionTemplate> t = NewFunctionTemplate(isolate, nullptr);
     t->InstanceTemplate()->SetInternalFieldCount(
         ConverterObject::kInternalFieldCount);
     Local<String> converter_string =
-        FIXED_ONE_BYTE_STRING(env->isolate(), "Converter");
+        FIXED_ONE_BYTE_STRING(isolate, "Converter");
     t->SetClassName(converter_string);
-    env->set_i18n_converter_template(t->InstanceTemplate());
+    isolate_data->set_i18n_converter_template(t->InstanceTemplate());
   }
 
-  SetMethod(context, target, "getConverter", ConverterObject::Create);
-  SetMethod(context, target, "decode", ConverterObject::Decode);
-  SetMethod(context, target, "hasConverter", ConverterObject::Has);
+  SetMethod(isolate, target, "getConverter", ConverterObject::Create);
+  SetMethod(isolate, target, "decode", ConverterObject::Decode);
+  SetMethod(isolate, target, "hasConverter", ConverterObject::Has);
 }
+
+void CreatePerContextProperties(Local<Object> target,
+                                Local<Value> unused,
+                                Local<Context> context,
+                                void* priv) {}
 
 void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
   registry->Register(ToUnicode);
@@ -903,7 +911,8 @@ void RegisterExternalReferences(ExternalReferenceRegistry* registry) {
 }  // namespace i18n
 }  // namespace node
 
-NODE_BINDING_CONTEXT_AWARE_INTERNAL(icu, node::i18n::Initialize)
+NODE_BINDING_CONTEXT_AWARE_INTERNAL(icu, node::i18n::CreatePerContextProperties)
+NODE_BINDING_PER_ISOLATE_INIT(icu, node::i18n::CreatePerIsolateProperties)
 NODE_BINDING_EXTERNAL_REFERENCE(icu, node::i18n::RegisterExternalReferences)
 
 #endif  // NODE_HAVE_I18N_SUPPORT

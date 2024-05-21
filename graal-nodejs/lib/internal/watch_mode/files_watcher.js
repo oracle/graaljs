@@ -13,8 +13,9 @@ const { kEmptyObject } = require('internal/util');
 const { TIMEOUT_MAX } = require('internal/timers');
 
 const EventEmitter = require('events');
+const { addAbortListener } = require('internal/events/abort_listener');
 const { watch } = require('fs');
-const { fileURLToPath } = require('url');
+const { fileURLToPath } = require('internal/url');
 const { resolve, dirname } = require('path');
 const { setTimeout } = require('timers');
 
@@ -32,7 +33,7 @@ class FilesWatcher extends EventEmitter {
   #signal;
 
   constructor({ debounce = 200, mode = 'filter', signal } = kEmptyObject) {
-    super();
+    super({ __proto__: null, captureRejections: true });
 
     validateNumber(debounce, 'options.debounce', 0, TIMEOUT_MAX);
     validateOneOf(mode, 'options.mode', ['filter', 'all']);
@@ -41,7 +42,7 @@ class FilesWatcher extends EventEmitter {
     this.#signal = signal;
 
     if (signal) {
-      EventEmitter.addAbortListener(signal, () => this.clear());
+      addAbortListener(signal, () => this.clear());
     }
   }
 
@@ -97,8 +98,11 @@ class FilesWatcher extends EventEmitter {
       return;
     }
     const watcher = watch(path, { recursive, signal: this.#signal });
-    watcher.on('change', (eventType, fileName) => this
-      .#onChange(recursive ? resolve(path, fileName) : path));
+    watcher.on('change', (eventType, fileName) => {
+      // `fileName` can be `null` if it cannot be determined. See
+      // https://github.com/nodejs/node/pull/49891#issuecomment-1744673430.
+      this.#onChange(recursive ? resolve(path, fileName ?? '') : path);
+    });
     this.#watchers.set(path, { handle: watcher, recursive });
     if (recursive) {
       this.#removeWatchedChildren(path);

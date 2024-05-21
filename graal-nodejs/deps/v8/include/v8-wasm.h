@@ -5,6 +5,7 @@
 #ifndef INCLUDE_V8_WASM_H_
 #define INCLUDE_V8_WASM_H_
 
+#include <functional>
 #include <memory>
 #include <string>
 
@@ -130,19 +131,6 @@ class V8_EXPORT WasmStreaming final {
  public:
   class WasmStreamingImpl;
 
-  /**
-   * Client to receive streaming event notifications.
-   */
-  class Client {
-   public:
-    virtual ~Client() = default;
-    /**
-     * Passes the fully compiled module to the client. This can be used to
-     * implement code caching.
-     */
-    virtual void OnModuleCompiled(CompiledWasmModule compiled_module) = 0;
-  };
-
   explicit WasmStreaming(std::unique_ptr<WasmStreamingImpl> impl);
 
   ~WasmStreaming();
@@ -156,7 +144,7 @@ class V8_EXPORT WasmStreaming final {
   /**
    * {Finish} should be called after all received bytes where passed to
    * {OnBytesReceived} to tell V8 that there will be no more bytes. {Finish}
-   * does not have to be called after {Abort} has been called already.
+   * must not be called after {Abort} has been called already.
    * If {can_use_compiled_module} is true and {SetCompiledModuleBytes} was
    * previously called, the compiled module bytes can be used.
    * If {can_use_compiled_module} is false, the compiled module bytes previously
@@ -168,6 +156,7 @@ class V8_EXPORT WasmStreaming final {
    * Abort streaming compilation. If {exception} has a value, then the promise
    * associated with streaming compilation is rejected with that value. If
    * {exception} does not have value, the promise does not get rejected.
+   * {Abort} must not be called repeatedly, or after {Finish}.
    */
   void Abort(MaybeLocal<Value> exception);
 
@@ -183,10 +172,11 @@ class V8_EXPORT WasmStreaming final {
   bool SetCompiledModuleBytes(const uint8_t* bytes, size_t size);
 
   /**
-   * Sets the client object that will receive streaming event notifications.
-   * This must be called before {OnBytesReceived}, {Finish}, or {Abort}.
+   * Sets a callback which is called whenever a significant number of new
+   * functions are ready for serialization.
    */
-  void SetClient(std::shared_ptr<Client> client);
+  void SetMoreFunctionsCanBeSerializedCallback(
+      std::function<void(CompiledWasmModule)>);
 
   /*
    * Sets the UTF-8 encoded source URL for the {Script} object. This must be
@@ -204,52 +194,6 @@ class V8_EXPORT WasmStreaming final {
 
  private:
   std::unique_ptr<WasmStreamingImpl> impl_;
-};
-
-// TODO(mtrofin): when streaming compilation is done, we can rename this
-// to simply WasmModuleObjectBuilder
-class V8_EXPORT WasmModuleObjectBuilderStreaming final {
- public:
-  explicit WasmModuleObjectBuilderStreaming(Isolate* isolate);
-  /**
-   * The buffer passed into OnBytesReceived is owned by the caller.
-   */
-  void OnBytesReceived(const uint8_t*, size_t size);
-  void Finish();
-  /**
-   * Abort streaming compilation. If {exception} has a value, then the promise
-   * associated with streaming compilation is rejected with that value. If
-   * {exception} does not have value, the promise does not get rejected.
-   */
-  void Abort(MaybeLocal<Value> exception);
-  Local<Promise> GetPromise();
-
-  ~WasmModuleObjectBuilderStreaming() = default;
-
- private:
-  WasmModuleObjectBuilderStreaming(const WasmModuleObjectBuilderStreaming&) =
-      delete;
-  WasmModuleObjectBuilderStreaming(WasmModuleObjectBuilderStreaming&&) =
-      default;
-  WasmModuleObjectBuilderStreaming& operator=(
-      const WasmModuleObjectBuilderStreaming&) = delete;
-  WasmModuleObjectBuilderStreaming& operator=(
-      WasmModuleObjectBuilderStreaming&&) = default;
-  Isolate* isolate_ = nullptr;
-
-#if V8_CC_MSVC
-  /**
-   * We don't need the static Copy API, so the default
-   * NonCopyablePersistentTraits would be sufficient, however,
-   * MSVC eagerly instantiates the Copy.
-   * We ensure we don't use Copy, however, by compiling with the
-   * defaults everywhere else.
-   */
-  Persistent<Promise, CopyablePersistentTraits<Promise>> promise_;
-#else
-  Persistent<Promise> promise_;
-#endif
-  std::shared_ptr<internal::wasm::StreamingDecoder> streaming_decoder_;
 };
 
 }  // namespace v8

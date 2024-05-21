@@ -35,6 +35,16 @@
 export function parseString(field) { return field };
 export const parseVarArgs = 'parse-var-args';
 
+// Checks fields for numbers that are not safe integers. Returns true if any are
+// found.
+function containsUnsafeInts(fields) {
+  for (let i = 0; i < fields.length; i++) {
+    let field = fields[i];
+    if ('number' == typeof(field) && !Number.isSafeInteger(field)) return true;
+  }
+  return false;
+}
+
 /**
  * Base class for processing log files.
  *
@@ -44,7 +54,7 @@ export const parseVarArgs = 'parse-var-args';
  * @constructor
  */
 export class LogReader {
-  constructor(timedRange=false, pairwiseTimedRange=false) {
+  constructor(timedRange=false, pairwiseTimedRange=false, useBigInt=false) {
     this.dispatchTable_ = new Map();
     this.timedRange_ = timedRange;
     this.pairwiseTimedRange_ = pairwiseTimedRange;
@@ -54,6 +64,11 @@ export class LogReader {
     // Variables for tracking of 'current-time' log entries:
     this.hasSeenTimerMarker_ = false;
     this.logLinesSinceLastTimerMarker_ = [];
+    // Flag to parse all numeric fields as BigInt to avoid arithmetic errors
+    // caused by memory addresses being greater than MAX_SAFE_INTEGER
+    this.useBigInt = useBigInt;
+    this.parseFrame = useBigInt ? BigInt : parseInt;
+    this.hasSeenUnsafeIntegers = false;
   }
 
 /**
@@ -168,8 +183,8 @@ export class LogReader {
    *
    * @param {number} pc Program counter.
    * @param {number} func JS Function.
-   * @param {Array.<string>} stack String representation of a stack.
-   * @return {Array.<number>} Processed stack.
+   * @param {string[]} stack String representation of a stack.
+   * @return {number[]} Processed stack.
    */
   processStack(pc, func, stack) {
     const fullStack = func ? [pc, func] : [pc];
@@ -180,11 +195,11 @@ export class LogReader {
       const firstChar = frame[0];
       if (firstChar === '+' || firstChar === '-') {
         // An offset from the previous frame.
-        prevFrame += parseInt(frame, 16);
+        prevFrame += this.parseFrame(frame);
         fullStack.push(prevFrame);
       // Filter out possible 'overflow' string.
       } else if (firstChar !== 'o') {
-        fullStack.push(parseInt(frame, 16));
+        fullStack.push(this.parseFrame(frame));
       } else {
         console.error(`Dropping unknown tick frame: ${frame}`);
       }
@@ -195,7 +210,7 @@ export class LogReader {
   /**
    * Does a dispatch of a log record.
    *
-   * @param {Array.<string>} fields Log record.
+   * @param {string[]} fields Log record.
    * @private
    */
   async dispatchLogRow_(fields) {
@@ -216,6 +231,12 @@ export class LogReader {
         parsedFields[i] = parser(fields[1 + i]);
       }
     }
+    if (!this.useBigInt) {
+      if (!this.hasSeenUnsafeIntegers && containsUnsafeInts(parsedFields)) {
+        console.warn(`Log line containts unsafe integers: ${fields}`);
+        this.hasSeenUnsafeIntegers = true;
+      }
+    }
     // Run the processor.
     await dispatch.processor(...parsedFields);
   }
@@ -223,7 +244,7 @@ export class LogReader {
   /**
    * Processes log lines.
    *
-   * @param {Array.<string>} lines Log lines.
+   * @param {string[]} lines Log lines.
    * @private
    */
   async processLog_(lines) {

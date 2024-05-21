@@ -26,8 +26,10 @@ class WasmLoopAssignmentAnalyzerTest : public TestWithZone {
   TestSignatures sigs;
   uint32_t num_locals;
 
-  BitVector* Analyze(const byte* start, const byte* end) {
-    return AnalyzeLoopAssignmentForTesting(zone(), num_locals, start, end);
+  BitVector* Analyze(const byte* start, const byte* end,
+                     bool* loop_is_innermost = nullptr) {
+    return AnalyzeLoopAssignmentForTesting(zone(), num_locals, start, end,
+                                           loop_is_innermost);
   }
 };
 
@@ -175,6 +177,29 @@ TEST_F(WasmLoopAssignmentAnalyzerTest, Loop2) {
   }
 }
 
+TEST_F(WasmLoopAssignmentAnalyzerTest, NestedLoop) {
+  num_locals = 5;
+  byte code[] = {WASM_LOOP(WASM_LOOP(WASM_LOCAL_SET(0, 1)))};
+
+  bool outer_is_innermost = false;
+  BitVector* outer_assigned =
+      Analyze(code, code + arraysize(code), &outer_is_innermost);
+  for (int j = 0; j < outer_assigned->length(); j++) {
+    bool expected = j == 0;
+    EXPECT_EQ(expected, outer_assigned->Contains(j));
+  }
+  EXPECT_FALSE(outer_is_innermost);
+
+  bool inner_is_innermost = false;
+  BitVector* inner_assigned =
+      Analyze(code + 2, code + arraysize(code), &inner_is_innermost);
+  for (int j = 0; j < inner_assigned->length(); j++) {
+    bool expected = j == 0;
+    EXPECT_EQ(expected, inner_assigned->Contains(j));
+  }
+  EXPECT_TRUE(inner_is_innermost);
+}
+
 TEST_F(WasmLoopAssignmentAnalyzerTest, Malformed) {
   byte code[] = {kExprLoop, kVoidCode, kExprF32Neg, kExprBrTable, 0x0E, 'h',
                  'e',       'l',       'l',         'o',          ',',  ' ',
@@ -195,39 +220,6 @@ TEST_F(WasmLoopAssignmentAnalyzerTest, regress_642867) {
                 0x0F)};  // local index LEB128 0xFFFFFFFA
   // Just make sure that the analysis does not crash.
   Analyze(code, code + arraysize(code));
-}
-
-TEST_F(WasmLoopAssignmentAnalyzerTest, LetInLoopAssigned) {
-  num_locals = 5;
-  static const byte code[] = {
-      WASM_LOOP(WASM_LET_1_V(kI32Code, WASM_I32V_1(42), WASM_SET_ZERO(3)))};
-  BitVector* assigned = Analyze(code, code + arraysize(code));
-  for (uint32_t i = 0; i <= num_locals; i++) {
-    EXPECT_EQ(assigned->Contains(i), i == 2);
-  }
-}
-
-TEST_F(WasmLoopAssignmentAnalyzerTest, LetInLoopNotAssigned) {
-  num_locals = 2;
-  static const byte code[] = {WASM_LOOP(
-      WASM_LET_1_V(kI32Code, WASM_I32V_1(42),
-                   WASM_LET_1_V(kI32Code, WASM_I32V_1(42), WASM_SET_ZERO(0),
-                                WASM_SET_ZERO(1))))};
-  BitVector* assigned = Analyze(code, code + arraysize(code));
-  for (uint32_t i = 0; i <= num_locals; i++) {
-    EXPECT_FALSE(assigned->Contains(i));
-  }
-}
-
-TEST_F(WasmLoopAssignmentAnalyzerTest, AssignmentOutsideOfLet) {
-  num_locals = 5;
-  static const byte code[] = {
-      WASM_LOOP(WASM_LET_1_V(kI32Code, WASM_I32V_1(42), WASM_SET_ZERO(3)),
-                WASM_SET_ZERO(4))};
-  BitVector* assigned = Analyze(code, code + arraysize(code));
-  for (uint32_t i = 0; i <= num_locals; i++) {
-    EXPECT_EQ(assigned->Contains(i), i == 2 || i == 4);
-  }
 }
 
 #undef WASM_SET_ZERO

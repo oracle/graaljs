@@ -46,6 +46,20 @@
 #include "graal_value.h"
 #include "include/v8.h"
 
+namespace v8 {
+    namespace internal {
+        class PropertyCallbackArguments {
+            public:
+                static constexpr int kHolderIndex = v8::PropertyCallbackInfo<v8::Value>::kHolderIndex;
+                static constexpr int kIsolateIndex = v8::PropertyCallbackInfo<v8::Value>::kIsolateIndex;
+                static constexpr int kReturnValueIndex = v8::PropertyCallbackInfo<v8::Value>::kReturnValueIndex;
+                static constexpr int kDataIndex = v8::PropertyCallbackInfo<v8::Value>::kDataIndex;
+                static constexpr int kThisIndex = v8::PropertyCallbackInfo<v8::Value>::kThisIndex;
+                static constexpr int kArgsLength = v8::PropertyCallbackInfo<v8::Value>::kArgsLength;
+        };
+    }
+}
+
 template<typename T>
 class GraalPropertyCallbackInfo : public v8::PropertyCallbackInfo<T> {
 public:
@@ -69,7 +83,7 @@ private:
     GraalPropertyCallbackInfo(const GraalPropertyCallbackInfo&) = delete;
     GraalPropertyCallbackInfo& operator=(const GraalPropertyCallbackInfo&) = delete;
 
-    void* values_[v8::PropertyCallbackInfo<T>::kArgsLength];
+    void* values_[v8::internal::PropertyCallbackArguments::kArgsLength];
 };
 
 extern template class GraalPropertyCallbackInfo<v8::Value>;

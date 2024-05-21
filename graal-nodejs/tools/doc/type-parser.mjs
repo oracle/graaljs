@@ -184,7 +184,7 @@ const customTypesMap = {
   'PerformanceNodeTiming':
     'perf_hooks.html#class-performancenodetiming',
   'PerformanceObserver':
-    'perf_hooks.html#class-perf_hooksperformanceobserver',
+    'perf_hooks.html#class-performanceobserver',
   'PerformanceObserverEntryList':
     'perf_hooks.html#class-performanceobserverentrylist',
 
@@ -227,6 +227,8 @@ const customTypesMap = {
   'vm.Module': 'vm.html#class-vmmodule',
   'vm.Script': 'vm.html#class-vmscript',
   'vm.SourceTextModule': 'vm.html#class-vmsourcetextmodule',
+  'vm.constants.USE_MAIN_CONTEXT_DEFAULT_LOADER':
+      'vm.html#vmconstantsuse_main_context_default_loader',
 
   'MessagePort': 'worker_threads.html#class-messageport',
   'Worker': 'worker_threads.html#class-worker',

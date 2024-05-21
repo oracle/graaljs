@@ -73,6 +73,7 @@ const {
   ArrayPrototypeSort,
   ObjectPrototypeHasOwnProperty,
   StringPrototypeCharAt,
+  Symbol,
 } = primordials;
 
 const { validateObject } = require('internal/validators');
@@ -82,6 +83,8 @@ let base64Map;
 const VLQ_BASE_SHIFT = 5;
 const VLQ_BASE_MASK = (1 << 5) - 1;
 const VLQ_CONTINUATION_MASK = 1 << 5;
+
+const kMappings = Symbol('kMappings');
 
 class StringCharIterator {
   /**
@@ -125,12 +128,13 @@ class SourceMap {
   #mappings = [];
   #sources = {};
   #sourceContentByURL = {};
+  #lineLengths = undefined;
 
   /**
    * @constructor
    * @param {SourceMapV3} payload
    */
-  constructor(payload) {
+  constructor(payload, { lineLengths } = { __proto__: null }) {
     if (!base64Map) {
       const base64Digits =
              'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -140,6 +144,9 @@ class SourceMap {
     }
     this.#payload = cloneSourceMapV3(payload);
     this.#parseMappingPayload();
+    if (ArrayIsArray(lineLengths) && lineLengths.length) {
+      this.#lineLengths = lineLengths;
+    }
   }
 
   /**
@@ -147,6 +154,20 @@ class SourceMap {
    */
   get payload() {
     return cloneSourceMapV3(this.#payload);
+  }
+
+  get [kMappings]() {
+    return this.#mappings;
+  }
+
+  /**
+   * @return {number[] | undefined} line lengths of generated source code
+   */
+  get lineLengths() {
+    if (this.#lineLengths) {
+      return ArrayPrototypeSlice(this.#lineLengths);
+    }
+    return undefined;
   }
 
   #parseMappingPayload = () => {
@@ -368,5 +389,6 @@ function compareSourceMapEntry(entry1, entry2) {
 }
 
 module.exports = {
+  kMappings,
   SourceMap,
 };

@@ -70,22 +70,22 @@ GraalPropertyCallbackInfo<T>::GraalPropertyCallbackInfo(
         graal_data->ReferenceAdded();
     }
     graal_holder->ReferenceAdded();
-    values_[v8::PropertyCallbackInfo<T>::kHolderIndex] = graal_holder;
-    values_[v8::PropertyCallbackInfo<T>::kIsolateIndex] = isolate;
-    values_[v8::PropertyCallbackInfo<T>::kReturnValueIndex] = nullptr;
-    values_[v8::PropertyCallbackInfo<T>::kDataIndex] = graal_data;
-    values_[v8::PropertyCallbackInfo<T>::kThisIndex] = graal_this;
+    values_[v8::internal::PropertyCallbackArguments::kHolderIndex] = graal_holder;
+    values_[v8::internal::PropertyCallbackArguments::kIsolateIndex] = isolate;
+    values_[v8::internal::PropertyCallbackArguments::kReturnValueIndex] = nullptr;
+    values_[v8::internal::PropertyCallbackArguments::kDataIndex] = graal_data;
+    values_[v8::internal::PropertyCallbackArguments::kThisIndex] = graal_this;
 }
 
 template<typename T>
 GraalPropertyCallbackInfo<T>::~GraalPropertyCallbackInfo() {
-    GraalValue* graal_data = reinterpret_cast<GraalValue*> (values_[v8::PropertyCallbackInfo<T>::kDataIndex]);
+    GraalValue* graal_data = reinterpret_cast<GraalValue*> (values_[v8::internal::PropertyCallbackArguments::kDataIndex]);
     if (graal_data != nullptr) {
         graal_data->ReferenceRemoved();
     }
-    reinterpret_cast<GraalValue*> (values_[v8::PropertyCallbackInfo<T>::kThisIndex])->ReferenceRemoved();
-    reinterpret_cast<GraalValue*> (values_[v8::PropertyCallbackInfo<T>::kHolderIndex])->ReferenceRemoved();
-    GraalValue* return_value = reinterpret_cast<GraalValue*> (values_[v8::PropertyCallbackInfo<T>::kReturnValueIndex]);
+    reinterpret_cast<GraalValue*> (values_[v8::internal::PropertyCallbackArguments::kThisIndex])->ReferenceRemoved();
+    reinterpret_cast<GraalValue*> (values_[v8::internal::PropertyCallbackArguments::kHolderIndex])->ReferenceRemoved();
+    GraalValue* return_value = reinterpret_cast<GraalValue*> (values_[v8::internal::PropertyCallbackArguments::kReturnValueIndex]);
     if (return_value != nullptr) {
         return_value->ReferenceRemoved();
     }

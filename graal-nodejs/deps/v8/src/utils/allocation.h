@@ -8,8 +8,7 @@
 #include "include/v8-platform.h"
 #include "src/base/address-region.h"
 #include "src/base/compiler-specific.h"
-#include "src/base/platform/platform.h"
-#include "src/common/globals.h"
+#include "src/base/platform/memory.h"
 #include "src/init/v8.h"
 
 namespace v8 {
@@ -26,11 +25,6 @@ class Isolate;
 // allocation fails, these functions call back into the embedder, then attempt
 // the allocation a second time. The embedder callback must not reenter V8.
 
-// Called when allocation routines fail to allocate, even with a possible retry.
-// This function should not return, but should terminate the current processing.
-[[noreturn]] V8_EXPORT_PRIVATE void FatalProcessOutOfMemory(
-    Isolate* isolate, const char* message);
-
 // Superclass for classes managed with new & delete.
 class V8_EXPORT_PRIVATE Malloced {
  public:
@@ -38,13 +32,17 @@ class V8_EXPORT_PRIVATE Malloced {
   static void operator delete(void* p);
 };
 
+// Function that may release reserved memory regions to allow failed allocations
+// to succeed.
+V8_EXPORT_PRIVATE void OnCriticalMemoryPressure();
+
 template <typename T>
 T* NewArray(size_t size) {
   T* result = new (std::nothrow) T[size];
-  if (result == nullptr) {
-    V8::GetCurrentPlatform()->OnCriticalMemoryPressure();
+  if (V8_UNLIKELY(result == nullptr)) {
+    OnCriticalMemoryPressure();
     result = new (std::nothrow) T[size];
-    if (result == nullptr) FatalProcessOutOfMemory(nullptr, "NewArray");
+    if (result == nullptr) V8::FatalProcessOutOfMemory(nullptr, "NewArray");
   }
   return result;
 }
@@ -96,7 +94,11 @@ using MallocFn = void* (*)(size_t);
 // Call free to release memory allocated with this function.
 void* AllocWithRetry(size_t size, MallocFn = base::Malloc);
 
-V8_EXPORT_PRIVATE void* AlignedAlloc(size_t size, size_t alignment);
+// Performs a malloc, with retry logic on failure. Returns nullptr on failure.
+// Call free to release memory allocated with this function.
+base::AllocationResult<void*> AllocAtLeastWithRetry(size_t size);
+
+V8_EXPORT_PRIVATE void* AlignedAllocWithRetry(size_t size, size_t alignment);
 V8_EXPORT_PRIVATE void AlignedFree(void* ptr);
 
 // Returns platfrom page allocator instance. Guaranteed to be a valid pointer.
@@ -106,7 +108,7 @@ V8_EXPORT_PRIVATE v8::PageAllocator* GetPlatformPageAllocator();
 // pointer.
 V8_EXPORT_PRIVATE v8::VirtualAddressSpace* GetPlatformVirtualAddressSpace();
 
-#ifdef V8_SANDBOX
+#ifdef V8_ENABLE_SANDBOX
 // Returns the page allocator instance for allocating pages inside the sandbox.
 // Guaranteed to be a valid pointer.
 V8_EXPORT_PRIVATE v8::PageAllocator* GetSandboxPageAllocator();
@@ -117,7 +119,7 @@ V8_EXPORT_PRIVATE v8::PageAllocator* GetSandboxPageAllocator();
 // sandbox and so this will be the SandboxPageAllocator. Otherwise it will be
 // the PlatformPageAllocator.
 inline v8::PageAllocator* GetArrayBufferPageAllocator() {
-#ifdef V8_SANDBOX
+#ifdef V8_ENABLE_SANDBOX
   return GetSandboxPageAllocator();
 #else
   return GetPlatformPageAllocator();
@@ -137,10 +139,6 @@ V8_EXPORT_PRIVATE size_t AllocatePageSize();
 
 // Gets the granularity at which the permissions and release calls can be made.
 V8_EXPORT_PRIVATE size_t CommitPageSize();
-
-// Sets the random seed so that GetRandomMmapAddr() will generate repeatable
-// sequences of random mmap addresses.
-V8_EXPORT_PRIVATE void SetRandomMmapSeed(int64_t seed);
 
 // Generate a random address to be used for hinting allocation calls.
 V8_EXPORT_PRIVATE void* GetRandomMmapAddr();
@@ -183,16 +181,13 @@ inline bool SetPermissions(v8::PageAllocator* page_allocator, Address address,
                         access);
 }
 
-// Function that may release reserved memory regions to allow failed allocations
-// to succeed. |length| is the amount of memory needed. Returns |true| if memory
-// could be released, false otherwise.
-V8_EXPORT_PRIVATE bool OnCriticalMemoryPressure(size_t length);
+// Defines whether the address space reservation is going to be used for
+// allocating executable pages.
+enum class JitPermission { kNoJit, kMapAsJittable };
 
 // Represents and controls an area of reserved memory.
 class VirtualMemory final {
  public:
-  enum JitPermission { kNoJit, kMapAsJittable };
-
   // Empty VirtualMemory object, controlling no reserved memory.
   V8_EXPORT_PRIVATE VirtualMemory();
 
@@ -205,7 +200,7 @@ class VirtualMemory final {
   // This may not be at the position returned by address().
   V8_EXPORT_PRIVATE VirtualMemory(v8::PageAllocator* page_allocator,
                                   size_t size, void* hint, size_t alignment = 1,
-                                  JitPermission jit = kNoJit);
+                                  JitPermission jit = JitPermission::kNoJit);
 
   // Construct a virtual memory by assigning it some already mapped address
   // and size.
@@ -264,8 +259,22 @@ class VirtualMemory final {
 
   // Sets permissions according to the access argument. address and size must be
   // multiples of CommitPageSize(). Returns true on success, otherwise false.
-  V8_EXPORT_PRIVATE bool SetPermissions(Address address, size_t size,
-                                        PageAllocator::Permission access);
+  V8_EXPORT_PRIVATE V8_WARN_UNUSED_RESULT bool SetPermissions(
+      Address address, size_t size, PageAllocator::Permission access);
+
+  // Recommits discarded pages in the given range with given permissions.
+  // Discarded pages must be recommitted with their original permissions
+  // before they are used again. |address| and |size| must be multiples of
+  // CommitPageSize(). Returns true on success, otherwise false.
+  V8_EXPORT_PRIVATE V8_WARN_UNUSED_RESULT bool RecommitPages(
+      Address address, size_t size, PageAllocator::Permission access);
+
+  // Frees memory in the given [address, address + size) range. address and size
+  // should be operating system page-aligned. The next write to this
+  // memory area brings the memory transparently back. This should be treated as
+  // a hint to the OS that the pages are no longer needed. It does not guarantee
+  // that the pages will be discarded immediately or at all.
+  V8_EXPORT_PRIVATE bool DiscardSystemPages(Address address, size_t size);
 
   // Releases memory after |free_start|. Returns the number of bytes released.
   V8_EXPORT_PRIVATE size_t Release(Address free_start);
@@ -294,29 +303,28 @@ class VirtualMemory final {
 // ranges (on platforms that require code ranges) and are configurable via
 // ReservationParams.
 //
-// +------------+-----------+------------ ~~~ --+- ~~~ -+
-// |     ...    |    ...    |   ...             |  ...  |
-// +------------+-----------+------------ ~~~ --+- ~~~ -+
-// ^            ^           ^
-// start        cage base   allocatable base
+// +-----------+------------ ~~~ --+- ~~~ -+
+// |    ...    |   ...             |  ...  |
+// +-----------+------------ ~~~ --+- ~~~ -+
+// ^           ^
+// cage base   allocatable base
 //
-// <------------>           <------------------->
-// base bias size              allocatable size
-//              <------------------------------->
-//                          cage size
-// <---------------------------------------------------->
-//                   reservation size
+//             <------------------->
+//               allocatable size
+// <------------------------------->
+//              cage size
+// <--------------------------------------->
+//            reservation size
 //
 // - The reservation is made using ReservationParams::page_allocator.
-// - start is the start of the virtual memory reservation.
-// - cage base is the base address of the cage.
+// - cage base is the start of the virtual memory reservation and the base
+//   address of the cage.
 // - allocatable base is the cage base rounded up to the nearest
 //   ReservationParams::page_size, and is the start of the allocatable area for
 //   the BoundedPageAllocator.
 // - cage size is the size of the area from cage base to the end of the
 //   allocatable area.
 //
-// - The base bias is configured by ReservationParams::base_bias_size.
 // - The reservation size is configured by ReservationParams::reservation_size
 //   but it might be actually bigger if we end up over-reserving the virtual
 //   address space.
@@ -327,15 +335,16 @@ class VirtualMemory final {
 // - The page size of the BoundedPageAllocator is configured by
 //   ReservationParams::page_size.
 // - A hint for the value of start can be passed by
-//   ReservationParams::requested_start_hint.
+//   ReservationParams::requested_start_hint and it must be aligned to
+//   ReservationParams::base_alignment.
 //
 // The configuration is subject to the following alignment requirements.
 // Below, AllocatePageSize is short for
 // ReservationParams::page_allocator->AllocatePageSize().
 //
 // - The reservation size must be AllocatePageSize-aligned.
-// - If the base alignment is not kAnyBaseAlignment, both the base alignment
-//   and the base bias size must be AllocatePageSize-aligned.
+// - If the base alignment is not kAnyBaseAlignment then the base alignment
+//   must be AllocatePageSize-aligned.
 // - The base alignment may be kAnyBaseAlignment to denote any alignment is
 //   acceptable. In this case the base bias size does not need to be aligned.
 class VirtualMemoryCage {
@@ -351,6 +360,10 @@ class VirtualMemoryCage {
 
   Address base() const { return base_; }
   size_t size() const { return size_; }
+
+  base::AddressRegion region() const {
+    return base::AddressRegion{base_, size_};
+  }
 
   base::BoundedPageAllocator* page_allocator() const {
     return page_allocator_.get();
@@ -371,9 +384,9 @@ class VirtualMemoryCage {
     // See diagram above.
     size_t reservation_size;
     size_t base_alignment;
-    size_t base_bias_size;
     size_t page_size;
     Address requested_start_hint;
+    JitPermission jit;
 
     static constexpr size_t kAnyBaseAlignment = 1;
   };

@@ -4,16 +4,12 @@
 
 #include "src/compiler/js-typed-lowering.h"
 
-#include "src/codegen/code-factory.h"
 #include "src/compiler/access-builder.h"
 #include "src/compiler/compilation-dependencies.h"
 #include "src/compiler/js-graph.h"
 #include "src/compiler/js-operator.h"
 #include "src/compiler/machine-operator.h"
-#include "src/compiler/node-properties.h"
-#include "src/compiler/operator-properties.h"
 #include "src/execution/isolate-inl.h"
-#include "test/unittests/compiler/compiler-test-utils.h"
 #include "test/unittests/compiler/graph-unittest.h"
 #include "test/unittests/compiler/node-test-utils.h"
 #include "testing/gmock-support.h"
@@ -397,7 +393,7 @@ TEST_F(JSTypedLoweringTest, JSStoreContext) {
 
 
 TEST_F(JSTypedLoweringTest, JSLoadNamedStringLength) {
-  NameRef name = MakeRef(broker(), factory()->length_string());
+  NameRef name = broker()->length_string();
   Node* const receiver = Parameter(Type::String(), 0);
   Node* const feedback = UndefinedConstant();
   Node* const context = UndefinedConstant();

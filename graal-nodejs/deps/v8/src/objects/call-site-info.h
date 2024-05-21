@@ -73,6 +73,7 @@ class CallSiteInfo : public TorqueGeneratedCallSiteInfo<CallSiteInfo, Struct> {
       Handle<CallSiteInfo> info);
   static Handle<String> GetFunctionDebugName(Handle<CallSiteInfo> info);
   static Handle<Object> GetMethodName(Handle<CallSiteInfo> info);
+  static Handle<String> GetScriptHash(Handle<CallSiteInfo> info);
   static Handle<Object> GetTypeName(Handle<CallSiteInfo> info);
 
 #if V8_ENABLE_WEBASSEMBLY
@@ -83,7 +84,7 @@ class CallSiteInfo : public TorqueGeneratedCallSiteInfo<CallSiteInfo, Struct> {
 #endif  // V8_ENABLE_WEBASSEMBLY
 
   // Returns the 0-based source position, which is the offset into the
-  // Script in case of JavaScript and Asm.js, and the bytecode offset
+  // Script in case of JavaScript and Asm.js, and the wire byte offset
   // in the module in case of actual Wasm. In case of async promise
   // combinator frames, this returns the index of the promise.
   static int GetSourcePosition(Handle<CallSiteInfo> info);

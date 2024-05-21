@@ -10,14 +10,18 @@
 #include "src/compiler/common-operator.h"
 #include "src/compiler/linkage.h"
 #include "src/compiler/machine-operator.h"
+#include "src/compiler/node-matchers.h"
 #include "src/compiler/node-properties.h"
 #include "src/compiler/node.h"
 #include "src/compiler/wasm-compiler.h"
 #include "src/wasm/value-type.h"
+#include "src/wasm/wasm-engine.h"
 #include "src/wasm/wasm-module.h"
 #include "test/unittests/compiler/graph-unittest.h"
 #include "test/unittests/compiler/node-test-utils.h"
 #include "testing/gmock-support.h"
+
+#if V8_TARGET_ARCH_32_BIT
 
 using testing::AllOf;
 using testing::Capture;
@@ -53,9 +57,7 @@ class Int64LoweringTest : public GraphTest {
     lowering.LowerGraph();
   }
 
-  void LowerGraphWithSpecialCase(
-      Node* node, std::unique_ptr<Int64LoweringSpecialCase> special_case,
-      MachineRepresentation rep) {
+  void LowerGraphWithSpecialCase(Node* node, MachineRepresentation rep) {
     Node* zero = graph()->NewNode(common()->Int32Constant(0));
     Node* ret = graph()->NewNode(common()->Return(), zero, node,
                                  graph()->start(), graph()->start());
@@ -68,7 +70,7 @@ class Int64LoweringTest : public GraphTest {
     sig_builder.AddReturn(rep);
 
     Int64Lowering lowering(graph(), machine(), common(), simplified(), zone(),
-                           sig_builder.Build(), std::move(special_case));
+                           sig_builder.Build());
     lowering.LowerGraph();
   }
 
@@ -152,8 +154,7 @@ TEST_F(Int64LoweringTest, Int64Constant) {
 #define LOAD_VERIFY(kLoad)                                                     \
   Matcher<Node*> high_word_load_matcher =                                      \
       Is##kLoad(MachineType::Int32(), IsInt32Constant(base),                   \
-                IsInt32Add(IsInt32Constant(index), IsInt32Constant(0x4)),      \
-                start(), start());                                             \
+                IsInt32Constant(index + 4), start(), start());                 \
                                                                                \
   EXPECT_THAT(                                                                 \
       graph()->end()->InputAt(1),                                              \
@@ -174,7 +175,7 @@ TEST_F(Int64LoweringTest, Int64Constant) {
       graph()->end()->InputAt(1),                                              \
       IsReturn2(                                                               \
           Is##kLoad(MachineType::Int32(), IsInt32Constant(base),               \
-                    IsInt32Add(IsInt32Constant(index), IsInt32Constant(0x4)),  \
+                    IsInt32Constant(index + 4),                                \
                     AllOf(CaptureEq(&high_word_load), high_word_load_matcher), \
                     start()),                                                  \
           AllOf(CaptureEq(&high_word_load), high_word_load_matcher), start(),  \
@@ -217,9 +218,8 @@ TEST_F(Int64LoweringTest, Int64LoadImmutable) {
   Capture<Node*> high_word_load;
 
 #if defined(V8_TARGET_LITTLE_ENDIAN)
-  Matcher<Node*> high_word_load_matcher =
-      IsLoadImmutable(MachineType::Int32(), IsInt32Constant(base),
-                      IsInt32Add(IsInt32Constant(index), IsInt32Constant(0x4)));
+  Matcher<Node*> high_word_load_matcher = IsLoadImmutable(
+      MachineType::Int32(), IsInt32Constant(base), IsInt32Constant(index + 4));
 
   EXPECT_THAT(
       graph()->end()->InputAt(1),
@@ -233,9 +233,8 @@ TEST_F(Int64LoweringTest, Int64LoadImmutable) {
 
   EXPECT_THAT(
       graph()->end()->InputAt(1),
-      IsReturn2(IsLoadImmutable(
-                    MachineType::Int32(), IsInt32Constant(base),
-                    IsInt32Add(IsInt32Constant(index), IsInt32Constant(0x4))),
+      IsReturn2(IsLoadImmutable(MachineType::Int32(), IsInt32Constant(base),
+                                IsInt32Constant(index + 4)),
                 AllOf(CaptureEq(&high_word_load), high_word_load_matcher),
                 start(), start()));
 #endif
@@ -246,14 +245,13 @@ TEST_F(Int64LoweringTest, Int64LoadImmutable) {
   EXPECT_THAT(                                                                 \
       graph()->end()->InputAt(1),                                              \
       IsReturn(IsInt32Constant(return_value),                                  \
-               Is##kStore(                                                     \
-                   kRep, IsInt32Constant(base), IsInt32Constant(index),        \
-                   IsInt32Constant(low_word_value(0)),                         \
-                   Is##kStore(                                                 \
-                       kRep, IsInt32Constant(base),                            \
-                       IsInt32Add(IsInt32Constant(index), IsInt32Constant(4)), \
-                       IsInt32Constant(high_word_value(0)), start(), start()), \
-                   start()),                                                   \
+               Is##kStore(kRep, IsInt32Constant(base), IsInt32Constant(index), \
+                          IsInt32Constant(low_word_value(0)),                  \
+                          Is##kStore(kRep, IsInt32Constant(base),              \
+                                     IsInt32Constant(index + 4),               \
+                                     IsInt32Constant(high_word_value(0)),      \
+                                     start(), start()),                        \
+                          start()),                                            \
                start()));
 #elif defined(V8_TARGET_BIG_ENDIAN)
 #define STORE_VERIFY(kStore, kRep)                                             \
@@ -261,8 +259,7 @@ TEST_F(Int64LoweringTest, Int64LoadImmutable) {
       graph()->end()->InputAt(1),                                              \
       IsReturn(IsInt32Constant(return_value),                                  \
                Is##kStore(                                                     \
-                   kRep, IsInt32Constant(base),                                \
-                   IsInt32Add(IsInt32Constant(index), IsInt32Constant(4)),     \
+                   kRep, IsInt32Constant(base), IsInt32Constant(index + 4),    \
                    IsInt32Constant(low_word_value(0)),                         \
                    Is##kStore(                                                 \
                        kRep, IsInt32Constant(base), IsInt32Constant(index),    \
@@ -433,8 +430,6 @@ TEST_F(Int64LoweringTest, ParameterWithJSClosureParam) {
 // two assumptions:
 // - Pointers are 32 bit and therefore pointers do not get lowered.
 // - 64-bit rol/ror/clz/ctz instructions have a control input.
-// TODO(wasm): We can find an alternative to re-activate these tests.
-#if V8_TARGET_ARCH_32_BIT
 TEST_F(Int64LoweringTest, CallI64Return) {
   int32_t function = 0x9999;
   Node* context_address = Int32Constant(0);
@@ -663,7 +658,6 @@ TEST_F(Int64LoweringTest, I64Ror_43) {
                                        IsInt32Constant(21))),
                 start(), start()));
 }
-#endif
 
 TEST_F(Int64LoweringTest, Int64Sub) {
   LowerGraph(graph()->NewNode(machine()->Int64Sub(), Int64Constant(value(0)),
@@ -861,64 +855,35 @@ TEST_F(Int64LoweringTest, I64UConvertI32_2) {
 }
 
 TEST_F(Int64LoweringTest, F64ReinterpretI64) {
+  int64_t value = 0x0123456789abcdef;
   LowerGraph(graph()->NewNode(machine()->BitcastInt64ToFloat64(),
-                              Int64Constant(value(0))),
+                              Int64Constant(value)),
              MachineRepresentation::kFloat64);
-
-  Capture<Node*> stack_slot_capture;
-  Matcher<Node*> stack_slot_matcher =
-      IsStackSlot(StackSlotRepresentation(sizeof(int64_t), 0));
-
-  Capture<Node*> store_capture;
-  Matcher<Node*> store_matcher =
-      IsStore(StoreRepresentation(MachineRepresentation::kWord32,
-                                  WriteBarrierKind::kNoWriteBarrier),
-              AllOf(CaptureEq(&stack_slot_capture), stack_slot_matcher),
-              IsInt32Constant(kInt64LowerHalfMemoryOffset),
-              IsInt32Constant(low_word_value(0)),
-              IsStore(StoreRepresentation(MachineRepresentation::kWord32,
-                                          WriteBarrierKind::kNoWriteBarrier),
-                      AllOf(CaptureEq(&stack_slot_capture), stack_slot_matcher),
-                      IsInt32Constant(kInt64UpperHalfMemoryOffset),
-                      IsInt32Constant(high_word_value(0)), start(), start()),
-              start());
-
-  EXPECT_THAT(
-      graph()->end()->InputAt(1),
-      IsReturn(IsLoad(MachineType::Float64(),
-                      AllOf(CaptureEq(&stack_slot_capture), stack_slot_matcher),
-                      IsInt32Constant(0),
-                      AllOf(CaptureEq(&store_capture), store_matcher), start()),
-               start(), start()));
+  Node* ret = graph()->end()->InputAt(1);
+  EXPECT_EQ(ret->opcode(), IrOpcode::kReturn);
+  Node* ret_value = ret->InputAt(1);
+  EXPECT_EQ(ret_value->opcode(), IrOpcode::kFloat64InsertLowWord32);
+  Node* high_half = ret_value->InputAt(0);
+  EXPECT_EQ(high_half->opcode(), IrOpcode::kFloat64InsertHighWord32);
+  Node* low_half_bits = ret_value->InputAt(1);
+  Int32Matcher m1(low_half_bits);
+  EXPECT_TRUE(m1.Is(static_cast<int32_t>(value & 0xFFFFFFFF)));
+  Node* high_half_bits = high_half->InputAt(1);
+  Int32Matcher m2(high_half_bits);
+  EXPECT_TRUE(m2.Is(static_cast<int32_t>(value >> 32)));
 }
 
 TEST_F(Int64LoweringTest, I64ReinterpretF64) {
+  double value = 1234.5678;
   LowerGraph(graph()->NewNode(machine()->BitcastFloat64ToInt64(),
-                              Float64Constant(bit_cast<double>(value(0)))),
+                              Float64Constant(value)),
              MachineRepresentation::kWord64);
-
-  Capture<Node*> stack_slot;
-  Matcher<Node*> stack_slot_matcher =
-      IsStackSlot(StackSlotRepresentation(sizeof(int64_t), 0));
-
-  Capture<Node*> store;
-  Matcher<Node*> store_matcher = IsStore(
-      StoreRepresentation(MachineRepresentation::kFloat64,
-                          WriteBarrierKind::kNoWriteBarrier),
-      AllOf(CaptureEq(&stack_slot), stack_slot_matcher), IsInt32Constant(0),
-      IsFloat64Constant(bit_cast<double>(value(0))), start(), start());
-
-  EXPECT_THAT(
-      graph()->end()->InputAt(1),
-      IsReturn2(IsLoad(MachineType::Int32(),
-                       AllOf(CaptureEq(&stack_slot), stack_slot_matcher),
-                       IsInt32Constant(kInt64LowerHalfMemoryOffset),
-                       AllOf(CaptureEq(&store), store_matcher), start()),
-                IsLoad(MachineType::Int32(),
-                       AllOf(CaptureEq(&stack_slot), stack_slot_matcher),
-                       IsInt32Constant(kInt64UpperHalfMemoryOffset),
-                       AllOf(CaptureEq(&store), store_matcher), start()),
-                start(), start()));
+  Node* ret = graph()->end()->InputAt(1);
+  EXPECT_EQ(ret->opcode(), IrOpcode::kReturn);
+  Node* ret_value_low = ret->InputAt(1);
+  EXPECT_EQ(ret_value_low->opcode(), IrOpcode::kFloat64ExtractLowWord32);
+  Node* ret_value_high = ret->InputAt(2);
+  EXPECT_EQ(ret_value_high->opcode(), IrOpcode::kFloat64ExtractHighWord32);
 }
 
 TEST_F(Int64LoweringTest, Dfs) {
@@ -1067,37 +1032,20 @@ TEST_F(Int64LoweringTest, WasmBigIntSpecialCaseBigIntToI64) {
   Node* target = Int32Constant(1);
   Node* context = Int32Constant(2);
   Node* bigint = Int32Constant(4);
+  WasmCallDescriptors* descriptors = wasm::GetWasmEngine()->call_descriptors();
 
   CallDescriptor* bigint_to_i64_call_descriptor =
-      Linkage::GetStubCallDescriptor(
-          zone(),                                           // zone
-          BigIntToI64Descriptor(),                          // descriptor
-          BigIntToI64Descriptor::GetStackParameterCount(),  // stack parameter
-                                                            // count
-          CallDescriptor::kNoFlags,                         // flags
-          Operator::kNoProperties,                          // properties
-          StubCallMode::kCallCodeObject);                   // stub call mode
+      descriptors->GetBigIntToI64Descriptor(StubCallMode::kCallBuiltinPointer,
+                                            false);
 
   CallDescriptor* bigint_to_i32_pair_call_descriptor =
-      Linkage::GetStubCallDescriptor(
-          zone(),                       // zone
-          BigIntToI32PairDescriptor(),  // descriptor
-          BigIntToI32PairDescriptor::
-              GetStackParameterCount(),    // stack parameter count
-          CallDescriptor::kNoFlags,        // flags
-          Operator::kNoProperties,         // properties
-          StubCallMode::kCallCodeObject);  // stub call mode
-
-  auto lowering_special_case = std::make_unique<Int64LoweringSpecialCase>();
-  lowering_special_case->replacements.insert(
-      {bigint_to_i64_call_descriptor, bigint_to_i32_pair_call_descriptor});
+      descriptors->GetLoweredCallDescriptor(bigint_to_i64_call_descriptor);
 
   Node* call_node =
       graph()->NewNode(common()->Call(bigint_to_i64_call_descriptor), target,
                        bigint, context, start(), start());
 
-  LowerGraphWithSpecialCase(call_node, std::move(lowering_special_case),
-                            MachineRepresentation::kWord64);
+  LowerGraphWithSpecialCase(call_node, MachineRepresentation::kWord64);
 
   Capture<Node*> call;
   Matcher<Node*> call_matcher =
@@ -1113,36 +1061,18 @@ TEST_F(Int64LoweringTest, WasmBigIntSpecialCaseBigIntToI64) {
 TEST_F(Int64LoweringTest, WasmBigIntSpecialCaseI64ToBigInt) {
   Node* target = Int32Constant(1);
   Node* i64 = Int64Constant(value(0));
+  WasmCallDescriptors* descriptors = wasm::GetWasmEngine()->call_descriptors();
 
   CallDescriptor* i64_to_bigint_call_descriptor =
-      Linkage::GetStubCallDescriptor(
-          zone(),                                           // zone
-          I64ToBigIntDescriptor(),                          // descriptor
-          I64ToBigIntDescriptor::GetStackParameterCount(),  // stack parameter
-                                                            // count
-          CallDescriptor::kNoFlags,                         // flags
-          Operator::kNoProperties,                          // properties
-          StubCallMode::kCallCodeObject);                   // stub call mode
+      descriptors->GetI64ToBigIntDescriptor(StubCallMode::kCallBuiltinPointer);
 
   CallDescriptor* i32_pair_to_bigint_call_descriptor =
-      Linkage::GetStubCallDescriptor(
-          zone(),                       // zone
-          I32PairToBigIntDescriptor(),  // descriptor
-          I32PairToBigIntDescriptor::
-              GetStackParameterCount(),    // stack parameter count
-          CallDescriptor::kNoFlags,        // flags
-          Operator::kNoProperties,         // properties
-          StubCallMode::kCallCodeObject);  // stub call mode
-
-  auto lowering_special_case = std::make_unique<Int64LoweringSpecialCase>();
-  lowering_special_case->replacements.insert(
-      {i64_to_bigint_call_descriptor, i32_pair_to_bigint_call_descriptor});
+      descriptors->GetLoweredCallDescriptor(i64_to_bigint_call_descriptor);
 
   Node* call = graph()->NewNode(common()->Call(i64_to_bigint_call_descriptor),
                                 target, i64, start(), start());
 
-  LowerGraphWithSpecialCase(call, std::move(lowering_special_case),
-                            MachineRepresentation::kTaggedPointer);
+  LowerGraphWithSpecialCase(call, MachineRepresentation::kTaggedPointer);
 
   EXPECT_THAT(
       graph()->end()->InputAt(1),
@@ -1155,3 +1085,5 @@ TEST_F(Int64LoweringTest, WasmBigIntSpecialCaseI64ToBigInt) {
 }  // namespace compiler
 }  // namespace internal
 }  // namespace v8
+
+#endif  // V8_TARGET_ARCH_32_BIT

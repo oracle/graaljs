@@ -11,6 +11,7 @@
 
 #if !CPPGC_IS_STANDALONE
 #include "include/v8-initialization.h"
+#include "src/init/v8.h"
 #endif  // !CPPGC_IS_STANDALONE
 
 namespace cppgc {
@@ -28,10 +29,7 @@ void TestWithPlatform::SetUpTestSuite() {
 #if !CPPGC_IS_STANDALONE
   // For non-standalone builds, we need to initialize V8's platform so that it
   // can be looked-up by trace-event.h.
-  v8::V8::InitializePlatform(platform_->GetV8Platform());
-#ifdef V8_SANDBOX
-  CHECK(v8::V8::InitializeSandbox());
-#endif  // V8_SANDBOX
+  i::V8::InitializePlatformForTesting(platform_->GetV8Platform());
   v8::V8::Initialize();
 #endif  // !CPPGC_IS_STANDALONE
 }
@@ -48,6 +46,8 @@ void TestWithPlatform::TearDownTestSuite() {
 TestWithHeap::TestWithHeap()
     : heap_(Heap::Create(platform_)),
       allocation_handle_(heap_->GetAllocationHandle()) {}
+
+TestWithHeap::~TestWithHeap() = default;
 
 void TestWithHeap::ResetLinearAllocationBuffers() {
   Heap::From(GetHeap())->object_allocator().ResetLinearAllocationBuffers();

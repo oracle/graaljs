@@ -55,7 +55,7 @@ class TestCase(testcase.D8TestCase):
 
   def _get_files_params(self):
     files = self._source_files
-    if self._test_config.isolates:
+    if self.test_config.isolates:
       files = files + ['--isolate'] + files
     return files
 
@@ -73,7 +73,3 @@ class TestCase(testcase.D8TestCase):
     if os.path.exists(base_path + self._get_suffix()):
       return base_path + self._get_suffix()
     return base_path + '.mjs'
-
-
-def GetSuite(*args, **kwargs):
-  return TestSuite(*args, **kwargs)

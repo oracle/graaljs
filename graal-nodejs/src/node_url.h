@@ -9,7 +9,10 @@
 #include "node.h"
 #include "node_snapshotable.h"
 #include "util.h"
+#include "v8-fast-api-calls.h"
+#include "v8.h"
 
+#include <optional>
 #include <string>
 
 namespace node {
@@ -32,7 +35,7 @@ enum url_update_action {
 
 class BindingData : public SnapshotableObject {
  public:
-  explicit BindingData(Realm* realm, v8::Local<v8::Object> obj);
+  BindingData(Realm* realm, v8::Local<v8::Object> obj);
 
   using InternalFieldInfo = InternalFieldInfoBase;
 
@@ -43,21 +46,27 @@ class BindingData : public SnapshotableObject {
   SET_SELF_SIZE(BindingData)
   SET_MEMORY_INFO_NAME(BindingData)
 
-  static void ToASCII(const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void ToUnicode(const v8::FunctionCallbackInfo<v8::Value>& args);
-
   static void DomainToASCII(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void DomainToUnicode(const v8::FunctionCallbackInfo<v8::Value>& args);
 
   static void CanParse(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static bool FastCanParse(v8::Local<v8::Value> receiver,
+                           const v8::FastOneByteString& input);
+  static bool FastCanParseWithBase(v8::Local<v8::Value> receiver,
+                                   const v8::FastOneByteString& input,
+                                   const v8::FastOneByteString& base);
+
   static void Format(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void GetOrigin(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Parse(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Update(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static void Initialize(v8::Local<v8::Object> target,
-                         v8::Local<v8::Value> unused,
-                         v8::Local<v8::Context> context,
-                         void* priv);
+  static void CreatePerIsolateProperties(IsolateData* isolate_data,
+                                         v8::Local<v8::ObjectTemplate> ctor);
+  static void CreatePerContextProperties(v8::Local<v8::Object> target,
+                                         v8::Local<v8::Value> unused,
+                                         v8::Local<v8::Context> context,
+                                         void* priv);
   static void RegisterExternalReferences(ExternalReferenceRegistry* registry);
 
  private:
@@ -66,9 +75,17 @@ class BindingData : public SnapshotableObject {
 
   void UpdateComponents(const ada::url_components& components,
                         const ada::scheme::type type);
+
+  static v8::CFunction fast_can_parse_methods_[];
+  static void ThrowInvalidURL(Environment* env,
+                              std::string_view input,
+                              std::optional<std::string> base);
 };
 
-std::string FromFilePath(const std::string_view file_path);
+std::string FromFilePath(std::string_view file_path);
+std::optional<std::string> FileURLToPath(Environment* env,
+                                         const ada::url_aggregator& file_url);
+void FromNamespacedPath(std::string* path);
 
 }  // namespace url
 

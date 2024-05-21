@@ -21,27 +21,19 @@ namespace internal {
 namespace wasm {
 namespace test_run_wasm_simd_liftoff {
 
-#define WASM_SIMD_LIFTOFF_TEST(name) \
-  void RunWasm_##name##_Impl();      \
-  TEST(RunWasm_##name##_liftoff) {   \
-    EXPERIMENTAL_FLAG_SCOPE(simd);   \
-    RunWasm_##name##_Impl();         \
-  }                                  \
-  void RunWasm_##name##_Impl()
-
-WASM_SIMD_LIFTOFF_TEST(S128Local) {
+TEST(S128Local) {
   WasmRunner<int32_t> r(TestExecutionTier::kLiftoff);
   byte temp1 = r.AllocateLocal(kWasmS128);
-  BUILD(r, WASM_LOCAL_SET(temp1, WASM_LOCAL_GET(temp1)), WASM_ONE);
+  r.Build({WASM_LOCAL_SET(temp1, WASM_LOCAL_GET(temp1)), WASM_ONE});
   CHECK_EQ(1, r.Call());
 }
 
-WASM_SIMD_LIFTOFF_TEST(S128Global) {
+TEST(S128Global) {
   WasmRunner<int32_t> r(TestExecutionTier::kLiftoff);
 
   int32_t* g0 = r.builder().AddGlobal<int32_t>(kWasmS128);
   int32_t* g1 = r.builder().AddGlobal<int32_t>(kWasmS128);
-  BUILD(r, WASM_GLOBAL_SET(1, WASM_GLOBAL_GET(0)), WASM_ONE);
+  r.Build({WASM_GLOBAL_SET(1, WASM_GLOBAL_GET(0)), WASM_ONE});
 
   int32_t expected = 0x1234;
   for (int i = 0; i < 4; i++) {
@@ -54,7 +46,7 @@ WASM_SIMD_LIFTOFF_TEST(S128Global) {
   }
 }
 
-WASM_SIMD_LIFTOFF_TEST(S128Param) {
+TEST(S128Param) {
   // Test how SIMD parameters in functions are processed. There is no easy way
   // to specify a SIMD value when initializing a WasmRunner, so we manually
   // add a new function with the right signature, and call it from main.
@@ -64,29 +56,29 @@ WASM_SIMD_LIFTOFF_TEST(S128Param) {
   // Liftoff does not support any SIMD operations.
   byte temp1 = r.AllocateLocal(kWasmS128);
   WasmFunctionCompiler& simd_func = r.NewFunction(sigs.i_s());
-  BUILD(simd_func, WASM_ONE);
+  simd_func.Build({WASM_ONE});
 
-  BUILD(r,
-        WASM_CALL_FUNCTION(simd_func.function_index(), WASM_LOCAL_GET(temp1)));
+  r.Build(
+      {WASM_CALL_FUNCTION(simd_func.function_index(), WASM_LOCAL_GET(temp1))});
 
   CHECK_EQ(1, r.Call());
 }
 
-WASM_SIMD_LIFTOFF_TEST(S128Return) {
+TEST(S128Return) {
   // Test how functions returning SIMD values are processed.
   WasmRunner<int32_t> r(TestExecutionTier::kLiftoff);
   TestSignatures sigs;
   WasmFunctionCompiler& simd_func = r.NewFunction(sigs.s_i());
   byte temp1 = simd_func.AllocateLocal(kWasmS128);
-  BUILD(simd_func, WASM_LOCAL_GET(temp1));
+  simd_func.Build({WASM_LOCAL_GET(temp1)});
 
-  BUILD(r, WASM_CALL_FUNCTION(simd_func.function_index(), WASM_ONE), kExprDrop,
-        WASM_ONE);
+  r.Build({WASM_CALL_FUNCTION(simd_func.function_index(), WASM_ONE), kExprDrop,
+           WASM_ONE});
 
   CHECK_EQ(1, r.Call());
 }
 
-WASM_SIMD_LIFTOFF_TEST(REGRESS_1088273) {
+TEST(REGRESS_1088273) {
   // TODO(v8:9418): This is a regression test for Liftoff, translated from a
   // mjsunit test. We do not have I64x2Mul lowering yet, so this will cause a
   // crash on arch that don't support SIMD 128 and require lowering, thus
@@ -97,18 +89,18 @@ WASM_SIMD_LIFTOFF_TEST(REGRESS_1088273) {
   TestSignatures sigs;
   WasmFunctionCompiler& simd_func = r.NewFunction(sigs.s_i());
   byte temp1 = simd_func.AllocateLocal(kWasmS128);
-  BUILD(simd_func, WASM_LOCAL_GET(temp1));
+  simd_func.Build({WASM_LOCAL_GET(temp1)});
 
-  BUILD(r, WASM_SIMD_SPLAT(I8x16, WASM_I32V(0x80)),
-        WASM_SIMD_SPLAT(I8x16, WASM_I32V(0x92)),
-        WASM_SIMD_I16x8_EXTRACT_LANE_U(0, WASM_SIMD_OP(kExprI64x2Mul)));
+  r.Build({WASM_SIMD_SPLAT(I8x16, WASM_I32V(0x80)),
+           WASM_SIMD_SPLAT(I8x16, WASM_I32V(0x92)),
+           WASM_SIMD_I16x8_EXTRACT_LANE_U(0, WASM_SIMD_OP(kExprI64x2Mul))});
   CHECK_EQ(18688, r.Call());
 }
 
 // A test to exercise logic in Liftoff's implementation of shuffle. The
 // implementation in Liftoff is a bit more tricky due to shuffle requiring
 // adjacent registers in ARM/ARM64.
-WASM_SIMD_LIFTOFF_TEST(I8x16Shuffle) {
+TEST(I8x16Shuffle) {
   WasmRunner<int32_t> r(TestExecutionTier::kLiftoff);
   // Temps to use up registers and force non-adjacent registers for shuffle.
   byte local0 = r.AllocateLocal(kWasmS128);
@@ -133,13 +125,14 @@ WASM_SIMD_LIFTOFF_TEST(I8x16Shuffle) {
       {0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 31}};
 
   // Set up locals so shuffle is called with non-adjacent registers v2 and v0.
-  BUILD(r, WASM_LOCAL_SET(local0, WASM_GLOBAL_GET(1)),  // local0 is in v0
-        WASM_LOCAL_SET(local1, WASM_GLOBAL_GET(0)),     // local1 is in v1
-        WASM_GLOBAL_GET(0),                             // global0 is in v2
-        WASM_LOCAL_GET(local0),                         // local0 is in v0
-        WASM_GLOBAL_SET(2, WASM_SIMD_I8x16_SHUFFLE_OP(
-                               kExprI8x16Shuffle, pattern, WASM_NOP, WASM_NOP)),
-        WASM_ONE);
+  r.Build(
+      {WASM_LOCAL_SET(local0, WASM_GLOBAL_GET(1)),  // local0 is in v0
+       WASM_LOCAL_SET(local1, WASM_GLOBAL_GET(0)),  // local1 is in v1
+       WASM_GLOBAL_GET(0),                          // global0 is in v2
+       WASM_LOCAL_GET(local0),                      // local0 is in v0
+       WASM_GLOBAL_SET(2, WASM_SIMD_I8x16_SHUFFLE_OP(kExprI8x16Shuffle, pattern,
+                                                     WASM_NOP, WASM_NOP)),
+       WASM_ONE});
 
   r.Call();
 
@@ -153,7 +146,7 @@ WASM_SIMD_LIFTOFF_TEST(I8x16Shuffle) {
 
 // Exercise logic in Liftoff's implementation of shuffle when inputs to the
 // shuffle are the same register.
-WASM_SIMD_LIFTOFF_TEST(I8x16Shuffle_SingleOperand) {
+TEST(I8x16Shuffle_SingleOperand) {
   WasmRunner<int32_t> r(TestExecutionTier::kLiftoff);
   byte local0 = r.AllocateLocal(kWasmS128);
 
@@ -171,11 +164,12 @@ WASM_SIMD_LIFTOFF_TEST(I8x16Shuffle_SingleOperand) {
       {31, 14, 13, 12, 11, 10, 9, 8, 7, 6, 5, 4, 3, 2, 1, 0}};
 
   // Set up locals so shuffle is called with non-adjacent registers v2 and v0.
-  BUILD(r, WASM_LOCAL_SET(local0, WASM_GLOBAL_GET(0)), WASM_LOCAL_GET(local0),
-        WASM_LOCAL_GET(local0),
-        WASM_GLOBAL_SET(1, WASM_SIMD_I8x16_SHUFFLE_OP(
-                               kExprI8x16Shuffle, pattern, WASM_NOP, WASM_NOP)),
-        WASM_ONE);
+  r.Build(
+      {WASM_LOCAL_SET(local0, WASM_GLOBAL_GET(0)), WASM_LOCAL_GET(local0),
+       WASM_LOCAL_GET(local0),
+       WASM_GLOBAL_SET(1, WASM_SIMD_I8x16_SHUFFLE_OP(kExprI8x16Shuffle, pattern,
+                                                     WASM_NOP, WASM_NOP)),
+       WASM_ONE});
 
   r.Call();
 
@@ -189,7 +183,7 @@ WASM_SIMD_LIFTOFF_TEST(I8x16Shuffle_SingleOperand) {
 // Exercise Liftoff's logic for zero-initializing stack slots. We were using an
 // incorrect instruction for storing zeroes into the slot when the slot offset
 // was too large to fit in the instruction as an immediate.
-WASM_SIMD_LIFTOFF_TEST(FillStackSlotsWithZero_CheckStartOffset) {
+TEST(FillStackSlotsWithZero_CheckStartOffset) {
   WasmRunner<int64_t> r(TestExecutionTier::kLiftoff);
   // Function that takes in 32 i64 arguments, returns i64. This gets us a large
   // enough starting offset from which we spill locals.
@@ -206,22 +200,44 @@ WASM_SIMD_LIFTOFF_TEST(FillStackSlotsWithZero_CheckStartOffset) {
   // remainder, 8 in this case, so we hit the case where we use str.
   simd_func.AllocateLocal(kWasmS128);
   simd_func.AllocateLocal(kWasmI64);
-  BUILD(simd_func, WASM_I64V_1(1));
+  simd_func.Build({WASM_I64V_1(1)});
 
-  BUILD(r, WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1),
-        WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1),
-        WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1),
-        WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1),
-        WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1),
-        WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1),
-        WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1),
-        WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1), WASM_I64V_1(1),
-        WASM_CALL_FUNCTION0(simd_func.function_index()));
+  r.Build({WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_I64V_1(1),
+           WASM_CALL_FUNCTION0(simd_func.function_index())});
 
   CHECK_EQ(1, r.Call());
 }
-
-#undef WASM_SIMD_LIFTOFF_TEST
 
 }  // namespace test_run_wasm_simd_liftoff
 }  // namespace wasm

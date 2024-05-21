@@ -43,7 +43,7 @@ constexpr size_t kPageSize = 1 << kPageSizeLog2;
 constexpr size_t kPageOffsetMask = kPageSize - 1;
 constexpr size_t kPageBaseMask = ~kPageOffsetMask;
 
-#if defined(V8_TARGET_ARCH_ARM64) && defined(V8_OS_MACOS)
+#if defined(V8_TARGET_ARCH_ARM64) && defined(V8_OS_DARWIN)
 // No guard pages on ARM64 macOS. This target has 16 kiB pages, meaning that
 // the guard pages do not protect anything, since there is no inaccessible
 // region surrounding the allocation.
@@ -73,8 +73,18 @@ constexpr size_t kLargeObjectSizeThreshold = kPageSize / 2;
 constexpr GCInfoIndex kFreeListGCInfoIndex = 0;
 constexpr size_t kFreeListEntrySize = 2 * sizeof(uintptr_t);
 
+#if defined(CPPGC_2GB_CAGE)
+constexpr size_t kCagedHeapReservationSize = static_cast<size_t>(2) * kGB;
+#else   // !defined(CPPGC_2GB_CAGE)
 constexpr size_t kCagedHeapReservationSize = static_cast<size_t>(4) * kGB;
+#endif  // !defined(CPPGC_2GB_CAGE)
 constexpr size_t kCagedHeapReservationAlignment = kCagedHeapReservationSize;
+
+#if defined(CPPGC_POINTER_COMPRESSION)
+constexpr size_t kSlotSize = sizeof(uint32_t);
+#else   // !defined(CPPGC_POINTER_COMPRESSION)
+constexpr size_t kSlotSize = sizeof(uintptr_t);
+#endif  // !defined(CPPGC_POINTER_COMPRESSION)
 
 }  // namespace internal
 }  // namespace cppgc

@@ -15,7 +15,7 @@ namespace wasm {
 WasmFeatures WasmFeatures::FromFlags() {
   WasmFeatures features = WasmFeatures::None();
 #define FLAG_REF(feat, ...) \
-  if (FLAG_experimental_wasm_##feat) features.Add(kFeature_##feat);
+  if (v8_flags.experimental_wasm_##feat) features.Add(kFeature_##feat);
   FOREACH_WASM_FEATURE_FLAG(FLAG_REF)
 #undef FLAG_REF
 #define NON_FLAG_REF(feat, ...) features.Add(kFeature_##feat);
@@ -33,12 +33,19 @@ WasmFeatures WasmFeatures::FromIsolate(Isolate* isolate) {
 WasmFeatures WasmFeatures::FromContext(Isolate* isolate,
                                        Handle<Context> context) {
   WasmFeatures features = WasmFeatures::FromFlags();
-  if (isolate->IsWasmSimdEnabled(context)) {
-    features.Add(kFeature_simd);
+  if (isolate->IsWasmGCEnabled(context)) {
+    features.Add(kFeature_gc);
+    // Also enable typed function references, since the commandline flag
+    // implication won't do that for us in this case.
+    features.Add(kFeature_typed_funcref);
   }
-  if (isolate->AreWasmExceptionsEnabled(context)) {
-    features.Add(kFeature_eh);
+  if (isolate->IsWasmStringRefEnabled(context)) {
+    features.Add(kFeature_stringref);
   }
+  if (isolate->IsWasmInliningEnabled(context)) {
+    features.Add(kFeature_inlining);
+  }
+  // This space intentionally left blank for future Wasm origin trials.
   return features;
 }
 

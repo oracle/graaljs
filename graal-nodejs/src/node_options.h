@@ -28,24 +28,20 @@ class HostPort {
 
   void set_host(const std::string& host) { host_name_ = host; }
 
-  void set_port(int port) { port_ = port; }
+  void set_port(uint16_t port) { port_ = port; }
 
   const std::string& host() const { return host_name_; }
 
-  int port() const {
-    // TODO(joyeecheung): make port a uint16_t
-    CHECK_GE(port_, 0);
-    return port_;
-  }
+  uint16_t port() const { return port_; }
 
   void Update(const HostPort& other) {
     if (!other.host_name_.empty()) host_name_ = other.host_name_;
-    if (other.port_ >= 0) port_ = other.port_;
+    port_ = other.port_;
   }
 
  private:
   std::string host_name_;
-  int port_;
+  uint16_t port_;
 };
 
 class Options {
@@ -108,13 +104,14 @@ class EnvironmentOptions : public Options {
  public:
   bool abort_on_uncaught_exception = false;
   std::vector<std::string> conditions;
+  bool detect_module = false;
   std::string dns_result_order;
   bool enable_source_maps = false;
   bool experimental_fetch = true;
-  bool experimental_global_customevent = false;
-  bool experimental_global_web_crypto = false;
+  bool experimental_websocket = false;
+  bool experimental_global_customevent = true;
+  bool experimental_global_web_crypto = true;
   bool experimental_https_modules = false;
-  std::string experimental_specifier_resolution;
   bool experimental_wasm_modules = false;
   bool experimental_import_meta_resolve = false;
   std::string input_type;  // Value of --input-type
@@ -122,6 +119,12 @@ class EnvironmentOptions : public Options {
   std::string experimental_policy;
   std::string experimental_policy_integrity;
   bool has_policy_integrity_string = false;
+  bool experimental_permission = false;
+  std::vector<std::string> allow_fs_read;
+  std::vector<std::string> allow_fs_write;
+  bool allow_addons = false;
+  bool allow_child_process = false;
+  bool allow_worker_threads = false;
   bool experimental_repl_await = true;
   bool experimental_vm_modules = false;
   bool expose_internals = false;
@@ -129,13 +132,15 @@ class EnvironmentOptions : public Options {
   bool frozen_intrinsics = false;
   int64_t heap_snapshot_near_heap_limit = 0;
   std::string heap_snapshot_signal;
-  bool enable_network_family_autoselection = false;
+  bool network_family_autoselection = true;
+  uint64_t network_family_autoselection_attempt_timeout = 250;
   uint64_t max_http_header_size = 16 * 1024;
   bool deprecation = true;
   bool force_async_hooks_checks = true;
   bool allow_native_addons = true;
   bool global_search_paths = true;
   bool warnings = true;
+  std::vector<std::string> disable_warnings;
   bool force_context_aware = false;
   bool pending_deprecation = false;
   bool preserve_symlinks = false;
@@ -155,8 +160,11 @@ class EnvironmentOptions : public Options {
 #endif  // HAVE_INSPECTOR
   std::string redirect_warnings;
   std::string diagnostic_dir;
+  std::string env_file;
+  bool has_env_file_string = false;
   bool test_runner = false;
   uint64_t test_runner_concurrency = 0;
+  uint64_t test_runner_timeout = 0;
   bool test_runner_coverage = false;
   std::vector<std::string> test_name_pattern;
   std::vector<std::string> test_reporter;
@@ -172,6 +180,7 @@ class EnvironmentOptions : public Options {
   bool trace_tls = false;
   bool trace_uncaught = false;
   bool trace_warnings = false;
+  bool trace_promises = false;
   bool extra_info_on_fatal_exception = true;
   std::string unhandled_rejections;
   std::vector<std::string> userland_loaders;
@@ -209,6 +218,8 @@ class EnvironmentOptions : public Options {
 
   std::vector<std::string> user_argv;
 
+  bool report_exclude_network = false;
+
   inline DebugOptions* get_debug_options() { return &debug_options_; }
   inline const DebugOptions& debug_options() const { return debug_options_; }
 
@@ -227,6 +238,8 @@ class PerIsolateOptions : public Options {
   bool report_on_signal = false;
   bool experimental_shadow_realm = false;
   std::string report_signal = "SIGUSR2";
+  bool build_snapshot = false;
+  std::string build_snapshot_config;
   inline EnvironmentOptions* get_per_env_options();
   void CheckOptions(std::vector<std::string>* errors,
                     std::vector<std::string>* argv) override;
@@ -251,7 +264,6 @@ class PerProcessOptions : public Options {
   bool zero_fill_all_buffers = false;
   bool debug_arraybuffer_allocations = false;
   std::string disable_proto;
-  bool build_snapshot = false;
   // We enable the shared read-only heap which currently requires that the
   // snapshot used in different isolates in the same process to be the same.
   // Therefore --node-snapshot is a per-process option.
@@ -263,6 +275,7 @@ class PerProcessOptions : public Options {
   bool print_help = false;
   bool print_v8_help = false;
   bool print_version = false;
+  std::string experimental_sea_config;
 
 #ifdef NODE_HAVE_I18N_SUPPORT
   std::string icu_data_dir;

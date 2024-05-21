@@ -14,8 +14,6 @@ namespace internal {
 
 class BytecodeArray;
 class Isolate;
-class UnoptimizedFrame;
-class JavaScriptFrame;
 class JSFunction;
 class OptimizationDecision;
 enum class CodeKind : uint8_t;
@@ -28,9 +26,9 @@ class TieringManager {
  public:
   explicit TieringManager(Isolate* isolate) : isolate_(isolate) {}
 
-  void OnInterruptTick(Handle<JSFunction> function);
+  void OnInterruptTick(Handle<JSFunction> function, CodeKind code_kind);
 
-  void NotifyICChanged() { any_ic_changed_ = true; }
+  void NotifyICChanged(FeedbackVector vector);
 
   // After this request, the next JumpLoop will perform OSR.
   void RequestOsrAtNextOpportunity(JSFunction function);
@@ -44,13 +42,15 @@ class TieringManager {
   // Make the decision whether to optimize the given function, and mark it for
   // optimization if the decision was 'yes'.
   // This function is also responsible for bumping the OSR urgency.
-  void MaybeOptimizeFrame(JSFunction function, UnoptimizedFrame* frame,
-                          CodeKind code_kind);
+  void MaybeOptimizeFrame(JSFunction function, CodeKind code_kind);
 
-  OptimizationDecision ShouldOptimize(JSFunction function, CodeKind code_kind,
-                                      JavaScriptFrame* frame);
-  void Optimize(JSFunction function, CodeKind code_kind,
-                OptimizationDecision decision);
+  // After next tick indicates whether we've precremented the ticks before
+  // calling this function, or whether we're pretending that we already got the
+  // tick.
+  OptimizationDecision ShouldOptimize(FeedbackVector feedback_vector,
+                                      CodeKind code_kind,
+                                      bool after_next_tick = false);
+  void Optimize(JSFunction function, OptimizationDecision decision);
   void Baseline(JSFunction function, OptimizationReason reason);
 
   class V8_NODISCARD OnInterruptTickScope final {

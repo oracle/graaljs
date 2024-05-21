@@ -904,7 +904,7 @@ void GraalNotifyWasmStreamingCallback(JNIEnv* env, jclass nativeAccess, jobject 
     GraalIsolate* isolate = CurrentIsolateChecked();
     v8::Isolate* v8_isolate = reinterpret_cast<v8::Isolate*> (isolate);
     v8::WasmStreamingCallback callback = isolate->GetWasmStreamingCallback();
-    
+
     std::array<GraalValue*, 2> values;
     v8::HandleScope scope(v8_isolate);
     int i = 1;

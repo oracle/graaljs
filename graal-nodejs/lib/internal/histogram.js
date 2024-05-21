@@ -3,7 +3,6 @@
 const {
   MapPrototypeEntries,
   NumberIsNaN,
-  NumberIsInteger,
   NumberMAX_SAFE_INTEGER,
   ObjectFromEntries,
   ReflectConstruct,
@@ -53,9 +52,13 @@ function isHistogram(object) {
   return object?.[kHandle] !== undefined;
 }
 
+const kSkipThrow = Symbol('kSkipThrow');
+
 class Histogram {
-  constructor() {
-    throw new ERR_ILLEGAL_CONSTRUCTOR();
+  constructor(skipThrowSymbol = undefined) {
+    if (skipThrowSymbol !== kSkipThrow) {
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
+    }
   }
 
   [kInspect](depth, options) {
@@ -186,9 +189,8 @@ class Histogram {
     if (!isHistogram(this))
       throw new ERR_INVALID_THIS('Histogram');
     validateNumber(percentile, 'percentile');
-
     if (NumberIsNaN(percentile) || percentile <= 0 || percentile > 100)
-      throw new ERR_INVALID_ARG_VALUE.RangeError('percentile', percentile);
+      throw new ERR_OUT_OF_RANGE('percentile', '> 0 && <= 100', percentile);
 
     return this[kHandle]?.percentile(percentile);
   }
@@ -201,9 +203,8 @@ class Histogram {
     if (!isHistogram(this))
       throw new ERR_INVALID_THIS('Histogram');
     validateNumber(percentile, 'percentile');
-
     if (NumberIsNaN(percentile) || percentile <= 0 || percentile > 100)
-      throw new ERR_INVALID_ARG_VALUE.RangeError('percentile', percentile);
+      throw new ERR_OUT_OF_RANGE('percentile', '> 0 && <= 100', percentile);
 
     return this[kHandle]?.percentileBigInt(percentile);
   }
@@ -245,7 +246,7 @@ class Histogram {
     const handle = this[kHandle];
     return {
       data: { handle },
-      deserializeInfo: 'internal/histogram:internalHistogram',
+      deserializeInfo: 'internal/histogram:ClonedHistogram',
     };
   }
 
@@ -267,8 +268,12 @@ class Histogram {
 }
 
 class RecordableHistogram extends Histogram {
-  constructor() {
-    throw new ERR_ILLEGAL_CONSTRUCTOR();
+  constructor(skipThrowSymbol = undefined) {
+    if (skipThrowSymbol !== kSkipThrow) {
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
+    }
+
+    super(skipThrowSymbol);
   }
 
   /**
@@ -283,11 +288,7 @@ class RecordableHistogram extends Histogram {
       return;
     }
 
-    if (!NumberIsInteger(val))
-      throw new ERR_INVALID_ARG_TYPE('val', ['integer', 'bigint'], val);
-
-    if (val < 1 || val > NumberMAX_SAFE_INTEGER)
-      throw new ERR_OUT_OF_RANGE('val', 'a safe integer greater than 0', val);
+    validateInteger(val, 'val', 1);
 
     this[kHandle]?.record(val);
   }
@@ -316,7 +317,7 @@ class RecordableHistogram extends Histogram {
     const handle = this[kHandle];
     return {
       data: { handle },
-      deserializeInfo: 'internal/histogram:internalRecordableHistogram',
+      deserializeInfo: 'internal/histogram:ClonedRecordableHistogram',
     };
   }
 
@@ -325,24 +326,32 @@ class RecordableHistogram extends Histogram {
   }
 }
 
-function internalHistogram(handle) {
+function ClonedHistogram(handle) {
   return makeTransferable(ReflectConstruct(
     function() {
       this[kHandle] = handle;
       this[kMap] = new SafeMap();
     }, [], Histogram));
 }
-internalHistogram.prototype[kDeserialize] = () => {};
 
-function internalRecordableHistogram(handle) {
-  return makeTransferable(ReflectConstruct(
-    function() {
-      this[kHandle] = handle;
-      this[kMap] = new SafeMap();
-      this[kRecordable] = true;
-    }, [], RecordableHistogram));
+ClonedHistogram.prototype[kDeserialize] = () => { };
+
+function ClonedRecordableHistogram(handle) {
+  const histogram = new RecordableHistogram(kSkipThrow);
+
+  histogram[kRecordable] = true;
+  histogram[kMap] = new SafeMap();
+  histogram[kHandle] = handle;
+  histogram.constructor = RecordableHistogram;
+
+  return makeTransferable(histogram);
 }
-internalRecordableHistogram.prototype[kDeserialize] = () => {};
+
+ClonedRecordableHistogram.prototype[kDeserialize] = () => { };
+
+function createRecordableHistogram(handle) {
+  return new ClonedRecordableHistogram(handle);
+}
 
 /**
  * @param {{
@@ -368,14 +377,14 @@ function createHistogram(options = kEmptyObject) {
     throw new ERR_INVALID_ARG_VALUE.RangeError('options.highest', highest);
   }
   validateInteger(figures, 'options.figures', 1, 5);
-  return internalRecordableHistogram(new _Histogram(lowest, highest, figures));
+  return createRecordableHistogram(new _Histogram(lowest, highest, figures));
 }
 
 module.exports = {
   Histogram,
   RecordableHistogram,
-  internalHistogram,
-  internalRecordableHistogram,
+  ClonedHistogram,
+  ClonedRecordableHistogram,
   isHistogram,
   kDestroy,
   kHandle,

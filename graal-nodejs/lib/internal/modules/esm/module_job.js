@@ -27,7 +27,9 @@ const {
 } = require('internal/source_map/source_map_cache');
 const assert = require('internal/assert');
 const resolvedPromise = PromiseResolve();
-
+const {
+  setHasStartedUserESMExecution,
+} = require('internal/modules/helpers');
 const noop = FunctionPrototype;
 
 let hasPausedEntry = false;
@@ -51,16 +53,25 @@ class ModuleJob {
   // `loader` is the Loader instance used for loading dependencies.
   // `moduleProvider` is a function
   constructor(loader, url, importAttributes = { __proto__: null },
-              moduleProvider, isMain, inspectBrk) {
+              moduleProvider, isMain, inspectBrk, sync = false) {
     this.loader = loader;
     this.importAttributes = importAttributes;
     this.isMain = isMain;
     this.inspectBrk = inspectBrk;
 
+    this.url = url;
+
     this.module = undefined;
     // Expose the promise to the ModuleWrap directly for linking below.
     // `this.module` is also filled in below.
     this.modulePromise = ReflectApply(moduleProvider, loader, [url, isMain]);
+
+    if (sync) {
+      this.module = this.modulePromise;
+      this.modulePromise = PromiseResolve(this.module);
+    } else {
+      this.modulePromise = PromiseResolve(this.modulePromise);
+    }
 
     // Wait for the ModuleWrap instance being linked with all dependencies.
     const link = async () => {
@@ -187,10 +198,26 @@ class ModuleJob {
     }
   }
 
+  runSync() {
+    assert(this.module instanceof ModuleWrap);
+    if (this.instantiated !== undefined) {
+      return { __proto__: null, module: this.module };
+    }
+
+    this.module.instantiate();
+    this.instantiated = PromiseResolve();
+    const timeout = -1;
+    const breakOnSigint = false;
+    setHasStartedUserESMExecution();
+    this.module.evaluate(timeout, breakOnSigint);
+    return { __proto__: null, module: this.module };
+  }
+
   async run() {
     await this.instantiate();
     const timeout = -1;
     const breakOnSigint = false;
+    setHasStartedUserESMExecution();
     try {
       await this.module.evaluate(timeout, breakOnSigint);
     } catch (e) {

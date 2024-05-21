@@ -11,25 +11,25 @@ const {
   JSONStringify,
   ObjectSetPrototypeOf,
   RegExpPrototypeSymbolReplace,
-  SafeWeakMap,
   encodeURIComponent,
   hardenRegExp,
 } = primordials;
 
 const {
+  ERR_REQUIRE_ESM,
   ERR_UNKNOWN_MODULE_FORMAT,
 } = require('internal/errors').codes;
 const { getOptionValue } = require('internal/options');
-const { pathToFileURL, isURL } = require('internal/url');
+const { isURL } = require('internal/url');
 const { emitExperimentalWarning } = require('internal/util');
 const {
   getDefaultConditions,
 } = require('internal/modules/esm/utils');
-let defaultResolve, defaultLoad, importMetaInitializer;
+let defaultResolve, defaultLoad, defaultLoadSync, importMetaInitializer;
 
 /**
  * Lazy loads the module_map module and returns a new instance of ResolveCache.
- * @returns {import('./module_map.js').ResolveCache')}
+ * @returns {import('./module_map.js').ResolveCache}
  */
 function newResolveCache() {
   const { ResolveCache } = require('internal/modules/esm/module_map');
@@ -38,7 +38,7 @@ function newResolveCache() {
 
 /**
  * Generate a load cache (to store the final result of a load-chain for a particular module).
- * @returns {import('./module_map.js').LoadCache')}
+ * @returns {import('./module_map.js').LoadCache}
  */
 function newLoadCache() {
   const { LoadCache } = require('internal/modules/esm/module_map');
@@ -74,8 +74,6 @@ let hooksProxy;
  * @typedef {ArrayBuffer|TypedArray|string} ModuleSource
  */
 
-let emittedSpecifierResolutionWarning = false;
-
 /**
  * This class covers the base machinery of module loading. To add custom
  * behavior you can pass a customizations object and this object will be
@@ -86,16 +84,6 @@ class ModuleLoader {
    * The conditions for resolving packages if `--conditions` is not used.
    */
   #defaultConditions = getDefaultConditions();
-
-  /**
-   * Map of already-loaded CJS modules to use
-   */
-  cjsCache = new SafeWeakMap();
-
-  /**
-   * The index for assigning unique URLs to anonymous module evaluation
-   */
-  evalIndex = 0;
 
   /**
    * Registry of resolved specifiers
@@ -133,16 +121,6 @@ class ModuleLoader {
   constructor(customizations) {
     if (getOptionValue('--experimental-network-imports')) {
       emitExperimentalWarning('Network Imports');
-    }
-    if (
-      !emittedSpecifierResolutionWarning &&
-      getOptionValue('--experimental-specifier-resolution') === 'node'
-    ) {
-      process.emitWarning(
-        'The Node.js specifier resolution flag is experimental. It could change or be removed at any time.',
-        'ExperimentalWarning',
-      );
-      emittedSpecifierResolutionWarning = true;
     }
     this.setCustomizations(customizations);
   }
@@ -204,10 +182,7 @@ class ModuleLoader {
     }
   }
 
-  async eval(
-    source,
-    url = pathToFileURL(`${process.cwd()}/[eval${++this.evalIndex}]`).href,
-  ) {
+  async eval(source, url) {
     const evalInstance = (url) => {
       const { ModuleWrap } = internalBinding('module_wrap');
       const { registerModule } = require('internal/modules/esm/utils');
@@ -229,7 +204,9 @@ class ModuleLoader {
     const { module } = await job.run();
 
     return {
+      __proto__: null,
       namespace: module.getNamespace(),
+      module,
     };
   }
 
@@ -251,7 +228,12 @@ class ModuleLoader {
     return this.getJobFromResolveResult(resolveResult, parentURL, importAttributes);
   }
 
-  getJobFromResolveResult(resolveResult, parentURL, importAttributes) {
+  getModuleJobSync(specifier, parentURL, importAttributes) {
+    const resolveResult = this.resolveSync(specifier, parentURL, importAttributes);
+    return this.getJobFromResolveResult(resolveResult, parentURL, importAttributes, true);
+  }
+
+  getJobFromResolveResult(resolveResult, parentURL, importAttributes, sync) {
     const { url, format } = resolveResult;
     const resolvedImportAttributes = resolveResult.importAttributes ?? importAttributes;
     let job = this.loadCache.get(url, resolvedImportAttributes.type);
@@ -262,7 +244,7 @@ class ModuleLoader {
     }
 
     if (job === undefined) {
-      job = this.#createModuleJob(url, resolvedImportAttributes, parentURL, format);
+      job = this.#createModuleJob(url, resolvedImportAttributes, parentURL, format, sync);
     }
 
     return job;
@@ -279,17 +261,8 @@ class ModuleLoader {
    *                          `resolve` hook
    * @returns {Promise<ModuleJob>} The (possibly pending) module job
    */
-  #createModuleJob(url, importAttributes, parentURL, format) {
-    const moduleProvider = async (url, isMain) => {
-      const {
-        format: finalFormat,
-        responseURL,
-        source,
-      } = await this.load(url, {
-        format,
-        importAttributes,
-      });
-
+  #createModuleJob(url, importAttributes, parentURL, format, sync) {
+    const callTranslator = ({ format: finalFormat, responseURL, source }, isMain) => {
       const translator = getTranslators().get(finalFormat);
 
       if (!translator) {
@@ -298,6 +271,11 @@ class ModuleLoader {
 
       return FunctionPrototypeCall(translator, this, responseURL, source, isMain);
     };
+    const context = { format, importAttributes };
+
+    const moduleProvider = sync ?
+      (url, isMain) => callTranslator(this.loadSync(url, context), isMain) :
+      async (url, isMain) => callTranslator(await this.load(url, context), isMain);
 
     const inspectBrk = (
       parentURL === undefined &&
@@ -316,6 +294,7 @@ class ModuleLoader {
       moduleProvider,
       parentURL === undefined,
       inspectBrk,
+      sync,
     );
 
     this.loadCache.set(url, importAttributes.type, job);
@@ -419,6 +398,24 @@ class ModuleLoader {
     return result;
   }
 
+  loadSync(url, context) {
+    defaultLoadSync ??= require('internal/modules/esm/load').defaultLoadSync;
+
+    let result = this.#customizations ?
+      this.#customizations.loadSync(url, context) :
+      defaultLoadSync(url, context);
+    let format = result?.format;
+    if (format === 'module') {
+      throw new ERR_REQUIRE_ESM(url, true);
+    }
+    if (format === 'commonjs') {
+      format = 'require-commonjs';
+      result = { __proto__: result, format };
+    }
+    this.validateLoadResult(url, format);
+    return result;
+  }
+
   validateLoadResult(url, format) {
     if (format == null) {
       require('internal/modules/esm/load').throwUnknownModuleFormat(url, format);
@@ -496,6 +493,9 @@ class CustomizedModuleLoader {
   load(url, context) {
     return hooksProxy.makeAsyncRequest('load', undefined, url, context);
   }
+  loadSync(url, context) {
+    return hooksProxy.makeSyncRequest('load', undefined, url, context);
+  }
 
   importMetaInitialize(meta, context, loader) {
     hooksProxy.importMetaInitialize(meta, context, loader);
@@ -511,15 +511,14 @@ let emittedLoaderFlagWarning = false;
  * A loader instance is used as the main entry point for loading ES modules. Currently, this is a singleton; there is
  * only one used for loading the main module and everything in its dependency graph, though separate instances of this
  * class might be instantiated as part of bootstrap for other purposes.
- * @param {boolean} useCustomLoadersIfPresent If the user has provided loaders via the --loader flag, use them.
  * @returns {ModuleLoader}
  */
-function createModuleLoader(useCustomLoadersIfPresent = true) {
+function createModuleLoader() {
   let customizations = null;
-  if (useCustomLoadersIfPresent &&
-      // Don't spawn a new worker if we're already in a worker thread created by instantiating CustomizedModuleLoader;
-      // doing so would cause an infinite loop.
-      !require('internal/modules/esm/utils').isLoaderWorker()) {
+  // Don't spawn a new worker if custom loaders are disabled. For instance, if
+  // we're already in a worker thread created by instantiating
+  // CustomizedModuleLoader; doing so would cause an infinite loop.
+  if (!require('internal/modules/esm/utils').forceDefaultLoader()) {
     const userLoaderPaths = getOptionValue('--experimental-loader');
     if (userLoaderPaths.length > 0) {
       if (!emittedLoaderFlagWarning) {
@@ -562,6 +561,23 @@ function getHooksProxy() {
   return hooksProxy;
 }
 
+let cascadedLoader;
+
+/**
+ * This is a singleton ESM loader that integrates the loader hooks, if any.
+ * It it used by other internal built-ins when they need to load ESM code
+ * while also respecting hooks.
+ * When built-ins need access to this loader, they should do
+ * require('internal/module/esm/loader').getOrInitializeCascadedLoader()
+ * lazily only right before the loader is actually needed, and don't do it
+ * in the top-level, to avoid circular dependencies.
+ * @returns {ModuleLoader}
+ */
+function getOrInitializeCascadedLoader() {
+  cascadedLoader ??= createModuleLoader();
+  return cascadedLoader;
+}
+
 /**
  * Register a single loader programmatically.
  * @param {string|import('url').URL} specifier
@@ -592,12 +608,11 @@ function getHooksProxy() {
  * ```
  */
 function register(specifier, parentURL = undefined, options) {
-  const moduleLoader = require('internal/process/esm_loader').esmLoader;
   if (parentURL != null && typeof parentURL === 'object' && !isURL(parentURL)) {
     options = parentURL;
     parentURL = options.parentURL;
   }
-  moduleLoader.register(
+  getOrInitializeCascadedLoader().register(
     specifier,
     parentURL ?? 'data:',
     options?.data,
@@ -608,5 +623,6 @@ function register(specifier, parentURL = undefined, options) {
 module.exports = {
   createModuleLoader,
   getHooksProxy,
+  getOrInitializeCascadedLoader,
   register,
 };

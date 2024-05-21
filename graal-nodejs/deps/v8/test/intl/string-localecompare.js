@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --opt --allow-natives-syntax --interrupt-budget=1024
+// Flags: --turbofan --allow-natives-syntax --interrupt-budget=1024
 
 function check() {
     // Equal prefix.
@@ -50,8 +50,11 @@ function isOptimized(fun) {
 }
 
 assertFalse(isOptimized(check));
-while (true) {
-    var optimized = isOptimized(check);
-    check();
-    if (optimized) break;
-}
+%PrepareFunctionForOptimization(check);
+check();
+check();
+check();
+%OptimizeFunctionOnNextCall(check);
+check();
+check();
+assertTrue(isOptimized(check));

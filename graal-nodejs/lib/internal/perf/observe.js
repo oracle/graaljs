@@ -18,6 +18,7 @@ const {
   SafeMap,
   SafeSet,
   Symbol,
+  SymbolToStringTag,
 } = primordials;
 
 const {
@@ -35,12 +36,13 @@ const {
 } = internalBinding('performance');
 
 const {
-  InternalPerformanceEntry,
   isPerformanceEntry,
+  createPerformanceNodeEntry,
 } = require('internal/perf/performance_entry');
 
 const {
   codes: {
+    ERR_ILLEGAL_CONSTRUCTOR,
     ERR_INVALID_ARG_VALUE,
     ERR_INVALID_ARG_TYPE,
     ERR_MISSING_ARGS,
@@ -50,6 +52,7 @@ const {
 const {
   validateFunction,
   validateObject,
+  validateInternalField,
 } = require('internal/validators');
 
 const {
@@ -57,6 +60,7 @@ const {
   deprecate,
   lazyDOMException,
   kEmptyObject,
+  kEnumerableProperty,
 } = require('internal/util');
 
 const {
@@ -66,8 +70,8 @@ const {
 const { inspect } = require('util');
 
 const { now } = require('internal/perf/utils');
-const { convertToInt } = require('internal/webidl');
 
+const kBuffer = Symbol('kBuffer');
 const kDispatch = Symbol('kDispatch');
 const kMaybeBuffer = Symbol('kMaybeBuffer');
 const kDeprecatedFields = Symbol('kDeprecatedFields');
@@ -166,35 +170,49 @@ function maybeIncrementObserverCount(type) {
   }
 }
 
-class PerformanceObserverEntryList {
-  #buffer = [];
+const kSkipThrow = Symbol('kSkipThrow');
+const performanceObserverSorter = (first, second) => {
+  return first.startTime - second.startTime;
+};
 
-  constructor(entries) {
-    this.#buffer = ArrayPrototypeSort(entries, (first, second) => {
-      return first.startTime - second.startTime;
-    });
+class PerformanceObserverEntryList {
+  constructor(skipThrowSymbol = undefined, entries = []) {
+    if (skipThrowSymbol !== kSkipThrow) {
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
+    }
+
+    this[kBuffer] = ArrayPrototypeSort(entries, performanceObserverSorter);
   }
 
   getEntries() {
-    return ArrayPrototypeSlice(this.#buffer);
+    validateInternalField(this, kBuffer, 'PerformanceObserverEntryList');
+    return ArrayPrototypeSlice(this[kBuffer]);
   }
 
   getEntriesByType(type) {
+    validateInternalField(this, kBuffer, 'PerformanceObserverEntryList');
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('type');
+    }
     type = `${type}`;
     return ArrayPrototypeFilter(
-      this.#buffer,
+      this[kBuffer],
       (entry) => entry.entryType === type);
   }
 
-  getEntriesByName(name, type) {
+  getEntriesByName(name, type = undefined) {
+    validateInternalField(this, kBuffer, 'PerformanceObserverEntryList');
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('name');
+    }
     name = `${name}`;
     if (type != null /** not nullish */) {
       return ArrayPrototypeFilter(
-        this.#buffer,
+        this[kBuffer],
         (entry) => entry.name === name && entry.entryType === type);
     }
     return ArrayPrototypeFilter(
-      this.#buffer,
+      this[kBuffer],
       (entry) => entry.name === name);
   }
 
@@ -206,9 +224,21 @@ class PerformanceObserverEntryList {
       depth: options.depth == null ? null : options.depth - 1,
     };
 
-    return `PerformanceObserverEntryList ${inspect(this.#buffer, opts)}`;
+    return `PerformanceObserverEntryList ${inspect(this[kBuffer], opts)}`;
   }
 }
+ObjectDefineProperties(PerformanceObserverEntryList.prototype, {
+  getEntries: kEnumerableProperty,
+  getEntriesByType: kEnumerableProperty,
+  getEntriesByName: kEnumerableProperty,
+  [SymbolToStringTag]: {
+    __proto__: null,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+    value: 'PerformanceObserverEntryList',
+  },
+});
 
 class PerformanceObserver {
   #buffer = [];
@@ -319,8 +349,9 @@ class PerformanceObserver {
   }
 
   [kDispatch]() {
-    this.#callback(new PerformanceObserverEntryList(this.takeRecords()),
-                   this);
+    const entryList = new PerformanceObserverEntryList(kSkipThrow, this.takeRecords());
+
+    this.#callback(entryList, this);
   }
 
   [kInspect](depth, options) {
@@ -339,6 +370,18 @@ class PerformanceObserver {
     }, opts)}`;
   }
 }
+ObjectDefineProperties(PerformanceObserver.prototype, {
+  observe: kEnumerableProperty,
+  disconnect: kEnumerableProperty,
+  takeRecords: kEnumerableProperty,
+  [SymbolToStringTag]: {
+    __proto__: null,
+    writable: false,
+    enumerable: false,
+    configurable: true,
+    value: 'PerformanceObserver',
+  },
+});
 
 /**
  * https://www.w3.org/TR/performance-timeline/#dfn-queue-a-performanceentry
@@ -431,8 +474,6 @@ function bufferResourceTiming(entry) {
 
 // https://w3c.github.io/resource-timing/#dom-performance-setresourcetimingbuffersize
 function setResourceTimingBufferSize(maxSize) {
-  // unsigned long
-  maxSize = convertToInt('maxSize', maxSize, 32);
   // If the maxSize parameter is less than resource timing buffer current
   // size, no PerformanceResourceTiming objects are to be removed from the
   // performance entry buffer.
@@ -483,14 +524,12 @@ function filterBufferMapByNameAndType(name, type) {
     bufferList = ArrayPrototypeSlice(bufferList);
   }
 
-  return ArrayPrototypeSort(bufferList, (first, second) => {
-    return first.startTime - second.startTime;
-  });
+  return ArrayPrototypeSort(bufferList, performanceObserverSorter);
 }
 
 function observerCallback(name, type, startTime, duration, details) {
   const entry =
-    new InternalPerformanceEntry(
+    createPerformanceNodeEntry(
       name,
       type,
       startTime,
@@ -547,7 +586,7 @@ function stopPerf(target, key, context = {}) {
     return;
   }
   const startTime = ctx.startTime;
-  const entry = new InternalPerformanceEntry(
+  const entry = createPerformanceNodeEntry(
     ctx.name,
     ctx.type,
     startTime,

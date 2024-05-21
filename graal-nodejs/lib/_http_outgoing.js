@@ -27,7 +27,6 @@ const {
   ArrayPrototypeJoin,
   MathFloor,
   NumberPrototypeToString,
-  ObjectCreate,
   ObjectDefineProperty,
   ObjectKeys,
   ObjectValues,
@@ -221,7 +220,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headers', {
     if (val == null) {
       this[kOutHeaders] = null;
     } else if (typeof val === 'object') {
-      const headers = this[kOutHeaders] = ObjectCreate(null);
+      const headers = this[kOutHeaders] = { __proto__: null };
       const keys = ObjectKeys(val);
       // Retain for(;;) loop for performance reasons
       // Refs: https://github.com/nodejs/node/pull/30958
@@ -248,7 +247,7 @@ ObjectDefineProperty(OutgoingMessage.prototype, '_headerNames', {
   get: internalUtil.deprecate(function() {
     const headers = this[kOutHeaders];
     if (headers !== null) {
-      const out = ObjectCreate(null);
+      const out = { __proto__: null };
       const keys = ObjectKeys(headers);
       // Retain for(;;) loop for performance reasons
       // Refs: https://github.com/nodejs/node/pull/30958
@@ -483,8 +482,9 @@ function _storeHeader(firstLine, headers) {
 
   // keep-alive logic
   if (this._removedConnection) {
-    this._last = true;
-    this.shouldKeepAlive = false;
+    // shouldKeepAlive is generally true for HTTP/1.1. In that common case,
+    // even if the connection header isn't sent, we still persist by default.
+    this._last = !this.shouldKeepAlive;
   } else if (!state.connection) {
     const shouldSendKeepAlive = this.shouldKeepAlive &&
         (state.contLen || this.useChunkedEncodingByDefault || this.agent);
@@ -524,6 +524,10 @@ function _storeHeader(firstLine, headers) {
       // Transfer-Encoding are removed by the user.
       // See: test/parallel/test-http-remove-header-stays-removed.js
       debug('Both Content-Length and Transfer-Encoding are removed');
+
+      // We can't keep alive in this case, because with no header info the body
+      // is defined as all data until the connection is closed.
+      this._last = true;
     }
   }
 
@@ -552,7 +556,14 @@ function processHeader(self, state, key, value, validate) {
   // https://www.rfc-editor.org/rfc/rfc6266#section-4.3
   // Refs: https://github.com/nodejs/node/pull/46528
   if (isContentDispositionField(key) && self._contentLength) {
-    value = Buffer.from(value, 'latin1');
+    // The value could be an array here
+    if (ArrayIsArray(value)) {
+      for (let i = 0; i < value.length; i++) {
+        value[i] = Buffer.from(value[i], 'latin1');
+      }
+    } else {
+      value = Buffer.from(value, 'latin1');
+    }
   }
 
   if (ArrayIsArray(value)) {
@@ -615,17 +626,17 @@ function matchHeader(self, state, field, value) {
 
 const validateHeaderName = hideStackFrames((name, label) => {
   if (typeof name !== 'string' || !name || !checkIsHttpToken(name)) {
-    throw new ERR_INVALID_HTTP_TOKEN(label || 'Header name', name);
+    throw new ERR_INVALID_HTTP_TOKEN.HideStackFramesError(label || 'Header name', name);
   }
 });
 
 const validateHeaderValue = hideStackFrames((name, value) => {
   if (value === undefined) {
-    throw new ERR_HTTP_INVALID_HEADER_VALUE(value, name);
+    throw new ERR_HTTP_INVALID_HEADER_VALUE.HideStackFramesError(value, name);
   }
   if (checkInvalidHeaderChar(value)) {
     debug('Header "%s" contains invalid characters', name);
-    throw new ERR_INVALID_CHAR('header content', name);
+    throw new ERR_INVALID_CHAR.HideStackFramesError('header content', name);
   }
 });
 
@@ -652,7 +663,7 @@ OutgoingMessage.prototype.setHeader = function setHeader(name, value) {
 
   let headers = this[kOutHeaders];
   if (headers === null)
-    this[kOutHeaders] = headers = ObjectCreate(null);
+    this[kOutHeaders] = headers = { __proto__: null };
 
   headers[StringPrototypeToLowerCase(name)] = [name, value];
   return this;
@@ -673,8 +684,27 @@ OutgoingMessage.prototype.setHeaders = function setHeaders(headers) {
     throw new ERR_INVALID_ARG_TYPE('headers', ['Headers', 'Map'], headers);
   }
 
-  for (const key of headers.keys()) {
-    this.setHeader(key, headers.get(key));
+  // Headers object joins multiple cookies with a comma when using
+  // the getter to retrieve the value,
+  // unless iterating over the headers directly.
+  // We also cannot safely split by comma.
+  // To avoid setHeader overwriting the previous value we push
+  // set-cookie values in array and set them all at once.
+  const cookies = [];
+
+  for (const { 0: key, 1: value } of headers) {
+    if (key === 'set-cookie') {
+      if (ArrayIsArray(value)) {
+        cookies.push(...value);
+      } else {
+        cookies.push(value);
+      }
+      continue;
+    }
+    this.setHeader(key, value);
+  }
+  if (cookies.length) {
+    this.setHeader('set-cookie', cookies);
   }
 
   return this;
@@ -749,7 +779,7 @@ OutgoingMessage.prototype.getRawHeaderNames = function getRawHeaderNames() {
 // Returns a shallow copy of the current outgoing headers.
 OutgoingMessage.prototype.getHeaders = function getHeaders() {
   const headers = this[kOutHeaders];
-  const ret = ObjectCreate(null);
+  const ret = { __proto__: null };
   if (headers) {
     const keys = ObjectKeys(headers);
     // Retain for(;;) loop for performance reasons

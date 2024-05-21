@@ -5,10 +5,8 @@
 #include "src/compiler/bytecode-analysis.h"
 
 #include "src/compiler/bytecode-liveness-map.h"
-#include "src/init/v8.h"
 #include "src/interpreter/bytecode-array-builder.h"
 #include "src/interpreter/bytecode-array-iterator.h"
-#include "src/interpreter/bytecode-decoder.h"
 #include "src/interpreter/bytecode-label.h"
 #include "src/interpreter/control-flow-builders.h"
 #include "src/objects/objects-inl.h"
@@ -31,8 +29,8 @@ class BytecodeAnalysisTest : public TestWithIsolateAndZone {
   static void SetUpTestSuite() {
     CHECK_NULL(save_flags_);
     save_flags_ = new SaveFlags();
-    i::FLAG_ignition_elide_noneffectful_bytecodes = false;
-    i::FLAG_ignition_reo = false;
+    i::v8_flags.ignition_elide_noneffectful_bytecodes = false;
+    i::v8_flags.ignition_reo = false;
 
     TestWithIsolateAndZone::SetUpTestSuite();
   }
@@ -211,6 +209,7 @@ TEST_F(BytecodeAnalysisTest, DiamondLookupsAndBinds) {
 
 TEST_F(BytecodeAnalysisTest, SimpleLoop) {
   interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
+  FeedbackVectorSpec spec(zone());
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
@@ -221,7 +220,7 @@ TEST_F(BytecodeAnalysisTest, SimpleLoop) {
   expected_liveness.emplace_back("..LL", "L.L.");
 
   {
-    interpreter::LoopBuilder loop_builder(&builder, nullptr, nullptr);
+    interpreter::LoopBuilder loop_builder(&builder, nullptr, nullptr, &spec);
     loop_builder.LoopHeader();
 
     builder.LoadUndefined();
@@ -311,12 +310,13 @@ TEST_F(BytecodeAnalysisTest, DiamondInLoop) {
   // reprocessed.
 
   interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
+  FeedbackVectorSpec spec(zone());
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
 
   {
-    interpreter::LoopBuilder loop_builder(&builder, nullptr, nullptr);
+    interpreter::LoopBuilder loop_builder(&builder, nullptr, nullptr, &spec);
     loop_builder.LoopHeader();
 
     builder.LoadUndefined();
@@ -381,13 +381,14 @@ TEST_F(BytecodeAnalysisTest, KillingLoopInsideLoop) {
   // r1 becomes live in 3 (via 5), but r0 stays dead (because of 4).
 
   interpreter::BytecodeArrayBuilder builder(zone(), 3, 3);
+  FeedbackVectorSpec spec(zone());
   std::vector<std::pair<std::string, std::string>> expected_liveness;
 
   interpreter::Register reg_0(0);
   interpreter::Register reg_1(1);
 
   {
-    interpreter::LoopBuilder loop_builder(&builder, nullptr, nullptr);
+    interpreter::LoopBuilder loop_builder(&builder, nullptr, nullptr, &spec);
     loop_builder.LoopHeader();
 
     // Gen r0.
@@ -403,7 +404,8 @@ TEST_F(BytecodeAnalysisTest, KillingLoopInsideLoop) {
     expected_liveness.emplace_back(".L.L", ".L..");
 
     {
-      interpreter::LoopBuilder inner_loop_builder(&builder, nullptr, nullptr);
+      interpreter::LoopBuilder inner_loop_builder(&builder, nullptr, nullptr,
+                                                  &spec);
       inner_loop_builder.LoopHeader();
 
       // Kill r0.
@@ -446,19 +448,28 @@ TEST_F(BytecodeAnalysisTest, SuspendPoint) {
   interpreter::BytecodeJumpTable* gen_jump_table =
       builder.AllocateJumpTable(1, 0);
 
-  builder.StoreAccumulatorInRegister(reg_gen);
-  expected_liveness.emplace_back("L..L", "L.LL");
-
-  // Note: technically, r0 should be dead here since the resume will write it,
-  // but in practice the bytecode analysis doesn't bother to special case it,
-  // since the generator switch is close to the top of the function anyway.
   builder.SwitchOnGeneratorState(reg_gen, gen_jump_table);
-  expected_liveness.emplace_back("L.LL", "L.LL");
+  expected_liveness.emplace_back("..L.", "..L.");
 
+  builder.LoadUndefined();
+  expected_liveness.emplace_back("....", "...L");
+
+  // Store some arbitrary value into the generator register so that this
+  // register is dead by the time we reach SwitchOnGeneratorState (this matches
+  // real generator bytecode and is DCHECKed in the bytecode analysis).
+  builder.StoreAccumulatorInRegister(reg_gen);
+  expected_liveness.emplace_back("...L", "..L.");
+
+  builder.LoadUndefined();
+  expected_liveness.emplace_back("..L.", "..LL");
+
+  // Reg 0 is read after the resume, so should be live up to here (and is killed
+  // here).
   builder.StoreAccumulatorInRegister(reg_0);
   expected_liveness.emplace_back("..LL", "L.LL");
 
-  // Reg 1 is never read, so should be dead.
+  // Reg 1 is never read, so should be dead already and this store shouldn't
+  // change it.
   builder.StoreAccumulatorInRegister(reg_1);
   expected_liveness.emplace_back("L.LL", "L.LL");
 

@@ -10,8 +10,10 @@
 #include "src/base/platform/time.h"
 #include "src/execution/isolate.h"
 #include "src/flags/flags.h"
+#include "src/heap/cppgc-js/cpp-heap.h"
 #include "src/init/v8.h"
 #include "src/objects/objects-inl.h"
+#include "test/unittests/heap/heap-utils.h"
 
 namespace v8 {
 
@@ -53,7 +55,9 @@ IsolateWrapper::IsolateWrapper(CountersMode counters_mode)
 IsolateWrapper::~IsolateWrapper() {
   v8::Platform* platform = internal::V8::GetCurrentPlatform();
   CHECK_NOT_NULL(platform);
+  isolate_->Enter();
   while (platform::PumpMessageLoop(platform, isolate())) continue;
+  isolate_->Exit();
   isolate_->Dispose();
   if (counter_map_) {
     CHECK_EQ(kCurrentCounterMap, counter_map_.get());
@@ -67,7 +71,8 @@ namespace internal {
 
 SaveFlags::SaveFlags() {
   // For each flag, save the current flag value.
-#define FLAG_MODE_APPLY(ftype, ctype, nam, def, cmt) SAVED_##nam = FLAG_##nam;
+#define FLAG_MODE_APPLY(ftype, ctype, nam, def, cmt) \
+  SAVED_##nam = v8_flags.nam.value();
 #include "src/flags/flag-definitions.h"
 #undef FLAG_MODE_APPLY
 }
@@ -76,8 +81,8 @@ SaveFlags::~SaveFlags() {
   // For each flag, set back the old flag value if it changed (don't write the
   // flag if it didn't change, to keep TSAN happy).
 #define FLAG_MODE_APPLY(ftype, ctype, nam, def, cmt) \
-  if (SAVED_##nam != FLAG_##nam) {                   \
-    FLAG_##nam = SAVED_##nam;                        \
+  if (SAVED_##nam != v8_flags.nam.value()) {         \
+    v8_flags.nam = SAVED_##nam;                      \
   }
 #include "src/flags/flag-definitions.h"  // NOLINT
 #undef FLAG_MODE_APPLY
@@ -87,18 +92,23 @@ ManualGCScope::ManualGCScope(i::Isolate* isolate) {
   // Some tests run threaded (back-to-back) and thus the GC may already be
   // running by the time a ManualGCScope is created. Finalizing existing marking
   // prevents any undefined/unexpected behavior.
-  if (isolate && isolate->heap()->incremental_marking()->IsMarking()) {
-    isolate->heap()->CollectGarbage(i::OLD_SPACE,
-                                    i::GarbageCollectionReason::kTesting);
-  }
+  FinalizeGCIfRunning(isolate);
 
-  i::FLAG_concurrent_marking = false;
-  i::FLAG_concurrent_sweeping = false;
-  i::FLAG_stress_incremental_marking = false;
-  i::FLAG_stress_concurrent_allocation = false;
+  i::v8_flags.concurrent_marking = false;
+  i::v8_flags.concurrent_sweeping = false;
+  i::v8_flags.concurrent_minor_mc_marking = false;
+  i::v8_flags.stress_incremental_marking = false;
+  i::v8_flags.stress_concurrent_allocation = false;
   // Parallel marking has a dependency on concurrent marking.
-  i::FLAG_parallel_marking = false;
-  i::FLAG_detect_ineffective_gcs_near_heap_limit = false;
+  i::v8_flags.parallel_marking = false;
+  i::v8_flags.detect_ineffective_gcs_near_heap_limit = false;
+  // CppHeap concurrent marking has a dependency on concurrent marking.
+  i::v8_flags.cppheap_concurrent_marking = false;
+
+  if (isolate && isolate->heap()->cpp_heap()) {
+    CppHeap::From(isolate->heap()->cpp_heap())
+        ->ReduceGCCapabilitiesFromFlagsForTesting();
+  }
 }
 
 }  // namespace internal

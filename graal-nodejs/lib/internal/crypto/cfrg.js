@@ -183,7 +183,7 @@ async function cfrgGenerateKey(algorithm, extractable, keyUsages) {
       privateUsages,
       extractable);
 
-  return { privateKey, publicKey };
+  return { __proto__: null, privateKey, publicKey };
 }
 
 function cfrgExportKey(key, format) {
@@ -270,17 +270,6 @@ async function cfrgImportKey(
         throw lazyDOMException(
           'JWK "ext" Parameter and extractable mismatch',
           'DataError');
-      }
-
-      if (keyData.alg !== undefined) {
-        if (
-          (name === 'Ed25519' || name === 'Ed448') &&
-          keyData.alg !== 'EdDSA'
-        ) {
-          throw lazyDOMException(
-            'JWK "alg" does not match the requested algorithm',
-            'DataError');
-        }
       }
 
       if (!isPublic && typeof keyData.x !== 'string') {

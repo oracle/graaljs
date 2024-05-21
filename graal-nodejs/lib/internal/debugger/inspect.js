@@ -41,6 +41,13 @@ const { 0: InspectClient, 1: createRepl } =
 const debuglog = util.debuglog('inspect');
 
 const { ERR_DEBUGGER_STARTUP_ERROR } = require('internal/errors').codes;
+const {
+  exitCodes: {
+    kGenericUserError,
+    kNoFailure,
+    kInvalidCommandLineArgument,
+  },
+} = internalBinding('errors');
 
 async function portIsFree(host, port, timeout = 3000) {
   if (port === 0) return; // Binding to a random port.
@@ -163,7 +170,7 @@ class NodeInspector {
 
     // Handle all possible exits
     process.on('exit', () => this.killChild());
-    const exitCodeZero = () => process.exit(0);
+    const exitCodeZero = () => process.exit(kNoFailure);
     process.once('SIGTERM', exitCodeZero);
     process.once('SIGHUP', exitCodeZero);
 
@@ -230,7 +237,7 @@ class NodeInspector {
       }
     }
     this.stdout.write(' failed to connect, please retry\n');
-    process.exit(1);
+    process.exit(kGenericUserError);
   }
 
   clearLine() {
@@ -310,7 +317,7 @@ function parseArgv(args) {
     } catch (e) {
       if (e.code === 'ESRCH') {
         process.stderr.write(`Target process: ${pid} doesn't exist.\n`);
-        process.exit(1);
+        process.exit(kGenericUserError);
       }
       throw e;
     }
@@ -333,7 +340,7 @@ function startInspect(argv = ArrayPrototypeSlice(process.argv, 2),
                          `       ${invokedAs} <host>:<port>\n` +
                          `       ${invokedAs} --port=<port> Use 0 for random port assignment\n` +
                          `       ${invokedAs} -p <pid>\n`);
-    process.exit(1);
+    process.exit(kInvalidCommandLineArgument);
   }
 
   const options = parseArgv(argv);
@@ -351,7 +358,7 @@ function startInspect(argv = ArrayPrototypeSlice(process.argv, 2),
       process.stderr.write('\n');
     }
     if (inspector.child) inspector.child.kill();
-    process.exit(1);
+    process.exit(kGenericUserError);
   }
 
   process.on('uncaughtException', handleUnexpectedError);

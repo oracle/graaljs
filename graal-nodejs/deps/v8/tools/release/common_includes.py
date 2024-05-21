@@ -114,15 +114,15 @@ def Command(cmd, args="", prefix="", pipe=True, cwd=None):
 
 
 def SanitizeVersionTag(tag):
-    version_without_prefix = re.compile(r"^\d+\.\d+\.\d+(?:\.\d+)?$")
-    version_with_prefix = re.compile(r"^tags\/\d+\.\d+\.\d+(?:\.\d+)?$")
+  version_without_prefix = re.compile(r"^\d+\.\d+\.\d+(?:\.\d+)?$")
+  version_with_prefix = re.compile(r"^tags\/\d+\.\d+\.\d+(?:\.\d+)?$")
 
-    if version_without_prefix.match(tag):
-      return tag
-    elif version_with_prefix.match(tag):
-        return tag[len("tags/"):]
-    else:
-      return None
+  if version_without_prefix.match(tag):
+    return tag
+  elif version_with_prefix.match(tag):
+    return tag[len("tags/"):]
+  else:
+    return None
 
 
 def NormalizeVersionTags(version_tags):
@@ -146,6 +146,7 @@ class SideEffectHandler(object):  # pragma: no cover
     return Command(cmd, args, prefix, pipe, cwd=cwd)
 
   def ReadLine(self):
+    sys.stdout.flush()
     return sys.stdin.readline().strip()
 
   def ReadURL(self, url, params=None):
@@ -238,7 +239,7 @@ class GitInterface(VCInterface):
     self.step.Git("fetch")
 
   def GetTags(self):
-     return self.step.Git("tag").strip().splitlines()
+    return self.step.Git("tag").strip().splitlines()
 
   def GetBranches(self):
     # Get relevant remote branches, e.g. "branch-heads/3.25".
@@ -532,22 +533,13 @@ class Step(GitRecipesMixin):
       self.WaitForResolvingConflicts(patch_file)
 
   def GetVersionTag(self, revision):
-    tag = self.Git("describe --tags %s" % revision).strip()
-    return SanitizeVersionTag(tag)
+    tags = self.Git(f"tag --points-at {revision}").strip().split('\n')
+    for tag in tags:
+      sanitized_tag = SanitizeVersionTag(tag)
+      if sanitized_tag:
+        return sanitized_tag
 
-  def GetRecentReleases(self, max_age):
-    # Make sure tags are fetched.
-    self.Git("fetch origin +refs/tags/*:refs/tags/*")
-
-    # Current timestamp.
-    time_now = int(self._side_effect_handler.GetUTCStamp())
-
-    # List every tag from a given period.
-    revisions = self.Git("rev-list --max-age=%d --tags" %
-                         int(time_now - max_age)).strip()
-
-    # Filter out revisions who's tag is off by one or more commits.
-    return list(filter(self.GetVersionTag, revisions.splitlines()))
+    return None
 
   def GetLatestVersion(self):
     # Use cached version if available.
@@ -684,18 +676,22 @@ class UploadStep(Step):
 
 def MakeStep(step_class=Step, number=0, state=None, config=None,
              options=None, side_effect_handler=DEFAULT_SIDE_EFFECT_HANDLER):
-    # Allow to pass in empty dictionaries.
-    state = state if state is not None else {}
-    config = config if config is not None else {}
+  # Allow to pass in empty dictionaries.
+  state = state if state is not None else {}
+  config = config if config is not None else {}
 
-    try:
-      message = step_class.MESSAGE
-    except AttributeError:
-      message = step_class.__name__
+  try:
+    message = step_class.MESSAGE
+  except AttributeError:
+    message = step_class.__name__
 
-    return step_class(message, number=number, config=config,
-                      state=state, options=options,
-                      handler=side_effect_handler)
+  return step_class(
+      message,
+      number=number,
+      config=config,
+      state=state,
+      options=options,
+      handler=side_effect_handler)
 
 
 class ScriptsBase(object):

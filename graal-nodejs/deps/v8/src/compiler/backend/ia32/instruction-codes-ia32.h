@@ -101,6 +101,8 @@ namespace compiler {
   V(IA32Movhps)                    \
   V(IA32BitcastFI)                 \
   V(IA32BitcastIF)                 \
+  V(IA32Blendvpd)                  \
+  V(IA32Blendvps)                  \
   V(IA32Lea)                       \
   V(IA32Pblendvb)                  \
   V(IA32Push)                      \
@@ -161,8 +163,6 @@ namespace compiler {
   V(IA32F32x4SConvertI32x4)        \
   V(IA32F32x4UConvertI32x4)        \
   V(IA32F32x4Sqrt)                 \
-  V(IA32F32x4RecipApprox)          \
-  V(IA32F32x4RecipSqrtApprox)      \
   V(IA32F32x4Add)                  \
   V(IA32F32x4Sub)                  \
   V(IA32F32x4Mul)                  \
@@ -210,6 +210,7 @@ namespace compiler {
   V(IA32I32x4Abs)                  \
   V(IA32I32x4BitMask)              \
   V(IA32I32x4DotI16x8S)            \
+  V(IA32I32x4DotI8x16I7x16AddS)    \
   V(IA32I32x4ExtMulLowI16x8S)      \
   V(IA32I32x4ExtMulHighI16x8S)     \
   V(IA32I32x4ExtMulLowI16x8U)      \
@@ -261,6 +262,7 @@ namespace compiler {
   V(IA32I16x8ExtAddPairwiseI8x16S) \
   V(IA32I16x8ExtAddPairwiseI8x16U) \
   V(IA32I16x8Q15MulRSatS)          \
+  V(IA32I16x8RelaxedQ15MulRS)      \
   V(IA32I8x16Splat)                \
   V(IA32I8x16ExtractLaneS)         \
   V(IA32Pinsrb)                    \
@@ -360,6 +362,7 @@ namespace compiler {
   V(IA32I32x4AllTrue)              \
   V(IA32I16x8AllTrue)              \
   V(IA32I8x16AllTrue)              \
+  V(IA32I16x8DotI8x16I7x16S)       \
   V(IA32Word32AtomicPairLoad)      \
   V(IA32Word32ReleasePairStore)    \
   V(IA32Word32SeqCstPairStore)     \

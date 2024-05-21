@@ -8,6 +8,8 @@ const {
   Symbol,
 } = primordials;
 
+const { exitCodes: { kGenericUserError } } = internalBinding('errors');
+
 const async_wrap = internalBinding('async_wrap');
 const { setCallbackTrampoline } = async_wrap;
 /* async_hook_fields is a Uint32Array wrapping the uint32_t array of
@@ -169,7 +171,7 @@ function fatalError(e) {
   if (getOptionValue('--abort-on-uncaught-exception')) {
     process.abort();
   }
-  process.exit(1);
+  process.exit(kGenericUserError);
 }
 
 function lookupPublicResource(resource) {

@@ -12,23 +12,24 @@ This a list of all the dependencies:
 * [ada][]
 * [base64][]
 * [brotli][]
-* [c-ares 1.20.1][]
+* [c-ares][]
 * [cjs-module-lexer][]
 * [corepack][]
-* [googletest 2dd1c13][]
+* [googletest][]
 * [histogram][]
 * [icu-small][]
+* [libuv][]
 * [llhttp][]
 * [minimatch][]
 * [nghttp2][]
+* [nghttp3][]
 * [ngtcp2][]
 * [npm][]
 * [openssl][]
 * [postject][]
-* [simdutf 4.0.4][]
-* [undici 5.26.4][]
-* [uv][]
-* [uvwasi 0.0.19][]
+* [simdutf][]
+* [undici][]
+* [uvwasi][]
 * [V8][]
 * [zlib][]
 
@@ -136,9 +137,10 @@ Most dependencies are automatically updated by
 [dependency-update-action][] that runs weekly.
 However, it is possible to manually update a dependency by running
 the corresponding script in `tools/update-deps`.
-[OpenSSL][] has its own update action: [update-openssl-action][].
+[OpenSSL](https://github.com/openssl/openssl) has its own update action:
+[update-openssl-action][].
 [npm-cli-bot](https://github.com/npm/cli/blob/latest/.github/workflows/create-node-pr.yml)
-takes care of [npm][] update, it is maintained by the npm team.
+takes care of npm update, it is maintained by the npm team.
 
 ## Dependency list
 
@@ -165,7 +167,7 @@ length-delimited strings.
 The [brotli](https://github.com/google/brotli) dependency is
 used for the homonym generic-purpose lossless compression algorithm.
 
-### c-ares 1.20.1
+### c-ares
 
 The [c-ares](https://github.com/c-ares/c-ares) is a C library
 for asynchronous DNS requests.
@@ -177,7 +179,7 @@ dependency is used within the Node.js ESM implementation to detect the
 named exports of a CommonJS module.
 See [maintaining-cjs-module-lexer][] for more information.
 
-## corepack
+### corepack
 
 The [corepack](https://github.com/nodejs/corepack) dependency is a
 zero-runtime-dependency Node.js script that acts as a bridge between
@@ -187,7 +189,7 @@ In practical terms, Corepack will let you use Yarn and pnpm without having to
 install them - just like what currently happens with npm, which is shipped
 by Node.js by default.
 
-### googletest 2dd1c13
+### googletest
 
 The [googletest](https://github.com/google/googletest) dependency is Google’s
 C++ testing and mocking framework.
@@ -197,18 +199,24 @@ C++ testing and mocking framework.
 The [histogram](https://github.com/HdrHistogram/HdrHistogram_c) dependency is
 a C port of High Dynamic Range (HDR) Histogram.
 
-### icu-small
+### ic
 
 The [icu](http://site.icu-project.org) is widely used set of C/C++
 and Java libraries providing Unicode and Globalization
 support for software applications.
-See [maintaining-icu][] for more informations.
+See [maintaining-icu][] for more information.
+
+### libuv
+
+The [libuv](https://github.com/libuv/libuv) dependency is a
+multi-platform support library with a focus on asynchronous I/O.
+It was primarily developed for use by Node.js.
 
 ### llhttp
 
 The [llhttp](https://github.com/nodejs/llhttp) dependency is
 the http parser used by Node.js.
-See [maintaining-http][] for more informations.
+See [maintaining-http][] for more information.
 
 ### minimatch
 
@@ -219,7 +227,12 @@ minimal matching utility.
 
 The [nghttp2](https://github.com/nghttp2/nghttp2) dependency is a C library
 implementing HTTP/2 protocol.
-See [maintaining-http][] for more informations.
+See [maintaining-http][] for more information.
+
+### nghttp3
+
+The [nghttp3](https://github.com/ngtcp2/nghttp3) dependency is HTTP/3 library
+written in C. See ngtcp2 for more information.
 
 ### ngtcp2
 
@@ -266,43 +279,37 @@ cryptography and secure communication.
 Node.js currently uses the quictls/openssl fork, which closely tracks
 the main openssl/openssl releases with the addition of APIs to support
 the QUIC protocol.
-See [maintaining-openssl][] for more informations.
+See [maintaining-openssl][] for more information.
 
 ### postject
 
 The [postject](https://github.com/nodejs/postject) dependency is used for the
 [Single Executable strategic initiative](https://github.com/nodejs/single-executable).
 
-### simdutf 4.0.4
+### simdutf
 
 The [simdutf](https://github.com/simdutf/simdutf) dependency is
 a C++ library for fast UTF-8 decoding and encoding.
 
-### undici 5.26.4
+### undici
 
 The [undici](https://github.com/nodejs/undici) dependency is an HTTP/1.1 client,
 written from scratch for Node.js..
-See [maintaining-http][] for more informations.
+See [maintaining-http][] for more information.
 
-### uv
-
-The [libuv](https://github.com/libuv/libuv) dependency is a
-multi-platform support library with a focus on asynchronous I/O.
-It was primarily developed for use by Node.js.
-
-### uvwasi 0.0.19
+### uvwasi
 
 The [uvwasi](https://github.com/nodejs/uvwasi) dependency implements
 the WASI system call API, so that WebAssembly runtimes can easily
 implement WASI calls.
 Under the hood, uvwasi leverages libuv where possible for maximum portability.
-See [maintaining-web-assembly][] for more informations.
+See [maintaining-web-assembly][] for more information.
 
 ### V8
 
 [V8](https://chromium.googlesource.com/v8/v8.git/) is Google's open source
 high-performance JavaScript and WebAssembly engine, written in C++.
-See [maintaining-V8][] for more informations.
+See [maintaining-V8][] for more information.
 
 ### zlib
 
@@ -315,13 +322,14 @@ performance improvements not currently available in standard zlib.
 [ada]: #ada
 [base64]: #base64
 [brotli]: #brotli
-[c-ares 1.20.1]: #c-ares-1200
+[c-ares]: #c-ares
 [cjs-module-lexer]: #cjs-module-lexer
 [corepack]: #corepack
 [dependency-update-action]: ../../../.github/workflows/tools.yml
-[googletest 2dd1c13]: #googletest-2dd1c13
+[googletest]: #googletest
 [histogram]: #histogram
 [icu-small]: #icu-small
+[libuv]: #libuv
 [llhttp]: #llhttp
 [maintaining-V8]: ./maintaining-V8.md
 [maintaining-cjs-module-lexer]: ./maintaining-cjs-module-lexer.md
@@ -331,14 +339,14 @@ performance improvements not currently available in standard zlib.
 [maintaining-web-assembly]: ./maintaining-web-assembly.md
 [minimatch]: #minimatch
 [nghttp2]: #nghttp2
+[nghttp3]: #nghttp3
 [ngtcp2]: #ngtcp2
 [npm]: #npm
 [openssl]: #openssl
 [postject]: #postject
-[simdutf 4.0.4]: #simdutf-404
-[undici 5.26.4]: #undici-5264
+[simdutf]: #simdutf
+[undici]: #undici
 [update-openssl-action]: ../../../.github/workflows/update-openssl.yml
-[uv]: #uv
-[uvwasi 0.0.19]: #uvwasi-0019
+[uvwasi]: #uvwasi
 [v8]: #v8
 [zlib]: #zlib

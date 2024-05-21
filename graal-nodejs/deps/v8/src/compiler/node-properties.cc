@@ -3,18 +3,15 @@
 // found in the LICENSE file.
 
 #include "src/compiler/node-properties.h"
+
 #include "src/compiler/common-operator.h"
 #include "src/compiler/graph.h"
 #include "src/compiler/js-heap-broker.h"
-#include "src/compiler/js-operator.h"
-#include "src/compiler/linkage.h"
 #include "src/compiler/map-inference.h"
 #include "src/compiler/node-matchers.h"
 #include "src/compiler/operator-properties.h"
 #include "src/compiler/simplified-operator.h"
 #include "src/compiler/verifier.h"
-#include "src/handles/handles-inl.h"
-#include "src/objects/objects-inl.h"
 
 namespace v8 {
 namespace internal {
@@ -307,6 +304,55 @@ void NodeProperties::CollectControlProjections(Node* node, Node** projections,
 }
 
 // static
+MachineRepresentation NodeProperties::GetProjectionType(
+    Node const* projection) {
+  size_t index = ProjectionIndexOf(projection->op());
+  Node* input = projection->InputAt(0);
+  switch (input->opcode()) {
+    case IrOpcode::kInt32AddWithOverflow:
+    case IrOpcode::kInt32SubWithOverflow:
+    case IrOpcode::kInt32MulWithOverflow:
+      CHECK_LE(index, static_cast<size_t>(1));
+      return index == 0 ? MachineRepresentation::kWord32
+                        : MachineRepresentation::kBit;
+    case IrOpcode::kInt64AddWithOverflow:
+    case IrOpcode::kInt64SubWithOverflow:
+    case IrOpcode::kInt64MulWithOverflow:
+      CHECK_LE(index, static_cast<size_t>(1));
+      return index == 0 ? MachineRepresentation::kWord64
+                        : MachineRepresentation::kBit;
+    case IrOpcode::kTryTruncateFloat64ToInt32:
+    case IrOpcode::kTryTruncateFloat64ToUint32:
+      CHECK_LE(index, static_cast<size_t>(1));
+      return index == 0 ? MachineRepresentation::kWord32
+                        : MachineRepresentation::kBit;
+    case IrOpcode::kTryTruncateFloat32ToInt64:
+    case IrOpcode::kTryTruncateFloat64ToInt64:
+    case IrOpcode::kTryTruncateFloat64ToUint64:
+    case IrOpcode::kTryTruncateFloat32ToUint64:
+      CHECK_LE(index, static_cast<size_t>(1));
+      return index == 0 ? MachineRepresentation::kWord64
+                        : MachineRepresentation::kBit;
+    case IrOpcode::kCall: {
+      auto call_descriptor = CallDescriptorOf(input->op());
+      return call_descriptor->GetReturnType(index).representation();
+    }
+    case IrOpcode::kWord32AtomicPairLoad:
+    case IrOpcode::kWord32AtomicPairAdd:
+    case IrOpcode::kWord32AtomicPairSub:
+    case IrOpcode::kWord32AtomicPairAnd:
+    case IrOpcode::kWord32AtomicPairOr:
+    case IrOpcode::kWord32AtomicPairXor:
+    case IrOpcode::kWord32AtomicPairExchange:
+    case IrOpcode::kWord32AtomicPairCompareExchange:
+      CHECK_LE(index, static_cast<size_t>(1));
+      return MachineRepresentation::kWord32;
+    default:
+      return MachineRepresentation::kNone;
+  }
+}
+
+// static
 bool NodeProperties::IsSame(Node* a, Node* b) {
   for (;;) {
     if (a->opcode() == IrOpcode::kCheckHeapObject) {
@@ -322,8 +368,8 @@ bool NodeProperties::IsSame(Node* a, Node* b) {
 }
 
 // static
-base::Optional<MapRef> NodeProperties::GetJSCreateMap(JSHeapBroker* broker,
-                                                      Node* receiver) {
+OptionalMapRef NodeProperties::GetJSCreateMap(JSHeapBroker* broker,
+                                              Node* receiver) {
   DCHECK(receiver->opcode() == IrOpcode::kJSCreate ||
          receiver->opcode() == IrOpcode::kJSCreateArray);
   HeapObjectMatcher mtarget(GetValueInput(receiver, 0));
@@ -332,12 +378,12 @@ base::Optional<MapRef> NodeProperties::GetJSCreateMap(JSHeapBroker* broker,
       mnewtarget.Ref(broker).IsJSFunction()) {
     ObjectRef target = mtarget.Ref(broker);
     JSFunctionRef newtarget = mnewtarget.Ref(broker).AsJSFunction();
-    if (newtarget.map().has_prototype_slot() &&
-        newtarget.has_initial_map(broker->dependencies())) {
-      MapRef initial_map = newtarget.initial_map(broker->dependencies());
-      if (initial_map.GetConstructor().equals(target)) {
-        DCHECK(target.AsJSFunction().map().is_constructor());
-        DCHECK(newtarget.map().is_constructor());
+    if (newtarget.map(broker).has_prototype_slot() &&
+        newtarget.has_initial_map(broker)) {
+      MapRef initial_map = newtarget.initial_map(broker);
+      if (initial_map.GetConstructor(broker).equals(target)) {
+        DCHECK(target.AsJSFunction().map(broker).is_constructor());
+        DCHECK(newtarget.map(broker).is_constructor());
         return initial_map;
       }
     }
@@ -383,10 +429,10 @@ NodeProperties::InferMapsResult NodeProperties::InferMapsUnsafe(
     // Object.prototype have NO_ELEMENTS elements kind.
     if (!ref.IsJSObject() ||
         !broker->IsArrayOrObjectPrototype(ref.AsJSObject())) {
-      if (ref.map().is_stable()) {
+      if (ref.map(broker).is_stable()) {
         // The {receiver_map} is only reliable when we install a stability
         // code dependency.
-        *maps_out = RefSetOf(broker, ref.map());
+        *maps_out = RefSetOf(broker, ref.map(broker));
         return kUnreliableMaps;
       }
     }
@@ -413,7 +459,7 @@ NodeProperties::InferMapsResult NodeProperties::InferMapsUnsafe(
       }
       case IrOpcode::kJSCreate: {
         if (IsSame(receiver, effect)) {
-          base::Optional<MapRef> initial_map = GetJSCreateMap(broker, receiver);
+          OptionalMapRef initial_map = GetJSCreateMap(broker, receiver);
           if (initial_map.has_value()) {
             *maps_out = RefSetOf(broker, initial_map.value());
             return result;
@@ -426,10 +472,9 @@ NodeProperties::InferMapsResult NodeProperties::InferMapsUnsafe(
       }
       case IrOpcode::kJSCreatePromise: {
         if (IsSame(receiver, effect)) {
-          *maps_out = RefSetOf(
-              broker,
-              broker->target_native_context().promise_function().initial_map(
-                  broker->dependencies()));
+          *maps_out = RefSetOf(broker, broker->target_native_context()
+                                           .promise_function(broker)
+                                           .initial_map(broker));
           return result;
         }
         break;
@@ -536,7 +581,7 @@ bool NodeProperties::CanBePrimitive(JSHeapBroker* broker, Node* receiver,
       return false;
     case IrOpcode::kHeapConstant: {
       HeapObjectRef value = HeapObjectMatcher(receiver).Ref(broker);
-      return value.map().IsPrimitiveMap();
+      return value.map(broker).IsPrimitiveMap();
     }
     default: {
       MapInference inference(broker, receiver, effect);
@@ -566,7 +611,7 @@ bool NodeProperties::CanBeNullOrUndefined(JSHeapBroker* broker, Node* receiver,
         return false;
       case IrOpcode::kHeapConstant: {
         HeapObjectRef value = HeapObjectMatcher(receiver).Ref(broker);
-        OddballType type = value.map().oddball_type();
+        OddballType type = value.map(broker).oddball_type(broker);
         return type == OddballType::kNull || type == OddballType::kUndefined;
       }
       default:
@@ -599,37 +644,6 @@ bool NodeProperties::AllValueInputsAreTyped(Node* node) {
     if (!IsTyped(GetValueInput(node, index))) return false;
   }
   return true;
-}
-
-// static
-bool NodeProperties::IsFreshObject(Node* node) {
-  if (node->opcode() == IrOpcode::kAllocate ||
-      node->opcode() == IrOpcode::kAllocateRaw)
-    return true;
-#if V8_ENABLE_WEBASSEMBLY
-  if (node->opcode() == IrOpcode::kCall) {
-    // TODO(manoskouk): Currently, some wasm builtins are called with in
-    // CallDescriptor::kCallWasmFunction mode. Make sure this is synced if the
-    // calling mechanism is refactored.
-    if (CallDescriptorOf(node->op())->kind() !=
-        CallDescriptor::kCallBuiltinPointer) {
-      return false;
-    }
-    NumberMatcher matcher(node->InputAt(0));
-    if (matcher.HasResolvedValue()) {
-      Builtin callee = static_cast<Builtin>(matcher.ResolvedValue());
-      // Note: Make sure to only add builtins which are guaranteed to return a
-      // fresh object. E.g. kWasmAllocateFixedArray may return the canonical
-      // empty array.
-      return callee == Builtin::kWasmAllocateArray_Uninitialized ||
-             callee == Builtin::kWasmAllocateArray_InitNull ||
-             callee == Builtin::kWasmAllocateArray_InitZero ||
-             callee == Builtin::kWasmAllocateStructWithRtt ||
-             callee == Builtin::kWasmAllocateObjectWrapper;
-    }
-  }
-#endif  // V8_ENABLE_WEBASSEMBLY
-  return false;
 }
 
 // static

@@ -15,7 +15,7 @@ namespace internal {
 
 constexpr auto CallInterfaceDescriptor::DefaultRegisterArray() {
   auto registers = RegisterArray(a0, a1, a2, a3, a4);
-  STATIC_ASSERT(registers.size() == kMaxBuiltinRegisterParams);
+  static_assert(registers.size() == kMaxBuiltinRegisterParams);
   return registers;
 }
 
@@ -98,6 +98,9 @@ constexpr Register StoreDescriptor::SlotRegister() { return a4; }
 
 // static
 constexpr Register StoreWithVectorDescriptor::VectorRegister() { return a3; }
+
+// static
+constexpr Register DefineKeyedOwnDescriptor::FlagsRegister() { return a5; }
 
 // static
 constexpr Register StoreTransitionDescriptor::MapRegister() { return a5; }
@@ -229,8 +232,7 @@ constexpr auto ConstructStubDescriptor::registers() {
   // a1: target
   // a3: new target
   // a0: number of arguments
-  // a2: allocation site or undefined
-  return RegisterArray(a1, a3, a0, a2);
+  return RegisterArray(a1, a3, a0);
 }
 
 // static

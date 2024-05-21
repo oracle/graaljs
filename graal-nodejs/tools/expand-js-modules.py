@@ -45,7 +45,6 @@
 
 import codecs
 import errno
-import js2c
 import os
 import sys
 
@@ -54,7 +53,7 @@ from os.path import join
 def WrapModule(module_path, module_code):
     delimiter = u'\u237f' # "random" character (vertical line with middle dot)
     wrapped_module_code = delimiter + module_code + delimiter
-    # see LookupAndCompile() in node_builtins.cc 
+    # see LookupAndCompile() in node_builtins.cc
     if module_path == join('lib', 'internal', 'bootstrap', 'realm.js'):
         result = "(function (process, getLinkedBinding, getInternalBinding, primordials) {" + wrapped_module_code + "\n});"
     elif module_path.startswith(join('lib', 'internal', 'per_context')):
@@ -82,13 +81,18 @@ def ProcessModules(sources, outdir):
             modules.append(s)
 
     for m in modules:
-        contents = js2c.ReadFile(m)
+        contents = ReadFile(m)
         contents = WrapModule(m, contents)
 
         outpath = os.path.join(outdir, m)
         EnsureDirExists(os.path.split(outpath)[0])
         with codecs.open(outpath, 'w', 'utf-8') as outfile:
             outfile.write(contents)
+
+def ReadFile(filename):
+  with codecs.open(filename, "r", "utf-8") as f:
+    lines = f.read()
+    return lines
 
 def main():
     outdir = sys.argv[1]

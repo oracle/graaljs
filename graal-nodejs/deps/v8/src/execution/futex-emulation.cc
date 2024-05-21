@@ -253,7 +253,7 @@ void AtomicsWaitWakeHandle::Wake() {
   isolate_->futex_wait_list_node()->NotifyWake();
 }
 
-enum WaitReturnValue : int { kOk = 0, kNotEqual = 1, kTimedOut = 2 };
+enum WaitReturnValue : int { kOk = 0, kNotEqualValue = 1, kTimedOut = 2 };
 
 namespace {
 
@@ -263,7 +263,7 @@ Object WaitJsTranslateReturn(Isolate* isolate, Object res) {
     switch (val) {
       case WaitReturnValue::kOk:
         return ReadOnlyRoots(isolate).ok_string();
-      case WaitReturnValue::kNotEqual:
+      case WaitReturnValue::kNotEqualValue:
         return ReadOnlyRoots(isolate).not_equal_string();
       case WaitReturnValue::kTimedOut:
         return ReadOnlyRoots(isolate).timed_out_string();
@@ -312,7 +312,7 @@ template <typename T>
 Object FutexEmulation::Wait(Isolate* isolate, WaitMode mode,
                             Handle<JSArrayBuffer> array_buffer, size_t addr,
                             T value, double rel_timeout_ms) {
-  DCHECK_LT(addr, array_buffer->byte_length());
+  DCHECK_LT(addr, array_buffer->GetByteLength());
 
   bool use_timeout = rel_timeout_ms != V8_INFINITY;
   int64_t rel_timeout_ns = -1;
@@ -408,7 +408,7 @@ Object FutexEmulation::WaitSync(Isolate* isolate,
     }
 #endif
     if (loaded_value != value) {
-      result = handle(Smi::FromInt(WaitReturnValue::kNotEqual), isolate);
+      result = handle(Smi::FromInt(WaitReturnValue::kNotEqualValue), isolate);
       callback_result = AtomicsWaitEvent::kNotEqual;
       break;
     }
@@ -653,7 +653,7 @@ Object FutexEmulation::WaitAsync(Isolate* isolate,
 
 Object FutexEmulation::Wake(Handle<JSArrayBuffer> array_buffer, size_t addr,
                             uint32_t num_waiters_to_wake) {
-  DCHECK_LT(addr, array_buffer->byte_length());
+  DCHECK_LT(addr, array_buffer->GetByteLength());
 
   int waiters_woken = 0;
   std::shared_ptr<BackingStore> backing_store = array_buffer->GetBackingStore();
@@ -916,7 +916,7 @@ void FutexEmulation::IsolateDeinit(Isolate* isolate) {
 
 Object FutexEmulation::NumWaitersForTesting(Handle<JSArrayBuffer> array_buffer,
                                             size_t addr) {
-  DCHECK_LT(addr, array_buffer->byte_length());
+  DCHECK_LT(addr, array_buffer->GetByteLength());
   std::shared_ptr<BackingStore> backing_store = array_buffer->GetBackingStore();
 
   NoGarbageCollectionMutexGuard lock_guard(g_mutex.Pointer());
@@ -961,7 +961,7 @@ Object FutexEmulation::NumAsyncWaitersForTesting(Isolate* isolate) {
 
 Object FutexEmulation::NumUnresolvedAsyncPromisesForTesting(
     Handle<JSArrayBuffer> array_buffer, size_t addr) {
-  DCHECK_LT(addr, array_buffer->byte_length());
+  DCHECK_LT(addr, array_buffer->GetByteLength());
   std::shared_ptr<BackingStore> backing_store = array_buffer->GetBackingStore();
 
   NoGarbageCollectionMutexGuard lock_guard(g_mutex.Pointer());

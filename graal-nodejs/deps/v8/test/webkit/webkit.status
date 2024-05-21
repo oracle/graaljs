@@ -75,10 +75,6 @@
   # Doesn't work with gcc 4.6 on arm or arm64 for some reason.
   'reentrant-caching': [SKIP],
 }],  # 'dcheck_always_on == True and (arch == arm or arch == arm64)'
-['arch == mips', {
-  # Too slow for mips big-endian boards on bots (no FPU).
-  'dfg-int-overflow-in-loop': [SKIP],
-}], # 'arch == mips'
 ['arch == s390 or arch == s390x', {
   # Too slow.
   'dfg-int-overflow-in-loop': [SKIP],
@@ -122,13 +118,6 @@
 }],  # variant in [nooptimization, stress, stress_js_bg_compile_wasm_code_gc] and (arch == arm or arch == arm64) and simulator_run
 
 ##############################################################################
-['gcov_coverage', {
-  # Tests taking too long or getting too large call stacks.
-  'fast/js/excessive-comma-usage': [SKIP],
-  'run-json-stringify': [SKIP],
-}],  # 'gcov_coverage'
-
-##############################################################################
 ['variant == no_wasm_traps', {
   '*': [SKIP],
 }],  # variant == no_wasm_traps
@@ -142,5 +131,11 @@
 ['variant == stress_snapshot', {
   '*': [SKIP],  # only relevant for mjsunit tests.
 }],
+
+##############################################################################
+['gc_fuzzer or deopt_fuzzer', {
+  # BUG(v8:13154) Skipped until bug is fixed.
+  'fast/js/deep-recursion-test': [SKIP],
+}], # gc_fuzzer or deopt_fuzzer
 
 ]

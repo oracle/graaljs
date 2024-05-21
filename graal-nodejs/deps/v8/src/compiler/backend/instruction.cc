@@ -81,30 +81,38 @@ FlagsCondition CommuteFlagsCondition(FlagsCondition condition) {
 }
 
 bool InstructionOperand::InterferesWith(const InstructionOperand& other) const {
-  const bool kCombineFPAliasing = kFPAliasing == AliasingKind::kCombine &&
-                                  this->IsFPLocationOperand() &&
-                                  other.IsFPLocationOperand();
-  const bool kComplexS128SlotAliasing =
-      (this->IsSimd128StackSlot() && other.IsAnyStackSlot()) ||
-      (other.IsSimd128StackSlot() && this->IsAnyStackSlot());
-  if (!kCombineFPAliasing && !kComplexS128SlotAliasing) {
+  const bool combine_fp_aliasing = kFPAliasing == AliasingKind::kCombine &&
+                                   this->IsFPLocationOperand() &&
+                                   other.IsFPLocationOperand();
+  const bool stack_slots = this->IsAnyStackSlot() && other.IsAnyStackSlot();
+  if (!combine_fp_aliasing && !stack_slots) {
     return EqualsCanonicalized(other);
   }
   const LocationOperand& loc = *LocationOperand::cast(this);
   const LocationOperand& other_loc = LocationOperand::cast(other);
+  MachineRepresentation rep = loc.representation();
+  MachineRepresentation other_rep = other_loc.representation();
   LocationOperand::LocationKind kind = loc.location_kind();
   LocationOperand::LocationKind other_kind = other_loc.location_kind();
   if (kind != other_kind) return false;
-  MachineRepresentation rep = loc.representation();
-  MachineRepresentation other_rep = other_loc.representation();
 
-  if (kCombineFPAliasing && !kComplexS128SlotAliasing) {
+  if (combine_fp_aliasing && !stack_slots) {
     if (rep == other_rep) return EqualsCanonicalized(other);
-    if (kind == LocationOperand::REGISTER) {
-      // FP register-register interference.
-      return GetRegConfig()->AreAliases(rep, loc.register_code(), other_rep,
-                                        other_loc.register_code());
-    }
+    DCHECK_EQ(kind, LocationOperand::REGISTER);
+    // FP register-register interference.
+    return GetRegConfig()->AreAliases(rep, loc.register_code(), other_rep,
+                                      other_loc.register_code());
+  }
+
+  DCHECK(stack_slots);
+  int num_slots =
+      AlignedSlotAllocator::NumSlotsForWidth(ElementSizeInBytes(rep));
+  int num_slots_other =
+      AlignedSlotAllocator::NumSlotsForWidth(ElementSizeInBytes(other_rep));
+  const bool complex_stack_slot_interference =
+      (num_slots > 1 || num_slots_other > 1);
+  if (!complex_stack_slot_interference) {
+    return EqualsCanonicalized(other);
   }
 
   // Complex multi-slot operand interference:
@@ -216,6 +224,11 @@ std::ostream& operator<<(std::ostream& os, const InstructionOperand& op) {
       } else if (op.IsFloatRegister()) {
         os << "[" << FloatRegister::from_code(allocated.register_code())
            << "|R";
+#if V8_TARGET_ARCH_X64
+      } else if (op.IsSimd256Register()) {
+        os << "[" << Simd256Register::from_code(allocated.register_code())
+           << "|R";
+#endif  // V8_TARGET_ARCH_X64
       } else {
         DCHECK(op.IsSimd128Register());
         os << "[" << Simd128Register::from_code(allocated.register_code())
@@ -248,6 +261,9 @@ std::ostream& operator<<(std::ostream& os, const InstructionOperand& op) {
           break;
         case MachineRepresentation::kSimd128:
           os << "|s128";
+          break;
+        case MachineRepresentation::kSimd256:
+          os << "|s256";
           break;
         case MachineRepresentation::kTaggedSigned:
           os << "|ts";
@@ -322,6 +338,20 @@ void ParallelMove::PrepareInsertAfter(
   if (replacement != nullptr) move->set_source(replacement->source());
 }
 
+bool ParallelMove::Equals(const ParallelMove& that) const {
+  if (this->size() != that.size()) return false;
+  for (size_t i = 0; i < this->size(); ++i) {
+    if (!(*this)[i]->Equals(*that[i])) return false;
+  }
+  return true;
+}
+
+void ParallelMove::Eliminate() {
+  for (MoveOperands* move : *this) {
+    move->Eliminate();
+  }
+}
+
 Instruction::Instruction(InstructionCode opcode)
     : opcode_(opcode),
       bit_field_(OutputCountField::encode(0) | InputCountField::encode(0) |
@@ -332,7 +362,7 @@ Instruction::Instruction(InstructionCode opcode)
   parallel_moves_[1] = nullptr;
 
   // PendingOperands are required to be 8 byte aligned.
-  STATIC_ASSERT(offsetof(Instruction, operands_) % 8 == 0);
+  static_assert(offsetof(Instruction, operands_) % 8 == 0);
 }
 
 Instruction::Instruction(InstructionCode opcode, size_t output_count,
@@ -556,18 +586,10 @@ Handle<HeapObject> Constant::ToHeapObject() const {
   return value;
 }
 
-Handle<CodeT> Constant::ToCode() const {
+Handle<Code> Constant::ToCode() const {
   DCHECK_EQ(kHeapObject, type());
-  Handle<CodeT> value(
-      reinterpret_cast<Address*>(static_cast<intptr_t>(value_)));
-  DCHECK(value->IsCodeT(GetPtrComprCageBaseSlow(*value)));
-  return value;
-}
-
-const StringConstantBase* Constant::ToDelayedStringConstant() const {
-  DCHECK_EQ(kDelayedStringConstant, type());
-  const StringConstantBase* value =
-      bit_cast<StringConstantBase*>(static_cast<intptr_t>(value_));
+  Handle<Code> value(reinterpret_cast<Address*>(static_cast<intptr_t>(value_)));
+  DCHECK(value->IsCode(GetPtrComprCageBaseSlow(*value)));
   return value;
 }
 
@@ -588,9 +610,6 @@ std::ostream& operator<<(std::ostream& os, const Constant& constant) {
       return os << Brief(*constant.ToHeapObject());
     case Constant::kRpoNumber:
       return os << "RPO" << constant.ToRpoNumber().ToInt();
-    case Constant::kDelayedStringConstant:
-      return os << "DelayedStringConstant: "
-                << constant.ToDelayedStringConstant();
   }
   UNREACHABLE();
 }
@@ -810,7 +829,7 @@ void InstructionSequence::ComputeAssemblyOrder() {
     if (block->ao_number() != invalid) continue;  // loop rotated.
     if (block->IsLoopHeader()) {
       bool header_align = true;
-      if (FLAG_turbo_loop_rotation) {
+      if (v8_flags.turbo_loop_rotation) {
         // Perform loop rotation for non-deferred loops.
         InstructionBlock* loop_end =
             instruction_blocks_->at(block->loop_end().ToSize() - 1);
@@ -936,6 +955,7 @@ static MachineRepresentation FilterRepresentation(MachineRepresentation rep) {
     case MachineRepresentation::kFloat32:
     case MachineRepresentation::kFloat64:
     case MachineRepresentation::kSimd128:
+    case MachineRepresentation::kSimd256:
     case MachineRepresentation::kCompressedPointer:
     case MachineRepresentation::kCompressed:
     case MachineRepresentation::kSandboxedPointer:
@@ -1046,9 +1066,10 @@ size_t GetConservativeFrameSizeInBytes(FrameStateType type,
           static_cast<int>(parameters_count), static_cast<int>(locals_count));
       return info.frame_size_in_bytes();
     }
-    case FrameStateType::kArgumentsAdaptor:
-      // The arguments adaptor frame state is only used in the deoptimizer and
-      // does not occupy any extra space in the stack. Check out the design doc:
+    case FrameStateType::kInlinedExtraArguments:
+      // The inlined extra arguments frame state is only used in the deoptimizer
+      // and does not occupy any extra space in the stack.
+      // Check out the design doc:
       // https://docs.google.com/document/d/150wGaUREaZI6YWqOQFD5l2mWQXaPbbZjcAIJLOFrzMs/edit
       // We just need to account for the additional parameters we might push
       // here.
@@ -1123,7 +1144,7 @@ size_t FrameStateDescriptor::GetHeight() const {
       // Custom, non-JS calling convention (that does not have a notion of
       // a receiver or context).
       return parameters_count();
-    case FrameStateType::kArgumentsAdaptor:
+    case FrameStateType::kInlinedExtraArguments:
     case FrameStateType::kConstructStub:
     case FrameStateType::kJavaScriptBuiltinContinuation:
     case FrameStateType::kJavaScriptBuiltinContinuationWithCatch:

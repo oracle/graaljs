@@ -5,7 +5,6 @@ const {
   ArrayPrototypeMap,
   ArrayPrototypeSort,
   JSONStringify,
-  ObjectCreate,
   ObjectKeys,
   SafeMap,
 } = primordials;
@@ -106,7 +105,7 @@ class LoadCache extends SafeMap {
     debug(`Storing ${url} (${
       type === kImplicitAssertType ? 'implicit type' : type
     }) in ModuleLoadMap`);
-    const cachedJobsForUrl = super.get(url) ?? ObjectCreate(null);
+    const cachedJobsForUrl = super.get(url) ?? { __proto__: null };
     cachedJobsForUrl[type] = job;
     return super.set(url, cachedJobsForUrl);
   }

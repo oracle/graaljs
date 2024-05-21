@@ -1,10 +1,12 @@
 'use strict';
 
 const {
+  ArrayPrototypeAt,
   ArrayPrototypeIndexOf,
   ArrayPrototypePush,
   ArrayPrototypeSplice,
   SafeFinalizationRegistry,
+  ObjectDefineProperty,
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
   Promise,
@@ -27,7 +29,7 @@ const {
 
 const { triggerUncaughtException } = internalBinding('errors');
 
-const { WeakReference } = internalBinding('util');
+const { WeakReference } = require('internal/util');
 
 // Can't delete when weakref count reaches 0 as it could increment again.
 // Only GC can be used as a valid time to clean up the channels map.
@@ -135,7 +137,7 @@ class ActiveChannel {
   }
 
   publish(data) {
-    for (let i = 0; i < this._subscribers.length; i++) {
+    for (let i = 0; i < (this._subscribers?.length || 0); i++) {
       try {
         const onMessage = this._subscribers[i];
         onMessage(data, this.name);
@@ -249,33 +251,38 @@ function assertChannel(value, name) {
   }
 }
 
+function tracingChannelFrom(nameOrChannels, name) {
+  if (typeof nameOrChannels === 'string') {
+    return channel(`tracing:${nameOrChannels}:${name}`);
+  }
+
+  if (typeof nameOrChannels === 'object' && nameOrChannels !== null) {
+    const channel = nameOrChannels[name];
+    assertChannel(channel, `nameOrChannels.${name}`);
+    return channel;
+  }
+
+  throw new ERR_INVALID_ARG_TYPE('nameOrChannels',
+                                 ['string', 'object', 'TracingChannel'],
+                                 nameOrChannels);
+}
+
 class TracingChannel {
   constructor(nameOrChannels) {
-    if (typeof nameOrChannels === 'string') {
-      this.start = channel(`tracing:${nameOrChannels}:start`);
-      this.end = channel(`tracing:${nameOrChannels}:end`);
-      this.asyncStart = channel(`tracing:${nameOrChannels}:asyncStart`);
-      this.asyncEnd = channel(`tracing:${nameOrChannels}:asyncEnd`);
-      this.error = channel(`tracing:${nameOrChannels}:error`);
-    } else if (typeof nameOrChannels === 'object') {
-      const { start, end, asyncStart, asyncEnd, error } = nameOrChannels;
-
-      assertChannel(start, 'nameOrChannels.start');
-      assertChannel(end, 'nameOrChannels.end');
-      assertChannel(asyncStart, 'nameOrChannels.asyncStart');
-      assertChannel(asyncEnd, 'nameOrChannels.asyncEnd');
-      assertChannel(error, 'nameOrChannels.error');
-
-      this.start = start;
-      this.end = end;
-      this.asyncStart = asyncStart;
-      this.asyncEnd = asyncEnd;
-      this.error = error;
-    } else {
-      throw new ERR_INVALID_ARG_TYPE('nameOrChannels',
-                                     ['string', 'object', 'Channel'],
-                                     nameOrChannels);
+    for (const eventName of traceEvents) {
+      ObjectDefineProperty(this, eventName, {
+        __proto__: null,
+        value: tracingChannelFrom(nameOrChannels, eventName),
+      });
     }
+  }
+
+  get hasSubscribers() {
+    return this.start.hasSubscribers ||
+      this.end.hasSubscribers ||
+      this.asyncStart.hasSubscribers ||
+      this.asyncEnd.hasSubscribers ||
+      this.error.hasSubscribers;
   }
 
   subscribe(handlers) {
@@ -301,6 +308,10 @@ class TracingChannel {
   }
 
   traceSync(fn, context = {}, thisArg, ...args) {
+    if (!this.hasSubscribers) {
+      return ReflectApply(fn, thisArg, args);
+    }
+
     const { start, end, error } = this;
 
     return start.runStores(context, () => {
@@ -319,6 +330,10 @@ class TracingChannel {
   }
 
   tracePromise(fn, context = {}, thisArg, ...args) {
+    if (!this.hasSubscribers) {
+      return ReflectApply(fn, thisArg, args);
+    }
+
     const { start, end, asyncStart, asyncEnd, error } = this;
 
     function reject(err) {
@@ -357,6 +372,10 @@ class TracingChannel {
   }
 
   traceCallback(fn, position = -1, context = {}, thisArg, ...args) {
+    if (!this.hasSubscribers) {
+      return ReflectApply(fn, thisArg, args);
+    }
+
     const { start, end, asyncStart, asyncEnd, error } = this;
 
     function wrappedCallback(err, res) {
@@ -370,19 +389,15 @@ class TracingChannel {
       // Using runStores here enables manual context failure recovery
       asyncStart.runStores(context, () => {
         try {
-          if (callback) {
-            return ReflectApply(callback, this, arguments);
-          }
+          return ReflectApply(callback, this, arguments);
         } finally {
           asyncEnd.publish(context);
         }
       });
     }
 
-    const callback = args.at(position);
-    if (typeof callback !== 'function') {
-      throw new ERR_INVALID_ARG_TYPE('callback', ['function'], callback);
-    }
+    const callback = ArrayPrototypeAt(args, position);
+    validateFunction(callback, 'callback');
     ArrayPrototypeSplice(args, position, 1, wrappedCallback);
 
     return start.runStores(context, () => {

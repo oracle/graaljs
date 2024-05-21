@@ -46,6 +46,9 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kS390_Mul32:
     case kS390_Mul32WithOverflow:
     case kS390_Mul64:
+    case kS390_Mul64WithOverflow:
+    case kS390_MulHighS64:
+    case kS390_MulHighU64:
     case kS390_MulHigh32:
     case kS390_MulHighU32:
     case kS390_MulFloat:
@@ -174,8 +177,6 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kS390_F32x4Le:
     case kS390_F32x4Abs:
     case kS390_F32x4Neg:
-    case kS390_F32x4RecipApprox:
-    case kS390_F32x4RecipSqrtApprox:
     case kS390_F32x4SConvertI32x4:
     case kS390_F32x4UConvertI32x4:
     case kS390_F32x4Sqrt:
@@ -252,6 +253,7 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kS390_I32x4ExtAddPairwiseI16x8U:
     case kS390_I32x4TruncSatF64x2SZero:
     case kS390_I32x4TruncSatF64x2UZero:
+    case kS390_I32x4DotI8x16AddS:
     case kS390_I16x8Splat:
     case kS390_I16x8ExtractLaneU:
     case kS390_I16x8ExtractLaneS:
@@ -293,6 +295,7 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kS390_I16x8ExtAddPairwiseI8x16S:
     case kS390_I16x8ExtAddPairwiseI8x16U:
     case kS390_I16x8Q15MulRSatS:
+    case kS390_I16x8DotI8x16S:
     case kS390_I8x16Splat:
     case kS390_I8x16ExtractLaneU:
     case kS390_I8x16ExtractLaneS:
@@ -357,8 +360,7 @@ int InstructionScheduler::GetTargetInstructionFlags(
     case kS390_LoadReverseSimd128:
     case kS390_Peek:
     case kS390_LoadDecompressTaggedSigned:
-    case kS390_LoadDecompressTaggedPointer:
-    case kS390_LoadDecompressAnyTagged:
+    case kS390_LoadDecompressTagged:
     case kS390_S128Load8Splat:
     case kS390_S128Load16Splat:
     case kS390_S128Load32Splat:

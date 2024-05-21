@@ -532,8 +532,8 @@ filename to the `sources` array:
 Once the `binding.gyp` file is ready, the example addons can be configured and
 built using `node-gyp`:
 
-```console
-$ node-gyp configure build
+```bash
+node-gyp configure build
 ```
 
 ### Function arguments
@@ -845,8 +845,8 @@ class MyObject : public node::ObjectWrap {
 ```
 
 In `myobject.cc`, implement the various methods that are to be exposed.
-Below, the method `plusOne()` is exposed by adding it to the constructor's
-prototype:
+In the following code, the method `plusOne()` is exposed by adding it to the
+constructor's prototype:
 
 ```cpp
 // myobject.cc
@@ -912,7 +912,8 @@ void MyObject::New(const FunctionCallbackInfo<Value>& args) {
     const int argc = 1;
     Local<Value> argv[argc] = { args[0] };
     Local<Function> cons =
-        args.Data().As<Object>()->GetInternalField(0).As<Function>();
+        args.Data().As<Object>()->GetInternalField(0)
+            .As<Value>().As<Function>();
     Local<Object> result =
         cons->NewInstance(context, argc, argv).ToLocalChecked();
     args.GetReturnValue().Set(result);

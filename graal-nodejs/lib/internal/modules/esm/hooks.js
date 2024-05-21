@@ -37,6 +37,7 @@ const {
   ERR_UNKNOWN_BUILTIN_MODULE,
   ERR_WORKER_UNSERIALIZABLE_ERROR,
 } = require('internal/errors').codes;
+const { exitCodes: { kUnfinishedTopLevelAwait } } = internalBinding('errors');
 const { URL } = require('internal/url');
 const { canParse: URLCanParse } = internalBinding('url');
 const { receiveMessageOnPort } = require('worker_threads');
@@ -107,6 +108,7 @@ function defineImportAssertionAlias(context) {
  * @typedef {object} KeyedHook
  * @property {Function} fn The hook function.
  * @property {URL['href']} url The URL of the module.
+ * @property {KeyedHook?} next The next hook in the chain.
  */
 
 // [2] `validate...()`s throw the wrong error
@@ -159,8 +161,8 @@ class Hooks {
    * loader (user-land) to the worker.
    */
   async register(urlOrSpecifier, parentURL, data) {
-    const moduleLoader = require('internal/process/esm_loader').esmLoader;
-    const keyedExports = await moduleLoader.import(
+    const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
+    const keyedExports = await cascadedLoader.import(
       urlOrSpecifier,
       parentURL,
       kEmptyObject,
@@ -502,7 +504,7 @@ class Hooks {
       !isAnyArrayBuffer(source) &&
       !isArrayBufferView(source)
     ) {
-      throw ERR_INVALID_RETURN_PROPERTY_VALUE(
+      throw new ERR_INVALID_RETURN_PROPERTY_VALUE(
         'a string, an ArrayBuffer, or a TypedArray',
         hookErrIdentifier,
         'source',
@@ -678,7 +680,7 @@ class HooksProxy {
     } while (response == null);
     debug('got sync response from worker', { method, args });
     if (response.message.status === 'never-settle') {
-      process.exit(13);
+      process.exit(kUnfinishedTopLevelAwait);
     } else if (response.message.status === 'exit') {
       process.exit(response.message.body);
     }
@@ -693,7 +695,7 @@ class HooksProxy {
     if (status === 'error') {
       if (body == null || typeof body !== 'object') { throw body; }
       if (body.serializationFailed || body.serialized == null) {
-        throw ERR_WORKER_UNSERIALIZABLE_ERROR();
+        throw new ERR_WORKER_UNSERIALIZABLE_ERROR();
       }
 
       // eslint-disable-next-line no-restricted-syntax
@@ -803,7 +805,7 @@ function pluckHooks({
  * A utility function to iterate through a hook chain, track advancement in the
  * chain, and generate and supply the `next<HookName>` argument to the custom
  * hook.
- * @param {Hook} current The (currently) first hook in the chain (this shifts
+ * @param {KeyedHook} current The (currently) first hook in the chain (this shifts
  * on every call).
  * @param {object} meta Properties that change as the current hook advances
  * along the chain.

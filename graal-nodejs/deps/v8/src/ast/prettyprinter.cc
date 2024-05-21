@@ -8,7 +8,6 @@
 
 #include "src/ast/ast-value-factory.h"
 #include "src/ast/scopes.h"
-#include "src/base/platform/platform.h"
 #include "src/base/strings.h"
 #include "src/base/vector.h"
 #include "src/common/globals.h"
@@ -343,6 +342,10 @@ void CallPrinter::VisitAssignment(Assignment* node) {
     }
   }
   if (!was_found) {
+    if (found_) {
+      Find(node->target(), true);
+      return;
+    }
     Find(node->target());
     if (node->target()->IsArrayLiteral()) {
       // Special case the visit for destructuring array assignment.
@@ -1362,6 +1365,10 @@ void AstPrinter::VisitProperty(Property* node) {
     case KEYED_PROPERTY:
     case KEYED_SUPER_PROPERTY: {
       PrintIndentedVisit("KEY", node->key());
+      break;
+    }
+    case PRIVATE_DEBUG_DYNAMIC: {
+      PrintIndentedVisit("PRIVATE_DEBUG_DYNAMIC", node->key());
       break;
     }
     case NON_PROPERTY:

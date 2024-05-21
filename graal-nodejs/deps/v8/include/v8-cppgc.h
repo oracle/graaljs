@@ -77,15 +77,37 @@ struct WrapperDescriptor final {
 };
 
 struct V8_EXPORT CppHeapCreateParams {
+  CppHeapCreateParams(
+      std::vector<std::unique_ptr<cppgc::CustomSpaceBase>> custom_spaces,
+      WrapperDescriptor wrapper_descriptor)
+      : custom_spaces(std::move(custom_spaces)),
+        wrapper_descriptor(wrapper_descriptor) {}
+
   CppHeapCreateParams(const CppHeapCreateParams&) = delete;
   CppHeapCreateParams& operator=(const CppHeapCreateParams&) = delete;
 
   std::vector<std::unique_ptr<cppgc::CustomSpaceBase>> custom_spaces;
   WrapperDescriptor wrapper_descriptor;
+  /**
+   * Specifies which kind of marking are supported by the heap. The type may be
+   * further reduced via runtime flags when attaching the heap to an Isolate.
+   */
+  cppgc::Heap::MarkingType marking_support =
+      cppgc::Heap::MarkingType::kIncrementalAndConcurrent;
+  /**
+   * Specifies which kind of sweeping is supported by the heap. The type may be
+   * further reduced via runtime flags when attaching the heap to an Isolate.
+   */
+  cppgc::Heap::SweepingType sweeping_support =
+      cppgc::Heap::SweepingType::kIncrementalAndConcurrent;
 };
 
 /**
  * A heap for allocating managed C++ objects.
+ *
+ * Similar to v8::Isolate, the heap may only be accessed from one thread at a
+ * time. The heap may be used from different threads using the
+ * v8::Locker/v8::Unlocker APIs which is different from generic Oilpan.
  */
 class V8_EXPORT CppHeap {
  public:
@@ -154,6 +176,11 @@ class V8_EXPORT CppHeap {
    */
   void CollectGarbageInYoungGenerationForTesting(
       cppgc::EmbedderStackState stack_state);
+
+  /**
+   * \returns the wrapper descriptor of this CppHeap.
+   */
+  v8::WrapperDescriptor wrapper_descriptor() const;
 
  private:
   CppHeap() = default;

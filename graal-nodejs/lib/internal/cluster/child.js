@@ -15,6 +15,7 @@ const EventEmitter = require('events');
 const { owner_symbol } = require('internal/async_hooks').symbols;
 const Worker = require('internal/cluster/worker');
 const { internal, sendHelper } = require('internal/cluster/utils');
+const { exitCodes: { kNoFailure } } = internalBinding('errors');
 const { TIMEOUT_MAX } = require('internal/timers');
 const { setInterval, clearInterval } = require('timers');
 
@@ -46,7 +47,7 @@ cluster._setupWorker = function() {
     if (!worker.exitedAfterDisconnect) {
       // Unexpected disconnect, primary exited, or some such nastiness, so
       // worker exits immediately.
-      process.exit(0);
+      process.exit(kNoFailure);
     }
   });
 
@@ -298,10 +299,10 @@ Worker.prototype.destroy = function() {
 
   this.exitedAfterDisconnect = true;
   if (!this.isConnected()) {
-    process.exit(0);
+    process.exit(kNoFailure);
   } else {
     this.state = 'destroying';
     send({ act: 'exitedAfterDisconnect' }, () => process.disconnect());
-    process.once('disconnect', () => process.exit(0));
+    process.once('disconnect', () => process.exit(kNoFailure));
   }
 };

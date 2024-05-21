@@ -121,6 +121,10 @@ class KeyedStoreGenericAssembler : public AccessorAssembler {
                           ElementsKind from_kind, ElementsKind to_kind,
                           Label* bailout);
 
+  void StoreSharedArrayElement(TNode<Context> context,
+                               TNode<FixedArrayBase> elements,
+                               TNode<IntPtrT> index, TNode<Object> value);
+
   void StoreElementWithCapacity(TNode<JSObject> receiver,
                                 TNode<Map> receiver_map,
                                 TNode<FixedArrayBase> elements,
@@ -369,6 +373,15 @@ void KeyedStoreGenericAssembler::MaybeUpdateLengthAndReturn(
   Return(value);
 }
 
+void KeyedStoreGenericAssembler::StoreSharedArrayElement(
+    TNode<Context> context, TNode<FixedArrayBase> elements,
+    TNode<IntPtrT> index, TNode<Object> value) {
+  TVARIABLE(Object, shared_value, value);
+  SharedValueBarrier(context, &shared_value);
+  UnsafeStoreFixedArrayElement(CAST(elements), index, shared_value.value());
+  Return(value);
+}
+
 void KeyedStoreGenericAssembler::StoreElementWithCapacity(
     TNode<JSObject> receiver, TNode<Map> receiver_map,
     TNode<FixedArrayBase> elements, TNode<Word32T> elements_kind,
@@ -386,7 +399,7 @@ void KeyedStoreGenericAssembler::StoreElementWithCapacity(
     GotoIf(IsSetWord32(details, PropertyDetails::kAttributesReadOnlyMask),
            slow);
   }
-  STATIC_ASSERT(FixedArray::kHeaderSize == FixedDoubleArray::kHeaderSize);
+  static_assert(FixedArray::kHeaderSize == FixedDoubleArray::kHeaderSize);
   const int kHeaderSize = FixedArray::kHeaderSize - kHeapObjectTag;
 
   Label check_double_elements(this), check_cow_elements(this);
@@ -435,8 +448,8 @@ void KeyedStoreGenericAssembler::StoreElementWithCapacity(
     // Check if we already have object elements; just do the store if so.
     {
       Label must_transition(this);
-      STATIC_ASSERT(PACKED_SMI_ELEMENTS == 0);
-      STATIC_ASSERT(HOLEY_SMI_ELEMENTS == 1);
+      static_assert(PACKED_SMI_ELEMENTS == 0);
+      static_assert(HOLEY_SMI_ELEMENTS == 1);
       GotoIf(Int32LessThanOrEqual(elements_kind,
                                   Int32Constant(HOLEY_SMI_ELEMENTS)),
              &must_transition);
@@ -570,12 +583,11 @@ void KeyedStoreGenericAssembler::EmitGenericElementStore(
     TNode<Context> context, Label* slow) {
   Label if_fast(this), if_in_bounds(this), if_increment_length_by_one(this),
       if_bump_length_with_gap(this), if_grow(this), if_nonfast(this),
-      if_typed_array(this), if_dictionary(this);
+      if_typed_array(this), if_dictionary(this), if_shared_array(this);
   TNode<FixedArrayBase> elements = LoadElements(receiver);
   TNode<Int32T> elements_kind = LoadMapElementsKind(receiver_map);
   Branch(IsFastElementsKind(elements_kind), &if_fast, &if_nonfast);
   BIND(&if_fast);
-
   Label if_array(this);
   GotoIf(IsJSArrayInstanceType(instance_type), &if_array);
   {
@@ -626,7 +638,7 @@ void KeyedStoreGenericAssembler::EmitGenericElementStore(
   // dispatch.
   BIND(&if_nonfast);
   {
-    STATIC_ASSERT(LAST_ELEMENTS_KIND ==
+    static_assert(LAST_ELEMENTS_KIND ==
                   LAST_RAB_GSAB_FIXED_TYPED_ARRAY_ELEMENTS_KIND);
     GotoIf(Int32GreaterThanOrEqual(
                elements_kind,
@@ -634,6 +646,8 @@ void KeyedStoreGenericAssembler::EmitGenericElementStore(
            &if_typed_array);
     GotoIf(Word32Equal(elements_kind, Int32Constant(DICTIONARY_ELEMENTS)),
            &if_dictionary);
+    GotoIf(Word32Equal(elements_kind, Int32Constant(SHARED_ARRAY_ELEMENTS)),
+           &if_shared_array);
     Goto(slow);
   }
 
@@ -650,6 +664,13 @@ void KeyedStoreGenericAssembler::EmitGenericElementStore(
     // TODO(jkummerow): Support typed arrays. Note: RAB / GSAB backed typed
     // arrays end up here too.
     Goto(slow);
+  }
+
+  BIND(&if_shared_array);
+  {
+    TNode<IntPtrT> length = LoadAndUntagFixedArrayBaseLength(elements);
+    GotoIf(UintPtrGreaterThanOrEqual(index, length), slow);
+    StoreSharedArrayElement(context, elements, index, value);
   }
 }
 
@@ -798,8 +819,8 @@ TNode<Map> KeyedStoreGenericAssembler::FindCandidateStoreICTransitionMapHandler(
       // transition array is expected to be the first among the transitions
       // with the same name.
       // See TransitionArray::CompareDetails() for details.
-      STATIC_ASSERT(static_cast<int>(PropertyKind::kData) == 0);
-      STATIC_ASSERT(NONE == 0);
+      static_assert(static_cast<int>(PropertyKind::kData) == 0);
+      static_assert(NONE == 0);
       const int kKeyToTargetOffset = (TransitionArray::kEntryTargetIndex -
                                       TransitionArray::kEntryKeyIndex) *
                                      kTaggedSize;
@@ -948,8 +969,7 @@ void KeyedStoreGenericAssembler::EmitGenericPropertyStore(
             TNode<Object> prev_value =
                 LoadValueByKeyIndex(properties, var_name_index.value());
 
-            BranchIfSameValue(prev_value, p->value(), &done, slow,
-                              SameValueMode::kNumbersOnly);
+            Branch(TaggedEqual(prev_value, p->value()), &done, slow);
           } else {
             Goto(&overwrite);
           }
@@ -997,6 +1017,7 @@ void KeyedStoreGenericAssembler::EmitGenericPropertyStore(
       }
       Label add_dictionary_property_slow(this);
       InvalidateValidityCellIfPrototype(receiver_map, bitfield3);
+      UpdateMayHaveInterestingSymbol(properties, name);
       Add<PropertyDictionary>(properties, name, p->value(),
                               &add_dictionary_property_slow);
       exit_point->Return(p->value());
@@ -1012,7 +1033,7 @@ void KeyedStoreGenericAssembler::EmitGenericPropertyStore(
     BIND(&accessor);
     {
       Label not_callable(this);
-      TNode<Struct> accessor_pair = CAST(var_accessor_pair.value());
+      TNode<HeapObject> accessor_pair = CAST(var_accessor_pair.value());
       GotoIf(IsAccessorInfo(accessor_pair), slow);
       CSA_DCHECK(this, IsAccessorPair(accessor_pair));
       TNode<HeapObject> setter =
@@ -1099,8 +1120,9 @@ void KeyedStoreGenericAssembler::KeyedStoreGeneric(
   BIND(&if_unique_name);
   {
     Comment("key is unique name");
-    StoreICParameters p(context, receiver, var_unique.value(), value, {},
-                        UndefinedConstant(), StoreICMode::kDefault);
+    StoreICParameters p(context, receiver, var_unique.value(), value,
+                        base::nullopt, {}, UndefinedConstant(),
+                        StoreICMode::kDefault);
     ExitPoint direct_exit(this);
     EmitGenericPropertyStore(CAST(receiver), receiver_map, instance_type, &p,
                              &direct_exit, &slow, language_mode);
@@ -1108,7 +1130,7 @@ void KeyedStoreGenericAssembler::KeyedStoreGeneric(
 
   BIND(&not_internalized);
   {
-    if (FLAG_internalize_on_the_fly) {
+    if (v8_flags.internalize_on_the_fly) {
       TryInternalizeString(CAST(key), &if_index, &var_index, &if_unique_name,
                            &var_unique, &slow, &slow);
     } else {
@@ -1129,8 +1151,12 @@ void KeyedStoreGenericAssembler::KeyedStoreGeneric(
                       value);
     } else {
       DCHECK(IsDefineKeyedOwnInLiteral());
-      TailCallRuntime(Runtime::kDefineKeyedOwnPropertyInLiteral_Simple, context,
-                      receiver, key, value);
+      TNode<Smi> flags =
+          SmiConstant(DefineKeyedOwnPropertyInLiteralFlag::kNoFlags);
+      // TODO(v8:10047): Use TaggedIndexConstant here once TurboFan supports it.
+      TNode<Smi> slot = SmiConstant(FeedbackSlot::Invalid().ToInt());
+      TailCallRuntime(Runtime::kDefineKeyedOwnPropertyInLiteral, context,
+                      receiver, key, value, flags, UndefinedConstant(), slot);
     }
   }
 }
@@ -1175,7 +1201,7 @@ void KeyedStoreGenericAssembler::StoreIC_NoFeedback() {
     // checks, strings and string wrappers, proxies) are handled in the runtime.
     GotoIf(IsSpecialReceiverInstanceType(instance_type), &miss);
     {
-      StoreICParameters p(context, receiver, name, value, slot,
+      StoreICParameters p(context, receiver, name, value, base::nullopt, slot,
                           UndefinedConstant(),
                           IsDefineNamedOwn() ? StoreICMode::kDefineNamedOwn
                                              : StoreICMode::kDefault);
@@ -1199,7 +1225,7 @@ void KeyedStoreGenericAssembler::StoreProperty(TNode<Context> context,
                                                TNode<Name> unique_name,
                                                TNode<Object> value,
                                                LanguageMode language_mode) {
-  StoreICParameters p(context, receiver, unique_name, value, {},
+  StoreICParameters p(context, receiver, unique_name, value, base::nullopt, {},
                       UndefinedConstant(), StoreICMode::kDefault);
 
   Label done(this), slow(this, Label::kDeferred);
@@ -1217,8 +1243,12 @@ void KeyedStoreGenericAssembler::StoreProperty(TNode<Context> context,
   BIND(&slow);
   {
     if (IsDefineKeyedOwnInLiteral()) {
-      CallRuntime(Runtime::kDefineKeyedOwnPropertyInLiteral_Simple, context,
-                  receiver, unique_name, value);
+      TNode<Smi> flags =
+          SmiConstant(DefineKeyedOwnPropertyInLiteralFlag::kNoFlags);
+      // TODO(v8:10047): Use TaggedIndexConstant here once TurboFan supports it.
+      TNode<Smi> slot = SmiConstant(FeedbackSlot::Invalid().ToInt());
+      CallRuntime(Runtime::kDefineKeyedOwnPropertyInLiteral, context, receiver,
+                  unique_name, value, flags, p.vector(), slot);
     } else {
       CallRuntime(Runtime::kSetKeyedProperty, context, receiver, unique_name,
                   value);

@@ -4,7 +4,6 @@
 
 #include "src/snapshot/serializer-deserializer.h"
 
-#include "src/objects/foreign-inl.h"
 #include "src/objects/objects-inl.h"
 
 namespace v8 {
@@ -63,16 +62,13 @@ bool SerializerDeserializer::CanBeDeferred(HeapObject o) {
 void SerializerDeserializer::RestoreExternalReferenceRedirector(
     Isolate* isolate, AccessorInfo accessor_info) {
   DisallowGarbageCollection no_gc;
-  // Restore wiped accessor infos.
-  Foreign::cast(accessor_info.js_getter())
-      .set_foreign_address(isolate, accessor_info.redirected_getter());
+  accessor_info.init_getter_redirection(isolate);
 }
 
 void SerializerDeserializer::RestoreExternalReferenceRedirector(
     Isolate* isolate, CallHandlerInfo call_handler_info) {
   DisallowGarbageCollection no_gc;
-  Foreign::cast(call_handler_info.js_callback())
-      .set_foreign_address(isolate, call_handler_info.redirected_callback());
+  call_handler_info.init_callback_redirection(isolate);
 }
 
 }  // namespace internal

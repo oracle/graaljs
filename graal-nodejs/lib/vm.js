@@ -23,6 +23,7 @@
 
 const {
   ArrayPrototypeForEach,
+  ObjectFreeze,
   Symbol,
   PromiseReject,
   ReflectApply,
@@ -30,7 +31,6 @@ const {
 
 const {
   ContextifyScript,
-  MicrotaskQueue,
   makeContext,
   constants,
   measureMemory: _measureMemory,
@@ -49,6 +49,8 @@ const {
   validateString,
   validateStringArray,
   validateUint32,
+  kValidateObjectAllowArray,
+  kValidateObjectAllowNullable,
 } = require('internal/validators');
 const {
   emitExperimentalWarning,
@@ -58,10 +60,25 @@ const {
 const {
   getHostDefinedOptionId,
   internalCompileFunction,
-  isContext,
+  isContext: _isContext,
   registerImportModuleDynamically,
 } = require('internal/vm');
+const {
+  vm_dynamic_import_main_context_default,
+} = internalBinding('symbols');
 const kParsingContext = Symbol('script parsing context');
+
+/**
+ * Check if object is a context object created by vm.createContext().
+ * @throws {TypeError} If object is not an object in the first place, throws TypeError.
+ * @param {object} object Object to check.
+ * @returns {boolean}
+ */
+function isContext(object) {
+  validateObject(object, 'object', kValidateObjectAllowArray);
+
+  return _isContext(object);
+}
 
 class Script extends ContextifyScript {
   constructor(code, options = kEmptyObject) {
@@ -108,9 +125,7 @@ class Script extends ContextifyScript {
       throw e; /* node-do-not-add-exception-line */
     }
 
-    if (importModuleDynamically !== undefined) {
-      registerImportModuleDynamically(this, importModuleDynamically);
-    }
+    registerImportModuleDynamically(this, importModuleDynamically);
   }
 
   runInThisContext(options) {
@@ -218,6 +233,7 @@ function createContext(contextObject = {}, options = kEmptyObject) {
     origin,
     codeGeneration,
     microtaskMode,
+    importModuleDynamically,
   } = options;
 
   validateString(name, 'options.name');
@@ -237,11 +253,14 @@ function createContext(contextObject = {}, options = kEmptyObject) {
   validateOneOf(microtaskMode,
                 'options.microtaskMode',
                 ['afterEvaluate', undefined]);
-  const microtaskQueue = microtaskMode === 'afterEvaluate' ?
-    new MicrotaskQueue() :
-    null;
+  const microtaskQueue = (microtaskMode === 'afterEvaluate');
 
-  makeContext(contextObject, name, origin, strings, wasm, microtaskQueue);
+  const hostDefinedOptionId =
+    getHostDefinedOptionId(importModuleDynamically, name);
+
+  makeContext(contextObject, name, origin, strings, wasm, microtaskQueue, hostDefinedOptionId);
+  // Register the context scope callback after the context was initialized.
+  registerImportModuleDynamically(contextObject, importModuleDynamically);
   return contextObject;
 }
 
@@ -335,7 +354,7 @@ function compileFunction(code, params, options = kEmptyObject) {
   validateArray(contextExtensions, 'options.contextExtensions');
   ArrayPrototypeForEach(contextExtensions, (extension, i) => {
     const name = `options.contextExtensions[${i}]`;
-    validateObject(extension, name, { __proto__: null, nullable: true });
+    validateObject(extension, name, kValidateObjectAllowNullable);
   });
 
   const hostDefinedOptionId =
@@ -372,6 +391,13 @@ function measureMemory(options = kEmptyObject) {
   return result;
 }
 
+const vmConstants = {
+  __proto__: null,
+  USE_MAIN_CONTEXT_DEFAULT_LOADER: vm_dynamic_import_main_context_default,
+};
+
+ObjectFreeze(vmConstants);
+
 module.exports = {
   Script,
   createContext,
@@ -382,6 +408,7 @@ module.exports = {
   isContext,
   compileFunction,
   measureMemory,
+  constants: vmConstants,
 };
 
 // The vm module is patched to include vm.Module, vm.SourceTextModule

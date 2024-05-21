@@ -6,7 +6,6 @@ const {
   ArrayPrototypeForEach,
   ArrayPrototypeIndexOf,
   ArrayPrototypeSome,
-  ObjectCreate,
   ObjectDefineProperty,
   ObjectGetPrototypeOf,
   ObjectSetPrototypeOf,
@@ -17,7 +16,6 @@ const {
   TypeError,
 } = primordials;
 
-const { isContext } = internalBinding('contextify');
 const {
   isModuleNamespaceObject,
 } = require('internal/util/types');
@@ -74,6 +72,8 @@ const kWrap = Symbol('kWrap');
 const kContext = Symbol('kContext');
 const kPerContextModuleId = Symbol('kPerContextModuleId');
 const kLink = Symbol('kLink');
+
+const { isContext } = require('internal/vm');
 
 class Module {
   constructor(options) {
@@ -237,7 +237,7 @@ class Module {
       return this;
 
     const constructor = getConstructorOf(this) || Module;
-    const o = ObjectCreate({ constructor });
+    const o = { __proto__: { constructor } };
     o.status = this.status;
     o.identifier = this.identifier;
     o.context = this.context;

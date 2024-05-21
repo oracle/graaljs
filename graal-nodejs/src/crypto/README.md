@@ -79,10 +79,10 @@ using SSLPointer = DeleteFnPtr<SSL, SSL_free>;
 using PKCS8Pointer = DeleteFnPtr<PKCS8_PRIV_KEY_INFO, PKCS8_PRIV_KEY_INFO_free>;
 using EVPKeyPointer = DeleteFnPtr<EVP_PKEY, EVP_PKEY_free>;
 using EVPKeyCtxPointer = DeleteFnPtr<EVP_PKEY_CTX, EVP_PKEY_CTX_free>;
-using EVPMDPointer = DeleteFnPtr<EVP_MD_CTX, EVP_MD_CTX_free>;
+using EVPMDCtxPointer = DeleteFnPtr<EVP_MD_CTX, EVP_MD_CTX_free>;
 using RSAPointer = DeleteFnPtr<RSA, RSA_free>;
 using ECPointer = DeleteFnPtr<EC_KEY, EC_KEY_free>;
-using BignumPointer = DeleteFnPtr<BIGNUM, BN_free>;
+using BignumPointer = DeleteFnPtr<BIGNUM, BN_clear_free>;
 using NetscapeSPKIPointer = DeleteFnPtr<NETSCAPE_SPKI, NETSCAPE_SPKI_free>;
 using ECGroupPointer = DeleteFnPtr<EC_GROUP, EC_GROUP_free>;
 using ECPointPointer = DeleteFnPtr<EC_POINT, EC_POINT_free>;
@@ -310,12 +310,12 @@ crypto.randomFill(buf, (err, buf) => {
 For the legacy Node.js crypto API, asynchronous single-call
 operations use the traditional Node.js callback pattern, as
 illustrated in the previous `randomFill()` example. In the
-Web Crypto API (accessible via `require('node:crypto').webcrypto`),
+Web Crypto API (accessible via `globalThis.crypto`),
 all asynchronous single-call operations are Promise-based.
 
 ```js
 // Example Web Crypto API asynchronous single-call operation
-const { subtle } = require('node:crypto').webcrypto;
+const { subtle } = globalThis.crypto;
 
 subtle.generateKeys({ name: 'HMAC', length: 256 }, true, ['sign'])
   .then((key) => {

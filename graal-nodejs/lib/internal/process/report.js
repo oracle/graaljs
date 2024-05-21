@@ -2,6 +2,7 @@
 const {
   ERR_SYNTHETIC,
 } = require('internal/errors').codes;
+const { getValidatedPath } = require('internal/fs/utils');
 const {
   validateBoolean,
   validateObject,
@@ -19,6 +20,7 @@ const report = {
       file = undefined;
     } else if (file !== undefined) {
       validateString(file, 'file');
+      file = getValidatedPath(file);
     }
 
     if (err === undefined) {
@@ -57,6 +59,13 @@ const report = {
   set compact(b) {
     validateBoolean(b, 'compact');
     nr.setCompact(b);
+  },
+  get excludeNetwork() {
+    return nr.getExcludeNetwork();
+  },
+  set excludeNetwork(b) {
+    validateBoolean(b, 'excludeNetwork');
+    nr.setExcludeNetwork(b);
   },
   get signal() {
     return nr.getSignal();

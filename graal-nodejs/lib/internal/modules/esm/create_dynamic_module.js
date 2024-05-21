@@ -4,7 +4,6 @@ const {
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
   JSONStringify,
-  ObjectCreate,
   SafeSet,
 } = primordials;
 
@@ -62,7 +61,7 @@ import.meta.done();
   const readyfns = new SafeSet();
   /** @type {DynamicModuleReflect} */
   const reflect = {
-    exports: ObjectCreate(null),
+    exports: { __proto__: null },
     onReady: (cb) => { readyfns.add(cb); },
   };
 

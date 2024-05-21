@@ -7,12 +7,10 @@
 #include <iomanip>
 #include <unordered_map>
 
-#include "src/base/optional.h"
-#include "src/base/platform/wrappers.h"
-#include "src/codegen/assembler-inl.h"
 #include "src/common/assert-scope.h"
 #include "src/compiler/wasm-compiler.h"
 #include "src/debug/debug-evaluate.h"
+#include "src/debug/debug.h"
 #include "src/execution/frames-inl.h"
 #include "src/heap/factory.h"
 #include "src/wasm/baseline/liftoff-compiler.h"
@@ -157,66 +155,6 @@ class DebugInfoImpl {
     return module->functions[scope.code->index()];
   }
 
-  WireBytesRef GetExportName(ImportExportKindCode kind, uint32_t index) {
-    base::MutexGuard guard(&mutex_);
-    if (!export_names_) {
-      export_names_ =
-          std::make_unique<std::map<ImportExportKey, WireBytesRef>>();
-      for (auto exp : native_module_->module()->export_table) {
-        auto exp_key = std::make_pair(exp.kind, exp.index);
-        if (export_names_->find(exp_key) != export_names_->end()) continue;
-        export_names_->insert(std::make_pair(exp_key, exp.name));
-      }
-    }
-    auto it = export_names_->find(std::make_pair(kind, index));
-    if (it != export_names_->end()) return it->second;
-    return {};
-  }
-
-  std::pair<WireBytesRef, WireBytesRef> GetImportName(ImportExportKindCode kind,
-                                                      uint32_t index) {
-    base::MutexGuard guard(&mutex_);
-    if (!import_names_) {
-      import_names_ = std::make_unique<
-          std::map<ImportExportKey, std::pair<WireBytesRef, WireBytesRef>>>();
-      for (auto imp : native_module_->module()->import_table) {
-        import_names_->insert(
-            std::make_pair(std::make_pair(imp.kind, imp.index),
-                           std::make_pair(imp.module_name, imp.field_name)));
-      }
-    }
-    auto it = import_names_->find(std::make_pair(kind, index));
-    if (it != import_names_->end()) return it->second;
-    return {};
-  }
-
-  WireBytesRef GetTypeName(int type_index) {
-    base::MutexGuard guard(&mutex_);
-    if (!type_names_) {
-      type_names_ = std::make_unique<NameMap>(DecodeNameMap(
-          native_module_->wire_bytes(), NameSectionKindCode::kTypeCode));
-    }
-    return type_names_->GetName(type_index);
-  }
-
-  WireBytesRef GetLocalName(int func_index, int local_index) {
-    base::MutexGuard guard(&mutex_);
-    if (!local_names_) {
-      local_names_ = std::make_unique<IndirectNameMap>(DecodeIndirectNameMap(
-          native_module_->wire_bytes(), NameSectionKindCode::kLocalCode));
-    }
-    return local_names_->GetName(func_index, local_index);
-  }
-
-  WireBytesRef GetFieldName(int struct_index, int field_index) {
-    base::MutexGuard guard(&mutex_);
-    if (!field_names_) {
-      field_names_ = std::make_unique<IndirectNameMap>(DecodeIndirectNameMap(
-          native_module_->wire_bytes(), NameSectionKindCode::kFieldCode));
-    }
-    return field_names_->GetName(struct_index, field_index);
-  }
-
   // If the frame position is not in the list of breakpoints, return that
   // position. Return 0 otherwise.
   // This is used to generate a "dead breakpoint" in Liftoff, which is necessary
@@ -235,7 +173,7 @@ class DebugInfoImpl {
   // is in the function of the given index.
   int DeadBreakpoint(int func_index, base::Vector<const int> breakpoints,
                      Isolate* isolate) {
-    StackTraceFrameIterator it(isolate);
+    DebuggableStackFrameIterator it(isolate);
     if (it.done() || !it.is_wasm()) return 0;
     auto* wasm_frame = WasmFrame::cast(it.frame());
     if (static_cast<int>(wasm_frame->function_index()) != func_index) return 0;
@@ -271,7 +209,7 @@ class DebugInfoImpl {
     // Recompile the function with Liftoff, setting the new breakpoints.
     // Not thread-safe. The caller is responsible for locking {mutex_}.
     CompilationEnv env = native_module_->CreateCompilationEnv();
-    auto* function = &native_module_->module()->functions[func_index];
+    auto* function = &env.module->functions[func_index];
     base::Vector<const uint8_t> wire_bytes = native_module_->wire_bytes();
     FunctionBody body{function->sig, function->code.offset(),
                       wire_bytes.begin() + function->code.offset(),
@@ -280,9 +218,22 @@ class DebugInfoImpl {
 
     // Debug side tables for stepping are generated lazily.
     bool generate_debug_sidetable = for_debugging == kWithBreakpoints;
+    // If lazy validation is on, we might need to lazily validate here.
+    if (V8_UNLIKELY(!env.module->function_was_validated(func_index))) {
+      WasmFeatures unused_detected_features;
+      DecodeResult validation_result = ValidateFunctionBody(
+          env.enabled_features, env.module, &unused_detected_features, body);
+      // Handling illegal modules here is tricky. As lazy validation is off by
+      // default anyway and this is for debugging only, we just crash for now.
+      CHECK_WITH_MSG(validation_result.ok(),
+                     validation_result.error().message().c_str());
+      env.module->set_function_validated(func_index);
+    }
     WasmCompilationResult result = ExecuteLiftoffCompilation(
-        &env, body, func_index, for_debugging,
+        &env, body,
         LiftoffOptions{}
+            .set_func_index(func_index)
+            .set_for_debugging(for_debugging)
             .set_breakpoints(offsets)
             .set_dead_breakpoint(dead_breakpoint)
             .set_debug_sidetable(generate_debug_sidetable ? &debug_sidetable
@@ -656,7 +607,7 @@ class DebugInfoImpl {
       case kS128:
         return WasmValue(Simd128(ReadUnalignedValue<int16>(stack_address)));
       case kRef:
-      case kOptRef:
+      case kRefNull:
       case kRtt: {
         Handle<Object> obj(Object(ReadUnalignedValue<Address>(stack_address)),
                            isolate);
@@ -678,7 +629,7 @@ class DebugInfoImpl {
     // The first return location is after the breakpoint, others are after wasm
     // calls.
     ReturnLocation return_location = kAfterBreakpoint;
-    for (StackTraceFrameIterator it(isolate); !it.done();
+    for (DebuggableStackFrameIterator it(isolate); !it.done();
          it.Advance(), return_location = kAfterWasmCall) {
       // We still need the flooded function for stepping.
       if (it.frame()->id() == stepping_frame) continue;
@@ -697,8 +648,8 @@ class DebugInfoImpl {
     DCHECK_EQ(frame->function_index(), new_code->index());
     DCHECK_EQ(frame->native_module(), new_code->native_module());
     DCHECK(frame->wasm_code()->is_liftoff());
-    Address new_pc =
-        FindNewPC(frame, new_code, frame->byte_offset(), return_location);
+    Address new_pc = FindNewPC(frame, new_code, frame->generated_code_offset(),
+                               return_location);
 #ifdef DEBUG
     int old_position = frame->position();
 #endif
@@ -763,21 +714,6 @@ class DebugInfoImpl {
   };
   std::vector<CachedDebuggingCode> cached_debugging_code_;
 
-  // Names of exports, lazily derived from the exports table.
-  std::unique_ptr<std::map<ImportExportKey, wasm::WireBytesRef>> export_names_;
-
-  // Names of imports, lazily derived from the imports table.
-  std::unique_ptr<std::map<ImportExportKey,
-                           std::pair<wasm::WireBytesRef, wasm::WireBytesRef>>>
-      import_names_;
-
-  // Names of types, lazily decoded from the wire bytes.
-  std::unique_ptr<NameMap> type_names_;
-  // Names of locals, lazily decoded from the wire bytes.
-  std::unique_ptr<IndirectNameMap> local_names_;
-  // Names of struct fields, lazily decoded from the wire bytes.
-  std::unique_ptr<IndirectNameMap> field_names_;
-
   // Isolate-specific data.
   std::unordered_map<Isolate*, PerIsolateDebugData> per_isolate_data_;
 };
@@ -803,28 +739,6 @@ WasmValue DebugInfo::GetStackValue(int index, Address pc, Address fp,
 
 const wasm::WasmFunction& DebugInfo::GetFunctionAtAddress(Address pc) {
   return impl_->GetFunctionAtAddress(pc);
-}
-
-WireBytesRef DebugInfo::GetExportName(ImportExportKindCode code,
-                                      uint32_t index) {
-  return impl_->GetExportName(code, index);
-}
-
-std::pair<WireBytesRef, WireBytesRef> DebugInfo::GetImportName(
-    ImportExportKindCode code, uint32_t index) {
-  return impl_->GetImportName(code, index);
-}
-
-WireBytesRef DebugInfo::GetTypeName(int type_index) {
-  return impl_->GetTypeName(type_index);
-}
-
-WireBytesRef DebugInfo::GetLocalName(int func_index, int local_index) {
-  return impl_->GetLocalName(func_index, local_index);
-}
-
-WireBytesRef DebugInfo::GetFieldName(int struct_index, int field_index) {
-  return impl_->GetFieldName(struct_index, field_index);
 }
 
 void DebugInfo::SetBreakpoint(int func_index, int offset,
@@ -880,13 +794,13 @@ int FindNextBreakablePosition(wasm::NativeModule* native_module, int func_index,
                               int offset_in_func) {
   AccountingAllocator alloc;
   Zone tmp(&alloc, ZONE_NAME);
-  wasm::BodyLocalDecls locals(&tmp);
+  wasm::BodyLocalDecls locals;
   const byte* module_start = native_module->wire_bytes().begin();
   const wasm::WasmFunction& func =
       native_module->module()->functions[func_index];
   wasm::BytecodeIterator iterator(module_start + func.code.offset(),
                                   module_start + func.code.end_offset(),
-                                  &locals);
+                                  &locals, &tmp);
   DCHECK_LT(0, locals.encoded_size);
   if (offset_in_func < 0) return 0;
   for (; iterator.has_next(); iterator.next()) {
@@ -1196,10 +1110,10 @@ bool WasmScript::GetPossibleBreakpoints(
     const wasm::WasmFunction& func = functions[func_idx];
     if (func.code.length() == 0) continue;
 
-    wasm::BodyLocalDecls locals(&tmp);
+    wasm::BodyLocalDecls locals;
     wasm::BytecodeIterator iterator(module_start + func.code.offset(),
                                     module_start + func.code.end_offset(),
-                                    &locals);
+                                    &locals, &tmp);
     DCHECK_LT(0u, locals.encoded_size);
     for (; iterator.has_next(); iterator.next()) {
       uint32_t total_offset = func.code.offset() + iterator.pc_offset();

@@ -65,6 +65,18 @@ JSRegExp::Flags JSRegExp::flags() const {
   return Flags(smi.value());
 }
 
+// static
+const char* JSRegExp::FlagsToString(Flags flags, FlagsBuffer* out_buffer) {
+  int cursor = 0;
+  FlagsBuffer& buffer = *out_buffer;
+#define V(Lower, Camel, LowerCamel, Char, Bit) \
+  if (flags & JSRegExp::k##Camel) buffer[cursor++] = Char;
+  REGEXP_FLAG_LIST(V)
+#undef V
+  buffer[cursor++] = '\0';
+  return buffer.begin();
+}
+
 String JSRegExp::EscapedPattern() {
   DCHECK(this->source().IsString());
   return String::cast(source());
@@ -101,9 +113,9 @@ bool JSRegExp::HasCompiledCode() const {
   if (type_tag() != IRREGEXP) return false;
   Smi uninitialized = Smi::FromInt(kUninitializedValue);
 #ifdef DEBUG
-  DCHECK(DataAt(kIrregexpLatin1CodeIndex).IsCodeT() ||
+  DCHECK(DataAt(kIrregexpLatin1CodeIndex).IsCode() ||
          DataAt(kIrregexpLatin1CodeIndex) == uninitialized);
-  DCHECK(DataAt(kIrregexpUC16CodeIndex).IsCodeT() ||
+  DCHECK(DataAt(kIrregexpUC16CodeIndex).IsCode() ||
          DataAt(kIrregexpUC16CodeIndex) == uninitialized);
   DCHECK(DataAt(kIrregexpLatin1BytecodeIndex).IsByteArray() ||
          DataAt(kIrregexpLatin1BytecodeIndex) == uninitialized);

@@ -51,9 +51,14 @@ class TracedReference;
 class TracedReferenceBase;
 class Utils;
 
+namespace debug {
+class ConsoleCallArguments;
+}
+
 namespace internal {
 template <typename T>
 class CustomArguments;
+class SamplingHeapProfiler;
 }  // namespace internal
 
 namespace api_internal {
@@ -87,18 +92,21 @@ class V8_EXPORT V8_NODISCARD HandleScope {
   static int NumberOfHandles(Isolate* isolate);
 
   V8_INLINE Isolate* GetIsolate() const {
-    return reinterpret_cast<Isolate*>(isolate_);
+    return reinterpret_cast<Isolate*>(i_isolate_);
   }
 
   HandleScope(const HandleScope&) = delete;
   void operator=(const HandleScope&) = delete;
+
+  static internal::Address* CreateHandleForCurrentIsolate(
+      internal::Address value);
 
  protected:
   V8_INLINE HandleScope() = default;
 
   void Initialize(Isolate* isolate);
 
-  static internal::Address* CreateHandle(internal::Isolate* isolate,
+  static internal::Address* CreateHandle(internal::Isolate* i_isolate,
                                          internal::Address value);
 
  private:
@@ -109,7 +117,7 @@ class V8_EXPORT V8_NODISCARD HandleScope {
   void operator delete(void*, size_t);
   void operator delete[](void*, size_t);
 
-  internal::Isolate* isolate_;
+  internal::Isolate* i_isolate_;
   internal::Address* prev_next_;
   internal::Address* prev_limit_;
 
@@ -122,6 +130,33 @@ class V8_EXPORT V8_NODISCARD HandleScope {
   friend class Object;
   friend class Context;
 };
+
+namespace internal {
+
+/**
+ * Helper functions about handles.
+ */
+class HandleHelper final {
+ public:
+  /**
+   * Checks whether two handles are equal.
+   * They are equal iff they are both empty or they are both non-empty and the
+   * objects to which they refer are physically equal.
+   *
+   * If both handles refer to JS objects, this is the same as strict equality.
+   * For primitives, such as numbers or strings, a `false` return value does not
+   * indicate that the values aren't equal in the JavaScript sense.
+   * Use `Value::StrictEquals()` to check primitives for equality.
+   */
+  template <typename T1, typename T2>
+  V8_INLINE static bool EqualHandles(const T1& lhs, const T2& rhs) {
+    if (lhs.IsEmpty()) return rhs.IsEmpty();
+    if (rhs.IsEmpty()) return false;
+    return lhs.address() == rhs.address();
+  }
+};
+
+}  // namespace internal
 
 /**
  * An object reference managed by the v8 garbage collector.
@@ -155,7 +190,8 @@ class V8_EXPORT V8_NODISCARD HandleScope {
 template <class T>
 class Local {
  public:
-  V8_INLINE Local() : val_(nullptr) {}
+  V8_INLINE Local() : val_(internal::ValueHelper::EmptyValue<T>()) {}
+
   template <class S>
   V8_INLINE Local(Local<S> that) : val_(reinterpret_cast<T*>(*that)) {
     /**
@@ -195,7 +231,9 @@ class Local {
   /**
    * Returns true if the handle is empty.
    */
-  V8_INLINE bool IsEmpty() const { return val_ == nullptr; }
+  V8_INLINE bool IsEmpty() const {
+    return val_ == internal::ValueHelper::EmptyValue<T>();
+  }
 
   /**
    * Sets the handle to be empty. IsEmpty() will then return true.
@@ -212,19 +250,20 @@ class Local {
   V8_INLINE T* operator*() const { return val_; }
 
   /**
-   * Checks whether two handles are the same.
-   * Returns true if both are empty, or if the objects to which they refer
-   * are identical.
+   * Checks whether two handles are equal or different.
+   * They are equal iff they are both empty or they are both non-empty and the
+   * objects to which they refer are physically equal.
    *
-   * If both handles refer to JS objects, this is the same as strict equality.
-   * For primitives, such as numbers or strings, a `false` return value does not
-   * indicate that the values aren't equal in the JavaScript sense.
-   * Use `Value::StrictEquals()` to check primitives for equality.
+   * If both handles refer to JS objects, this is the same as strict
+   * non-equality. For primitives, such as numbers or strings, a `true` return
+   * value does not indicate that the values aren't equal in the JavaScript
+   * sense. Use `Value::StrictEquals()` to check primitives for equality.
    */
+
   template <class S>
   V8_INLINE bool operator==(const Local<S>& that) const {
     GraalHandleContent* a = reinterpret_cast<GraalHandleContent*>(this->val_);
-    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(that.val_);
+    GraalHandleContent* b = reinterpret_cast<GraalHandleContent*>(*that);
     if (a == nullptr) return b == nullptr;
     if (b == nullptr) return false;
     return GraalHandleContent::SameData(a, b);
@@ -239,16 +278,6 @@ class Local {
     return GraalHandleContent::SameData(a, b);
   }
 
-  /**
-   * Checks whether two handles are different.
-   * Returns true if only one of the handles is empty, or if
-   * the objects to which they refer are different.
-   *
-   * If both handles refer to JS objects, this is the same as strict
-   * non-equality. For primitives, such as numbers or strings, a `true` return
-   * value does not indicate that the values aren't equal in the JavaScript
-   * sense. Use `Value::StrictEquals()` to check primitives for equality.
-   */
   template <class S>
   V8_INLINE bool operator!=(const Local<S>& that) const {
     return !operator==(that);
@@ -309,12 +338,6 @@ class Local {
   template <class F>
   friend class Eternal;
   template <class F>
-  friend class PersistentBase;
-  template <class F, class M>
-  friend class Persistent;
-  template <class F>
-  friend class Local;
-  template <class F>
   friend class MaybeLocal;
   template <class F>
   friend class FunctionCallbackInfo;
@@ -341,10 +364,9 @@ class Local {
   friend class ReturnValue;
   template <class F>
   friend class Traced;
-  template <class F>
-  friend class BasicTracedReference;
-  template <class F>
-  friend class TracedReference;
+  friend class internal::SamplingHeapProfiler;
+  friend class internal::HandleHelper;
+  friend class debug::ConsoleCallArguments;
 
 public:
   V8_INLINE Local(T* that)
@@ -354,13 +376,23 @@ public:
     }
   }
 private:
+
+  V8_INLINE internal::Address address() const {
+    return internal::ValueHelper::ValueAsAddress(val_);
+  }
+
+  V8_INLINE static Local<T> FromSlot(internal::Address* slot) {
+    return Local<T>(internal::ValueHelper::SlotAsValue<T>(slot));
+  }
+
   V8_INLINE static Local<T> New(Isolate* isolate, T* that) {
     if (that == nullptr) return Local<T>();
     T* that_ptr = that;
     internal::Address p = reinterpret_cast<internal::Address>(that_ptr);
     return Local<T>(reinterpret_cast<T*>(HandleScope::CreateHandle(
-        reinterpret_cast<internal::Isolate*>(isolate), p)));
+       reinterpret_cast<internal::Isolate*>(isolate), p)));
   }
+
   T* val_;
 };
 
@@ -383,7 +415,7 @@ using Handle = Local<T>;
 template <class T>
 class MaybeLocal {
  public:
-  V8_INLINE MaybeLocal() : val_(nullptr) {}
+  V8_INLINE MaybeLocal() : val_(internal::ValueHelper::EmptyValue<T>()) {}
   template <class S>
   V8_INLINE MaybeLocal(Local<S> that) : val_(reinterpret_cast<T*>(*that)) {
     static_assert(std::is_base_of<T, S>::value, "type check");
@@ -415,11 +447,13 @@ class MaybeLocal {
     return *this;
   }
 
-  V8_INLINE bool IsEmpty() const { return val_ == nullptr; }
+  V8_INLINE bool IsEmpty() const {
+    return val_ == internal::ValueHelper::EmptyValue<T>();
+  }
 
   /**
    * Converts this MaybeLocal<> to a Local<>. If this MaybeLocal<> is empty,
-   * |false| is returned and |out| is left untouched.
+   * |false| is returned and |out| is assigned with nullptr.
    */
   template <class S>
   V8_WARN_UNUSED_RESULT V8_INLINE bool ToLocal(Local<S>* out) const {
@@ -438,7 +472,7 @@ class MaybeLocal {
    * V8 will crash the process.
    */
   V8_INLINE Local<T> ToLocalChecked() {
-    if (V8_UNLIKELY(val_ == nullptr)) api_internal::ToLocalEmpty();
+    if (V8_UNLIKELY(IsEmpty())) api_internal::ToLocalEmpty();
     return Local<T>(val_);
   }
 
@@ -470,9 +504,13 @@ class V8_EXPORT V8_NODISCARD EscapableHandleScope : public HandleScope {
    */
   template <class T>
   V8_INLINE Local<T> Escape(Local<T> value) {
+#ifdef V8_ENABLE_CONSERVATIVE_STACK_SCANNING
+    return value;
+#else
     internal::Address* slot =
         Escape(reinterpret_cast<internal::Address*>(*value));
     return Local<T>(reinterpret_cast<T*>(slot));
+#endif
   }
 
   template <class T>
@@ -516,7 +554,7 @@ class V8_EXPORT V8_NODISCARD SealHandleScope {
   void operator delete(void*, size_t);
   void operator delete[](void*, size_t);
 
-  internal::Isolate* const isolate_;
+  internal::Isolate* const i_isolate_;
   internal::Address* prev_limit_;
   int prev_sealed_level_;
 };

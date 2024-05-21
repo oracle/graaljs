@@ -154,6 +154,58 @@ describe('Loader hooks', { concurrency: true }, () => {
     });
   });
 
+  it('should work without worker permission', async () => {
+    const { code, signal, stdout, stderr } = await spawnPromisified(execPath, [
+      '--no-warnings',
+      '--experimental-permission',
+      '--allow-fs-read',
+      '*',
+      '--experimental-loader',
+      fixtures.fileURL('empty.js'),
+      fixtures.path('es-modules/esm-top-level-await.mjs'),
+    ]);
+
+    assert.strictEqual(stderr, '');
+    assert.match(stdout, /^1\r?\n2\r?\n$/);
+    assert.strictEqual(code, 0);
+    assert.strictEqual(signal, null);
+  });
+
+  it('should allow loader hooks to spawn workers when allowed by the CLI flags', async () => {
+    const { code, signal, stdout, stderr } = await spawnPromisified(execPath, [
+      '--no-warnings',
+      '--experimental-permission',
+      '--allow-worker',
+      '--allow-fs-read',
+      '*',
+      '--experimental-loader',
+      `data:text/javascript,import{Worker}from"worker_threads";new Worker(${encodeURIComponent(JSON.stringify(fixtures.path('empty.js')))}).unref()`,
+      fixtures.path('es-modules/esm-top-level-await.mjs'),
+    ]);
+
+    assert.strictEqual(stderr, '');
+    assert.match(stdout, /^1\r?\n2\r?\n$/);
+    assert.strictEqual(code, 0);
+    assert.strictEqual(signal, null);
+  });
+
+  it('should not allow loader hooks to spawn workers if restricted by the CLI flags', async () => {
+    const { code, signal, stdout, stderr } = await spawnPromisified(execPath, [
+      '--no-warnings',
+      '--experimental-permission',
+      '--allow-fs-read',
+      '*',
+      '--experimental-loader',
+      `data:text/javascript,import{Worker}from"worker_threads";new Worker(${encodeURIComponent(JSON.stringify(fixtures.path('empty.js')))}).unref()`,
+      fixtures.path('es-modules/esm-top-level-await.mjs'),
+    ]);
+
+    assert.match(stderr, /code: 'ERR_ACCESS_DENIED'/);
+    assert.strictEqual(stdout, '');
+    assert.strictEqual(code, 1);
+    assert.strictEqual(signal, null);
+  });
+
   it('should not leak internals or expose import.meta.resolve', async () => {
     const { code, signal, stdout, stderr } = await spawnPromisified(execPath, [
       '--no-warnings',
@@ -641,5 +693,115 @@ describe('Loader hooks', { concurrency: true }, () => {
       assert.strictEqual(code, 42);
       assert.strictEqual(signal, null);
     });
+  });
+
+  it('should use CJS loader to respond to require.resolve calls by default', async () => {
+    const { code, signal, stdout, stderr } = await spawnPromisified(execPath, [
+      '--no-warnings',
+      '--experimental-loader',
+      fixtures.fileURL('es-module-loaders/loader-resolve-passthru.mjs'),
+      fixtures.path('require-resolve.js'),
+    ]);
+
+    assert.strictEqual(stderr, '');
+    assert.strictEqual(stdout, 'resolve passthru\n');
+    assert.strictEqual(code, 0);
+    assert.strictEqual(signal, null);
+  });
+
+  it('should use ESM loader to respond to require.resolve calls when opting in', async () => {
+    const readFile = async () => {};
+    const fileURLToPath = () => {};
+    const { code, signal, stdout, stderr } = await spawnPromisified(execPath, [
+      '--no-warnings',
+      '--experimental-loader',
+      `data:text/javascript,import{readFile}from"node:fs/promises";import{fileURLToPath}from"node:url";export ${
+        async function load(u, c, n) {
+          const r = await n(u, c);
+          if (u.endsWith('/common/index.js')) {
+            r.source = '"use strict";module.exports=require("node:module").createRequire(' +
+                     `${JSON.stringify(u)})(${JSON.stringify(fileURLToPath(u))});\n`;
+          } else if (c.format === 'commonjs') {
+            r.source = await readFile(new URL(u));
+          }
+          return r;
+        }}`,
+      '--experimental-loader',
+      fixtures.fileURL('es-module-loaders/loader-resolve-passthru.mjs'),
+      fixtures.path('require-resolve.js'),
+    ]);
+
+    assert.strictEqual(stderr, '');
+    assert.strictEqual(stdout, 'resolve passthru\n'.repeat(10));
+    assert.strictEqual(code, 0);
+    assert.strictEqual(signal, null);
+  });
+
+  it('should support source maps in commonjs translator', async () => {
+    const readFile = async () => {};
+    const hook = `
+    import { readFile } from 'node:fs/promises';
+    export ${
+  async function load(url, context, nextLoad) {
+    const resolved = await nextLoad(url, context);
+    if (context.format === 'commonjs') {
+      resolved.source = await readFile(new URL(url));
+    }
+    return resolved;
+  }
+}`;
+
+    const { code, signal, stdout, stderr } = await spawnPromisified(execPath, [
+      '--no-warnings',
+      '--enable-source-maps',
+      '--import',
+      `data:text/javascript,${encodeURIComponent(`
+      import{ register } from "node:module";
+      register(${
+  JSON.stringify('data:text/javascript,' + encodeURIComponent(hook))
+});
+      `)}`,
+      fixtures.path('source-map/throw-on-require.js'),
+    ]);
+
+    assert.strictEqual(stdout, '');
+    assert.match(stderr, /throw-on-require\.ts:9:9/);
+    assert.strictEqual(code, 1);
+    assert.strictEqual(signal, null);
+  });
+
+  it('should handle mixed of opt-in modules and non-opt-in ones', async () => {
+    const { code, signal, stdout, stderr } = await spawnPromisified(execPath, [
+      '--no-warnings',
+      '--experimental-loader',
+      `data:text/javascript,const fixtures=${JSON.stringify(fixtures.path('empty.js'))};export ${
+        encodeURIComponent(function resolve(s, c, n) {
+          if (s.endsWith('entry-point')) {
+            return {
+              shortCircuit: true,
+              url: 'file:///c:/virtual-entry-point',
+              format: 'commonjs',
+            };
+          }
+          return n(s, c);
+        })
+      }export ${
+        encodeURIComponent(async function load(u, c, n) {
+          if (u === 'file:///c:/virtual-entry-point') {
+            return {
+              shortCircuit: true,
+              source: `"use strict";require(${JSON.stringify(fixtures)});console.log("Hello");`,
+              format: 'commonjs',
+            };
+          }
+          return n(u, c);
+        })}`,
+      'entry-point',
+    ]);
+
+    assert.strictEqual(stderr, '');
+    assert.strictEqual(stdout, 'Hello\n');
+    assert.strictEqual(code, 0);
+    assert.strictEqual(signal, null);
   });
 });

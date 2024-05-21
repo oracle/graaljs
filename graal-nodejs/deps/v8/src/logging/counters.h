@@ -155,7 +155,7 @@ class StatsCounter {
 class Histogram {
  public:
   // Add a single sample to this histogram.
-  void AddSample(int sample);
+  V8_EXPORT_PRIVATE void AddSample(int sample);
 
   // Returns true if this histogram is enabled.
   bool Enabled() { return histogram_ != nullptr; }
@@ -219,8 +219,7 @@ class Histogram {
 
 enum class TimedHistogramResolution { MILLISECOND, MICROSECOND };
 
-// A thread safe histogram timer. It also allows distributions of
-// nested timed results.
+// A thread safe histogram timer.
 class TimedHistogram : public Histogram {
  public:
   // Records a TimeDelta::Max() result. Useful to record percentage of tasks
@@ -262,7 +261,14 @@ class TimedHistogram : public Histogram {
 class NestedTimedHistogramScope;
 class PauseNestedTimedHistogramScope;
 
-// A NestedTimedHistogram allows distributions of nested timed results.
+// For use with the NestedTimedHistogramScope. 'Nested' here means that scopes
+// may have nested lifetimes while still correctly accounting for time, e.g.:
+//
+// void f() {
+//   NestedTimedHistogramScope timer(...);
+//   ...
+//   f();  // Recursive call.
+// }
 class NestedTimedHistogram : public TimedHistogram {
  public:
   // Note: public for testing purposes only.
@@ -367,7 +373,7 @@ class V8_NODISCARD AggregatedHistogramTimerScope {
 // AggretatedMemoryHistogram collects (time, value) sample pairs and turns
 // them into time-uniform samples for the backing historgram, such that the
 // backing histogram receives one sample every T ms, where the T is controlled
-// by the FLAG_histogram_interval.
+// by the v8_flags.histogram_interval.
 //
 // More formally: let F be a real-valued function that maps time to sample
 // values. We define F as a linear interpolation between adjacent samples. For
@@ -388,7 +394,7 @@ class AggregatedMemoryHistogram {
   // 1) For we processed samples that came in before start_ms_ and sent the
   // corresponding aggregated samples to backing histogram.
   // 2) (last_ms_, last_value_) is the last received sample.
-  // 3) last_ms_ < start_ms_ + FLAG_histogram_interval.
+  // 3) last_ms_ < start_ms_ + v8_flags.histogram_interval.
   // 4) aggregate_value_ is the average of the function that is constructed by
   // linearly interpolating samples received between start_ms_ and last_ms_.
   void AddSample(double current_ms, double current_value);
@@ -429,7 +435,7 @@ void AggregatedMemoryHistogram<Histogram>::AddSample(double current_ms,
       // Two samples have the same time, remember the last one.
       last_value_ = current_value;
     } else {
-      double sample_interval_ms = FLAG_histogram_interval;
+      double sample_interval_ms = v8_flags.histogram_interval;
       double end_ms = start_ms_ + sample_interval_ms;
       if (end_ms <= current_ms + kEpsilon) {
         // Linearly interpolate between the last_ms_ and the current_ms.
@@ -520,10 +526,10 @@ class Counters : public std::enable_shared_from_this<Counters> {
   NESTED_TIMED_HISTOGRAM_LIST(HT)
 #undef HT
 
-#define HT(name, caption, max, res)              \
-  NestedTimedHistogram* name() {                 \
-    name##_.EnsureCreated(FLAG_slow_histograms); \
-    return &name##_;                             \
+#define HT(name, caption, max, res)                  \
+  NestedTimedHistogram* name() {                     \
+    name##_.EnsureCreated(v8_flags.slow_histograms); \
+    return &name##_;                                 \
   }
   NESTED_TIMED_HISTOGRAM_LIST_SLOW(HT)
 #undef HT
@@ -562,8 +568,7 @@ class Counters : public std::enable_shared_from_this<Counters> {
 
 #define SC(name, caption) \
   StatsCounter* name() { return &name##_; }
-  STATS_COUNTER_LIST_1(SC)
-  STATS_COUNTER_LIST_2(SC)
+  STATS_COUNTER_LIST(SC)
   STATS_COUNTER_NATIVE_CODE_LIST(SC)
 #undef SC
 
@@ -584,8 +589,7 @@ class Counters : public std::enable_shared_from_this<Counters> {
     HISTOGRAM_LEGACY_MEMORY_LIST(MEMORY_ID)
 #undef MEMORY_ID
 #define COUNTER_ID(name, caption) k_##name,
-    STATS_COUNTER_LIST_1(COUNTER_ID)
-    STATS_COUNTER_LIST_2(COUNTER_ID)
+    STATS_COUNTER_LIST(COUNTER_ID)
     STATS_COUNTER_NATIVE_CODE_LIST(COUNTER_ID)
 #undef COUNTER_ID
 #define COUNTER_ID(name) kCountOf##name, kSizeOf##name,
@@ -663,8 +667,7 @@ class Counters : public std::enable_shared_from_this<Counters> {
 #undef HM
 
 #define SC(name, caption) StatsCounter name##_;
-  STATS_COUNTER_LIST_1(SC)
-  STATS_COUNTER_LIST_2(SC)
+  STATS_COUNTER_LIST(SC)
   STATS_COUNTER_NATIVE_CODE_LIST(SC)
 #undef SC
 

@@ -8,7 +8,7 @@ if (!common.hasCrypto)
 const assert = require('assert');
 
 const webidl = require('internal/crypto/webidl');
-const { subtle } = require('node:crypto').webcrypto;
+const { subtle } = globalThis.crypto;
 const { generateKeySync } = require('crypto');
 
 const { converters } = webidl;

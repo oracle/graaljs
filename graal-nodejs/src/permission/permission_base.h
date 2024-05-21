@@ -10,6 +10,8 @@
 
 namespace node {
 
+class Environment;
+
 namespace permission {
 
 #define FILESYSTEM_PERMISSIONS(V)                                              \
@@ -22,10 +24,13 @@ namespace permission {
 #define WORKER_THREADS_PERMISSIONS(V)                                          \
   V(WorkerThreads, "worker", PermissionsRoot)
 
+#define INSPECTOR_PERMISSIONS(V) V(Inspector, "inspector", PermissionsRoot)
+
 #define PERMISSIONS(V)                                                         \
   FILESYSTEM_PERMISSIONS(V)                                                    \
   CHILD_PROCESS_PERMISSIONS(V)                                                 \
-  WORKER_THREADS_PERMISSIONS(V)
+  WORKER_THREADS_PERMISSIONS(V)                                                \
+  INSPECTOR_PERMISSIONS(V)
 
 #define V(name, _, __) k##name,
 enum class PermissionScope {
@@ -36,9 +41,11 @@ enum class PermissionScope {
 
 class PermissionBase {
  public:
-  virtual void Apply(const std::string& allow, PermissionScope scope) = 0;
+  virtual void Apply(Environment* env,
+                     const std::vector<std::string>& allow,
+                     PermissionScope scope) = 0;
   virtual bool is_granted(PermissionScope perm,
-                          const std::string_view& param = "") = 0;
+                          const std::string_view& param = "") const = 0;
 };
 
 }  // namespace permission

@@ -32,19 +32,19 @@ namespace Debugger {
 namespace API {
 class SearchMatch;
 }
-}
+}  // namespace Debugger
 namespace Runtime {
 namespace API {
 class RemoteObject;
 class StackTrace;
 class StackTraceId;
-}
-}
+}  // namespace API
+}  // namespace Runtime
 namespace Schema {
 namespace API {
 class Domain;
 }
-}
+}  // namespace Schema
 }  // namespace protocol
 
 class V8_EXPORT StringView {
@@ -134,6 +134,13 @@ class V8_EXPORT V8DebuggerId {
   int64_t m_second = 0;
 };
 
+struct V8_EXPORT V8StackFrame {
+  StringView sourceURL;
+  StringView functionName;
+  int lineNumber;
+  int columnNumber;
+};
+
 class V8_EXPORT V8StackTrace {
  public:
   virtual StringView firstNonEmptySourceURL() const = 0;
@@ -151,6 +158,8 @@ class V8_EXPORT V8StackTrace {
 
   // Safe to pass between threads, drops async chain.
   virtual std::unique_ptr<V8StackTrace> clone() = 0;
+
+  virtual std::vector<V8StackFrame> frames() const = 0;
 };
 
 class V8_EXPORT V8InspectorSession {
@@ -203,14 +212,17 @@ class V8_EXPORT V8InspectorSession {
                             std::unique_ptr<StringBuffer>* objectGroup) = 0;
   virtual void releaseObjectGroup(StringView) = 0;
   virtual void triggerPreciseCoverageDeltaUpdate(StringView occasion) = 0;
+
+  // Prepare for shutdown (disables debugger pausing, etc.).
+  virtual void stop() = 0;
 };
 
 class V8_EXPORT WebDriverValue {
  public:
-  explicit WebDriverValue(StringView type, v8::MaybeLocal<v8::Value> value = {})
-      : type(type), value(value) {}
-
-  StringView type;
+  explicit WebDriverValue(std::unique_ptr<StringBuffer> type,
+                          v8::MaybeLocal<v8::Value> value = {})
+      : type(std::move(type)), value(value) {}
+  std::unique_ptr<StringBuffer> type;
   v8::MaybeLocal<v8::Value> value;
 };
 
@@ -219,6 +231,9 @@ class V8_EXPORT V8InspectorClient {
   virtual ~V8InspectorClient() = default;
 
   virtual void runMessageLoopOnPause(int contextGroupId) {}
+  virtual void runMessageLoopOnInstrumentationPause(int contextGroupId) {
+    runMessageLoopOnPause(contextGroupId);
+  }
   virtual void quitMessageLoopOnPause() {}
   virtual void runIfWaitingForDebugger(int contextGroupId) {}
 
@@ -361,9 +376,15 @@ class V8_EXPORT V8Inspector {
     virtual void sendNotification(std::unique_ptr<StringBuffer> message) = 0;
     virtual void flushProtocolNotifications() = 0;
   };
-  virtual std::unique_ptr<V8InspectorSession> connect(int contextGroupId,
-                                                      Channel*,
-                                                      StringView state) = 0;
+  enum ClientTrustLevel { kUntrusted, kFullyTrusted };
+  enum SessionPauseState { kWaitingForDebugger, kNotWaitingForDebugger };
+  // TODO(chromium:1352175): remove default value once downstream change lands.
+  virtual std::unique_ptr<V8InspectorSession> connect(
+      int contextGroupId, Channel*, StringView state,
+      ClientTrustLevel client_trust_level,
+      SessionPauseState = kNotWaitingForDebugger) {
+    return nullptr;
+  }
 
   // API methods.
   virtual std::unique_ptr<V8StackTrace> createStackTrace(

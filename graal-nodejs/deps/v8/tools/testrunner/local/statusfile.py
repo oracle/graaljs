@@ -57,14 +57,18 @@ for key in [SKIP, FAIL, PASS, CRASH, HEAVY, SLOW, FAIL_OK, NO_VARIANTS,
 
 # Support arches, modes to be written as keywords instead of strings.
 VARIABLES = {ALWAYS: True}
-for var in ["debug", "release", "big", "little", "android",
-            "arm", "arm64", "ia32", "mips", "mipsel", "mips64", "mips64el",
-            "x64", "ppc", "ppc64", "s390", "s390x", "macos", "windows",
-            "linux", "aix", "r1", "r2", "r3", "r5", "r6", "riscv64", "loong64"]:
+for var in [
+    "debug", "release", "big", "little", "android", "arm", "arm64", "ia32",
+    "mips64", "mips64el", "x64", "ppc", "ppc64", "s390", "s390x", "macos",
+    "windows", "linux", "aix", "r1", "r2", "r3", "r5", "r6", "riscv32",
+    "riscv64", "loong64"
+]:
+  assert var not in VARIABLES
   VARIABLES[var] = var
 
 # Allow using variants as keywords.
 for var in ALL_VARIANTS:
+  assert var not in VARIABLES
   VARIABLES[var] = var
 
 class StatusFile(object):
@@ -242,7 +246,16 @@ def ReadStatusFile(content, variables):
   prefix_rules = {variant: {} for variant in ALL_VARIANTS}
   prefix_rules[""] = {}
 
-  variables.update(VARIABLES)
+  # This method can be called with the same `variables` object multiple times.
+  # Ensure we only update `variables` (and check it for consistency) once.
+  if ALWAYS not in variables:
+    # Ensure we don't silently overwrite any build variables with our set of
+    # default keywords in VARIABLES.
+    for var in VARIABLES:
+      assert var not in variables, (
+          "build_config variable '%s' conflicts with VARIABLES" % var)
+    variables.update(VARIABLES)
+
   for conditional_section in ReadContent(content):
     assert type(conditional_section) == list
     assert len(conditional_section) == 2

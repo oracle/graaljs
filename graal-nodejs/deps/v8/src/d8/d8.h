@@ -17,13 +17,12 @@
 #include "include/v8-array-buffer.h"
 #include "include/v8-isolate.h"
 #include "include/v8-script.h"
+#include "include/v8-value-serializer.h"
 #include "src/base/once.h"
 #include "src/base/platform/time.h"
 #include "src/base/platform/wrappers.h"
 #include "src/d8/async-hooks-wrapper.h"
-#include "src/strings/string-hasher.h"
-#include "src/utils/allocation.h"
-#include "src/utils/utils.h"
+#include "src/heap/parked-scope.h"
 
 namespace v8 {
 
@@ -48,7 +47,7 @@ class Counter {
   void Bind(const char* name, bool histogram);
   // TODO(12482): Return pointer to an atomic.
   int* ptr() {
-    STATIC_ASSERT(sizeof(int) == sizeof(count_));
+    static_assert(sizeof(int) == sizeof(count_));
     return reinterpret_cast<int*>(&count_);
   }
   int count() const { return count_.load(std::memory_order_relaxed); }
@@ -107,8 +106,8 @@ class SourceGroup {
   bool Execute(Isolate* isolate);
 
   void StartExecuteInThread();
-  void WaitForThread();
-  void JoinThread();
+  void WaitForThread(const i::ParkedScope& parked);
+  void JoinThread(const i::ParkedScope& parked);
 
  private:
   class IsolateThread : public base::Thread {
@@ -123,8 +122,8 @@ class SourceGroup {
 
   void ExecuteInThread();
 
-  base::Semaphore next_semaphore_;
-  base::Semaphore done_semaphore_;
+  i::ParkingSemaphore next_semaphore_;
+  i::ParkingSemaphore done_semaphore_;
   base::Thread* thread_;
 
   void ExitShell(int exit_code);
@@ -151,11 +150,9 @@ class SerializationData {
   const std::vector<CompiledWasmModule>& compiled_wasm_modules() {
     return compiled_wasm_modules_;
   }
-  const std::vector<v8::Global<v8::Value>>& shared_values() {
-    return shared_values_;
+  const base::Optional<v8::SharedValueConveyor>& shared_value_conveyor() {
+    return shared_value_conveyor_;
   }
-
-  void ClearSharedValuesUnderLockIfNeeded();
 
  private:
   struct DataDeleter {
@@ -167,7 +164,7 @@ class SerializationData {
   std::vector<std::shared_ptr<v8::BackingStore>> backing_stores_;
   std::vector<std::shared_ptr<v8::BackingStore>> sab_backing_stores_;
   std::vector<CompiledWasmModule> compiled_wasm_modules_;
-  std::vector<v8::Global<v8::Value>> shared_values_;
+  base::Optional<v8::SharedValueConveyor> shared_value_conveyor_;
 
  private:
   friend class Serializer;
@@ -199,17 +196,18 @@ class Worker : public std::enable_shared_from_this<Worker> {
   // If there are no messages in the queue and the worker is no longer running,
   // return nullptr.
   // This function should only be called by the thread that created the Worker.
-  std::unique_ptr<SerializationData> GetMessage();
+  std::unique_ptr<SerializationData> GetMessage(Isolate* requester);
   // Terminate the worker's event loop. Messages from the worker that have been
   // queued can still be read via GetMessage().
   // This function can be called by any thread.
   void Terminate();
   // Terminate and join the thread.
   // This function can be called by any thread.
-  void TerminateAndWaitForThread();
+  void TerminateAndWaitForThread(const i::ParkedScope& parked);
 
   // Start running the given worker in another thread.
-  static bool StartWorkerThread(std::shared_ptr<Worker> worker);
+  static bool StartWorkerThread(Isolate* requester,
+                                std::shared_ptr<Worker> worker);
 
  private:
   friend class ProcessMessageTask;
@@ -242,14 +240,14 @@ class Worker : public std::enable_shared_from_this<Worker> {
   void ExecuteInThread();
   static void PostMessageOut(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  base::Semaphore out_semaphore_{0};
+  i::ParkingSemaphore out_semaphore_{0};
   SerializationDataQueue out_queue_;
   base::Thread* thread_ = nullptr;
   char* script_;
   std::atomic<State> state_;
   bool is_joined_ = false;
   // For signalling that the worker has started.
-  base::Semaphore started_semaphore_{0};
+  i::ParkingSemaphore started_semaphore_{0};
 
   // For posting tasks to the worker
   std::shared_ptr<TaskRunner> task_runner_;
@@ -321,8 +319,8 @@ class PerIsolateData {
   Local<FunctionTemplate> GetTestApiObjectCtor() const;
   void SetTestApiObjectCtor(Local<FunctionTemplate> ctor);
 
-  Local<FunctionTemplate> GetSnapshotObjectCtor() const;
-  void SetSnapshotObjectCtor(Local<FunctionTemplate> ctor);
+  Local<FunctionTemplate> GetDomNodeCtor() const;
+  void SetDomNodeCtor(Local<FunctionTemplate> ctor);
 
  private:
   friend class Shell;
@@ -343,7 +341,7 @@ class PerIsolateData {
   std::unordered_set<DynamicImportData*> import_data_;
 #endif
   Global<FunctionTemplate> test_api_object_ctor_;
-  Global<FunctionTemplate> snapshot_object_ctor_;
+  Global<FunctionTemplate> dom_node_ctor_;
 
   int RealmIndexOrThrow(const v8::FunctionCallbackInfo<v8::Value>& args,
                         int arg_offset);
@@ -403,7 +401,7 @@ class ShellOptions {
   DisallowReassignment<bool> fuzzilli_coverage_statistics = {
       "fuzzilli-coverage-statistics", false};
   DisallowReassignment<bool> fuzzilli_enable_builtins_coverage = {
-      "fuzzilli-enable-builtins-coverage", true};
+      "fuzzilli-enable-builtins-coverage", false};
   DisallowReassignment<bool> send_idle_notification = {"send-idle-notification",
                                                        false};
   DisallowReassignment<bool> invoke_weak_callbacks = {"invoke-weak-callbacks",
@@ -412,7 +410,6 @@ class ShellOptions {
   DisallowReassignment<bool> wait_for_background_tasks = {
       "wait-for-background-tasks", true};
   DisallowReassignment<bool> simulate_errors = {"simulate-errors", false};
-  DisallowReassignment<bool> stress_opt = {"stress-opt", false};
   DisallowReassignment<int> stress_runs = {"stress-runs", 1};
   DisallowReassignment<bool> interactive_shell = {"shell", false};
   bool test_shell = false;
@@ -461,13 +458,9 @@ class ShellOptions {
       "fuzzy-module-file-extensions", true};
   DisallowReassignment<bool> enable_system_instrumentation = {
       "enable-system-instrumentation", false};
-  DisallowReassignment<const char*> web_snapshot_config = {
-      "web-snapshot-config", nullptr};
-  DisallowReassignment<const char*> web_snapshot_output = {
-      "web-snapshot-output", nullptr};
-  DisallowReassignment<bool> d8_web_snapshot_api = {
-      "experimental-d8-web-snapshot-api", false};
-  // Applies to web snapshot and JSON deserialization.
+  DisallowReassignment<bool> enable_etw_stack_walking = {
+      "enable-etw-stack-walking", false};
+  // Applies to JSON deserialization.
   DisallowReassignment<bool> stress_deserialize = {"stress-deserialize", false};
   DisallowReassignment<bool> compile_only = {"compile-only", false};
   DisallowReassignment<int> repeat_compile = {"repeat-compile", 1};
@@ -475,6 +468,16 @@ class ShellOptions {
   DisallowReassignment<bool> wasm_trap_handler = {"wasm-trap-handler", true};
 #endif  // V8_ENABLE_WEBASSEMBLY
   DisallowReassignment<bool> expose_fast_api = {"expose-fast-api", false};
+#if V8_ENABLE_SANDBOX
+  DisallowReassignment<bool> enable_sandbox_crash_filter = {
+      "enable-sandbox-crash-filter", false};
+#endif  // V8_ENABLE_SANDBOX
+  DisallowReassignment<bool> throw_on_failed_access_check = {
+      "throw-on-failed-access-check", false};
+  DisallowReassignment<bool> noop_on_failed_access_check = {
+      "noop-on-failed-access-check", false};
+  DisallowReassignment<size_t> max_serializer_memory = {"max-serializer-memory",
+                                                        1 * i::MB};
 };
 
 class Shell : public i::AllStatic {
@@ -495,7 +498,6 @@ class Shell : public i::AllStatic {
                             ReportExceptions report_exceptions,
                             ProcessMessageQueue process_message_queue);
   static bool ExecuteModule(Isolate* isolate, const char* file_name);
-  static bool ExecuteWebSnapshot(Isolate* isolate, const char* file_name);
   static bool LoadJSON(Isolate* isolate, const char* file_name);
   static void ReportException(Isolate* isolate, Local<Message> message,
                               Local<Value> exception);
@@ -504,7 +506,7 @@ class Shell : public i::AllStatic {
                                      bool should_throw = true);
   static Local<String> WasmLoadSourceMapCallback(Isolate* isolate,
                                                  const char* name);
-  static Local<Context> CreateEvaluationContext(Isolate* isolate);
+  static MaybeLocal<Context> CreateEvaluationContext(Isolate* isolate);
   static int RunMain(Isolate* isolate, bool last_run);
   static int Main(int argc, char* argv[]);
   static void Exit(int exit_code);
@@ -528,7 +530,14 @@ class Shell : public i::AllStatic {
   static void AddHistogramSample(void* histogram, int sample);
   static void MapCounters(v8::Isolate* isolate, const char* name);
 
+  static double GetTimestamp();
+  static uint64_t GetTracingTimestampFromPerformanceTimestamp(
+      double performance_timestamp);
+
   static void PerformanceNow(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void PerformanceMark(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void PerformanceMeasure(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
   static void PerformanceMeasureMemory(
       const v8::FunctionCallbackInfo<v8::Value>& args);
 
@@ -548,10 +557,6 @@ class Shell : public i::AllStatic {
                              const PropertyCallbackInfo<Value>& info);
   static void RealmSharedSet(Local<String> property, Local<Value> value,
                              const PropertyCallbackInfo<void>& info);
-  static void RealmTakeWebSnapshot(
-      const v8::FunctionCallbackInfo<v8::Value>& args);
-  static void RealmUseWebSnapshot(
-      const v8::FunctionCallbackInfo<v8::Value>& args);
 
   static void LogGetAndStop(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void TestVerifySourcePositions(
@@ -572,6 +577,23 @@ class Shell : public i::AllStatic {
   static void EnableDebugger(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void DisableDebugger(const v8::FunctionCallbackInfo<v8::Value>& args);
 
+  static void SerializerSerialize(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void SerializerDeserialize(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  static void ProfilerSetOnProfileEndListener(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void ProfilerTriggerSample(
+      const v8::FunctionCallbackInfo<v8::Value>& args);
+
+  static bool HasOnProfileEndListener(Isolate* isolate);
+
+  static void TriggerOnProfileEndListener(Isolate* isolate,
+                                          std::string profile);
+
+  static void ResetOnProfileEndListener(Isolate* isolate);
+
   static void Print(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void PrintErr(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void WriteStdout(const v8::FunctionCallbackInfo<v8::Value>& args);
@@ -579,7 +601,9 @@ class Shell : public i::AllStatic {
   static void NotifyDone(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void QuitOnce(v8::FunctionCallbackInfo<v8::Value>* args);
   static void Quit(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void Terminate(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void Version(const v8::FunctionCallbackInfo<v8::Value>& args);
+  static void WriteFile(const v8::FunctionCallbackInfo<v8::Value>& args);
   static void ReadFile(const v8::FunctionCallbackInfo<v8::Value>& args);
   static char* ReadChars(const char* name, int* size_out);
   static MaybeLocal<PrimitiveArray> ReadLines(Isolate* isolate,
@@ -671,7 +695,6 @@ class Shell : public i::AllStatic {
   static const char* kPrompt;
   static ShellOptions options;
   static ArrayBuffer::Allocator* array_buffer_allocator;
-  static Isolate* shared_isolate;
 
   static void SetWaitUntilDone(Isolate* isolate, bool value);
   static void NotifyStartStreamingTask(Isolate* isolate);
@@ -690,7 +713,7 @@ class Shell : public i::AllStatic {
   }
   static bool is_valid_fuzz_script() { return valid_fuzz_script_.load(); }
 
-  static void WaitForRunningWorkers();
+  static void WaitForRunningWorkers(const i::ParkedScope& parked);
   static void AddRunningWorker(std::shared_ptr<Worker> worker);
   static void RemoveRunningWorker(const std::shared_ptr<Worker>& worker);
 
@@ -698,8 +721,6 @@ class Shell : public i::AllStatic {
                          bool isOnMainThread = true);
 
   static void PromiseRejectCallback(v8::PromiseRejectMessage reject_message);
-
-  static Local<FunctionTemplate> CreateSnapshotTemplate(Isolate* isolate);
 
  private:
   static inline int DeserializationRunCount() {
@@ -709,6 +730,11 @@ class Shell : public i::AllStatic {
   static Global<Context> evaluation_context_;
   static base::OnceType quit_once_;
   static Global<Function> stringify_function_;
+
+  static base::Mutex profiler_end_callback_lock_;
+  static std::map<Isolate*, std::pair<Global<Function>, Global<Context>>>
+      profiler_end_callback_;
+
   static const char* stringify_source_;
   static CounterMap* counter_map_;
   static base::SharedMutex counter_mutex_;
@@ -734,11 +760,14 @@ class Shell : public i::AllStatic {
   static Counter* GetCounter(const char* name, bool is_histogram);
   static Local<String> Stringify(Isolate* isolate, Local<Value> value);
   static void RunShell(Isolate* isolate);
+  static bool RunMainIsolate(Isolate* isolate, bool last_run);
   static bool SetOptions(int argc, char* argv[]);
 
   static void NodeTypeCallback(const v8::FunctionCallbackInfo<v8::Value>& args);
 
-  static Local<FunctionTemplate> CreateNodeTemplates(Isolate* isolate);
+  static Local<FunctionTemplate> CreateEventTargetTemplate(Isolate* isolate);
+  static Local<FunctionTemplate> CreateNodeTemplates(
+      Isolate* isolate, Local<FunctionTemplate> event_target);
   static Local<ObjectTemplate> CreateGlobalTemplate(Isolate* isolate);
   static Local<ObjectTemplate> CreateOSTemplate(Isolate* isolate);
   static Local<FunctionTemplate> CreateWorkerTemplate(Isolate* isolate);

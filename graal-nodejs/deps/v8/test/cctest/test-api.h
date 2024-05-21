@@ -5,8 +5,6 @@
 #ifndef V8_TEST_CCTEST_TEST_API_H_
 #define V8_TEST_CCTEST_TEST_API_H_
 
-#include "src/init/v8.h"
-
 #include "src/api/api.h"
 #include "src/execution/isolate.h"
 #include "src/execution/vm-state.h"
@@ -71,6 +69,14 @@ struct ConvertJSValue<uint32_t> {
   static v8::Maybe<uint32_t> Get(v8::Local<v8::Value> value,
                                  v8::Local<v8::Context> context) {
     return value->Uint32Value(context);
+  }
+};
+
+template <>
+struct ConvertJSValue<std::nullptr_t> {
+  static v8::Maybe<std::nullptr_t> Get(v8::Local<v8::Value> value,
+                                       v8::Local<v8::Context> context) {
+    return value->IsNull() ? v8::Just(nullptr) : v8::Nothing<std::nullptr_t>();
   }
 };
 

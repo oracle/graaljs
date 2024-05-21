@@ -81,14 +81,14 @@ void StackGuard::PushInterruptsScope(InterruptsScope* scope) {
   DCHECK_NE(scope->mode_, InterruptsScope::kNoop);
   if (scope->mode_ == InterruptsScope::kPostponeInterrupts) {
     // Intercept already requested interrupts.
-    intptr_t intercepted =
+    uint32_t intercepted =
         thread_local_.interrupt_flags_ & scope->intercept_mask_;
     scope->intercepted_flags_ = intercepted;
     thread_local_.interrupt_flags_ &= ~intercepted;
   } else {
     DCHECK_EQ(scope->mode_, InterruptsScope::kRunInterrupts);
     // Restore postponed interrupts.
-    int restored_flags = 0;
+    uint32_t restored_flags = 0;
     for (InterruptsScope* current = thread_local_.interrupt_scopes_;
          current != nullptr; current = current->prev_) {
       restored_flags |= (current->intercepted_flags_ & scope->intercept_mask_);
@@ -116,7 +116,7 @@ void StackGuard::PopInterruptsScope() {
     DCHECK_EQ(top->mode_, InterruptsScope::kRunInterrupts);
     // Postpone existing interupts if needed.
     if (top->prev_) {
-      for (int interrupt = 1; interrupt < ALL_INTERRUPTS;
+      for (uint32_t interrupt = 1; interrupt < ALL_INTERRUPTS;
            interrupt = interrupt << 1) {
         InterruptFlag flag = static_cast<InterruptFlag>(interrupt);
         if ((thread_local_.interrupt_flags_ & flag) &&
@@ -217,7 +217,7 @@ void StackGuard::FreeThreadResources() {
 
 void StackGuard::ThreadLocal::Initialize(Isolate* isolate,
                                          const ExecutionAccess& lock) {
-  const uintptr_t kLimitSize = FLAG_stack_size * KB;
+  const uintptr_t kLimitSize = v8_flags.stack_size * KB;
   DCHECK_GT(GetCurrentStackPosition(), kLimitSize);
   uintptr_t limit = GetCurrentStackPosition() - kLimitSize;
   real_jslimit_ = SimulatorStack::JsLimitFromCLimit(isolate, limit);
@@ -271,7 +271,7 @@ Object StackGuard::HandleInterrupts() {
   isolate_->heap()->VerifyNewSpaceTop();
 #endif
 
-  if (FLAG_verify_predictable) {
+  if (v8_flags.verify_predictable) {
     // Advance synthetic time by making a time request.
     isolate_->heap()->MonotonicallyIncreasingTimeInMs();
   }
@@ -291,6 +291,11 @@ Object StackGuard::HandleInterrupts() {
   if (TestAndClear(&interrupt_flags, GC_REQUEST)) {
     TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("v8.gc"), "V8.GCHandleGCRequest");
     isolate_->heap()->HandleGCRequest();
+  }
+
+  if (TestAndClear(&interrupt_flags, GLOBAL_SAFEPOINT)) {
+    TRACE_EVENT0(TRACE_DISABLED_BY_DEFAULT("v8.gc"), "V8.GlobalSafepoint");
+    isolate_->main_thread_local_heap()->Safepoint();
   }
 
 #if V8_ENABLE_WEBASSEMBLY

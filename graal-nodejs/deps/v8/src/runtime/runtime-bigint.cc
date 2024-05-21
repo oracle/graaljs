@@ -3,10 +3,8 @@
 // found in the LICENSE file.
 
 #include "src/execution/arguments-inl.h"
-#include "src/logging/counters.h"
 #include "src/objects/bigint.h"
 #include "src/objects/objects-inl.h"
-#include "src/runtime/runtime-utils.h"
 
 namespace v8 {
 namespace internal {
@@ -94,6 +92,25 @@ RUNTIME_FUNCTION(Runtime_ToBigInt) {
   DCHECK_EQ(1, args.length());
   Handle<Object> x = args.at(0);
   RETURN_RESULT_OR_FAILURE(isolate, BigInt::FromObject(isolate, x));
+}
+
+RUNTIME_FUNCTION(Runtime_ToBigIntConvertNumber) {
+  HandleScope scope(isolate);
+  DCHECK_EQ(1, args.length());
+  Handle<Object> x = args.at(0);
+
+  if (x->IsJSReceiver()) {
+    ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
+        isolate, x,
+        JSReceiver::ToPrimitive(isolate, Handle<JSReceiver>::cast(x),
+                                ToPrimitiveHint::kNumber));
+  }
+
+  if (x->IsNumber()) {
+    RETURN_RESULT_OR_FAILURE(isolate, BigInt::FromNumber(isolate, x));
+  } else {
+    RETURN_RESULT_OR_FAILURE(isolate, BigInt::FromObject(isolate, x));
+  }
 }
 
 RUNTIME_FUNCTION(Runtime_BigIntBinaryOp) {

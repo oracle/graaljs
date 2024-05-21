@@ -8,7 +8,7 @@
 // --allow-overwriting-for-next-flag to avoid an error.
 // Flags: --allow-overwriting-for-next-flag --noverify-heap
 // Flags: --allow-overwriting-for-next-flag --noenable-slow-asserts
-// Flags: --allow-natives-syntax --opt --no-always-opt
+// Flags: --allow-natives-syntax --turbofan --no-always-turbofan
 
 // --noverify-heap and --noenable-slow-asserts are set because the test is too
 // slow with it on.
@@ -36,7 +36,11 @@
   // is a dictionary mode prototypes on the prototype chain. Therefore, if
   // v8_dict_property_const_tracking is enabled, the optimized code only
   // contains a call to the IC handler and doesn't get deopted.
-  assertEquals(%IsDictPropertyConstTrackingEnabled(), isOptimized(foo));
+  if (%IsDictPropertyConstTrackingEnabled()) {
+    assertOptimized(foo);
+  } else {
+    assertUnoptimized(foo);
+  }
   assertTrue(%HasDictionaryElements(a));
 
   %PrepareFunctionForOptimization(foo);
@@ -53,8 +57,6 @@
   assertOptimized(foo);
   assertTrue(%HasDictionaryElements(b));
 
-  // Clearing feedback for the StoreIC in foo is important for runs with
-  // flag --stress-opt.
   %ClearFunctionFeedback(foo);
 })();
 

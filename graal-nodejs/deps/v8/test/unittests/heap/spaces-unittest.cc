@@ -48,8 +48,7 @@ TEST_F(SpacesTest, CompactionSpaceMerge) {
     HeapObject object =
         compaction_space->AllocateRawUnaligned(kMaxRegularHeapObjectSize)
             .ToObjectChecked();
-    heap->CreateFillerObjectAt(object.address(), kMaxRegularHeapObjectSize,
-                               ClearRecordedSlots::kNo);
+    heap->CreateFillerObjectAt(object.address(), kMaxRegularHeapObjectSize);
   }
   int pages_in_old_space = old_space->CountTotalPages();
   int pages_in_compaction_space = compaction_space->CountTotalPages();
@@ -129,11 +128,14 @@ TEST_F(SpacesTest, WriteBarrierInYoungGenerationFromSpace) {
 
 TEST_F(SpacesTest, CodeRangeAddressReuse) {
   CodeRangeAddressHint hint;
-  const size_t kAnyBaseAlignment = 1;
+  const size_t base_alignment = MemoryChunk::kPageSize;
   // Create code ranges.
-  Address code_range1 = hint.GetAddressHint(100, kAnyBaseAlignment);
-  Address code_range2 = hint.GetAddressHint(200, kAnyBaseAlignment);
-  Address code_range3 = hint.GetAddressHint(100, kAnyBaseAlignment);
+  Address code_range1 = hint.GetAddressHint(100, base_alignment);
+  CHECK(IsAligned(code_range1, base_alignment));
+  Address code_range2 = hint.GetAddressHint(200, base_alignment);
+  CHECK(IsAligned(code_range2, base_alignment));
+  Address code_range3 = hint.GetAddressHint(100, base_alignment);
+  CHECK(IsAligned(code_range3, base_alignment));
 
   // Since the addresses are random, we cannot check that they are different.
 
@@ -142,14 +144,14 @@ TEST_F(SpacesTest, CodeRangeAddressReuse) {
   hint.NotifyFreedCodeRange(code_range2, 200);
 
   // The next two code ranges should reuse the freed addresses.
-  Address code_range4 = hint.GetAddressHint(100, kAnyBaseAlignment);
+  Address code_range4 = hint.GetAddressHint(100, base_alignment);
   EXPECT_EQ(code_range4, code_range1);
-  Address code_range5 = hint.GetAddressHint(200, kAnyBaseAlignment);
+  Address code_range5 = hint.GetAddressHint(200, base_alignment);
   EXPECT_EQ(code_range5, code_range2);
 
   // Free the third code range and check address reuse.
   hint.NotifyFreedCodeRange(code_range3, 100);
-  Address code_range6 = hint.GetAddressHint(100, kAnyBaseAlignment);
+  Address code_range6 = hint.GetAddressHint(100, base_alignment);
   EXPECT_EQ(code_range6, code_range3);
 }
 

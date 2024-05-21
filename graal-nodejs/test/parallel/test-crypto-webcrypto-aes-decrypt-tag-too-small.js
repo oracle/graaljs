@@ -6,9 +6,9 @@ if (!common.hasCrypto)
   common.skip('missing crypto');
 
 const assert = require('assert');
-const crypto = require('crypto').webcrypto;
+const { subtle } = globalThis.crypto;
 
-crypto.subtle.importKey(
+subtle.importKey(
   'raw',
   new Uint8Array(32),
   {
@@ -16,14 +16,14 @@ crypto.subtle.importKey(
   },
   false,
   [ 'encrypt', 'decrypt' ])
-  .then((k) => {
+  .then((k) =>
     assert.rejects(() => {
-      return crypto.subtle.decrypt({
+      return subtle.decrypt({
         name: 'AES-GCM',
         iv: new Uint8Array(12),
       }, k, new Uint8Array(0));
     }, {
       name: 'OperationError',
       message: /The provided data is too small/,
-    });
-  });
+    })
+  ).then(common.mustCall());

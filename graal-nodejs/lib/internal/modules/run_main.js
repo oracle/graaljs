@@ -4,8 +4,18 @@ const {
   StringPrototypeEndsWith,
 } = primordials;
 
+const { containsModuleSyntax } = internalBinding('contextify');
 const { getOptionValue } = require('internal/options');
 const path = require('path');
+const { pathToFileURL } = require('internal/url');
+const { kEmptyObject, getCWDURL } = require('internal/util');
+const {
+  hasUncaughtExceptionCaptureCallback,
+} = require('internal/process/execution');
+const {
+  triggerUncaughtException,
+  exitCodes: { kUnfinishedTopLevelAwait },
+} = internalBinding('errors');
 
 /**
  * Get the absolute path to the main entry point.
@@ -61,14 +71,8 @@ function shouldUseESMLoader(mainPath) {
    * (or an empty list when none have been registered).
    */
   const userImports = getOptionValue('--import');
-  if (userLoaders.length > 0 || userImports.length > 0) {
-    return true;
-  }
-  const esModuleSpecifierResolution =
-    getOptionValue('--experimental-specifier-resolution');
-  if (esModuleSpecifierResolution === 'node') {
-    return true;
-  }
+  if (userLoaders.length > 0 || userImports.length > 0) { return true; }
+
   // Determine the module format of the entry point.
   if (mainPath && StringPrototypeEndsWith(mainPath, '.mjs')) { return true; }
   if (!mainPath || StringPrototypeEndsWith(mainPath, '.cjs')) { return false; }
@@ -76,37 +80,72 @@ function shouldUseESMLoader(mainPath) {
   const { readPackageScope } = require('internal/modules/package_json_reader');
   const pkg = readPackageScope(mainPath);
   // No need to guard `pkg` as it can only be an object or `false`.
-  return pkg.data?.type === 'module' || getOptionValue('--experimental-default-type') === 'module';
+  switch (pkg.data?.type) {
+    case 'module':
+      return true;
+    case 'commonjs':
+      return false;
+    default: { // No package.json or no `type` field.
+      if (getOptionValue('--experimental-detect-module')) {
+        // If the first argument of `containsModuleSyntax` is undefined, it will read `mainPath` from the file system.
+        return containsModuleSyntax(undefined, mainPath);
+      }
+      return false;
+    }
+  }
 }
 
 /**
- * Run the main entry point through the ESM Loader.
- * @param {string} mainPath - Absolute path for the main entry point
+ * Handle a Promise from running code that potentially does Top-Level Await.
+ * In that case, it makes sense to set the exit code to a specific non-zero value
+ * if the main code never finishes running.
  */
-function runMainESM(mainPath) {
-  const { loadESM } = require('internal/process/esm_loader');
-  const { pathToFileURL } = require('internal/url');
-  const main = pathToFileURL(mainPath).href;
-
-  handleMainPromise(loadESM((esmLoader) => {
-    return esmLoader.import(main, undefined, { __proto__: null });
-  }));
+function handleProcessExit() {
+  process.exitCode ??= kUnfinishedTopLevelAwait;
 }
 
 /**
- * Handle process exit events around the main entry point promise.
- * @param {Promise} promise - Main entry point promise
+ * @param {function(ModuleLoader):ModuleWrap|undefined} callback
  */
-async function handleMainPromise(promise) {
-  const {
-    handleProcessExit,
-  } = require('internal/modules/esm/handle_process_exit');
+async function asyncRunEntryPointWithESMLoader(callback) {
   process.on('exit', handleProcessExit);
+  const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
   try {
-    return await promise;
+    const userImports = getOptionValue('--import');
+    if (userImports.length > 0) {
+      const parentURL = getCWDURL().href;
+      for (let i = 0; i < userImports.length; i++) {
+        await cascadedLoader.import(userImports[i], parentURL, kEmptyObject);
+      }
+    } else {
+      cascadedLoader.forceLoadHooks();
+    }
+    await callback(cascadedLoader);
+  } catch (err) {
+    if (hasUncaughtExceptionCaptureCallback()) {
+      process._fatalException(err);
+      return;
+    }
+    triggerUncaughtException(
+      err,
+      true, /* fromPromise */
+    );
   } finally {
     process.off('exit', handleProcessExit);
   }
+}
+
+/**
+ * This initializes the ESM loader and runs --import (if any) before executing the
+ * callback to run the entry point.
+ * If the callback intends to evaluate a ESM module as entry point, it should return
+ * the corresponding ModuleWrap so that stalled TLA can be checked a process exit.
+ * @param {function(ModuleLoader):ModuleWrap|undefined} callback
+ * @returns {Promise}
+ */
+function runEntryPointWithESMLoader(callback) {
+  const promise = asyncRunEntryPointWithESMLoader(callback);
+  return promise;
 }
 
 /**
@@ -121,7 +160,14 @@ function executeUserEntryPoint(main = process.argv[1]) {
   const resolvedMain = resolveMainPath(main);
   const useESMLoader = shouldUseESMLoader(resolvedMain);
   if (useESMLoader) {
-    runMainESM(resolvedMain || main);
+    const mainPath = resolvedMain || main;
+    const mainURL = pathToFileURL(mainPath).href;
+
+    runEntryPointWithESMLoader((cascadedLoader) => {
+      // Note that if the graph contains unfinished TLA, this may never resolve
+      // even after the event loop stops running.
+      return cascadedLoader.import(mainURL, undefined, { __proto__: null }, true);
+    });
   } else {
     // Module._load is the monkey-patchable CJS module loader.
     const { Module } = require('internal/modules/cjs/loader');
@@ -131,5 +177,6 @@ function executeUserEntryPoint(main = process.argv[1]) {
 
 module.exports = {
   executeUserEntryPoint,
-  handleMainPromise,
+  runEntryPointWithESMLoader,
+  handleProcessExit,
 };

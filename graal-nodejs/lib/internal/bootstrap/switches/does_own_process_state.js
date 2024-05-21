@@ -2,6 +2,13 @@
 
 const credentials = internalBinding('credentials');
 const rawMethods = internalBinding('process_methods');
+const {
+  namespace: {
+    addDeserializeCallback,
+    addSerializeCallback,
+    isBuildingSnapshot,
+  },
+} = require('internal/v8/startup_snapshot');
 
 process.abort = rawMethods.abort;
 process.umask = wrappedUmask;
@@ -106,6 +113,17 @@ function wrapPosixCredentialSetters(credentials) {
 // Cache the working directory to prevent lots of lookups. If the working
 // directory is changed by `chdir`, it'll be updated.
 let cachedCwd = '';
+
+if (isBuildingSnapshot()) {
+  // Reset the cwd on both serialization and deserialization so it's fine
+  // for process.cwd() to be accessed inside of serialization callbacks.
+  addSerializeCallback(() => {
+    cachedCwd = '';
+    addDeserializeCallback(() => {
+      cachedCwd = '';
+    });
+  });
+}
 
 function wrappedChdir(directory) {
   validateString(directory, 'directory');

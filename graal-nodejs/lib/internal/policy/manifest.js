@@ -4,7 +4,6 @@
 const {
   ArrayIsArray,
   ArrayPrototypeSort,
-  ObjectCreate,
   ObjectEntries,
   ObjectFreeze,
   ObjectKeys,
@@ -34,6 +33,8 @@ const { getOptionValue } = require('internal/options');
 const shouldAbortOnUncaughtException = getOptionValue(
   '--abort-on-uncaught-exception',
 );
+const { exitCodes: { kGenericUserError } } = internalBinding('errors');
+
 const { abort, exit, _rawDebug } = process;
 // #endregion
 
@@ -66,7 +67,7 @@ function REACTION_EXIT(error) {
   if (shouldAbortOnUncaughtException) {
     abort();
   }
-  exit(1);
+  exit(kGenericUserError);
 }
 
 function REACTION_LOG(error) {
@@ -170,7 +171,7 @@ class DependencyMapperInstance {
         /**
          * @type {Record<string, string>}
          */
-        const normalizedDependencyMap = ObjectCreate(null);
+        const normalizedDependencyMap = { __proto__: null };
         for (let specifier in dependencies) {
           const target = dependencies[specifier];
           specifier = canonicalizeSpecifier(specifier, manifest.href);
@@ -434,10 +435,10 @@ class Manifest {
 
     this.#reaction = reaction;
     const jsonResourcesEntries = ObjectEntries(
-      obj.resources ?? ObjectCreate(null),
+      obj.resources ?? { __proto__: null },
     );
-    const jsonScopesEntries = ObjectEntries(obj.scopes ?? ObjectCreate(null));
-    const defaultDependencies = obj.dependencies ?? ObjectCreate(null);
+    const jsonScopesEntries = ObjectEntries(obj.scopes ?? { __proto__: null });
+    const defaultDependencies = obj.dependencies ?? { __proto__: null };
 
     this.#defaultDependencies = new DependencyMapperInstance(
       'default',

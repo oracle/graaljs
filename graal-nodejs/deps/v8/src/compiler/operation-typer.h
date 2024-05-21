@@ -8,7 +8,27 @@
 #include "src/base/flags.h"
 #include "src/compiler/opcodes.h"
 #include "src/compiler/types.h"
-#include "src/objects/objects.h"
+
+#define TYPER_SUPPORTED_MACHINE_BINOP_LIST(V) \
+  V(Int32Add)                                 \
+  V(Int32LessThanOrEqual)                     \
+  V(Int64Add)                                 \
+  V(Int32Sub)                                 \
+  V(Int64Sub)                                 \
+  V(Load)                                     \
+  V(Uint32Div)                                \
+  V(Uint64Div)                                \
+  V(Uint32LessThan)                           \
+  V(Uint32LessThanOrEqual)                    \
+  V(Uint64LessThanOrEqual)                    \
+  V(Word32And)                                \
+  V(Word32Equal)                              \
+  V(Word32Or)                                 \
+  V(Word32Shl)                                \
+  V(Word32Shr)                                \
+  V(Word64And)                                \
+  V(Word64Shl)                                \
+  V(Word64Shr)
 
 namespace v8 {
 namespace internal {
@@ -35,6 +55,8 @@ class V8_EXPORT_PRIVATE OperationTyper {
   Type ToPrimitive(Type type);
   Type ToNumber(Type type);
   Type ToNumberConvertBigInt(Type type);
+  Type ToBigInt(Type type);
+  Type ToBigIntConvertNumber(Type type);
   Type ToNumeric(Type type);
   Type ToBoolean(Type type);
 
@@ -55,7 +77,10 @@ class V8_EXPORT_PRIVATE OperationTyper {
   SIMPLIFIED_BIGINT_BINOP_LIST(DECLARE_METHOD)
   SIMPLIFIED_SPECULATIVE_NUMBER_BINOP_LIST(DECLARE_METHOD)
   SIMPLIFIED_SPECULATIVE_BIGINT_BINOP_LIST(DECLARE_METHOD)
+  TYPER_SUPPORTED_MACHINE_BINOP_LIST(DECLARE_METHOD)
 #undef DECLARE_METHOD
+
+  Type ChangeUint32ToUint64(Type input);
 
   // Comparison operators.
   Type SameValue(Type lhs, Type rhs);

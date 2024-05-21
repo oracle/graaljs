@@ -15,7 +15,6 @@ class AccessorPair;
 class AccessCheckInfo;
 class AllocationSite;
 class ByteArray;
-class CachedTemplateObject;
 class Cell;
 class ClosureFeedbackCellArray;
 class ConsString;
@@ -77,7 +76,9 @@ class ZoneForwardList;
 #define HEAP_OBJECT_ORDINARY_TYPE_LIST_BASE(V)  \
   V(AbstractCode)                               \
   V(AccessCheckNeeded)                          \
+  V(AccessorInfo)                               \
   V(AllocationSite)                             \
+  V(AlwaysSharedSpaceJSObject)                  \
   V(ArrayList)                                  \
   V(BigInt)                                     \
   V(BigIntBase)                                 \
@@ -91,8 +92,8 @@ class ZoneForwardList;
   V(Callable)                                   \
   V(Cell)                                       \
   V(ClassBoilerplate)                           \
+  V(InstructionStream)                          \
   V(Code)                                       \
-  V(CodeDataContainer)                          \
   V(CompilationCacheTable)                      \
   V(ConsString)                                 \
   V(Constructor)                                \
@@ -119,6 +120,7 @@ class ZoneForwardList;
   V(Foreign)                                    \
   V(FreeSpace)                                  \
   V(Function)                                   \
+  V(GcSafeCode)                                 \
   V(GlobalDictionary)                           \
   V(HandlerTable)                               \
   V(HeapNumber)                                 \
@@ -131,12 +133,15 @@ class ZoneForwardList;
   V(JSAsyncFromSyncIterator)                    \
   V(JSAsyncFunctionObject)                      \
   V(JSAsyncGeneratorObject)                     \
+  V(JSAtomicsCondition)                         \
+  V(JSAtomicsMutex)                             \
   V(JSBoundFunction)                            \
   V(JSCollection)                               \
   V(JSCollectionIterator)                       \
   V(JSContextExtensionObject)                   \
   V(JSCustomElementsObject)                     \
   V(JSDataView)                                 \
+  V(JSDataViewOrRabGsabDataView)                \
   V(JSDate)                                     \
   V(JSError)                                    \
   V(JSExternalObject)                           \
@@ -146,6 +151,11 @@ class ZoneForwardList;
   V(JSGeneratorObject)                          \
   V(JSGlobalObject)                             \
   V(JSGlobalProxy)                              \
+  V(JSIteratorHelper)                           \
+  V(JSIteratorFilterHelper)                     \
+  V(JSIteratorMapHelper)                        \
+  V(JSIteratorTakeHelper)                       \
+  V(JSIteratorDropHelper)                       \
   V(JSMap)                                      \
   V(JSMapIterator)                              \
   V(JSMessageObject)                            \
@@ -155,15 +165,19 @@ class ZoneForwardList;
   V(JSPrimitiveWrapper)                         \
   V(JSPromise)                                  \
   V(JSProxy)                                    \
+  V(JSRabGsabDataView)                          \
+  V(JSRawJson)                                  \
   V(JSReceiver)                                 \
   V(JSRegExp)                                   \
   V(JSRegExpStringIterator)                     \
   V(JSSet)                                      \
   V(JSSetIterator)                              \
   V(JSShadowRealm)                              \
+  V(JSSharedArray)                              \
   V(JSSharedStruct)                             \
   V(JSSpecialObject)                            \
   V(JSStringIterator)                           \
+  V(JSSynchronizationPrimitive)                 \
   V(JSTemporalCalendar)                         \
   V(JSTemporalDuration)                         \
   V(JSTemporalInstant)                          \
@@ -175,6 +189,7 @@ class ZoneForwardList;
   V(JSTemporalTimeZone)                         \
   V(JSTemporalZonedDateTime)                    \
   V(JSTypedArray)                               \
+  V(JSValidIteratorWrapper)                     \
   V(JSWeakCollection)                           \
   V(JSWeakRef)                                  \
   V(JSWeakMap)                                  \
@@ -195,6 +210,7 @@ class ZoneForwardList;
   V(NumberWrapper)                              \
   V(ObjectHashSet)                              \
   V(ObjectHashTable)                            \
+  V(ObjectTwoHashTable)                         \
   V(Oddball)                                    \
   V(OrderedHashMap)                             \
   V(OrderedHashSet)                             \
@@ -232,8 +248,19 @@ class ZoneForwardList;
   V(SyntheticModule)                            \
   V(TemplateInfo)                               \
   V(TemplateList)                               \
+  V(TemplateLiteralObject)                      \
   V(ThinString)                                 \
   V(TransitionArray)                            \
+  V(TurboshaftFloat64RangeType)                 \
+  V(TurboshaftFloat64SetType)                   \
+  V(TurboshaftFloat64Type)                      \
+  V(TurboshaftType)                             \
+  V(TurboshaftWord32RangeType)                  \
+  V(TurboshaftWord32SetType)                    \
+  V(TurboshaftWord32Type)                       \
+  V(TurboshaftWord64RangeType)                  \
+  V(TurboshaftWord64SetType)                    \
+  V(TurboshaftWord64Type)                       \
   V(UncompiledData)                             \
   V(UncompiledDataWithPreparseData)             \
   V(UncompiledDataWithoutPreparseData)          \
@@ -255,12 +282,14 @@ class ZoneForwardList;
   IF_WASM(V, WasmMemoryObject)                  \
   IF_WASM(V, WasmModuleObject)                  \
   IF_WASM(V, WasmObject)                        \
-  IF_WASM(V, WasmOnFulfilledData)               \
+  IF_WASM(V, WasmResumeData)                    \
   IF_WASM(V, WasmStruct)                        \
   IF_WASM(V, WasmTypeInfo)                      \
   IF_WASM(V, WasmTableObject)                   \
   IF_WASM(V, WasmValueObject)                   \
   IF_WASM(V, WasmSuspenderObject)               \
+  IF_WASM(V, WasmContinuationObject)            \
+  IF_WASM(V, WasmNull)                          \
   V(WeakFixedArray)                             \
   V(WeakArrayList)                              \
   V(WeakCell)                                   \
@@ -273,6 +302,7 @@ class ZoneForwardList;
   V(JSCollator)                           \
   V(JSDateTimeFormat)                     \
   V(JSDisplayNames)                       \
+  V(JSDurationFormat)                     \
   V(JSListFormat)                         \
   V(JSLocale)                             \
   V(JSNumberFormat)                       \
@@ -344,17 +374,17 @@ class ZoneForwardList;
   HEAP_OBJECT_TEMPLATE_TYPE_LIST(V) \
   HEAP_OBJECT_SPECIALIZED_TYPE_LIST(V)
 
-#define ODDBALL_LIST(V)                 \
-  V(Undefined, undefined_value)         \
-  V(Null, null_value)                   \
-  V(TheHole, the_hole_value)            \
-  V(Exception, exception)               \
-  V(Uninitialized, uninitialized_value) \
-  V(True, true_value)                   \
-  V(False, false_value)                 \
-  V(ArgumentsMarker, arguments_marker)  \
-  V(OptimizedOut, optimized_out)        \
-  V(StaleRegister, stale_register)
+#define ODDBALL_LIST(V)                                     \
+  V(Undefined, undefined_value, UndefinedValue)             \
+  V(Null, null_value, NullValue)                            \
+  V(TheHole, the_hole_value, TheHoleValue)                  \
+  V(Exception, exception, Exception)                        \
+  V(Uninitialized, uninitialized_value, UninitializedValue) \
+  V(True, true_value, TrueValue)                            \
+  V(False, false_value, FalseValue)                         \
+  V(ArgumentsMarker, arguments_marker, ArgumentsMarker)     \
+  V(OptimizedOut, optimized_out, OptimizedOut)              \
+  V(StaleRegister, stale_register, StaleRegister)
 
 }  // namespace internal
 }  // namespace v8

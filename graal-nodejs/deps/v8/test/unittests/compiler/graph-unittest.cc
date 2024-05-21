@@ -19,6 +19,7 @@ GraphTest::GraphTest(int num_parameters)
       common_(zone()),
       graph_(zone()),
       broker_(isolate(), zone()),
+      current_broker_(&broker_),
       source_positions_(&graph_),
       node_origins_(&graph_) {
   graph()->SetStart(graph()->NewNode(common()->Start(num_parameters)));
@@ -39,12 +40,12 @@ Node* GraphTest::Parameter(Type type, int32_t index) {
   return node;
 }
 
-Node* GraphTest::Float32Constant(volatile float value) {
+Node* GraphTest::Float32Constant(float value) {
   return graph()->NewNode(common()->Float32Constant(value));
 }
 
 
-Node* GraphTest::Float64Constant(volatile double value) {
+Node* GraphTest::Float64Constant(double value) {
   return graph()->NewNode(common()->Float64Constant(value));
 }
 
@@ -59,7 +60,7 @@ Node* GraphTest::Int64Constant(int64_t value) {
 }
 
 
-Node* GraphTest::NumberConstant(volatile double value) {
+Node* GraphTest::NumberConstant(double value) {
   return graph()->NewNode(common()->NumberConstant(value));
 }
 

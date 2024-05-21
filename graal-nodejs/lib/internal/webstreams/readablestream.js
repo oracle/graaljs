@@ -14,7 +14,6 @@ const {
   ObjectCreate,
   ObjectDefineProperties,
   ObjectSetPrototypeOf,
-  Promise,
   PromisePrototypeThen,
   PromiseResolve,
   PromiseReject,
@@ -60,6 +59,8 @@ const {
   validateAbortSignal,
   validateBuffer,
   validateObject,
+  kValidateObjectAllowNullable,
+  kValidateObjectAllowFunction,
 } = require('internal/validators');
 
 const {
@@ -85,9 +86,7 @@ const {
   kControllerErrorFunction,
 } = require('internal/streams/utils');
 
-const {
-  structuredClone,
-} = require('internal/structured_clone');
+const { structuredClone } = internalBinding('messaging');
 
 const {
   ArrayBufferViewGetBuffer,
@@ -111,6 +110,8 @@ const {
   nonOpCancel,
   nonOpPull,
   nonOpStart,
+  getIterator,
+  iteratorNext,
   kType,
   kState,
 } = require('internal/webstreams/util');
@@ -319,6 +320,10 @@ class ReadableStream {
     return isReadableStreamLocked(this);
   }
 
+  static from(iterable) {
+    return readableStreamFromIterable(iterable);
+  }
+
   /**
    * @param {any} [reason]
    * @returns { Promise<void> }
@@ -342,7 +347,7 @@ class ReadableStream {
   getReader(options = kEmptyObject) {
     if (!isReadableStream(this))
       throw new ERR_INVALID_THIS('ReadableStream');
-    validateObject(options, 'options', { nullable: true, allowFunction: true });
+    validateObject(options, 'options', kValidateObjectAllowNullable | kValidateObjectAllowFunction);
     const mode = options?.mode;
 
     if (mode === undefined)
@@ -473,9 +478,13 @@ class ReadableStream {
 
     // eslint-disable-next-line no-use-before-define
     const reader = new ReadableStreamDefaultReader(this);
-    let done = false;
+
+    // No __proto__ here to avoid the performance hit.
+    const state = {
+      done: false,
+      current: undefined,
+    };
     let started = false;
-    let current;
 
     // The nextSteps function is not an async function in order
     // to make it more efficient. Because nextSteps explicitly
@@ -484,7 +493,7 @@ class ReadableStream {
     // unnecessary Promise allocations to occur, which just add
     // cost.
     function nextSteps() {
-      if (done)
+      if (state.done)
         return PromiseResolve({ done: true, value: undefined });
 
       if (reader[kState].stream === undefined) {
@@ -494,31 +503,15 @@ class ReadableStream {
       }
       const promise = createDeferredPromise();
 
-      readableStreamDefaultReaderRead(reader, {
-        [kChunk](chunk) {
-          current = undefined;
-          promise.resolve({ value: chunk, done: false });
-        },
-        [kClose]() {
-          current = undefined;
-          done = true;
-          readableStreamReaderGenericRelease(reader);
-          promise.resolve({ done: true, value: undefined });
-        },
-        [kError](error) {
-          current = undefined;
-          done = true;
-          readableStreamReaderGenericRelease(reader);
-          promise.reject(error);
-        },
-      });
+      // eslint-disable-next-line no-use-before-define
+      readableStreamDefaultReaderRead(reader, new ReadableStreamAsyncIteratorReadRequest(reader, state, promise));
       return promise.promise;
     }
 
     async function returnSteps(value) {
-      if (done)
-        return { done: true, value };
-      done = true;
+      if (state.done)
+        return { done: true, value }; // eslint-disable-line node-core/avoid-prototype-pollution
+      state.done = true;
 
       if (reader[kState].stream === undefined) {
         throw new ERR_INVALID_STATE.TypeError(
@@ -529,11 +522,11 @@ class ReadableStream {
         const result = readableStreamReaderGenericCancel(reader, value);
         readableStreamReaderGenericRelease(reader);
         await result;
-        return { done: true, value };
+        return { done: true, value }; // eslint-disable-line node-core/avoid-prototype-pollution
       }
 
       readableStreamReaderGenericRelease(reader);
-      return { done: true, value };
+      return { done: true, value }; // eslint-disable-line node-core/avoid-prototype-pollution
     }
 
     // TODO(@jasnell): Explore whether an async generator
@@ -555,19 +548,19 @@ class ReadableStream {
         // need to investigate if it's a bug in our impl or
         // the spec.
         if (!started) {
-          current = PromiseResolve();
+          state.current = PromiseResolve();
           started = true;
         }
-        current = current !== undefined ?
-          PromisePrototypeThen(current, nextSteps, nextSteps) :
+        state.current = state.current !== undefined ?
+          PromisePrototypeThen(state.current, nextSteps, nextSteps) :
           nextSteps();
-        return current;
+        return state.current;
       },
 
       return(error) {
-        return current ?
+        return state.current ?
           PromisePrototypeThen(
-            current,
+            state.current,
             () => returnSteps(error),
             () => returnSteps(error)) :
           returnSteps(error);
@@ -627,7 +620,11 @@ class ReadableStream {
     const transfer = lazyTransfer();
     setupReadableStreamDefaultControllerFromSource(
       this,
-      new transfer.CrossRealmTransformReadableSource(port),
+      // The MessagePort is set to be referenced when reading.
+      // After two MessagePorts are closed, there is a problem with
+      // lingering promise not being properly resolved.
+      // https://github.com/nodejs/node/issues/51486
+      new transfer.CrossRealmTransformReadableSource(port, true),
       0, () => 1);
   }
 }
@@ -646,7 +643,11 @@ ObjectDefineProperties(ReadableStream.prototype, {
   pipeThrough: kEnumerableProperty,
   pipeTo: kEnumerableProperty,
   tee: kEnumerableProperty,
+  values: kEnumerableProperty,
   [SymbolToStringTag]: getNonWritablePropertyDescriptor(ReadableStream.name),
+});
+ObjectDefineProperties(ReadableStream, {
+  from: kEnumerableProperty,
 });
 
 function TransferredReadableStream() {
@@ -766,6 +767,33 @@ function createReadableStreamBYOBRequest(controller, view) {
   };
 
   return stream;
+}
+
+class ReadableStreamAsyncIteratorReadRequest {
+  constructor(reader, state, promise) {
+    this.reader = reader;
+    this.state = state;
+    this.promise = promise;
+  }
+
+  [kChunk](chunk) {
+    this.state.current = undefined;
+    this.promise.resolve({ value: chunk, done: false });
+  }
+
+  [kClose]() {
+    this.state.current = undefined;
+    this.state.done = true;
+    readableStreamReaderGenericRelease(this.reader);
+    this.promise.resolve({ done: true, value: undefined });
+  }
+
+  [kError](error) {
+    this.state.current = undefined;
+    this.state.done = true;
+    readableStreamReaderGenericRelease(this.reader);
+    this.promise.reject(error);
+  }
 }
 
 class DefaultReadRequest {
@@ -1194,34 +1222,43 @@ ObjectDefineProperties(ReadableByteStreamController.prototype, {
   [SymbolToStringTag]: getNonWritablePropertyDescriptor(ReadableByteStreamController.name),
 });
 
+function TeeReadableStream(start, pull, cancel) {
+  this[kType] = 'ReadableStream';
+  this[kState] = {
+    disturbed: false,
+    state: 'readable',
+    storedError: undefined,
+    stream: undefined,
+    transfer: {
+      writable: undefined,
+      port: undefined,
+      promise: undefined,
+    },
+  };
+  this[kIsClosedPromise] = createDeferredPromise();
+  setupReadableStreamDefaultControllerFromSource(
+    this,
+    ObjectCreate(null, {
+      start: { __proto__: null, value: start },
+      pull: { __proto__: null, value: pull },
+      cancel: { __proto__: null, value: cancel },
+    }),
+    1,
+    () => 1);
+
+
+  return makeTransferable(this);
+}
+
+ObjectSetPrototypeOf(TeeReadableStream.prototype, ReadableStream.prototype);
+ObjectSetPrototypeOf(TeeReadableStream, ReadableStream);
+
 function createTeeReadableStream(start, pull, cancel) {
-  return ReflectConstruct(
-    function() {
-      this[kType] = 'ReadableStream';
-      this[kState] = {
-        disturbed: false,
-        state: 'readable',
-        storedError: undefined,
-        stream: undefined,
-        transfer: {
-          writable: undefined,
-          port: undefined,
-          promise: undefined,
-        },
-      };
-      this[kIsClosedPromise] = createDeferredPromise();
-      setupReadableStreamDefaultControllerFromSource(
-        this,
-        ObjectCreate(null, {
-          start: { __proto__: null, value: start },
-          pull: { __proto__: null, value: pull },
-          cancel: { __proto__: null, value: cancel },
-        }),
-        1,
-        () => 1);
-      return makeTransferable(this);
-    }, [], ReadableStream,
-  );
+  const tee = new TeeReadableStream(start, pull, cancel);
+
+  // For spec compliance the Tee must be a ReadableStream
+  tee.constructor = ReadableStream;
+  return tee;
 }
 
 const isReadableStream =
@@ -1236,6 +1273,59 @@ const isReadableStreamBYOBReader =
   isBrandCheck('ReadableStreamBYOBReader');
 
 // ---- ReadableStream Implementation
+
+function readableStreamFromIterable(iterable) {
+  let stream;
+  const iteratorRecord = getIterator(iterable, 'async');
+
+  const startAlgorithm = nonOpStart;
+
+  async function pullAlgorithm() {
+    const nextResult = iteratorNext(iteratorRecord);
+    const nextPromise = PromiseResolve(nextResult);
+    return PromisePrototypeThen(nextPromise, (iterResult) => {
+      if (typeof iterResult !== 'object' || iterResult === null) {
+        throw new ERR_INVALID_STATE.TypeError(
+          'The promise returned by the iterator.next() method must fulfill with an object');
+      }
+      if (iterResult.done) {
+        readableStreamDefaultControllerClose(stream[kState].controller);
+      } else {
+        readableStreamDefaultControllerEnqueue(stream[kState].controller, iterResult.value);
+      }
+    });
+  }
+
+  async function cancelAlgorithm(reason) {
+    const iterator = iteratorRecord.iterator;
+    const returnMethod = iterator.return;
+    if (returnMethod === undefined) {
+      return PromiseResolve();
+    }
+    const returnResult = FunctionPrototypeCall(returnMethod, iterator, reason);
+    const returnPromise = PromiseResolve(returnResult);
+    return PromisePrototypeThen(returnPromise, (iterResult) => {
+      if (typeof iterResult !== 'object' || iterResult === null) {
+        throw new ERR_INVALID_STATE.TypeError(
+          'The promise returned by the iterator.return() method must fulfill with an object');
+      }
+      return undefined;
+    });
+  }
+
+  stream = new ReadableStream({
+    start: startAlgorithm,
+    pull: pullAlgorithm,
+    cancel: cancelAlgorithm,
+  }, {
+    size() {
+      return 1;
+    },
+    highWaterMark: 0,
+  });
+
+  return stream;
+}
 
 function readableStreamPipeTo(
   source,
@@ -1271,7 +1361,9 @@ function readableStreamPipeTo(
 
   const promise = createDeferredPromise();
 
-  let currentWrite = PromiseResolve();
+  const state = {
+    currentWrite: PromiseResolve(),
+  };
 
   // The error here can be undefined. The rejected arg
   // tells us that the promise must be rejected even
@@ -1288,9 +1380,9 @@ function readableStreamPipeTo(
   }
 
   async function waitForCurrentWrite() {
-    const write = currentWrite;
+    const write = state.currentWrite;
     await write;
-    if (write !== currentWrite)
+    if (write !== state.currentWrite)
       await waitForCurrentWrite();
   }
 
@@ -1381,20 +1473,14 @@ function readableStreamPipeTo(
   async function step() {
     if (shuttingDown)
       return true;
+
     await writer[kState].ready.promise;
-    return new Promise((resolve, reject) => {
-      readableStreamDefaultReaderRead(
-        reader,
-        {
-          [kChunk](chunk) {
-            currentWrite = writableStreamDefaultWriterWrite(writer, chunk);
-            setPromiseHandled(currentWrite);
-            resolve(false);
-          },
-          [kClose]: () => resolve(true),
-          [kError]: reject,
-        });
-    });
+
+    const promise = createDeferredPromise();
+    // eslint-disable-next-line no-use-before-define
+    readableStreamDefaultReaderRead(reader, new PipeToReadableStreamReadRequest(writer, state, promise));
+
+    return promise.promise;
   }
 
   async function run() {
@@ -1407,7 +1493,7 @@ function readableStreamPipeTo(
       abortAlgorithm();
       return promise.promise;
     }
-    addAbortListener ??= require('events').addAbortListener;
+    addAbortListener ??= require('internal/events/abort_listener').addAbortListener;
     disposable = addAbortListener(signal, abortAlgorithm);
   }
 
@@ -1454,6 +1540,28 @@ function readableStreamPipeTo(
   }
 
   return promise.promise;
+}
+
+class PipeToReadableStreamReadRequest {
+  constructor(writer, state, promise) {
+    this.writer = writer;
+    this.state = state;
+    this.promise = promise;
+  }
+
+  [kChunk](chunk) {
+    this.state.currentWrite = writableStreamDefaultWriterWrite(this.writer, chunk);
+    setPromiseHandled(this.state.currentWrite);
+    this.promise.resolve(false);
+  }
+
+  [kClose]() {
+    this.promise.resolve(true);
+  }
+
+  [kError](error) {
+    this.promise.reject(error);
+  }
 }
 
 function readableStreamTee(stream, cloneForBranch2) {

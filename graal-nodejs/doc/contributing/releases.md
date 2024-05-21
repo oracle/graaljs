@@ -20,7 +20,7 @@ official release builds for Node.js, hosted on <https://nodejs.org/>.
   * [5. Create release commit](#5-create-release-commit)
   * [6. Propose release on GitHub](#6-propose-release-on-github)
   * [7. Ensure that the release branch is stable](#7-ensure-that-the-release-branch-is-stable)
-    * [7.1 Updating the release _(optional)_](#7-1-updating-the-release-optional)
+    * [7.1 Updating the release _(optional)_](#71-updating-the-release-optional)
   * [8. Produce a nightly build _(optional)_](#8-produce-a-nightly-build-optional)
   * [9. Produce release builds](#9-produce-release-builds)
   * [10. Test the build](#10-test-the-build)
@@ -32,9 +32,8 @@ official release builds for Node.js, hosted on <https://nodejs.org/>.
   * [16. Check the release](#16-check-the-release)
   * [17. Create a blog post](#17-create-a-blog-post)
   * [18. Create the release on GitHub](#18-create-the-release-on-github)
-  * [19. Cleanup](#19-cleanup)
-  * [20. Announce](#20-announce)
-  * [21. Celebrate](#21-celebrate)
+  * [19. Announce](#19-announce)
+  * [20. Celebrate](#20-celebrate)
 * [LTS releases](#lts-releases)
 * [Major releases](#major-releases)
 
@@ -91,19 +90,20 @@ responsible for that release. In order to be able to verify downloaded binaries,
 the public should be able to check that the `SHASUMS256.txt` file has been
 signed by someone who has been authorized to create a release.
 
-The GPG keys should be fetchable from a known third-party keyserver. The SKS
-Keyservers at <https://sks-keyservers.net> are recommended. Use the
-[submission](https://pgp.mit.edu/) form to submit a new GPG key. You'll need to
-do an ASCII-armored export of your key first:
+The public keys should be fetchable from a known third-party keyserver.
+The OpenPGP keyserver at <https://keys.openpgp.org/> is recommended.
+Use the [submission](https://keys.openpgp.org/upload) form to submit
+a new public key, and make sure to verify the associated email.
+You'll need to do an ASCII-armored export of your key first:
 
-```console
-$ gpg --armor --export email@server.com > ~/nodekey.asc
+```bash
+gpg --armor --export email@server.com > ~/nodekey.asc
 ```
 
 Keys should be fetchable via:
 
-```console
-$ gpg --keyserver pool.sks-keyservers.net --recv-keys <FINGERPRINT>
+```bash
+gpg --keyserver hkps://keys.openpgp.org --recv-keys <FINGERPRINT>
 ```
 
 The key you use may be a child/subkey of an existing key.
@@ -144,10 +144,10 @@ access the private repository.
 
 Checkout the staging branch locally.
 
-```console
-$ git remote update
-$ git checkout v1.x-staging
-$ git reset --hard upstream/v1.x-staging
+```bash
+git remote update
+git checkout v1.x-staging
+git reset --hard upstream/v1.x-staging
 ```
 
 If the staging branch is not up to date relative to `main`, bring the
@@ -170,8 +170,8 @@ backport PR with `Landed in ...`. Update the label on the original PR from
 You can add the `Backport-PR-URL` metadata by using `--backport` with
 `git node land`
 
-```console
-$ git node land --backport $PR-NUMBER
+```bash
+git node land --backport $PR-NUMBER
 ```
 
 To determine the relevant commits, use
@@ -182,10 +182,10 @@ metadata, as well as the GitHub labels such as `semver-minor` and
 omitted from a commit, the commit will show up because it's unsure if it's a
 duplicate or not.
 
-For a list of commits that could be landed in a patch release on v1.x:
+For a list of commits that could be landed in a minor release on v1.x:
 
-```console
-$ branch-diff v1.x-staging main --exclude-label=semver-major,semver-minor,dont-land-on-v1.x,backport-requested-v1.x,backport-blocked-v1.x,backport-open-v1.x,backported-to-v1.x --filter-release --format=simple
+```bash
+branch-diff v1.x-staging main --exclude-label=semver-major,dont-land-on-v1.x,backport-requested-v1.x,backport-blocked-v1.x,backport-open-v1.x,backported-to-v1.x --filter-release --format=simple
 ```
 
 Previously released commits and version bumps do not need to be
@@ -201,12 +201,14 @@ Carefully review the list of commits:
   `baking-for-lts` tag.
 
 When you are ready to cherry-pick commits, you can automate with the following
-command. (For semver-minor releases, make sure to remove the `semver-minor` tag
-from `exclude-label`.)
+command.
 
-```console
-$ branch-diff v1.x-staging main --exclude-label=semver-major,semver-minor,dont-land-on-v1.x,backport-requested-v1.x,backport-blocked-v1.x,backport-open-v1.x,backported-to-v1.x --filter-release --format=sha --reverse | xargs git cherry-pick
+```bash
+branch-diff v1.x-staging main --exclude-label=semver-major,dont-land-on-v1.x,backport-requested-v1.x,backport-blocked-v1.x,backport-open-v1.x,backported-to-v1.x --filter-release --format=sha --reverse | xargs git cherry-pick
 ```
+
+<sup>For patch releases, make sure to add the `semver-minor` tag
+to `exclude-label`<sup>
 
 When cherry-picking commits, if there are simple conflicts you can resolve
 them. Otherwise, add the `backport-requested-vN.x` label to the original PR
@@ -216,14 +218,14 @@ Lines](https://github.com/nodejs/node/blob/HEAD/doc/contributing/backporting-to-
 
 If commits were cherry-picked in this step, check that the test still pass.
 
-```console
-$ make test
+```bash
+make test
 ```
 
 Then, push to the staging branch to keep it up-to-date.
 
-```console
-$ git push upstream v1.x-staging
+```bash
+git push upstream v1.x-staging
 ```
 
 <details>
@@ -234,8 +236,8 @@ GitHub organization.
 
 Add the `nodejs-private` remote:
 
-```console
-$ git remote add private git@github.com:nodejs-private/node-private.git
+```bash
+git remote add private git@github.com:nodejs-private/node-private.git
 ```
 
 For security releases, we generally try to only include the security patches.
@@ -278,8 +280,8 @@ following the below steps.
 Create a new branch named `vx.y.z-proposal`, off the corresponding staging
 branch.
 
-```console
-$ git checkout -b v1.2.3-proposal upstream/v1.x-staging
+```bash
+git checkout -b v1.2.3-proposal upstream/v1.x-staging
 ```
 
 <details>
@@ -320,16 +322,16 @@ be produced with a version string that does not have a trailing pre-release tag:
 Collect a formatted list of commits since the last release. Use
 [`changelog-maker`](https://github.com/nodejs/changelog-maker) to do this:
 
-```console
-$ changelog-maker --group --markdown
+```bash
+changelog-maker --group --markdown
 ```
 
 `changelog-maker` counts commits since the last tag and if the last tag
 in the repository was not on the current branch you may have to supply a
 `--start-ref` argument:
 
-```console
-$ changelog-maker --group --markdown --filter-release --start-ref v1.2.2
+```bash
+changelog-maker --group --markdown --filter-release --start-ref v1.2.2
 ```
 
 `--filter-release` will remove the release commit from the previous release.
@@ -372,8 +374,8 @@ notable. The ultimate decision rests with the releaser.
 You can use `branch-diff` to get a list of commits with the `notable-change`
 label:
 
-```console
-$ branch-diff upstream/v1.x v1.2.3-proposal --require-label=notable-change --plaintext
+```bash
+branch-diff upstream/v1.x v1.2.3-proposal --require-label=notable-change --plaintext
 ```
 
 Be sure that the `<a>` tag, as well as the two headings, are not indented at
@@ -433,13 +435,13 @@ were first added in this version. The relevant commits should already include
 `REPLACEME` tags as per the example in the
 [docs README](../../tools/doc/README.md). Check for these tags with
 
-```console
+```bash
 grep REPLACEME doc/api/*.md
 ```
 
 and substitute this node version with
 
-```console
+```bash
 sed -i "s/REPLACEME/$VERSION/g" doc/api/*.md
 ```
 
@@ -451,7 +453,7 @@ sed -i "" "s/REPLACEME/$VERSION/g" doc/api/*.md
 
 or
 
-```console
+```bash
 perl -pi -e "s/REPLACEME/$VERSION/g" doc/api/*.md
 ```
 
@@ -560,9 +562,9 @@ ecosystem.
 
 Use `ncu-ci` to compare `vx.x` run (10) and proposal branch (11)
 
-```console
-$ npm i -g node-core-utils
-$ ncu-ci citgm 10 11
+```bash
+npm i -g @node-core/utils
+ncu-ci citgm 10 11
 ```
 
 <details>
@@ -595,22 +597,22 @@ consider using the following approach:
 
 1. Update staging
 
-```console
-$ git checkout v1.x-staging
-$ git rebase -i $HASH_PREVIOUS_BAD_COMMIT
-... drop or edit the bad commit(s)
-$ git push -f upstream v1.x-staging
+```bash
+git checkout v1.x-staging
+git rebase -i $HASH_PREVIOUS_BAD_COMMIT
+# ... drop or edit the bad commit(s)
+git push -f upstream v1.x-staging
 ```
 
 2. Rebase the proposal against the updated staging branch
 
-```console
-$ git checkout v1.2.3-proposal
-$ git checkout -b v1.2.3-proposal-tmp
-$ git checkout v1.2.3-proposal
+```bash
+git checkout v1.2.3-proposal
+git checkout -b v1.2.3-proposal-tmp
+git checkout v1.2.3-proposal
 
-$ git reset --hard upstream/v1.x-staging
-$ git cherry-pick v1.2.3-proposal-tmp
+git reset --hard upstream/v1.x-staging
+git cherry-pick v1.2.3-proposal-tmp
 ```
 
 Note the `tmp` branch was created just to save the release commit.
@@ -680,7 +682,7 @@ the build before moving forward. Use the following list as a baseline:
   * Run `make build-addons` before running the tests
   * Remove `config.gypi` file
 
-```console
+```bash
 ./tools/test.py --shell ~/Downloads/node-v18.5.0-linux-x64/bin/node
 ```
 
@@ -695,7 +697,7 @@ count that tag/version as lost.
 
 Tag summaries have a predictable format. Look at a recent tag to see:
 
-```console
+```bash
 git tag -v v6.0.0
 ```
 
@@ -704,14 +706,14 @@ The message should look something like
 
 Install `git-secure-tag` npm module:
 
-```console
-$ npm install -g git-secure-tag
+```bash
+npm install -g git-secure-tag
 ```
 
 Create a tag using the following command:
 
-```console
-$ git secure-tag <vx.y.z> <commit-sha> -sm "YYYY-MM-DD Node.js vx.y.z (<release-type>) Release"
+```bash
+git secure-tag <vx.y.z> <commit-sha> -sm "YYYY-MM-DD Node.js vx.y.z (<release-type>) Release"
 ```
 
 <sup>The commit-sha is the release commit. You can get it easily by running `git rev-parse HEAD`</sup>
@@ -749,13 +751,13 @@ version number _and_ a pre-release tag.
 Merge your release proposal branch into the stable branch that you are releasing
 from and rebase the corresponding staging branch on top of that.
 
-```console
-$ git checkout v1.x
-$ git merge --ff-only v1.2.3-proposal
-$ git push upstream v1.x
-$ git checkout v1.x-staging
-$ git rebase v1.x
-$ git push upstream v1.x-staging
+```bash
+git checkout v1.x
+git merge --ff-only v1.2.3-proposal
+git push upstream v1.x
+git checkout v1.x-staging
+git rebase v1.x
+git push upstream v1.x-staging
 ```
 
 <details>
@@ -764,13 +766,13 @@ $ git push upstream v1.x-staging
 For security releases, you can start merging the release in the `nodejs-private`
 GitHub organization in advance by following the same steps:
 
-```console
-$ git checkout v1.x
-$ git merge --ff-only v1.2.3-proposal
-$ git push private v1.x
-$ git checkout v1.x-staging
-$ git rebase v1.x
-$ git push private v1.x-staging
+```bash
+git checkout v1.x
+git merge --ff-only v1.2.3-proposal
+git push private v1.x
+git checkout v1.x-staging
+git rebase v1.x
+git push private v1.x-staging
 ```
 
 Once all releasers are ready, you can push each of the branches to the public
@@ -780,18 +782,18 @@ repository.
 
 ### 13. Cherry-pick the release commit to `main`
 
-```console
-$ git checkout main
-$ git pull upstream main
-$ git cherry-pick --strategy-option=diff-algorithm=patience v1.x^
+```bash
+git checkout main
+git pull upstream main
+git cherry-pick --strategy-option=diff-algorithm=patience v1.x^
 ```
 
 Git should stop to let you fix conflicts.
 
 Revert all changes that were made to `src/node_version.h`:
 
-```console
-$ git checkout --ours HEAD -- src/node_version.h
+```bash
+git checkout --ours HEAD -- src/node_version.h
 ```
 
 <details>
@@ -806,8 +808,8 @@ edit it instead and:
 
 Amend the current commit to apply the changes:
 
-```console
-$ git commit --amend
+```bash
+git commit --amend
 ```
 
 </details>
@@ -829,12 +831,12 @@ the cherry-pick step.
 
 Then finish cherry-picking and push the commit upstream:
 
-```console
-$ git add src/node_version.h doc
-$ git diff --staged src doc # read output to validate that changes shows up as expected
-$ git cherry-pick --continue
-$ make lint-md && make lint-cpp
-$ git push upstream main
+```bash
+git add src/node_version.h doc
+git diff --staged src doc # read output to validate that changes shows up as expected
+git cherry-pick --continue
+make lint-md && make lint-cpp
+git push upstream main
 ```
 
 **Do not** cherry-pick the "Working on vx.y.z" commit to `main`.
@@ -850,12 +852,12 @@ metadata.
 It is useful to first push the patches to `private/main` to check that the
 GitHub actions runs pass, before pushing to `upstream/main`:
 
-```console
-$ git checkout main
-$ git reset --hard upstream/main
-$ git cherry-pick ... # apply the patches which apply to main
-$ git push private main # push to private main first run GitHub actions
-$ git push upstream main
+```bash
+git checkout main
+git reset --hard upstream/main
+git cherry-pick ... # apply the patches which apply to main
+git push private main # push to private main first run GitHub actions
+git push upstream main
 ```
 
 </details>
@@ -866,8 +868,8 @@ Push the tag to the repository before you promote the builds. If you
 haven't pushed your tag first, then build promotion won't work properly.
 Push the tag using the following command:
 
-```console
-$ git push upstream v1.2.3
+```bash
+git push upstream v1.2.3
 ```
 
 _Note_: Please do not push the tag unless you are ready to complete the
@@ -882,6 +884,12 @@ same GPG key!**
 Use `tools/release.sh` to promote and sign the build. Before doing this, you'll
 need to ensure you've loaded the correct ssh key, or you'll see the following:
 
+If your GPG key is protected by a password, you might need to run:
+
+```console
+$ export GPG_TTY=$(tty)
+```
+
 ```console
 # Checking for releases ...
 Enter passphrase for key '/Users/<user>/.ssh/id_rsa':
@@ -890,24 +898,24 @@ dist@direct.nodejs.org's password:
 
 The key can be loaded either with `ssh-add`:
 
-```console
+```bash
 # Substitute node_id_rsa with whatever you've named the key
-$ ssh-add ~/.ssh/node_id_rsa
+ssh-add ~/.ssh/node_id_rsa
 ```
 
 or at runtime with:
 
-```console
+```bash
 # Substitute node_id_rsa with whatever you've named the key
-$ ./tools/release.sh -i ~/.ssh/node_id_rsa
+./tools/release.sh -i ~/.ssh/node_id_rsa
 ```
 
 You can also specify a different ssh server address to connect to by defining
 a `NODEJS_RELEASE_HOST` environment variable:
 
-```console
+```bash
 # Substitute proxy.xyz with whatever address you intend to use
-$ NODEJS_RELEASE_HOST=proxy.xyz ./tools/release.sh
+NODEJS_RELEASE_HOST=proxy.xyz ./tools/release.sh
 ```
 
 `tools/release.sh` will perform the following actions when run:
@@ -969,8 +977,8 @@ release. However, the blog post is not yet fully automatic.
 
 Create a new blog post by running the [nodejs.org release-post.js script][]:
 
-```console
-$ node ./scripts/release-post/index.mjs x.y.z
+```bash
+node ./scripts/release-post/index.mjs x.y.z
 ```
 
 This script will use the promoted builds and changelog to generate the post. Run
@@ -999,9 +1007,13 @@ This script will use the promoted builds and changelog to generate the post. Run
   Refs: <full URL to your release proposal PR>
   ```
 
+* In order to trigger the CI Checks of the [nodejs.org repository][]; Please
+  attach the `github_actions:pull-request` label to the PR.
+
 * Changes to the base branch, `main`, on the [nodejs.org repository][] will
-  trigger a new build of nodejs.org so your changes should appear a few minutes
-  after pushing.
+  trigger a new build of nodejs.org, so your changes should appear a few minutes
+  after pushing. You can follow the [Deployments](https://github.com/nodejs/nodejs.org/deployments) page
+  to see when the build finishes and gets published.
 
 ### 18. Create the release on GitHub
 
@@ -1046,25 +1058,25 @@ _In whatever form you do this..._
 ### Marking a release line as LTS
 
 The process of marking a release line as LTS has been automated using
-[node-core-utils](https://github.com/nodejs/node-core-utils).
+[`@node-core/utils`](https://github.com/nodejs/node-core-utils).
 
 Start by checking out the staging branch for the release line that is going to
 be marked as LTS, e.g:
 
-```console
-$ git checkout v1.x-staging
+```bash
+git checkout v1.x-staging
 ```
 
-Next, make sure you have **node-core-utils** installed:
+Next, make sure you have **`@node-core/utils`** installed:
 
-```console
-$ npm i -g node-core-utils
+```bash
+npm i -g @node-core/utils
 ```
 
 Run the prepare LTS release command:
 
-```console
-$ git node release --prepare --startLTS
+```bash
+git node release --prepare --startLTS
 ```
 
 <details>
@@ -1104,7 +1116,7 @@ current LTS codename in its release line changelog file.
 
 The `test/parallel/test-process-release.js` file might also need to be updated.
 
-In case you can not run the automated `node-core-utils` command and you are
+In case you can not run the automated `@node-core/utils` command and you are
 currently running these steps manually it's a good idea to refer to previous
 LTS proposal PRs and make sure all required changes are covered.
 
@@ -1124,7 +1136,7 @@ In order to make sure a download URL
 (e.g: <https://nodejs.org/download/release/latest-codename/>) will be available
 for the new LTS release line you need to submit a PR to
 <https://github.com/nodejs/nodejs-latest-linker> and add a new entry for the
-new LTS codename in its `ltsNames` map located in the `./latest-linker.js`
+new LTS codename in its `ltsNames` map located in the `./common.js`
 file.
 
 Make sure to reach out to the Build WG in order to validate that the new URL is
@@ -1201,6 +1213,20 @@ Notify the `@nodejs/npm` team in the release proposal PR to inform them of the
 upcoming release. `npm` maintains a list of [supported versions](https://github.com/npm/cli/blob/latest/lib/utils/unsupported.js#L3)
 that will need updating to include the new major release.
 
+To keep the branch in sync until the release date, it can be as simple as
+doing the following:
+
+> Make sure to check that there are no PRs with the label `dont-land-on-vX.x`.
+
+```bash
+git checkout vN.x
+git reset --hard upstream/main
+git checkout vN.x-staging
+git reset --hard upstream/main
+git push upstream vN.x
+git push upstream vN.x-staging
+```
+
 ### Update `NODE_MODULE_VERSION`
 
 This macro in `src/node_version.h` is used to signal an ABI version for native
@@ -1272,6 +1298,12 @@ The commits in the generated changelog must then be organized:
 * Remove all release commits from the list
 * Remove all reverted commits and their reverts
 * Separate all SEMVER-MAJOR, SEMVER-MINOR, and SEMVER-PATCH commits into lists
+
+```console
+$ branch-diff upstream/vN-1.x upstream/vN.x --require-label=semver-major --group --filter-release  # get all majors
+$ branch-diff upstream/vN-1.x upstream/vN.x --require-label=semver-minor --group --filter-release  # get all minors
+$ branch-diff upstream/vN-1.x upstream/vN.x --exclude-label=semver-major,semver-minor --group --filter-release  # get all patches
+```
 
 #### Generate the notable changes
 

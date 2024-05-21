@@ -699,7 +699,7 @@ ManagedEVPPKey::GetPrivateKeyEncodingFromJs(
       (*offset)++;
     }
 
-    if (IsAnyByteSource(args[*offset])) {
+    if (IsAnyBufferSource(args[*offset])) {
       CHECK_IMPLIES(context != kKeyContextInput, result.cipher_ != nullptr);
       ArrayBufferOrViewContents<char> passphrase(args[*offset]);
       if (UNLIKELY(!passphrase.CheckSizeInt32())) {
@@ -730,7 +730,7 @@ ManagedEVPPKey ManagedEVPPKey::GetPrivateKeyFromJs(
     const FunctionCallbackInfo<Value>& args,
     unsigned int* offset,
     bool allow_key_object) {
-  if (args[*offset]->IsString() || IsAnyByteSource(args[*offset])) {
+  if (args[*offset]->IsString() || IsAnyBufferSource(args[*offset])) {
     Environment* env = Environment::GetCurrent(args);
     ByteSource key = ByteSource::FromStringOrBuffer(env, args[(*offset)++]);
     NonCopyableMaybe<PrivateKeyEncodingConfig> config =
@@ -756,7 +756,7 @@ ManagedEVPPKey ManagedEVPPKey::GetPrivateKeyFromJs(
 ManagedEVPPKey ManagedEVPPKey::GetPublicOrPrivateKeyFromJs(
     const FunctionCallbackInfo<Value>& args,
     unsigned int* offset) {
-  if (IsAnyByteSource(args[*offset])) {
+  if (IsAnyBufferSource(args[*offset])) {
     Environment* env = Environment::GetCurrent(args);
     ArrayBufferOrViewContents<char> data(args[(*offset)++]);
     if (UNLIKELY(!data.CheckSizeInt32())) {
@@ -901,7 +901,6 @@ v8::Local<v8::Function> KeyObjectHandle::Initialize(Environment* env) {
     templ = NewFunctionTemplate(isolate, New);
     templ->InstanceTemplate()->SetInternalFieldCount(
         KeyObjectHandle::kInternalFieldCount);
-    templ->Inherit(BaseObject::GetConstructorTemplate(env));
 
     SetProtoMethod(isolate, templ, "init", Init);
     SetProtoMethodNoSideEffect(
@@ -1373,7 +1372,6 @@ void NativeKeyObject::CreateNativeKeyObjectClass(
       NewFunctionTemplate(isolate, NativeKeyObject::New);
   t->InstanceTemplate()->SetInternalFieldCount(
       KeyObjectHandle::kInternalFieldCount);
-  t->Inherit(BaseObject::GetConstructorTemplate(env));
 
   Local<Value> ctor;
   if (!t->GetFunction(env->context()).ToLocal(&ctor))

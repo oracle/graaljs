@@ -17,6 +17,7 @@
 #include "src/inspector/string-util.h"
 #include "src/inspector/v8-console-agent-impl.h"
 #include "src/inspector/v8-debugger-agent-impl.h"
+#include "src/inspector/v8-debugger-barrier.h"
 #include "src/inspector/v8-debugger.h"
 #include "src/inspector/v8-heap-profiler-agent-impl.h"
 #include "src/inspector/v8-inspector-impl.h"
@@ -34,8 +35,10 @@ using v8_crdtp::json::ConvertCBORToJSON;
 using v8_crdtp::json::ConvertJSONToCBOR;
 
 bool IsCBORMessage(StringView msg) {
-  return msg.is8Bit() && msg.length() >= 2 && msg.characters8()[0] == 0xd8 &&
-         msg.characters8()[1] == 0x5a;
+  if (!msg.is8Bit() || msg.length() < 3) return false;
+  const uint8_t* bytes = msg.characters8();
+  return bytes[0] == 0xd8 &&
+         (bytes[1] == 0x5a || (bytes[1] == 0x18 && bytes[2] == 0x5a));
 }
 
 Status ConvertToCBOR(StringView state, std::vector<uint8_t>* cbor) {
@@ -87,16 +90,19 @@ int V8ContextInfo::executionContextId(v8::Local<v8::Context> context) {
 
 std::unique_ptr<V8InspectorSessionImpl> V8InspectorSessionImpl::create(
     V8InspectorImpl* inspector, int contextGroupId, int sessionId,
-    V8Inspector::Channel* channel, StringView state) {
+    V8Inspector::Channel* channel, StringView state,
+    V8Inspector::ClientTrustLevel clientTrustLevel,
+    std::shared_ptr<V8DebuggerBarrier> debuggerBarrier) {
   return std::unique_ptr<V8InspectorSessionImpl>(new V8InspectorSessionImpl(
-      inspector, contextGroupId, sessionId, channel, state));
+      inspector, contextGroupId, sessionId, channel, state, clientTrustLevel,
+      std::move(debuggerBarrier)));
 }
 
-V8InspectorSessionImpl::V8InspectorSessionImpl(V8InspectorImpl* inspector,
-                                               int contextGroupId,
-                                               int sessionId,
-                                               V8Inspector::Channel* channel,
-                                               StringView savedState)
+V8InspectorSessionImpl::V8InspectorSessionImpl(
+    V8InspectorImpl* inspector, int contextGroupId, int sessionId,
+    V8Inspector::Channel* channel, StringView savedState,
+    V8Inspector::ClientTrustLevel clientTrustLevel,
+    std::shared_ptr<V8DebuggerBarrier> debuggerBarrier)
     : m_contextGroupId(contextGroupId),
       m_sessionId(sessionId),
       m_inspector(inspector),
@@ -109,38 +115,41 @@ V8InspectorSessionImpl::V8InspectorSessionImpl(V8InspectorImpl* inspector,
       m_heapProfilerAgent(nullptr),
       m_profilerAgent(nullptr),
       m_consoleAgent(nullptr),
-      m_schemaAgent(nullptr) {
+      m_schemaAgent(nullptr),
+      m_clientTrustLevel(clientTrustLevel) {
   m_state->getBoolean("use_binary_protocol", &use_binary_protocol_);
 
   m_runtimeAgent.reset(new V8RuntimeAgentImpl(
-      this, this, agentState(protocol::Runtime::Metainfo::domainName)));
+      this, this, agentState(protocol::Runtime::Metainfo::domainName),
+      std::move(debuggerBarrier)));
   protocol::Runtime::Dispatcher::wire(&m_dispatcher, m_runtimeAgent.get());
 
   m_debuggerAgent.reset(new V8DebuggerAgentImpl(
       this, this, agentState(protocol::Debugger::Metainfo::domainName)));
   protocol::Debugger::Dispatcher::wire(&m_dispatcher, m_debuggerAgent.get());
 
-  m_profilerAgent.reset(new V8ProfilerAgentImpl(
-      this, this, agentState(protocol::Profiler::Metainfo::domainName)));
-  protocol::Profiler::Dispatcher::wire(&m_dispatcher, m_profilerAgent.get());
-
-  m_heapProfilerAgent.reset(new V8HeapProfilerAgentImpl(
-      this, this, agentState(protocol::HeapProfiler::Metainfo::domainName)));
-  protocol::HeapProfiler::Dispatcher::wire(&m_dispatcher,
-                                           m_heapProfilerAgent.get());
-
   m_consoleAgent.reset(new V8ConsoleAgentImpl(
       this, this, agentState(protocol::Console::Metainfo::domainName)));
   protocol::Console::Dispatcher::wire(&m_dispatcher, m_consoleAgent.get());
 
-  m_schemaAgent.reset(new V8SchemaAgentImpl(
-      this, this, agentState(protocol::Schema::Metainfo::domainName)));
-  protocol::Schema::Dispatcher::wire(&m_dispatcher, m_schemaAgent.get());
+  m_profilerAgent.reset(new V8ProfilerAgentImpl(
+      this, this, agentState(protocol::Profiler::Metainfo::domainName)));
+  protocol::Profiler::Dispatcher::wire(&m_dispatcher, m_profilerAgent.get());
 
+  if (m_clientTrustLevel == V8Inspector::kFullyTrusted) {
+    m_heapProfilerAgent.reset(new V8HeapProfilerAgentImpl(
+        this, this, agentState(protocol::HeapProfiler::Metainfo::domainName)));
+    protocol::HeapProfiler::Dispatcher::wire(&m_dispatcher,
+                                             m_heapProfilerAgent.get());
+
+    m_schemaAgent.reset(new V8SchemaAgentImpl(
+        this, this, agentState(protocol::Schema::Metainfo::domainName)));
+    protocol::Schema::Dispatcher::wire(&m_dispatcher, m_schemaAgent.get());
+  }
   if (savedState.length()) {
     m_runtimeAgent->restore();
     m_debuggerAgent->restore();
-    m_heapProfilerAgent->restore();
+    if (m_heapProfilerAgent) m_heapProfilerAgent->restore();
     m_profilerAgent->restore();
     m_consoleAgent->restore();
   }
@@ -151,7 +160,7 @@ V8InspectorSessionImpl::~V8InspectorSessionImpl() {
   discardInjectedScripts();
   m_consoleAgent->disable();
   m_profilerAgent->disable();
-  m_heapProfilerAgent->disable();
+  if (m_heapProfilerAgent) m_heapProfilerAgent->disable();
   m_debuggerAgent->disable();
   m_runtimeAgent->disable();
   m_inspector->disconnect(this);
@@ -383,7 +392,7 @@ void V8InspectorSessionImpl::dispatchProtocolMessage(StringView message) {
   }
   v8_crdtp::Dispatchable dispatchable(cbor);
   if (!dispatchable.ok()) {
-    if (dispatchable.HasCallId()) {
+    if (!dispatchable.HasCallId()) {
       m_channel->sendNotification(serializeForFrontend(
           v8_crdtp::CreateErrorNotification(dispatchable.DispatchError())));
     } else {
@@ -501,5 +510,7 @@ void V8InspectorSessionImpl::triggerPreciseCoverageDeltaUpdate(
     StringView occasion) {
   m_profilerAgent->triggerPreciseCoverageDeltaUpdate(toString16(occasion));
 }
+
+void V8InspectorSessionImpl::stop() { m_debuggerAgent->stop(); }
 
 }  // namespace v8_inspector

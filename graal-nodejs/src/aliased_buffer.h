@@ -118,6 +118,14 @@ class AliasedBufferBase : public MemoryRetainer {
   void Release();
 
   /**
+   * Make the global reference to the typed array weak. The caller must make
+   * sure that no operation can be done on the AliasedBuffer when the typed
+   * array becomes unreachable. Usually this means the caller must maintain
+   * a JS reference to the typed array from JS object.
+   */
+  inline void MakeWeak();
+
+  /**
   *  Get the underlying v8::ArrayBuffer underlying the TypedArray and
   *  overlaying the native buffer
   */
@@ -164,6 +172,7 @@ class AliasedBufferBase : public MemoryRetainer {
   inline void MemoryInfo(node::MemoryTracker* tracker) const override;
 
  private:
+  inline bool is_valid() const;
   v8::Isolate* isolate_ = nullptr;
   size_t count_ = 0;
   size_t byte_offset_ = 0;

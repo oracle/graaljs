@@ -48,8 +48,6 @@ set lint_js=
 set lint_cpp=
 set lint_md=
 set lint_md_build=
-set noetw=
-set noetw_msi_arg=
 set i18n_arg=
 set download_arg=
 set build_release=
@@ -96,7 +94,6 @@ if /i "%1"=="sign"          set sign=1&goto arg-ok
 if /i "%1"=="nosnapshot"    set nosnapshot=1&goto arg-ok
 if /i "%1"=="nonpm"         set nonpm=1&goto arg-ok
 if /i "%1"=="nocorepack"    set nocorepack=1&goto arg-ok
-if /i "%1"=="noetw"         set noetw=1&goto arg-ok
 if /i "%1"=="ltcg"          set ltcg=1&goto arg-ok
 if /i "%1"=="licensertf"    set licensertf=1&goto arg-ok
 if /i "%1"=="test"          set test_args=%test_args% %common_test_suites%&set lint_cpp=1&set lint_js=1&set lint_md=1&goto arg-ok
@@ -109,14 +106,9 @@ if /i "%1"=="test-addons"   set test_args=%test_args% addons&set build_addons=1&
 if /i "%1"=="test-doc"      set test_args=%test_args% %CI_DOC%&set doc=1&&set lint_js=1&set lint_md=1&goto arg-ok
 if /i "%1"=="test-js-native-api"   set test_args=%test_args% js-native-api&set build_js_native_api_tests=1&goto arg-ok
 if /i "%1"=="test-node-api"   set test_args=%test_args% node-api&set build_node_api_tests=1&goto arg-ok
-if /i "%1"=="test-benchmark" set test_args=%test_args% benchmark&goto arg-ok
-if /i "%1"=="test-simple"   set test_args=%test_args% sequential parallel&goto arg-ok
-if /i "%1"=="test-message"  set test_args=%test_args% message&goto arg-ok
 if /i "%1"=="test-tick-processor" set test_args=%test_args% tick-processor&goto arg-ok
 if /i "%1"=="test-internet" set test_args=%test_args% internet&goto arg-ok
-if /i "%1"=="test-pummel"   set test_args=%test_args% pummel&goto arg-ok
 if /i "%1"=="test-known-issues" set test_args=%test_args% known_issues&goto arg-ok
-if /i "%1"=="test-async-hooks"  set test_args=%test_args% async-hooks&goto arg-ok
 if /i "%1"=="test-all"      set test_args=%test_args% gc internet pummel %common_test_suites%&set lint_cpp=1&set lint_js=1&goto arg-ok
 if /i "%1"=="test-node-inspect" set test_node_inspect=1&goto arg-ok
 if /i "%1"=="test-check-deopts" set test_check_deopts=1&goto arg-ok
@@ -204,7 +196,6 @@ if "%config%"=="Debug"      set configure_flags=%configure_flags% --debug
 if defined nosnapshot       set configure_flags=%configure_flags% --without-snapshot
 if defined nonpm            set configure_flags=%configure_flags% --without-npm
 if defined nocorepack       set configure_flags=%configure_flags% --without-corepack
-if defined noetw            set configure_flags=%configure_flags% --without-etw& set noetw_msi_arg=/p:NoETW=1
 if defined ltcg             set configure_flags=%configure_flags% --with-ltcg
 if defined release_urlbase  set configure_flags=%configure_flags% --release-urlbase=%release_urlbase%
 if defined download_arg     set configure_flags=%configure_flags% %download_arg%
@@ -274,19 +265,6 @@ echo Looking for Visual Studio 2022
 if not defined target_env set "VCINSTALLDIR="
 call tools\msvs\vswhere_usability_wrapper.cmd "[17.0,18.0)" %target_arch% "prerelease"
 if "_%VCINSTALLDIR%_" == "__" goto vs-set-2019
-set "WIXSDKDIR=%WIX%\SDK\VS2017"
-if defined msi (
-  echo Looking for WiX installation for Visual Studio 2022...
-  if not exist "%WIXSDKDIR%" (
-    echo Failed to find WiX install for Visual Studio 2022
-    echo VS2022 support for WiX is only present starting at version 3.XX
-    goto vs-set-2019
-  )
-  if not exist "%VCINSTALLDIR%\..\MSBuild\Microsoft\WiX" (
-    echo Failed to find the WiX Toolset Visual Studio 2022 Extension
-    goto vs-set-2019
-  )
-)
 @rem check if VS2022 is already setup, and for the requested arch
 if "_%VisualStudioVersion%_" == "_17.0_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%target_arch%_" goto found_vs2022
 @rem need to clear VSINSTALLDIR for vcvarsall to work as expected
@@ -314,19 +292,6 @@ echo Looking for Visual Studio 2019
 if not defined target_env set "VCINSTALLDIR="
 call tools\msvs\vswhere_usability_wrapper.cmd "[16.0,17.0)" %target_arch% "prerelease"
 if "_%VCINSTALLDIR%_" == "__" goto msbuild-not-found
-set "WIXSDKDIR=%WIX%\SDK\VS2017"
-if defined msi (
-  echo Looking for WiX installation for Visual Studio 2019...
-  if not exist "%WIXSDKDIR%" (
-    echo Failed to find WiX install for Visual Studio 2019
-    echo VS2019 support for WiX is only present starting at version 3.11
-    goto msbuild-not-found
-  )
-  if not exist "%VCINSTALLDIR%\..\MSBuild\Microsoft\WiX" (
-    echo Failed to find the WiX Toolset Visual Studio 2019 Extension
-    goto msbuild-not-found
-  )
-)
 @rem check if VS2019 is already setup, and for the requested arch
 if "_%VisualStudioVersion%_" == "_16.0_" if "_%VSCMD_ARG_TGT_ARCH%_"=="_%target_arch%_" goto found_vs2019
 @rem need to clear VSINSTALLDIR for vcvarsall to work as expected
@@ -412,7 +377,8 @@ if errorlevel 1 (
 if "%target%" == "Clean" goto exit
 
 :after-build
-rd %config%
+:: Check existence of %config% before removing it.
+if exist %config% rd %config%
 if errorlevel 1 echo "Old build output exists at 'out\%config%'. Please remove." & exit /B
 :: Use /J because /D (symlink) requires special permissions.
 if EXIST out\%config% mklink /J %config% out\%config%
@@ -495,22 +461,32 @@ copy /Y ..\tools\msvs\nodevars.bat %TARGET_NAME%\ > nul
 if errorlevel 1 echo Cannot copy nodevars.bat && goto package_error
 copy /Y ..\tools\msvs\install_tools\*.* %TARGET_NAME%\ > nul
 if errorlevel 1 echo Cannot copy install_tools scripts && goto package_error
-if not defined noetw (
-    copy /Y ..\src\res\node_etw_provider.man %TARGET_NAME%\ > nul
-    if errorlevel 1 echo Cannot copy node_etw_provider.man && goto package_error
-)
 if defined dll (
   copy /Y libnode.dll %TARGET_NAME%\ > nul
   if errorlevel 1 echo Cannot copy libnode.dll && goto package_error
+
+  copy /Y libnode.lib %TARGET_NAME%\ > nul
+  if errorlevel 1 echo Cannot copy libnode.lib && goto package_error
 
   mkdir %TARGET_NAME%\Release > nul
   copy /Y node.def %TARGET_NAME%\Release\ > nul
   if errorlevel 1 echo Cannot copy node.def && goto package_error
 
-  set HEADERS_ONLY=1
-  python ..\tools\install.py install %CD%\%TARGET_NAME% \ > nul
+  python ..\tools\install.py install --root-dir .. --config-gypi-path %CD%\..\config.gypi --dest-dir %CD%\%TARGET_NAME% --prefix \ --headers-only
   if errorlevel 1 echo Cannot install headers && goto package_error
-  set HEADERS_ONLY=
+
+  if exist ..\Debug (
+    mkdir %TARGET_NAME%\Debug > nul
+
+    copy /Y ..\Debug\libnode.dll %TARGET_NAME%\Debug\ > nul
+    if errorlevel 1 echo Cannot copy libnode.dll && goto package_error
+
+    copy /Y ..\Debug\libnode.lib %TARGET_NAME%\Debug\ > nul
+    if errorlevel 1 echo Cannot copy libnode.lib && goto package_error
+
+    copy /Y ..\Debug\node.def %TARGET_NAME%\Debug\ > nul
+    if errorlevel 1 echo Cannot copy node.def && goto package_error
+  )
 )
 cd ..
 
@@ -551,7 +527,7 @@ if not defined msi goto install-doctools
 echo Building node-v%FULLVERSION%-%target_arch%.msi
 set "msbsdk="
 if defined WindowsSDKVersion set "msbsdk=/p:WindowsTargetPlatformVersion=%WindowsSDKVersion:~0,-1%"
-msbuild "%~dp0tools\msvs\msi\nodemsi.sln" /m /t:Clean,Build %msbsdk% /p:PlatformToolset=%PLATFORM_TOOLSET% /p:WixSdkDir="%WIXSDKDIR%" /p:Configuration=%config% /p:Platform=%target_arch% /p:NodeVersion=%NODE_VERSION% /p:FullVersion=%FULLVERSION% /p:DistTypeDir=%DISTTYPEDIR% %noetw_msi_arg% /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
+msbuild "%~dp0tools\msvs\msi\nodemsi.sln" /m /t:Restore,Clean,Build %msbsdk% /p:PlatformToolset=%PLATFORM_TOOLSET% /p:Configuration=%config% /p:Platform=%target_arch% /p:NodeVersion=%NODE_VERSION% /p:FullVersion=%FULLVERSION% /p:DistTypeDir=%DISTTYPEDIR% /clp:NoSummary;NoItemAndPropertyList;Verbosity=minimal /nologo
 if errorlevel 1 goto exit
 
 if not defined sign goto upload
@@ -638,8 +614,7 @@ rem "%node_exe%" tools\doc\addon-verify.mjs
 if %errorlevel% neq 0 exit /b %errorlevel%
 :: building addons
 setlocal
-set npm_config_nodedir=%~dp0
-"%node_exe%" "%~dp0tools\build-addons.mjs" "%~dp0deps\npm\node_modules\node-gyp\bin\node-gyp.js" "%~dp0test\addons"
+python "%~dp0tools\build_addons.py" "%~dp0test\addons" --config %config%
 if errorlevel 1 exit /b 1
 endlocal
 
@@ -656,8 +631,7 @@ for /d %%F in (test\js-native-api\??_*) do (
 )
 :: building js-native-api
 setlocal
-set npm_config_nodedir=%~dp0
-"%node_exe%" "%~dp0tools\build-addons.mjs" "%~dp0deps\npm\node_modules\node-gyp\bin\node-gyp.js" "%~dp0test\js-native-api"
+python "%~dp0tools\build_addons.py" "%~dp0test\js-native-api" --config %config%
 if errorlevel 1 exit /b 1
 endlocal
 goto build-node-api-tests
@@ -675,8 +649,7 @@ for /d %%F in (test\node-api\??_*) do (
 )
 :: building node-api
 setlocal
-set npm_config_nodedir=%~dp0
-"%node_exe%" "%~dp0tools\build-addons.mjs" "%~dp0deps\npm\node_modules\node-gyp\bin\node-gyp.js" "%~dp0test\node-api"
+python "%~dp0tools\build_addons.py" "%~dp0test\node-api" --config %config%
 if errorlevel 1 exit /b 1
 endlocal
 goto run-tests
@@ -790,7 +763,7 @@ set exit_code=1
 goto exit
 
 :help
-echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-doc/test-js-native-api/test-node-api/test-benchmark/test-internet/test-pummel/test-simple/test-message/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-async-hooks/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [nonpm] [nocorepack] [noetw] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2019/vs2022] [download-all] [enable-vtune] [lint/lint-ci/lint-js/lint-md] [lint-md-build] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
+echo vcbuild.bat [debug/release] [msi] [doc] [test/test-all/test-addons/test-doc/test-js-native-api/test-node-api/test-internet/test-tick-processor/test-known-issues/test-node-inspect/test-check-deopts/test-npm/test-v8/test-v8-intl/test-v8-benchmarks/test-v8-all] [ignore-flaky] [static/dll] [noprojgen] [projgen] [small-icu/full-icu/without-intl] [nobuild] [nosnapshot] [nonpm] [nocorepack] [ltcg] [licensetf] [sign] [ia32/x86/x64/arm64] [vs2019/vs2022] [download-all] [enable-vtune] [lint/lint-ci/lint-js/lint-md] [lint-md-build] [package] [build-release] [upload] [no-NODE-OPTIONS] [link-module path-to-module] [debug-http2] [debug-nghttp2] [clean] [cctest] [no-cctest] [openssl-no-asm]
 echo Examples:
 echo   vcbuild.bat                          : builds release build
 echo   vcbuild.bat debug                    : builds debug build

@@ -5,10 +5,7 @@
 #ifndef V8_RUNTIME_RUNTIME_UTILS_H_
 #define V8_RUNTIME_RUNTIME_UTILS_H_
 
-#include "src/base/logging.h"
-#include "src/common/globals.h"
 #include "src/objects/objects.h"
-#include "src/runtime/runtime.h"
 
 namespace v8 {
 namespace internal {
@@ -39,7 +36,7 @@ static inline ObjectPair MakePair(Object x, Object y) {
 #if defined(V8_TARGET_LITTLE_ENDIAN)
   return x.ptr() | (static_cast<ObjectPair>(y.ptr()) << 32);
 #elif defined(V8_TARGET_BIG_ENDIAN)
-  return y->ptr() | (static_cast<ObjectPair>(x->ptr()) << 32);
+  return y.ptr() | (static_cast<ObjectPair>(x.ptr()) << 32);
 #else
 #error Unknown endianness
 #endif

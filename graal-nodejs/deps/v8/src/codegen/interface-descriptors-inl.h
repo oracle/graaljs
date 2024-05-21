@@ -25,12 +25,10 @@
 #include "src/codegen/s390/interface-descriptors-s390-inl.h"
 #elif V8_TARGET_ARCH_MIPS64
 #include "src/codegen/mips64/interface-descriptors-mips64-inl.h"
-#elif V8_TARGET_ARCH_MIPS
-#include "src/codegen/mips/interface-descriptors-mips-inl.h"
 #elif V8_TARGET_ARCH_LOONG64
 #include "src/codegen/loong64/interface-descriptors-loong64-inl.h"
-#elif V8_TARGET_ARCH_RISCV64
-#include "src/codegen/riscv64/interface-descriptors-riscv64-inl.h"
+#elif V8_TARGET_ARCH_RISCV32 || V8_TARGET_ARCH_RISCV64
+#include "src/codegen/riscv/interface-descriptors-riscv-inl.h"
 #else
 #error Unsupported target architecture.
 #endif
@@ -56,6 +54,11 @@ constexpr auto StaticCallInterfaceDescriptor<DerivedDescriptor>::registers() {
 template <typename DerivedDescriptor>
 constexpr auto StaticJSCallInterfaceDescriptor<DerivedDescriptor>::registers() {
   return CallInterfaceDescriptor::DefaultJSRegisterArray();
+}
+
+// static
+constexpr auto CompareNoContextDescriptor::registers() {
+  return CompareDescriptor::registers();
 }
 
 template <typename DerivedDescriptor>
@@ -190,6 +193,22 @@ StaticCallInterfaceDescriptor<DerivedDescriptor>::GetRegisterParameter(int i) {
 }
 
 // static
+template <typename DerivedDescriptor>
+constexpr int
+StaticCallInterfaceDescriptor<DerivedDescriptor>::GetStackParameterIndex(
+    int i) {
+  return i - DerivedDescriptor::GetRegisterParameterCount();
+}
+
+// static
+template <typename DerivedDescriptor>
+constexpr DoubleRegister
+StaticCallInterfaceDescriptor<DerivedDescriptor>::GetDoubleRegisterParameter(
+    int i) {
+  return DoubleRegister::from_code(DerivedDescriptor::registers()[i].code());
+}
+
+// static
 constexpr Register FastNewObjectDescriptor::TargetRegister() {
   return kJSFunctionRegister;
 }
@@ -225,7 +244,7 @@ constexpr RegList WriteBarrierDescriptor::ComputeSavedRegisters(
     saved_registers.set(SlotAddressRegister());
   }
 #elif V8_TARGET_ARCH_ARM64 || V8_TARGET_ARCH_ARM || V8_TARGET_ARCH_LOONG64 || \
-    V8_TARGET_ARCH_MIPS64 || V8_TARGET_ARCH_MIPS
+    V8_TARGET_ARCH_MIPS64
   if (object != ObjectRegister()) saved_registers.set(ObjectRegister());
   // The slot address is always clobbered.
   saved_registers.set(SlotAddressRegister());
@@ -260,7 +279,7 @@ constexpr Register LoadNoFeedbackDescriptor::ICKindRegister() {
 // need to choose a new register here.
 // static
 constexpr Register LoadGlobalWithVectorDescriptor::VectorRegister() {
-  STATIC_ASSERT(!LoadWithVectorDescriptor::VectorRegister().is_valid());
+  static_assert(!LoadWithVectorDescriptor::VectorRegister().is_valid());
   return LoadDescriptor::ReceiverRegister();
 }
 #else
@@ -315,6 +334,20 @@ constexpr auto StoreGlobalBaselineDescriptor::registers() {
 }
 
 // static
+constexpr auto DefineKeyedOwnDescriptor::registers() {
+  return RegisterArray(StoreDescriptor::ReceiverRegister(),
+                       StoreDescriptor::NameRegister(),
+                       StoreDescriptor::ValueRegister(),
+                       DefineKeyedOwnDescriptor::FlagsRegister(),
+                       StoreDescriptor::SlotRegister());
+}
+
+// static
+constexpr auto DefineKeyedOwnBaselineDescriptor::registers() {
+  return DefineKeyedOwnDescriptor::registers();
+}
+
+// static
 constexpr auto LoadWithReceiverBaselineDescriptor::registers() {
   return RegisterArray(
       LoadDescriptor::ReceiverRegister(),
@@ -325,16 +358,16 @@ constexpr auto LoadWithReceiverBaselineDescriptor::registers() {
 // static
 constexpr auto BaselineOutOfLinePrologueDescriptor::registers() {
   // TODO(v8:11421): Implement on other platforms.
-#if V8_TARGET_ARCH_X64 || V8_TARGET_ARCH_ARM64 || V8_TARGET_ARCH_ARM ||       \
-    V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64 || V8_TARGET_ARCH_S390 ||      \
-    V8_TARGET_ARCH_RISCV64 || V8_TARGET_ARCH_MIPS64 || V8_TARGET_ARCH_MIPS || \
-    V8_TARGET_ARCH_LOONG64
+#if V8_TARGET_ARCH_X64 || V8_TARGET_ARCH_ARM64 || V8_TARGET_ARCH_ARM ||  \
+    V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64 || V8_TARGET_ARCH_S390 || \
+    V8_TARGET_ARCH_RISCV64 || V8_TARGET_ARCH_MIPS64 ||                   \
+    V8_TARGET_ARCH_LOONG64 || V8_TARGET_ARCH_RISCV32
   return RegisterArray(
       kContextRegister, kJSFunctionRegister, kJavaScriptCallArgCountRegister,
       kJavaScriptCallExtraArg1Register, kJavaScriptCallNewTargetRegister,
       kInterpreterBytecodeArrayRegister);
 #elif V8_TARGET_ARCH_IA32
-  STATIC_ASSERT(kJSFunctionRegister == kInterpreterBytecodeArrayRegister);
+  static_assert(kJSFunctionRegister == kInterpreterBytecodeArrayRegister);
   return RegisterArray(
       kContextRegister, kJSFunctionRegister, kJavaScriptCallArgCountRegister,
       kJavaScriptCallExtraArg1Register, kJavaScriptCallNewTargetRegister);
@@ -349,11 +382,23 @@ constexpr auto BaselineLeaveFrameDescriptor::registers() {
 #if V8_TARGET_ARCH_IA32 || V8_TARGET_ARCH_X64 || V8_TARGET_ARCH_ARM64 ||      \
     V8_TARGET_ARCH_ARM || V8_TARGET_ARCH_PPC || V8_TARGET_ARCH_PPC64 ||       \
     V8_TARGET_ARCH_S390 || V8_TARGET_ARCH_RISCV64 || V8_TARGET_ARCH_MIPS64 || \
-    V8_TARGET_ARCH_MIPS || V8_TARGET_ARCH_LOONG64
+    V8_TARGET_ARCH_LOONG64 || V8_TARGET_ARCH_RISCV32
   return RegisterArray(ParamsSizeRegister(), WeightRegister());
 #else
   return DefaultRegisterArray();
 #endif
+}
+
+// static
+constexpr auto OnStackReplacementDescriptor::registers() {
+  return DefaultRegisterArray();
+}
+
+// static
+constexpr Register OnStackReplacementDescriptor::MaybeTargetCodeRegister() {
+  // Picking the first register on purpose because it's convenient that this
+  // register is the same as the platform's return-value register.
+  return registers()[0];
 }
 
 // static
@@ -498,6 +543,15 @@ constexpr auto StoreWithVectorDescriptor::registers() {
                        StoreDescriptor::NameRegister(),
                        StoreDescriptor::ValueRegister(),
                        StoreDescriptor::SlotRegister(), VectorRegister());
+}
+
+// static
+constexpr auto DefineKeyedOwnWithVectorDescriptor::registers() {
+  return RegisterArray(StoreDescriptor::ReceiverRegister(),
+                       StoreDescriptor::NameRegister(),
+                       StoreDescriptor::ValueRegister(),
+                       DefineKeyedOwnDescriptor::FlagsRegister(),
+                       StoreDescriptor::SlotRegister());
 }
 
 // static

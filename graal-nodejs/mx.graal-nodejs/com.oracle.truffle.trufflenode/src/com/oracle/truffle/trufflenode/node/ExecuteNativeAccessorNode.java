@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -42,20 +42,14 @@ package com.oracle.truffle.trufflenode.node;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.frame.VirtualFrame;
-import com.oracle.truffle.api.profiles.BranchProfile;
-import com.oracle.truffle.js.nodes.access.GetPrototypeNode;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSFrameUtil;
 import com.oracle.truffle.js.runtime.JavaScriptRootNode;
-import com.oracle.truffle.js.runtime.builtins.JSFunctionObject;
-import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.trufflenode.GraalJSAccess;
 import com.oracle.truffle.trufflenode.NativeAccess;
 import com.oracle.truffle.trufflenode.info.Accessor;
-import com.oracle.truffle.trufflenode.info.FunctionTemplate;
 
 /**
  *
@@ -64,17 +58,12 @@ import com.oracle.truffle.trufflenode.info.FunctionTemplate;
 public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
 
     private final boolean getter;
-    private final BranchProfile errorBranch = BranchProfile.create();
 
-    @Child private GetPrototypeNode getPrototypeNode;
-    @Child private PropertyGetNode prototypePropertyGetNode;
     @Child private PropertyGetNode holderPropertyGetNode;
     @Child private PropertyGetNode accessorGetNode;
 
     public ExecuteNativeAccessorNode(JSContext context, boolean getter) {
         this.getter = getter;
-        this.getPrototypeNode = GetPrototypeNode.create();
-        this.prototypePropertyGetNode = PropertyGetNode.create(JSObject.PROTOTYPE, false, context);
         this.accessorGetNode = PropertyGetNode.createGetHidden(GraalJSAccess.ACCESSOR_KEY, context);
         this.holderPropertyGetNode = PropertyGetNode.createGetHidden(GraalJSAccess.HOLDER_KEY, context);
     }
@@ -84,18 +73,6 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
         Object[] arguments = frame.getArguments();
         Accessor accessor = (Accessor) accessorGetNode.getValue(JSFrameUtil.getFunctionObject(frame));
 
-        if (accessor.hasSignature()) {
-            FunctionTemplate signature = accessor.getSignature();
-            JSFunctionObject functionObject = signature.getFunctionObject(getRealm());
-            if (functionObject != null) {
-                Object functionPrototype = prototypePropertyGetNode.getValue(functionObject);
-                Object instancePrototype = getPrototypeNode.execute(arguments[0]);
-                if (functionPrototype != instancePrototype) {
-                    errorBranch.enter();
-                    throw Errors.createTypeError(incompatibleReceiverMessage(accessor));
-                }
-            }
-        }
         long functionPointer = getter ? accessor.getGetterPtr() : accessor.getSetterPtr();
         if (functionPointer == 0) {
             assert !getter;
@@ -103,11 +80,6 @@ public class ExecuteNativeAccessorNode extends JavaScriptRootNode {
         }
         Object holder = holderPropertyGetNode.getValue(arguments[1]);
         return executeAccessorMethod(functionPointer, accessor, holder, arguments);
-    }
-
-    @CompilerDirectives.TruffleBoundary
-    private static String incompatibleReceiverMessage(Accessor accessor) {
-        return "Method " + accessor.getName() + " called on incompatible receiver";
     }
 
     @CompilerDirectives.TruffleBoundary

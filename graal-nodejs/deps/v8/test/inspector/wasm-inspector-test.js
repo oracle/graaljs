@@ -66,7 +66,7 @@ WasmInspectorTest.getWasmValue = async function(value) {
 };
 
 function printIfFailure(message) {
-  if (!message.result) {
+  if (!message.result || message.result.exceptionDetails) {
     InspectorTest.logMessage(message);
   }
   return message;
@@ -154,7 +154,20 @@ async function dumpTables(tablesObj) {
     let functions = [];
     for (let entry of entries.result.result) {
       if (entry.name === 'length') continue;
-      functions.push(`${entry.name}: ${entry.value.description}`);
+      let description = entry.value.description;
+      // For tables containing references, explore one level into the ref.
+      if (entry.value.objectId != null) {
+        let referencedObj = await Protocol.Runtime.getProperties(
+          {objectId: entry.value.objectId});
+        let value = referencedObj.result.result
+            .filter(prop => prop.name == "value")[0].value;
+        // If the value doesn't have a description, fall back to its value
+        // property. (For null this makes sure to print "null", as the null
+        // value doesn't have a description.)
+        value = value.description ?? value.value;
+        description = `${value} (${description})`;
+      }
+      functions.push(`${entry.name}: ${description}`);
     }
     const functions_str = functions.join(', ');
     tables_str.push(`      ${table.name}: ${functions_str}`);

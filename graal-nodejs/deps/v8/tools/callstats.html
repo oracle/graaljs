@@ -4,8 +4,9 @@
 Copyright 2016 the V8 project authors. All rights reserved.  Use of this source
 code is governed by a BSD-style license that can be found in the LICENSE file.
 -->
-
 <head>
+<!-- This will be overwritten by the v8.dev/tools exporter -->
+<!-- ANALYTICS_PLACEHOLDER -->
   <meta charset="utf-8">
   <title>V8 Runtime Call Stats Komparator</title>
   <link rel="stylesheet" type="text/css" href="system-analyzer/index.css">
@@ -1185,7 +1186,7 @@ code is governed by a BSD-style license that can be found in the LICENSE file.
         let parts = location.pathname.split("/").slice(0, -1);
         url = location.origin + parts.join('/') + '/' + url;
       }
-      let response = await fetch(url);
+      let response = await fetch(url, {timeout: 20});
       if (!response.ok) return false;
       let filename = url.split('/');
       filename = filename[filename.length - 1];
@@ -1560,7 +1561,7 @@ code is governed by a BSD-style license that can be found in the LICENSE file.
       //  { PAGE: [[metric_name, ...], [...], ]}
       // Also, make sure we don't have the versioned array-style:
       // { VERSION: { PAGE: [[metric_name, ...], [...], ]}, ...}
-      const innerArray = firstProperty(maybeMetrics);
+      const innerArray = firstProperty(maybeMetric);
       if (Array.isArray(maybeMetric) && !Array.isArray(innerArray)) {
         return {
           [getFileName()]: json
@@ -1944,7 +1945,6 @@ code is governed by a BSD-style license that can be found in the LICENSE file.
           Group.groups.get('gc-background').entry(),
           Group.groups.get('gc').entry(),
           Group.groups.get('javascript').entry(),
-          Group.groups.get('websnapshot').entry(),
           Group.groups.get('runtime').entry(),
           this.unclassified
         ];
@@ -1965,6 +1965,11 @@ code is governed by a BSD-style license that can be found in the LICENSE file.
         };
       }
       add(entry) {
+        // Ignore accidentally added Group entries.
+        if (entry.name.startsWith(GroupedEntry.prefix)) {
+          console.warn("Skipping accidentally added Group entry:", entry, this);
+          return;
+        }
         let existingEntry = this.entryDict.get(entry.name);
         if (existingEntry !== undefined) {
           // Duplicate entries happen when multiple runs are combined into a
@@ -1975,11 +1980,6 @@ code is governed by a BSD-style license that can be found in the LICENSE file.
             if (group.addTimeAndCount(entry)) return;
           }
         } else {
-          // Ignore accidentally added Group entries.
-          if (entry.name.startsWith(GroupedEntry.prefix)) {
-            console.warn("Skipping accidentally added Group entry:", entry, this);
-            return;
-          }
           entry.page = this;
           this.entryDict.set(entry.name, entry);
           for (let group of this.groups) {
@@ -2053,12 +2053,22 @@ code is governed by a BSD-style license that can be found in the LICENSE file.
         // or the new object style.
         if (Array.isArray(data)) {
           for (let i = 0; i < data.length; i++) {
-            page.add(Entry.fromLegacyJSON(i, data[data.length - i - 1]));
+            const entryData = data[data.length - i - 1];
+            const metricName = entryData[0];
+            if (metricName.startsWith(GroupedEntry.prefix)) {
+              console.warn(`Ignoring input group-entry "${metricName}".`);
+              continue;
+            };
+            page.add(Entry.fromLegacyJSON(i, entryData));
           }
         } else {
           let position = 0;
-          for (let metric_name in data) {
-            page.add(Entry.fromJSON(position, metric_name, data[metric_name]));
+          for (let metricName in data) {
+            if (metricName.startsWith(GroupedEntry.prefix)) {
+              console.warn(`Ignoring input group-entry "${metricName}".`);
+              continue;
+            }
+            page.add(Entry.fromJSON(position, metricName, data[metricName]));
             position++;
           }
         }
@@ -2271,7 +2281,6 @@ code is governed by a BSD-style license that can be found in the LICENSE file.
       new Group('GC', /GC_.*|AllocateInTargetSpace|GC/, "#00799c"));
     Group.add('javascript',
       new Group('JavaScript', /JS_Execution|JavaScript/, "#DD4477"));
-    Group.add('websnapshot', new Group('WebSnapshot', /.*Web.*/, "#E8E11C"));
     Group.add('runtime', new Group('V8 C++', /.*/, "#88BB00"));
     Group.add('blink',
       new Group('Blink RCS', /.*Blink_.*/, "#006600", false, false));

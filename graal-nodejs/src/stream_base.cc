@@ -91,7 +91,7 @@ StreamWriteResult StreamBase::Write(uv_buf_t* bufs,
   for (size_t i = 0; i < count; ++i) total_bytes += bufs[i].len;
   bytes_written_ += total_bytes;
 
-  if (send_handle == nullptr && !skip_try_write) {
+  if (send_handle == nullptr && HasDoTryWrite() && !skip_try_write) {
     err = DoTryWrite(&bufs, &count);
     if (err != 0 || count == 0) {
       return StreamWriteResult{false, err, nullptr, total_bytes, {}};
@@ -365,7 +365,7 @@ int StreamBase::WriteString(const FunctionCallbackInfo<Value>& args) {
   size_t synchronously_written = 0;
   uv_buf_t buf;
 
-  bool try_write = storage_size <= sizeof(stack_storage) &&
+  bool try_write = HasDoTryWrite() && storage_size <= sizeof(stack_storage) &&
                    (!IsIPCPipe() || send_handle_obj.IsEmpty());
   if (try_write) {
     data_size = StringBytes::Write(isolate,
@@ -492,13 +492,12 @@ Local<Object> StreamBase::GetObject() {
   return GetAsyncWrap()->object();
 }
 
-void StreamBase::AddMethod(Environment* env,
+void StreamBase::AddMethod(Isolate* isolate,
                            Local<Signature> signature,
                            enum PropertyAttribute attributes,
                            Local<FunctionTemplate> t,
                            JSMethodFunction* stream_method,
                            Local<String> string) {
-  Isolate* isolate = env->isolate();
   Local<FunctionTemplate> templ =
       NewFunctionTemplate(isolate,
                           stream_method,
@@ -510,19 +509,37 @@ void StreamBase::AddMethod(Environment* env,
 }
 
 void StreamBase::AddMethods(Environment* env, Local<FunctionTemplate> t) {
-  Isolate* isolate = env->isolate();
+  AddMethods(env->isolate_data(), t);
+}
+
+void StreamBase::AddMethods(IsolateData* isolate_data,
+                            Local<FunctionTemplate> t) {
+  Isolate* isolate = isolate_data->isolate();
   HandleScope scope(isolate);
 
   enum PropertyAttribute attributes =
       static_cast<PropertyAttribute>(ReadOnly | DontDelete | DontEnum);
   Local<Signature> sig = Signature::New(isolate, t);
 
-  AddMethod(env, sig, attributes, t, GetFD, env->fd_string());
-  AddMethod(
-      env, sig, attributes, t, GetExternal, env->external_stream_string());
-  AddMethod(env, sig, attributes, t, GetBytesRead, env->bytes_read_string());
-  AddMethod(
-      env, sig, attributes, t, GetBytesWritten, env->bytes_written_string());
+  AddMethod(isolate, sig, attributes, t, GetFD, isolate_data->fd_string());
+  AddMethod(isolate,
+            sig,
+            attributes,
+            t,
+            GetExternal,
+            isolate_data->external_stream_string());
+  AddMethod(isolate,
+            sig,
+            attributes,
+            t,
+            GetBytesRead,
+            isolate_data->bytes_read_string());
+  AddMethod(isolate,
+            sig,
+            attributes,
+            t,
+            GetBytesWritten,
+            isolate_data->bytes_written_string());
   SetProtoMethod(isolate, t, "readStart", JSMethod<&StreamBase::ReadStartJS>);
   SetProtoMethod(isolate, t, "readStop", JSMethod<&StreamBase::ReadStopJS>);
   SetProtoMethod(isolate, t, "shutdown", JSMethod<&StreamBase::Shutdown>);
@@ -662,7 +679,13 @@ void EmitToJSStreamListener::OnStreamRead(ssize_t nread, const uv_buf_t& buf_) {
   }
 
   CHECK_LE(static_cast<size_t>(nread), bs->ByteLength());
-  bs = BackingStore::Reallocate(isolate, std::move(bs), nread);
+  if (static_cast<size_t>(nread) != bs->ByteLength()) {
+    std::unique_ptr<BackingStore> old_bs = std::move(bs);
+    bs = ArrayBuffer::NewBackingStore(isolate, nread);
+    memcpy(static_cast<char*>(bs->Data()),
+           static_cast<char*>(old_bs->Data()),
+           nread);
+  }
 
   stream->CallJSOnreadMethod(nread, ArrayBuffer::New(isolate, std::move(bs)));
 }

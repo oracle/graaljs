@@ -25,8 +25,8 @@
 // (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 // OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-// Flags: --allow-natives-syntax --opt --no-always-opt --no-use-osr
-// Flags: --interrupt-budget=1024
+// Flags: --allow-natives-syntax --turbofan --no-always-turbofan --no-use-osr
+// Flags: --interrupt-budget=1024 --nomaglev
 
 function o1() { }
 %PrepareFunctionForOptimization(o1);

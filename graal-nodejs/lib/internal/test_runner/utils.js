@@ -2,9 +2,10 @@
 const {
   ArrayPrototypeJoin,
   ArrayPrototypeMap,
+  ArrayPrototypeFlatMap,
   ArrayPrototypePush,
   ArrayPrototypeReduce,
-  ObjectCreate,
+  ArrayPrototypeSome,
   ObjectGetOwnPropertyDescriptor,
   MathFloor,
   MathMax,
@@ -118,6 +119,7 @@ const kBuiltinReporters = new SafeMap([
   ['dot', 'internal/test_runner/reporter/dot'],
   ['tap', 'internal/test_runner/reporter/tap'],
   ['junit', 'internal/test_runner/reporter/junit'],
+  ['lcov', 'internal/test_runner/reporter/lcov'],
 ]);
 
 const kDefaultReporter = process.stdout.isTTY ? 'spec' : 'tap';
@@ -133,10 +135,18 @@ function tryBuiltinReporter(name) {
   return require(builtinPath);
 }
 
-async function getReportersMap(reporters, destinations, rootTest) {
+function shouldColorizeTestFiles(rootTest) {
+  // This function assumes only built-in destinations (stdout/stderr) supports coloring
+  const { reporters, destinations } = parseCommandLine();
+  return ArrayPrototypeSome(reporters, (_, index) => {
+    const destination = kBuiltinDestinations.get(destinations[index]);
+    return destination && shouldColorize(destination);
+  });
+}
+
+async function getReportersMap(reporters, destinations) {
   return SafePromiseAllReturnArrayLike(reporters, async (name, i) => {
     const destination = kBuiltinDestinations.get(destinations[i]) ?? createWriteStream(destinations[i]);
-    rootTest.harness.shouldColorizeTestFiles ||= shouldColorize(destination);
 
     // Load the test reporter passed to --test-reporter
     let reporter = tryBuiltinReporter(name);
@@ -150,8 +160,8 @@ async function getReportersMap(reporters, destinations, rootTest) {
         parentURL = 'file:///';
       }
 
-      const { esmLoader } = require('internal/process/esm_loader');
-      reporter = await esmLoader.import(name, parentURL, ObjectCreate(null));
+      const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
+      reporter = await cascadedLoader.import(name, parentURL, { __proto__: null });
     }
 
     if (reporter?.default) {
@@ -171,12 +181,12 @@ async function getReportersMap(reporters, destinations, rootTest) {
 }
 
 const reporterScope = new AsyncResource('TestReporterScope');
-const setupTestReporters = reporterScope.bind(async (rootTest) => {
+const setupTestReporters = reporterScope.bind(async (rootReporter) => {
   const { reporters, destinations } = parseCommandLine();
-  const reportersMap = await getReportersMap(reporters, destinations, rootTest);
+  const reportersMap = await getReportersMap(reporters, destinations);
   for (let i = 0; i < reportersMap.length; i++) {
     const { reporter, destination } = reportersMap[i];
-    compose(rootTest.reporter, reporter).pipe(destination);
+    compose(rootReporter, reporter).pipe(destination);
   }
 });
 
@@ -306,6 +316,10 @@ function formatLinesToRanges(values) {
   }, []), (range) => ArrayPrototypeJoin(range, '-'));
 }
 
+function getUncoveredLines(lines) {
+  return ArrayPrototypeFlatMap(lines, (line) => (line.count === 0 ? line.line : []));
+}
+
 function formatUncoveredLines(lines, table) {
   if (table) return ArrayPrototypeJoin(formatLinesToRanges(lines), ' ');
   return ArrayPrototypeJoin(lines, ', ');
@@ -335,7 +349,7 @@ function getCoverageReport(pad, summary, symbol, color, table) {
     const columnsWidth = ArrayPrototypeReduce(columnPadLengths, (acc, columnPadLength) => acc + columnPadLength + 3, 0);
 
     uncoveredLinesPadLength = table && ArrayPrototypeReduce(summary.files, (acc, file) =>
-      MathMax(acc, formatUncoveredLines(file.uncoveredLineNumbers, table).length), 0);
+      MathMax(acc, formatUncoveredLines(getUncoveredLines(file.lines), table).length), 0);
     uncoveredLinesPadLength = MathMax(uncoveredLinesPadLength, 'uncovered lines'.length);
     const uncoveredLinesWidth = uncoveredLinesPadLength + 2;
 
@@ -397,7 +411,7 @@ function getCoverageReport(pad, summary, symbol, color, table) {
 
     report += `${prefix}${getCell(relativePath, filePadLength, StringPrototypePadEnd, truncateStart, fileCoverage)}${kSeparator}` +
               `${ArrayPrototypeJoin(ArrayPrototypeMap(coverages, (coverage, j) => getCell(NumberPrototypeToFixed(coverage, 2), columnPadLengths[j], StringPrototypePadStart, false, coverage)), kSeparator)}${kSeparator}` +
-              `${getCell(formatUncoveredLines(file.uncoveredLineNumbers, table), uncoveredLinesPadLength, false, truncateEnd)}\n`;
+              `${getCell(formatUncoveredLines(getUncoveredLines(file.lines), table), uncoveredLinesPadLength, false, truncateEnd)}\n`;
   }
 
   // Foot
@@ -423,5 +437,6 @@ module.exports = {
   parseCommandLine,
   reporterScope,
   setupTestReporters,
+  shouldColorizeTestFiles,
   getCoverageReport,
 };

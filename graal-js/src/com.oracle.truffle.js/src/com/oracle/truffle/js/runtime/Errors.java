@@ -908,7 +908,7 @@ public final class Errors {
         if (fieldAccess) {
             message = String.format("Cannot read private member %s from an object whose class did not declare it.", name);
         } else {
-            message = "Object must be an instance of class";
+            message = "Receiver must be an instance of class";
         }
         return createTypeError(message, originatingNode);
     }

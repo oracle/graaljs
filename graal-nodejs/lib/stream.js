@@ -50,6 +50,7 @@ const internalBuffer = require('internal/buffer');
 
 const promises = require('stream/promises');
 const utils = require('internal/streams/utils');
+const { isArrayBufferView, isUint8Array } = require('internal/util/types');
 
 const Stream = module.exports = require('internal/streams/legacy').Stream;
 
@@ -64,7 +65,7 @@ for (const key of ObjectKeys(streamReturningOperators)) {
   const op = streamReturningOperators[key];
   function fn(...args) {
     if (new.target) {
-      throw ERR_ILLEGAL_CONSTRUCTOR();
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
     }
     return Stream.Readable.from(ReflectApply(op, this, args));
   }
@@ -82,7 +83,7 @@ for (const key of ObjectKeys(promiseReturningOperators)) {
   const op = promiseReturningOperators[key];
   function fn(...args) {
     if (new.target) {
-      throw ERR_ILLEGAL_CONSTRUCTOR();
+      throw new ERR_ILLEGAL_CONSTRUCTOR();
     }
     return ReflectApply(op, this, args);
   }
@@ -137,7 +138,8 @@ ObjectDefineProperty(eos, customPromisify, {
 // Backwards-compat with node 0.4.x
 Stream.Stream = Stream;
 
-Stream._isUint8Array = require('internal/util/types').isUint8Array;
+Stream._isArrayBufferView = isArrayBufferView;
+Stream._isUint8Array = isUint8Array;
 Stream._uint8ArrayToBuffer = function _uint8ArrayToBuffer(chunk) {
   return new internalBuffer.FastBuffer(chunk.buffer,
                                        chunk.byteOffset,

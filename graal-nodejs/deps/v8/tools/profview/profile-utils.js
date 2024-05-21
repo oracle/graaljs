@@ -19,52 +19,56 @@ let codeKinds = [
     "STUB",
     "BUILTIN",
     "REGEXP",
-    "JS_OPT",
-    "JS_UNOPT",
-    "JS_TURBOPROP",
-    "JS_BASELINE",
+    "JS_IGNITION",
+    "JS_SPARKPLUG",
+    "JS_MAGLEV",
+    "JS_TURBOFAN",
 ];
 
 function resolveCodeKind(code) {
   if (!code || !code.type) {
     return "UNKNOWN";
-  } else if (code.type === "CPP") {
+  }
+  const type = code.type;
+  if (type === "CPP") {
     return "CPP";
-  } else if (code.type === "SHARED_LIB") {
+  } else if (type === "SHARED_LIB") {
     return "LIB";
-  } else if (code.type === "CODE") {
-    if (code.kind === "LoadIC" ||
-        code.kind === "StoreIC" ||
-        code.kind === "KeyedStoreIC" ||
-        code.kind === "KeyedLoadIC" ||
-        code.kind === "LoadGlobalIC" ||
-        code.kind === "Handler") {
+  }
+  const kind = code.kind;
+  if (type === "CODE") {
+    if (kind === "LoadIC" ||
+        kind === "StoreIC" ||
+        kind === "KeyedStoreIC" ||
+        kind === "KeyedLoadIC" ||
+        kind === "LoadGlobalIC" ||
+        kind === "Handler") {
       return "IC";
-    } else if (code.kind === "BytecodeHandler") {
+    } else if (kind === "BytecodeHandler") {
       return "BC";
-    } else if (code.kind === "Stub") {
+    } else if (kind === "Stub") {
       return "STUB";
-    } else if (code.kind === "Builtin") {
+    } else if (kind === "Builtin") {
       return "BUILTIN";
-    } else if (code.kind === "RegExp") {
+    } else if (kind === "RegExp") {
       return "REGEXP";
     }
-    console.log("Unknown CODE: '" + code.kind + "'.");
+    console.warn("Unknown CODE: '" + kind + "'.");
     return "CODE";
-  } else if (code.type === "JS") {
-    if (code.kind === "Builtin") {
-      return "JS_UNOPT";
-    } else if (code.kind === "Opt") {
-      return "JS_OPT";
-    } else if (code.kind === "Unopt") {
-      return "JS_UNOPT";
-    } else if (code.kind === "Baseline") {
-      return "JS_BASELINE";
-    } else if (code.kind === "Turboprop") {
+  } else if (type === "JS") {
+    if (kind === "Builtin" || kind == "Ignition" || kind === "Unopt") {
+      return "JS_IGNITION";
+    } else if (kind === "Baseline" || kind === "Sparkplug") {
+      return "JS_SPARKPLUG";
+    } else if (kind === "Maglev") {
+      return "JS_MAGLEV";
+    } else if (kind === "Turboprop") {
       return "JS_TURBOPROP";
+    } else if (kind === "Opt" || kind === "Turbofan") {
+      return "JS_TURBOFAN";
     }
   }
-  console.log("Unknown code type '" + type + "'.");
+  console.warn("Unknown code type '" + kind + "'.");
 }
 
 function resolveCodeKindAndVmState(code, vmState) {
@@ -146,11 +150,7 @@ function findNextFrame(file, stack, stackPos, step, filter) {
     codeId = stack[stackPos];
     code = codeId >= 0 ? file.code[codeId] : undefined;
 
-    if (filter) {
-      let type = code ? code.type : undefined;
-      let kind = code ? code.kind : undefined;
-      if (filter(type, kind)) return stackPos;
-    }
+    if (!filter || filter(code?.type, code?.kind)) return stackPos;
     stackPos += step;
   }
   return -1;
@@ -271,10 +271,10 @@ function buildCategoryTreeAndLookup() {
     }
     root.children.push(n);
   }
-  addCategory("JS Optimized", [ "JS_OPT" ]);
-  addCategory("JS Turboprop", [ "JS_TURBOPROP" ]);
-  addCategory("JS Baseline", [ "JS_BASELINE" ]);
-  addCategory("JS Unoptimized", [ "JS_UNOPT", "BC" ]);
+  addCategory("JS Ignition", [ "JS_IGNITION", "BC" ]);
+  addCategory("JS Sparkplug", [ "JS_SPARKPLUG" ]);
+  addCategory("JS Maglev", [ "JS_MAGLEV" ]);
+  addCategory("JS Turbofan", [ "JS_TURBOFAN" ]);
   addCategory("IC", [ "IC" ]);
   addCategory("RegExp", [ "REGEXP" ]);
   addCategory("Other generated", [ "STUB", "BUILTIN" ]);
@@ -395,8 +395,9 @@ class FunctionListTree {
 
 
 class CategorySampler {
-  constructor(file, bucketCount) {
+  constructor(file, bucketCount, filter) {
     this.bucketCount = bucketCount;
+    this.filter = filter;
 
     this.firstTime = file.ticks[0].tm;
     let lastTime = file.ticks[file.ticks.length - 1].tm;
@@ -422,7 +423,8 @@ class CategorySampler {
     let bucket = this.buckets[i];
     bucket.total++;
 
-    let codeId = (stack.length > 0) ? stack[0] : -1;
+    let stackPos = findNextFrame(file, stack, 0, 2, this.filter);
+    let codeId = stackPos >= 0 ? stack[stackPos] : -1;
     let code = codeId >= 0 ? file.code[codeId] : undefined;
     let kind = resolveCodeKindAndVmState(code, vmState);
     bucket[kind]++;
@@ -575,7 +577,7 @@ function computeOptimizationStats(file,
         }
       }
       if (code.deopt) {
-        if (code.deopt.bailoutType === "deopt-lazy" || code.deopt.bailoutType === "deopt-eager" || code.deopt.bailoutType === "deopt-lazy") {
+        if (code.deopt.bailoutType === "deopt-lazy" || code.deopt.bailoutType === "deopt-eager" || code.deopt.bailoutType === "deopt-soft") {
           deoptimized = true;
         }
         if (code.deopt.tm >= timeStart && code.deopt.tm <= timeEnd) {

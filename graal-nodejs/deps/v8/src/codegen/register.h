@@ -19,7 +19,6 @@ constexpr bool ShouldPadArguments(int argument_count) {
   return ArgumentPaddingSlots(argument_count) != 0;
 }
 
-#ifdef DEBUG
 template <typename... RegTypes,
           // All arguments must be either Register or DoubleRegister.
           typename = typename std::enable_if_t<
@@ -31,7 +30,6 @@ inline constexpr bool AreAliased(RegTypes... regs) {
   int num_given_regs = (... + (regs.is_valid() ? 1 : 0));
   return num_different_regs < num_given_regs;
 }
-#endif
 
 }  // namespace internal
 }  // namespace v8

@@ -42,7 +42,7 @@ process.on('removeListener', stopListeningIfSignal);
 // ---- keep the attachment of the wrappers above so that it's easier to ----
 // ----              compare the setups side-by-side                    -----
 
-const { guessHandleType } = internalBinding('util');
+const { guessHandleType } = require('internal/util');
 
 function createWritableStdioStream(fd) {
   let stream;
@@ -290,11 +290,11 @@ rawMethods.resetStdioForTesting = function() {
 // Needed by the module loader and generally needed everywhere.
 require('fs');
 require('util');
-require('url');
-
+require('url'); // eslint-disable-line no-restricted-modules
+internalBinding('module_wrap');
 require('internal/modules/cjs/loader');
 require('internal/modules/esm/utils');
-require('internal/vm/module');
+
 // Needed to refresh the time origin.
 require('internal/perf/utils');
 // Needed to register the async hooks.

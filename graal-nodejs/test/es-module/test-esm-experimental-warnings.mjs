@@ -31,7 +31,6 @@ describe('ESM: warn for obsolete hooks provided', { concurrency: true }, () => {
           fileURL('es-module-loaders', 'hooks-custom.mjs'),
         ],
         [/Network Imports/, '--experimental-network-imports'],
-        [/specifier resolution/, '--experimental-specifier-resolution=node'],
       ]
     ) {
       it(`should print for ${experiment.toString().replaceAll('/', '')}`, async () => {

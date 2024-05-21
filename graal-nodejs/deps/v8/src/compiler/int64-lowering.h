@@ -7,11 +7,9 @@
 
 #include <memory>
 
-#include "src/common/globals.h"
 #include "src/compiler/common-operator.h"
 #include "src/compiler/graph.h"
 #include "src/compiler/machine-operator.h"
-#include "src/compiler/node-marker.h"
 #include "src/compiler/simplified-operator.h"
 #include "src/zone/zone-containers.h"
 
@@ -23,20 +21,24 @@ class Signature;
 
 namespace compiler {
 
-// Struct for CallDescriptors that need special lowering.
-struct V8_EXPORT_PRIVATE Int64LoweringSpecialCase {
-  // Map from CallDescriptors that should be replaced, to the replacement
-  // CallDescriptors.
-  std::unordered_map<const CallDescriptor*, const CallDescriptor*> replacements;
+#if !V8_TARGET_ARCH_32_BIT
+class Int64Lowering {
+ public:
+  Int64Lowering(Graph* graph, MachineOperatorBuilder* machine,
+                CommonOperatorBuilder* common,
+                SimplifiedOperatorBuilder* simplified_, Zone* zone,
+                Signature<MachineRepresentation>* signature) {}
+
+  void LowerGraph() {}
 };
+#else
 
 class V8_EXPORT_PRIVATE Int64Lowering {
  public:
-  Int64Lowering(
-      Graph* graph, MachineOperatorBuilder* machine,
-      CommonOperatorBuilder* common, SimplifiedOperatorBuilder* simplified_,
-      Zone* zone, Signature<MachineRepresentation>* signature,
-      std::unique_ptr<Int64LoweringSpecialCase> special_case = nullptr);
+  Int64Lowering(Graph* graph, MachineOperatorBuilder* machine,
+                CommonOperatorBuilder* common,
+                SimplifiedOperatorBuilder* simplified_, Zone* zone,
+                Signature<MachineRepresentation>* signature);
 
   void LowerGraph();
 
@@ -88,18 +90,19 @@ class V8_EXPORT_PRIVATE Int64Lowering {
     int input_index;
   };
 
-  Zone* zone_;
   Graph* const graph_;
   MachineOperatorBuilder* machine_;
   CommonOperatorBuilder* common_;
   SimplifiedOperatorBuilder* simplified_;
+  Zone* zone_;
+  Signature<MachineRepresentation>* signature_;
   std::vector<State> state_;
   ZoneDeque<NodeState> stack_;
   Replacement* replacements_;
-  Signature<MachineRepresentation>* signature_;
   Node* placeholder_;
-  std::unique_ptr<Int64LoweringSpecialCase> special_case_;
 };
+
+#endif  // V8_TARGET_ARCH_32_BIT
 
 }  // namespace compiler
 }  // namespace internal

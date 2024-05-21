@@ -4,11 +4,13 @@
 
 #include "test/inspector/task-runner.h"
 
-#include "include/libplatform/libplatform.h"
 #include "include/v8-exception.h"
 #include "include/v8-local-handle.h"
 #include "include/v8-primitive.h"
 #include "src/flags/flags.h"
+#include "src/init/v8.h"
+#include "src/libplatform/default-platform.h"
+#include "src/utils/locked-queue-inl.h"
 
 #if !defined(_WIN32) && !defined(_WIN64)
 #include <unistd.h>
@@ -66,7 +68,8 @@ void TaskRunner::Run() {
 
 void TaskRunner::RunMessageLoop(bool only_protocol) {
   int loop_number = ++nested_loop_count_;
-  while (nested_loop_count_ == loop_number && !is_terminated_) {
+  while (nested_loop_count_ == loop_number && !is_terminated_ &&
+         !isolate()->IsExecutionTerminating()) {
     std::unique_ptr<TaskRunner::Task> task = GetNext(only_protocol);
     if (!task) return;
     v8::Isolate::Scope isolate_scope(isolate());
@@ -86,7 +89,8 @@ void TaskRunner::RunMessageLoop(bool only_protocol) {
     // This can be removed once https://crbug.com/v8/10747 is fixed.
     // TODO(10748): Enable --stress-incremental-marking after the existing
     // tests are fixed.
-    if (!i::FLAG_stress_incremental_marking) {
+    if (!i::v8_flags.stress_incremental_marking &&
+        !isolate()->IsExecutionTerminating()) {
       while (v8::platform::PumpMessageLoop(
           v8::internal::V8::GetCurrentPlatform(), isolate(),
           isolate()->HasPendingBackgroundTasks()

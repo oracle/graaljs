@@ -5,13 +5,11 @@
 #ifndef V8_INTERPRETER_INTERPRETER_ASSEMBLER_H_
 #define V8_INTERPRETER_INTERPRETER_ASSEMBLER_H_
 
-#include "src/builtins/builtins.h"
 #include "src/codegen/code-stub-assembler.h"
 #include "src/common/globals.h"
 #include "src/interpreter/bytecode-register.h"
 #include "src/interpreter/bytecodes.h"
 #include "src/runtime/runtime.h"
-#include "src/utils/allocation.h"
 
 namespace v8 {
 namespace internal {
@@ -30,7 +28,10 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
   TNode<Uint32T> BytecodeOperandCount(int operand_index);
   // Returns the 32-bit unsigned flag for bytecode operand |operand_index|
   // in the current bytecode.
-  TNode<Uint32T> BytecodeOperandFlag(int operand_index);
+  TNode<Uint32T> BytecodeOperandFlag8(int operand_index);
+  // Returns the 32-bit unsigned 2-byte flag for bytecode operand
+  // |operand_index| in the current bytecode.
+  TNode<Uint32T> BytecodeOperandFlag16(int operand_index);
   // Returns the 32-bit zero-extended index immediate for bytecode operand
   // |operand_index| in the current bytecode.
   TNode<Uint32T> BytecodeOperandIdxInt32(int operand_index);
@@ -73,6 +74,7 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
   // Accumulator.
   TNode<Object> GetAccumulator();
   void SetAccumulator(TNode<Object> value);
+  void ClobberAccumulator(TNode<Object> clobber_value);
 
   // Context.
   TNode<Context> GetContext();
@@ -140,9 +142,27 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
   // Load and untag constant at |index| in the constant pool.
   TNode<IntPtrT> LoadAndUntagConstantPoolEntry(TNode<WordT> index);
 
-  // Load the FeedbackVector for the current function. The retuned node could be
-  // undefined.
+  TNode<JSFunction> LoadFunctionClosure();
+
+  // Load the FeedbackVector for the current function. The returned node could
+  // be undefined.
   TNode<HeapObject> LoadFeedbackVector();
+
+  TNode<HeapObject> LoadFeedbackVectorOrUndefinedIfJitless() {
+#ifndef V8_JITLESS
+    return LoadFeedbackVector();
+#else
+    return UndefinedConstant();
+#endif  // V8_JITLESS
+  }
+
+  static constexpr UpdateFeedbackMode DefaultUpdateFeedbackMode() {
+#ifndef V8_JITLESS
+    return UpdateFeedbackMode::kOptionalFeedback;
+#else
+    return UpdateFeedbackMode::kNoFeedback;
+#endif  // !V8_JITLESS
+  }
 
   // Call JSFunction or Callable |function| with |args| arguments, possibly
   // including the receiver depending on |receiver_mode|. After the call returns
@@ -166,8 +186,7 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
   void CallJSWithSpreadAndDispatch(TNode<Object> function,
                                    TNode<Context> context,
                                    const RegListNodePair& args,
-                                   TNode<UintPtrT> slot_id,
-                                   TNode<HeapObject> maybe_feedback_vector);
+                                   TNode<UintPtrT> slot_id);
 
   // Call constructor |target| with |args| arguments (not including receiver).
   // The |new_target| is the same as the |target| for the new keyword, but
@@ -185,8 +204,7 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
                                     TNode<Context> context,
                                     TNode<Object> new_target,
                                     const RegListNodePair& args,
-                                    TNode<UintPtrT> slot_id,
-                                    TNode<HeapObject> maybe_feedback_vector);
+                                    TNode<UintPtrT> slot_id);
 
   // Call runtime function with |args| arguments.
   template <class T = Object>
@@ -234,8 +252,7 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
   // Updates the profiler interrupt budget for a return.
   void UpdateInterruptBudgetOnReturn();
 
-  // Returns the OSR urgency and install target from the bytecode header.
-  TNode<Int16T> LoadOsrUrgencyAndInstallTarget();
+  TNode<Int8T> LoadOsrState(TNode<FeedbackVector> feedback_vector);
 
   // Dispatch to the bytecode.
   void Dispatch();
@@ -263,8 +280,17 @@ class V8_EXPORT_PRIVATE InterpreterAssembler : public CodeStubAssembler {
       TNode<FixedArrayBase> parameters_and_registers,
       TNode<IntPtrT> formal_parameter_count, TNode<UintPtrT> register_count);
 
-  // Perform OnStackReplacement.
-  void OnStackReplacement(TNode<Context> context, TNode<IntPtrT> relative_jump);
+  // Attempts to OSR.
+  enum OnStackReplacementParams {
+    kBaselineCodeIsCached,
+    kDefault,
+  };
+  void OnStackReplacement(TNode<Context> context,
+                          TNode<FeedbackVector> feedback_vector,
+                          TNode<IntPtrT> relative_jump,
+                          TNode<Int32T> loop_depth,
+                          TNode<IntPtrT> feedback_slot, TNode<Int8T> osr_state,
+                          OnStackReplacementParams params);
 
   // The BytecodeOffset() is the offset from the ByteCodeArray pointer; to
   // translate into runtime `BytecodeOffset` (defined in utils.h as the offset

@@ -57,7 +57,11 @@ const {
   createHeapSnapshotStream,
   triggerHeapSnapshot,
 } = internalBinding('heap_utils');
-const { HeapSnapshotStream } = require('internal/heap_utils');
+const {
+  HeapSnapshotStream,
+  getHeapSnapshotOptions,
+  queryObjects,
+} = require('internal/heap_utils');
 const promiseHooks = require('internal/promise_hooks');
 const { getOptionValue } = require('internal/options');
 const { JSONParse } = primordials;
@@ -65,23 +69,33 @@ const { JSONParse } = primordials;
  * Generates a snapshot of the current V8 heap
  * and writes it to a JSON file.
  * @param {string} [filename]
+ * @param {{
+ *   exposeInternals?: boolean,
+ *   exposeNumericValues?: boolean
+ * }} [options]
  * @returns {string}
  */
-function writeHeapSnapshot(filename) {
+function writeHeapSnapshot(filename, options) {
   if (filename !== undefined) {
     filename = getValidatedPath(filename);
     filename = toNamespacedPath(filename);
   }
-  return triggerHeapSnapshot(filename);
+  const optionArray = getHeapSnapshotOptions(options);
+  return triggerHeapSnapshot(filename, optionArray);
 }
 
 /**
  * Generates a snapshot of the current V8 heap
  * and returns a Readable Stream.
+ * @param {{
+ *   exposeInternals?: boolean,
+ *   exposeNumericValues?: boolean
+ * }} [options]
  * @returns {import('./stream.js').Readable}
  */
-function getHeapSnapshot() {
-  const handle = createHeapSnapshotStream();
+function getHeapSnapshot(options) {
+  const optionArray = getHeapSnapshotOptions(options);
+  const handle = createHeapSnapshotStream(optionArray);
   assert(handle);
   return new HeapSnapshotStream(handle);
 }
@@ -126,6 +140,10 @@ const {
   kBytecodeAndMetadataSizeIndex,
   kExternalScriptSourceSizeIndex,
   kCPUProfilerMetaDataSizeIndex,
+
+  heapStatisticsBuffer,
+  heapCodeStatisticsBuffer,
+  heapSpaceStatisticsBuffer,
 } = binding;
 
 const kNumberOfHeapSpaces = kHeapSpaces.length;
@@ -157,7 +175,7 @@ function setFlagsFromString(flags) {
  *   }}
  */
 function getHeapStatistics() {
-  const buffer = binding.heapStatisticsBuffer;
+  const buffer = heapStatisticsBuffer;
 
   updateHeapStatisticsBuffer();
 
@@ -191,7 +209,7 @@ function getHeapStatistics() {
  */
 function getHeapSpaceStatistics() {
   const heapSpaceStatistics = new Array(kNumberOfHeapSpaces);
-  const buffer = binding.heapSpaceStatisticsBuffer;
+  const buffer = heapSpaceStatisticsBuffer;
 
   for (let i = 0; i < kNumberOfHeapSpaces; i++) {
     updateHeapSpaceStatisticsBuffer(i);
@@ -217,7 +235,7 @@ function getHeapSpaceStatistics() {
  *   }}
  */
 function getHeapCodeStatistics() {
-  const buffer = binding.heapCodeStatisticsBuffer;
+  const buffer = heapCodeStatisticsBuffer;
 
   updateHeapCodeStatisticsBuffer();
   return {
@@ -420,6 +438,7 @@ module.exports = {
   serialize,
   writeHeapSnapshot,
   promiseHooks,
+  queryObjects,
   startupSnapshot,
   setHeapSnapshotNearHeapLimit,
   GCProfiler,

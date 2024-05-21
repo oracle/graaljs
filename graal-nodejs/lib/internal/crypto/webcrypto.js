@@ -5,6 +5,7 @@ const {
   JSONParse,
   JSONStringify,
   ObjectDefineProperties,
+  ObjectDefineProperty,
   ReflectApply,
   ReflectConstruct,
   SafeSet,
@@ -19,6 +20,10 @@ const {
   kWebCryptoCipherEncrypt,
   kWebCryptoCipherDecrypt,
 } = internalBinding('crypto');
+
+const {
+  getOptionValue,
+} = require('internal/options');
 
 const { TextDecoder, TextEncoder } = require('internal/encoding');
 
@@ -470,7 +475,6 @@ async function exportKeyJWK(key) {
       // Fall through
     case 'Ed448':
       jwk.crv ||= key.algorithm.name;
-      jwk.alg = 'EdDSA';
       return jwk;
     case 'AES-CTR':
       // Fall through
@@ -1019,14 +1023,19 @@ ObjectDefineProperties(
       writable: true,
       value: randomUUID,
     },
-    CryptoKey: {
-      __proto__: null,
-      enumerable: true,
-      configurable: true,
-      writable: true,
-      value: CryptoKey,
-    },
   });
+
+if (getOptionValue('--no-experimental-global-webcrypto')) {
+  // For backward compatibility, keep exposing CryptoKey in the Crypto prototype
+  // when using the flag.
+  ObjectDefineProperty(Crypto.prototype, 'CryptoKey', {
+    __proto__: null,
+    enumerable: true,
+    configurable: true,
+    writable: true,
+    value: CryptoKey,
+  });
+}
 
 ObjectDefineProperties(
   SubtleCrypto.prototype, {

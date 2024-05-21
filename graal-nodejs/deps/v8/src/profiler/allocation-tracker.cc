@@ -204,11 +204,11 @@ void AllocationTracker::AllocationEvent(Address addr, int size) {
 
   // Mark the new block as FreeSpace to make sure the heap is iterable
   // while we are capturing stack trace.
-  heap->CreateFillerObjectAt(addr, size, ClearRecordedSlots::kNo);
+  heap->CreateFillerObjectAt(addr, size);
 
   Isolate* isolate = Isolate::FromHeap(heap);
   int length = 0;
-  JavaScriptFrameIterator it(isolate);
+  JavaScriptStackFrameIterator it(isolate);
   while (!it.done() && length < kMaxAllocationTraceLength) {
     JavaScriptFrame* frame = it.frame();
     SharedFunctionInfo shared = frame->function().shared();

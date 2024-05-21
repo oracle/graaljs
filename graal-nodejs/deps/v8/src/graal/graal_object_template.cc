@@ -82,8 +82,7 @@ void GraalObjectTemplate::SetAccessor(
         v8::AccessorSetterCallback setter,
         v8::Local<v8::Value> data,
         v8::AccessControl settings,
-        v8::PropertyAttribute attribute,
-        v8::Local<v8::AccessorSignature> signature) {
+        v8::PropertyAttribute attribute) {
     jobject java_name = reinterpret_cast<GraalString*> (*name)->GetJavaObject();
     jlong java_getter = (jlong) getter;
     jlong java_setter = (jlong) setter;
@@ -91,9 +90,8 @@ void GraalObjectTemplate::SetAccessor(
         data = v8::Undefined(reinterpret_cast<v8::Isolate*> (Isolate()));
     }
     jobject java_data = reinterpret_cast<GraalValue*> (*data)->GetJavaObject();
-    jobject java_signature = signature.IsEmpty() ? NULL : reinterpret_cast<GraalFunctionTemplate*> (*signature)->GetJavaObject();
     jint java_attrs = attribute;
-    JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_template_set_accessor, GetJavaObject(), java_name, java_getter, java_setter, java_data, java_signature, java_attrs);
+    JNI_CALL_VOID(Isolate(), GraalAccessMethod::object_template_set_accessor, GetJavaObject(), java_name, java_getter, java_setter, java_data, java_attrs);
 }
 
 void GraalObjectTemplate::SetHandler(const v8::NamedPropertyHandlerConfiguration& configuration) {

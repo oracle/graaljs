@@ -33,20 +33,26 @@
   V(Throw)                 \
   V(End)
 
-// Opcodes for constant operators.
-#define CONSTANT_OP_LIST(V)   \
-  V(Int32Constant)            \
-  V(Int64Constant)            \
-  V(TaggedIndexConstant)      \
-  V(Float32Constant)          \
-  V(Float64Constant)          \
-  V(ExternalConstant)         \
-  V(NumberConstant)           \
-  V(PointerConstant)          \
-  V(HeapConstant)             \
-  V(CompressedHeapConstant)   \
-  V(RelocatableInt32Constant) \
+#define MACHINE_LEVEL_CONSTANT_OP_LIST(V) \
+  V(Int32Constant)                        \
+  V(Int64Constant)                        \
+  V(TaggedIndexConstant)                  \
+  V(Float32Constant)                      \
+  V(Float64Constant)                      \
+  V(CompressedHeapConstant)               \
+  V(RelocatableInt32Constant)             \
   V(RelocatableInt64Constant)
+
+#define JS_LEVEL_CONSTANT_OP_LIST(V) \
+  V(ExternalConstant)                \
+  V(NumberConstant)                  \
+  V(PointerConstant)                 \
+  V(HeapConstant)
+
+// Opcodes for constant operators.
+#define CONSTANT_OP_LIST(V)    \
+  JS_LEVEL_CONSTANT_OP_LIST(V) \
+  MACHINE_LEVEL_CONSTANT_OP_LIST(V)
 
 #define INNER_OP_LIST(V)    \
   V(Select)                 \
@@ -74,7 +80,9 @@
   V(Retain)                 \
   V(MapGuard)               \
   V(FoldConstant)           \
-  V(TypeGuard)
+  V(TypeGuard)              \
+  V(EnterMachineGraph)      \
+  V(ExitMachineGraph)
 
 #define COMMON_OP_LIST(V) \
   CONSTANT_OP_LIST(V)     \
@@ -125,6 +133,8 @@
   V(JSToName)                      \
   V(JSToNumber)                    \
   V(JSToNumberConvertBigInt)       \
+  V(JSToBigInt)                    \
+  V(JSToBigIntConvertNumber)       \
   V(JSToNumeric)                   \
   V(JSToObject)                    \
   V(JSToString)                    \
@@ -183,7 +193,8 @@
   V(JSStoreInArrayLiteral)             \
   V(JSDeleteProperty)                  \
   V(JSHasProperty)                     \
-  V(JSGetSuperConstructor)
+  V(JSGetSuperConstructor)             \
+  V(JSFindNonDefaultConstructorOrConstruct)
 
 #define JS_CONTEXT_OP_LIST(V) \
   V(JSHasContextExtension)    \
@@ -279,6 +290,11 @@
   V(CheckedUint32Div)                 \
   V(CheckedUint32Mod)                 \
   V(CheckedInt32Mul)                  \
+  V(CheckedInt64Add)                  \
+  V(CheckedInt64Sub)                  \
+  V(CheckedInt64Mul)                  \
+  V(CheckedInt64Div)                  \
+  V(CheckedInt64Mod)                  \
   V(CheckedInt32ToTaggedSigned)       \
   V(CheckedInt64ToInt32)              \
   V(CheckedInt64ToTaggedSigned)       \
@@ -287,6 +303,7 @@
   V(CheckedUint32ToTaggedSigned)      \
   V(CheckedUint64Bounds)              \
   V(CheckedUint64ToInt32)             \
+  V(CheckedUint64ToInt64)             \
   V(CheckedUint64ToTaggedSigned)      \
   V(CheckedFloat64ToInt32)            \
   V(CheckedFloat64ToInt64)            \
@@ -312,7 +329,13 @@
   V(NumberSameValue)                     \
   V(StringEqual)                         \
   V(StringLessThan)                      \
-  V(StringLessThanOrEqual)
+  V(StringLessThanOrEqual)               \
+  V(BigIntEqual)                         \
+  V(BigIntLessThan)                      \
+  V(BigIntLessThanOrEqual)               \
+  V(SpeculativeBigIntEqual)              \
+  V(SpeculativeBigIntLessThan)           \
+  V(SpeculativeBigIntLessThanOrEqual)
 
 #define SIMPLIFIED_NUMBER_BINOP_LIST(V) \
   V(NumberAdd)                          \
@@ -334,7 +357,15 @@
 
 #define SIMPLIFIED_BIGINT_BINOP_LIST(V) \
   V(BigIntAdd)                          \
-  V(BigIntSubtract)
+  V(BigIntSubtract)                     \
+  V(BigIntMultiply)                     \
+  V(BigIntDivide)                       \
+  V(BigIntModulus)                      \
+  V(BigIntBitwiseAnd)                   \
+  V(BigIntBitwiseOr)                    \
+  V(BigIntBitwiseXor)                   \
+  V(BigIntShiftLeft)                    \
+  V(BigIntShiftRight)
 
 #define SIMPLIFIED_SPECULATIVE_NUMBER_BINOP_LIST(V) \
   V(SpeculativeNumberAdd)                           \
@@ -386,11 +417,13 @@
   V(NumberToString)                    \
   V(NumberToUint32)                    \
   V(NumberToUint8Clamped)              \
+  V(Integral32OrMinusZeroToBigInt)     \
   V(NumberSilenceNaN)
 
 #define SIMPLIFIED_BIGINT_UNOP_LIST(V) \
   V(BigIntNegate)                      \
-  V(CheckBigInt)
+  V(CheckBigInt)                       \
+  V(CheckedBigIntToBigInt64)
 
 #define SIMPLIFIED_SPECULATIVE_NUMBER_UNOP_LIST(V) V(SpeculativeToNumber)
 
@@ -416,15 +449,18 @@
   V(CheckSmi)                           \
   V(CheckString)                        \
   V(CheckSymbol)                        \
+  V(CheckTurboshaftTypeOf)              \
   V(CompareMaps)                        \
   V(ConvertReceiver)                    \
   V(ConvertTaggedHoleToUndefined)       \
   V(DateNow)                            \
-  V(DelayedStringConstant)              \
+  V(DoubleArrayMax)                     \
+  V(DoubleArrayMin)                     \
   V(EnsureWritableFastElements)         \
   V(FastApiCall)                        \
   V(FindOrderedHashMapEntry)            \
   V(FindOrderedHashMapEntryForInt32Key) \
+  V(FindOrderedHashSetEntry)            \
   V(InitializeImmutableInObject)        \
   V(LoadDataViewElement)                \
   V(LoadElement)                        \
@@ -493,16 +529,45 @@
   V(TransitionAndStoreNumberElement)    \
   V(TransitionElementsKind)             \
   V(TypeOf)                             \
+  V(Unsigned32Divide)                   \
   V(VerifyType)
 
 #define SIMPLIFIED_SPECULATIVE_BIGINT_BINOP_LIST(V) \
   V(SpeculativeBigIntAdd)                           \
-  V(SpeculativeBigIntSubtract)
+  V(SpeculativeBigIntSubtract)                      \
+  V(SpeculativeBigIntMultiply)                      \
+  V(SpeculativeBigIntDivide)                        \
+  V(SpeculativeBigIntModulus)                       \
+  V(SpeculativeBigIntBitwiseAnd)                    \
+  V(SpeculativeBigIntBitwiseOr)                     \
+  V(SpeculativeBigIntBitwiseXor)                    \
+  V(SpeculativeBigIntShiftLeft)                     \
+  V(SpeculativeBigIntShiftRight)
 
 #define SIMPLIFIED_SPECULATIVE_BIGINT_UNOP_LIST(V) \
   V(SpeculativeBigIntAsIntN)                       \
   V(SpeculativeBigIntAsUintN)                      \
-  V(SpeculativeBigIntNegate)
+  V(SpeculativeBigIntNegate)                       \
+  V(SpeculativeToBigInt)
+
+#define SIMPLIFIED_WASM_OP_LIST(V) \
+  V(AssertNotNull)                 \
+  V(IsNull)                        \
+  V(IsNotNull)                     \
+  V(Null)                          \
+  V(RttCanon)                      \
+  V(WasmTypeCast)                  \
+  V(WasmTypeCheck)                 \
+  V(WasmExternInternalize)         \
+  V(WasmExternExternalize)         \
+  V(WasmStructGet)                 \
+  V(WasmStructSet)                 \
+  V(WasmArrayGet)                  \
+  V(WasmArraySet)                  \
+  V(WasmArrayLength)               \
+  V(WasmArrayInitializeLength)     \
+  V(StringAsWtf16)                 \
+  V(StringPrepareForGetCodeunit)
 
 #define SIMPLIFIED_OP_LIST(V)                 \
   SIMPLIFIED_CHANGE_OP_LIST(V)                \
@@ -516,9 +581,17 @@
   SIMPLIFIED_SPECULATIVE_NUMBER_UNOP_LIST(V)  \
   SIMPLIFIED_SPECULATIVE_BIGINT_UNOP_LIST(V)  \
   SIMPLIFIED_SPECULATIVE_BIGINT_BINOP_LIST(V) \
+  IF_WASM(SIMPLIFIED_WASM_OP_LIST, V)         \
   SIMPLIFIED_OTHER_OP_LIST(V)
 
 // Opcodes for Machine-level operators.
+#define MACHINE_UNOP_32_LIST(V) \
+  V(Word32Clz)                  \
+  V(Word32Ctz)                  \
+  V(Int32AbsWithOverflow)       \
+  V(Word32ReverseBits)          \
+  V(Word32ReverseBytes)
+
 #define MACHINE_COMPARE_BINOP_LIST(V) \
   V(Word32Equal)                      \
   V(Word64Equal)                      \
@@ -536,13 +609,6 @@
   V(Float64Equal)                     \
   V(Float64LessThan)                  \
   V(Float64LessThanOrEqual)
-
-#define MACHINE_UNOP_32_LIST(V) \
-  V(Word32Clz)                  \
-  V(Word32Ctz)                  \
-  V(Int32AbsWithOverflow)       \
-  V(Word32ReverseBits)          \
-  V(Word32ReverseBytes)
 
 #define MACHINE_BINOP_32_LIST(V) \
   V(Word32And)                   \
@@ -582,10 +648,13 @@
   V(Int64Sub)                    \
   V(Int64SubWithOverflow)        \
   V(Int64Mul)                    \
+  V(Int64MulHigh)                \
+  V(Int64MulWithOverflow)        \
   V(Int64Div)                    \
   V(Int64Mod)                    \
   V(Uint64Div)                   \
-  V(Uint64Mod)
+  V(Uint64Mod)                   \
+  V(Uint64MulHigh)
 
 #define MACHINE_FLOAT32_UNOP_LIST(V) \
   V(Float32Abs)                      \
@@ -719,6 +788,8 @@
   V(TryTruncateFloat64ToInt64)           \
   V(TryTruncateFloat32ToUint64)          \
   V(TryTruncateFloat64ToUint64)          \
+  V(TryTruncateFloat64ToInt32)           \
+  V(TryTruncateFloat64ToUint32)          \
   V(ChangeInt32ToFloat64)                \
   V(BitcastWord32ToWord64)               \
   V(ChangeInt32ToInt64)                  \
@@ -749,6 +820,7 @@
   V(LoadStackCheckOffset)                \
   V(LoadFramePointer)                    \
   V(LoadParentFramePointer)              \
+  V(LoadRootRegister)                    \
   V(UnalignedLoad)                       \
   V(UnalignedStore)                      \
   V(Int32PairAdd)                        \
@@ -759,256 +831,275 @@
   V(Word32PairSar)                       \
   V(ProtectedLoad)                       \
   V(ProtectedStore)                      \
+  V(LoadTrapOnNull)                      \
+  V(StoreTrapOnNull)                     \
   V(MemoryBarrier)                       \
   V(SignExtendWord8ToInt32)              \
   V(SignExtendWord16ToInt32)             \
   V(SignExtendWord8ToInt64)              \
   V(SignExtendWord16ToInt64)             \
   V(SignExtendWord32ToInt64)             \
-  V(UnsafePointerAdd)                    \
-  V(StackPointerGreaterThan)
+  V(StackPointerGreaterThan)             \
+  V(TraceInstruction)
 
-#define MACHINE_SIMD_OP_LIST(V)  \
-  V(F64x2Splat)                  \
-  V(F64x2ExtractLane)            \
-  V(F64x2ReplaceLane)            \
-  V(F64x2Abs)                    \
-  V(F64x2Neg)                    \
-  V(F64x2Sqrt)                   \
-  V(F64x2Add)                    \
-  V(F64x2Sub)                    \
-  V(F64x2Mul)                    \
-  V(F64x2Div)                    \
-  V(F64x2Min)                    \
-  V(F64x2Max)                    \
-  V(F64x2Eq)                     \
-  V(F64x2Ne)                     \
-  V(F64x2Lt)                     \
-  V(F64x2Le)                     \
-  V(F64x2Qfma)                   \
-  V(F64x2Qfms)                   \
-  V(F64x2Pmin)                   \
-  V(F64x2Pmax)                   \
-  V(F64x2Ceil)                   \
-  V(F64x2Floor)                  \
-  V(F64x2Trunc)                  \
-  V(F64x2NearestInt)             \
-  V(F64x2ConvertLowI32x4S)       \
-  V(F64x2ConvertLowI32x4U)       \
-  V(F64x2PromoteLowF32x4)        \
-  V(F32x4Splat)                  \
-  V(F32x4ExtractLane)            \
-  V(F32x4ReplaceLane)            \
-  V(F32x4SConvertI32x4)          \
-  V(F32x4UConvertI32x4)          \
-  V(F32x4Abs)                    \
-  V(F32x4Neg)                    \
-  V(F32x4Sqrt)                   \
-  V(F32x4RecipApprox)            \
-  V(F32x4RecipSqrtApprox)        \
-  V(F32x4Add)                    \
-  V(F32x4Sub)                    \
-  V(F32x4Mul)                    \
-  V(F32x4Div)                    \
-  V(F32x4Min)                    \
-  V(F32x4Max)                    \
-  V(F32x4Eq)                     \
-  V(F32x4Ne)                     \
-  V(F32x4Lt)                     \
-  V(F32x4Le)                     \
-  V(F32x4Gt)                     \
-  V(F32x4Ge)                     \
-  V(F32x4Qfma)                   \
-  V(F32x4Qfms)                   \
-  V(F32x4Pmin)                   \
-  V(F32x4Pmax)                   \
-  V(F32x4Ceil)                   \
-  V(F32x4Floor)                  \
-  V(F32x4Trunc)                  \
-  V(F32x4NearestInt)             \
-  V(F32x4DemoteF64x2Zero)        \
-  V(I64x2Splat)                  \
-  V(I64x2SplatI32Pair)           \
-  V(I64x2ExtractLane)            \
-  V(I64x2ReplaceLane)            \
-  V(I64x2ReplaceLaneI32Pair)     \
-  V(I64x2Abs)                    \
-  V(I64x2Neg)                    \
-  V(I64x2SConvertI32x4Low)       \
-  V(I64x2SConvertI32x4High)      \
-  V(I64x2UConvertI32x4Low)       \
-  V(I64x2UConvertI32x4High)      \
-  V(I64x2BitMask)                \
-  V(I64x2Shl)                    \
-  V(I64x2ShrS)                   \
-  V(I64x2Add)                    \
-  V(I64x2Sub)                    \
-  V(I64x2Mul)                    \
-  V(I64x2Eq)                     \
-  V(I64x2Ne)                     \
-  V(I64x2GtS)                    \
-  V(I64x2GeS)                    \
-  V(I64x2ShrU)                   \
-  V(I64x2ExtMulLowI32x4S)        \
-  V(I64x2ExtMulHighI32x4S)       \
-  V(I64x2ExtMulLowI32x4U)        \
-  V(I64x2ExtMulHighI32x4U)       \
-  V(I32x4Splat)                  \
-  V(I32x4ExtractLane)            \
-  V(I32x4ReplaceLane)            \
-  V(I32x4SConvertF32x4)          \
-  V(I32x4SConvertI16x8Low)       \
-  V(I32x4SConvertI16x8High)      \
-  V(I32x4Neg)                    \
-  V(I32x4Shl)                    \
-  V(I32x4ShrS)                   \
-  V(I32x4Add)                    \
-  V(I32x4Sub)                    \
-  V(I32x4Mul)                    \
-  V(I32x4MinS)                   \
-  V(I32x4MaxS)                   \
-  V(I32x4Eq)                     \
-  V(I32x4Ne)                     \
-  V(I32x4LtS)                    \
-  V(I32x4LeS)                    \
-  V(I32x4GtS)                    \
-  V(I32x4GeS)                    \
-  V(I32x4UConvertF32x4)          \
-  V(I32x4UConvertI16x8Low)       \
-  V(I32x4UConvertI16x8High)      \
-  V(I32x4ShrU)                   \
-  V(I32x4MinU)                   \
-  V(I32x4MaxU)                   \
-  V(I32x4LtU)                    \
-  V(I32x4LeU)                    \
-  V(I32x4GtU)                    \
-  V(I32x4GeU)                    \
-  V(I32x4Abs)                    \
-  V(I32x4BitMask)                \
-  V(I32x4DotI16x8S)              \
-  V(I32x4ExtMulLowI16x8S)        \
-  V(I32x4ExtMulHighI16x8S)       \
-  V(I32x4ExtMulLowI16x8U)        \
-  V(I32x4ExtMulHighI16x8U)       \
-  V(I32x4ExtAddPairwiseI16x8S)   \
-  V(I32x4ExtAddPairwiseI16x8U)   \
-  V(I32x4TruncSatF64x2SZero)     \
-  V(I32x4TruncSatF64x2UZero)     \
-  V(I16x8Splat)                  \
-  V(I16x8ExtractLaneU)           \
-  V(I16x8ExtractLaneS)           \
-  V(I16x8ReplaceLane)            \
-  V(I16x8SConvertI8x16Low)       \
-  V(I16x8SConvertI8x16High)      \
-  V(I16x8Neg)                    \
-  V(I16x8Shl)                    \
-  V(I16x8ShrS)                   \
-  V(I16x8SConvertI32x4)          \
-  V(I16x8Add)                    \
-  V(I16x8AddSatS)                \
-  V(I16x8Sub)                    \
-  V(I16x8SubSatS)                \
-  V(I16x8Mul)                    \
-  V(I16x8MinS)                   \
-  V(I16x8MaxS)                   \
-  V(I16x8Eq)                     \
-  V(I16x8Ne)                     \
-  V(I16x8LtS)                    \
-  V(I16x8LeS)                    \
-  V(I16x8GtS)                    \
-  V(I16x8GeS)                    \
-  V(I16x8UConvertI8x16Low)       \
-  V(I16x8UConvertI8x16High)      \
-  V(I16x8ShrU)                   \
-  V(I16x8UConvertI32x4)          \
-  V(I16x8AddSatU)                \
-  V(I16x8SubSatU)                \
-  V(I16x8MinU)                   \
-  V(I16x8MaxU)                   \
-  V(I16x8LtU)                    \
-  V(I16x8LeU)                    \
-  V(I16x8GtU)                    \
-  V(I16x8GeU)                    \
-  V(I16x8RoundingAverageU)       \
-  V(I16x8Q15MulRSatS)            \
-  V(I16x8Abs)                    \
-  V(I16x8BitMask)                \
-  V(I16x8ExtMulLowI8x16S)        \
-  V(I16x8ExtMulHighI8x16S)       \
-  V(I16x8ExtMulLowI8x16U)        \
-  V(I16x8ExtMulHighI8x16U)       \
-  V(I16x8ExtAddPairwiseI8x16S)   \
-  V(I16x8ExtAddPairwiseI8x16U)   \
-  V(I8x16Splat)                  \
-  V(I8x16ExtractLaneU)           \
-  V(I8x16ExtractLaneS)           \
-  V(I8x16ReplaceLane)            \
-  V(I8x16SConvertI16x8)          \
-  V(I8x16Neg)                    \
-  V(I8x16Shl)                    \
-  V(I8x16ShrS)                   \
-  V(I8x16Add)                    \
-  V(I8x16AddSatS)                \
-  V(I8x16Sub)                    \
-  V(I8x16SubSatS)                \
-  V(I8x16MinS)                   \
-  V(I8x16MaxS)                   \
-  V(I8x16Eq)                     \
-  V(I8x16Ne)                     \
-  V(I8x16LtS)                    \
-  V(I8x16LeS)                    \
-  V(I8x16GtS)                    \
-  V(I8x16GeS)                    \
-  V(I8x16UConvertI16x8)          \
-  V(I8x16AddSatU)                \
-  V(I8x16SubSatU)                \
-  V(I8x16ShrU)                   \
-  V(I8x16MinU)                   \
-  V(I8x16MaxU)                   \
-  V(I8x16LtU)                    \
-  V(I8x16LeU)                    \
-  V(I8x16GtU)                    \
-  V(I8x16GeU)                    \
-  V(I8x16RoundingAverageU)       \
-  V(I8x16Popcnt)                 \
-  V(I8x16Abs)                    \
-  V(I8x16BitMask)                \
-  V(S128Zero)                    \
-  V(S128Const)                   \
-  V(S128Not)                     \
-  V(S128And)                     \
-  V(S128Or)                      \
-  V(S128Xor)                     \
-  V(S128Select)                  \
-  V(S128AndNot)                  \
-  V(I8x16Swizzle)                \
-  V(I8x16RelaxedLaneSelect)      \
-  V(I16x8RelaxedLaneSelect)      \
-  V(I32x4RelaxedLaneSelect)      \
-  V(I64x2RelaxedLaneSelect)      \
-  V(F32x4RelaxedMin)             \
-  V(F32x4RelaxedMax)             \
-  V(F64x2RelaxedMin)             \
-  V(F64x2RelaxedMax)             \
-  V(I32x4RelaxedTruncF32x4S)     \
-  V(I32x4RelaxedTruncF32x4U)     \
-  V(I32x4RelaxedTruncF64x2SZero) \
-  V(I32x4RelaxedTruncF64x2UZero) \
-  V(I8x16Shuffle)                \
-  V(V128AnyTrue)                 \
-  V(I64x2AllTrue)                \
-  V(I32x4AllTrue)                \
-  V(I16x8AllTrue)                \
-  V(I8x16AllTrue)                \
-  V(LoadTransform)               \
-  V(LoadLane)                    \
+#define MACHINE_SIMD128_OP_LIST(V) \
+  V(F64x2Splat)                    \
+  V(F64x2ExtractLane)              \
+  V(F64x2ReplaceLane)              \
+  V(F64x2Abs)                      \
+  V(F64x2Neg)                      \
+  V(F64x2Sqrt)                     \
+  V(F64x2Add)                      \
+  V(F64x2Sub)                      \
+  V(F64x2Mul)                      \
+  V(F64x2Div)                      \
+  V(F64x2Min)                      \
+  V(F64x2Max)                      \
+  V(F64x2Eq)                       \
+  V(F64x2Ne)                       \
+  V(F64x2Lt)                       \
+  V(F64x2Le)                       \
+  V(F64x2Qfma)                     \
+  V(F64x2Qfms)                     \
+  V(F64x2Pmin)                     \
+  V(F64x2Pmax)                     \
+  V(F64x2Ceil)                     \
+  V(F64x2Floor)                    \
+  V(F64x2Trunc)                    \
+  V(F64x2NearestInt)               \
+  V(F64x2ConvertLowI32x4S)         \
+  V(F64x2ConvertLowI32x4U)         \
+  V(F64x2PromoteLowF32x4)          \
+  V(F32x4Splat)                    \
+  V(F32x4ExtractLane)              \
+  V(F32x4ReplaceLane)              \
+  V(F32x4SConvertI32x4)            \
+  V(F32x4UConvertI32x4)            \
+  V(F32x4Abs)                      \
+  V(F32x4Neg)                      \
+  V(F32x4Sqrt)                     \
+  V(F32x4Add)                      \
+  V(F32x4Sub)                      \
+  V(F32x4Mul)                      \
+  V(F32x4Div)                      \
+  V(F32x4Min)                      \
+  V(F32x4Max)                      \
+  V(F32x4Eq)                       \
+  V(F32x4Ne)                       \
+  V(F32x4Lt)                       \
+  V(F32x4Le)                       \
+  V(F32x4Gt)                       \
+  V(F32x4Ge)                       \
+  V(F32x4Qfma)                     \
+  V(F32x4Qfms)                     \
+  V(F32x4Pmin)                     \
+  V(F32x4Pmax)                     \
+  V(F32x4Ceil)                     \
+  V(F32x4Floor)                    \
+  V(F32x4Trunc)                    \
+  V(F32x4NearestInt)               \
+  V(F32x4DemoteF64x2Zero)          \
+  V(I64x2Splat)                    \
+  V(I64x2SplatI32Pair)             \
+  V(I64x2ExtractLane)              \
+  V(I64x2ReplaceLane)              \
+  V(I64x2ReplaceLaneI32Pair)       \
+  V(I64x2Abs)                      \
+  V(I64x2Neg)                      \
+  V(I64x2SConvertI32x4Low)         \
+  V(I64x2SConvertI32x4High)        \
+  V(I64x2UConvertI32x4Low)         \
+  V(I64x2UConvertI32x4High)        \
+  V(I64x2BitMask)                  \
+  V(I64x2Shl)                      \
+  V(I64x2ShrS)                     \
+  V(I64x2Add)                      \
+  V(I64x2Sub)                      \
+  V(I64x2Mul)                      \
+  V(I64x2Eq)                       \
+  V(I64x2Ne)                       \
+  V(I64x2GtS)                      \
+  V(I64x2GeS)                      \
+  V(I64x2ShrU)                     \
+  V(I64x2ExtMulLowI32x4S)          \
+  V(I64x2ExtMulHighI32x4S)         \
+  V(I64x2ExtMulLowI32x4U)          \
+  V(I64x2ExtMulHighI32x4U)         \
+  V(I32x4Splat)                    \
+  V(I32x4ExtractLane)              \
+  V(I32x4ReplaceLane)              \
+  V(I32x4SConvertF32x4)            \
+  V(I32x4SConvertI16x8Low)         \
+  V(I32x4SConvertI16x8High)        \
+  V(I32x4Neg)                      \
+  V(I32x4Shl)                      \
+  V(I32x4ShrS)                     \
+  V(I32x4Add)                      \
+  V(I32x4Sub)                      \
+  V(I32x4Mul)                      \
+  V(I32x4MinS)                     \
+  V(I32x4MaxS)                     \
+  V(I32x4Eq)                       \
+  V(I32x4Ne)                       \
+  V(I32x4LtS)                      \
+  V(I32x4LeS)                      \
+  V(I32x4GtS)                      \
+  V(I32x4GeS)                      \
+  V(I32x4UConvertF32x4)            \
+  V(I32x4UConvertI16x8Low)         \
+  V(I32x4UConvertI16x8High)        \
+  V(I32x4ShrU)                     \
+  V(I32x4MinU)                     \
+  V(I32x4MaxU)                     \
+  V(I32x4LtU)                      \
+  V(I32x4LeU)                      \
+  V(I32x4GtU)                      \
+  V(I32x4GeU)                      \
+  V(I32x4Abs)                      \
+  V(I32x4BitMask)                  \
+  V(I32x4DotI16x8S)                \
+  V(I32x4ExtMulLowI16x8S)          \
+  V(I32x4ExtMulHighI16x8S)         \
+  V(I32x4ExtMulLowI16x8U)          \
+  V(I32x4ExtMulHighI16x8U)         \
+  V(I32x4ExtAddPairwiseI16x8S)     \
+  V(I32x4ExtAddPairwiseI16x8U)     \
+  V(I32x4TruncSatF64x2SZero)       \
+  V(I32x4TruncSatF64x2UZero)       \
+  V(I16x8Splat)                    \
+  V(I16x8ExtractLaneU)             \
+  V(I16x8ExtractLaneS)             \
+  V(I16x8ReplaceLane)              \
+  V(I16x8SConvertI8x16Low)         \
+  V(I16x8SConvertI8x16High)        \
+  V(I16x8Neg)                      \
+  V(I16x8Shl)                      \
+  V(I16x8ShrS)                     \
+  V(I16x8SConvertI32x4)            \
+  V(I16x8Add)                      \
+  V(I16x8AddSatS)                  \
+  V(I16x8Sub)                      \
+  V(I16x8SubSatS)                  \
+  V(I16x8Mul)                      \
+  V(I16x8MinS)                     \
+  V(I16x8MaxS)                     \
+  V(I16x8Eq)                       \
+  V(I16x8Ne)                       \
+  V(I16x8LtS)                      \
+  V(I16x8LeS)                      \
+  V(I16x8GtS)                      \
+  V(I16x8GeS)                      \
+  V(I16x8UConvertI8x16Low)         \
+  V(I16x8UConvertI8x16High)        \
+  V(I16x8ShrU)                     \
+  V(I16x8UConvertI32x4)            \
+  V(I16x8AddSatU)                  \
+  V(I16x8SubSatU)                  \
+  V(I16x8MinU)                     \
+  V(I16x8MaxU)                     \
+  V(I16x8LtU)                      \
+  V(I16x8LeU)                      \
+  V(I16x8GtU)                      \
+  V(I16x8GeU)                      \
+  V(I16x8RoundingAverageU)         \
+  V(I16x8Q15MulRSatS)              \
+  V(I16x8Abs)                      \
+  V(I16x8BitMask)                  \
+  V(I16x8ExtMulLowI8x16S)          \
+  V(I16x8ExtMulHighI8x16S)         \
+  V(I16x8ExtMulLowI8x16U)          \
+  V(I16x8ExtMulHighI8x16U)         \
+  V(I16x8ExtAddPairwiseI8x16S)     \
+  V(I16x8ExtAddPairwiseI8x16U)     \
+  V(I8x16Splat)                    \
+  V(I8x16ExtractLaneU)             \
+  V(I8x16ExtractLaneS)             \
+  V(I8x16ReplaceLane)              \
+  V(I8x16SConvertI16x8)            \
+  V(I8x16Neg)                      \
+  V(I8x16Shl)                      \
+  V(I8x16ShrS)                     \
+  V(I8x16Add)                      \
+  V(I8x16AddSatS)                  \
+  V(I8x16Sub)                      \
+  V(I8x16SubSatS)                  \
+  V(I8x16MinS)                     \
+  V(I8x16MaxS)                     \
+  V(I8x16Eq)                       \
+  V(I8x16Ne)                       \
+  V(I8x16LtS)                      \
+  V(I8x16LeS)                      \
+  V(I8x16GtS)                      \
+  V(I8x16GeS)                      \
+  V(I8x16UConvertI16x8)            \
+  V(I8x16AddSatU)                  \
+  V(I8x16SubSatU)                  \
+  V(I8x16ShrU)                     \
+  V(I8x16MinU)                     \
+  V(I8x16MaxU)                     \
+  V(I8x16LtU)                      \
+  V(I8x16LeU)                      \
+  V(I8x16GtU)                      \
+  V(I8x16GeU)                      \
+  V(I8x16RoundingAverageU)         \
+  V(I8x16Popcnt)                   \
+  V(I8x16Abs)                      \
+  V(I8x16BitMask)                  \
+  V(S128Zero)                      \
+  V(S128Const)                     \
+  V(S128Not)                       \
+  V(S128And)                       \
+  V(S128Or)                        \
+  V(S128Xor)                       \
+  V(S128Select)                    \
+  V(S128AndNot)                    \
+  V(I8x16Swizzle)                  \
+  V(I8x16RelaxedLaneSelect)        \
+  V(I16x8RelaxedLaneSelect)        \
+  V(I32x4RelaxedLaneSelect)        \
+  V(I64x2RelaxedLaneSelect)        \
+  V(F32x4RelaxedMin)               \
+  V(F32x4RelaxedMax)               \
+  V(F64x2RelaxedMin)               \
+  V(F64x2RelaxedMax)               \
+  V(I32x4RelaxedTruncF32x4S)       \
+  V(I32x4RelaxedTruncF32x4U)       \
+  V(I32x4RelaxedTruncF64x2SZero)   \
+  V(I32x4RelaxedTruncF64x2UZero)   \
+  V(I16x8RelaxedQ15MulRS)          \
+  V(I16x8DotI8x16I7x16S)           \
+  V(I32x4DotI8x16I7x16AddS)        \
+  V(I8x16Shuffle)                  \
+  V(V128AnyTrue)                   \
+  V(I64x2AllTrue)                  \
+  V(I32x4AllTrue)                  \
+  V(I16x8AllTrue)                  \
+  V(I8x16AllTrue)                  \
+  V(LoadTransform)                 \
+  V(LoadLane)                      \
   V(StoreLane)
 
-#define VALUE_OP_LIST(V)  \
-  COMMON_OP_LIST(V)       \
-  SIMPLIFIED_OP_LIST(V)   \
-  MACHINE_OP_LIST(V)      \
-  MACHINE_SIMD_OP_LIST(V) \
+// SIMD256 for AVX
+#define MACHINE_SIMD256_OP_LIST(V) \
+  V(F32x8Add)                      \
+  V(F32x8Sub)                      \
+  V(F32x8Mul)                      \
+  V(F32x8Div)                      \
+  V(F32x8Pmin)                     \
+  V(F32x8Pmax)                     \
+  V(F32x8Eq)                       \
+  V(F32x8Ne)                       \
+  V(F32x8Lt)                       \
+  V(F32x8Le)                       \
+  V(S256Select)                    \
+  V(ExtractF128)
+
+#define VALUE_OP_LIST(V)     \
+  COMMON_OP_LIST(V)          \
+  SIMPLIFIED_OP_LIST(V)      \
+  MACHINE_OP_LIST(V)         \
+  MACHINE_SIMD128_OP_LIST(V) \
+  MACHINE_SIMD256_OP_LIST(V) \
   JS_OP_LIST(V)
 
 // The combination of all operators at all levels and the common operators.
@@ -1050,6 +1141,24 @@ class V8_EXPORT_PRIVATE IrOpcode {
   // Returns true if opcode for JavaScript operator.
   static bool IsJsOpcode(Value value) {
     return kJSEqual <= value && value <= kJSDebugger;
+  }
+
+  // Returns true if opcode for machine operator.
+  static bool IsMachineOpcode(Value value) {
+    return kWord32Clz <= value && value <= kTraceInstruction;
+  }
+
+  // Returns true iff opcode is a machine-level constant.
+  static bool IsMachineConstantOpcode(Value value) {
+    switch (value) {
+#define CASE(name) \
+  case k##name:    \
+    return true;
+      MACHINE_LEVEL_CONSTANT_OP_LIST(CASE)
+#undef CASE
+      default:
+        return false;
+    }
   }
 
   // Returns true if opcode for constant operator.
@@ -1162,6 +1271,31 @@ class V8_EXPORT_PRIVATE IrOpcode {
   static bool IsFeedbackCollectingOpcode(int16_t value) {
     DCHECK(0 <= value && value <= kLast);
     return IsFeedbackCollectingOpcode(static_cast<IrOpcode::Value>(value));
+  }
+
+  static bool isAtomicOpOpcode(Value value) {
+    switch (value) {
+    #define CASE(Name, ...) \
+      case k##Name:         \
+        return true;
+      MACHINE_ATOMIC_OP_LIST(CASE)
+      default:
+        return false;
+    #undef CASE
+    }
+    UNREACHABLE();
+  }
+
+  static bool IsSimd128Opcode(Value value) {
+#define CASE(Name, ...) case k##Name:
+    switch (value) {
+      MACHINE_SIMD128_OP_LIST(CASE)
+      return true;
+      default:
+        return false;
+    }
+#undef CASE
+    UNREACHABLE();
   }
 };
 

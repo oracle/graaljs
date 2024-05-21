@@ -203,7 +203,6 @@ module.exports = function() {
 
     // 25 Structured Data
     ArrayBufferPrototype, // 25.1
-    SharedArrayBuffer.prototype, // 25.2
     DataViewPrototype, // 25.3
 
     // 26 Managing Memory
@@ -302,7 +301,6 @@ module.exports = function() {
 
     // 25 Structured Data
     ArrayBuffer, // 25.1
-    SharedArrayBuffer, // 25.2
     DataView, // 25.3
     Atomics, // 25.4
     // eslint-disable-next-line node-core/prefer-primordials
@@ -346,15 +344,22 @@ module.exports = function() {
     console,
   ];
 
+  if (typeof SharedArrayBuffer !== 'undefined') { // 25.2
+    ArrayPrototypePush(intrinsicPrototypes, SharedArrayBuffer.prototype);
+    ArrayPrototypePush(intrinsics, SharedArrayBuffer);
+  }
+
   if (typeof WebAssembly !== 'undefined') {
-    intrinsicPrototypes.push(WebAssembly.Module.prototype);
-    intrinsicPrototypes.push(WebAssembly.Instance.prototype);
-    intrinsicPrototypes.push(WebAssembly.Table.prototype);
-    intrinsicPrototypes.push(WebAssembly.Memory.prototype);
-    intrinsicPrototypes.push(WebAssembly.CompileError.prototype);
-    intrinsicPrototypes.push(WebAssembly.LinkError.prototype);
-    intrinsicPrototypes.push(WebAssembly.RuntimeError.prototype);
-    intrinsics.push(WebAssembly);
+    ArrayPrototypePush(intrinsicPrototypes,
+                       WebAssembly.Module.prototype,
+                       WebAssembly.Instance.prototype,
+                       WebAssembly.Table.prototype,
+                       WebAssembly.Memory.prototype,
+                       WebAssembly.CompileError.prototype,
+                       WebAssembly.LinkError.prototype,
+                       WebAssembly.RuntimeError.prototype,
+    );
+    ArrayPrototypePush(intrinsics, WebAssembly);
   }
 
   if (typeof Intl !== 'undefined') {

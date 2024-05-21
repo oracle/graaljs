@@ -129,37 +129,36 @@ int RangeArrayLengthFor(const ZoneList<CharacterRange>* ranges) {
              : ranges_length * 2;
 }
 
-bool Equals(const ZoneList<CharacterRange>* lhs, const Handle<ByteArray>& rhs) {
-  DCHECK_EQ(rhs->length() % kUInt16Size, 0);  // uc16 elements.
-  const int rhs_length = rhs->length() / kUInt16Size;
+bool Equals(const ZoneList<CharacterRange>* lhs,
+            const Handle<FixedUInt16Array>& rhs) {
+  const int rhs_length = rhs->length();
   if (rhs_length != RangeArrayLengthFor(lhs)) return false;
   for (int i = 0; i < lhs->length(); i++) {
     const CharacterRange& r = lhs->at(i);
-    if (rhs->get_uint16(i * 2 + 0) != r.from()) return false;
+    if (rhs->get(i * 2 + 0) != r.from()) return false;
     if (i * 2 + 1 == rhs_length) break;
-    if (rhs->get_uint16(i * 2 + 1) != r.to() + 1) return false;
+    if (rhs->get(i * 2 + 1) != r.to() + 1) return false;
   }
   return true;
 }
 
-Handle<ByteArray> MakeRangeArray(Isolate* isolate,
-                                 const ZoneList<CharacterRange>* ranges) {
+Handle<FixedUInt16Array> MakeRangeArray(
+    Isolate* isolate, const ZoneList<CharacterRange>* ranges) {
   const int ranges_length = ranges->length();
-  const int byte_array_length = RangeArrayLengthFor(ranges);
-  const int size_in_bytes = byte_array_length * kUInt16Size;
-  Handle<ByteArray> range_array =
-      isolate->factory()->NewByteArray(size_in_bytes);
+  const int range_array_length = RangeArrayLengthFor(ranges);
+  Handle<FixedUInt16Array> range_array =
+      FixedUInt16Array::New(isolate, range_array_length);
   for (int i = 0; i < ranges_length; i++) {
     const CharacterRange& r = ranges->at(i);
     DCHECK_LE(r.from(), kMaxUInt16);
-    range_array->set_uint16(i * 2 + 0, r.from());
+    range_array->set(i * 2 + 0, r.from());
     const base::uc32 to = MaskEndOfRangeMarker(r.to());
     if (i == ranges_length - 1 && to == kMaxUInt16) {
-      DCHECK_EQ(byte_array_length, ranges_length * 2 - 1);
+      DCHECK_EQ(range_array_length, ranges_length * 2 - 1);
       break;  // Avoid overflow by leaving the last range open-ended.
     }
     DCHECK_LT(to, kMaxUInt16);
-    range_array->set_uint16(i * 2 + 1, to + 1);  // Exclusive.
+    range_array->set(i * 2 + 1, to + 1);  // Exclusive.
   }
   return range_array;
 }
@@ -171,11 +170,11 @@ Handle<ByteArray> NativeRegExpMacroAssembler::GetOrAddRangeArray(
   const uint32_t hash = Hash(ranges);
 
   if (range_array_cache_.count(hash) != 0) {
-    Handle<ByteArray> range_array = range_array_cache_[hash];
+    Handle<FixedUInt16Array> range_array = range_array_cache_[hash];
     if (Equals(ranges, range_array)) return range_array;
   }
 
-  Handle<ByteArray> range_array = MakeRangeArray(isolate(), ranges);
+  Handle<FixedUInt16Array> range_array = MakeRangeArray(isolate(), ranges);
   range_array_cache_[hash] = range_array;
   return range_array;
 }
@@ -189,27 +188,24 @@ uint32_t RegExpMacroAssembler::IsCharacterInRangeArray(uint32_t current_char,
   static constexpr uint32_t kTrue = 1;
   static constexpr uint32_t kFalse = 0;
 
-  ByteArray ranges = ByteArray::cast(Object(raw_byte_array));
-
-  DCHECK_EQ(ranges.length() % kUInt16Size, 0);  // uc16 elements.
-  const int length = ranges.length() / kUInt16Size;
-  DCHECK_GE(length, 1);
+  FixedUInt16Array ranges = FixedUInt16Array::cast(Object(raw_byte_array));
+  DCHECK_GE(ranges.length(), 1);
 
   // Shortcut for fully out of range chars.
-  if (current_char < ranges.get_uint16(0)) return kFalse;
-  if (current_char >= ranges.get_uint16(length - 1)) {
+  if (current_char < ranges.get(0)) return kFalse;
+  if (current_char >= ranges.get(ranges.length() - 1)) {
     // The last range may be open-ended.
-    return (length % 2) == 0 ? kFalse : kTrue;
+    return (ranges.length() % 2) == 0 ? kFalse : kTrue;
   }
 
   // Binary search for the matching range. `ranges` is encoded as
   // [from0, to0, from1, to1, ..., fromN, toN], or
   // [from0, to0, from1, to1, ..., fromN] (open-ended last interval).
 
-  int mid, lower = 0, upper = length;
+  int mid, lower = 0, upper = ranges.length();
   do {
     mid = lower + (upper - lower) / 2;
-    const base::uc16 elem = ranges.get_uint16(mid);
+    const base::uc16 elem = ranges.get(mid);
     if (current_char < elem) {
       upper = mid;
     } else if (current_char > elem) {
@@ -220,7 +216,7 @@ uint32_t RegExpMacroAssembler::IsCharacterInRangeArray(uint32_t current_char,
     }
   } while (lower < upper);
 
-  const bool current_char_ge_last_elem = current_char >= ranges.get_uint16(mid);
+  const bool current_char_ge_last_elem = current_char >= ranges.get(mid);
   const int current_range_start_index =
       current_char_ge_last_elem ? mid : mid - 1;
 
@@ -278,7 +274,7 @@ void NativeRegExpMacroAssembler::LoadCurrentCharacterImpl(
 }
 
 bool NativeRegExpMacroAssembler::CanReadUnaligned() const {
-  return FLAG_enable_regexp_unaligned_accesses && !slow_safe();
+  return v8_flags.enable_regexp_unaligned_accesses && !slow_safe();
 }
 
 #ifndef COMPILING_IRREGEXP_FOR_EXTERNAL_EMBEDDER
@@ -287,12 +283,12 @@ bool NativeRegExpMacroAssembler::CanReadUnaligned() const {
 // static
 int NativeRegExpMacroAssembler::CheckStackGuardState(
     Isolate* isolate, int start_index, RegExp::CallOrigin call_origin,
-    Address* return_address, Code re_code, Address* subject,
+    Address* return_address, InstructionStream re_code, Address* subject,
     const byte** input_start, const byte** input_end) {
   DisallowGarbageCollection no_gc;
   Address old_pc = PointerAuthentication::AuthenticatePC(return_address, 0);
-  DCHECK_LE(re_code.raw_instruction_start(), old_pc);
-  DCHECK_LE(old_pc, re_code.raw_instruction_end());
+  DCHECK_LE(re_code.instruction_start(), old_pc);
+  DCHECK_LE(old_pc, re_code.code(kAcquireLoad).InstructionEnd());
 
   StackLimitCheck check(isolate);
   bool js_has_overflowed = check.JsHasOverflowed();
@@ -319,7 +315,7 @@ int NativeRegExpMacroAssembler::CheckStackGuardState(
 
   // Prepare for possible GC.
   HandleScope handles(isolate);
-  Handle<Code> code_handle(re_code, isolate);
+  Handle<InstructionStream> code_handle(re_code, isolate);
   Handle<String> subject_handle(String::cast(Object(*subject)), isolate);
   bool is_one_byte = String::IsOneByteRepresentationUnderneath(*subject_handle);
   int return_value = 0;
@@ -336,7 +332,10 @@ int NativeRegExpMacroAssembler::CheckStackGuardState(
       if (result.IsException(isolate)) return_value = EXCEPTION;
     }
 
-    if (*code_handle != re_code) {  // Return address no longer valid
+    // We are not using operator == here because it does a slow DCHECK
+    // CheckObjectComparisonAllowed() which might crash when trying to access
+    // the page header of the stale pointer.
+    if (!code_handle->SafeEquals(re_code)) {  // Return address no longer valid
       // Overwrite the return address on the stack.
       intptr_t delta = code_handle->address() - re_code.address();
       Address new_pc = old_pc + delta;
@@ -432,7 +431,7 @@ int NativeRegExpMacroAssembler::Execute(
   RegExpStackScope stack_scope(isolate);
 
   bool is_one_byte = String::IsOneByteRepresentationUnderneath(input);
-  Code code = FromCodeT(CodeT::cast(regexp.code(is_one_byte)));
+  Code code = Code::cast(regexp.code(is_one_byte));
   RegExp::CallOrigin call_origin = RegExp::CallOrigin::kFromRuntime;
 
   using RegexpMatcherSig =
@@ -441,7 +440,7 @@ int NativeRegExpMacroAssembler::Execute(
           const byte* input_end, int* output, int output_size, int call_origin,
           Isolate* isolate, Address regexp);
 
-  auto fn = GeneratedCode<RegexpMatcherSig>::FromCode(code);
+  auto fn = GeneratedCode<RegexpMatcherSig>::FromCode(isolate, code);
   int result = fn.Call(input.ptr(), start_offset, input_start, input_end,
                        output, output_size, call_origin, isolate, regexp.ptr());
   DCHECK_GE(result, SMALLEST_REGEXP_RESULT);

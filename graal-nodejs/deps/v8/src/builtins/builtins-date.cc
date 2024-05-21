@@ -9,11 +9,13 @@
 #include "src/date/dateparser-inl.h"
 #include "src/logging/counters.h"
 #include "src/numbers/conversions.h"
-#include "src/objects/objects-inl.h"
+#include "src/objects/bigint.h"
 #ifdef V8_INTL_SUPPORT
 #include "src/objects/intl-objects.h"
 #include "src/objects/js-date-time-format.h"
 #endif
+#include "src/objects/js-temporal-objects-inl.h"
+#include "src/objects/objects-inl.h"
 #include "src/strings/string-stream.h"
 
 namespace v8 {
@@ -73,7 +75,8 @@ Object SetLocalDateValue(Isolate* isolate, Handle<JSDate> date,
 BUILTIN(DateConstructor) {
   HandleScope scope(isolate);
   if (args.new_target()->IsUndefined(isolate)) {
-    double const time_val = JSDate::CurrentTimeValue(isolate);
+    double const time_val =
+        static_cast<double>(JSDate::CurrentTimeValue(isolate));
     DateBuffer buffer = ToDateString(time_val, isolate->date_cache(),
                                      ToDateStringMode::kLocalDateAndTime);
     RETURN_RESULT_OR_FAILURE(
@@ -85,7 +88,7 @@ BUILTIN(DateConstructor) {
   Handle<JSReceiver> new_target = Handle<JSReceiver>::cast(args.new_target());
   double time_val;
   if (argc == 0) {
-    time_val = JSDate::CurrentTimeValue(isolate);
+    time_val = static_cast<double>(JSDate::CurrentTimeValue(isolate));
   } else if (argc == 1) {
     Handle<Object> value = args.at(1);
     if (value->IsJSDate()) {
@@ -161,7 +164,8 @@ BUILTIN(DateConstructor) {
 // ES6 section 20.3.3.1 Date.now ( )
 BUILTIN(DateNow) {
   HandleScope scope(isolate);
-  return *isolate->factory()->NewNumber(JSDate::CurrentTimeValue(isolate));
+  return *isolate->factory()->NewNumberFromInt64(
+      JSDate::CurrentTimeValue(isolate));
 }
 
 // ES6 section 20.3.3.2 Date.parse ( string )
@@ -682,22 +686,10 @@ BUILTIN(DatePrototypeToISOString) {
     THROW_NEW_ERROR_RETURN_FAILURE(
         isolate, NewRangeError(MessageTemplate::kInvalidTimeValue));
   }
-  int64_t const time_ms = static_cast<int64_t>(time_val);
-  int year, month, day, weekday, hour, min, sec, ms;
-  isolate->date_cache()->BreakDownTime(time_ms, &year, &month, &day, &weekday,
-                                       &hour, &min, &sec, &ms);
-  char buffer[128];
-  if (year >= 0 && year <= 9999) {
-    SNPrintF(base::ArrayVector(buffer), "%04d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-             year, month + 1, day, hour, min, sec, ms);
-  } else if (year < 0) {
-    SNPrintF(base::ArrayVector(buffer), "-%06d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-             -year, month + 1, day, hour, min, sec, ms);
-  } else {
-    SNPrintF(base::ArrayVector(buffer), "+%06d-%02d-%02dT%02d:%02d:%02d.%03dZ",
-             year, month + 1, day, hour, min, sec, ms);
-  }
-  return *isolate->factory()->NewStringFromAsciiChecked(buffer);
+  DateBuffer buffer = ToDateString(time_val, isolate->date_cache(),
+                                   ToDateStringMode::kISODateAndTime);
+  RETURN_RESULT_OR_FAILURE(
+      isolate, isolate->factory()->NewStringFromUtf8(base::VectorOf(buffer)));
 }
 
 // ES6 section 20.3.4.41 Date.prototype.toString ( )
@@ -866,6 +858,24 @@ BUILTIN(DatePrototypeToJson) {
     RETURN_RESULT_OR_FAILURE(
         isolate, Execution::Call(isolate, function, receiver_obj, 0, nullptr));
   }
+}
+
+// Temporal #sec-date.prototype.totemporalinstant
+BUILTIN(DatePrototypeToTemporalInstant) {
+  HandleScope scope(isolate);
+  CHECK_RECEIVER(JSDate, date, "Date.prototype.toTemporalInstant");
+  // 1. Let t be ? thisTimeValue(this value).
+  Handle<BigInt> t;
+  ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
+      isolate, t,
+      BigInt::FromNumber(isolate, Handle<Object>(date->value(), isolate)));
+  // 2. Let ns be ? NumberToBigInt(t) × 10^6.
+  Handle<BigInt> ns;
+  ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
+      isolate, ns,
+      BigInt::Multiply(isolate, t, BigInt::FromInt64(isolate, 1000000)));
+  // 3. Return ! CreateTemporalInstant(ns).
+  return *temporal::CreateTemporalInstant(isolate, ns).ToHandleChecked();
 }
 
 }  // namespace internal

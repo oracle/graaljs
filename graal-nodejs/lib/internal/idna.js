@@ -1,4 +1,4 @@
 'use strict';
 
-const { toASCII, toUnicode } = internalBinding('url');
+const { toASCII, toUnicode } = internalBinding('encoding_binding');
 module.exports = { toASCII, toUnicode };

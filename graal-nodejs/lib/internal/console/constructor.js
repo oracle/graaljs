@@ -15,7 +15,6 @@ const {
   MathFloor,
   Number,
   NumberPrototypeToFixed,
-  ObjectCreate,
   ObjectDefineProperties,
   ObjectDefineProperty,
   ObjectKeys,
@@ -575,7 +574,7 @@ const consoleMethods = {
       return final([iterKey, valuesKey], [getIndexArray(length), values]);
     }
 
-    const map = ObjectCreate(null);
+    const map = { __proto__: null };
     let hasPrimitives = false;
     const valuesKeyArray = [];
     const indexKeyArray = ObjectKeys(tabularData);
@@ -690,8 +689,6 @@ Console.prototype.groupCollapsed = Console.prototype.group;
 
 function initializeGlobalConsole(globalConsole) {
   globalConsole[kBindStreamsLazy](process);
-  globalConsole[kBindProperties](true, 'auto');
-
   const {
     namespace: {
       addSerializeCallback,

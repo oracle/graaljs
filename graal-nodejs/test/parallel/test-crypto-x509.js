@@ -255,7 +255,7 @@ oans248kpal88CGqsN2so/wZKxVnpiXlPHMdiNL7hRSUqlHkUi07FrP2Htg8kjI=
 
   // Verify that legacy encoding works
   const legacyObjectCheck = {
-    subject: Object.assign(Object.create(null), {
+    subject: Object.assign({ __proto__: null }, {
       C: 'US',
       ST: 'CA',
       L: 'SF',
@@ -264,7 +264,7 @@ oans248kpal88CGqsN2so/wZKxVnpiXlPHMdiNL7hRSUqlHkUi07FrP2Htg8kjI=
       CN: 'agent1',
       emailAddress: 'ry@tinyclouds.org',
     }),
-    issuer: Object.assign(Object.create(null), {
+    issuer: Object.assign({ __proto__: null }, {
       C: 'US',
       ST: 'CA',
       L: 'SF',
@@ -273,7 +273,7 @@ oans248kpal88CGqsN2so/wZKxVnpiXlPHMdiNL7hRSUqlHkUi07FrP2Htg8kjI=
       CN: 'ca1',
       emailAddress: 'ry@tinyclouds.org',
     }),
-    infoAccess: Object.assign(Object.create(null), {
+    infoAccess: Object.assign({ __proto__: null }, {
       'OCSP - URI': ['http://ocsp.nodejs.org/'],
       'CA Issuers - URI': ['http://ca.nodejs.org/ca.cert']
     }),

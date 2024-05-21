@@ -168,7 +168,7 @@ TEST(Unwind_BuiltinPCInMiddle_Success_CodePagesAPI) {
   register_state.fp = stack;
 
   // Put the current PC inside of a valid builtin.
-  Code builtin = FromCodeT(i_isolate->builtins()->code(Builtin::kStringEqual));
+  Code builtin = *BUILTIN_CODE(i_isolate, StringEqual);
   const uintptr_t offset = 40;
   CHECK_LT(offset, builtin.InstructionSize());
   register_state.pc =
@@ -225,7 +225,7 @@ TEST(Unwind_BuiltinPCAtStart_Success_CodePagesAPI) {
 
   // Put the current PC at the start of a valid builtin, so that we are setting
   // up the frame.
-  Code builtin = FromCodeT(i_isolate->builtins()->code(Builtin::kStringEqual));
+  Code builtin = *BUILTIN_CODE(i_isolate, StringEqual);
   register_state.pc = reinterpret_cast<void*>(builtin.InstructionStart());
 
   bool unwound = v8::Unwinder::TryUnwindV8Frames(
@@ -265,7 +265,7 @@ bool PagesContainsAddress(size_t length, MemoryRange* pages,
 // Check that we can unwind when the pc is within an optimized code object on
 // the V8 heap.
 TEST(Unwind_CodeObjectPCInMiddle_Success_CodePagesAPI) {
-  FLAG_allow_natives_syntax = true;
+  v8_flags.allow_natives_syntax = true;
   LocalContext env;
   v8::Isolate* isolate = env->GetIsolate();
   Isolate* i_isolate = reinterpret_cast<Isolate*>(isolate);
@@ -296,17 +296,16 @@ TEST(Unwind_CodeObjectPCInMiddle_Success_CodePagesAPI) {
       Handle<JSFunction>::cast(v8::Utils::OpenHandle(*local_foo));
 
   // Put the current PC inside of the created code object.
-  AbstractCode abstract_code = foo->abstract_code(i_isolate);
-  // We don't produce optimized code when run with --no-opt.
-  if (!abstract_code.IsCode() && FLAG_opt == false) return;
-  CHECK(abstract_code.IsCode());
+  Code code = foo->code();
+  // We don't produce optimized code when run with --no-turbofan and
+  // --no-maglev.
+  if (!code.is_optimized_code()) return;
 
-  Code code = abstract_code.GetCode();
   // We don't want the offset too early or it could be the `push rbp`
   // instruction (which is not at the start of generated code, because the lazy
   // deopt check happens before frame setup).
-  const uintptr_t offset = code.InstructionSize() - 20;
-  CHECK_LT(offset, code.InstructionSize());
+  const uintptr_t offset = code.instruction_size() - 20;
+  CHECK_LT(offset, code.instruction_size());
   Address pc = code.InstructionStart() + offset;
   register_state.pc = reinterpret_cast<void*>(pc);
 
@@ -456,7 +455,7 @@ TEST(Unwind_JSEntry_Fail_CodePagesAPI) {
   CHECK_LE(pages_length, arraysize(code_pages));
   RegisterState register_state;
 
-  Code js_entry = FromCodeT(i_isolate->builtins()->code(Builtin::kJSEntry));
+  Code js_entry = *BUILTIN_CODE(i_isolate, JSEntry);
   byte* start = reinterpret_cast<byte*>(js_entry.InstructionStart());
   register_state.pc = start + 10;
 
@@ -638,7 +637,7 @@ TEST(PCIsInV8_InJSEntryRange_CodePagesAPI) {
       isolate->CopyCodePages(arraysize(code_pages), code_pages);
   CHECK_LE(pages_length, arraysize(code_pages));
 
-  Code js_entry = FromCodeT(i_isolate->builtins()->code(Builtin::kJSEntry));
+  Code js_entry = *BUILTIN_CODE(i_isolate, JSEntry);
   byte* start = reinterpret_cast<byte*>(js_entry.InstructionStart());
   size_t length = js_entry.InstructionSize();
 
@@ -653,7 +652,7 @@ TEST(PCIsInV8_InJSEntryRange_CodePagesAPI) {
 // Large code objects can be allocated in large object space. Check that this is
 // inside the CodeRange.
 TEST(PCIsInV8_LargeCodeObject_CodePagesAPI) {
-  FLAG_allow_natives_syntax = true;
+  v8_flags.allow_natives_syntax = true;
   LocalContext env;
   v8::Isolate* isolate = env->GetIsolate();
   Isolate* i_isolate = reinterpret_cast<Isolate*>(isolate);
@@ -676,7 +675,8 @@ TEST(PCIsInV8_LargeCodeObject_CodePagesAPI) {
   Handle<Code> foo_code =
       Factory::CodeBuilder(i_isolate, desc, CodeKind::WASM_FUNCTION).Build();
 
-  CHECK(i_isolate->heap()->InSpace(*foo_code, CODE_LO_SPACE));
+  CHECK(i_isolate->heap()->InSpace(foo_code->instruction_stream(),
+                                   CODE_LO_SPACE));
   byte* start = reinterpret_cast<byte*>(foo_code->InstructionStart());
 
   MemoryRange code_pages[v8::Isolate::kMinCodePagesBufferSize];
@@ -746,7 +746,7 @@ class UnwinderTestHelper {
 UnwinderTestHelper* UnwinderTestHelper::instance_;
 
 TEST(Unwind_TwoNestedFunctions_CodePagesAPI) {
-  i::FLAG_allow_natives_syntax = true;
+  i::v8_flags.allow_natives_syntax = true;
   const char* test_script =
       "function test_unwinder_api_inner() {"
       "  TryUnwind();"

@@ -59,6 +59,7 @@ let debug = require('internal/util/debuglog').debuglog('worker', (fn) => {
 });
 
 const assert = require('internal/assert');
+const { exitCodes: { kGenericUserError } } = internalBinding('errors');
 
 prepareWorkerThreadExecution();
 
@@ -144,6 +145,7 @@ port.on('message', (message) => {
     const isLoaderWorker =
       doEval === 'internal' &&
       filename === require('internal/modules/esm/utils').loaderWorkerId;
+    // Disable custom loaders in loader worker.
     setupUserModules(isLoaderWorker);
 
     if (!hasStdin)
@@ -177,8 +179,8 @@ port.on('message', (message) => {
       }
 
       case 'module': {
-        const { evalModule } = require('internal/process/execution');
-        PromisePrototypeThen(evalModule(filename), undefined, (e) => {
+        const { evalModuleEntryPoint } = require('internal/process/execution');
+        PromisePrototypeThen(evalModuleEntryPoint(filename), undefined, (e) => {
           workerOnGlobalUncaughtException(e, true);
         });
         break;
@@ -228,7 +230,7 @@ function workerOnGlobalUncaughtException(error, fromPromise) {
   if (!process._exiting) {
     try {
       process._exiting = true;
-      process.exitCode = 1;
+      process.exitCode = kGenericUserError;
       if (!handlerThrew) {
         process.emit('exit', process.exitCode);
       }

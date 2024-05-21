@@ -4,11 +4,11 @@
 
 #include "src/debug/debug-stack-trace-iterator.h"
 
+#include "include/v8-function.h"
 #include "src/api/api-inl.h"
 #include "src/debug/debug-evaluate.h"
 #include "src/debug/debug-scope-iterator.h"
 #include "src/debug/debug.h"
-#include "src/debug/liveedit.h"
 #include "src/execution/frames-inl.h"
 #include "src/execution/isolate.h"
 
@@ -30,11 +30,10 @@ namespace internal {
 DebugStackTraceIterator::DebugStackTraceIterator(Isolate* isolate, int index)
     : isolate_(isolate),
       iterator_(isolate, isolate->debug()->break_frame_id()),
-      is_top_frame_(true) {
+      is_top_frame_(true),
+      resumable_fn_on_stack_(false) {
   if (iterator_.done()) return;
-  std::vector<FrameSummary> frames;
-  iterator_.frame()->Summarize(&frames);
-  inlined_frame_index_ = static_cast<int>(frames.size());
+  UpdateInlineFrameIndexAndResumableFnOnStack();
   Advance();
   for (; !Done() && index > 0; --index) Advance();
 }
@@ -63,9 +62,7 @@ void DebugStackTraceIterator::Advance() {
     frame_inspector_.reset();
     iterator_.Advance();
     if (iterator_.done()) break;
-    std::vector<FrameSummary> frames;
-    iterator_.frame()->Summarize(&frames);
-    inlined_frame_index_ = static_cast<int>(frames.size());
+    UpdateInlineFrameIndexAndResumableFnOnStack();
   }
 }
 
@@ -151,10 +148,37 @@ debug::Location DebugStackTraceIterator::GetSourceLocation() const {
   return script->GetSourceLocation(frame_inspector_->GetSourcePosition());
 }
 
+debug::Location DebugStackTraceIterator::GetFunctionLocation() const {
+  DCHECK(!Done());
+
+  v8::Local<v8::Function> func = this->GetFunction();
+  if (!func.IsEmpty()) {
+    return v8::debug::Location(func->GetScriptLineNumber(),
+                               func->GetScriptColumnNumber());
+  }
+#if V8_ENABLE_WEBASSEMBLY
+  if (iterator_.frame()->is_wasm()) {
+    auto frame = WasmFrame::cast(iterator_.frame());
+    Handle<WasmInstanceObject> instance(frame->wasm_instance(), isolate_);
+    auto offset =
+        instance->module()->functions[frame->function_index()].code.offset();
+    return v8::debug::Location(0, offset);
+  }
+#endif
+  return v8::debug::Location();
+}
+
 v8::Local<v8::Function> DebugStackTraceIterator::GetFunction() const {
   DCHECK(!Done());
   if (!frame_inspector_->IsJavaScript()) return v8::Local<v8::Function>();
   return Utils::ToLocal(frame_inspector_->GetFunction());
+}
+
+Handle<SharedFunctionInfo> DebugStackTraceIterator::GetSharedFunctionInfo()
+    const {
+  DCHECK(!Done());
+  if (!frame_inspector_->IsJavaScript()) return Handle<SharedFunctionInfo>();
+  return handle(frame_inspector_->GetFunction()->shared(), isolate_);
 }
 
 std::unique_ptr<v8::debug::ScopeIterator>
@@ -166,6 +190,51 @@ DebugStackTraceIterator::GetScopeIterator() const {
   }
 #endif  // V8_ENABLE_WEBASSEMBLY
   return std::make_unique<DebugScopeIterator>(isolate_, frame_inspector_.get());
+}
+
+bool DebugStackTraceIterator::CanBeRestarted() const {
+  DCHECK(!Done());
+
+  if (resumable_fn_on_stack_) return false;
+
+  StackFrame* frame = iterator_.frame();
+  // We do not support restarting WASM frames.
+#if V8_ENABLE_WEBASSEMBLY
+  if (frame->is_wasm()) return false;
+#endif  // V8_ENABLE_WEBASSEMBLY
+
+  // Check that no embedder API calls are between the top-most frame, and the
+  // current frame. While we *could* determine whether embedder
+  // frames are safe to terminate (via the CallDepthScope chain), we don't know
+  // if embedder frames would cancel the termination effectively breaking
+  // restart frame.
+  if (isolate_->thread_local_top()->last_api_entry_ < frame->fp()) {
+    return false;
+  }
+
+  return true;
+}
+
+void DebugStackTraceIterator::UpdateInlineFrameIndexAndResumableFnOnStack() {
+  CHECK(!iterator_.done());
+
+  std::vector<FrameSummary> frames;
+  iterator_.frame()->Summarize(&frames);
+  inlined_frame_index_ = static_cast<int>(frames.size());
+
+  if (resumable_fn_on_stack_) return;
+
+  StackFrame* frame = iterator_.frame();
+  if (!frame->is_java_script()) return;
+
+  std::vector<Handle<SharedFunctionInfo>> shareds;
+  JavaScriptFrame::cast(frame)->GetFunctions(&shareds);
+  for (auto& shared : shareds) {
+    if (IsResumableFunction(shared->kind())) {
+      resumable_fn_on_stack_ = true;
+      return;
+    }
+  }
 }
 
 v8::MaybeLocal<v8::Value> DebugStackTraceIterator::Evaluate(
@@ -182,6 +251,14 @@ v8::MaybeLocal<v8::Value> DebugStackTraceIterator::Evaluate(
     return v8::MaybeLocal<v8::Value>();
   }
   return Utils::ToLocal(value);
+}
+
+void DebugStackTraceIterator::PrepareRestart() {
+  CHECK(!Done());
+  CHECK(CanBeRestarted());
+
+  isolate_->debug()->PrepareRestartFrame(iterator_.javascript_frame(),
+                                         inlined_frame_index_);
 }
 
 }  // namespace internal

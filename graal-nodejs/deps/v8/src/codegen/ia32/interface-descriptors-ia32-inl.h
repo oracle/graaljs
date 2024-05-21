@@ -14,7 +14,7 @@ namespace internal {
 
 constexpr auto CallInterfaceDescriptor::DefaultRegisterArray() {
   auto registers = RegisterArray(eax, ecx, edx, edi);
-  STATIC_ASSERT(registers.size() == kMaxBuiltinRegisterParams);
+  static_assert(registers.size() == kMaxBuiltinRegisterParams);
   return registers;
 }
 
@@ -94,6 +94,9 @@ constexpr Register StoreDescriptor::SlotRegister() { return no_reg; }
 constexpr Register StoreWithVectorDescriptor::VectorRegister() {
   return no_reg;
 }
+
+// static
+constexpr Register DefineKeyedOwnDescriptor::FlagsRegister() { return no_reg; }
 
 // static
 constexpr Register StoreTransitionDescriptor::MapRegister() { return edi; }
@@ -226,9 +229,7 @@ constexpr auto ConstructStubDescriptor::registers() {
   // eax : number of arguments
   // edx : the new target
   // edi : the target to call
-  // ecx : allocation site or undefined
-  // TODO(jgruber): Remove the unused allocation site parameter.
-  return RegisterArray(edi, edx, eax, ecx);
+  return RegisterArray(edi, edx, eax);
 }
 
 // static
@@ -307,6 +308,27 @@ constexpr auto WasmFloat32ToNumberDescriptor::registers() {
 
 // static
 constexpr auto WasmFloat64ToNumberDescriptor::registers() {
+  // Work around using eax, whose register code is 0, and leads to the FP
+  // parameter being passed via xmm0, which is not allocatable on ia32.
+  return RegisterArray(ecx);
+}
+
+// static
+constexpr auto NewHeapNumberDescriptor::registers() {
+  // Work around using eax, whose register code is 0, and leads to the FP
+  // parameter being passed via xmm0, which is not allocatable on ia32.
+  return RegisterArray(ecx);
+}
+
+// static
+constexpr auto CheckTurboshaftFloat32TypeDescriptor::registers() {
+  // Work around using eax, whose register code is 0, and leads to the FP
+  // parameter being passed via xmm0, which is not allocatable on ia32.
+  return RegisterArray(ecx);
+}
+
+// static
+constexpr auto CheckTurboshaftFloat64TypeDescriptor::registers() {
   // Work around using eax, whose register code is 0, and leads to the FP
   // parameter being passed via xmm0, which is not allocatable on ia32.
   return RegisterArray(ecx);

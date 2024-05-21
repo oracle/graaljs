@@ -48,6 +48,8 @@ namespace compiler {
   V(PPC_Mul32)                       \
   V(PPC_Mul32WithHigh32)             \
   V(PPC_Mul64)                       \
+  V(PPC_MulHighS64)                  \
+  V(PPC_MulHighU64)                  \
   V(PPC_MulHigh32)                   \
   V(PPC_MulHighU32)                  \
   V(PPC_MulPair)                     \
@@ -225,8 +227,6 @@ namespace compiler {
   V(PPC_F32x4Le)                     \
   V(PPC_F32x4Abs)                    \
   V(PPC_F32x4Neg)                    \
-  V(PPC_F32x4RecipApprox)            \
-  V(PPC_F32x4RecipSqrtApprox)        \
   V(PPC_F32x4Sqrt)                   \
   V(PPC_F32x4SConvertI32x4)          \
   V(PPC_F32x4UConvertI32x4)          \
@@ -302,6 +302,7 @@ namespace compiler {
   V(PPC_I32x4ExtMulHighI16x8U)       \
   V(PPC_I32x4TruncSatF64x2SZero)     \
   V(PPC_I32x4TruncSatF64x2UZero)     \
+  V(PPC_I32x4DotI8x16AddS)           \
   V(PPC_I16x8Splat)                  \
   V(PPC_I16x8ExtractLaneU)           \
   V(PPC_I16x8ExtractLaneS)           \
@@ -343,6 +344,7 @@ namespace compiler {
   V(PPC_I16x8ExtMulHighI8x16S)       \
   V(PPC_I16x8ExtMulLowI8x16U)        \
   V(PPC_I16x8ExtMulHighI8x16U)       \
+  V(PPC_I16x8DotI8x16S)              \
   V(PPC_I8x16Splat)                  \
   V(PPC_I8x16ExtractLaneU)           \
   V(PPC_I8x16ExtractLaneS)           \
@@ -411,8 +413,7 @@ namespace compiler {
   V(PPC_S128Store64Lane)             \
   V(PPC_StoreCompressTagged)         \
   V(PPC_LoadDecompressTaggedSigned)  \
-  V(PPC_LoadDecompressTaggedPointer) \
-  V(PPC_LoadDecompressAnyTagged)
+  V(PPC_LoadDecompressTagged)
 
 // Addressing modes represent the "shape" of inputs to an instruction.
 // Many instructions support multiple addressing modes. Addressing modes
@@ -428,8 +429,9 @@ namespace compiler {
 // MRI = [register + immediate]
 // MRR = [register + register]
 #define TARGET_ADDRESSING_MODE_LIST(V) \
-  V(MRI) /* [%r0 + K] */               \
-  V(MRR) /* [%r0 + %r1] */
+  V(MRI)  /* [%r0 + K] */              \
+  V(MRR)  /* [%r0 + %r1] */            \
+  V(Root) /* [%rr + K] */
 
 }  // namespace compiler
 }  // namespace internal

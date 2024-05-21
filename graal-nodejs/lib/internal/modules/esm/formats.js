@@ -1,12 +1,11 @@
 'use strict';
 
-const {
-  RegExpPrototypeExec,
-  Uint8Array,
-} = primordials;
+const { RegExpPrototypeExec } = primordials;
 const { getOptionValue } = require('internal/options');
-
-const { closeSync, openSync, readSync } = require('fs');
+const { getValidatedPath } = require('internal/fs/utils');
+const pathModule = require('path');
+const fsBindings = internalBinding('fs');
+const { fs: fsConstants } = internalBinding('constants');
 
 const experimentalWasmModules = getOptionValue('--experimental-wasm-modules');
 
@@ -18,17 +17,8 @@ const extensionFormatMap = {
   '.mjs': 'module',
 };
 
-const legacyExtensionFormatMap = {
-  '__proto__': null,
-  '.cjs': 'commonjs',
-  '.js': 'commonjs',
-  '.json': 'commonjs',
-  '.mjs': 'module',
-  '.node': 'commonjs',
-};
-
 if (experimentalWasmModules) {
-  extensionFormatMap['.wasm'] = legacyExtensionFormatMap['.wasm'] = 'wasm';
+  extensionFormatMap['.wasm'] = 'wasm';
 }
 
 /**
@@ -47,10 +37,6 @@ function mimeToFormat(mime) {
   return null;
 }
 
-function getLegacyExtensionFormat(ext) {
-  return legacyExtensionFormatMap[ext];
-}
-
 /**
  * For extensionless files in a `module` package scope, or a default `module` scope enabled by the
  * `--experimental-default-type` flag, we check the file contents to disambiguate between ES module JavaScript and Wasm.
@@ -60,26 +46,18 @@ function getLegacyExtensionFormat(ext) {
 function getFormatOfExtensionlessFile(url) {
   if (!experimentalWasmModules) { return 'module'; }
 
-  const magic = new Uint8Array(4);
-  let fd;
-  try {
-    // TODO(@anonrig): Optimize the following by having a single C++ call
-    fd = openSync(url);
-    readSync(fd, magic, 0, 4); // Only read the first four bytes
-    if (magic[0] === 0x00 && magic[1] === 0x61 && magic[2] === 0x73 && magic[3] === 0x6d) {
-      return 'wasm';
-    }
-  } finally {
-    if (fd !== undefined) { closeSync(fd); }
-  }
+  const path = pathModule.toNamespacedPath(getValidatedPath(url));
 
-  return 'module';
+  switch (fsBindings.getFormatOfExtensionlessFile(path)) {
+    case fsConstants.EXTENSIONLESS_FORMAT_WASM:
+      return 'wasm';
+    default:
+      return 'module';
+  }
 }
 
 module.exports = {
   extensionFormatMap,
   getFormatOfExtensionlessFile,
-  getLegacyExtensionFormat,
-  legacyExtensionFormatMap,
   mimeToFormat,
 };

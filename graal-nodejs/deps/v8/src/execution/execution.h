@@ -68,9 +68,8 @@ class Execution final : public AllStatic {
       bool reschedule_terminate = true);
 
   // Convenience method for performing RunMicrotasks
-  static MaybeHandle<Object> TryRunMicrotasks(
-      Isolate* isolate, MicrotaskQueue* microtask_queue,
-      MaybeHandle<Object>* exception_out);
+  static MaybeHandle<Object> TryRunMicrotasks(Isolate* isolate,
+                                              MicrotaskQueue* microtask_queue);
 
 #if V8_ENABLE_WEBASSEMBLY
   // Call a Wasm function identified by {wasm_call_target} through the
@@ -78,7 +77,7 @@ class Execution final : public AllStatic {
   // Upon return, either isolate->has_pending_exception() is true, or
   // the function's return values are in {packed_args}.
   V8_EXPORT_PRIVATE static void CallWasm(Isolate* isolate,
-                                         Handle<CodeT> wrapper_code,
+                                         Handle<Code> wrapper_code,
                                          Address wasm_call_target,
                                          Handle<Object> object_ref,
                                          Address packed_args);

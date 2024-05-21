@@ -5,7 +5,6 @@
 #ifndef V8_CODEGEN_RELOC_INFO_H_
 #define V8_CODEGEN_RELOC_INFO_H_
 
-#include "src/codegen/flush-instruction-cache.h"
 #include "src/common/globals.h"
 #include "src/objects/code.h"
 
@@ -57,27 +56,27 @@ class RelocInfo {
     NO_INFO,  // Never recorded value. Most common one, hence value 0.
 
     CODE_TARGET,
+    // TODO(ishell): rename to NEAR_CODE_TARGET.
     RELATIVE_CODE_TARGET,  // LAST_CODE_TARGET_MODE
     COMPRESSED_EMBEDDED_OBJECT,
-    FULL_EMBEDDED_OBJECT,
-    DATA_EMBEDDED_OBJECT,  // LAST_GCED_ENUM
+    FULL_EMBEDDED_OBJECT,  // LAST_GCED_ENUM
 
     WASM_CALL,  // FIRST_SHAREABLE_RELOC_MODE
     WASM_STUB_CALL,
 
-    // TODO(ishell): rename to UNEMBEDDED_BUILTIN_ENTRY.
-    // An un-embedded off-heap instruction stream target.
-    // See http://crbug.com/v8/11527 for details.
-    RUNTIME_ENTRY,
-
     EXTERNAL_REFERENCE,  // The address of an external C++ function.
     INTERNAL_REFERENCE,  // An address inside the same function.
 
-    // Encoded internal reference, used only on RISCV64, MIPS, MIPS64 and PPC.
+    // Encoded internal reference, used only on RISCV64, RISCV32, MIPS64
+    // and PPC.
     INTERNAL_REFERENCE_ENCODED,
 
     // An off-heap instruction stream target. See http://goo.gl/Z2HUiM.
-    OFF_HEAP_TARGET,
+    // TODO(ishell): rename to BUILTIN_ENTRY.
+    OFF_HEAP_TARGET,  // FIRST_BUILTIN_ENTRY_MODE
+    // An un-embedded off-heap instruction stream target.
+    // See http://crbug.com/v8/11527 for details.
+    NEAR_BUILTIN_ENTRY,  // LAST_BUILTIN_ENTRY_MODE
 
     // Marks constant and veneer pools. Only used on ARM and ARM64.
     // They use a custom noncompact encoding.
@@ -104,21 +103,25 @@ class RelocInfo {
     FIRST_REAL_RELOC_MODE = CODE_TARGET,
     LAST_REAL_RELOC_MODE = VENEER_POOL,
     FIRST_EMBEDDED_OBJECT_RELOC_MODE = COMPRESSED_EMBEDDED_OBJECT,
-    LAST_EMBEDDED_OBJECT_RELOC_MODE = DATA_EMBEDDED_OBJECT,
+    LAST_EMBEDDED_OBJECT_RELOC_MODE = FULL_EMBEDDED_OBJECT,
     LAST_GCED_ENUM = LAST_EMBEDDED_OBJECT_RELOC_MODE,
+    FIRST_BUILTIN_ENTRY_MODE = OFF_HEAP_TARGET,
+    LAST_BUILTIN_ENTRY_MODE = NEAR_BUILTIN_ENTRY,
     FIRST_SHAREABLE_RELOC_MODE = WASM_CALL,
   };
 
-  STATIC_ASSERT(NUMBER_OF_MODES <= kBitsPerInt);
+  static_assert(NUMBER_OF_MODES <= kBitsPerInt);
 
   RelocInfo() = default;
 
-  RelocInfo(Address pc, Mode rmode, intptr_t data, Code host,
+  RelocInfo(Address pc, Mode rmode, intptr_t data, Code code,
+            InstructionStream instruction_stream,
             Address constant_pool = kNullAddress)
       : pc_(pc),
         rmode_(rmode),
         data_(data),
-        host_(host),
+        code_(code),
+        instruction_stream_(instruction_stream),
         constant_pool_(constant_pool) {
     DCHECK_IMPLIES(!COMPRESS_POINTERS_BOOL,
                    rmode != COMPRESSED_EMBEDDED_OBJECT);
@@ -148,16 +151,9 @@ class RelocInfo {
   static constexpr bool IsCompressedEmbeddedObject(Mode mode) {
     return COMPRESS_POINTERS_BOOL && mode == COMPRESSED_EMBEDDED_OBJECT;
   }
-  static constexpr bool IsDataEmbeddedObject(Mode mode) {
-    return mode == DATA_EMBEDDED_OBJECT;
-  }
   static constexpr bool IsEmbeddedObjectMode(Mode mode) {
     return base::IsInRange(mode, FIRST_EMBEDDED_OBJECT_RELOC_MODE,
                            LAST_EMBEDDED_OBJECT_RELOC_MODE);
-  }
-  // TODO(ishell): rename to IsUnembeddedBuiltinEntry().
-  static constexpr bool IsRuntimeEntry(Mode mode) {
-    return mode == RUNTIME_ENTRY;
   }
   static constexpr bool IsWasmCall(Mode mode) { return mode == WASM_CALL; }
   static constexpr bool IsWasmReference(Mode mode) { return mode == WASM_CALL; }
@@ -191,6 +187,13 @@ class RelocInfo {
   static constexpr bool IsOffHeapTarget(Mode mode) {
     return mode == OFF_HEAP_TARGET;
   }
+  static constexpr bool IsNearBuiltinEntry(Mode mode) {
+    return mode == NEAR_BUILTIN_ENTRY;
+  }
+  static constexpr bool IsBuiltinEntryMode(Mode mode) {
+    return base::IsInRange(mode, FIRST_BUILTIN_ENTRY_MODE,
+                           LAST_BUILTIN_ENTRY_MODE);
+  }
   static constexpr bool IsNoInfo(Mode mode) { return mode == NO_INFO; }
 
   static bool IsOnlyForSerializer(Mode mode) {
@@ -212,7 +215,8 @@ class RelocInfo {
   Address pc() const { return pc_; }
   Mode rmode() const { return rmode_; }
   intptr_t data() const { return data_; }
-  Code host() const { return host_; }
+  Code code() const { return code_; }
+  InstructionStream instruction_stream() const { return instruction_stream_; }
   Address constant_pool() const { return constant_pool_; }
 
   // Apply a relocation by delta bytes. When the code object is moved, PC
@@ -249,8 +253,12 @@ class RelocInfo {
       WriteBarrierMode write_barrier_mode = UPDATE_WRITE_BARRIER,
       ICacheFlushMode icache_flush_mode = FLUSH_ICACHE_IF_NEEDED);
 
+  void set_off_heap_target_address(
+      Address target,
+      ICacheFlushMode icache_flush_mode = FLUSH_ICACHE_IF_NEEDED);
+
   // this relocation applies to;
-  // can only be called if IsCodeTarget(rmode_) || IsRuntimeEntry(rmode_)
+  // can only be called if IsCodeTarget(rmode_)
   V8_INLINE Address target_address();
   // Cage base value is used for decompressing compressed embedded references.
   V8_INLINE HeapObject target_object(PtrComprCageBase cage_base);
@@ -261,11 +269,9 @@ class RelocInfo {
       Heap* heap, HeapObject target,
       WriteBarrierMode write_barrier_mode = UPDATE_WRITE_BARRIER,
       ICacheFlushMode icache_flush_mode = FLUSH_ICACHE_IF_NEEDED);
-  V8_INLINE Address target_runtime_entry(Assembler* origin);
-  V8_INLINE void set_target_runtime_entry(
-      Address target,
-      WriteBarrierMode write_barrier_mode = UPDATE_WRITE_BARRIER,
-      ICacheFlushMode icache_flush_mode = FLUSH_ICACHE_IF_NEEDED);
+  // Decodes builtin ID encoded as a PC-relative offset. This encoding is used
+  // during code generation of call/jump with NEAR_BUILTIN_ENTRY.
+  V8_INLINE Builtin target_builtin_at(Assembler* origin);
   V8_INLINE Address target_off_heap_target();
   V8_INLINE void set_target_external_reference(
       Address, ICacheFlushMode icache_flush_mode = FLUSH_ICACHE_IF_NEEDED);
@@ -314,24 +320,17 @@ class RelocInfo {
   void Visit(ObjectVisitor* visitor) {
     Mode mode = rmode();
     if (IsEmbeddedObjectMode(mode)) {
-      visitor->VisitEmbeddedPointer(host(), this);
+      visitor->VisitEmbeddedPointer(this);
     } else if (IsCodeTargetMode(mode)) {
-      visitor->VisitCodeTarget(host(), this);
+      visitor->VisitCodeTarget(this);
     } else if (IsExternalReference(mode)) {
-      visitor->VisitExternalReference(host(), this);
+      visitor->VisitExternalReference(this);
     } else if (IsInternalReference(mode) || IsInternalReferenceEncoded(mode)) {
-      visitor->VisitInternalReference(host(), this);
-    } else if (IsRuntimeEntry(mode)) {
-      visitor->VisitRuntimeEntry(host(), this);
-    } else if (IsOffHeapTarget(mode)) {
-      visitor->VisitOffHeapTarget(host(), this);
+      visitor->VisitInternalReference(this);
+    } else if (IsBuiltinEntryMode(mode)) {
+      visitor->VisitOffHeapTarget(this);
     }
   }
-
-  // Check whether the given code contains relocation information that
-  // either is position-relative or movable by the garbage collector.
-  static bool RequiresRelocationAfterCodegen(const CodeDesc& desc);
-  static bool RequiresRelocation(Code code);
 
 #ifdef ENABLE_DISASSEMBLER
   // Printing
@@ -353,19 +352,18 @@ class RelocInfo {
 
   static int EmbeddedObjectModeMask() {
     return ModeMask(RelocInfo::FULL_EMBEDDED_OBJECT) |
-           ModeMask(RelocInfo::COMPRESSED_EMBEDDED_OBJECT) |
-           ModeMask(RelocInfo::DATA_EMBEDDED_OBJECT);
+           ModeMask(RelocInfo::COMPRESSED_EMBEDDED_OBJECT);
   }
 
   // In addition to modes covered by the apply mask (which is applied at GC
   // time, among others), this covers all modes that are relocated by
-  // Code::CopyFromNoFlush after code generation.
+  // InstructionStream::CopyFromNoFlush after code generation.
   static int PostCodegenRelocationMask() {
     return ModeMask(RelocInfo::CODE_TARGET) |
            ModeMask(RelocInfo::COMPRESSED_EMBEDDED_OBJECT) |
            ModeMask(RelocInfo::FULL_EMBEDDED_OBJECT) |
-           ModeMask(RelocInfo::DATA_EMBEDDED_OBJECT) |
-           ModeMask(RelocInfo::RUNTIME_ENTRY) |
+           ModeMask(RelocInfo::NEAR_BUILTIN_ENTRY) |
+           ModeMask(RelocInfo::WASM_STUB_CALL) |
            ModeMask(RelocInfo::RELATIVE_CODE_TARGET) | kApplyMask;
   }
 
@@ -375,7 +373,8 @@ class RelocInfo {
   Address pc_;
   Mode rmode_;
   intptr_t data_ = 0;
-  Code host_;
+  Code code_;
+  InstructionStream instruction_stream_;
   Address constant_pool_ = kNullAddress;
   friend class RelocIterator;
 };
@@ -414,7 +413,6 @@ class RelocInfoWriter {
   inline void WriteMode(RelocInfo::Mode rmode);
   inline void WriteModeAndPC(uint32_t pc_delta, RelocInfo::Mode rmode);
   inline void WriteIntData(int data_delta);
-  inline void WriteData(intptr_t data_delta);
 
   byte* pos_;
   byte* last_pc_;
@@ -430,12 +428,14 @@ class RelocInfoWriter {
 // A mask can be specified to skip unwanted modes.
 class V8_EXPORT_PRIVATE RelocIterator : public Malloced {
  public:
-  // Create a new iterator positioned at
-  // the beginning of the reloc info.
-  // Relocation information with mode k is included in the
-  // iteration iff bit k of mode_mask is set.
+  // Create a new iterator positioned at the beginning of the reloc info.
+  // Relocation information with mode k is included in the iteration iff bit k
+  // of mode_mask is set.
   explicit RelocIterator(Code code, int mode_mask = -1);
   explicit RelocIterator(Code code, ByteArray relocation_info, int mode_mask);
+  explicit RelocIterator(Code code, InstructionStream instruction_stream,
+                         ByteArray relocation_info, Address constant_pool,
+                         int mode_mask);
   explicit RelocIterator(EmbeddedData* embedded_data, Code code, int mode_mask);
   explicit RelocIterator(const CodeDesc& desc, int mode_mask = -1);
   explicit RelocIterator(const CodeReference code_reference,
@@ -459,8 +459,9 @@ class V8_EXPORT_PRIVATE RelocIterator : public Malloced {
   }
 
  private:
-  RelocIterator(Code host, Address pc, Address constant_pool, const byte* pos,
-                const byte* end, int mode_mask);
+  RelocIterator(Code code, InstructionStream instruction_stream, Address pc,
+                Address constant_pool, const byte* pos, const byte* end,
+                int mode_mask);
 
   // Advance* moves the position before/after reading.
   // *Read* reads from current byte(s) into rinfo_.

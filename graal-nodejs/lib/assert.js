@@ -66,13 +66,14 @@ const { inspect } = require('internal/util/inspect');
 const { isPromise, isRegExp } = require('internal/util/types');
 const { EOL } = require('internal/constants');
 const { BuiltinModule } = require('internal/bootstrap/realm');
-const { isError } = require('internal/util');
+const { isError, deprecate } = require('internal/util');
 
 const errorCache = new SafeMap();
 const CallTracker = require('internal/assert/calltracker');
 const {
   validateFunction,
 } = require('internal/validators');
+const { fileURLToPath } = require('internal/url');
 
 let isDeepEqual;
 let isDeepStrictEqual;
@@ -296,7 +297,7 @@ function getErrMessage(message, fn) {
   overrideStackTrace.set(err, (_, stack) => stack);
   const call = err.stack[0];
 
-  const filename = call.getFileName();
+  let filename = call.getFileName();
   const line = call.getLineNumber() - 1;
   let column = call.getColumnNumber() - 1;
   let identifier;
@@ -330,6 +331,14 @@ function getErrMessage(message, fn) {
         const { StringDecoder } = require('string_decoder');
         decoder = new StringDecoder('utf8');
       }
+
+      // ESM file prop is a file proto. Convert that to path.
+      // This ensure opensync will not throw ENOENT for ESM files.
+      const fileProtoPrefix = 'file://';
+      if (StringPrototypeStartsWith(filename, fileProtoPrefix)) {
+        filename = fileURLToPath(filename);
+      }
+
       fd = openSync(filename, 'r', 0o666);
       // Reset column and message.
       ({ 0: column, 1: message } = getCode(fd, line, column));
@@ -1049,7 +1058,7 @@ assert.doesNotMatch = function doesNotMatch(string, regexp, message) {
   internalMatch(string, regexp, message, doesNotMatch);
 };
 
-assert.CallTracker = CallTracker;
+assert.CallTracker = deprecate(CallTracker, 'assert.CallTracker is deprecated.', 'DEP0173');
 
 /**
  * Expose a strict only variant of assert.

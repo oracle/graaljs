@@ -25,6 +25,7 @@ const { deprecate } = require('internal/util');
 const {
   noSideEffectsToString,
   triggerUncaughtException,
+  exitCodes: { kGenericUserError },
 } = internalBinding('errors');
 
 const {
@@ -294,7 +295,7 @@ function processPromiseRejections() {
           const handled = emit(reason, promise, promiseInfo);
           if (!handled) {
             emitUnhandledRejectionWarning(uid, reason);
-            process.exitCode = 1;
+            process.exitCode = kGenericUserError;
           }
           break;
         }

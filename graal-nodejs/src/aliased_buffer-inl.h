@@ -70,14 +70,14 @@ AliasedBufferBase<NativeT, V8T>::AliasedBufferBase(
       count_(that.count_),
       byte_offset_(that.byte_offset_),
       buffer_(that.buffer_) {
-  DCHECK_NULL(index_);
   js_array_ = v8::Global<V8T>(that.isolate_, that.GetJSArray());
+  DCHECK(is_valid());
 }
 
 template <typename NativeT, typename V8T>
 AliasedBufferIndex AliasedBufferBase<NativeT, V8T>::Serialize(
     v8::Local<v8::Context> context, v8::SnapshotCreator* creator) {
-  DCHECK_NULL(index_);
+  DCHECK(is_valid());
   return creator->AddData(context, GetJSArray());
 }
 
@@ -100,7 +100,7 @@ inline void AliasedBufferBase<NativeT, V8T>::Deserialize(
 template <typename NativeT, typename V8T>
 AliasedBufferBase<NativeT, V8T>& AliasedBufferBase<NativeT, V8T>::operator=(
     AliasedBufferBase<NativeT, V8T>&& that) noexcept {
-  DCHECK_NULL(index_);
+  DCHECK(is_valid());
   this->~AliasedBufferBase();
   isolate_ = that.isolate_;
   count_ = that.count_;
@@ -116,7 +116,7 @@ AliasedBufferBase<NativeT, V8T>& AliasedBufferBase<NativeT, V8T>::operator=(
 
 template <typename NativeT, typename V8T>
 v8::Local<V8T> AliasedBufferBase<NativeT, V8T>::GetJSArray() const {
-  DCHECK_NULL(index_);
+  DCHECK(is_valid());
   return js_array_.Get(isolate_);
 }
 
@@ -127,6 +127,12 @@ void AliasedBufferBase<NativeT, V8T>::Release() {
 }
 
 template <typename NativeT, typename V8T>
+inline void AliasedBufferBase<NativeT, V8T>::MakeWeak() {
+  DCHECK(is_valid());
+  js_array_.SetWeak();
+}
+
+template <typename NativeT, typename V8T>
 v8::Local<v8::ArrayBuffer> AliasedBufferBase<NativeT, V8T>::GetArrayBuffer()
     const {
   return GetJSArray()->Buffer();
@@ -134,7 +140,7 @@ v8::Local<v8::ArrayBuffer> AliasedBufferBase<NativeT, V8T>::GetArrayBuffer()
 
 template <typename NativeT, typename V8T>
 inline const NativeT* AliasedBufferBase<NativeT, V8T>::GetNativeBuffer() const {
-  DCHECK_NULL(index_);
+  DCHECK(is_valid());
   return buffer_;
 }
 
@@ -147,14 +153,14 @@ template <typename NativeT, typename V8T>
 inline void AliasedBufferBase<NativeT, V8T>::SetValue(const size_t index,
                                                       NativeT value) {
   DCHECK_LT(index, count_);
-  DCHECK_NULL(index_);
+  DCHECK(is_valid());
   buffer_[index] = value;
 }
 
 template <typename NativeT, typename V8T>
 inline const NativeT AliasedBufferBase<NativeT, V8T>::GetValue(
     const size_t index) const {
-  DCHECK_NULL(index_);
+  DCHECK(is_valid());
   DCHECK_LT(index, count_);
   return buffer_[index];
 }
@@ -162,7 +168,7 @@ inline const NativeT AliasedBufferBase<NativeT, V8T>::GetValue(
 template <typename NativeT, typename V8T>
 typename AliasedBufferBase<NativeT, V8T>::Reference
 AliasedBufferBase<NativeT, V8T>::operator[](size_t index) {
-  DCHECK_NULL(index_);
+  DCHECK(is_valid());
   return Reference(this, index);
 }
 
@@ -178,7 +184,7 @@ size_t AliasedBufferBase<NativeT, V8T>::Length() const {
 
 template <typename NativeT, typename V8T>
 void AliasedBufferBase<NativeT, V8T>::reserve(size_t new_capacity) {
-  DCHECK_NULL(index_);
+  DCHECK(is_valid());
   DCHECK_GE(new_capacity, count_);
   DCHECK_EQ(byte_offset_, 0);
   const v8::HandleScope handle_scope(isolate_);
@@ -204,6 +210,11 @@ void AliasedBufferBase<NativeT, V8T>::reserve(size_t new_capacity) {
 
   buffer_ = new_buffer;
   count_ = new_capacity;
+}
+
+template <typename NativeT, typename V8T>
+inline bool AliasedBufferBase<NativeT, V8T>::is_valid() const {
+  return index_ == nullptr && !js_array_.IsEmpty();
 }
 
 template <typename NativeT, typename V8T>

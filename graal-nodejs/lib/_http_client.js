@@ -72,7 +72,7 @@ const {
   traceEnd,
   getNextTraceEventId,
 } = require('internal/http');
-const { connResetException, codes } = require('internal/errors');
+const { ConnResetException, codes } = require('internal/errors');
 const {
   ERR_HTTP_HEADERS_SENT,
   ERR_INVALID_ARG_TYPE,
@@ -85,11 +85,6 @@ const {
   validateBoolean,
 } = require('internal/validators');
 const { getTimerDuration } = require('internal/timers');
-const {
-  DTRACE_HTTP_CLIENT_REQUEST,
-  DTRACE_HTTP_CLIENT_RESPONSE,
-} = require('internal/dtrace');
-
 const {
   hasObserver,
   startPerf,
@@ -191,9 +186,11 @@ function ClientRequest(input, options, cb) {
   const defaultPort = options.defaultPort ||
                     (this.agent && this.agent.defaultPort);
 
-  const port = options.port = options.port || defaultPort || 80;
-  const host = options.host = validateHost(options.hostname, 'hostname') ||
-                            validateHost(options.host, 'host') || 'localhost';
+  const optsWithoutSignal = { __proto__: null, ...options };
+
+  const port = optsWithoutSignal.port = options.port || defaultPort || 80;
+  const host = optsWithoutSignal.host = validateHost(options.hostname, 'hostname') ||
+                                        validateHost(options.host, 'host') || 'localhost';
 
   const setHost = (options.setHost === undefined || Boolean(options.setHost));
 
@@ -205,6 +202,7 @@ function ClientRequest(input, options, cb) {
   const signal = options.signal;
   if (signal) {
     addAbortSignal(signal, this);
+    delete optsWithoutSignal.signal;
   }
   let method = options.method;
   const methodIsString = (typeof method === 'string');
@@ -331,12 +329,6 @@ function ClientRequest(input, options, cb) {
 
   this[kUniqueHeaders] = parseUniqueHeadersOption(options.uniqueHeaders);
 
-  let optsWithoutSignal = options;
-  if (optsWithoutSignal.signal) {
-    optsWithoutSignal = ObjectAssign({}, options);
-    delete optsWithoutSignal.signal;
-  }
-
   // initiate connection
   if (this.agent) {
     this.agent.addRequest(this, optsWithoutSignal);
@@ -344,7 +336,16 @@ function ClientRequest(input, options, cb) {
     // No agent, default to Connection:close.
     this._last = true;
     this.shouldKeepAlive = false;
-    if (typeof optsWithoutSignal.createConnection === 'function') {
+    let opts = optsWithoutSignal;
+    if (opts.path || opts.socketPath) {
+      opts = { ...optsWithoutSignal };
+      if (opts.socketPath) {
+        opts.path = opts.socketPath;
+      } else if (opts.path) {
+        opts.path = undefined;
+      }
+    }
+    if (typeof opts.createConnection === 'function') {
       const oncreate = once((err, socket) => {
         if (err) {
           process.nextTick(() => this.emit('error', err));
@@ -354,8 +355,7 @@ function ClientRequest(input, options, cb) {
       });
 
       try {
-        const newSocket = optsWithoutSignal.createConnection(optsWithoutSignal,
-                                                             oncreate);
+        const newSocket = opts.createConnection(opts, oncreate);
         if (newSocket) {
           oncreate(null, newSocket);
         }
@@ -363,8 +363,8 @@ function ClientRequest(input, options, cb) {
         oncreate(err);
       }
     } else {
-      debug('CLIENT use net.createConnection', optsWithoutSignal);
-      this.onSocket(net.createConnection(optsWithoutSignal));
+      debug('CLIENT use net.createConnection', opts);
+      this.onSocket(net.createConnection(opts));
     }
   }
 }
@@ -372,7 +372,6 @@ ObjectSetPrototypeOf(ClientRequest.prototype, OutgoingMessage.prototype);
 ObjectSetPrototypeOf(ClientRequest, OutgoingMessage);
 
 ClientRequest.prototype._finish = function _finish() {
-  DTRACE_HTTP_CLIENT_REQUEST(this, this.socket);
   FunctionPrototypeCall(OutgoingMessage.prototype._finish, this);
   if (hasObserver('http')) {
     startPerf(this, kClientRequestStatistics, {
@@ -458,7 +457,7 @@ function socketCloseListener() {
   if (res) {
     // Socket closed before we emitted 'end' below.
     if (!res.complete) {
-      res.destroy(connResetException('aborted'));
+      res.destroy(new ConnResetException('aborted'));
     }
     req._closed = true;
     req.emit('close');
@@ -471,7 +470,7 @@ function socketCloseListener() {
       // receive a response. The error needs to
       // fire on the request.
       req.socket._hadError = true;
-      req.emit('error', connResetException('socket hang up'));
+      req.emit('error', new ConnResetException('socket hang up'));
     }
     req._closed = true;
     req.emit('close');
@@ -522,7 +521,7 @@ function socketOnEnd() {
     // If we don't have a response then we know that the socket
     // ended prematurely and we need to emit an error on the request.
     req.socket._hadError = true;
-    req.emit('error', connResetException('socket hang up'));
+    req.emit('error', new ConnResetException('socket hang up'));
   }
   if (parser) {
     parser.finish();
@@ -662,7 +661,6 @@ function parserOnIncomingClient(res, shouldKeepAlive) {
     req.shouldKeepAlive = false;
   }
 
-  DTRACE_HTTP_CLIENT_RESPONSE(socket, req);
   if (req[kClientRequestStatistics] && hasObserver('http')) {
     stopPerf(req, kClientRequestStatistics, {
       detail: {
@@ -876,7 +874,7 @@ function onSocketNT(req, socket, err) {
 
     function _destroy(req, err) {
       if (!req.aborted && !err) {
-        err = connResetException('socket hang up');
+        err = new ConnResetException('socket hang up');
       }
       if (err) {
         req.emit('error', err);

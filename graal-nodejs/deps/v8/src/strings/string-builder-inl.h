@@ -12,7 +12,6 @@
 #include "src/objects/fixed-array.h"
 #include "src/objects/objects.h"
 #include "src/objects/string-inl.h"
-#include "src/utils/utils.h"
 
 namespace v8 {
 namespace internal {
@@ -40,6 +39,10 @@ class FixedArrayBuilder {
   explicit FixedArrayBuilder(Isolate* isolate, int initial_capacity);
   explicit FixedArrayBuilder(Handle<FixedArray> backing_store);
 
+  // Creates a FixedArrayBuilder which allocates its backing store lazily when
+  // EnsureCapacity is called.
+  static FixedArrayBuilder Lazy(Isolate* isolate);
+
   bool HasCapacity(int elements);
   void EnsureCapacity(Isolate* isolate, int elements);
 
@@ -52,9 +55,9 @@ class FixedArrayBuilder {
 
   int capacity();
 
-  Handle<JSArray> ToJSArray(Handle<JSArray> target_array);
-
  private:
+  explicit FixedArrayBuilder(Isolate* isolate);
+
   Handle<FixedArray> array_;
   int length_;
   bool has_non_smi_elements_;
@@ -95,7 +98,7 @@ class ReplacementStringBuilder {
 
   void IncrementCharacterCount(int by) {
     if (character_count_ > String::kMaxLength - by) {
-      STATIC_ASSERT(String::kMaxLength < kMaxInt);
+      static_assert(String::kMaxLength < kMaxInt);
       character_count_ = kMaxInt;
     } else {
       character_count_ += by;
@@ -134,7 +137,7 @@ class IncrementalStringBuilder {
   V8_INLINE void AppendCStringLiteral(const char (&literal)[N]) {
     // Note that the literal contains the zero char.
     const int length = N - 1;
-    STATIC_ASSERT(length > 0);
+    static_assert(length > 0);
     if (length == 1) return AppendCharacter(literal[0]);
     if (encoding_ == String::ONE_BYTE_ENCODING && CurrentPartCanFit(N)) {
       const uint8_t* chars = reinterpret_cast<const uint8_t*>(literal);
@@ -182,7 +185,7 @@ class IncrementalStringBuilder {
   // is a more pessimistic estimate, but faster to calculate.
   V8_INLINE int EscapedLengthIfCurrentPartFits(int length) {
     if (length > kMaxPartLength) return 0;
-    STATIC_ASSERT((kMaxPartLength << 3) <= String::kMaxLength);
+    static_assert((kMaxPartLength << 3) <= String::kMaxLength);
     // This shift will not overflow because length is already less than the
     // maximum part length.
     int worst_case_length = length << 3;
@@ -258,26 +261,6 @@ class IncrementalStringBuilder {
   };
 
   template <typename DestChar>
-  class NoExtendString : public NoExtend<DestChar> {
-   public:
-    NoExtendString(Handle<String> string, int required_length)
-        : NoExtend<DestChar>(string, 0), string_(string) {
-      DCHECK(string->length() >= required_length);
-    }
-
-    Handle<String> Finalize() {
-      Handle<SeqString> string = Handle<SeqString>::cast(string_);
-      int length = NoExtend<DestChar>::written();
-      Handle<String> result = SeqString::Truncate(string, length);
-      string_ = Handle<String>();
-      return result;
-    }
-
-   private:
-    Handle<String> string_;
-  };
-
-  template <typename DestChar>
   class NoExtendBuilder : public NoExtend<DestChar> {
    public:
     NoExtendBuilder(IncrementalStringBuilder* builder, int required_length,
@@ -326,7 +309,7 @@ class IncrementalStringBuilder {
   void ShrinkCurrentPart() {
     DCHECK(current_index_ < part_length_);
     set_current_part(SeqString::Truncate(
-        Handle<SeqString>::cast(current_part()), current_index_));
+        isolate_, Handle<SeqString>::cast(current_part()), current_index_));
   }
 
   void AppendStringByCopy(Handle<String> string);

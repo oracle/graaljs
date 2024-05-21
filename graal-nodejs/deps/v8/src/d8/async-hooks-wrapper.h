@@ -6,11 +6,12 @@
 #define V8_D8_ASYNC_HOOKS_WRAPPER_H_
 
 #include <stack>
+#include <vector>
 
 #include "include/v8-function-callback.h"
 #include "include/v8-local-handle.h"
 #include "include/v8-promise.h"
-#include "src/objects/objects.h"
+#include "src/base/platform/mutex.h"
 
 namespace v8 {
 
@@ -71,8 +72,8 @@ class AsyncHooks {
   std::vector<std::shared_ptr<AsyncHooksWrap>> async_wraps_;
   Isolate* isolate_;
   Persistent<ObjectTemplate> async_hooks_templ;
-  Persistent<Private> async_id_smb;
-  Persistent<Private> trigger_id_smb;
+  Persistent<Private> async_id_symbol;
+  Persistent<Private> trigger_id_symbol;
 
   static void ShellPromiseHook(PromiseHookType type, Local<Promise> promise,
                                Local<Value> parent);

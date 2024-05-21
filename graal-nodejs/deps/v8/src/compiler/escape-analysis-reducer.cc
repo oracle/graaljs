@@ -8,7 +8,6 @@
 #include "src/compiler/node-matchers.h"
 #include "src/compiler/operation-typer.h"
 #include "src/compiler/simplified-operator.h"
-#include "src/compiler/type-cache.h"
 #include "src/execution/frame-constants.h"
 
 namespace v8 {
@@ -16,9 +15,9 @@ namespace internal {
 namespace compiler {
 
 #ifdef DEBUG
-#define TRACE(...)                                    \
-  do {                                                \
-    if (FLAG_trace_turbo_escape) PrintF(__VA_ARGS__); \
+#define TRACE(...)                                        \
+  do {                                                    \
+    if (v8_flags.trace_turbo_escape) PrintF(__VA_ARGS__); \
   } while (false)
 #else
 #define TRACE(...)
@@ -126,19 +125,21 @@ Reduction EscapeAnalysisReducer::Reduce(Node* node) {
 // occurrences of virtual objects.
 class Deduplicator {
  public:
-  explicit Deduplicator(Zone* zone) : is_duplicate_(zone) {}
+  explicit Deduplicator(Zone* zone) : zone_(zone) {}
   bool SeenBefore(const VirtualObject* vobject) {
-    VirtualObject::Id id = vobject->id();
-    if (id >= is_duplicate_.size()) {
-      is_duplicate_.resize(id + 1);
+    DCHECK_LE(vobject->id(), std::numeric_limits<int>::max());
+    int id = static_cast<int>(vobject->id());
+    if (id >= is_duplicate_.length()) {
+      is_duplicate_.Resize(id + 1, zone_);
     }
-    bool is_duplicate = is_duplicate_[id];
-    is_duplicate_[id] = true;
+    bool is_duplicate = is_duplicate_.Contains(id);
+    is_duplicate_.Add(id);
     return is_duplicate;
   }
 
  private:
-  ZoneVector<bool> is_duplicate_;
+  Zone* zone_;
+  BitVector is_duplicate_;
 };
 
 void EscapeAnalysisReducer::ReduceFrameStateInputs(Node* node) {

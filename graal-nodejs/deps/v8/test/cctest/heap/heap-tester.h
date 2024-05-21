@@ -31,7 +31,6 @@
   V(InvalidatedSlotsResetObjectRegression)                  \
   V(InvalidatedSlotsRightTrimFixedArray)                    \
   V(InvalidatedSlotsRightTrimLargeFixedArray)               \
-  V(InvalidatedSlotsLeftTrimFixedArray)                     \
   V(InvalidatedSlotsFastToSlow)                             \
   V(InvalidatedSlotsSomeInvalidatedRanges)                  \
   V(TestNewSpaceRefsInCopiedCode)                           \
@@ -116,7 +115,7 @@ class HeapTester {
   static AllocationResult AllocateFixedArrayForTest(Heap* heap, int length,
                                                     AllocationType allocation);
 
-  static void UncommitFromSpace(Heap* heap);
+  static void UncommitUnusedMemory(Heap* heap);
 };
 
 }  // namespace heap

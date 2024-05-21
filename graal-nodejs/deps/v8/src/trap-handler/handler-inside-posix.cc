@@ -47,6 +47,8 @@ namespace v8 {
 namespace internal {
 namespace trap_handler {
 
+#if V8_TRAP_HANDLER_SUPPORTED
+
 #if V8_OS_LINUX
 #define CONTEXT_REG(reg, REG) &uc->uc_mcontext.gregs[REG_##REG]
 #elif V8_OS_DARWIN
@@ -89,7 +91,12 @@ class UnmaskOobSignalScope {
 #ifdef V8_TRAP_HANDLER_VIA_SIMULATOR
 // This is the address where we continue on a failed "ProbeMemory". It's defined
 // in "handler-outside-simulator.cc".
-extern "C" char v8_probe_memory_continuation[];
+extern char probe_memory_continuation[]
+#if V8_OS_DARWIN
+    asm("_v8_simulator_probe_memory_continuation");
+#else
+    asm("v8_simulator_probe_memory_continuation");
+#endif
 #endif  // V8_TRAP_HANDLER_VIA_SIMULATOR
 
 bool TryHandleSignal(int signum, siginfo_t* info, void* context) {
@@ -147,7 +154,7 @@ bool TryHandleSignal(int signum, siginfo_t* info, void* context) {
     auto* return_reg = CONTEXT_REG(rax, RAX);
     *return_reg = landing_pad;
     // Continue at the memory probing continuation.
-    *context_ip = reinterpret_cast<uintptr_t>(&v8_probe_memory_continuation);
+    *context_ip = reinterpret_cast<uintptr_t>(&probe_memory_continuation);
 #else
     if (!TryFindLandingPad(fault_addr, &landing_pad)) return false;
 
@@ -180,6 +187,8 @@ void HandleSignal(int signum, siginfo_t* info, void* context) {
   }
   // TryHandleSignal modifies context to change where we return to.
 }
+
+#endif
 
 }  // namespace trap_handler
 }  // namespace internal

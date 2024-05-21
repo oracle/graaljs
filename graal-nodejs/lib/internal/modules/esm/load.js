@@ -10,6 +10,7 @@ const { kEmptyObject } = require('internal/util');
 const { defaultGetFormat } = require('internal/modules/esm/get_format');
 const { validateAttributes, emitImportAssertionWarning } = require('internal/modules/esm/assert');
 const { getOptionValue } = require('internal/options');
+const { readFileSync } = require('fs');
 
 // Do not eagerly grab .manifest, it may be in TDZ
 const policy = getOptionValue('--experimental-policy') ?
@@ -17,6 +18,8 @@ const policy = getOptionValue('--experimental-policy') ?
   null;
 const experimentalNetworkImports =
   getOptionValue('--experimental-network-imports');
+const defaultType =
+  getOptionValue('--experimental-default-type');
 
 const { Buffer: { from: BufferFrom } } = require('buffer');
 
@@ -32,7 +35,7 @@ const DATA_URL_PATTERN = /^[^/]+\/[^,;]+(?:[^,]*?)(;base64)?,([\s\S]*)$/;
 /**
  * @param {URL} url URL to the module
  * @param {ESModuleContext} context used to decorate error messages
- * @returns {{ responseURL: string, source: string | BufferView }}
+ * @returns {Promise<{ responseURL: string, source: string | BufferView }>}
  */
 async function getSource(url, context) {
   const { protocol, href } = url;
@@ -69,12 +72,40 @@ async function getSource(url, context) {
   return { __proto__: null, responseURL, source };
 }
 
+/**
+ * @param {URL} url URL to the module
+ * @param {ESModuleContext} context used to decorate error messages
+ * @returns {{ responseURL: string, source: string | BufferView }}
+ */
+function getSourceSync(url, context) {
+  const { protocol, href } = url;
+  const responseURL = href;
+  let source;
+  if (protocol === 'file:') {
+    source = readFileSync(url);
+  } else if (protocol === 'data:') {
+    const match = RegExpPrototypeExec(DATA_URL_PATTERN, url.pathname);
+    if (!match) {
+      throw new ERR_INVALID_URL(responseURL);
+    }
+    const { 1: base64, 2: body } = match;
+    source = BufferFrom(decodeURIComponent(body), base64 ? 'base64' : 'utf8');
+  } else {
+    const supportedSchemes = ['file', 'data'];
+    throw new ERR_UNSUPPORTED_ESM_URL_SCHEME(url, supportedSchemes);
+  }
+  if (policy?.manifest) {
+    policy.manifest.assertIntegrity(url, source);
+  }
+  return { __proto__: null, responseURL, source };
+}
+
 
 /**
  * Node.js default load hook.
  * @param {string} url
- * @param {object} context
- * @returns {object}
+ * @param {LoadContext} context
+ * @returns {LoadReturn}
  */
 async function defaultLoad(url, context = kEmptyObject) {
   let responseURL = url;
@@ -98,18 +129,77 @@ async function defaultLoad(url, context = kEmptyObject) {
 
   throwIfUnsupportedURLScheme(urlInstance, experimentalNetworkImports);
 
-  format ??= await defaultGetFormat(urlInstance, context);
+  if (urlInstance.protocol === 'node:') {
+    source = null;
+    format ??= 'builtin';
+  } else if (format !== 'commonjs' || defaultType === 'module') {
+    if (source == null) {
+      ({ responseURL, source } = await getSource(urlInstance, context));
+      context = { __proto__: context, source };
+    }
+
+    if (format == null) {
+      // Now that we have the source for the module, run `defaultGetFormat` to detect its format.
+      format = await defaultGetFormat(urlInstance, context);
+
+      if (format === 'commonjs') {
+        // For backward compatibility reasons, we need to discard the source in
+        // order for the CJS loader to re-fetch it.
+        source = null;
+      }
+    }
+  }
 
   validateAttributes(url, format, importAttributes);
 
-  if (
-    format === 'builtin' ||
-    format === 'commonjs'
-  ) {
+  return {
+    __proto__: null,
+    format,
+    responseURL,
+    source,
+  };
+}
+/**
+ * @typedef LoadContext
+ * @property {string} [format] A hint (possibly returned from `resolve`)
+ * @property {string | Buffer | ArrayBuffer} [source] source
+ * @property {Record<string, string>} [importAttributes] import attributes
+ */
+
+/**
+ * @typedef LoadReturn
+ * @property {string} format format
+ * @property {URL['href']} responseURL The module's fully resolved URL
+ * @property {Buffer} source source
+ */
+
+/**
+ * @param {URL['href']} url
+ * @param {LoadContext} [context]
+ * @returns {LoadReturn}
+ */
+function defaultLoadSync(url, context = kEmptyObject) {
+  let responseURL = url;
+  const { importAttributes } = context;
+  let {
+    format,
+    source,
+  } = context;
+
+  const urlInstance = new URL(url);
+
+  throwIfUnsupportedURLScheme(urlInstance, false);
+
+  if (urlInstance.protocol === 'node:') {
     source = null;
   } else if (source == null) {
-    ({ responseURL, source } = await getSource(urlInstance, context));
+    ({ responseURL, source } = getSourceSync(urlInstance, context));
+    context.source = source;
   }
+
+  format ??= defaultGetFormat(urlInstance, context);
+
+  validateAttributes(url, format, importAttributes);
 
   return {
     __proto__: null,
@@ -171,5 +261,7 @@ function throwUnknownModuleFormat(url, format) {
 
 module.exports = {
   defaultLoad,
+  defaultLoadSync,
+  getSourceSync,
   throwUnknownModuleFormat,
 };

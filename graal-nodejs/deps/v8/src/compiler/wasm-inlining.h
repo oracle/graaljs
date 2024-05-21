@@ -10,56 +10,53 @@
 #define V8_COMPILER_WASM_INLINING_H_
 
 #include "src/compiler/graph-reducer.h"
-#include "src/compiler/js-graph.h"
+#include "src/compiler/machine-graph.h"
 
 namespace v8 {
 namespace internal {
 
+struct WasmInliningPosition;
+
 namespace wasm {
 struct CompilationEnv;
+struct DanglingExceptions;
 struct WasmModule;
-struct WasmFunction;
-class WireBytesStorage;
 }  // namespace wasm
-
-class BytecodeOffset;
-class OptimizedCompilationInfo;
 
 namespace compiler {
 
-class NodeOriginTable;
-class SourcePositionTable;
-struct WasmLoopInfo;
+struct WasmCompilationData;
 
 // The WasmInliner provides the core graph inlining machinery for Webassembly
 // graphs.
 class WasmInliner final : public AdvancedReducer {
  public:
   WasmInliner(Editor* editor, wasm::CompilationEnv* env,
-              uint32_t function_index, SourcePositionTable* source_positions,
-              NodeOriginTable* node_origins, MachineGraph* mcgraph,
-              const wasm::WireBytesStorage* wire_bytes,
-              std::vector<WasmLoopInfo>* loop_infos, const char* debug_name)
+              WasmCompilationData& data, MachineGraph* mcgraph,
+              const char* debug_name,
+              ZoneVector<WasmInliningPosition>* inlining_positions)
       : AdvancedReducer(editor),
         env_(env),
-        function_index_(function_index),
-        source_positions_(source_positions),
-        node_origins_(node_origins),
+        data_(data),
         mcgraph_(mcgraph),
-        wire_bytes_(wire_bytes),
-        loop_infos_(loop_infos),
         debug_name_(debug_name),
         initial_graph_size_(mcgraph->graph()->NodeCount()),
         current_graph_size_(initial_graph_size_),
-        inlining_candidates_() {}
+        inlining_candidates_(),
+        inlining_positions_(inlining_positions) {}
 
   const char* reducer_name() const override { return "WasmInliner"; }
 
+  // Registers (tail) calls to possibly be inlined, prioritized by inlining
+  // heuristics provided by {LexicographicOrdering}.
+  // Only locally defined functions are inlinable, and a limited number of
+  // inlinings of a specific function is allowed.
   Reduction Reduce(Node* node) final;
+  // Inlines calls registered by {Reduce}, until an inlining budget is exceeded.
   void Finalize() final;
 
-  static bool graph_size_allows_inlining(size_t initial_graph_size) {
-    return initial_graph_size < 5000;
+  static bool graph_size_allows_inlining(size_t graph_size) {
+    return graph_size < v8_flags.wasm_inlining_budget;
   }
 
  private:
@@ -79,8 +76,6 @@ class WasmInliner final : public AdvancedReducer {
     }
   };
 
-  uint32_t FindOriginatingFunction(Node* call);
-
   Zone* zone() const { return mcgraph_->zone(); }
   CommonOperatorBuilder* common() const { return mcgraph_->common(); }
   Graph* graph() const { return mcgraph_->graph(); }
@@ -90,7 +85,7 @@ class WasmInliner final : public AdvancedReducer {
   Reduction ReduceCall(Node* call);
   void InlineCall(Node* call, Node* callee_start, Node* callee_end,
                   const wasm::FunctionSig* inlinee_sig,
-                  size_t subgraph_min_node_id);
+                  wasm::DanglingExceptions* dangling_exceptions);
   void InlineTailCall(Node* call, Node* callee_start, Node* callee_end);
   void RewireFunctionEntry(Node* call, Node* callee_start);
 
@@ -100,12 +95,8 @@ class WasmInliner final : public AdvancedReducer {
   void Trace(const CandidateInfo& candidate, const char* decision);
 
   wasm::CompilationEnv* const env_;
-  uint32_t function_index_;
-  SourcePositionTable* const source_positions_;
-  NodeOriginTable* const node_origins_;
+  WasmCompilationData& data_;
   MachineGraph* const mcgraph_;
-  const wasm::WireBytesStorage* const wire_bytes_;
-  std::vector<WasmLoopInfo>* const loop_infos_;
   const char* debug_name_;
   const size_t initial_graph_size_;
   size_t current_graph_size_;
@@ -113,11 +104,8 @@ class WasmInliner final : public AdvancedReducer {
                       LexicographicOrdering>
       inlining_candidates_;
   std::unordered_set<Node*> seen_;
-  std::vector<uint32_t> inlined_functions_;
-  // Stores the graph size before an inlining was performed, to make it
-  // possible to map back from nodes to the function they came from.
-  // Guaranteed to have the same length as {inlined_functions_}.
-  std::vector<uint32_t> first_node_id_;
+  std::unordered_map<uint32_t, int> function_inlining_count_;
+  ZoneVector<WasmInliningPosition>* inlining_positions_;
 };
 
 }  // namespace compiler

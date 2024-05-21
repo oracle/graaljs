@@ -51,19 +51,16 @@ class BaseCollectionsAssembler : public CodeStubAssembler {
 
   // Fast path for adding constructor entries.  Assumes the entries are a fast
   // JS array (see CodeStubAssembler::BranchIfFastJSArray()).
-  void AddConstructorEntriesFromFastJSArray(Variant variant,
-                                            TNode<Context> context,
-                                            TNode<Context> native_context,
-                                            TNode<Object> collection,
-                                            TNode<JSArray> fast_jsarray,
-                                            Label* if_may_have_side_effects);
+  void AddConstructorEntriesFromFastJSArray(
+      Variant variant, TNode<Context> context, TNode<Context> native_context,
+      TNode<Object> collection, TNode<JSArray> fast_jsarray,
+      Label* if_may_have_side_effects, TVariable<IntPtrT>& var_current_index);
 
   // Adds constructor entries to a collection using the iterator protocol.
-  void AddConstructorEntriesFromIterable(Variant variant,
-                                         TNode<Context> context,
-                                         TNode<Context> native_context,
-                                         TNode<Object> collection,
-                                         TNode<Object> iterable);
+  void AddConstructorEntriesFromIterable(
+      Variant variant, TNode<Context> context, TNode<Context> native_context,
+      TNode<Object> collection, TNode<Object> iterable, Label* if_exception,
+      TVariable<JSReceiver>* var_iterator, TVariable<Object>* var_exception);
 
   // Constructs a collection instance. Choosing a fast path when possible.
   TNode<JSObject> AllocateJSCollection(TNode<Context> context,

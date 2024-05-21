@@ -169,6 +169,6 @@ describe('Spawn', function () {
             { env: { ...process.env, NODE_JVM_OPTIONS: (process.env.NODE_JVM_OPTIONS || '') + ' -ea' }});
         assert.strictEqual(result.stderr.toString(), '');
         assert.strictEqual(result.stdout.toString(), '');
-        assert.strictEqual(result.status, 0);        
+        assert.strictEqual(result.status, 0);
     });
 });

@@ -11,7 +11,6 @@
 #include "src/handles/global-handles.h"
 #include "src/logging/log.h"
 #include "src/objects/objects.h"
-#include "src/snapshot/embedded/embedded-data.h"
 #include "src/snapshot/serializer-deserializer.h"
 #include "src/snapshot/snapshot-source-sink.h"
 #include "src/snapshot/snapshot.h"
@@ -23,14 +22,17 @@ namespace internal {
 class CodeAddressMap : public CodeEventLogger {
  public:
   explicit CodeAddressMap(Isolate* isolate) : CodeEventLogger(isolate) {
-    isolate->logger()->AddCodeEventListener(this);
+    isolate->v8_file_logger()->AddLogEventListener(this);
   }
 
   ~CodeAddressMap() override {
-    isolate_->logger()->RemoveCodeEventListener(this);
+    isolate_->v8_file_logger()->RemoveLogEventListener(this);
   }
 
-  void CodeMoveEvent(AbstractCode from, AbstractCode to) override {
+  void CodeMoveEvent(InstructionStream from, InstructionStream to) override {
+    address_to_name_map_.Move(from.address(), to.address());
+  }
+  void BytecodeMoveEvent(BytecodeArray from, BytecodeArray to) override {
     address_to_name_map_.Move(from.address(), to.address());
   }
 
@@ -116,10 +118,10 @@ class CodeAddressMap : public CodeEventLogger {
     base::HashMap impl_;
   };
 
-  void LogRecordedBuffer(Handle<AbstractCode> code,
-                         MaybeHandle<SharedFunctionInfo>, const char* name,
-                         int length) override {
-    address_to_name_map_.Insert(code->address(), name, length);
+  void LogRecordedBuffer(AbstractCode code, MaybeHandle<SharedFunctionInfo>,
+                         const char* name, int length) override {
+    DisallowGarbageCollection no_gc;
+    address_to_name_map_.Insert(code.address(), name, length);
   }
 
 #if V8_ENABLE_WEBASSEMBLY
@@ -187,7 +189,7 @@ class Serializer : public SerializerDeserializer {
   Isolate* isolate() const { return isolate_; }
 
   // The pointer compression cage base value used for decompression of all
-  // tagged values except references to Code objects.
+  // tagged values except references to InstructionStream objects.
   PtrComprCageBase cage_base() const {
 #if V8_COMPRESS_POINTERS
     return cage_base_;
@@ -267,6 +269,8 @@ class Serializer : public SerializerDeserializer {
     return external_reference_encoder_.TryEncode(addr);
   }
 
+  bool SerializeReadOnlyObjectReference(HeapObject obj, SnapshotByteSink* sink);
+
   // GetInt reads 4 bytes at once, requiring padding at the end.
   // Use padding_offset to specify the space you want to use after padding.
   void Pad(int padding_offset = 0);
@@ -275,7 +279,7 @@ class Serializer : public SerializerDeserializer {
   // of the serializer.  Initialize it on demand.
   void InitializeCodeAddressMap();
 
-  Code CopyCode(Code code);
+  InstructionStream CopyCode(InstructionStream code);
 
   void QueueDeferredObject(HeapObject obj) {
     DCHECK_NULL(reference_map_.LookupReference(obj));
@@ -318,6 +322,16 @@ class Serializer : public SerializerDeserializer {
             Snapshot::kReconstructReadOnlyAndSharedObjectCachesForTesting) != 0;
   }
 
+  bool deferred_objects_empty() { return deferred_objects_.size() == 0; }
+
+ protected:
+  bool serializer_tracks_serialization_statistics() const {
+    return serializer_tracks_serialization_statistics_;
+  }
+  void set_serializer_tracks_serialization_statistics(bool v) {
+    serializer_tracks_serialization_statistics_ = v;
+  }
+
  private:
   // A circular queue of hot objects. This is added to in the same order as in
   // Deserializer::HotObjectsList, but this stores the objects as an array of
@@ -354,7 +368,7 @@ class Serializer : public SerializerDeserializer {
    private:
     static const int kSize = kHotObjectCount;
     static const int kSizeMask = kSize - 1;
-    STATIC_ASSERT(base::bits::IsPowerOfTwo(kSize));
+    static_assert(base::bits::IsPowerOfTwo(kSize));
     Heap* heap_;
     StrongRootsEntry* strong_roots_entry_;
     Address circular_queue_[kSize] = {kNullAddress};
@@ -405,20 +419,23 @@ class Serializer : public SerializerDeserializer {
   int recursion_depth_ = 0;
   const Snapshot::SerializerFlags flags_;
 
+  bool serializer_tracks_serialization_statistics_ = true;
   size_t allocation_size_[kNumberOfSnapshotSpaces] = {0};
 #ifdef OBJECT_PRINT
+// Verbose serialization_statistics output is only enabled conditionally.
+#define VERBOSE_SERIALIZATION_STATISTICS
+#endif
+#ifdef VERBOSE_SERIALIZATION_STATISTICS
   static constexpr int kInstanceTypes = LAST_TYPE + 1;
   std::unique_ptr<int[]> instance_type_count_[kNumberOfSnapshotSpaces];
   std::unique_ptr<size_t[]> instance_type_size_[kNumberOfSnapshotSpaces];
-#endif  // OBJECT_PRINT
+#endif  // VERBOSE_SERIALIZATION_STATISTICS
 
 #ifdef DEBUG
   GlobalHandleVector<HeapObject> back_refs_;
   GlobalHandleVector<HeapObject> stack_;
 #endif  // DEBUG
 };
-
-class RelocInfoIterator;
 
 class Serializer::ObjectSerializer : public ObjectVisitor {
  public:
@@ -445,15 +462,15 @@ class Serializer::ObjectSerializer : public ObjectVisitor {
                      ObjectSlot end) override;
   void VisitPointers(HeapObject host, MaybeObjectSlot start,
                      MaybeObjectSlot end) override;
-  void VisitCodePointer(HeapObject host, CodeObjectSlot slot) override;
-  void VisitEmbeddedPointer(Code host, RelocInfo* target) override;
-  void VisitExternalReference(Foreign host, Address* p) override;
-  void VisitExternalReference(Code host, RelocInfo* rinfo) override;
-  void VisitExternalPointer(HeapObject host, ExternalPointer_t ptr) override;
-  void VisitInternalReference(Code host, RelocInfo* rinfo) override;
-  void VisitCodeTarget(Code host, RelocInfo* target) override;
-  void VisitRuntimeEntry(Code host, RelocInfo* reloc) override;
-  void VisitOffHeapTarget(Code host, RelocInfo* target) override;
+  void VisitCodePointer(Code host, CodeObjectSlot slot) override;
+  void VisitEmbeddedPointer(RelocInfo* target) override;
+  void VisitExternalReference(RelocInfo* rinfo) override;
+  void VisitInternalReference(RelocInfo* rinfo) override;
+  void VisitCodeTarget(RelocInfo* target) override;
+  void VisitOffHeapTarget(RelocInfo* target) override;
+
+  void VisitExternalPointer(HeapObject host, ExternalPointerSlot slot,
+                            ExternalPointerTag tag) override;
 
   Isolate* isolate() { return isolate_; }
 
@@ -468,7 +485,7 @@ class Serializer::ObjectSerializer : public ObjectVisitor {
   void OutputExternalReference(Address target, int target_size, bool sandboxify,
                                ExternalPointerTag tag);
   void OutputRawData(Address up_to);
-  void SerializeCode(Map map, int size);
+  void SerializeInstructionStream(Map map, int size);
   uint32_t SerializeBackingStore(void* backing_store, int32_t byte_length,
                                  Maybe<int32_t> max_byte_length);
   void SerializeJSTypedArray();

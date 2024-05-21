@@ -33,11 +33,13 @@ const {
   ObjectSetPrototypeOf,
   ReflectApply,
   ReflectConstruct,
+  SymbolAsyncDispose,
 } = primordials;
 
 const {
   assertCrypto,
   kEmptyObject,
+  promisify,
 } = require('internal/util');
 assertCrypto();
 
@@ -55,25 +57,31 @@ let debug = require('internal/util/debuglog').debuglog('https', (fn) => {
   debug = fn;
 });
 const { URL, urlToHttpOptions, isURL } = require('internal/url');
+const { validateObject } = require('internal/validators');
 
 function Server(opts, requestListener) {
   if (!(this instanceof Server)) return new Server(opts, requestListener);
 
   if (typeof opts === 'function') {
     requestListener = opts;
-    opts = undefined;
-  }
-  opts = { ...opts };
-
-  if (!opts.ALPNProtocols) {
-    // http/1.0 is not defined as Protocol IDs in IANA
-    // https://www.iana.org/assignments/tls-extensiontype-values
-    //       /tls-extensiontype-values.xhtml#alpn-protocol-ids
-    opts.ALPNProtocols = ['http/1.1'];
+    opts = kEmptyObject;
+  } else if (opts == null) {
+    opts = kEmptyObject;
+  } else {
+    validateObject(opts, 'options');
   }
 
   FunctionPrototypeCall(storeHTTPOptions, this, opts);
-  FunctionPrototypeCall(tls.Server, this, opts, _connectionListener);
+  FunctionPrototypeCall(tls.Server, this,
+                        {
+                          noDelay: true,
+                          // http/1.0 is not defined as Protocol IDs in IANA
+                          // https://www.iana.org/assignments/tls-extensiontype-values
+                          //       /tls-extensiontype-values.xhtml#alpn-protocol-ids
+                          ALPNProtocols: ['http/1.1'],
+                          ...opts,
+                        },
+                        _connectionListener);
 
   this.httpAllowHalfOpen = false;
 
@@ -103,6 +111,11 @@ Server.prototype.setTimeout = HttpServer.prototype.setTimeout;
 Server.prototype.close = function() {
   httpServerPreClose(this);
   ReflectApply(tls.Server.prototype.close, this, arguments);
+  return this;
+};
+
+Server.prototype[SymbolAsyncDispose] = async function() {
+  return FunctionPrototypeCall(promisify(this.close), this);
 };
 
 /**
@@ -339,7 +352,7 @@ Agent.prototype._evictSession = function _evictSession(key) {
   delete this._sessionCache.map[key];
 };
 
-const globalAgent = new Agent();
+const globalAgent = new Agent({ keepAlive: true, scheduling: 'lifo', timeout: 5000 });
 
 /**
  * Makes a request to a secure web server.
@@ -380,6 +393,7 @@ function request(...args) {
  *   host?: string;
  *   hostname?: string;
  *   insecureHTTPParser?: boolean;
+ *   joinDuplicateHeaders?: boolean;
  *   localAddress?: string;
  *   localPort?: number;
  *   lookup?: Function;
@@ -392,6 +406,7 @@ function request(...args) {
  *   socketPath?: string;
  *   timeout?: number;
  *   signal?: AbortSignal;
+ *   uniqueHeaders?: Array;
  *   } | string | URL} [options]
  * @param {Function} [cb]
  * @returns {ClientRequest}

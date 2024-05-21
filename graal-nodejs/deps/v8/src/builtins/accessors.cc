@@ -17,6 +17,7 @@
 #include "src/objects/contexts.h"
 #include "src/objects/field-index-inl.h"
 #include "src/objects/js-array-inl.h"
+#include "src/objects/js-shared-array-inl.h"
 #include "src/objects/module-inl.h"
 #include "src/objects/property-details.h"
 #include "src/objects/prototype.h"
@@ -28,25 +29,22 @@ Handle<AccessorInfo> Accessors::MakeAccessor(
     Isolate* isolate, Handle<Name> name, AccessorNameGetterCallback getter,
     AccessorNameBooleanSetterCallback setter) {
   Factory* factory = isolate->factory();
-  Handle<AccessorInfo> info = factory->NewAccessorInfo();
-  info->set_all_can_read(false);
-  info->set_all_can_write(false);
-  info->set_is_special_data_property(true);
-  info->set_is_sloppy(false);
-  info->set_replace_on_access(false);
-  info->set_getter_side_effect_type(SideEffectType::kHasSideEffect);
-  info->set_setter_side_effect_type(SideEffectType::kHasSideEffect);
   name = factory->InternalizeName(name);
-  info->set_name(*name);
-  Handle<Object> get = v8::FromCData(isolate, getter);
-  if (setter == nullptr) setter = &ReconfigureToDataProperty;
-  Handle<Object> set = v8::FromCData(isolate, setter);
-  info->set_getter(*get);
-  info->set_setter(*set);
-  Address redirected = info->redirected_getter();
-  if (redirected != kNullAddress) {
-    Handle<Object> js_get = v8::FromCData(isolate, redirected);
-    info->set_js_getter(*js_get);
+  Handle<AccessorInfo> info = factory->NewAccessorInfo();
+  {
+    DisallowGarbageCollection no_gc;
+    auto raw = *info;
+    raw.set_all_can_read(false);
+    raw.set_all_can_write(false);
+    raw.set_is_special_data_property(true);
+    raw.set_is_sloppy(false);
+    raw.set_replace_on_access(false);
+    raw.set_getter_side_effect_type(SideEffectType::kHasSideEffect);
+    raw.set_setter_side_effect_type(SideEffectType::kHasSideEffect);
+    raw.set_name(*name);
+    raw.set_getter(isolate, reinterpret_cast<Address>(getter));
+    if (setter == nullptr) setter = &ReconfigureToDataProperty;
+    raw.set_setter(isolate, reinterpret_cast<Address>(setter));
   }
   return info;
 }
@@ -404,8 +402,8 @@ Handle<AccessorInfo> Accessors::MakeFunctionNameInfo(Isolate* isolate) {
 
 namespace {
 
-Handle<JSObject> ArgumentsForInlinedFunction(JavaScriptFrame* frame,
-                                             int inlined_frame_index) {
+Handle<JSObject> ArgumentsFromDeoptInfo(JavaScriptFrame* frame,
+                                        int inlined_frame_index) {
   Isolate* isolate = frame->isolate();
   Factory* factory = isolate->factory();
 
@@ -460,7 +458,7 @@ int FindFunctionInFrame(JavaScriptFrame* frame, Handle<JSFunction> function) {
 }
 
 Handle<JSObject> GetFrameArguments(Isolate* isolate,
-                                   JavaScriptFrameIterator* it,
+                                   JavaScriptStackFrameIterator* it,
                                    int function_index) {
   JavaScriptFrame* frame = it->frame();
 
@@ -469,7 +467,7 @@ Handle<JSObject> GetFrameArguments(Isolate* isolate,
     // correct number of arguments and no allocated arguments object, so
     // we can construct a fresh one by interpreting the function's
     // deoptimization input data.
-    return ArgumentsForInlinedFunction(frame, function_index);
+    return ArgumentsFromDeoptInfo(frame, function_index);
   }
 
   // Construct an arguments object mirror for the right frame and the underlying
@@ -494,6 +492,20 @@ Handle<JSObject> GetFrameArguments(Isolate* isolate,
   }
   arguments->set_elements(*array);
 
+  // For optimized functions, the frame arguments may be outdated, so we should
+  // update them with the deopt info, while keeping the length and extra
+  // arguments from the actual frame.
+  if (CodeKindCanDeoptimize(frame->LookupCode().kind()) && length > 0) {
+    Handle<JSObject> arguments_from_deopt_info =
+        ArgumentsFromDeoptInfo(frame, function_index);
+    Handle<FixedArray> elements_from_deopt_info(
+        FixedArray::cast(arguments_from_deopt_info->elements()), isolate);
+    int common_length = std::min(length, elements_from_deopt_info->length());
+    for (int i = 0; i < common_length; i++) {
+      array->set(i, elements_from_deopt_info->get(i));
+    }
+  }
+
   // Return the freshly allocated arguments object.
   return arguments;
 }
@@ -505,8 +517,8 @@ Handle<JSObject> Accessors::FunctionGetArguments(JavaScriptFrame* frame,
   Isolate* isolate = frame->isolate();
   Address requested_frame_fp = frame->fp();
   // Forward a frame iterator to the requested frame. This is needed because we
-  // potentially need for advance it to the arguments adaptor frame later.
-  for (JavaScriptFrameIterator it(isolate); !it.done(); it.Advance()) {
+  // potentially need for advance it to the inlined arguments frame later.
+  for (JavaScriptStackFrameIterator it(isolate); !it.done(); it.Advance()) {
     if (it.frame()->fp() != requested_frame_fp) continue;
     return GetFrameArguments(isolate, &it, inlined_jsframe_index);
   }
@@ -523,7 +535,7 @@ void Accessors::FunctionArgumentsGetter(
   Handle<Object> result = isolate->factory()->null_value();
   if (!function->shared().native()) {
     // Find the top invocation of the function by traversing frames.
-    for (JavaScriptFrameIterator it(isolate); !it.done(); it.Advance()) {
+    for (JavaScriptStackFrameIterator it(isolate); !it.done(); it.Advance()) {
       JavaScriptFrame* frame = it.frame();
       int function_index = FindFunctionInFrame(frame, function);
       if (function_index >= 0) {
@@ -643,7 +655,7 @@ class FrameFunctionIterator {
   }
   Isolate* isolate_;
   Handle<JSFunction> function_;
-  JavaScriptFrameIterator frame_iterator_;
+  JavaScriptStackFrameIterator frame_iterator_;
   std::vector<FrameSummary> frames_;
   int inlined_frame_index_;
 };
@@ -700,7 +712,8 @@ void Accessors::FunctionCallerGetter(
   maybe_caller = FindCaller(isolate, function);
   Handle<JSFunction> caller;
   // We don't support caller access with correctness fuzzing.
-  if (!FLAG_correctness_fuzzer_suppressions && maybe_caller.ToHandle(&caller)) {
+  if (!v8_flags.correctness_fuzzer_suppressions &&
+      maybe_caller.ToHandle(&caller)) {
     result = caller;
   } else {
     result = isolate->factory()->null_value();
@@ -788,6 +801,24 @@ Handle<AccessorInfo> Accessors::MakeWrappedFunctionLengthInfo(
     Isolate* isolate) {
   return MakeAccessor(isolate, isolate->factory()->length_string(),
                       &WrappedFunctionLengthGetter, &ReconfigureToDataProperty);
+}
+
+//
+// Accessors::ValueUnavailable
+//
+
+void Accessors::ValueUnavailableGetter(
+    v8::Local<v8::Name> name, const v8::PropertyCallbackInfo<v8::Value>& info) {
+  Isolate* isolate = reinterpret_cast<Isolate*>(info.GetIsolate());
+  HandleScope scope(isolate);
+  isolate->Throw(*isolate->factory()->NewReferenceError(
+      MessageTemplate::kAccessedUnavailableVariable, Utils::OpenHandle(*name)));
+  isolate->OptionalRescheduleException(false);
+}
+
+Handle<AccessorInfo> Accessors::MakeValueUnavailableInfo(Isolate* isolate) {
+  return MakeAccessor(isolate, isolate->factory()->empty_string(),
+                      &ValueUnavailableGetter, &ReconfigureToDataProperty);
 }
 
 //

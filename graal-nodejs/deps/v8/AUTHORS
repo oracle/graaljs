@@ -42,7 +42,9 @@ Cloudflare, Inc. <*@cloudflare.com>
 Julia Computing, Inc. <*@juliacomputing.com>
 CodeWeavers, Inc. <*@codeweavers.com>
 Alibaba, Inc. <*@alibaba-inc.com>
+SiFive, Inc. <*@sifive.com>
 
+Aapo Alasuutari <aapo.alasuutari@gmail.com>
 Aaron Bieber <deftly@gmail.com>
 Aaron O'Mullan <aaron.omullan@gmail.com>
 Abdulla Kamar <abdulla.kamar@gmail.com>
@@ -80,6 +82,7 @@ Burcu Dogan <burcujdogan@gmail.com>
 Caitlin Potter <caitpotter88@gmail.com>
 Chao Wang <chao.w@rioslab.org>
 Charles Kerr <charles@charleskerr.com>
+Cheng Zhao <zcbenz@gmail.com>
 Chengzhong Wu <legendecas@gmail.com>
 Choongwoo Han <cwhan.tunz@gmail.com>
 Chris Nardi <hichris123@gmail.com>
@@ -101,21 +104,26 @@ Debadree Chatterjee <debadree333@gmail.com>
 Deepak Mohan <hop2deep@gmail.com>
 Deon Dior <diaoyuanjie@gmail.com>
 Derek Tu <derek.t@rioslab.org>
+Divy Srivastava <dj.srivastava23@gmail.com>
 Dominic Chen <d.c.ddcc@gmail.com>
 Dominic Farolini <domfarolino@gmail.com>
 Douglas Crosher <dtc-v8@scieneer.com>
 Dusan Milosavljevic <dusan.m.milosavljevic@gmail.com>
+Eden Wang <nedenwang@tencent.com>
 Eric Rannaud <eric.rannaud@gmail.com>
 Erich Ocean <erich.ocean@me.com>
 Evan Lucas <evan.lucas@help.com>
 Fedor Indutny <fedor@indutny.com>
 Felix Geisendörfer <haimuiba@gmail.com>
+Feng Yu <f3n67u@gmail.com>
 Filipe David Manana <fdmanana@gmail.com>
+Frank Lemanschik <frank@dspeed.eu>
 Franziska Hinkelmann <franziska.hinkelmann@gmail.com>
 Gao Sheng <gaosheng08@meituan.com>
 Geoffrey Garside <ggarside@gmail.com>
 Gergely Nagy <ngg@ngg.hu>
 Gilang Mentari Hamidy <gilang@hamidy.net>
+Giovanny Gutierrez <giovannygutierrez@gmail.com>
 Gus Caplan <me@gus.host>
 Gwang Yoon Hwang <ryumiel@company100.net>
 Haichuan Wang <hc.opensource@gmail.com>
@@ -124,6 +132,7 @@ Harshal Nandigramwar <pro.bbcom18@gmail.com>
 Harshil Jain <twitharshil@gmail.com>
 Henrique Ferreiro <henrique.ferreiro@gmail.com>
 Hirofumi Mako <mkhrfm@gmail.com>
+Hisham Muhammad <hisham@gobolinux.org>
 Honggyu Kim <honggyu.kp@gmail.com>
 Huáng Jùnliàng <jlhwung@gmail.com>
 HyeockJin Kim <kherootz@gmail.com>
@@ -132,6 +141,7 @@ Ingvar Stepanyan <me@rreverser.com>
 Ioseb Dzmanashvili <ioseb.dzmanashvili@gmail.com>
 Isiah Meadows <impinball@gmail.com>
 Jaime Bernardo <jaime@janeasystems.com>
+Jake Hughes <jh@jakehughes.uk>
 James M Snell <jasnell@gmail.com>
 James Pike <g00gle@chilon.net>
 Jan Krems <jan.krems@gmail.com>
@@ -145,7 +155,10 @@ Jiawen Geng <technicalcute@gmail.com>
 Jiaxun Yang <jiaxun.yang@flygoat.com>
 Joel Stanley <joel@jms.id.au>
 Johan Bergström <johan@bergstroem.nu>
+Johan Levin <johan13@gmail.com>
+John Paul Adrian Glaubitz <glaubitz@physik.fu-berlin.de>
 Jonathan Liu <net147@gmail.com>
+Juan Arboleda <soyjuanarbol@gmail.com>
 Julien Brianceau <jbriance@cisco.com>
 JunHo Seo <sejunho@gmail.com>
 Junha Park <jpark3@scu.edu>
@@ -197,6 +210,7 @@ Paolo Giarrusso <p.giarrusso@gmail.com>
 Patrick Gansterer <paroga@paroga.com>
 Paul Lind <plind44@gmail.com>
 Pavel Medvedev <pmedvedev@gmail.com>
+Pedro Falcato <pedro.falcato@gmail.com>
 Peng Fei <pfgenyun@gmail.com>
 Peng Wu <peng.w@rioslab.org>
 Peng-Yu Chen <pengyu@libstarrify.so>
@@ -204,6 +218,7 @@ Peter Rybin <peter.rybin@gmail.com>
 Peter Varga <pvarga@inf.u-szeged.hu>
 Peter Wong <peter.wm.wong@gmail.com>
 PhistucK <phistuck@gmail.com>
+Pierrick Bouvier <pierrick.bouvier@linaro.org>
 Rafal Krypa <rafal@krypa.net>
 Raul Tambre <raul@tambre.ee>
 Ray Glover <ray@rayglover.net>
@@ -225,6 +240,7 @@ Sakthipriyan Vairamani (thefourtheye) <thechargingvolcano@gmail.com>
 Sander Mathijs van Veen <sander@leaningtech.com>
 Sandro Santilli <strk@keybit.net>
 Sanjoy Das <sanjoy@playingwithpointers.com>
+Sam James <sam@gentoo.org>
 Seo Sanghyeon <sanxiyn@gmail.com>
 Shawn Anastasio <shawnanastasio@gmail.com>
 Shawn Presser <shawnpresser@gmail.com>
@@ -246,6 +262,7 @@ Ujjwal Sharma <usharma1998@gmail.com>
 Vadim Gorbachev <bmsdave@gmail.com>
 Varun Varada <varuncvarada@gmail.com>
 Victor Costan <costan@gmail.com>
+Victor Polevoy <fx@thefx.co>
 Vlad Burlik <vladbph@gmail.com>
 Vladimir Krivosheev <develar@gmail.com>
 Vladimir Shutoff <vovan@shutoff.ru>
@@ -276,3 +293,5 @@ Zheng Liu <i6122f@gmail.com>
 Zhongping Wang <kewpie.w.zp@gmail.com>
 柳荣一 <admin@web-tinker.com>
 Yang Xiang <xiangyangemail@gmail.com>
+Kotaro Ohsugi <dec4m4rk@gmail.com>
+Jing Peiyang <jingpeiyang@eswincomputing.com>

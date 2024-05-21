@@ -24,7 +24,6 @@
 const {
   Boolean,
   Int8Array,
-  ObjectCreate,
   ObjectKeys,
   StringPrototypeCharCodeAt,
   decodeURIComponent,
@@ -262,7 +261,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
         }
       } else if (parseQueryString) {
         this.search = null;
-        this.query = ObjectCreate(null);
+        this.query = { __proto__: null };
       }
       return this;
     }
@@ -382,7 +381,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
 
     // validate a little.
     if (!ipv6Hostname) {
-      rest = getHostname(this, rest, hostname);
+      rest = getHostname(this, rest, hostname, url);
     }
 
     if (this.hostname.length > hostnameMaxLen) {
@@ -469,7 +468,7 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
   } else if (parseQueryString) {
     // No query string, but parseQueryString still requested
     this.search = null;
-    this.query = ObjectCreate(null);
+    this.query = { __proto__: null };
   }
 
   const useQuestionIdx =
@@ -498,7 +497,8 @@ Url.prototype.parse = function parse(url, parseQueryString, slashesDenoteHost) {
   return this;
 };
 
-function getHostname(self, rest, hostname) {
+let warnInvalidPort = true;
+function getHostname(self, rest, hostname, url) {
   for (let i = 0; i < hostname.length; ++i) {
     const code = hostname.charCodeAt(i);
     const isValid = (code !== CHAR_FORWARD_SLASH &&
@@ -508,6 +508,14 @@ function getHostname(self, rest, hostname) {
                      code !== CHAR_COLON);
 
     if (!isValid) {
+      // If leftover starts with :, then it represents an invalid port.
+      // But url.parse() is lenient about it for now.
+      // Issue a warning and continue.
+      if (warnInvalidPort && code === CHAR_COLON) {
+        const detail = `The URL ${url} is invalid. Future versions of Node.js will throw an error.`;
+        process.emitWarning(detail, 'DeprecationWarning', 'DEP0170');
+        warnInvalidPort = false;
+      }
       self.hostname = hostname.slice(0, i);
       return `/${hostname.slice(i)}${rest}`;
     }
@@ -1012,10 +1020,10 @@ Url.prototype.parseHost = function parseHost() {
 // When used internally, we are not obligated to associate TypeError with
 // this function, so non-strings can be rejected by underlying implementation.
 // Public API has to validate input and throw appropriate error.
-function pathToFileURL(path) {
+function pathToFileURL(path, options) {
   validateString(path, 'path');
 
-  return _pathToFileURL(path);
+  return _pathToFileURL(path, options);
 }
 
 module.exports = {

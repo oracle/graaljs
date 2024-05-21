@@ -16,6 +16,14 @@
 namespace v8 {
 namespace internal {
 
+#define ROOT_ACCESSOR(Type, name, CamelName)  \
+  template <typename Impl>                    \
+  Handle<Type> FactoryBase<Impl>::name() {    \
+    return read_only_roots().name##_handle(); \
+  }
+READ_ONLY_ROOT_LIST(ROOT_ACCESSOR)
+#undef ROOT_ACCESSOR
+
 template <typename Impl>
 Handle<Oddball> FactoryBase<Impl>::ToBoolean(bool value) {
   return value ? impl()->true_value() : impl()->false_value();
@@ -99,7 +107,7 @@ template <typename StructType>
 StructType FactoryBase<Impl>::NewStructInternal(InstanceType type,
                                                 AllocationType allocation) {
   ReadOnlyRoots roots = read_only_roots();
-  Map map = Map::GetInstanceTypeMap(roots, type);
+  Map map = Map::GetMapFor(roots, type);
   int size = StructType::kSize;
   return StructType::cast(NewStructInternal(roots, map, size, allocation));
 }

@@ -4,7 +4,8 @@ const common = require('../common');
 const fixtures = require('../common/fixtures');
 const assert = require('assert');
 const fs = require('fs');
-const os = require('os');
+const tmpdir = require('../common/tmpdir');
+tmpdir.refresh();
 
 const url = fixtures.fileURL('a.js');
 
@@ -25,7 +26,6 @@ assert.throws(
   {
     code: 'ERR_INVALID_URL_SCHEME',
     name: 'TypeError',
-    message: 'The URL must be of scheme file'
   });
 
 // pct-encoded characters in the path will be decoded and checked
@@ -39,7 +39,6 @@ if (common.isWindows) {
       {
         code: 'ERR_INVALID_FILE_URL_PATH',
         name: 'TypeError',
-        message: 'File URL path must not include encoded \\ or / characters'
       }
     );
   });
@@ -50,8 +49,6 @@ if (common.isWindows) {
     {
       code: 'ERR_INVALID_ARG_VALUE',
       name: 'TypeError',
-      message: 'The argument \'path\' must be a string or Uint8Array without ' +
-               "null bytes. Received 'c:\\\\tmp\\\\\\x00test'"
     }
   );
 } else {
@@ -64,7 +61,6 @@ if (common.isWindows) {
       {
         code: 'ERR_INVALID_FILE_URL_PATH',
         name: 'TypeError',
-        message: 'File URL path must not include encoded / characters'
       });
   });
   assert.throws(
@@ -74,7 +70,6 @@ if (common.isWindows) {
     {
       code: 'ERR_INVALID_FILE_URL_HOST',
       name: 'TypeError',
-      message: `File URL host must be "localhost" or empty on ${os.platform()}`
     }
   );
   assert.throws(
@@ -84,8 +79,28 @@ if (common.isWindows) {
     {
       code: 'ERR_INVALID_ARG_VALUE',
       name: 'TypeError',
-      message: "The argument 'path' must be a string or Uint8Array without " +
-               "null bytes. Received '/tmp/\\x00test'"
     }
   );
+}
+
+// Test that strings are interpreted as paths and not as URL
+// Can't use process.chdir in Workers
+// Please avoid testing fs.rmdir('file:') or using it as cleanup
+if (common.isMainThread && !common.isWindows) {
+  const oldCwd = process.cwd();
+  process.chdir(tmpdir.path);
+
+  for (let slashCount = 0; slashCount < 9; slashCount++) {
+    const slashes = '/'.repeat(slashCount);
+
+    const dirname = `file:${slashes}thisDirectoryWasMadeByFailingNodeJSTestSorry/subdir`;
+    fs.mkdirSync(dirname, { recursive: true });
+    fs.writeFileSync(`${dirname}/file`, `test failed with ${slashCount} slashes`);
+
+    const expected = fs.readFileSync(tmpdir.resolve(dirname, 'file'));
+    const actual = fs.readFileSync(`${dirname}/file`);
+    assert.deepStrictEqual(actual, expected);
+  }
+
+  process.chdir(oldCwd);
 }

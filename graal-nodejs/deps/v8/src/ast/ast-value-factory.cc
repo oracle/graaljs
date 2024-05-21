@@ -29,14 +29,10 @@
 
 #include "src/base/hashmap-entry.h"
 #include "src/base/logging.h"
-#include "src/base/platform/wrappers.h"
 #include "src/common/globals.h"
 #include "src/heap/factory-inl.h"
 #include "src/heap/local-factory-inl.h"
-#include "src/objects/objects-inl.h"
-#include "src/objects/objects.h"
 #include "src/objects/string.h"
-#include "src/strings/char-predicates-inl.h"
 #include "src/strings/string-hasher.h"
 #include "src/utils/utils-inl.h"
 
@@ -184,6 +180,10 @@ int AstRawString::Compare(const AstRawString* lhs, const AstRawString* rhs) {
 
   return lhs->byte_length() - rhs->byte_length();
 }
+
+#ifdef OBJECT_PRINT
+void AstRawString::Print() const { printf("%.*s", byte_length(), raw_data()); }
+#endif  // OBJECT_PRINT
 
 template <typename IsolateT>
 Handle<String> AstConsString::Allocate(IsolateT* isolate) const {

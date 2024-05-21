@@ -22,16 +22,21 @@ function findCoverageFileForPid(pid) {
 }
 
 function getTapCoverageFixtureReport() {
+  /* eslint-disable @stylistic/js/max-len */
   const report = [
     '# start of coverage report',
-    '# file | line % | branch % | funcs % | uncovered lines',
-    '# test/fixtures/test-runner/coverage.js | 78.65 | 38.46 | 60.00 | 12, ' +
-    '13, 16, 17, 18, 19, 20, 21, 22, 27, 39, 43, 44, 61, 62, 66, 67, 71, 72',
-    '# test/fixtures/test-runner/invalid-tap.js | 100.00 | 100.00 | 100.00 | ',
-    '# test/fixtures/v8-coverage/throw.js | 71.43 | 50.00 | 100.00 | 5, 6',
-    '# all files | 78.35 | 43.75 | 60.00 |',
+    '# -------------------------------------------------------------------------------------------------------------------',
+    '# file                                     | line % | branch % | funcs % | uncovered lines',
+    '# -------------------------------------------------------------------------------------------------------------------',
+    '# test/fixtures/test-runner/coverage.js    |  78.65 |    38.46 |   60.00 | 12-13 16-22 27 39 43-44 61-62 66-67 71-72',
+    '# test/fixtures/test-runner/invalid-tap.js | 100.00 |   100.00 |  100.00 | ',
+    '# test/fixtures/v8-coverage/throw.js       |  71.43 |    50.00 |  100.00 | 5-6',
+    '# -------------------------------------------------------------------------------------------------------------------',
+    '# all files                                |  78.35 |    43.75 |   60.00 |',
+    '# -------------------------------------------------------------------------------------------------------------------',
     '# end of coverage report',
   ].join('\n');
+  /* eslint-enable @stylistic/js/max-len */
 
   if (common.isWindows) {
     return report.replaceAll('/', '\\');
@@ -41,7 +46,7 @@ function getTapCoverageFixtureReport() {
 }
 
 function getSpecCoverageFixtureReport() {
-  /* eslint-disable max-len */
+  /* eslint-disable @stylistic/js/max-len */
   const report = [
     '\u2139 start of coverage report',
     '\u2139 -------------------------------------------------------------------------------------------------------------------',
@@ -55,7 +60,7 @@ function getSpecCoverageFixtureReport() {
     '\u2139 -------------------------------------------------------------------------------------------------------------------',
     '\u2139 end of coverage report',
   ].join('\n');
-  /* eslint-enable max-len */
+  /* eslint-enable @stylistic/js/max-len */
 
   if (common.isWindows) {
     return report.replaceAll('/', '\\');
@@ -88,7 +93,6 @@ test('test tap coverage reporter', skipIfNoInspector, async (t) => {
     const options = { env: { ...process.env, NODE_V8_COVERAGE: tmpdir.path } };
     const result = spawnSync(process.execPath, args, options);
     const report = getTapCoverageFixtureReport();
-
     assert(result.stdout.toString().includes(report));
     assert.strictEqual(result.stderr.toString(), '');
     assert.strictEqual(result.status, 0);
@@ -152,16 +156,16 @@ test('single process coverage is the same with --test', skipIfNoInspector, () =>
 test('coverage is combined for multiple processes', skipIfNoInspector, () => {
   let report = [
     '# start of coverage report',
-    '# file | line % | branch % | funcs % | uncovered lines',
-    '# test/fixtures/v8-coverage/combined_coverage/common.js | 89.86 | ' +
-    '62.50 | 100.00 | 8, 13, 14, 18, 34, 35, 53',
-    '# test/fixtures/v8-coverage/combined_coverage/first.test.js | 83.33 | ' +
-    '100.00 | 50.00 | 5, 6',
-    '# test/fixtures/v8-coverage/combined_coverage/second.test.js | 100.00 ' +
-    '| 100.00 | 100.00 | ',
-    '# test/fixtures/v8-coverage/combined_coverage/third.test.js | 100.00 | ' +
-    '100.00 | 100.00 | ',
-    '# all files | 92.11 | 72.73 | 88.89 |',
+    '# -------------------------------------------------------------------',
+    '# file           | line % | branch % | funcs % | uncovered lines',
+    '# -------------------------------------------------------------------',
+    '# common.js      |  89.86 |    62.50 |  100.00 | 8 13-14 18 34-35 53',
+    '# first.test.js  |  83.33 |   100.00 |   50.00 | 5-6',
+    '# second.test.js | 100.00 |   100.00 |  100.00 | ',
+    '# third.test.js  | 100.00 |   100.00 |  100.00 | ',
+    '# -------------------------------------------------------------------',
+    '# all files      |  92.11 |    72.73 |   88.89 |',
+    '# -------------------------------------------------------------------',
     '# end of coverage report',
   ].join('\n');
 
@@ -171,13 +175,101 @@ test('coverage is combined for multiple processes', skipIfNoInspector, () => {
 
   const fixture = fixtures.path('v8-coverage', 'combined_coverage');
   const args = [
-    '--test', '--experimental-test-coverage', '--test-reporter', 'tap', fixture,
+    '--test', '--experimental-test-coverage', '--test-reporter', 'tap',
   ];
   const result = spawnSync(process.execPath, args, {
-    env: { ...process.env, NODE_TEST_TMPDIR: tmpdir.path }
+    env: { ...process.env, NODE_TEST_TMPDIR: tmpdir.path },
+    cwd: fixture,
   });
 
   assert.strictEqual(result.stderr.toString(), '');
   assert(result.stdout.toString().includes(report));
   assert.strictEqual(result.status, 0);
+});
+
+test('coverage reports on lines, functions, and branches', skipIfNoInspector, async (t) => {
+  const fixture = fixtures.path('test-runner', 'coverage.js');
+  const child = spawnSync(process.execPath,
+                          ['--test', '--experimental-test-coverage', '--test-reporter',
+                           fixtures.fileURL('test-runner/custom_reporters/coverage.mjs'),
+                           fixture]);
+  assert.strictEqual(child.stderr.toString(), '');
+  const stdout = child.stdout.toString();
+  const coverage = JSON.parse(stdout);
+
+  await t.test('does not include node_modules', () => {
+    assert.strictEqual(coverage.summary.files.length, 3);
+    const files = ['coverage.js', 'invalid-tap.js', 'throw.js'];
+    coverage.summary.files.forEach((file, index) => {
+      assert.ok(file.path.endsWith(files[index]));
+    });
+  });
+
+  const file = coverage.summary.files[0];
+
+  await t.test('reports on function coverage', () => {
+    const uncalledFunction = file.functions.find((f) => f.name === 'uncalledTopLevelFunction');
+    assert.strictEqual(uncalledFunction.count, 0);
+    assert.strictEqual(uncalledFunction.line, 16);
+
+    const calledTwice = file.functions.find((f) => f.name === 'fnWithControlFlow');
+    assert.strictEqual(calledTwice.count, 2);
+    assert.strictEqual(calledTwice.line, 35);
+  });
+
+  await t.test('reports on branch coverage', () => {
+    const uncalledBranch = file.branches.find((b) => b.line === 6);
+    assert.strictEqual(uncalledBranch.count, 0);
+
+    const calledTwice = file.branches.find((b) => b.line === 35);
+    assert.strictEqual(calledTwice.count, 2);
+  });
+
+  await t.test('reports on line coverage', () => {
+    [
+      { line: 36, count: 2 },
+      { line: 37, count: 1 },
+      { line: 38, count: 1 },
+      { line: 39, count: 0 },
+      { line: 40, count: 1 },
+      { line: 41, count: 1 },
+      { line: 42, count: 1 },
+      { line: 43, count: 0 },
+      { line: 44, count: 0 },
+    ].forEach((line) => {
+      const testLine = file.lines.find((l) => l.line === line.line);
+      assert.strictEqual(testLine.count, line.count);
+    });
+  });
+});
+
+test('coverage with source maps', skipIfNoInspector, () => {
+  let report = [
+    '# start of coverage report',
+    '# --------------------------------------------------------------',
+    '# file          | line % | branch % | funcs % | uncovered lines',
+    '# --------------------------------------------------------------',
+    '# a.test.ts     |  53.85 |   100.00 |  100.00 | 8-13',  // part of a bundle
+    '# b.test.ts     |  55.56 |   100.00 |  100.00 | 1 7-9', // part of a bundle
+    '# index.test.js |  71.43 |    66.67 |  100.00 | 6-7',  // no source map
+    '# stdin.test.ts |  57.14 |   100.00 |  100.00 | 4-6',  // Source map without original file
+    '# --------------------------------------------------------------',
+    '# all files     |  58.33 |    87.50 |  100.00 |',
+    '# --------------------------------------------------------------',
+    '# end of coverage report',
+  ].join('\n');
+
+  if (common.isWindows) {
+    report = report.replaceAll('/', '\\');
+  }
+
+  const fixture = fixtures.path('test-runner', 'coverage');
+  const args = [
+    '--test', '--experimental-test-coverage', '--test-reporter', 'tap',
+  ];
+  const result = spawnSync(process.execPath, args, { cwd: fixture });
+
+  assert.strictEqual(result.stderr.toString(), '');
+  assert(result.stdout.toString().includes(report));
+  assert.strictEqual(result.status, 1);
 });

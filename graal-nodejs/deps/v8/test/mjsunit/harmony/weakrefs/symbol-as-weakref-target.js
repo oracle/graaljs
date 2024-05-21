@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// Flags: --harmony-symbol-as-weakmap-key
+
 (function TestRegisterWithSymbolTarget() {
   const fg = new FinalizationRegistry(() => { });
   fg.register(Symbol('123'), 'holdings');

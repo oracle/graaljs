@@ -15,6 +15,8 @@ const {
     ERR_EVAL_ESM_CANNOT_PRINT,
   },
 } = require('internal/errors');
+const { pathToFileURL } = require('internal/url');
+const { exitCodes: { kGenericUserError } } = internalBinding('errors');
 
 const {
   executionAsyncId,
@@ -25,6 +27,8 @@ const {
   emitAfter,
   popAsyncContext,
 } = require('internal/async_hooks');
+const { containsModuleSyntax } = internalBinding('contextify');
+const { getOptionValue } = require('internal/options');
 const {
   makeContextifyScript, runScriptInThisContext,
 } = require('internal/vm');
@@ -43,19 +47,30 @@ function tryGetCwd() {
   }
 }
 
-function evalModule(source, print) {
+let evalIndex = 0;
+function getEvalModuleUrl() {
+  return pathToFileURL(`${process.cwd()}/[eval${++evalIndex}]`).href;
+}
+
+/**
+ * Evaluate an ESM entry point and return the promise that gets fulfilled after
+ * it finishes evaluation.
+ * @param {string} source Source code the ESM
+ * @param {boolean} print Whether the result should be printed.
+ * @returns {Promise}
+ */
+function evalModuleEntryPoint(source, print) {
   if (print) {
     throw new ERR_EVAL_ESM_CANNOT_PRINT();
   }
-  const { loadESM } = require('internal/process/esm_loader');
-  const { handleMainPromise } = require('internal/modules/run_main');
   RegExpPrototypeExec(/^/, ''); // Necessary to reset RegExp statics before user code runs.
-  return handleMainPromise(loadESM((loader) => loader.eval(source)));
+  return require('internal/modules/run_main').runEntryPointWithESMLoader(
+    (loader) => loader.eval(source, getEvalModuleUrl(), true),
+  );
 }
 
 function evalScript(name, body, breakFirstLine, print, shouldLoadESM = false) {
   const CJSModule = require('internal/modules/cjs/loader').Module;
-  const { pathToFileURL } = require('internal/url');
 
   const cwd = tryGetCwd();
   const origModule = globalThis.module;  // Set e.g. when called from the REPL.
@@ -64,10 +79,13 @@ function evalScript(name, body, breakFirstLine, print, shouldLoadESM = false) {
   module.filename = path.join(cwd, name);
   module.paths = CJSModule._nodeModulePaths(cwd);
 
-  const { handleMainPromise } = require('internal/modules/run_main');
-  const asyncESM = require('internal/process/esm_loader');
   const baseUrl = pathToFileURL(module.filename).href;
-  const { loadESM } = asyncESM;
+
+  if (getOptionValue('--experimental-detect-module') &&
+    getOptionValue('--input-type') === '' && getOptionValue('--experimental-default-type') === '' &&
+    containsModuleSyntax(body, name)) {
+    return evalModuleEntryPoint(body, print);
+  }
 
   const runScript = () => {
     // Create wrapper for cache entry
@@ -83,8 +101,8 @@ function evalScript(name, body, breakFirstLine, print, shouldLoadESM = false) {
     const result = module._compile(script, `${name}-wrapper`)(() => {
       const hostDefinedOptionId = Symbol(name);
       async function importModuleDynamically(specifier, _, importAttributes) {
-        const loader = asyncESM.esmLoader;
-        return loader.import(specifier, baseUrl, importAttributes);
+        const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
+        return cascadedLoader.import(specifier, baseUrl, importAttributes);
       }
       const script = makeContextifyScript(
         body,                    // code
@@ -109,9 +127,10 @@ function evalScript(name, body, breakFirstLine, print, shouldLoadESM = false) {
   };
 
   if (shouldLoadESM) {
-    return handleMainPromise(loadESM(runScript));
+    require('internal/modules/run_main').runEntryPointWithESMLoader(runScript);
+    return;
   }
-  return runScript();
+  runScript();
 }
 
 const exceptionHandlerState = {
@@ -172,8 +191,8 @@ function createOnGlobalUncaughtException() {
       try {
         if (!process._exiting) {
           process._exiting = true;
-          process.exitCode = 1;
-          process.emit('exit', 1);
+          process.exitCode = kGenericUserError;
+          process.emit('exit', kGenericUserError);
         }
       } catch {
         // Nothing to be done about it at this point.
@@ -219,7 +238,7 @@ function readStdin(callback) {
 module.exports = {
   readStdin,
   tryGetCwd,
-  evalModule,
+  evalModuleEntryPoint,
   evalScript,
   onGlobalUncaughtException: createOnGlobalUncaughtException(),
   setUncaughtExceptionCaptureCallback,

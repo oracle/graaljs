@@ -24,7 +24,7 @@ namespace internal {
   }
 
 #define CHECK_RESIZABLE(expected, name, method)                             \
-  if (name->is_resizable() != expected) {                                   \
+  if (name->is_resizable_by_js() != expected) {                             \
     THROW_NEW_ERROR_RETURN_FAILURE(                                         \
         isolate,                                                            \
         NewTypeError(MessageTemplate::kIncompatibleMethodReceiver,          \
@@ -53,7 +53,7 @@ Object ConstructBuffer(Isolate* isolate, Handle<JSFunction> target,
   // Ensure that all fields are initialized because BackingStore::Allocate is
   // allowed to GC. Note that we cannot move the allocation of the ArrayBuffer
   // after BackingStore::Allocate because of the spec.
-  array_buffer->Setup(shared, resizable, nullptr);
+  array_buffer->Setup(shared, resizable, nullptr, isolate);
 
   size_t byte_length;
   size_t max_byte_length = 0;
@@ -70,7 +70,15 @@ Object ConstructBuffer(Isolate* isolate, Handle<JSFunction> target,
         BackingStore::Allocate(isolate, byte_length, shared, initialized);
     max_byte_length = byte_length;
   } else {
-    if (!TryNumberToSize(*max_length, &max_byte_length)) {
+    // We need to check the max length against both
+    // JSArrayBuffer::kMaxByteLength and JSTypedArray::kMaxLength, since it's
+    // possible to create length-tracking TypedArrays and resize the underlying
+    // buffer. If the max byte length was larger than JSTypedArray::kMaxLength,
+    // that'd result in having a TypedArray with length larger than
+    // JSTypedArray::kMaxLength.
+    if (!TryNumberToSize(*max_length, &max_byte_length) ||
+        max_byte_length > JSArrayBuffer::kMaxByteLength ||
+        max_byte_length > JSTypedArray::kMaxLength) {
       THROW_NEW_ERROR_RETURN_FAILURE(
           isolate,
           NewRangeError(MessageTemplate::kInvalidArrayBufferMaxLength));
@@ -87,10 +95,9 @@ Object ConstructBuffer(Isolate* isolate, Handle<JSFunction> target,
                      &page_size, &initial_pages, &max_pages),
                  ReadOnlyRoots(isolate).exception());
 
-    constexpr bool kIsWasmMemory = false;
     backing_store = BackingStore::TryAllocateAndPartiallyCommitMemory(
         isolate, byte_length, max_byte_length, page_size, initial_pages,
-        max_pages, kIsWasmMemory, shared);
+        max_pages, WasmMemoryFlag::kNotWasm, shared);
   }
   if (!backing_store) {
     // Allocation of backing store failed.
@@ -129,7 +136,7 @@ BUILTIN(ArrayBufferConstructor) {
   }
 
   Handle<Object> number_max_length;
-  if (FLAG_harmony_rab_gsab) {
+  if (v8_flags.harmony_rab_gsab) {
     Handle<Object> max_length;
     Handle<Object> options = args.atOrUndefined(isolate, 2);
     ASSIGN_RETURN_FAILURE_ON_EXCEPTION(
@@ -309,7 +316,7 @@ static Object SliceHelper(BuiltinArguments args, Isolate* isolate,
 
   if (new_len_size != 0) {
     size_t from_byte_length = array_buffer->GetByteLength();
-    if (V8_UNLIKELY(!is_shared && array_buffer->is_resizable())) {
+    if (V8_UNLIKELY(!is_shared && array_buffer->is_resizable_by_js())) {
       // The above steps might have resized the underlying buffer. In that case,
       // only copy the still-accessible portion of the underlying data.
       if (first_size > from_byte_length) {
@@ -405,13 +412,6 @@ static Object ResizeHelper(BuiltinArguments args, Isolate* isolate,
                                    kMethodName)));
   }
 
-  size_t page_size = AllocatePageSize();
-  size_t new_committed_pages;
-  bool round_return_value =
-      RoundUpToPageSize(new_byte_length, page_size,
-                        JSArrayBuffer::kMaxByteLength, &new_committed_pages);
-  CHECK(round_return_value);
-
   // [RAB] Let hostHandled be ? HostResizeArrayBuffer(O, newByteLength).
   // [GSAB] Let hostHandled be ? HostGrowArrayBuffer(O, newByteLength).
   // If hostHandled is handled, return undefined.
@@ -426,8 +426,8 @@ static Object ResizeHelper(BuiltinArguments args, Isolate* isolate,
     // [RAB] NOTE: Neither creation of the new Data Block nor copying from the
     // old Data Block are observable. Implementations reserve the right to
     // implement this method as in-place growth or shrinkage.
-    if (array_buffer->GetBackingStore()->ResizeInPlace(
-            isolate, new_byte_length, new_committed_pages * page_size) !=
+    if (array_buffer->GetBackingStore()->ResizeInPlace(isolate,
+                                                       new_byte_length) !=
         BackingStore::ResizeOrGrowResult::kSuccess) {
       THROW_NEW_ERROR_RETURN_FAILURE(
           isolate, NewRangeError(MessageTemplate::kOutOfMemory,
@@ -438,8 +438,8 @@ static Object ResizeHelper(BuiltinArguments args, Isolate* isolate,
     array_buffer->set_byte_length(new_byte_length);
   } else {
     // [GSAB] (Detailed description of the algorithm omitted.)
-    auto result = array_buffer->GetBackingStore()->GrowInPlace(
-        isolate, new_byte_length, new_committed_pages * page_size);
+    auto result =
+        array_buffer->GetBackingStore()->GrowInPlace(isolate, new_byte_length);
     if (result == BackingStore::ResizeOrGrowResult::kFailure) {
       THROW_NEW_ERROR_RETURN_FAILURE(
           isolate, NewRangeError(MessageTemplate::kOutOfMemory,
@@ -471,8 +471,9 @@ BUILTIN(SharedArrayBufferPrototypeGetByteLength) {
   // 3. If IsSharedArrayBuffer(O) is false, throw a TypeError exception.
   CHECK_SHARED(true, array_buffer, kMethodName);
 
-  DCHECK_EQ(array_buffer->max_byte_length(),
-            array_buffer->GetBackingStore()->max_byte_length());
+  DCHECK_IMPLIES(!array_buffer->GetBackingStore()->is_wasm_memory(),
+                 array_buffer->max_byte_length() ==
+                     array_buffer->GetBackingStore()->max_byte_length());
 
   // 4. Let length be ArrayBufferByteLength(O, SeqCst).
   size_t byte_length = array_buffer->GetByteLength();
@@ -481,15 +482,207 @@ BUILTIN(SharedArrayBufferPrototypeGetByteLength) {
 }
 
 // ES #sec-arraybuffer.prototype.resize
-// ArrayBuffer.prototype.resize(new_size))
+// ArrayBuffer.prototype.resize(new_size)
 BUILTIN(ArrayBufferPrototypeResize) {
   const char* const kMethodName = "ArrayBuffer.prototype.resize";
   constexpr bool kIsShared = false;
   return ResizeHelper(args, isolate, kMethodName, kIsShared);
 }
 
+namespace {
+
+enum PreserveResizability { kToFixedLength, kPreserveResizability };
+
+Object ArrayBufferTransfer(Isolate* isolate, Handle<JSArrayBuffer> array_buffer,
+                           Handle<Object> new_length,
+                           PreserveResizability preserve_resizability,
+                           const char* method_name) {
+  // 2. If IsSharedArrayBuffer(arrayBuffer) is true, throw a TypeError
+  // exception.
+  CHECK_SHARED(false, array_buffer, method_name);
+
+  size_t new_byte_length;
+  if (new_length->IsUndefined(isolate)) {
+    // 3. If newLength is undefined, then
+    //   a. Let newByteLength be arrayBuffer.[[ArrayBufferByteLength]].
+    new_byte_length = array_buffer->GetByteLength();
+  } else {
+    // 4. Else,
+    //   a. Let newByteLength be ? ToIndex(newLength).
+    Handle<Object> number_new_byte_length;
+    ASSIGN_RETURN_FAILURE_ON_EXCEPTION(isolate, number_new_byte_length,
+                                       Object::ToInteger(isolate, new_length));
+    if (number_new_byte_length->Number() < 0.0) {
+      THROW_NEW_ERROR_RETURN_FAILURE(
+          isolate, NewRangeError(MessageTemplate::kInvalidArrayBufferLength));
+    }
+    if (!TryNumberToSize(*number_new_byte_length, &new_byte_length) ||
+        new_byte_length > JSArrayBuffer::kMaxByteLength) {
+      THROW_NEW_ERROR_RETURN_FAILURE(
+          isolate,
+          NewRangeError(
+              MessageTemplate::kInvalidArrayBufferResizeLength,
+              isolate->factory()->NewStringFromAsciiChecked(method_name)));
+    }
+  }
+
+  // 5. If IsDetachedBuffer(arrayBuffer) is true, throw a TypeError exception.
+  if (array_buffer->was_detached()) {
+    THROW_NEW_ERROR_RETURN_FAILURE(
+        isolate, NewTypeError(MessageTemplate::kDetachedOperation,
+                              isolate->factory()->NewStringFromAsciiChecked(
+                                  method_name)));
+  }
+
+  ResizableFlag resizable;
+  size_t new_max_byte_length;
+  if (preserve_resizability == kPreserveResizability &&
+      array_buffer->is_resizable_by_js()) {
+    // 6. If preserveResizability is preserve-resizability and
+    //    IsResizableArrayBuffer(arrayBuffer) is true, then
+    //   a. Let newMaxByteLength be arrayBuffer.[[ArrayBufferMaxByteLength]].
+    new_max_byte_length = array_buffer->max_byte_length();
+    resizable = ResizableFlag::kResizable;
+  } else {
+    // 7. Else,
+    //   a. Let newMaxByteLength be empty.
+    new_max_byte_length = new_byte_length;
+    resizable = ResizableFlag::kNotResizable;
+  }
+
+  // 8. If arrayBuffer.[[ArrayBufferDetachKey]] is not undefined, throw a
+  //     TypeError exception.
+
+  if (!array_buffer->is_detachable()) {
+    THROW_NEW_ERROR_RETURN_FAILURE(
+        isolate,
+        NewTypeError(MessageTemplate::kDataCloneErrorNonDetachableArrayBuffer));
+  }
+
+  // After this point the steps are not observable and are performed out of
+  // spec order.
+
+  // Case 1: We don't need a BackingStore.
+  if (new_byte_length == 0) {
+    // 15. Perform ! DetachArrayBuffer(arrayBuffer).
+    JSArrayBuffer::Detach(array_buffer).Check();
+
+    // 9. Let newBuffer be ? AllocateArrayBuffer(%ArrayBuffer%, newByteLength,
+    //    newMaxByteLength).
+    //
+    // Nothing to do for steps 10-14.
+    //
+    // 16. Return newBuffer.
+    return *isolate->factory()
+                ->NewJSArrayBufferAndBackingStore(
+                    0, new_max_byte_length, InitializedFlag::kUninitialized,
+                    resizable)
+                .ToHandleChecked();
+  }
+
+  // Case 2: We can reuse the same BackingStore.
+  auto from_backing_store = array_buffer->GetBackingStore();
+  if (from_backing_store && !from_backing_store->is_resizable_by_js() &&
+      resizable == ResizableFlag::kNotResizable &&
+      (new_byte_length == array_buffer->GetByteLength() ||
+       from_backing_store->CanReallocate())) {
+    // Reallocate covers steps 10-14.
+    if (new_byte_length != array_buffer->GetByteLength() &&
+        !from_backing_store->Reallocate(isolate, new_byte_length)) {
+      THROW_NEW_ERROR_RETURN_FAILURE(
+          isolate,
+          NewRangeError(MessageTemplate::kArrayBufferAllocationFailed));
+    }
+
+    // 15. Perform ! DetachArrayBuffer(arrayBuffer).
+    JSArrayBuffer::Detach(array_buffer).Check();
+
+    // 9. Let newBuffer be ? AllocateArrayBuffer(%ArrayBuffer%, newByteLength,
+    //    newMaxByteLength).
+    // 16. Return newBuffer.
+    return *isolate->factory()->NewJSArrayBuffer(std::move(from_backing_store));
+  }
+
+  // Case 3: We can't reuse the same BackingStore. Copy the buffer.
+
+  if (new_byte_length > new_max_byte_length) {
+    THROW_NEW_ERROR_RETURN_FAILURE(
+        isolate, NewRangeError(MessageTemplate::kInvalidArrayBufferLength));
+  }
+
+  // 9. Let newBuffer be ? AllocateArrayBuffer(%ArrayBuffer%, newByteLength,
+  //    newMaxByteLength).
+  Handle<JSArrayBuffer> new_buffer;
+  MaybeHandle<JSArrayBuffer> result =
+      isolate->factory()->NewJSArrayBufferAndBackingStore(
+          new_byte_length, new_max_byte_length, InitializedFlag::kUninitialized,
+          resizable);
+  if (!result.ToHandle(&new_buffer)) {
+    THROW_NEW_ERROR_RETURN_FAILURE(
+        isolate, NewRangeError(MessageTemplate::kArrayBufferAllocationFailed));
+  }
+
+  // 10. Let copyLength be min(newByteLength,
+  //    arrayBuffer.[[ArrayBufferByteLength]]).
+  //
+  // (Size comparison is done manually below instead of using min.)
+
+  // 11. Let fromBlock be arrayBuffer.[[ArrayBufferData]].
+  uint8_t* from_data =
+      reinterpret_cast<uint8_t*>(array_buffer->backing_store());
+
+  // 12. Let toBlock be newBuffer.[[ArrayBufferData]].
+  uint8_t* to_data = reinterpret_cast<uint8_t*>(new_buffer->backing_store());
+
+  // 13. Perform CopyDataBlockBytes(toBlock, 0, fromBlock, 0, copyLength).
+  // 14. NOTE: Neither creation of the new Data Block nor copying from the old
+  //     Data Block are observable. Implementations reserve the right to
+  //     implement this method as a zero-copy move or a realloc.
+  size_t from_byte_length = array_buffer->GetByteLength();
+  if (new_byte_length <= from_byte_length) {
+    CopyBytes(to_data, from_data, new_byte_length);
+  } else {
+    CopyBytes(to_data, from_data, from_byte_length);
+    memset(to_data + from_byte_length, 0, new_byte_length - from_byte_length);
+  }
+
+  // 15. Perform ! DetachArrayBuffer(arrayBuffer).
+  JSArrayBuffer::Detach(array_buffer).Check();
+
+  // 16. Return newBuffer.
+  return *new_buffer;
+}
+
+}  // namespace
+
+// ES #sec-arraybuffer.prototype.transfer
+// ArrayBuffer.prototype.transfer([new_length])
+BUILTIN(ArrayBufferPrototypeTransfer) {
+  const char kMethodName[] = "ArrayBuffer.prototype.transfer";
+  HandleScope scope(isolate);
+
+  // 1. Perform ? RequireInternalSlot(arrayBuffer, [[ArrayBufferData]]).
+  CHECK_RECEIVER(JSArrayBuffer, array_buffer, kMethodName);
+  Handle<Object> new_length = args.atOrUndefined(isolate, 1);
+  return ArrayBufferTransfer(isolate, array_buffer, new_length,
+                             kPreserveResizability, kMethodName);
+}
+
+// ES #sec-arraybuffer.prototype.transferToFixedLength
+// ArrayBuffer.prototype.transferToFixedLength([new_length])
+BUILTIN(ArrayBufferPrototypeTransferToFixedLength) {
+  const char kMethodName[] = "ArrayBuffer.prototype.transferToFixedLength";
+  HandleScope scope(isolate);
+
+  // 1. Perform ? RequireInternalSlot(arrayBuffer, [[ArrayBufferData]]).
+  CHECK_RECEIVER(JSArrayBuffer, array_buffer, kMethodName);
+  Handle<Object> new_length = args.atOrUndefined(isolate, 1);
+  return ArrayBufferTransfer(isolate, array_buffer, new_length, kToFixedLength,
+                             kMethodName);
+}
+
 // ES #sec-sharedarraybuffer.prototype.grow
-// SharedArrayBuffer.prototype.grow(new_size))
+// SharedArrayBuffer.prototype.grow(new_size)
 BUILTIN(SharedArrayBufferPrototypeGrow) {
   const char* const kMethodName = "SharedArrayBuffer.prototype.grow";
   constexpr bool kIsShared = true;

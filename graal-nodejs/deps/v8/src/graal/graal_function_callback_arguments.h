@@ -46,6 +46,20 @@
 #include "graal_value.h"
 #include "include/v8.h"
 
+namespace v8 {
+    namespace internal {
+        class FunctionCallbackArguments {
+            public:
+                static constexpr int kHolderIndex = FunctionCallbackInfo<v8::Value>::kHolderIndex;
+                static constexpr int kIsolateIndex = FunctionCallbackInfo<v8::Value>::kIsolateIndex;
+                static constexpr int kReturnValueIndex = FunctionCallbackInfo<v8::Value>::kReturnValueIndex;
+                static constexpr int kDataIndex = FunctionCallbackInfo<v8::Value>::kDataIndex;
+                static constexpr int kNewTargetIndex = FunctionCallbackInfo<v8::Value>::kNewTargetIndex;
+                static constexpr int kArgsLength = FunctionCallbackInfo<v8::Value>::kArgsLength;
+        };
+    }
+}
+
 class GraalFunctionCallbackArguments {
 public:
     V8_INLINE GraalFunctionCallbackArguments(
@@ -74,7 +88,7 @@ private:
     GraalFunctionCallbackArguments(const GraalFunctionCallbackArguments&) = delete;
     GraalFunctionCallbackArguments& operator=(const GraalFunctionCallbackArguments&) = delete;
 
-    static const int implicit_args_length = v8::FunctionCallbackInfo<v8::Value>::kArgsLength;
+    static const int implicit_args_length = v8::internal::FunctionCallbackArguments::kArgsLength;
     void* implicit_args_[implicit_args_length];
     GraalValue** argv_;
     int argc_;

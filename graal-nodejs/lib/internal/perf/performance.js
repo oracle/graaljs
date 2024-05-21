@@ -1,9 +1,10 @@
 'use strict';
 
 const {
-  ObjectDefineProperty,
   ObjectDefineProperties,
-  ObjectSetPrototypeOf,
+  ReflectConstruct,
+  Symbol,
+  SymbolToStringTag,
 } = primordials;
 
 const {
@@ -17,9 +18,11 @@ const {
   EventTarget,
   Event,
   kTrustEvent,
+  initEventTarget,
+  defineEventHandler,
 } = require('internal/event_target');
 
-const { now } = require('internal/perf/utils');
+const { now, getTimeOriginTimestamp } = require('internal/perf/utils');
 
 const { markResourceTiming } = require('internal/perf/resource_timing');
 
@@ -35,15 +38,15 @@ const {
   setDispatchBufferFull,
 } = require('internal/perf/observe');
 
-const eventLoopUtilization = require('internal/perf/event_loop_utilization');
+const { eventLoopUtilization } = require('internal/perf/event_loop_utilization');
 const nodeTiming = require('internal/perf/nodetiming');
 const timerify = require('internal/perf/timerify');
-const { customInspectSymbol: kInspect } = require('internal/util');
+const { customInspectSymbol: kInspect, kEnumerableProperty, kEmptyObject } = require('internal/util');
 const { inspect } = require('util');
+const { validateInternalField } = require('internal/validators');
+const { convertToInt } = require('internal/webidl');
 
-const {
-  getTimeOriginTimestamp,
-} = internalBinding('performance');
+const kPerformanceBrand = Symbol('performance');
 
 class Performance extends EventTarget {
   constructor() {
@@ -63,121 +66,137 @@ class Performance extends EventTarget {
       timeOrigin: this.timeOrigin,
     }, opts)}`;
   }
-}
 
-function toJSON() {
-  return {
-    nodeTiming: this.nodeTiming,
-    timeOrigin: this.timeOrigin,
-    eventLoopUtilization: this.eventLoopUtilization(),
-  };
-}
+  clearMarks(name = undefined) {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    if (name !== undefined) {
+      name = `${name}`;
+    }
+    clearMarkTimings(name);
+    clearEntriesFromBuffer('mark', name);
+  }
 
-function clearMarks(name) {
-  if (name !== undefined) {
+  clearMeasures(name = undefined) {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    if (name !== undefined) {
+      name = `${name}`;
+    }
+    clearEntriesFromBuffer('measure', name);
+  }
+
+  clearResourceTimings(name = undefined) {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    if (name !== undefined) {
+      name = `${name}`;
+    }
+    clearEntriesFromBuffer('resource', name);
+  }
+
+  getEntries() {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    return filterBufferMapByNameAndType();
+  }
+
+  getEntriesByName(name) {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('name');
+    }
     name = `${name}`;
+    return filterBufferMapByNameAndType(name, undefined);
   }
-  clearMarkTimings(name);
-  clearEntriesFromBuffer('mark', name);
-}
 
-function clearMeasures(name) {
-  if (name !== undefined) {
-    name = `${name}`;
+  getEntriesByType(type) {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('type');
+    }
+    type = `${type}`;
+    return filterBufferMapByNameAndType(undefined, type);
   }
-  clearEntriesFromBuffer('measure', name);
-}
 
-function clearResourceTimings(name) {
-  if (name !== undefined) {
-    name = `${name}`;
+  mark(name, options = kEmptyObject) {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('name');
+    }
+    return mark(name, options);
   }
-  clearEntriesFromBuffer('resource', name);
-}
 
-function getEntries() {
-  return filterBufferMapByNameAndType();
-}
-
-function getEntriesByName(name) {
-  if (arguments.length === 0) {
-    throw new ERR_MISSING_ARGS('name');
+  measure(name, startOrMeasureOptions = kEmptyObject, endMark = undefined) {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('name');
+    }
+    return measure(name, startOrMeasureOptions, endMark);
   }
-  name = `${name}`;
-  return filterBufferMapByNameAndType(name, undefined);
-}
 
-function getEntriesByType(type) {
-  if (arguments.length === 0) {
-    throw new ERR_MISSING_ARGS('type');
+  now() {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    return now();
   }
-  type = `${type}`;
-  return filterBufferMapByNameAndType(undefined, type);
-}
 
-class InternalPerformance extends EventTarget {}
-InternalPerformance.prototype.constructor = Performance.prototype.constructor;
-ObjectSetPrototypeOf(InternalPerformance.prototype, Performance.prototype);
+  setResourceTimingBufferSize(maxSize) {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    if (arguments.length === 0) {
+      throw new ERR_MISSING_ARGS('maxSize');
+    }
+    // unsigned long
+    maxSize = convertToInt('maxSize', maxSize, 32);
+    return setResourceTimingBufferSize(maxSize);
+  }
+
+  get timeOrigin() {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    return getTimeOriginTimestamp();
+  }
+
+  toJSON() {
+    validateInternalField(this, kPerformanceBrand, 'Performance');
+    return {
+      nodeTiming: this.nodeTiming,
+      timeOrigin: this.timeOrigin,
+      eventLoopUtilization: this.eventLoopUtilization(),
+    };
+  }
+}
 
 ObjectDefineProperties(Performance.prototype, {
-  clearMarks: {
+  clearMarks: kEnumerableProperty,
+  clearMeasures: kEnumerableProperty,
+  clearResourceTimings: kEnumerableProperty,
+  getEntries: kEnumerableProperty,
+  getEntriesByName: kEnumerableProperty,
+  getEntriesByType: kEnumerableProperty,
+  mark: kEnumerableProperty,
+  measure: kEnumerableProperty,
+  now: kEnumerableProperty,
+  timeOrigin: kEnumerableProperty,
+  toJSON: kEnumerableProperty,
+  setResourceTimingBufferSize: kEnumerableProperty,
+  [SymbolToStringTag]: {
     __proto__: null,
-    configurable: true,
+    writable: false,
     enumerable: false,
-    value: clearMarks,
-  },
-  clearMeasures: {
-    __proto__: null,
     configurable: true,
-    enumerable: false,
-    value: clearMeasures,
+    value: 'Performance',
   },
-  clearResourceTimings: {
-    __proto__: null,
-    configurable: true,
-    enumerable: false,
-    value: clearResourceTimings,
-  },
+
+  // Node.js specific extensions.
   eventLoopUtilization: {
     __proto__: null,
     configurable: true,
+    // Node.js specific extensions.
     enumerable: false,
+    writable: true,
     value: eventLoopUtilization,
-  },
-  getEntries: {
-    __proto__: null,
-    configurable: true,
-    enumerable: false,
-    value: getEntries,
-  },
-  getEntriesByName: {
-    __proto__: null,
-    configurable: true,
-    enumerable: false,
-    value: getEntriesByName,
-  },
-  getEntriesByType: {
-    __proto__: null,
-    configurable: true,
-    enumerable: false,
-    value: getEntriesByType,
-  },
-  mark: {
-    __proto__: null,
-    configurable: true,
-    enumerable: false,
-    value: mark,
-  },
-  measure: {
-    __proto__: null,
-    configurable: true,
-    enumerable: false,
-    value: measure,
   },
   nodeTiming: {
     __proto__: null,
     configurable: true,
+    // Node.js specific extensions.
     enumerable: false,
+    writable: true,
     value: nodeTiming,
   },
   // In the browser, this function is not public.  However, it must be used inside fetch
@@ -185,55 +204,30 @@ ObjectDefineProperties(Performance.prototype, {
   markResourceTiming: {
     __proto__: null,
     configurable: true,
+    // Node.js specific extensions.
     enumerable: false,
+    writable: true,
     value: markResourceTiming,
-  },
-  now: {
-    __proto__: null,
-    configurable: true,
-    enumerable: false,
-    value: now,
-  },
-  setResourceTimingBufferSize: {
-    __proto__: null,
-    configurable: true,
-    enumerable: false,
-    value: setResourceTimingBufferSize,
   },
   timerify: {
     __proto__: null,
     configurable: true,
+    // Node.js specific extensions.
     enumerable: false,
+    writable: true,
     value: timerify,
   },
-  timeOrigin: {
-    __proto__: null,
-    configurable: true,
-    enumerable: true,
-    get() {
-      const value = getTimeOriginTimestamp();
-      ObjectDefineProperty(Performance.prototype, 'timeOrigin', {
-        __proto__: null,
-        value,
-      });
-      return value;
-    },
-    set(value) {
-      ObjectDefineProperty(Performance.prototype, 'timeOrigin', {
-        __proto__: null,
-        value,
-      });
-    },
-  },
-  toJSON: {
-    __proto__: null,
-    configurable: true,
-    enumerable: true,
-    value: toJSON,
-  },
 });
+defineEventHandler(Performance.prototype, 'resourcetimingbufferfull');
 
-const performance = new InternalPerformance();
+function createPerformance() {
+  return ReflectConstruct(function Performance() {
+    initEventTarget(this);
+    this[kPerformanceBrand] = true;
+  }, [], Performance);
+}
+
+const performance = createPerformance();
 
 function dispatchBufferFull(type) {
   const event = new Event(type, {

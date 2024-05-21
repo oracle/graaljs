@@ -7,11 +7,13 @@
 
 #include <stddef.h>
 
+#include <functional>
 #include <string>
 
 #include "cppgc/common.h"
 #include "v8-data.h"          // NOLINT(build/include_directory)
 #include "v8-local-handle.h"  // NOLINT(build/include_directory)
+#include "v8-promise.h"       // NOLINT(build/include_directory)
 #include "v8config.h"         // NOLINT(build/include_directory)
 
 #if defined(V8_OS_WIN)
@@ -105,7 +107,7 @@ struct JitCodeEvent {
     size_t line_number_table_size;
   };
 
-  wasm_source_info_t* wasm_source_info;
+  wasm_source_info_t* wasm_source_info = nullptr;
 
   union {
     // Only valid for CODE_ADDED.
@@ -216,7 +218,13 @@ using AddHistogramSampleCallback = void (*)(void* histogram, int sample);
 
 using FatalErrorCallback = void (*)(const char* location, const char* message);
 
-using OOMErrorCallback = void (*)(const char* location, bool is_heap_oom);
+struct OOMDetails {
+  bool is_heap_oom = false;
+  const char* detail = nullptr;
+};
+
+using OOMErrorCallback = void (*)(const char* location,
+                                  const OOMDetails& details);
 
 using MessageCallback = void (*)(Local<Message> message, Local<Value> data);
 
@@ -230,9 +238,13 @@ using LogEventCallback = void (*)(const char* name,
 enum class CrashKeyId {
   kIsolateAddress,
   kReadonlySpaceFirstPageAddress,
-  kMapSpaceFirstPageAddress,
+  kMapSpaceFirstPageAddress V8_ENUM_DEPRECATE_SOON("Map space got removed"),
+  kOldSpaceFirstPageAddress,
+  kCodeRangeBaseAddress,
   kCodeSpaceFirstPageAddress,
   kDumpType,
+  kSnapshotChecksumCalculated,
+  kSnapshotChecksumExpected,
 };
 
 using AddCrashKeyCallback = void (*)(CrashKeyId id, const std::string& value);
@@ -300,6 +312,13 @@ using ApiImplementationCallback = void (*)(const FunctionCallbackInfo<Value>&);
 // --- Callback for WebAssembly.compileStreaming ---
 using WasmStreamingCallback = void (*)(const FunctionCallbackInfo<Value>&);
 
+enum class WasmAsyncSuccess { kSuccess, kFail };
+
+// --- Callback called when async WebAssembly operations finish ---
+using WasmAsyncResolvePromiseCallback = void (*)(
+    Isolate* isolate, Local<Context> context, Local<Promise::Resolver> resolver,
+    Local<Value> result, WasmAsyncSuccess success);
+
 // --- Callback for loading source map file for Wasm profiling support
 using WasmLoadSourceMapCallback = Local<String> (*)(Isolate* isolate,
                                                     const char* name);
@@ -310,8 +329,9 @@ using WasmSimdEnabledCallback = bool (*)(Local<Context> context);
 // --- Callback for checking if WebAssembly exceptions are enabled ---
 using WasmExceptionsEnabledCallback = bool (*)(Local<Context> context);
 
-// --- Callback for checking if WebAssembly dynamic tiering is enabled ---
-using WasmDynamicTieringEnabledCallback = bool (*)(Local<Context> context);
+// --- Callback for checking if WebAssembly GC is enabled ---
+// If the callback returns true, it will also enable Wasm stringrefs.
+using WasmGCEnabledCallback = bool (*)(Local<Context> context);
 
 // --- Callback for checking if the SharedArrayBuffer constructor is enabled ---
 using SharedArrayBufferConstructorEnabledCallback =
@@ -352,6 +372,13 @@ using HostImportModuleDynamicallyCallback = MaybeLocal<Promise> (*)(
     Local<Context> context, Local<Data> host_defined_options,
     Local<Value> resource_name, Local<String> specifier,
     Local<FixedArray> import_assertions);
+
+/**
+ * Callback for requesting a compile hint for a function from the embedder. The
+ * first parameter is the position of the function in source code and the second
+ * parameter is embedder data to be passed back.
+ */
+using CompileHintCallback = bool (*)(int, void*);
 
 /**
  * HostInitializeImportMetaObjectCallback is called the first time import.meta

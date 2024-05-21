@@ -8,6 +8,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#include <algorithm>
 #include <atomic>
 #include <vector>
 
@@ -33,6 +34,7 @@ namespace internal {
   V(IncrementalSweep)
 
 #define CPPGC_FOR_ALL_SCOPES(V)             \
+  V(Unmark)                                 \
   V(MarkIncrementalStart)                   \
   V(MarkIncrementalFinalize)                \
   V(MarkAtomicPrologue)                     \
@@ -52,24 +54,29 @@ namespace internal {
   V(MarkVisitCrossThreadPersistents)        \
   V(MarkVisitStack)                         \
   V(MarkVisitRememberedSets)                \
+  V(WeakContainerCallbacksProcessing)       \
+  V(CustomCallbacksProcessing)              \
+  V(SweepFinishIfOutOfWork)                 \
   V(SweepInvokePreFinalizers)               \
-  V(SweepIdleStep)                          \
   V(SweepInTask)                            \
+  V(SweepInTaskForStatistics)               \
   V(SweepOnAllocation)                      \
   V(SweepFinalize)
 
 #define CPPGC_FOR_ALL_HISTOGRAM_CONCURRENT_SCOPES(V) \
   V(ConcurrentMark)                                  \
-  V(ConcurrentSweep)
+  V(ConcurrentSweep)                                 \
+  V(ConcurrentWeakCallback)
 
 #define CPPGC_FOR_ALL_CONCURRENT_SCOPES(V) V(ConcurrentMarkProcessEphemerons)
 
 // Sink for various time and memory statistics.
 class V8_EXPORT_PRIVATE StatsCollector final {
-  using IsForcedGC = GarbageCollector::Config::IsForcedGC;
+  using IsForcedGC = GCConfig::IsForcedGC;
 
  public:
-  using CollectionType = GarbageCollector::Config::CollectionType;
+  using MarkingType = GCConfig::MarkingType;
+  using SweepingType = GCConfig::SweepingType;
 
 #if defined(CPPGC_DECLARE_ENUM)
   static_assert(false, "CPPGC_DECLARE_ENUM macro is already defined");
@@ -106,6 +113,8 @@ class V8_EXPORT_PRIVATE StatsCollector final {
 
     size_t epoch = -1;
     CollectionType collection_type = CollectionType::kMajor;
+    MarkingType marking_type = MarkingType::kAtomic;
+    SweepingType sweeping_type = SweepingType::kAtomic;
     IsForcedGC is_forced_gc = IsForcedGC::kNotForced;
     // Marked bytes collected during marking.
     size_t marked_bytes = 0;
@@ -268,14 +277,18 @@ class V8_EXPORT_PRIVATE StatsCollector final {
 
   void NotifySafePointForTesting();
 
-  // Indicates a new garbage collection cycle.
-  void NotifyMarkingStarted(CollectionType, IsForcedGC);
+  // Indicates a new garbage collection cycle. The phase is optional and is only
+  // used for major GC when generational GC is enabled.
+  void NotifyUnmarkingStarted(CollectionType);
+  // Indicates a new minor garbage collection cycle or a major, if generational
+  // GC is not enabled.
+  void NotifyMarkingStarted(CollectionType, MarkingType, IsForcedGC);
   // Indicates that marking of the current garbage collection cycle is
   // completed.
   void NotifyMarkingCompleted(size_t marked_bytes);
   // Indicates the end of a garbage collection cycle. This means that sweeping
   // is finished at this point.
-  void NotifySweepingCompleted();
+  void NotifySweepingCompleted(SweepingType);
 
   size_t allocated_memory_size() const;
   // Size of live objects in bytes  on the heap. Based on the most recent marked
@@ -317,6 +330,7 @@ class V8_EXPORT_PRIVATE StatsCollector final {
  private:
   enum class GarbageCollectionState : uint8_t {
     kNotRunning,
+    kUnmarking,
     kMarking,
     kSweeping
   };

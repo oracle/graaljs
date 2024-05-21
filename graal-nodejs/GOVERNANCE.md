@@ -68,7 +68,7 @@ The TSC can remove inactive collaborators or provide them with _emeritus_
 status. Emeriti may request that the TSC restore them to active status.
 
 A collaborator is automatically made emeritus (and removed from active
-collaborator status) if it has been more than 18 months since the collaborator
+collaborator status) if it has been more than 12 months since the collaborator
 has authored or approved a commit that has landed.
 
 ## Technical Steering Committee
@@ -151,8 +151,9 @@ Provide a summary of the nominee's contributions. For example:
 Mention @nodejs/collaborators in the issue to notify other collaborators about
 the nomination.
 
-The nomination passes if no collaborators oppose it after one week. Otherwise,
-the nomination fails.
+The nomination passes if no collaborators oppose it after one week. In the case
+of an objection, the TSC is responsible for working with the individuals
+involved and finding a resolution.
 
 There are steps a nominator can take in advance to make a nomination as
 frictionless as possible. To request feedback from other collaborators in

@@ -37,7 +37,6 @@ const {
   Boolean,
   Error,
   JSONParse,
-  ObjectCreate,
   ObjectDefineProperty,
   ObjectFreeze,
   ObjectGetOwnPropertyDescriptor,
@@ -53,7 +52,6 @@ const {
   SafeMap,
   SafeWeakMap,
   String,
-  Symbol,
   StringPrototypeCharAt,
   StringPrototypeCharCodeAt,
   StringPrototypeEndsWith,
@@ -66,12 +64,18 @@ const {
 
 // Map used to store CJS parsing data.
 const cjsParseCache = new SafeWeakMap();
+/**
+ * Map of already-loaded CJS modules to use.
+ */
+const cjsExportsCache = new SafeWeakMap();
 
 // Set first due to cycle with ESM loader functions.
 module.exports = {
-  wrapSafe, Module, cjsParseCache,
-  get hasLoadedAnyUserCJSModule() { return hasLoadedAnyUserCJSModule; },
+  cjsExportsCache,
+  cjsParseCache,
   initializeCJS,
+  Module,
+  wrapSafe,
 };
 
 const { BuiltinModule } = require('internal/bootstrap/realm');
@@ -87,10 +91,13 @@ const {
   getLazy,
 } = require('internal/util');
 const {
-  internalCompileFunction,
   makeContextifyScript,
   runScriptInThisContext,
 } = require('internal/vm');
+const {
+  containsModuleSyntax,
+  compileFunctionForCJSLoader,
+} = internalBinding('contextify');
 
 const assert = require('internal/assert');
 const fs = require('fs');
@@ -105,10 +112,9 @@ const {
 const {
   getCjsConditions,
   initializeCjsConditions,
-  hasEsmSyntax,
   loadBuiltinModule,
   makeRequireFunction,
-  normalizeReferrerURL,
+  setHasStartedUserCJSExecution,
   stripBOM,
   toRealPath,
 } = require('internal/modules/helpers');
@@ -119,13 +125,10 @@ const policy = getLazy(
 );
 const shouldReportRequiredModules = getLazy(() => process.env.WATCH_REPORT_DEPENDENCIES);
 
-const getCascadedLoader = getLazy(
-  () => require('internal/process/esm_loader').esmLoader,
-);
-
-// Whether any user-provided CJS modules had been loaded (executed).
-// Used for internal assertions.
-let hasLoadedAnyUserCJSModule = false;
+const permission = require('internal/process/permission');
+const {
+  vm_dynamic_import_default_internal,
+} = internalBinding('symbols');
 
 const {
   codes: {
@@ -149,10 +152,9 @@ const {
   isProxy,
 } = require('internal/util/types');
 
-const { kEvaluated } = internalBinding('module_wrap');
 const isWindows = process.platform === 'win32';
 
-const relativeResolveCache = ObjectCreate(null);
+const relativeResolveCache = { __proto__: null };
 
 let requireDepth = 0;
 let isPreloading = false;
@@ -463,15 +465,15 @@ function tryPackage(requestPath, exts, isMain, originalPath) {
 }
 
 /**
- * Check if the file exists and is not a directory if using `--preserve-symlinks` and `isMain` is false, keep symlinks
- * intact, otherwise resolve to the absolute realpath.
+ * Check if the file exists and is not a directory if using `--preserve-symlinks` and `isMain` is false or
+ * `--preserve-symlinks-main` and `isMain` is true , keep symlinks intact, otherwise resolve to the absolute realpath.
  * @param {string} requestPath The path to the file to load.
  * @param {boolean} isMain Whether the file is the main module.
  */
 function tryFile(requestPath, isMain) {
   const rc = _stat(requestPath);
   if (rc !== 0) { return; }
-  if (getOptionValue('--preserve-symlinks') && !isMain) {
+  if (getOptionValue(isMain ? '--preserve-symlinks-main' : '--preserve-symlinks')) {
     return path.resolve(requestPath);
   }
   return toRealPath(requestPath);
@@ -654,9 +656,12 @@ Module._findPath = function(request, paths, isMain) {
 
   // For each path
   for (let i = 0; i < paths.length; i++) {
-    // Don't search further if path doesn't exist and request is inside the path
+    // Don't search further if path doesn't exist
+    // or doesn't have permission to it
     const curPath = paths[i];
-    if (insidePath && curPath && _stat(curPath) < 1) {
+    if (insidePath && curPath &&
+      ((permission.isEnabled() && !permission.has('fs.read', curPath)) || _stat(curPath) < 1)
+    ) {
       continue;
     }
 
@@ -1203,14 +1208,11 @@ Module.prototype.load = function(filename) {
   Module._extensions[extension](this, filename);
   this.loaded = true;
 
-  const cascadedLoader = getCascadedLoader();
   // Create module entry at load time to snapshot exports correctly
   const exports = this.exports;
-  // Preemptively cache
-  if ((module?.module === undefined ||
-       module.module.getStatus() < kEvaluated) &&
-      !cascadedLoader.cjsCache.has(this)) {
-    cascadedLoader.cjsCache.set(this, exports);
+  // Preemptively cache for ESM loader.
+  if (!cjsExportsCache.has(this)) {
+    cjsExportsCache.set(this, exports);
   }
 };
 
@@ -1248,14 +1250,11 @@ let hasPausedEntry = false;
  * @param {string} filename The name of the file being loaded
  * @param {string} content The content of the file being loaded
  * @param {Module} cjsModuleInstance The CommonJS loader instance
+ * @param {object} codeCache The SEA code cache
  */
-function wrapSafe(filename, content, cjsModuleInstance) {
-  const hostDefinedOptionId = Symbol(`cjs:${filename}`);
-  async function importModuleDynamically(specifier, _, importAttributes) {
-    const cascadedLoader = getCascadedLoader();
-    return cascadedLoader.import(specifier, normalizeReferrerURL(filename),
-                                 importAttributes);
-  }
+function wrapSafe(filename, content, cjsModuleInstance, codeCache) {
+  const hostDefinedOptionId = vm_dynamic_import_default_internal;
+  const importModuleDynamically = vm_dynamic_import_default_internal;
   if (patched) {
     const wrapped = Module.wrap(content);
     const script = makeContextifyScript(
@@ -1278,21 +1277,15 @@ function wrapSafe(filename, content, cjsModuleInstance) {
     return runScriptInThisContext(script, true, false);
   }
 
-  const params = [ 'exports', 'require', 'module', '__filename', '__dirname' ];
   try {
-    const result = internalCompileFunction(
-      content,                           // code,
-      filename,                          // filename
-      0,                                 // lineOffset
-      0,                                 // columnOffset,
-      undefined,                         // cachedData
-      false,                             // produceCachedData
-      undefined,                         // parsingContext
-      undefined,                         // contextExtensions
-      params,                            // params
-      hostDefinedOptionId,               // hostDefinedOptionId
-      importModuleDynamically,           // importModuleDynamically
-    );
+    const result = compileFunctionForCJSLoader(content, filename);
+
+    // cachedDataRejected is only set for cache coming from SEA.
+    if (codeCache &&
+        result.cachedDataRejected !== false &&
+        internalBinding('sea').isSea()) {
+      process.emitWarning('Code cache data rejected.');
+    }
 
     // Cache the source map for the module if present.
     if (result.sourceMapURL) {
@@ -1303,7 +1296,7 @@ function wrapSafe(filename, content, cjsModuleInstance) {
   } catch (err) {
     if (process.mainModule === cjsModuleInstance) {
       const { enrichCJSError } = require('internal/modules/esm/translators');
-      enrichCJSError(err, content);
+      enrichCJSError(err, content, filename);
     }
     throw err;
   }
@@ -1357,6 +1350,7 @@ Module.prototype._compile = function(content, filename) {
   const thisValue = exports;
   const module = this;
   if (requireDepth === 0) { statCache = new SafeMap(); }
+  setHasStartedUserCJSExecution();
   if (inspectorWrapper) {
     result = inspectorWrapper(compiledWrapper, thisValue, exports,
                               require, module, filename, dirname);
@@ -1364,7 +1358,6 @@ Module.prototype._compile = function(content, filename) {
     result = ReflectApply(compiledWrapper, thisValue,
                           [exports, require, module, filename, dirname]);
   }
-  hasLoadedAnyUserCJSModule = true;
   if (requireDepth === 0) { statCache = null; }
   return result;
 };
@@ -1388,10 +1381,11 @@ Module._extensions['.js'] = function(module, filename) {
     const pkg = packageJsonReader.readPackageScope(filename) || { __proto__: null };
     // Function require shouldn't be used in ES modules.
     if (pkg.data?.type === 'module') {
+      // This is an error path because `require` of a `.js` file in a `"type": "module"` scope is not allowed.
       const parent = moduleParentCache.get(module);
       const parentPath = parent?.filename;
       const packageJsonPath = path.resolve(pkg.path, 'package.json');
-      const usesEsm = hasEsmSyntax(content);
+      const usesEsm = containsModuleSyntax(content, filename);
       const err = new ERR_REQUIRE_ESM(filename, usesEsm, parentPath,
                                       packageJsonPath);
       // Attempt to reconstruct the parent require frame.

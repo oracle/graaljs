@@ -22,8 +22,6 @@ calling `require('node:tls')` will result in an error being thrown.
 
 When using CommonJS, the error thrown can be caught using try/catch:
 
-<!-- eslint-skip -->
-
 ```cjs
 let tls;
 try {
@@ -285,8 +283,8 @@ failures, it is easy to not notice unnecessarily poor TLS performance. The
 OpenSSL CLI can be used to verify that servers are resuming sessions. Use the
 `-reconnect` option to `openssl s_client`, for example:
 
-```console
-$ openssl s_client -connect localhost:443 -reconnect
+```bash
+openssl s_client -connect localhost:443 -reconnect
 ```
 
 Read through the debug output. The first connection should say "New", for
@@ -701,8 +699,8 @@ is set to describe how authorization failed. Depending on the settings
 of the TLS server, unauthorized connections may still be accepted.
 
 The `tlsSocket.alpnProtocol` property is a string that contains the selected
-ALPN protocol. When ALPN has no selected protocol, `tlsSocket.alpnProtocol`
-equals `false`.
+ALPN protocol. When ALPN has no selected protocol because the client or the
+server did not send an ALPN extension, `tlsSocket.alpnProtocol` equals `false`.
 
 The `tlsSocket.servername` property is a string containing the server name
 requested via SNI.
@@ -1192,7 +1190,9 @@ certificate.
 
 <!-- YAML
 changes:
-  - version: v18.13.0
+  - version:
+      - v19.1.0
+      - v18.13.0
     pr-url: https://github.com/nodejs/node/pull/44935
     description: Add "ca" property.
   - version:
@@ -1651,7 +1651,7 @@ changes:
     * hint: {string} optional message sent from the server to help client
       decide which identity to use during negotiation.
       Always `null` if TLS 1.3 is used.
-    * Returns: {Object} in the form
+    * Returns: {Object} An object in the form
       `{ psk: <Buffer|TypedArray|DataView>, identity: <string> }`
       or `null` to stop the negotiation process. `psk` must be
       compatible with the selected cipher's digest.
@@ -1791,7 +1791,7 @@ argument.
 <!-- YAML
 added: v0.11.13
 changes:
-  - version: v18.16.0
+  - version: v19.8.0
     pr-url: https://github.com/nodejs/node/pull/46978
     description: The `dhparam` option can now be set to `'auto'` to
                  enable DHE with appropriate well-known parameters.
@@ -2045,9 +2045,14 @@ where `secureSocket` has the same API as `pair.cleartext`.
 <!-- YAML
 added: v0.3.2
 changes:
-  - version: v18.19.0
+  - version: v20.4.0
     pr-url: https://github.com/nodejs/node/pull/45190
     description: The `options` parameter can now include `ALPNCallback`.
+  - version: v19.0.0
+    pr-url: https://github.com/nodejs/node/pull/44031
+    description: If `ALPNProtocols` is set, incoming connections that send an
+                 ALPN extension with no supported protocols are terminated with
+                 a fatal `no_application_protocol` alert.
   - version: v12.3.0
     pr-url: https://github.com/nodejs/node/pull/27665
     description: The `options` parameter now supports `net.createServer()`
@@ -2264,7 +2269,7 @@ added: v11.4.0
 ## `tls.DEFAULT_CIPHERS`
 
 <!-- YAML
-added: v18.16.0
+added: v19.8.0
 -->
 
 * {string} The default value of the `ciphers` option of

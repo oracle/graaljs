@@ -2,7 +2,6 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-#include "src/base/platform/wrappers.h"
 #include "src/compiler/backend/instruction-selector-impl.h"
 #include "src/compiler/node-matchers.h"
 #include "src/compiler/node-properties.h"
@@ -221,8 +220,14 @@ class S390OperandGenerator final : public OperandGenerator {
                                             AddressOption::kAllowInputSwap);
 #endif
     DCHECK(m.matches());
-    if ((m.displacement() == nullptr ||
-         CanBeImmediate(m.displacement(), immediate_mode))) {
+    if (m.base() != nullptr &&
+        m.base()->opcode() == IrOpcode::kLoadRootRegister) {
+      DCHECK_EQ(m.index(), nullptr);
+      DCHECK_EQ(m.scale(), 0);
+      inputs[(*input_count)++] = UseImmediate(m.displacement());
+      return kMode_Root;
+    } else if ((m.displacement() == nullptr ||
+                CanBeImmediate(m.displacement(), immediate_mode))) {
       DCHECK_EQ(0, m.scale());
       return GenerateMemoryOperandInputs(m.index(), m.base(), m.displacement(),
                                          m.displacement_mode(), inputs,
@@ -304,10 +309,10 @@ ArchOpcode SelectLoadOpcode(LoadRepresentation load_rep) {
       opcode = kS390_LoadDecompressTaggedSigned;
       break;
     case MachineRepresentation::kTaggedPointer:
-      opcode = kS390_LoadDecompressTaggedPointer;
+      opcode = kS390_LoadDecompressTagged;
       break;
     case MachineRepresentation::kTagged:
-      opcode = kS390_LoadDecompressAnyTagged;
+      opcode = kS390_LoadDecompressTagged;
       break;
 #else
     case MachineRepresentation::kTaggedSigned:   // Fall through.
@@ -320,6 +325,7 @@ ArchOpcode SelectLoadOpcode(LoadRepresentation load_rep) {
     case MachineRepresentation::kSimd128:
       opcode = kS390_LoadSimd128;
       break;
+    case MachineRepresentation::kSimd256:  // Fall through.
     case MachineRepresentation::kMapWord:  // Fall through.
     case MachineRepresentation::kNone:
     default:
@@ -725,7 +731,8 @@ static void VisitGeneralStore(
   Node* base = node->InputAt(0);
   Node* offset = node->InputAt(1);
   Node* value = node->InputAt(2);
-  if (write_barrier_kind != kNoWriteBarrier && !FLAG_disable_write_barriers) {
+  if (write_barrier_kind != kNoWriteBarrier &&
+      !v8_flags.disable_write_barriers) {
     DCHECK(CanBeTaggedOrCompressedPointer(rep));
     AddressingMode addressing_mode;
     InstructionOperand inputs[3];
@@ -747,7 +754,7 @@ static void VisitGeneralStore(
     size_t const temp_count = arraysize(temps);
     InstructionCode code = kArchStoreWithWriteBarrier;
     code |= AddressingModeField::encode(addressing_mode);
-    code |= MiscField::encode(static_cast<int>(record_write_mode));
+    code |= RecordWriteModeField::encode(record_write_mode);
     selector->Emit(code, 0, nullptr, input_count, inputs, temp_count, temps);
   } else {
     ArchOpcode opcode;
@@ -801,6 +808,7 @@ static void VisitGeneralStore(
           value = value->InputAt(0);
         }
         break;
+      case MachineRepresentation::kSimd256:  // Fall through.
       case MachineRepresentation::kMapWord:  // Fall through.
       case MachineRepresentation::kNone:
         UNREACHABLE();
@@ -823,7 +831,7 @@ void InstructionSelector::VisitStore(Node* node) {
   WriteBarrierKind write_barrier_kind = store_rep.write_barrier_kind();
   MachineRepresentation rep = store_rep.representation();
 
-  if (FLAG_enable_unconditional_write_barriers &&
+  if (v8_flags.enable_unconditional_write_barriers &&
       CanBeTaggedOrCompressedPointer(rep)) {
     write_barrier_kind = kFullWriteBarrier;
   }
@@ -1257,6 +1265,23 @@ static inline bool TryMatchInt64SubWithOverflow(InstructionSelector* selector,
   return TryMatchInt64OpWithOverflow<kS390_Sub64>(selector, node,
                                                   SubOperandMode);
 }
+
+void EmitInt64MulWithOverflow(InstructionSelector* selector, Node* node,
+                              FlagsContinuation* cont) {
+  S390OperandGenerator g(selector);
+  Int64BinopMatcher m(node);
+  InstructionOperand inputs[2];
+  size_t input_count = 0;
+  InstructionOperand outputs[1];
+  size_t output_count = 0;
+
+  inputs[input_count++] = g.UseUniqueRegister(m.left().node());
+  inputs[input_count++] = g.UseUniqueRegister(m.right().node());
+  outputs[output_count++] = g.DefineAsRegister(node);
+  selector->EmitWithContinuation(kS390_Mul64WithOverflow, output_count, outputs,
+                                 input_count, inputs, cont);
+}
+
 #endif
 
 static inline bool TryMatchDoubleConstructFromInsert(
@@ -1470,6 +1495,8 @@ static inline bool TryMatchDoubleConstructFromInsert(
 
 #define WORD64_BIN_OP_LIST(V)                                                  \
   V(Word64, Int64Add, kS390_Add64, AddOperandMode, null)                       \
+  V(Word64, Int64MulHigh, kS390_MulHighS64, OperandMode::kAllowRRR, null)      \
+  V(Word64, Uint64MulHigh, kS390_MulHighU64, OperandMode::kAllowRRR, null)     \
   V(Word64, Int64Sub, kS390_Sub64, SubOperandMode, ([&]() {                    \
       return TryMatchNegFromSub<Int64BinopMatcher, kS390_Neg64>(this, node);   \
     }))                                                                        \
@@ -1547,6 +1574,14 @@ void InstructionSelector::VisitTryTruncateFloat64ToUint64(Node* node) {
 
 #endif
 
+void InstructionSelector::VisitTryTruncateFloat64ToInt32(Node* node) {
+  UNIMPLEMENTED();
+}
+
+void InstructionSelector::VisitTryTruncateFloat64ToUint32(Node* node) {
+  UNIMPLEMENTED();
+}
+
 void InstructionSelector::VisitBitcastWord32ToWord64(Node* node) {
   DCHECK(SmiValuesAre31Bits());
   DCHECK(COMPRESS_POINTERS_BOOL);
@@ -1573,6 +1608,16 @@ void InstructionSelector::VisitFloat64Ieee754Binop(Node* node,
   Emit(opcode, g.DefineAsFixed(node, d1), g.UseFixed(node->InputAt(0), d1),
        g.UseFixed(node->InputAt(1), d2))
       ->MarkAsCall();
+}
+
+void InstructionSelector::VisitInt64MulWithOverflow(Node* node) {
+  if (Node* ovf = NodeProperties::FindProjection(node, 1)) {
+    FlagsContinuation cont = FlagsContinuation::ForSet(
+        CpuFeatures::IsSupported(MISC_INSTR_EXT2) ? kOverflow : kNotEqual, ovf);
+    return EmitInt64MulWithOverflow(this, node, &cont);
+  }
+  FlagsContinuation cont;
+  EmitInt64MulWithOverflow(this, node, &cont);
 }
 
 static bool CompareLogical(FlagsContinuation* cont) {
@@ -1892,6 +1937,11 @@ void InstructionSelector::VisitWordCompareZero(Node* user, Node* value,
                 cont->OverwriteAndNegateIfEqual(kOverflow);
                 return VisitWord64BinOp(this, node, kS390_Sub64, SubOperandMode,
                                         cont);
+              case IrOpcode::kInt64MulWithOverflow:
+                cont->OverwriteAndNegateIfEqual(
+                    CpuFeatures::IsSupported(MISC_INSTR_EXT2) ? kOverflow
+                                                              : kNotEqual);
+                return EmitInt64MulWithOverflow(this, node, cont);
 #endif
               default:
                 break;
@@ -2112,6 +2162,11 @@ void InstructionSelector::VisitFloat64LessThanOrEqual(Node* node) {
 bool InstructionSelector::ZeroExtendsWord32ToWord64NoPhis(Node* node) {
   UNIMPLEMENTED();
 }
+
+void InstructionSelector::EmitMoveParamToFPR(Node* node, int index) {}
+
+void InstructionSelector::EmitMoveFPRToParam(InstructionOperand* op,
+                                             LinkageLocation location) {}
 
 void InstructionSelector::EmitPrepareArguments(
     ZoneVector<PushParameter>* arguments, const CallDescriptor* call_descriptor,
@@ -2526,8 +2581,7 @@ void InstructionSelector::VisitWord64AtomicStore(Node* node) {
   V(I8x16AddSatS)                          \
   V(I8x16SubSatS)                          \
   V(I8x16AddSatU)                          \
-  V(I8x16SubSatU)                          \
-  V(I8x16Swizzle)
+  V(I8x16SubSatU)
 
 #define SIMD_UNOP_LIST(V)    \
   V(F64x2Abs)                \
@@ -2543,8 +2597,6 @@ void InstructionSelector::VisitWord64AtomicStore(Node* node) {
   V(F64x2Splat)              \
   V(F32x4Abs)                \
   V(F32x4Neg)                \
-  V(F32x4RecipApprox)        \
-  V(F32x4RecipSqrtApprox)    \
   V(F32x4Sqrt)               \
   V(F32x4Ceil)               \
   V(F32x4Floor)              \
@@ -2684,6 +2736,27 @@ SIMD_VISIT_QFMOP(F64x2Qfms)
 SIMD_VISIT_QFMOP(F32x4Qfma)
 SIMD_VISIT_QFMOP(F32x4Qfms)
 #undef SIMD_VISIT_QFMOP
+
+#define SIMD_RELAXED_OP_LIST(V)                           \
+  V(F64x2RelaxedMin, F64x2Pmin)                           \
+  V(F64x2RelaxedMax, F64x2Pmax)                           \
+  V(F32x4RelaxedMin, F32x4Pmin)                           \
+  V(F32x4RelaxedMax, F32x4Pmax)                           \
+  V(I32x4RelaxedTruncF32x4S, I32x4SConvertF32x4)          \
+  V(I32x4RelaxedTruncF32x4U, I32x4UConvertF32x4)          \
+  V(I32x4RelaxedTruncF64x2SZero, I32x4TruncSatF64x2SZero) \
+  V(I32x4RelaxedTruncF64x2UZero, I32x4TruncSatF64x2UZero) \
+  V(I16x8RelaxedQ15MulRS, I16x8Q15MulRSatS)               \
+  V(I8x16RelaxedLaneSelect, S128Select)                   \
+  V(I16x8RelaxedLaneSelect, S128Select)                   \
+  V(I32x4RelaxedLaneSelect, S128Select)                   \
+  V(I64x2RelaxedLaneSelect, S128Select)
+
+#define SIMD_VISIT_RELAXED_OP(name, op) \
+  void InstructionSelector::Visit##name(Node* node) { Visit##op(node); }
+SIMD_RELAXED_OP_LIST(SIMD_VISIT_RELAXED_OP)
+#undef SIMD_VISIT_RELAXED_OP
+#undef SIMD_RELAXED_OP_LIST
 #undef SIMD_TYPES
 
 #if V8_ENABLE_WEBASSEMBLY
@@ -2711,8 +2784,21 @@ void InstructionSelector::VisitI8x16Shuffle(Node* node) {
        g.UseImmediate(wasm::SimdShuffle::Pack4Lanes(shuffle_remapped + 8)),
        g.UseImmediate(wasm::SimdShuffle::Pack4Lanes(shuffle_remapped + 12)));
 }
+
+void InstructionSelector::VisitI8x16Swizzle(Node* node) {
+  S390OperandGenerator g(this);
+  bool relaxed = OpParameter<bool>(node->op());
+  // TODO(miladfarca): Optimize Swizzle if relaxed.
+  USE(relaxed);
+
+  InstructionOperand temps[] = {g.TempSimd128Register()};
+  Emit(kS390_I8x16Swizzle, g.DefineAsRegister(node),
+       g.UseUniqueRegister(node->InputAt(0)),
+       g.UseUniqueRegister(node->InputAt(1)), arraysize(temps), temps);
+}
 #else
 void InstructionSelector::VisitI8x16Shuffle(Node* node) { UNREACHABLE(); }
+void InstructionSelector::VisitI8x16Swizzle(Node* node) { UNREACHABLE(); }
 #endif  // V8_ENABLE_WEBASSEMBLY
 
 // This is a replica of SimdShuffle::Pack4Lanes. However, above function will
@@ -2744,10 +2830,10 @@ void InstructionSelector::VisitS128Const(Node* node) {
     // We have to use Pack4Lanes to reverse the bytes (lanes) on BE,
     // Which in this case is ineffective on LE.
     Emit(kS390_S128Const, dst,
-         g.UseImmediate(Pack4Lanes(bit_cast<uint8_t*>(&val[0]))),
-         g.UseImmediate(Pack4Lanes(bit_cast<uint8_t*>(&val[0]) + 4)),
-         g.UseImmediate(Pack4Lanes(bit_cast<uint8_t*>(&val[0]) + 8)),
-         g.UseImmediate(Pack4Lanes(bit_cast<uint8_t*>(&val[0]) + 12)));
+         g.UseImmediate(Pack4Lanes(base::bit_cast<uint8_t*>(&val[0]))),
+         g.UseImmediate(Pack4Lanes(base::bit_cast<uint8_t*>(&val[0]) + 4)),
+         g.UseImmediate(Pack4Lanes(base::bit_cast<uint8_t*>(&val[0]) + 8)),
+         g.UseImmediate(Pack4Lanes(base::bit_cast<uint8_t*>(&val[0]) + 12)));
   }
 }
 
@@ -2879,7 +2965,6 @@ void InstructionSelector::VisitStoreLane(Node* node) {
   }
 
   S390OperandGenerator g(this);
-  InstructionOperand outputs[] = {g.DefineSameAsFirst(node)};
   InstructionOperand inputs[5];
   size_t input_count = 0;
 
@@ -2889,7 +2974,23 @@ void InstructionSelector::VisitStoreLane(Node* node) {
   AddressingMode mode =
       g.GetEffectiveAddressMemoryOperand(node, inputs, &input_count);
   opcode |= AddressingModeField::encode(mode);
-  Emit(opcode, 1, outputs, input_count, inputs);
+  Emit(opcode, 0, nullptr, input_count, inputs);
+}
+
+void InstructionSelector::VisitI16x8DotI8x16I7x16S(Node* node) {
+  S390OperandGenerator g(this);
+  Emit(kS390_I16x8DotI8x16S, g.DefineAsRegister(node),
+       g.UseUniqueRegister(node->InputAt(0)),
+       g.UseUniqueRegister(node->InputAt(1)));
+}
+
+void InstructionSelector::VisitI32x4DotI8x16I7x16AddS(Node* node) {
+  S390OperandGenerator g(this);
+  InstructionOperand temps[] = {g.TempSimd128Register()};
+  Emit(kS390_I32x4DotI8x16AddS, g.DefineAsRegister(node),
+       g.UseUniqueRegister(node->InputAt(0)),
+       g.UseUniqueRegister(node->InputAt(1)),
+       g.UseUniqueRegister(node->InputAt(2)), arraysize(temps), temps);
 }
 
 void InstructionSelector::VisitTruncateFloat32ToInt32(Node* node) {

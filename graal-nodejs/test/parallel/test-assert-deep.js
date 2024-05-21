@@ -1,6 +1,6 @@
 'use strict';
 
-require('../common');
+const common = require('../common');
 const assert = require('assert');
 const util = require('util');
 const { AssertionError } = assert;
@@ -419,19 +419,31 @@ assertNotDeepOrStrict(
 // GH-14441. Circular structures should be consistent
 {
   const a = {};
-  const b = {};
   a.a = a;
+
+  const b = {};
   b.a = {};
   b.a.a = a;
+
   assertDeepAndStrictEqual(a, b);
 }
 
 {
+  const a = {};
+  a.a = a;
+  const b = {};
+  b.a = b;
+  const c = {};
+  c.a = a;
+  assertDeepAndStrictEqual(b, c);
+}
+
+{
   const a = new Set();
-  const b = new Set();
-  const c = new Set();
   a.add(a);
+  const b = new Set();
   b.add(b);
+  const c = new Set();
   c.add(a);
   assertDeepAndStrictEqual(b, c);
 }
@@ -1190,7 +1202,7 @@ assert.throws(
   });
   assertNotDeepOrStrict(a, b);
 
-  a = Object.create(null);
+  a = { __proto__: null };
   b = new RangeError('abc');
   Object.defineProperty(a, Symbol.toStringTag, {
     value: 'Error'
@@ -1207,4 +1219,61 @@ assert.throws(
   Object.defineProperty(b, 'x', { value: 1 });
 
   assertNotDeepOrStrict(a, b);
+}
+
+// eslint-disable-next-line node-core/crypto-check
+if (common.hasCrypto) {
+  const crypto = require('crypto');
+  const { subtle } = globalThis.crypto;
+
+  {
+    const a = crypto.createSecretKey(Buffer.alloc(1, 0));
+    const b = crypto.createSecretKey(Buffer.alloc(1, 1));
+
+    assertNotDeepOrStrict(a, b);
+  }
+
+  {
+    const a = crypto.createSecretKey(Buffer.alloc(0));
+    const b = crypto.createSecretKey(Buffer.alloc(0));
+
+    assertDeepAndStrictEqual(a, b);
+  }
+
+  (async () => {
+    {
+      const a = await subtle.importKey('raw', Buffer.alloc(1, 0), { name: 'HMAC', hash: 'SHA-256' }, true, ['sign']);
+      const b = await subtle.importKey('raw', Buffer.alloc(1, 1), { name: 'HMAC', hash: 'SHA-256' }, true, ['sign']);
+
+      assertNotDeepOrStrict(a, b);
+    }
+
+    {
+      const a = await subtle.importKey('raw', Buffer.alloc(1), { name: 'HMAC', hash: 'SHA-256' }, true, ['sign']);
+      const b = await subtle.importKey('raw', Buffer.alloc(1), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
+
+      assertNotDeepOrStrict(a, b);
+    }
+
+    {
+      const a = await subtle.importKey('raw', Buffer.alloc(1), { name: 'HMAC', hash: 'SHA-256' }, true, ['sign']);
+      const b = await subtle.importKey('raw', Buffer.alloc(1), { name: 'HMAC', hash: 'SHA-384' }, true, ['sign']);
+
+      assertNotDeepOrStrict(a, b);
+    }
+
+    {
+      const a = await subtle.importKey('raw', Buffer.alloc(1), { name: 'HMAC', hash: 'SHA-256' }, true, ['sign']);
+      const b = await subtle.importKey('raw', Buffer.alloc(1), { name: 'HMAC', hash: 'SHA-256' }, true, ['verify']);
+
+      assertNotDeepOrStrict(a, b);
+    }
+
+    {
+      const a = await subtle.importKey('raw', Buffer.alloc(1), { name: 'HMAC', hash: 'SHA-256' }, true, ['sign']);
+      const b = await subtle.importKey('raw', Buffer.alloc(1), { name: 'HMAC', hash: 'SHA-256' }, true, ['sign']);
+
+      assertDeepAndStrictEqual(a, b);
+    }
+  })().then(common.mustCall());
 }

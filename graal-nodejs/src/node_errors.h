@@ -19,9 +19,14 @@ void AppendExceptionLine(Environment* env,
                          v8::Local<v8::Message> message,
                          enum ErrorHandlingMode mode);
 
-[[noreturn]] void FatalError(const char* location, const char* message);
+// This function calls backtrace, it should have not be marked as [[noreturn]].
+// But it is a public API, removing the attribute can break.
+// Prefer UNREACHABLE() internally instead, it doesn't need manually set
+// location.
 [[noreturn]] void OnFatalError(const char* location, const char* message);
-[[noreturn]] void OOMErrorHandler(const char* location, bool is_heap_oom);
+// This function calls backtrace, do not mark as [[noreturn]]. Read more in the
+// ABORT macro.
+void OOMErrorHandler(const char* location, const v8::OOMDetails& details);
 
 // Helpers to construct errors similar to the ones provided by
 // lib/internal/errors.js.
@@ -30,12 +35,14 @@ void AppendExceptionLine(Environment* env,
 // a `Local<Value>` containing the TypeError with proper code and message
 
 #define ERRORS_WITH_CODE(V)                                                    \
+  V(ERR_ACCESS_DENIED, Error)                                                  \
   V(ERR_BUFFER_CONTEXT_NOT_AVAILABLE, Error)                                   \
   V(ERR_BUFFER_OUT_OF_BOUNDS, RangeError)                                      \
   V(ERR_BUFFER_TOO_LARGE, Error)                                               \
   V(ERR_CLOSED_MESSAGE_PORT, Error)                                            \
   V(ERR_CONSTRUCT_CALL_REQUIRED, TypeError)                                    \
   V(ERR_CONSTRUCT_CALL_INVALID, TypeError)                                     \
+  V(ERR_CRYPTO_CUSTOM_ENGINE_NOT_SUPPORTED, Error)                             \
   V(ERR_CRYPTO_INITIALIZATION_FAILED, Error)                                   \
   V(ERR_CRYPTO_INVALID_AUTH_TAG, TypeError)                                    \
   V(ERR_CRYPTO_INVALID_COUNTER, TypeError)                                     \
@@ -67,17 +74,22 @@ void AppendExceptionLine(Environment* env,
   V(ERR_INVALID_ARG_VALUE, TypeError)                                          \
   V(ERR_OSSL_EVP_INVALID_DIGEST, Error)                                        \
   V(ERR_INVALID_ARG_TYPE, TypeError)                                           \
+  V(ERR_INVALID_FILE_URL_HOST, TypeError)                                      \
+  V(ERR_INVALID_FILE_URL_PATH, TypeError)                                      \
   V(ERR_INVALID_OBJECT_DEFINE_PROPERTY, TypeError)                             \
   V(ERR_INVALID_MODULE, Error)                                                 \
   V(ERR_INVALID_STATE, Error)                                                  \
   V(ERR_INVALID_THIS, TypeError)                                               \
   V(ERR_INVALID_TRANSFER_OBJECT, TypeError)                                    \
+  V(ERR_INVALID_URL, TypeError)                                                \
+  V(ERR_INVALID_URL_SCHEME, TypeError)                                         \
   V(ERR_MEMORY_ALLOCATION_FAILED, Error)                                       \
   V(ERR_MESSAGE_TARGET_CONTEXT_UNAVAILABLE, Error)                             \
   V(ERR_MISSING_ARGS, TypeError)                                               \
   V(ERR_MISSING_TRANSFERABLE_IN_TRANSFER_LIST, TypeError)                      \
   V(ERR_MISSING_PASSPHRASE, TypeError)                                         \
   V(ERR_MISSING_PLATFORM_FOR_WORKER, Error)                                    \
+  V(ERR_MODULE_NOT_FOUND, Error)                                               \
   V(ERR_NON_CONTEXT_AWARE_DISABLED, Error)                                     \
   V(ERR_OUT_OF_RANGE, RangeError)                                              \
   V(ERR_SCRIPT_EXECUTION_INTERRUPTED, Error)                                   \
@@ -118,6 +130,10 @@ void AppendExceptionLine(Environment* env,
   inline void THROW_##code(                                                    \
       Environment* env, const char* format, Args&&... args) {                  \
     THROW_##code(env->isolate(), format, std::forward<Args>(args)...);         \
+  }                                                                            \
+  template <typename... Args>                                                  \
+  inline void THROW_##code(Realm* realm, const char* format, Args&&... args) { \
+    THROW_##code(realm->isolate(), format, std::forward<Args>(args)...);       \
   }
 ERRORS_WITH_CODE(V)
 #undef V
@@ -125,6 +141,7 @@ ERRORS_WITH_CODE(V)
 // Errors with predefined static messages
 
 #define PREDEFINED_ERROR_MESSAGES(V)                                           \
+  V(ERR_ACCESS_DENIED, "Access to this API has been restricted")               \
   V(ERR_BUFFER_CONTEXT_NOT_AVAILABLE,                                          \
     "Buffer is not available for the current Context")                         \
   V(ERR_CLOSED_MESSAGE_PORT, "Cannot send data on closed MessagePort")         \
@@ -158,8 +175,10 @@ ERRORS_WITH_CODE(V)
   V(ERR_ILLEGAL_CONSTRUCTOR, "Illegal constructor")                            \
   V(ERR_INVALID_ADDRESS, "Invalid socket address")                             \
   V(ERR_INVALID_MODULE, "No such module")                                      \
+  V(ERR_INVALID_STATE, "Invalid state")                                        \
   V(ERR_INVALID_THIS, "Value of \"this\" is the wrong type")                   \
   V(ERR_INVALID_TRANSFER_OBJECT, "Found invalid object in transferList")       \
+  V(ERR_INVALID_URL_SCHEME, "The URL must be of scheme file:")                 \
   V(ERR_MEMORY_ALLOCATION_FAILED, "Failed to allocate memory")                 \
   V(ERR_OSSL_EVP_INVALID_DIGEST, "Invalid digest used")                        \
   V(ERR_MESSAGE_TARGET_CONTEXT_UNAVAILABLE,                                    \
@@ -274,13 +293,28 @@ void PerIsolateMessageListener(v8::Local<v8::Message> message,
 
 void DecorateErrorStack(Environment* env,
                         const errors::TryCatchScope& try_catch);
+
+class PrinterTryCatch : public v8::TryCatch {
+ public:
+  enum PrintSourceLine { kPrintSourceLine, kDontPrintSourceLine };
+  explicit PrinterTryCatch(v8::Isolate* isolate,
+                           PrintSourceLine print_source_line)
+      : v8::TryCatch(isolate),
+        isolate_(isolate),
+        print_source_line_(print_source_line) {}
+  ~PrinterTryCatch();
+
+ private:
+  v8::Isolate* isolate_;
+  PrintSourceLine print_source_line_;
+};
+
 }  // namespace errors
 
 v8::ModifyCodeGenerationFromStringsResult ModifyCodeGenerationFromStrings(
     v8::Local<v8::Context> context,
     v8::Local<v8::Value> source,
     bool is_code_like);
-
 }  // namespace node
 
 #endif  // defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS

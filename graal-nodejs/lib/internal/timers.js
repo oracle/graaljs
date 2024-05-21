@@ -77,19 +77,15 @@ const {
   MathTrunc,
   NumberIsFinite,
   NumberMIN_SAFE_INTEGER,
-  ObjectCreate,
   ReflectApply,
   Symbol,
 } = primordials;
 
+const binding = internalBinding('timers');
 const {
-  scheduleTimer,
-  toggleTimerRef,
-  getLibuvNow,
   immediateInfo,
   timeoutInfo,
-  toggleImmediateRef,
-} = internalBinding('timers');
+} = binding;
 
 const {
   getDefaultTriggerAsyncId,
@@ -154,7 +150,7 @@ const timerListQueue = new PriorityQueue(compareTimersLists, setPosition);
 //
 // - key = time in milliseconds
 // - value = linked list
-const timerListMap = ObjectCreate(null);
+const timerListMap = { __proto__: null };
 
 function initAsyncResource(resource, type) {
   const asyncId = resource[async_id_symbol] = newAsyncId();
@@ -307,13 +303,17 @@ class ImmediateList {
 const immediateQueue = new ImmediateList();
 
 function incRefCount() {
-  if (timeoutInfo[0]++ === 0)
-    toggleTimerRef(true);
+  if (timeoutInfo[0]++ === 0) {
+    // We need to use the binding as the receiver for fast API calls.
+    binding.toggleTimerRef(true);
+  }
 }
 
 function decRefCount() {
-  if (--timeoutInfo[0] === 0)
-    toggleTimerRef(false);
+  if (--timeoutInfo[0] === 0) {
+    // We need to use the binding as the receiver for fast API calls.
+    binding.toggleTimerRef(false);
+  }
 }
 
 // Schedule or re-schedule a timer.
@@ -357,7 +357,8 @@ function insertGuarded(item, refed, start) {
   item[kRefed] = refed;
 }
 
-function insert(item, msecs, start = getLibuvNow()) {
+// We need to use the binding as the receiver for fast API calls.
+function insert(item, msecs, start = binding.getLibuvNow()) {
   // Truncate so that accuracy of sub-millisecond timers is not assumed.
   msecs = MathTrunc(msecs);
   item._idleStart = start;
@@ -371,7 +372,8 @@ function insert(item, msecs, start = getLibuvNow()) {
     timerListQueue.insert(list);
 
     if (nextExpiry > expiry) {
-      scheduleTimer(msecs);
+      // We need to use the binding as the receiver for fast API calls.
+      binding.scheduleTimer(msecs);
       nextExpiry = expiry;
     }
   }
@@ -560,8 +562,10 @@ function getTimerCallbacks(runNextTicks) {
       emitBefore(asyncId, timer[trigger_async_id_symbol], timer);
 
       let start;
-      if (timer._repeat)
-        start = getLibuvNow();
+      if (timer._repeat) {
+        // We need to use the binding as the receiver for fast API calls.
+        start = binding.getLibuvNow();
+      }
 
       try {
         const args = timer._timerArgs;
@@ -628,8 +632,11 @@ class Immediate {
   ref() {
     if (this[kRefed] === false) {
       this[kRefed] = true;
-      if (immediateInfo[kRefCount]++ === 0)
-        toggleImmediateRef(true);
+
+      if (immediateInfo[kRefCount]++ === 0) {
+        // We need to use the binding as the receiver for fast API calls.
+        binding.toggleImmediateRef(true);
+      }
     }
     return this;
   }
@@ -637,8 +644,10 @@ class Immediate {
   unref() {
     if (this[kRefed] === true) {
       this[kRefed] = false;
-      if (--immediateInfo[kRefCount] === 0)
-        toggleImmediateRef(false);
+      if (--immediateInfo[kRefCount] === 0) {
+        // We need to use the binding as the receiver for fast API calls.
+        binding.toggleImmediateRef(false);
+      }
     }
     return this;
   }

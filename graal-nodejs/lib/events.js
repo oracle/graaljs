@@ -23,7 +23,8 @@
 
 const {
   ArrayPrototypeJoin,
-  ArrayPrototypeShift,
+  ArrayPrototypePop,
+  ArrayPrototypePush,
   ArrayPrototypeSlice,
   ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
@@ -32,8 +33,7 @@ const {
   ErrorCaptureStackTrace,
   FunctionPrototypeBind,
   FunctionPrototypeCall,
-  NumberIsNaN,
-  ObjectCreate,
+  NumberMAX_SAFE_INTEGER,
   ObjectDefineProperty,
   ObjectDefineProperties,
   ObjectGetPrototypeOf,
@@ -60,6 +60,8 @@ const {
 } = require('internal/util/inspect');
 
 let spliceOne;
+let FixedQueue;
+let kFirstEventParam;
 let kResistStopPropagation;
 
 const {
@@ -68,24 +70,28 @@ const {
   codes: {
     ERR_INVALID_ARG_TYPE,
     ERR_INVALID_THIS,
-    ERR_OUT_OF_RANGE,
     ERR_UNHANDLED_ERROR,
   },
   genericNodeError,
 } = require('internal/errors');
 
 const {
+  validateInteger,
   validateAbortSignal,
   validateBoolean,
   validateFunction,
+  validateNumber,
   validateString,
 } = require('internal/validators');
+const { addAbortListener } = require('internal/events/abort_listener');
 
 const kCapture = Symbol('kCapture');
 const kErrorMonitor = Symbol('events.errorMonitor');
+const kShapeMode = Symbol('shapeMode');
 const kMaxEventTargetListeners = Symbol('events.maxEventTargetListeners');
 const kMaxEventTargetListenersWarned =
   Symbol('events.maxEventTargetListenersWarned');
+const kWatermarkData = SymbolFor('nodejs.watermarkData');
 
 let EventEmitterAsyncResource;
 // The EventEmitterAsyncResource has to be initialized lazily because event.js
@@ -277,11 +283,7 @@ ObjectDefineProperty(EventEmitter, 'defaultMaxListeners', {
     return defaultMaxListeners;
   },
   set: function(arg) {
-    if (typeof arg !== 'number' || arg < 0 || NumberIsNaN(arg)) {
-      throw new ERR_OUT_OF_RANGE('defaultMaxListeners',
-                                 'a non-negative number',
-                                 arg);
-    }
+    validateNumber(arg, 'defaultMaxListeners', 0);
     defaultMaxListeners = arg;
   },
 });
@@ -311,8 +313,7 @@ ObjectDefineProperties(EventEmitter, {
  */
 EventEmitter.setMaxListeners =
   function(n = defaultMaxListeners, ...eventTargets) {
-    if (typeof n !== 'number' || n < 0 || NumberIsNaN(n))
-      throw new ERR_OUT_OF_RANGE('n', 'a non-negative number', n);
+    validateNumber(n, 'setMaxListeners', 0);
     if (eventTargets.length === 0) {
       defaultMaxListeners = n;
     } else {
@@ -342,8 +343,11 @@ EventEmitter.init = function(opts) {
 
   if (this._events === undefined ||
       this._events === ObjectGetPrototypeOf(this)._events) {
-    this._events = ObjectCreate(null);
+    this._events = { __proto__: null };
     this._eventsCount = 0;
+    this[kShapeMode] = false;
+  } else {
+    this[kShapeMode] = true;
   }
 
   this._maxListeners = this._maxListeners || undefined;
@@ -408,9 +412,7 @@ function emitUnhandledRejectionOrErr(ee, err, type, args) {
  * @returns {EventEmitter}
  */
 EventEmitter.prototype.setMaxListeners = function setMaxListeners(n) {
-  if (typeof n !== 'number' || n < 0 || NumberIsNaN(n)) {
-    throw new ERR_OUT_OF_RANGE('n', 'a non-negative number', n);
-  }
+  validateNumber(n, 'setMaxListeners', 0);
   this._maxListeners = n;
   return this;
 };
@@ -551,7 +553,7 @@ function _addListener(target, type, listener, prepend) {
 
   events = target._events;
   if (events === undefined) {
-    events = target._events = ObjectCreate(null);
+    events = target._events = { __proto__: null };
     target._eventsCount = 0;
   } else {
     // To avoid recursion in the case that type === "newListener"! Before
@@ -688,9 +690,13 @@ EventEmitter.prototype.removeListener =
         return this;
 
       if (list === listener || list.listener === listener) {
-        if (--this._eventsCount === 0)
-          this._events = ObjectCreate(null);
-        else {
+        this._eventsCount -= 1;
+
+        if (this[kShapeMode]) {
+          events[type] = undefined;
+        } else if (this._eventsCount === 0) {
+          this._events = { __proto__: null };
+        } else {
           delete events[type];
           if (events.removeListener)
             this.emit('removeListener', type, list.listener || listener);
@@ -744,14 +750,15 @@ EventEmitter.prototype.removeAllListeners =
       // Not listening for removeListener, no need to emit
       if (events.removeListener === undefined) {
         if (arguments.length === 0) {
-          this._events = ObjectCreate(null);
+          this._events = { __proto__: null };
           this._eventsCount = 0;
         } else if (events[type] !== undefined) {
           if (--this._eventsCount === 0)
-            this._events = ObjectCreate(null);
+            this._events = { __proto__: null };
           else
             delete events[type];
         }
+        this[kShapeMode] = false;
         return this;
       }
 
@@ -762,8 +769,9 @@ EventEmitter.prototype.removeAllListeners =
           this.removeAllListeners(key);
         }
         this.removeAllListeners('removeListener');
-        this._events = ObjectCreate(null);
+        this._events = { __proto__: null };
         this._eventsCount = 0;
+        this[kShapeMode] = false;
         return this;
       }
 
@@ -1040,25 +1048,46 @@ function eventTargetAgnosticAddListener(emitter, name, listener, flags) {
  * Returns an `AsyncIterator` that iterates `event` events.
  * @param {EventEmitter} emitter
  * @param {string | symbol} event
- * @param {{ signal: AbortSignal; }} [options]
+ * @param {{
+ *    signal: AbortSignal;
+ *    close?: string[];
+ *    highWaterMark?: number,
+ *    lowWaterMark?: number
+ *   }} [options]
  * @returns {AsyncIterator}
  */
 function on(emitter, event, options = kEmptyObject) {
-  const signal = options?.signal;
+  // Parameters validation
+  const signal = options.signal;
   validateAbortSignal(signal, 'options.signal');
   if (signal?.aborted)
     throw new AbortError(undefined, { cause: signal?.reason });
+  // Support both highWaterMark and highWatermark for backward compatibility
+  const highWatermark = options.highWaterMark ?? options.highWatermark ?? NumberMAX_SAFE_INTEGER;
+  validateInteger(highWatermark, 'options.highWaterMark', 1);
+  // Support both lowWaterMark and lowWatermark for backward compatibility
+  const lowWatermark = options.lowWaterMark ?? options.lowWatermark ?? 1;
+  validateInteger(lowWatermark, 'options.lowWaterMark', 1);
 
-  const unconsumedEvents = [];
-  const unconsumedPromises = [];
+  // Preparing controlling queues and variables
+  FixedQueue ??= require('internal/fixed_queue');
+  const unconsumedEvents = new FixedQueue();
+  const unconsumedPromises = new FixedQueue();
+  let paused = false;
   let error = null;
   let finished = false;
+  let size = 0;
 
   const iterator = ObjectSetPrototypeOf({
     next() {
       // First, we consume all unread events
-      const value = unconsumedEvents.shift();
-      if (value) {
+      if (size) {
+        const value = unconsumedEvents.shift();
+        size--;
+        if (paused && size < lowWatermark) {
+          emitter.resume();
+          paused = false;
+        }
         return PromiseResolve(createIterResult(value, false));
       }
 
@@ -1073,9 +1102,7 @@ function on(emitter, event, options = kEmptyObject) {
       }
 
       // If the iterator is finished, resolve to done
-      if (finished) {
-        return PromiseResolve(createIterResult(undefined, true));
-      }
+      if (finished) return closeHandler();
 
       // Wait until an event happens
       return new Promise(function(resolve, reject) {
@@ -1084,24 +1111,7 @@ function on(emitter, event, options = kEmptyObject) {
     },
 
     return() {
-      eventTargetAgnosticRemoveListener(emitter, event, eventHandler);
-      eventTargetAgnosticRemoveListener(emitter, 'error', errorHandler);
-
-      if (signal) {
-        eventTargetAgnosticRemoveListener(
-          signal,
-          'abort',
-          abortListener,
-          { once: true });
-      }
-
-      finished = true;
-
-      for (const promise of unconsumedPromises) {
-        promise.resolve(createIterResult(undefined, true));
-      }
-
-      return PromiseResolve(createIterResult(undefined, true));
+      return closeHandler();
     },
 
     throw(err) {
@@ -1109,85 +1119,106 @@ function on(emitter, event, options = kEmptyObject) {
         throw new ERR_INVALID_ARG_TYPE('EventEmitter.AsyncIterator',
                                        'Error', err);
       }
-      error = err;
-      eventTargetAgnosticRemoveListener(emitter, event, eventHandler);
-      eventTargetAgnosticRemoveListener(emitter, 'error', errorHandler);
+      errorHandler(err);
     },
-
     [SymbolAsyncIterator]() {
       return this;
     },
+    [kWatermarkData]: {
+      /**
+       * The current queue size
+       */
+      get size() {
+        return size;
+      },
+      /**
+       * The low watermark. The emitter is resumed every time size is lower than it
+       */
+      get low() {
+        return lowWatermark;
+      },
+      /**
+       * The high watermark. The emitter is paused every time size is higher than it
+       */
+      get high() {
+        return highWatermark;
+      },
+      /**
+       * It checks whether the emitter is paused by the watermark controller or not
+       */
+      get isPaused() {
+        return paused;
+      },
+    },
   }, AsyncIteratorPrototype);
 
-  eventTargetAgnosticAddListener(emitter, event, eventHandler);
+  // Adding event handlers
+  const { addEventListener, removeAll } = listenersController();
+  kFirstEventParam ??= require('internal/events/symbols').kFirstEventParam;
+  addEventListener(emitter, event, options[kFirstEventParam] ? eventHandler : function(...args) {
+    return eventHandler(args);
+  });
   if (event !== 'error' && typeof emitter.on === 'function') {
-    emitter.on('error', errorHandler);
+    addEventListener(emitter, 'error', errorHandler);
+  }
+  const closeEvents = options?.close;
+  if (closeEvents?.length) {
+    for (let i = 0; i < closeEvents.length; i++) {
+      addEventListener(emitter, closeEvents[i], closeHandler);
+    }
   }
 
-  if (signal) {
-    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
-    eventTargetAgnosticAddListener(
-      signal,
-      'abort',
-      abortListener,
-      { __proto__: null, once: true, [kResistStopPropagation]: true });
-  }
+  const abortListenerDisposable = signal ? addAbortListener(signal, abortListener) : null;
+
+  return iterator;
 
   function abortListener() {
     errorHandler(new AbortError(undefined, { cause: signal?.reason }));
   }
 
-  function eventHandler(...args) {
-    const promise = ArrayPrototypeShift(unconsumedPromises);
-    if (promise) {
-      promise.resolve(createIterResult(args, false));
-    } else {
-      unconsumedEvents.push(args);
-    }
+  function eventHandler(value) {
+    if (unconsumedPromises.isEmpty()) {
+      size++;
+      if (!paused && size > highWatermark) {
+        paused = true;
+        emitter.pause();
+      }
+      unconsumedEvents.push(value);
+    } else unconsumedPromises.shift().resolve(createIterResult(value, false));
   }
 
   function errorHandler(err) {
+    if (unconsumedPromises.isEmpty()) error = err;
+    else unconsumedPromises.shift().reject(err);
+
+    closeHandler();
+  }
+
+  function closeHandler() {
+    abortListenerDisposable?.[SymbolDispose]();
+    removeAll();
     finished = true;
-
-    const toError = ArrayPrototypeShift(unconsumedPromises);
-
-    if (toError) {
-      toError.reject(err);
-    } else {
-      // The next time we call next()
-      error = err;
+    const doneResult = createIterResult(undefined, true);
+    while (!unconsumedPromises.isEmpty()) {
+      unconsumedPromises.shift().resolve(doneResult);
     }
 
-    iterator.return();
+    return PromiseResolve(doneResult);
   }
-  return iterator;
 }
 
-let queueMicrotask;
+function listenersController() {
+  const listeners = [];
 
-function addAbortListener(signal, listener) {
-  if (signal === undefined) {
-    throw new ERR_INVALID_ARG_TYPE('signal', 'AbortSignal', signal);
-  }
-  validateAbortSignal(signal, 'signal');
-  validateFunction(listener, 'listener');
-
-  let removeEventListener;
-  if (signal.aborted) {
-    queueMicrotask ??= require('internal/process/task_queues').queueMicrotask;
-    queueMicrotask(() => listener());
-  } else {
-    kResistStopPropagation ??= require('internal/event_target').kResistStopPropagation;
-    // TODO(atlowChemi) add { subscription: true } and return directly
-    signal.addEventListener('abort', listener, { __proto__: null, once: true, [kResistStopPropagation]: true });
-    removeEventListener = () => {
-      signal.removeEventListener('abort', listener);
-    };
-  }
   return {
-    __proto__: null,
-    [SymbolDispose]() {
-      removeEventListener?.();
+    addEventListener(emitter, event, handler, flags) {
+      eventTargetAgnosticAddListener(emitter, event, handler, flags);
+      ArrayPrototypePush(listeners, [emitter, event, handler, flags]);
+    },
+    removeAll() {
+      while (listeners.length > 0) {
+        ReflectApply(eventTargetAgnosticRemoveListener, undefined, ArrayPrototypePop(listeners));
+      }
     },
   };
 }

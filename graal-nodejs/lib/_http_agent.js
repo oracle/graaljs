@@ -30,14 +30,15 @@ const {
   ArrayPrototypeSome,
   ArrayPrototypeSplice,
   FunctionPrototypeCall,
-  ObjectCreate,
+  NumberParseInt,
   ObjectKeys,
   ObjectSetPrototypeOf,
   ObjectValues,
+  RegExpPrototypeExec,
   StringPrototypeIndexOf,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
-  StringPrototypeSubstr,
+  StringPrototypeSubstring,
   Symbol,
 } = primordials;
 
@@ -103,9 +104,9 @@ function Agent(options) {
 
   // Don't confuse net and make it think that we're connecting to a pipe
   this.options.path = null;
-  this.requests = ObjectCreate(null);
-  this.sockets = ObjectCreate(null);
-  this.freeSockets = ObjectCreate(null);
+  this.requests = { __proto__: null };
+  this.sockets = { __proto__: null };
+  this.freeSockets = { __proto__: null };
   this.keepAliveMsecs = this.options.keepAliveMsecs || 1000;
   this.keepAlive = this.options.keepAlive || false;
   this.maxSockets = this.options.maxSockets || Agent.defaultMaxSockets;
@@ -252,8 +253,7 @@ Agent.prototype.addRequest = function addRequest(req, options, port/* legacy */,
   if (options.socketPath)
     options.path = options.socketPath;
 
-  if (!options.servername && options.servername !== '')
-    options.servername = calculateServerName(options, req);
+  normalizeServerName(options, req);
 
   const name = this.getName(options);
   if (!this.sockets[name]) {
@@ -312,8 +312,7 @@ Agent.prototype.createSocket = function createSocket(req, options, cb) {
   if (options.socketPath)
     options.path = options.socketPath;
 
-  if (!options.servername && options.servername !== '')
-    options.servername = calculateServerName(options, req);
+  normalizeServerName(options, req);
 
   const name = this.getName(options);
   options._agentKey = name;
@@ -343,6 +342,11 @@ Agent.prototype.createSocket = function createSocket(req, options, cb) {
     oncreate(null, newSocket);
 };
 
+function normalizeServerName(options, req) {
+  if (!options.servername && options.servername !== '')
+    options.servername = calculateServerName(options, req);
+}
+
 function calculateServerName(options, req) {
   let servername = options.host;
   const hostHeader = req.getHeader('host');
@@ -359,7 +363,7 @@ function calculateServerName(options, req) {
         // Leading '[', but no ']'. Need to do something...
         servername = hostHeader;
       } else {
-        servername = StringPrototypeSubstr(hostHeader, 1, index - 1);
+        servername = StringPrototypeSubstring(hostHeader, 1, index);
       }
     } else {
       servername = StringPrototypeSplit(hostHeader, ':', 1)[0];
@@ -483,7 +487,24 @@ Agent.prototype.keepSocketAlive = function keepSocketAlive(socket) {
   socket.setKeepAlive(true, this.keepAliveMsecs);
   socket.unref();
 
-  const agentTimeout = this.options.timeout || 0;
+  let agentTimeout = this.options.timeout || 0;
+
+  if (socket._httpMessage?.res) {
+    const keepAliveHint = socket._httpMessage.res.headers['keep-alive'];
+
+    if (keepAliveHint) {
+      const hint = RegExpPrototypeExec(/^timeout=(\d+)/, keepAliveHint)?.[1];
+
+      if (hint) {
+        const serverHintTimeout = NumberParseInt(hint) * 1000;
+
+        if (serverHintTimeout < agentTimeout) {
+          agentTimeout = serverHintTimeout;
+        }
+      }
+    }
+  }
+
   if (socket.timeout !== agentTimeout) {
     socket.setTimeout(agentTimeout);
   }
@@ -533,5 +554,5 @@ function asyncResetHandle(socket) {
 
 module.exports = {
   Agent,
-  globalAgent: new Agent(),
+  globalAgent: new Agent({ keepAlive: true, scheduling: 'lifo', timeout: 5000 }),
 };

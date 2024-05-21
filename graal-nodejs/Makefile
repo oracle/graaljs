@@ -82,7 +82,8 @@ EXEEXT := $(shell $(PYTHON) -c \
 		"import sys; print('.exe' if sys.platform == 'win32' else '')")
 
 NODE_EXE = node$(EXEEXT)
-NODE ?= ./$(NODE_EXE)
+# Use $(PWD) so we can cd to anywhere before calling this
+NODE ?= "$(PWD)/$(NODE_EXE)"
 NODE_G_EXE = node_g$(EXEEXT)
 NPM ?= ./deps/npm/bin/npm-cli.js
 
@@ -96,10 +97,9 @@ BUILD_RELEASE_FLAGS ?= $(BUILD_DOWNLOAD_FLAGS) $(BUILD_INTL_FLAGS)
 V ?= 0
 
 # Use -e to double check in case it's a broken link
-# Use $(PWD) so we can cd to anywhere before calling this
 available-node = \
-	if [ -x $(PWD)/$(NODE) ] && [ -e $(PWD)/$(NODE) ]; then \
-		$(PWD)/$(NODE) $(1); \
+	if [ -x "$(NODE)" ] && [ -e "$(NODE)" ]; then \
+		"$(NODE)" $(1); \
 	elif [ -x `command -v node` ] && [ -e `command -v node` ] && [ `command -v node` ]; then \
 		`command -v node` $(1); \
 	else \
@@ -192,11 +192,11 @@ config.gypi: configure configure.py src/node_version.h
 
 .PHONY: install
 install: all ## Installs node into $PREFIX (default=/usr/local).
-	$(PYTHON) tools/install.py $@ '$(DESTDIR)' '$(PREFIX)'
+	$(PYTHON) tools/install.py $@ --dest-dir '$(DESTDIR)' --prefix '$(PREFIX)'
 
 .PHONY: uninstall
 uninstall: ## Uninstalls node from $PREFIX (default=/usr/local).
-	$(PYTHON) tools/install.py $@ '$(DESTDIR)' '$(PREFIX)'
+	$(PYTHON) tools/install.py $@ --dest-dir '$(DESTDIR)' --prefix '$(PREFIX)'
 
 .PHONY: clean
 .NOTPARALLEL: clean
@@ -291,7 +291,7 @@ coverage-report-js:
 # Runs the C++ tests using the built `cctest` executable.
 cctest: all
 	@out/$(BUILDTYPE)/$@ --gtest_filter=$(GTEST_FILTER)
-	@out/$(BUILDTYPE)/embedtest "require('./test/embedding/test-embedding.js')"
+	$(NODE) ./test/embedding/test-embedding.js
 
 .PHONY: list-gtests
 list-gtests:
@@ -356,10 +356,6 @@ test-cov: all
 	$(MAKE) cctest
 	CI_SKIP_TESTS=$(COV_SKIP_TESTS) $(MAKE) jstest
 
-.PHONY: test-parallel
-test-parallel: all
-	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) parallel
-
 .PHONY: test-valgrind
 test-valgrind: all
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) --valgrind sequential parallel message
@@ -388,6 +384,28 @@ test/addons/.docbuildstamp: $(DOCBUILDSTAMP_PREREQS) tools/doc/node_modules
 		[ $$? -eq 0 ] && touch $@; \
 	fi
 
+# All files that will be included in headers tarball should be listed as deps
+# for generating headers. The list is manually synchronized with install.py.
+ADDONS_HEADERS_PREREQS := tools/install.py \
+	config.gypi common.gypi \
+	$(wildcard deps/openssl/config/*.h) \
+	$(wildcard deps/openssl/openssl/include/openssl/*.h) \
+	$(wildcard deps/uv/include/*.h) \
+	$(wildcard deps/uv/include/*/*.h) \
+	$(wildcard deps/v8/include/*.h) \
+	$(wildcard deps/v8/include/*/*.h) \
+	deps/zlib/zconf.h deps/zlib/zlib.h \
+	src/node.h src/node_api.h src/js_native_api.h src/js_native_api_types.h \
+	src/node_api_types.h src/node_buffer.h src/node_object_wrap.h \
+	src/node_version.h
+
+ADDONS_HEADERS_DIR = out/$(BUILDTYPE)/addons_headers
+
+# Generate node headers which will be used for building addons.
+test/addons/.headersbuildstamp: $(ADDONS_HEADERS_PREREQS)
+	$(PYTHON) tools/install.py install --headers-only --dest-dir '$(ADDONS_HEADERS_DIR)' --prefix '/'
+	@touch $@
+
 ADDONS_BINDING_GYPS := \
 	$(filter-out test/addons/??_*/binding.gyp, \
 		$(wildcard test/addons/*/binding.gyp))
@@ -396,16 +414,11 @@ ADDONS_BINDING_SOURCES := \
 	$(filter-out test/addons/??_*/*.cc, $(wildcard test/addons/*/*.cc)) \
 	$(filter-out test/addons/??_*/*.h, $(wildcard test/addons/*/*.h))
 
-ADDONS_PREREQS := config.gypi \
-	deps/npm/node_modules/node-gyp/package.json tools/build-addons.mjs \
-	deps/uv/include/*.h deps/v8/include/*.h \
-	src/node.h src/node_buffer.h src/node_object_wrap.h src/node_version.h
+ADDONS_PREREQS := test/addons/.headersbuildstamp \
+	deps/npm/node_modules/node-gyp/package.json tools/build_addons.py
 
 define run_build_addons
-env npm_config_loglevel=$(LOGLEVEL) npm_config_nodedir="$$PWD" \
-	npm_config_python="$(PYTHON)" $(NODE) "$$PWD/tools/build-addons.mjs" \
-	"$$PWD/deps/npm/node_modules/node-gyp/bin/node-gyp.js" \
-	$1
+env $(PYTHON) "$$PWD/tools/build_addons.py" --loglevel=$(LOGLEVEL) --headers-dir "$(ADDONS_HEADERS_DIR)" $1
 touch $2
 endef
 
@@ -438,8 +451,7 @@ JS_NATIVE_API_BINDING_SOURCES := \
 # Implicitly depends on $(NODE_EXE), see the build-js-native-api-tests rule for rationale.
 test/js-native-api/.buildstamp: $(ADDONS_PREREQS) \
 	$(JS_NATIVE_API_BINDING_GYPS) $(JS_NATIVE_API_BINDING_SOURCES) \
-	src/node_api.h src/node_api_types.h src/js_native_api.h \
-	src/js_native_api_types.h src/js_native_api_v8.h src/js_native_api_v8_internals.h
+	src/js_native_api_v8.h src/js_native_api_v8_internals.h
 	@$(call run_build_addons,"$$PWD/test/js-native-api",$@)
 
 .PHONY: build-js-native-api-tests
@@ -463,8 +475,7 @@ NODE_API_BINDING_SOURCES := \
 # Implicitly depends on $(NODE_EXE), see the build-node-api-tests rule for rationale.
 test/node-api/.buildstamp: $(ADDONS_PREREQS) \
 	$(NODE_API_BINDING_GYPS) $(NODE_API_BINDING_SOURCES) \
-	src/node_api.h src/node_api_types.h src/js_native_api.h \
-	src/js_native_api_types.h src/js_native_api_v8.h src/js_native_api_v8_internals.h
+	src/js_native_api_v8.h src/js_native_api_v8_internals.h
 	@$(call run_build_addons,"$$PWD/test/node-api",$@)
 
 .PHONY: build-node-api-tests
@@ -559,7 +570,7 @@ test-ci: | clear-stalled bench-addons-build build-addons build-js-native-api-tes
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) -p tap --logfile test.tap \
 		--mode=$(BUILDTYPE_LOWER) --flaky-tests=$(FLAKY_TESTS) \
 		$(TEST_CI_ARGS) $(CI_JS_SUITES) $(CI_NATIVE_SUITES) $(CI_DOC)
-	out/Release/embedtest 'require("./test/embedding/test-embedding.js")'
+	$(NODE) ./test/embedding/test-embedding.js
 	$(info Clean up any leftover processes, error if found.)
 	ps awwx | grep Release/node | grep -v grep | cat
 	@PS_OUT=`ps awwx | grep Release/node | grep -v grep | awk '{print $$1}'`; \
@@ -588,16 +599,10 @@ run-ci: build-ci
 	$(MAKE) test-ci -j1
 
 .PHONY: test-release
-test-release: test-build
-	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER)
-
 .PHONY: test-debug
-test-debug: test-build
-	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=debug
-
-.PHONY: test-message
-test-message: test-build
-	$(PYTHON) tools/test.py $(PARALLEL_ARGS) message
+test-debug: BUILDTYPE_LOWER=debug
+test-release test-debug: test-build
+	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER)
 
 .PHONY: test-wpt
 test-wpt: all
@@ -607,23 +612,12 @@ test-wpt: all
 test-wpt-report:
 	$(RM) -r out/wpt
 	mkdir -p out/wpt
-	WPT_REPORT=1 $(PYTHON) tools/test.py --shell $(NODE) $(PARALLEL_ARGS) wpt
-
-.PHONY: test-simple
-test-simple: | cctest # Depends on 'all'.
-	$(PYTHON) tools/test.py $(PARALLEL_ARGS) parallel sequential
-
-.PHONY: test-pummel
-test-pummel: all
-	$(PYTHON) tools/test.py $(PARALLEL_ARGS) pummel
+	-WPT_REPORT=1 $(PYTHON) tools/test.py --shell $(NODE) $(PARALLEL_ARGS) wpt
+	$(NODE) "$$PWD/tools/merge-wpt-reports.mjs"
 
 .PHONY: test-internet
 test-internet: all
 	$(PYTHON) tools/test.py $(PARALLEL_ARGS) internet
-
-.PHONY: test-benchmark
-test-benchmark: | bench-addons-build
-	$(PYTHON) tools/test.py $(PARALLEL_ARGS) benchmark
 
 .PHONY: test-tick-processor
 test-tick-processor: all
@@ -686,15 +680,12 @@ test-addons: test-build test-js-native-api test-node-api
 .PHONY: test-addons-clean
 .NOTPARALLEL: test-addons-clean
 test-addons-clean:
+	$(RM) -r "$(ADDONS_HEADERS_DIR)"
 	$(RM) -r test/addons/??_*/
 	$(RM) -r test/addons/*/build
-	$(RM) test/addons/.buildstamp test/addons/.docbuildstamp
+	$(RM) test/addons/.buildstamp test/addons/.docbuildstamp test/addons/.headersbuildstamp
 	$(MAKE) test-js-native-api-clean
 	$(MAKE) test-node-api-clean
-
-.PHONY: test-async-hooks
-test-async-hooks:
-	$(PYTHON) tools/test.py $(PARALLEL_ARGS) --mode=$(BUILDTYPE_LOWER) async-hooks
 
 .PHONY: test-with-async-hooks
 test-with-async-hooks:
@@ -1246,7 +1237,7 @@ $(TARBALL)-headers: release-only
 		--tag=$(TAG) \
 		--release-urlbase=$(RELEASE_URLBASE) \
 		$(CONFIG_FLAGS) $(BUILD_RELEASE_FLAGS)
-	HEADERS_ONLY=1 $(PYTHON) tools/install.py install '$(TARNAME)' '/'
+	$(PYTHON) tools/install.py install --headers-only --dest-dir '$(TARNAME)' --prefix '/'
 	find $(TARNAME)/ -type l | xargs $(RM)
 	tar -cf $(TARNAME)-headers.tar $(TARNAME)
 	$(RM) -r $(TARNAME)
@@ -1439,6 +1430,7 @@ LINT_CPP_FILES = $(filter-out $(LINT_CPP_EXCLUDE), $(wildcard \
 	test/fixtures/*.c \
 	test/js-native-api/*/*.cc \
 	test/node-api/*/*.cc \
+	tools/js2c.cc \
 	tools/icu/*.cc \
 	tools/icu/*.h \
 	tools/code_cache/*.cc \
@@ -1525,15 +1517,15 @@ cpplint: lint-cpp
 # Try with '--system' if it fails without; the system may have set '--user'
 lint-py-build:
 	$(info Pip installing ruff on $(shell $(PYTHON) --version)...)
-	$(PYTHON) -m pip install --upgrade --target tools/pip/site-packages ruff==0.0.272 || \
-		$(PYTHON) -m pip install --upgrade --system --target tools/pip/site-packages ruff==0.0.272
+	$(PYTHON) -m pip install --upgrade --target tools/pip/site-packages ruff==0.3.4 || \
+		$(PYTHON) -m pip install --upgrade --system --target tools/pip/site-packages ruff==0.3.4
 
 .PHONY: lint-py
 ifneq ("","$(wildcard tools/pip/site-packages/ruff)")
 # Lint the Python code with ruff.
 lint-py:
 	tools/pip/site-packages/bin/ruff --version
-	tools/pip/site-packages/bin/ruff .
+	tools/pip/site-packages/bin/ruff check .
 else
 lint-py:
 	$(warning Python linting with ruff is not available)

@@ -6,15 +6,13 @@
 
 #include <stack>
 
-#include "src/codegen/code-factory.h"
+#include "src/codegen/callable.h"
 #include "src/compiler/access-builder.h"
 #include "src/compiler/js-graph.h"
 #include "src/compiler/js-heap-broker.h"
 #include "src/compiler/linkage.h"
 #include "src/compiler/node-matchers.h"
 #include "src/compiler/node-properties.h"
-#include "src/compiler/operator-properties.h"
-#include "src/logging/counters.h"
 #include "src/objects/js-generator.h"
 #include "src/objects/objects-inl.h"
 
@@ -37,6 +35,8 @@ Reduction JSIntrinsicLowering::Reduce(Node* node) {
       return ReduceTurbofanStaticAssert(node);
     case Runtime::kVerifyType:
       return ReduceVerifyType(node);
+    case Runtime::kCheckTurboshaftTypeOf:
+      return ReduceCheckTurboshaftTypeOf(node);
     default:
       break;
   }
@@ -72,8 +72,8 @@ Reduction JSIntrinsicLowering::Reduce(Node* node) {
       return ReduceAsyncGeneratorReject(node);
     case Runtime::kInlineAsyncGeneratorResolve:
       return ReduceAsyncGeneratorResolve(node);
-    case Runtime::kInlineAsyncGeneratorYield:
-      return ReduceAsyncGeneratorYield(node);
+    case Runtime::kInlineAsyncGeneratorYieldWithAwait:
+      return ReduceAsyncGeneratorYieldWithAwait(node);
     case Runtime::kInlineGeneratorGetResumeMode:
       return ReduceGeneratorGetResumeMode(node);
     case Runtime::kInlineIncBlockCounter:
@@ -218,9 +218,11 @@ Reduction JSIntrinsicLowering::ReduceAsyncGeneratorResolve(Node* node) {
       0);
 }
 
-Reduction JSIntrinsicLowering::ReduceAsyncGeneratorYield(Node* node) {
+Reduction JSIntrinsicLowering::ReduceAsyncGeneratorYieldWithAwait(Node* node) {
   return Change(
-      node, Builtins::CallableFor(isolate(), Builtin::kAsyncGeneratorYield), 0);
+      node,
+      Builtins::CallableFor(isolate(), Builtin::kAsyncGeneratorYieldWithAwait),
+      0);
 }
 
 Reduction JSIntrinsicLowering::ReduceGeneratorGetResumeMode(Node* node) {
@@ -279,7 +281,7 @@ Reduction JSIntrinsicLowering::ReduceIsJSReceiver(Node* node) {
 }
 
 Reduction JSIntrinsicLowering::ReduceTurbofanStaticAssert(Node* node) {
-  if (FLAG_always_opt) {
+  if (v8_flags.always_turbofan) {
     // Ignore static asserts, as we most likely won't have enough information
     RelaxEffectsAndControls(node);
   } else {
@@ -294,6 +296,23 @@ Reduction JSIntrinsicLowering::ReduceTurbofanStaticAssert(Node* node) {
 
 Reduction JSIntrinsicLowering::ReduceVerifyType(Node* node) {
   return Change(node, simplified()->VerifyType());
+}
+
+Reduction JSIntrinsicLowering::ReduceCheckTurboshaftTypeOf(Node* node) {
+  Node* value = node->InputAt(0);
+  if (!v8_flags.turboshaft) {
+    RelaxEffectsAndControls(node);
+    ReplaceWithValue(node, value);
+    return Changed(value);
+  }
+
+  Node* pattern = node->InputAt(1);
+  Node* effect = NodeProperties::GetEffectInput(node);
+  Node* control = NodeProperties::GetControlInput(node);
+  Node* check = graph()->NewNode(simplified()->CheckTurboshaftTypeOf(), value,
+                                 pattern, effect, control);
+  ReplaceWithValue(node, value, check);
+  return Changed(value);
 }
 
 Reduction JSIntrinsicLowering::ReduceIsBeingInterpreted(Node* node) {
@@ -336,7 +355,7 @@ Reduction JSIntrinsicLowering::ReduceCall(Node* node) {
   int const arity =
       static_cast<int>(CallRuntimeParametersOf(node->op()).arity());
   static constexpr int kTargetAndReceiver = 2;
-  STATIC_ASSERT(JSCallNode::kFeedbackVectorIsLastInput);
+  static_assert(JSCallNode::kFeedbackVectorIsLastInput);
   Node* feedback = jsgraph()->UndefinedConstant();
   node->InsertInput(graph()->zone(), arity, feedback);
   NodeProperties::ChangeOp(

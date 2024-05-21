@@ -14,8 +14,6 @@
 #include "src/base/threaded-list.h"
 #include "src/common/globals.h"
 #include "src/objects/function-kind.h"
-#include "src/objects/objects.h"
-#include "src/utils/utils.h"
 #include "src/zone/zone-hashmap.h"
 #include "src/zone/zone.h"
 
@@ -639,6 +637,8 @@ class V8_EXPORT_PRIVATE Scope : public NON_EXPORTED_BASE(ZoneObject) {
     return nullptr;
   }
 
+  void ForceDynamicLookup(VariableProxy* proxy);
+
  protected:
   explicit Scope(Zone* zone);
 
@@ -798,7 +798,7 @@ class V8_EXPORT_PRIVATE Scope : public NON_EXPORTED_BASE(ZoneObject) {
   // Scope-specific information computed during parsing.
   //
   // The language mode of this scope.
-  STATIC_ASSERT(LanguageModeSize == 2);
+  static_assert(LanguageModeSize == 2);
   bool is_strict_ : 1;
   // This scope contains an 'eval' call.
   bool calls_eval_ : 1;

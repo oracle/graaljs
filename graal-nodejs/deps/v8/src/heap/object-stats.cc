@@ -15,12 +15,14 @@
 #include "src/heap/combined-heap.h"
 #include "src/heap/heap-inl.h"
 #include "src/heap/mark-compact.h"
+#include "src/heap/marking-state-inl.h"
 #include "src/logging/counters.h"
 #include "src/objects/compilation-cache-table-inl.h"
 #include "src/objects/heap-object.h"
 #include "src/objects/js-array-inl.h"
 #include "src/objects/js-collection-inl.h"
 #include "src/objects/literal-objects-inl.h"
+#include "src/objects/prototype-info.h"
 #include "src/objects/slots.h"
 #include "src/objects/templates.h"
 #include "src/objects/visitors.h"
@@ -95,18 +97,16 @@ class FieldStatsCollector : public ObjectVisitorWithCageBases {
     *tagged_fields_count_ += (end - start);
   }
 
-  V8_INLINE void VisitCodePointer(HeapObject host,
-                                  CodeObjectSlot slot) override {
-    CHECK(V8_EXTERNAL_CODE_SPACE_BOOL);
+  V8_INLINE void VisitCodePointer(Code host, CodeObjectSlot slot) override {
     *tagged_fields_count_ += 1;
   }
 
-  void VisitCodeTarget(Code host, RelocInfo* rinfo) override {
-    // Code target is most likely encoded as a relative 32-bit offset and not
-    // as a full tagged value, so there's nothing to count.
+  void VisitCodeTarget(RelocInfo* rinfo) override {
+    // InstructionStream target is most likely encoded as a relative 32-bit
+    // offset and not as a full tagged value, so there's nothing to count.
   }
 
-  void VisitEmbeddedPointer(Code host, RelocInfo* rinfo) override {
+  void VisitEmbeddedPointer(RelocInfo* rinfo) override {
     *tagged_fields_count_ += 1;
   }
 
@@ -148,7 +148,7 @@ FieldStatsCollector::GetInobjectFieldStats(Map map) {
     for (InternalIndex descriptor : map.IterateOwnDescriptors()) {
       PropertyDetails details = descriptors.GetDetails(descriptor);
       if (details.location() == PropertyLocation::kField) {
-        FieldIndex index = FieldIndex::ForDescriptor(map, descriptor);
+        FieldIndex index = FieldIndex::ForDetails(map, details);
         // Stop on first out-of-object field.
         if (!index.is_inobject()) break;
         if (details.representation().IsSmi()) {
@@ -429,7 +429,7 @@ class ObjectStatsCollectorImpl {
   // Details.
   void RecordVirtualAllocationSiteDetails(AllocationSite site);
   void RecordVirtualBytecodeArrayDetails(BytecodeArray bytecode);
-  void RecordVirtualCodeDetails(Code code);
+  void RecordVirtualCodeDetails(InstructionStream code);
   void RecordVirtualContext(Context context);
   void RecordVirtualFeedbackVectorDetails(FeedbackVector vector);
   void RecordVirtualFixedArrayDetails(FixedArray array);
@@ -448,10 +448,11 @@ class ObjectStatsCollectorImpl {
     return field_stats_collector_.cage_base();
   }
 
-  Heap* heap_;
-  ObjectStats* stats_;
-  MarkCompactCollector::NonAtomicMarkingState* marking_state_;
-  std::unordered_set<HeapObject, Object::Hasher> virtual_objects_;
+  Heap* const heap_;
+  ObjectStats* const stats_;
+  NonAtomicMarkingState* const marking_state_;
+  std::unordered_set<HeapObject, Object::Hasher, Object::KeyEqualSafe>
+      virtual_objects_;
   std::unordered_set<Address> external_resources_;
   FieldStatsCollector field_stats_collector_;
 };
@@ -460,8 +461,7 @@ ObjectStatsCollectorImpl::ObjectStatsCollectorImpl(Heap* heap,
                                                    ObjectStats* stats)
     : heap_(heap),
       stats_(stats),
-      marking_state_(
-          heap->mark_compact_collector()->non_atomic_marking_state()),
+      marking_state_(heap->non_atomic_marking_state()),
       field_stats_collector_(
           heap_, &stats->tagged_fields_count_, &stats->embedder_fields_count_,
           &stats->inobject_smi_fields_count_,
@@ -475,7 +475,7 @@ bool ObjectStatsCollectorImpl::ShouldRecordObject(HeapObject obj,
     bool cow_check = check_cow_array == kIgnoreCow || !IsCowArray(fixed_array);
     return CanRecordFixedArray(fixed_array) && cow_check;
   }
-  if (obj == ReadOnlyRoots(heap_).empty_property_array()) return false;
+  if (obj.SafeEquals(ReadOnlyRoots(heap_).empty_property_array())) return false;
   return true;
 }
 
@@ -633,10 +633,13 @@ void ObjectStatsCollectorImpl::RecordVirtualJSObjectDetails(JSObject object) {
 
   // JSCollections.
   if (object.IsJSCollection()) {
-    // TODO(bmeurer): Properly compute over-allocation here.
-    RecordSimpleVirtualObjectStats(
-        object, FixedArray::cast(JSCollection::cast(object).table()),
-        ObjectStats::JS_COLLECTION_TABLE_TYPE);
+    Object maybe_table = JSCollection::cast(object).table();
+    if (!maybe_table.IsUndefined(isolate())) {
+      DCHECK(maybe_table.IsFixedArray(isolate()));
+      // TODO(bmeurer): Properly compute over-allocation here.
+      RecordSimpleVirtualObjectStats(object, HeapObject::cast(maybe_table),
+                                     ObjectStats::JS_COLLECTION_TABLE_TYPE);
+    }
   }
 }
 
@@ -750,8 +753,8 @@ void ObjectStatsCollectorImpl::CollectStatistics(
         RecordVirtualMapDetails(Map::cast(obj));
       } else if (InstanceTypeChecker::IsBytecodeArray(instance_type)) {
         RecordVirtualBytecodeArrayDetails(BytecodeArray::cast(obj));
-      } else if (InstanceTypeChecker::IsCode(instance_type)) {
-        RecordVirtualCodeDetails(Code::cast(obj));
+      } else if (InstanceTypeChecker::IsInstructionStream(instance_type)) {
+        RecordVirtualCodeDetails(InstructionStream::cast(obj));
       } else if (InstanceTypeChecker::IsFunctionTemplateInfo(instance_type)) {
         RecordVirtualFunctionTemplateInfoDetails(
             FunctionTemplateInfo::cast(obj));
@@ -810,8 +813,8 @@ void ObjectStatsCollectorImpl::CollectGlobalStatistics() {
   RecordSimpleVirtualObjectStats(HeapObject(), heap_->number_string_cache(),
                                  ObjectStats::NUMBER_STRING_CACHE_TYPE);
   RecordSimpleVirtualObjectStats(
-      HeapObject(), heap_->single_character_string_cache(),
-      ObjectStats::SINGLE_CHARACTER_STRING_CACHE_TYPE);
+      HeapObject(), heap_->single_character_string_table(),
+      ObjectStats::SINGLE_CHARACTER_STRING_TABLE_TYPE);
   RecordSimpleVirtualObjectStats(HeapObject(), heap_->string_split_cache(),
                                  ObjectStats::STRING_SPLIT_CACHE_TYPE);
   RecordSimpleVirtualObjectStats(HeapObject(), heap_->regexp_multiple_cache(),
@@ -843,8 +846,12 @@ bool ObjectStatsCollectorImpl::IsCowArray(FixedArrayBase array) {
 }
 
 bool ObjectStatsCollectorImpl::SameLiveness(HeapObject obj1, HeapObject obj2) {
-  return obj1.is_null() || obj2.is_null() ||
-         marking_state_->Color(obj1) == marking_state_->Color(obj2);
+  if (obj1.is_null() || obj2.is_null()) return true;
+  const auto obj1_marked =
+      obj1.InReadOnlySpace() || marking_state_->IsMarked(obj1);
+  const auto obj2_marked =
+      obj2.InReadOnlySpace() || marking_state_->IsMarked(obj2);
+  return obj1_marked == obj2_marked;
 }
 
 void ObjectStatsCollectorImpl::RecordVirtualMapDetails(Map map) {
@@ -901,9 +908,9 @@ void ObjectStatsCollectorImpl::RecordVirtualMapDetails(Map map) {
   }
 
   if (map.is_prototype_map()) {
-    if (map.prototype_info().IsPrototypeInfo(cage_base())) {
-      PrototypeInfo info = PrototypeInfo::cast(map.prototype_info());
-      Object users = info.prototype_users();
+    PrototypeInfo prototype_info;
+    if (map.TryGetPrototypeInfo(&prototype_info)) {
+      Object users = prototype_info.prototype_users();
       if (users.IsWeakFixedArray(cage_base())) {
         RecordSimpleVirtualObjectStats(map, WeakArrayList::cast(users),
                                        ObjectStats::PROTOTYPE_USERS_TYPE);
@@ -921,7 +928,7 @@ void ObjectStatsCollectorImpl::RecordVirtualScriptDetails(Script script) {
   Object raw_source = script.source();
   if (raw_source.IsExternalString(cage_base())) {
     // The contents of external strings aren't on the heap, so we have to record
-    // them manually. The on-heap String object is recorded indepentendely in
+    // them manually. The on-heap String object is recorded independently in
     // the normal pass.
     ExternalString string = ExternalString::cast(raw_source);
     Address resource = string.resource_as_address();
@@ -1028,19 +1035,21 @@ ObjectStats::VirtualInstanceType CodeKindToVirtualInstanceType(CodeKind kind) {
 
 }  // namespace
 
-void ObjectStatsCollectorImpl::RecordVirtualCodeDetails(Code code) {
-  RecordSimpleVirtualObjectStats(HeapObject(), code,
+void ObjectStatsCollectorImpl::RecordVirtualCodeDetails(
+    InstructionStream istream) {
+  Code code = istream.code(kAcquireLoad);
+  RecordSimpleVirtualObjectStats(HeapObject(), istream,
                                  CodeKindToVirtualInstanceType(code.kind()));
-  RecordSimpleVirtualObjectStats(code, code.relocation_info(),
+  RecordSimpleVirtualObjectStats(istream, code.relocation_info(),
                                  ObjectStats::RELOC_INFO_TYPE);
   if (CodeKindIsOptimizedJSFunction(code.kind())) {
     Object source_position_table = code.source_position_table();
     if (source_position_table.IsHeapObject()) {
-      RecordSimpleVirtualObjectStats(code,
+      RecordSimpleVirtualObjectStats(istream,
                                      HeapObject::cast(source_position_table),
                                      ObjectStats::SOURCE_POSITION_TABLE_TYPE);
     }
-    RecordSimpleVirtualObjectStats(code, code.deoptimization_data(),
+    RecordSimpleVirtualObjectStats(istream, code.deoptimization_data(),
                                    ObjectStats::DEOPTIMIZATION_DATA_TYPE);
     DeoptimizationData input_data =
         DeoptimizationData::cast(code.deoptimization_data());
@@ -1056,7 +1065,7 @@ void ObjectStatsCollectorImpl::RecordVirtualCodeDetails(Code code) {
     Object target = it.rinfo()->target_object(cage_base());
     if (target.IsFixedArrayExact(cage_base())) {
       RecordVirtualObjectsForConstantPoolOrEmbeddedObjects(
-          code, HeapObject::cast(target), ObjectStats::EMBEDDED_OBJECT_TYPE);
+          istream, HeapObject::cast(target), ObjectStats::EMBEDDED_OBJECT_TYPE);
     }
   }
 }
@@ -1085,25 +1094,23 @@ class ObjectStatsVisitor {
                      ObjectStatsCollectorImpl::Phase phase)
       : live_collector_(live_collector),
         dead_collector_(dead_collector),
-        marking_state_(
-            heap->mark_compact_collector()->non_atomic_marking_state()),
+        marking_state_(heap->non_atomic_marking_state()),
         phase_(phase) {}
 
   void Visit(HeapObject obj) {
-    if (marking_state_->IsBlack(obj)) {
+    if (obj.InReadOnlySpace() || marking_state_->IsMarked(obj)) {
       live_collector_->CollectStatistics(
           obj, phase_, ObjectStatsCollectorImpl::CollectFieldStats::kYes);
     } else {
-      DCHECK(!marking_state_->IsGrey(obj));
       dead_collector_->CollectStatistics(
           obj, phase_, ObjectStatsCollectorImpl::CollectFieldStats::kNo);
     }
   }
 
  private:
-  ObjectStatsCollectorImpl* live_collector_;
-  ObjectStatsCollectorImpl* dead_collector_;
-  MarkCompactCollector::NonAtomicMarkingState* marking_state_;
+  ObjectStatsCollectorImpl* const live_collector_;
+  ObjectStatsCollectorImpl* const dead_collector_;
+  NonAtomicMarkingState* const marking_state_;
   ObjectStatsCollectorImpl::Phase phase_;
 };
 

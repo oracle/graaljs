@@ -59,7 +59,7 @@ server.listen(0, function() {
       client2Closed = true;
     }));
 
-    client2.write('GET / HTTP/1.1\r\n\r\n');
+    client2.write('GET / HTTP/1.1\r\nHost: example.com\r\n\r\n');
   }));
 
   client1.on('close', common.mustCall(() => {

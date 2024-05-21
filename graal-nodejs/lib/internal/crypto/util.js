@@ -29,6 +29,7 @@ const {
   getHashes: _getHashes,
   setEngine: _setEngine,
   secureHeapUsed: _secureHeapUsed,
+  getCachedAliases,
 } = internalBinding('crypto');
 
 const { getOptionValue } = require('internal/options');
@@ -67,6 +68,13 @@ const {
 } = require('internal/util');
 
 const {
+  namespace: {
+    isBuildingSnapshot,
+    addSerializeCallback,
+  },
+} = require('internal/v8/startup_snapshot');
+
+const {
   isDataView,
   isArrayBufferView,
   isAnyArrayBuffer,
@@ -74,16 +82,6 @@ const {
 
 const kHandle = Symbol('kHandle');
 const kKeyObject = Symbol('kKeyObject');
-
-let defaultEncoding = 'buffer';
-
-function setDefaultEncoding(val) {
-  defaultEncoding = val;
-}
-
-function getDefaultEncoding() {
-  return defaultEncoding;
-}
 
 // This is here because many functions accepted binary strings without
 // any explicit encoding in older versions of node, and we don't want
@@ -95,6 +93,23 @@ function toBuf(val, encoding) {
     return Buffer.from(val, encoding);
   }
   return val;
+}
+
+let _hashCache;
+function getHashCache() {
+  if (_hashCache === undefined) {
+    _hashCache = getCachedAliases();
+    if (isBuildingSnapshot()) {
+      // For dynamic linking, clear the map.
+      addSerializeCallback(() => { _hashCache = undefined; });
+    }
+  }
+  return _hashCache;
+}
+
+function getCachedHashId(algorithm) {
+  const result = getHashCache()[algorithm];
+  return result === undefined ? -1 : result;
 }
 
 const getCiphers = cachedResult(() => filterDuplicateStrings(_getCiphers()));
@@ -126,7 +141,7 @@ const getArrayBufferOrView = hideStackFrames((buffer, name, encoding) => {
     return Buffer.from(buffer, encoding);
   }
   if (!isArrayBufferView(buffer)) {
-    throw new ERR_INVALID_ARG_TYPE(
+    throw new ERR_INVALID_ARG_TYPE.HideStackFramesError(
       name,
       [
         'string',
@@ -413,7 +428,7 @@ const validateByteSource = hideStackFrames((val, name) => {
   if (isAnyArrayBuffer(val) || isArrayBufferView(val))
     return val;
 
-  throw new ERR_INVALID_ARG_TYPE(
+  throw new ERR_INVALID_ARG_TYPE.HideStackFramesError(
     name,
     [
       'string',
@@ -502,6 +517,15 @@ function getBlockSize(name) {
   }
 }
 
+function getDigestSizeInBytes(name) {
+  switch (name) {
+    case 'SHA-1': return 20;
+    case 'SHA-256': return 32;
+    case 'SHA-384': return 48;
+    case 'SHA-512': return 64;
+  }
+}
+
 const kKeyOps = {
   sign: 1,
   verify: 2,
@@ -560,11 +584,9 @@ module.exports = {
   getCiphers,
   getCurves,
   getDataViewOrTypedArrayBuffer,
-  getDefaultEncoding,
   getHashes,
   kHandle,
   kKeyObject,
-  setDefaultEncoding,
   setEngine,
   toBuf,
 
@@ -583,7 +605,10 @@ module.exports = {
   bigIntArrayToUnsignedBigInt,
   bigIntArrayToUnsignedInt,
   getBlockSize,
+  getDigestSizeInBytes,
   getStringOption,
   getUsagesUnion,
   secureHeapUsed,
+  getCachedHashId,
+  getHashCache,
 };

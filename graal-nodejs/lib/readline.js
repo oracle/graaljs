@@ -82,6 +82,7 @@ const {
   kOnLine,
   kPreviousKey,
   kPrompt,
+  kQuestion,
   kQuestionCallback,
   kQuestionCancel,
   kRefreshLine,
@@ -122,8 +123,6 @@ function Interface(input, output, completer, terminal) {
 ObjectSetPrototypeOf(Interface.prototype, _Interface.prototype);
 ObjectSetPrototypeOf(Interface, _Interface);
 
-const superQuestion = _Interface.prototype.question;
-
 /**
  * Displays `query` by writing it to the `output`.
  * @param {string} query
@@ -131,7 +130,7 @@ const superQuestion = _Interface.prototype.question;
  * @param {Function} cb
  * @returns {void}
  */
-Interface.prototype.question = function(query, options, cb) {
+Interface.prototype.question = function question(query, options, cb) {
   cb = typeof options === 'function' ? options : cb;
   if (options === null || typeof options !== 'object') {
     options = kEmptyObject;
@@ -146,7 +145,7 @@ Interface.prototype.question = function(query, options, cb) {
     const onAbort = () => {
       this[kQuestionCancel]();
     };
-    addAbortListener ??= require('events').addAbortListener;
+    addAbortListener ??= require('internal/events/abort_listener').addAbortListener;
     const disposable = addAbortListener(options.signal, onAbort);
     const originalCb = cb;
     cb = typeof cb === 'function' ? (answer) => {
@@ -156,7 +155,7 @@ Interface.prototype.question = function(query, options, cb) {
   }
 
   if (typeof cb === 'function') {
-    FunctionPrototypeCall(superQuestion, this, query, cb);
+    this[kQuestion](query, cb);
   }
 };
 Interface.prototype.question[promisify.custom] = function question(query, options) {
@@ -176,7 +175,7 @@ Interface.prototype.question[promisify.custom] = function question(query, option
       const onAbort = () => {
         reject(new AbortError(undefined, { cause: options.signal.reason }));
       };
-      addAbortListener ??= require('events').addAbortListener;
+      addAbortListener ??= require('internal/events/abort_listener').addAbortListener;
       const disposable = addAbortListener(options.signal, onAbort);
       cb = (answer) => {
         disposable[SymbolDispose]();

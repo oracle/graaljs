@@ -484,9 +484,9 @@ class V8_EXPORT Object : public Value {
 
   /**
    * Warning: These are Node.js-specific extentions used to avoid breaking
-   * changes in Node.js v18.x. They do not exist in V8 upstream and will
+   * changes in Node.js v20.x. They do not exist in V8 upstream and will
    * not exist in Node.js v21.x. Node.js embedders and addon authors should
-   * not use them from v18.x.
+   * not use them from v20.x.
    */
 #ifndef NODE_WANT_INTERNALS
   V8_DEPRECATED("This extention should only be used by Node.js core")
@@ -611,8 +611,6 @@ class V8_EXPORT Object : public Value {
   /**
    * Returns the context in which the object was created.
    */
-  V8_DEPRECATED("Use MaybeLocal<Context> GetCreationContext()")
-  Local<Context> CreationContext();
   MaybeLocal<Context> GetCreationContext();
 
   /**
@@ -621,14 +619,23 @@ class V8_EXPORT Object : public Value {
   Local<Context> GetCreationContextChecked();
 
   /** Same as above, but works for Persistents */
-  V8_DEPRECATED(
-      "Use MaybeLocal<Context> GetCreationContext(const "
-      "PersistentBase<Object>& object)")
-  static Local<Context> CreationContext(const PersistentBase<Object>& object);
   V8_INLINE static MaybeLocal<Context> GetCreationContext(
       const PersistentBase<Object>& object) {
     return object.val_->GetCreationContext();
   }
+
+  /**
+   * Gets the context in which the object was created (see GetCreationContext())
+   * and if it's available reads respective embedder field value.
+   * If the context can't be obtained nullptr is returned.
+   * Basically it's a shortcut for
+   *   obj->GetCreationContext().GetAlignedPointerFromEmbedderData(index)
+   * which doesn't create a handle for Context object on the way and doesn't
+   * try to expand the embedder data attached to the context.
+   * In case the Local<Context> is already available because of other reasons,
+   * it's fine to keep using Context::GetAlignedPointerFromEmbedderData().
+   */
+  void* GetAlignedPointerFromEmbedderDataInCreationContext(int index);
 
   /**
    * Checks whether a callback is set by the

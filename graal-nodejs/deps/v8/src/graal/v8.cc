@@ -74,6 +74,7 @@
 #include "graal_wasm_streaming.h"
 #include "uv.h"
 #include "v8.h"
+#include "v8-cppgc.h"
 #include "v8-fast-api-calls.h"
 #include "v8-profiler.h"
 #include "v8-unwinder-state.h"
@@ -161,6 +162,11 @@ namespace v8 {
 
     void ArrayBuffer::Detach() {
         reinterpret_cast<GraalArrayBuffer*> (this)->Detach();
+    }
+
+    Maybe<bool> ArrayBuffer::Detach(Local<v8::Value> key) {
+        reinterpret_cast<GraalArrayBuffer*> (this)->Detach();
+        return Just(true);
     }
 
     bool ArrayBuffer::WasDetached() const {
@@ -385,11 +391,11 @@ namespace v8 {
     }
 
     HandleScope::~HandleScope() {
-        reinterpret_cast<GraalIsolate*> (isolate_)->HandleScopeExit();
+        reinterpret_cast<GraalIsolate*> (i_isolate_)->HandleScopeExit();
     }
 
     HandleScope::HandleScope(Isolate* isolate) {
-        this->isolate_ = reinterpret_cast<internal::Isolate*> (isolate);
+        this->i_isolate_ = reinterpret_cast<internal::Isolate*> (isolate);
         reinterpret_cast<GraalIsolate*> (isolate)->HandleScopeEnter();
     }
 
@@ -457,7 +463,7 @@ namespace v8 {
     }
 
     Isolate* Isolate::TryGetCurrent() {
-        return GraalIsolate::GetCurrent();
+        return GraalIsolate::TryGetCurrent();
     }
 
     Local<Context> Isolate::GetCurrentContext() {
@@ -474,6 +480,11 @@ namespace v8 {
     }
 
     const HeapSnapshot* HeapProfiler::TakeHeapSnapshot(ActivityControl* control, ObjectNameResolver* global_object_name_resolver, bool treat_global_objects_as_roots, bool capture_numeric_value) {
+        TRACE
+        return new HeapSnapshot();
+    }
+
+    const HeapSnapshot* HeapProfiler::TakeHeapSnapshot(const HeapSnapshotOptions& options) {
         TRACE
         return new HeapSnapshot();
     }
@@ -629,10 +640,6 @@ namespace v8 {
         isolate_ = reinterpret_cast<internal::Isolate*> (isolate);
     }
 
-    bool Locker::IsActive() {
-        return true;
-    }
-
     Locker::~Locker() {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
         if (graal_isolate->lock_owner_ == this) {
@@ -668,12 +675,12 @@ namespace v8 {
         return reinterpret_cast<GraalObject*> (this)->Clone();
     }
 
-    Local<Context> Object::CreationContext() {
+    MaybeLocal<Context> Object::GetCreationContext() {
         return reinterpret_cast<GraalObject*> (this)->CreationContext();
     }
 
-    MaybeLocal<Context> Object::GetCreationContext() {
-        return CreationContext();
+    Local<Context> Object::GetCreationContextChecked() {
+        return reinterpret_cast<GraalObject*> (this)->CreationContext();
     }
 
     Maybe<bool> Object::Delete(Local<Context> context, Local<Value> key) {
@@ -823,22 +830,9 @@ namespace v8 {
             Local<Value> data,
             AccessControl settings,
             PropertyAttribute attribute,
-            Local<AccessorSignature> signature,
             SideEffectType getter_side_effect_type,
             SideEffectType setter_side_effect_type) {
-        reinterpret_cast<GraalObjectTemplate*> (this)->SetAccessor(name, getter, setter, data, settings, attribute, signature);
-    }
-
-    void ObjectTemplate::SetAccessor(
-            Local<String> name,
-            AccessorGetterCallback getter,
-            AccessorSetterCallback setter,
-            Local<Value> data,
-            AccessControl settings,
-            PropertyAttribute attribute,
-            SideEffectType getter_side_effect_type,
-            SideEffectType setter_side_effect_type) {
-        reinterpret_cast<GraalObjectTemplate*> (this)->SetAccessor(name, getter, setter, data, settings, attribute, nullptr);
+        reinterpret_cast<GraalObjectTemplate*> (this)->SetAccessor(name, getter, setter, data, settings, attribute);
     }
 
     void ObjectTemplate::SetAccessor(
@@ -848,22 +842,9 @@ namespace v8 {
             Local<Value> data,
             AccessControl settings,
             PropertyAttribute attribute,
-            Local<AccessorSignature> signature,
             SideEffectType getter_side_effect_type,
             SideEffectType setter_side_effect_type) {
-        SetAccessor(name.As<String>(), (AccessorGetterCallback) getter, (AccessorSetterCallback) setter, data, settings, attribute, signature);
-    };
-
-    void ObjectTemplate::SetAccessor(
-            Local<Name> name,
-            AccessorNameGetterCallback getter,
-            AccessorNameSetterCallback setter,
-            Local<Value> data,
-            AccessControl settings,
-            PropertyAttribute attribute,
-            SideEffectType getter_side_effect_type,
-            SideEffectType setter_side_effect_type) {
-        SetAccessor(name, getter, setter, data, settings, attribute, nullptr);
+        SetAccessor(name.As<String>(), (AccessorGetterCallback) getter, (AccessorSetterCallback) setter, data, settings, attribute);
     };
 
     void ObjectTemplate::SetHandler(const NamedPropertyHandlerConfiguration& configuration) {
@@ -909,7 +890,7 @@ namespace v8 {
         TRACE
     }
 
-    SealHandleScope::SealHandleScope(Isolate* isolate) : isolate_(reinterpret_cast<internal::Isolate*> (isolate)) {
+    SealHandleScope::SealHandleScope(Isolate* isolate) : i_isolate_(reinterpret_cast<internal::Isolate*> (isolate)) {
         TRACE
     }
 
@@ -1045,11 +1026,11 @@ namespace v8 {
     Local<Value> TryCatch::ReThrow() {
         rethrow_ = true;
         exception_ = nullptr;
-        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
         if (!graal_isolate->GetJNIEnv()->ExceptionCheck()) {
-            graal_isolate->ThrowException(Null(reinterpret_cast<v8::Isolate*> (isolate_)));
+            graal_isolate->ThrowException(Null(reinterpret_cast<v8::Isolate*> (i_isolate_)));
         }
-        return Undefined(reinterpret_cast<v8::Isolate*> (isolate_));
+        return Undefined(reinterpret_cast<v8::Isolate*> (i_isolate_));
     }
 
     void TryCatch::SetVerbose(bool value) {
@@ -1061,7 +1042,7 @@ namespace v8 {
     }
 
     TryCatch::~TryCatch() {
-        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
         graal_isolate->TryCatchExit();
         if (!rethrow_ && HasCaught() && !HasTerminated()) {
             JNIEnv* env = graal_isolate->GetJNIEnv();
@@ -1081,7 +1062,7 @@ namespace v8 {
 
     TryCatch::TryCatch(Isolate* isolate) {
         GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate);
-        isolate_ = reinterpret_cast<v8::internal::Isolate*> (isolate);
+        i_isolate_ = reinterpret_cast<v8::internal::Isolate*> (isolate);
         rethrow_ = graal_isolate->GetJNIEnv()->ExceptionCheck(); // Do not catch exceptions thrown before
         exception_ = rethrow_ ? graal_isolate->GetJNIEnv()->ExceptionOccurred() : nullptr;
         is_verbose_ = false;
@@ -1177,6 +1158,7 @@ namespace v8 {
 
     bool V8::Initialize(int build_config) {
         TRACE
+        GraalIsolate::InitThreadLocals();
         return true;
     }
 
@@ -1658,7 +1640,7 @@ namespace v8 {
 
     Local<Value> TryCatch::Exception() const {
         if (HasCaught()) {
-            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
             JNIEnv* env = graal_isolate->GetJNIEnv();
             jthrowable java_exception = env->ExceptionOccurred();
             jobject java_context = graal_isolate->CurrentJavaContext();
@@ -1683,7 +1665,7 @@ namespace v8 {
     }
 
     bool TryCatch::HasCaught() const {
-        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
         JNIEnv* env = graal_isolate->GetJNIEnv();
         if (GraalIsolate::GetAbortOnUncaughtException()
                 && env->ExceptionCheck()
@@ -1705,7 +1687,7 @@ namespace v8 {
     }
 
     bool TryCatch::HasTerminated() const {
-        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
         jobject java_exception = graal_isolate->GetJNIEnv()->ExceptionOccurred();
         JNI_CALL(jboolean, terminated, graal_isolate, GraalAccessMethod::try_catch_has_terminated, Boolean, java_exception);
         return terminated;
@@ -1713,7 +1695,7 @@ namespace v8 {
 
     Local<Message> TryCatch::Message() const {
         if (HasCaught()) {
-            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
             jobject java_exception = graal_isolate->GetJNIEnv()->ExceptionOccurred();
             GraalMessage* graal_message = GraalMessage::Allocate(graal_isolate, java_exception);
             return reinterpret_cast<v8::Message*> (graal_message);
@@ -1724,7 +1706,7 @@ namespace v8 {
 
     void TryCatch::Reset() {
         if (!rethrow_) {
-            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (isolate_);
+            GraalIsolate* graal_isolate = reinterpret_cast<GraalIsolate*> (i_isolate_);
             graal_isolate->GetJNIEnv()->ExceptionClear();
         }
     }
@@ -1920,6 +1902,12 @@ namespace v8 {
         return reinterpret_cast<v8::Value*> (graal_isolate->GetUndefined());
     }
 
+    Local<Value> UnboundModuleScript::GetSourceMappingURL() {
+        TRACE
+        GraalIsolate* graal_isolate = reinterpret_cast<GraalUnboundScript*> (this)->Isolate();
+        return reinterpret_cast<v8::Value*> (graal_isolate->GetUndefined());
+    }
+
     bool Value::IsRegExp() const {
         return reinterpret_cast<const GraalValue*> (this)->IsRegExp();
     }
@@ -2099,10 +2087,11 @@ namespace v8 {
             "new_space",
             "old_space",
             "code_space",
-            "map_space",
+            "shared_space",
+            "new_large_object_space",
             "large_object_space",
             "code_large_object_space",
-            "new_large_object_space"
+            "shared_large_object_space",
         };
         space_statistics->space_name_ = names[index];
         space_statistics->space_size_ = 0;
@@ -2113,11 +2102,7 @@ namespace v8 {
     }
 
     size_t Isolate::NumberOfHeapSpaces() {
-        return 8;
-    }
-
-    Local<AccessorSignature> AccessorSignature::New(Isolate* isolate, Local<FunctionTemplate> receiver) {
-        return reinterpret_cast<AccessorSignature*> (*receiver);
+        return 9;
     }
 
     MaybeLocal<String> String::NewExternalOneByte(Isolate* isolate, ExternalOneByteStringResource* resource) {
@@ -2605,6 +2590,10 @@ namespace v8 {
     ValueSerializer::ValueSerializer(Isolate* isolate, Delegate* delegate) : private_(new PrivateData(isolate, delegate)) {
     }
 
+    ValueSerializer::ValueSerializer(Isolate* isolate) : private_(new PrivateData(isolate, nullptr)) {
+        TRACE
+    }
+
     ValueSerializer::~ValueSerializer() {
         delete private_;
     }
@@ -2718,6 +2707,10 @@ namespace v8 {
     };
 
     ValueDeserializer::ValueDeserializer(Isolate* isolate, const uint8_t* data, size_t size, Delegate* delegate) : private_(new PrivateData(isolate, data, size, delegate)) {
+    }
+
+    ValueDeserializer::ValueDeserializer(Isolate* isolate, const uint8_t* data, size_t size) : private_(new PrivateData(isolate, data, size, nullptr)) {
+        TRACE
     }
 
     ValueDeserializer::~ValueDeserializer() {
@@ -2955,21 +2948,30 @@ namespace v8 {
         TRACE
     }
 
-    Isolate::DisallowJavascriptExecutionScope::DisallowJavascriptExecutionScope(Isolate* isolate, OnFailure on_failure) {
-        isolate_ = isolate;
+    Isolate::DisallowJavascriptExecutionScope::DisallowJavascriptExecutionScope(Isolate* isolate, OnFailure on_failure): v8_isolate_(isolate), on_failure_(on_failure) {
         GraalIsolate::JSExecutionAction newAction = (on_failure == THROW_ON_FAILURE) ? GraalIsolate::kJSExecutionThrow : GraalIsolate::kJSExecutionCrash;
         GraalIsolate::JSExecutionAction oldAction = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAction(newAction);
-        was_execution_allowed_throws_ = (oldAction == GraalIsolate::kJSExecutionThrow);
-        was_execution_allowed_assert_ = (oldAction == GraalIsolate::kJSExecutionCrash);
+        if (oldAction == GraalIsolate::kJSExecutionAllowed) {
+            was_execution_allowed_ = true;
+        } else {
+            was_execution_allowed_ = false;
+            *(const_cast<OnFailure*> (&on_failure_)) = (oldAction == GraalIsolate::kJSExecutionCrash) ? CRASH_ON_FAILURE : THROW_ON_FAILURE;
+        }
     }
 
     Isolate::DisallowJavascriptExecutionScope::~DisallowJavascriptExecutionScope() {
-        GraalIsolate::JSExecutionAction action = was_execution_allowed_throws_ ? GraalIsolate::kJSExecutionThrow : (was_execution_allowed_assert_ ? GraalIsolate::kJSExecutionCrash : GraalIsolate::kJSExecutionAllowed);
-        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAction(action);
+        GraalIsolate::JSExecutionAction action;
+        if (was_execution_allowed_) {
+            action = GraalIsolate::kJSExecutionAllowed;
+        } else if (on_failure_ == CRASH_ON_FAILURE) {
+            action = GraalIsolate::kJSExecutionCrash;
+        } else {
+            action = GraalIsolate::kJSExecutionThrow;
+        }
+        reinterpret_cast<GraalIsolate*> (v8_isolate_)->SetJSExecutionAction(action);
     }
 
-    Isolate::AllowJavascriptExecutionScope::AllowJavascriptExecutionScope(Isolate* isolate) {
-        isolate_ = isolate;
+    Isolate::AllowJavascriptExecutionScope::AllowJavascriptExecutionScope(Isolate* isolate): v8_isolate_(isolate) {
         GraalIsolate::JSExecutionAction oldAction = reinterpret_cast<GraalIsolate*> (isolate)->SetJSExecutionAction(GraalIsolate::kJSExecutionAllowed);
         was_execution_allowed_throws_ = (oldAction == GraalIsolate::kJSExecutionThrow);
         was_execution_allowed_assert_ = (oldAction == GraalIsolate::kJSExecutionCrash);
@@ -2977,7 +2979,7 @@ namespace v8 {
 
     Isolate::AllowJavascriptExecutionScope::~AllowJavascriptExecutionScope() {
         GraalIsolate::JSExecutionAction action = was_execution_allowed_throws_ ? GraalIsolate::kJSExecutionThrow : (was_execution_allowed_assert_ ? GraalIsolate::kJSExecutionCrash : GraalIsolate::kJSExecutionAllowed);
-        reinterpret_cast<GraalIsolate*> (isolate_)->SetJSExecutionAction(action);
+        reinterpret_cast<GraalIsolate*> (v8_isolate_)->SetJSExecutionAction(action);
     }
 
     void HeapProfiler::RemoveBuildEmbedderGraphCallback(BuildEmbedderGraphCallback callback, void* data) {
@@ -3017,10 +3019,6 @@ namespace v8 {
 
     Local<Value> ScriptOrModule::GetResourceName() {
         return reinterpret_cast<GraalScriptOrModule*> (this)->GetResourceName();
-    }
-
-    Local<PrimitiveArray> ScriptOrModule::GetHostDefinedOptions() {
-        return reinterpret_cast<GraalScriptOrModule*> (this)->GetHostDefinedOptions();
     }
 
     Local<BigInt> BigInt::New(Isolate* isolate, int64_t value) {
@@ -3231,10 +3229,6 @@ namespace v8 {
     ScriptCompiler::CachedData* ScriptCompiler::CreateCodeCacheForFunction(Local<Function> function) {
         TRACE
         return new ScriptCompiler::CachedData((const uint8_t*) nullptr, 0);
-    }
-
-    SnapshotCreator::SnapshotCreator(const intptr_t* external_references, StartupData* existing_blob) {
-        TRACE
     }
 
     Local<PrimitiveArray> PrimitiveArray::New(Isolate* isolate, int length) {
@@ -3498,10 +3492,14 @@ namespace v8 {
         return false;
     }
 
-    SnapshotCreator::SnapshotCreator(Isolate* isolate, const intptr_t* external_references, StartupData* existing_blob) {
+    SnapshotCreator::SnapshotCreator(Isolate* isolate, const intptr_t* external_references, const StartupData* existing_blob) {
         TRACE
         fprintf(stderr, "Snapshot creation is not supported by graal-nodes.js!");
         exit(1);
+    }
+
+    SnapshotCreator::SnapshotCreator(const intptr_t* external_references, const StartupData* existing_blob) : SnapshotCreator(nullptr, external_references, existing_blob) {
+        TRACE
     }
 
     void SnapshotCreator::SetDefaultContext(Local<Context> context, SerializeInternalFieldsCallback callback) {
@@ -3756,15 +3754,6 @@ namespace v8 {
     }
 #endif
 
-    bool EmbedderHeapTracer::IsRootForNonTracingGC(const v8::TracedReference<v8::Value>& handle) {
-        TRACE
-        return true;
-    }
-
-    void EmbedderHeapTracer::ResetHandleInNonTracingGC(const v8::TracedReference<v8::Value>& handle) {
-        TRACE
-    }
-
     CpuProfilingOptions::CpuProfilingOptions(CpuProfilingMode mode, unsigned max_samples, int sampling_interval_us, MaybeLocal<Context> filter_context) {
         TRACE
     }
@@ -3894,26 +3883,6 @@ namespace v8 {
         TRACE
     }
 
-    bool ValueSerializer::Delegate::SupportsSharedValues() const {
-        TRACE
-        return false;
-    }
-
-    bool ValueDeserializer::Delegate::SupportsSharedValues() const {
-        TRACE
-        return false;
-    }
-
-    Maybe<uint32_t> ValueSerializer::Delegate::GetSharedValueId(Isolate* isolate, Local<Value> shared_value) {
-        TRACE
-        return Just<uint32_t>(0);
-    }
-
-    MaybeLocal<Value> ValueDeserializer::Delegate::GetSharedValueFromId(Isolate* isolate, uint32_t shared_value_id) {
-        TRACE
-        return MaybeLocal<Value>();
-    }
-
     class internal::BackgroundDeserializeTask {};
 
     ScriptCompiler::ConsumeCodeCacheTask::~ConsumeCodeCacheTask() {
@@ -3955,7 +3924,85 @@ namespace v8 {
         return reinterpret_cast<const GraalContext*> (this)->IsCodeGenerationFromStringsAllowed();
     }
 
-    void AccessorSignature::CheckCast(class v8::Data* that) {}
+    namespace internal {
+        class SharedObjectConveyorHandles {};
+    }
+
+    SharedValueConveyor::SharedValueConveyor(SharedValueConveyor&&) noexcept {
+        TRACE
+    }
+
+    SharedValueConveyor::~SharedValueConveyor() {
+        TRACE
+    }
+
+    const SharedValueConveyor* ValueDeserializer::Delegate::GetSharedValueConveyor(Isolate* isolate) {
+        TRACE
+        return nullptr;
+    }
+
+    bool ValueSerializer::Delegate::AdoptSharedValueConveyor(Isolate* isolate, SharedValueConveyor&& conveyor) {
+        TRACE
+        return true;
+    }
+
+    Local<FunctionTemplate> FunctionTemplate::NewWithCFunctionOverloads(
+            Isolate* isolate,
+            FunctionCallback callback,
+            Local<Value> data,
+            Local<Signature> signature,
+            int length,
+            ConstructorBehavior behavior,
+            SideEffectType side_effect_type,
+            const MemorySpan<const CFunction>& c_function_overloads) {
+        TRACE
+        return GraalFunctionTemplate::New(isolate, callback, data, signature, length, behavior, false);
+    }
+
+    void HeapProfiler::QueryObjects(v8::Local<v8::Context> context, QueryObjectPredicate* predicate, std::vector<v8::Global<v8::Object>>* objects) {
+        TRACE
+    }
+
+    void Isolate::AttachCppHeap(CppHeap*) {
+        TRACE
+    }
+
+    CppHeap* Isolate::GetCppHeap() const {
+        TRACE
+        return nullptr;
+    }
+
+    void Isolate::DetachCppHeap() {
+        TRACE
+    }
+
+    std::unique_ptr<CppHeap> CppHeap::Create(v8::Platform* platform, const CppHeapCreateParams& params) {
+        TRACE
+        return nullptr;
+    }
+
+    WrapperDescriptor CppHeap::wrapper_descriptor() const {
+        TRACE
+        return WrapperDescriptor(0,0,0);
+    }
+
+    void CppHeap::Terminate() {
+        TRACE
+    }
+
+    void Template::SetNativeDataProperty(
+            Local<Name> name,
+            AccessorNameGetterCallback getter,
+            AccessorNameSetterCallback setter,
+            Local<Value> data,
+            PropertyAttribute attribute,
+            AccessControl settings,
+            SideEffectType getter_side_effect_type,
+            SideEffectType setter_side_effect_type) {
+        TRACE
+        reinterpret_cast<ObjectTemplate*> (this)->SetAccessor(name, getter, setter, data, settings, attribute, getter_side_effect_type, setter_side_effect_type);
+    }
+
     void Array::CheckCast(v8::Value* obj) {}
     void ArrayBuffer::CheckCast(v8::Value* obj) {}
     void ArrayBufferView::CheckCast(v8::Value* obj) {}
@@ -4008,6 +4055,44 @@ namespace v8 {
     void Value::CheckCast(v8::Data* that) {}
     void WasmMemoryObject::CheckCast(class v8::Value* that) {}
     void WasmModuleObject::CheckCast(class v8::Value* that) {}
+
+}
+
+namespace cppgc {
+    void InitializeProcess(PageAllocator* page_allocator) {
+        TRACE
+    }
+
+    void ShutdownProcess() {
+        TRACE
+    }
+
+    TracingController* Platform::GetTracingController() {
+        TRACE
+        return nullptr;
+    }
+
+    namespace internal {
+
+        void WriteBarrier::DijkstraMarkingBarrierSlowWithSentinelCheck(const void* value) {
+            TRACE
+        }
+
+        void WriteBarrier::DijkstraMarkingBarrierRangeSlow(
+                HeapHandle& heap_handle,
+                const void* first_element,
+                size_t element_size,
+                size_t number_of_elements,
+                TraceCallback trace_callback) {
+            TRACE
+        }
+
+        void WriteBarrier::SteeleMarkingBarrierSlowWithSentinelCheck(const void* value) {
+            TRACE
+        }
+
+        AtomicEntryFlag WriteBarrier::write_barrier_enabled_;
+    }
 
 }
 

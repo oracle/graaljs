@@ -17,8 +17,6 @@ namespace v8 {
 namespace internal {
 namespace baseline {
 
-enum class Condition : uint32_t;
-
 class BaselineAssembler {
  public:
   class ScratchRegisterScope;
@@ -40,11 +38,10 @@ class BaselineAssembler {
   inline void Trap();
   inline void DebugBreak();
 
+  template <typename Field>
+  inline void DecodeField(Register reg);
+
   inline void Bind(Label* label);
-  // Binds the label without marking it as a valid jump target.
-  // This is only useful, when the position is already marked as a valid jump
-  // target (i.e. at the beginning of the bytecode).
-  inline void BindWithoutJumpTarget(Label* label);
   // Marks the current position as a valid jump target on CFI enabled
   // architectures.
   inline void JumpTarget();
@@ -64,10 +61,20 @@ class BaselineAssembler {
 
   inline void JumpIf(Condition cc, Register lhs, const Operand& rhs,
                      Label* target, Label::Distance distance = Label::kFar);
+#if V8_STATIC_ROOTS_BOOL
+  // Fast JS_RECEIVER test which assumes to receive either a primitive object or
+  // a js receiver.
+  inline void JumpIfJSAnyIsPrimitive(Register heap_object, Label* target,
+                                     Label::Distance distance = Label::kFar);
+#endif
   inline void JumpIfObjectType(Condition cc, Register object,
                                InstanceType instance_type, Register map,
                                Label* target,
                                Label::Distance distance = Label::kFar);
+  // Might not load the map into the scratch register.
+  inline void JumpIfObjectTypeFast(Condition cc, Register object,
+                                   InstanceType instance_type, Label* target,
+                                   Label::Distance distance = Label::kFar);
   inline void JumpIfInstanceType(Condition cc, Register map,
                                  InstanceType instance_type, Label* target,
                                  Label::Distance distance = Label::kFar);
@@ -150,11 +157,11 @@ class BaselineAssembler {
   inline void TailCallBuiltin(Builtin builtin);
   inline void CallRuntime(Runtime::FunctionId function, int nargs);
 
-  inline void LoadTaggedPointerField(Register output, Register source,
-                                     int offset);
+  inline void LoadTaggedField(Register output, Register source, int offset);
   inline void LoadTaggedSignedField(Register output, Register source,
                                     int offset);
-  inline void LoadTaggedAnyField(Register output, Register source, int offset);
+  inline void LoadTaggedSignedFieldAndUntag(Register output, Register source,
+                                            int offset);
   inline void LoadWord16FieldZeroExtend(Register output, Register source,
                                         int offset);
   inline void LoadWord8Field(Register output, Register source, int offset);
@@ -167,12 +174,43 @@ class BaselineAssembler {
                                     int32_t index);
   inline void LoadPrototype(Register prototype, Register object);
 
+// Loads compressed pointer or loads from compressed pointer. This is because
+// X64 supports complex addressing mode, pointer decompression can be done by
+// [%compressed_base + %r1 + K].
+#if V8_TARGET_ARCH_X64
+  inline void LoadTaggedField(TaggedRegister output, Register source,
+                              int offset);
+  inline void LoadTaggedField(TaggedRegister output, TaggedRegister source,
+                              int offset);
+  inline void LoadTaggedField(Register output, TaggedRegister source,
+                              int offset);
+  inline void LoadFixedArrayElement(Register output, TaggedRegister array,
+                                    int32_t index);
+  inline void LoadFixedArrayElement(TaggedRegister output, TaggedRegister array,
+                                    int32_t index);
+#endif
+
+  // Falls through and sets scratch_and_result to 0 on failure, jumps to
+  // on_result on success.
+  inline void TryLoadOptimizedOsrCode(Register scratch_and_result,
+                                      Register feedback_vector,
+                                      FeedbackSlot slot, Label* on_result,
+                                      Label::Distance distance);
+
   // Loads the feedback cell from the function, and sets flags on add so that
   // we can compare afterward.
   inline void AddToInterruptBudgetAndJumpIfNotExceeded(
       int32_t weight, Label* skip_interrupt_label);
   inline void AddToInterruptBudgetAndJumpIfNotExceeded(
       Register weight, Label* skip_interrupt_label);
+
+  inline void LdaContextSlot(Register context, uint32_t index, uint32_t depth);
+  inline void StaContextSlot(Register context, Register value, uint32_t index,
+                             uint32_t depth);
+  inline void LdaModuleVariable(Register context, int cell_index,
+                                uint32_t depth);
+  inline void StaModuleVariable(Register context, Register value,
+                                int cell_index, uint32_t depth);
 
   inline void AddSmi(Register lhs, Smi rhs);
   inline void SmiUntag(Register value);

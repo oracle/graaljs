@@ -25,7 +25,7 @@ void CallInterfaceDescriptorData::InitializeRegisters(
       DCHECK(reg.is_valid());
       DCHECK(!reglist.has(reg));
       DCHECK_NE(reg, kRootRegister);
-#ifdef V8_COMPRESS_POINTERS_IN_SHARED_CAGE
+#ifdef V8_COMPRESS_POINTERS
       DCHECK_NE(reg, kPtrComprCageBaseRegister);
 #endif
       reglist.set(reg);
@@ -118,7 +118,7 @@ const char* CallInterfaceDescriptor::DebugName() const {
 }
 
 bool CallInterfaceDescriptor::IsValidFloatParameterRegister(Register reg) {
-#if defined(V8_TARGET_ARCH_MIPS) || defined(V8_TARGET_ARCH_MIPS64)
+#if defined(V8_TARGET_ARCH_MIPS64)
   return reg.code() % 2 == 0;
 #else
   return true;

@@ -50,11 +50,12 @@
 
 const {
   ArrayFrom,
+  ArrayPrototypeFilter,
+  ArrayPrototypeIncludes,
   ArrayPrototypeMap,
   ArrayPrototypePush,
   ArrayPrototypeSlice,
   Error,
-  ObjectCreate,
   ObjectDefineProperty,
   ObjectKeys,
   ObjectPrototypeHasOwnProperty,
@@ -63,8 +64,8 @@ const {
   SafeMap,
   SafeSet,
   String,
-  StringPrototypeSlice,
   StringPrototypeStartsWith,
+  StringPrototypeSlice,
   TypeError,
 } = primordials;
 
@@ -79,39 +80,33 @@ ObjectDefineProperty(process, 'moduleLoadList', {
 });
 
 
-// internalBindingAllowlist contains the name of internalBinding modules
-// that are allowed for access via process.binding()... This is used
-// to provide a transition path for modules that are being moved over to
-// internalBinding.
-const internalBindingAllowlist = new SafeSet([
-  'async_wrap',
+// processBindingAllowList contains the name of bindings that are allowed
+// for access via process.binding(). This is used to provide a transition
+// path for modules that are being moved over to internalBinding.
+// Certain bindings may not actually correspond to an internalBinding any
+// more, we just implement them as legacy wrappers instead. See the
+// legacyWrapperList.
+const processBindingAllowList = new SafeSet([
   'buffer',
   'cares_wrap',
   'config',
   'constants',
   'contextify',
-  'crypto',
   'fs',
   'fs_event_wrap',
-  'http_parser',
   'icu',
   'inspector',
   'js_stream',
-  'natives',
   'os',
   'pipe_wrap',
   'process_wrap',
-  'signal_wrap',
   'spawn_sync',
   'stream_wrap',
   'tcp_wrap',
   'tls_wrap',
   'tty_wrap',
   'udp_wrap',
-  'url',
-  'util',
   'uv',
-  'v8',
   'zlib',
 ]);
 
@@ -125,6 +120,7 @@ const runtimeDeprecatedList = new SafeSet([
 ]);
 
 const legacyWrapperList = new SafeSet([
+  'natives',
   'util',
 ]);
 
@@ -132,6 +128,7 @@ const legacyWrapperList = new SafeSet([
 // beginning with "internal/".
 // Modules that can only be imported via the node: scheme.
 const schemelessBlockList = new SafeSet([
+  'sea',
   'test',
   'test/reporters',
 ]);
@@ -140,23 +137,27 @@ const experimentalModuleList = new SafeSet();
 
 // Set up process.binding() and process._linkedBinding().
 {
-  const bindingObj = ObjectCreate(null);
+  const bindingObj = { __proto__: null };
 
   process.binding = function binding(module) {
     module = String(module);
+    const mod = bindingObj[module];
+    if (typeof mod === 'object') {
+      return mod;
+    }
     // Deprecated specific process.binding() modules, but not all, allow
     // selective fallback to internalBinding for the deprecated ones.
-    if (internalBindingAllowlist.has(module)) {
-      if (runtimeDeprecatedList.has(module)) {
-        runtimeDeprecatedList.delete(module);
-        process.emitWarning(
-          `Access to process.binding('${module}') is deprecated.`,
-          'DeprecationWarning',
-          'DEP0111');
-      }
-      if (legacyWrapperList.has(module)) {
-        return requireBuiltin('internal/legacy/processbinding')[module]();
-      }
+    if (runtimeDeprecatedList.has(module)) {
+      process.emitWarning(
+        `Access to process.binding('${module}') is deprecated.`,
+        'DeprecationWarning',
+        'DEP0111');
+      return internalBinding(module);
+    }
+    if (legacyWrapperList.has(module)) {
+      return requireBuiltin('internal/legacy/processbinding')[module]();
+    }
+    if (processBindingAllowList.has(module)) {
       return internalBinding(module);
     }
     // eslint-disable-next-line no-restricted-syntax
@@ -172,13 +173,13 @@ const experimentalModuleList = new SafeSet();
   };
 }
 
-// Set up internalBinding() in the closure.
 /**
- * @type {InternalBinding}
+ * Set up internalBinding() in the closure.
+ * @type {import('typings/globals').internalBinding}
  */
 let internalBinding;
 {
-  const bindingObj = ObjectCreate(null);
+  const bindingObj = { __proto__: null };
   // eslint-disable-next-line no-global-assign
   internalBinding = function internalBinding(module) {
     let mod = bindingObj[module];
@@ -197,6 +198,9 @@ const {
   setInternalLoaders,
 } = internalBinding('builtins');
 
+const { ModuleWrap } = internalBinding('module_wrap');
+ObjectSetPrototypeOf(ModuleWrap.prototype, null);
+
 const getOwn = (target, property, receiver) => {
   return ObjectPrototypeHasOwnProperty(target, property) ?
     ReflectGet(target, property, receiver) :
@@ -213,8 +217,8 @@ const internalBuiltinIds = builtinIds
   .filter((id) => StringPrototypeStartsWith(id, 'internal/') && id !== selfId);
 
 // When --expose-internals is on we'll add the internal builtin ids to these.
-const canBeRequiredByUsersList = new SafeSet(publicBuiltinIds);
-const canBeRequiredByUsersWithoutSchemeList =
+let canBeRequiredByUsersList = new SafeSet(publicBuiltinIds);
+let canBeRequiredByUsersWithoutSchemeList =
   new SafeSet(publicBuiltinIds.filter((id) => !schemelessBlockList.has(id)));
 
 /**
@@ -267,6 +271,13 @@ class BuiltinModule {
     }
   }
 
+  static setRealmAllowRequireByUsers(ids) {
+    canBeRequiredByUsersList =
+      new SafeSet(ArrayPrototypeFilter(ids, (id) => ArrayPrototypeIncludes(publicBuiltinIds, id)));
+    canBeRequiredByUsersWithoutSchemeList =
+      new SafeSet(ArrayPrototypeFilter(ids, (id) => !schemelessBlockList.has(id)));
+  }
+
   // To be called during pre-execution when --expose-internals is on.
   // Enables the user-land module loader to access internal modules.
   static exposeInternals() {
@@ -287,18 +298,6 @@ class BuiltinModule {
     return canBeRequiredByUsersWithoutSchemeList.has(id);
   }
 
-  static isBuiltin(id) {
-    return BuiltinModule.canBeRequiredWithoutScheme(id) || (
-      typeof id === 'string' &&
-        StringPrototypeStartsWith(id, 'node:') &&
-        BuiltinModule.canBeRequiredByUsers(StringPrototypeSlice(id, 5))
-    );
-  }
-
-  static getCanBeRequiredByUsersWithoutSchemeList() {
-    return ArrayFrom(canBeRequiredByUsersWithoutSchemeList);
-  }
-
   static normalizeRequirableId(id) {
     if (StringPrototypeStartsWith(id, 'node:')) {
       const normalizedId = StringPrototypeSlice(id, 5);
@@ -310,6 +309,18 @@ class BuiltinModule {
     }
 
     return undefined;
+  }
+
+  static isBuiltin(id) {
+    return BuiltinModule.canBeRequiredWithoutScheme(id) || (
+      typeof id === 'string' &&
+        StringPrototypeStartsWith(id, 'node:') &&
+        BuiltinModule.canBeRequiredByUsers(StringPrototypeSlice(id, 5))
+    );
+  }
+
+  static getCanBeRequiredByUsersWithoutSchemeList() {
+    return ArrayFrom(canBeRequiredByUsersWithoutSchemeList);
   }
 
   static getSchemeOnlyModuleNames() {
@@ -330,20 +341,17 @@ class BuiltinModule {
       const internal = StringPrototypeStartsWith(this.id, 'internal/');
       this.exportKeys = internal ? [] : ObjectKeys(this.exports);
     }
-    this.getESMFacade();
-    this.syncExports();
     return this.exports;
   }
 
   getESMFacade() {
     if (this.module) return this.module;
-    const { ModuleWrap } = internalBinding('module_wrap');
-    // TODO(aduh95): move this to C++, alongside the initialization of the class.
-    ObjectSetPrototypeOf(ModuleWrap.prototype, null);
     const url = `node:${this.id}`;
     const builtin = this;
     const exportsKeys = ArrayPrototypeSlice(this.exportKeys);
-    ArrayPrototypePush(exportsKeys, 'default');
+    if (!ArrayPrototypeIncludes(exportsKeys, 'default')) {
+      ArrayPrototypePush(exportsKeys, 'default');
+    }
     this.module = new ModuleWrap(
       url, undefined, exportsKeys,
       function() {
@@ -438,7 +446,8 @@ function setupPrepareStackTrace() {
     setPrepareStackTraceCallback,
   } = internalBinding('errors');
   const {
-    prepareStackTrace,
+    prepareStackTraceCallback,
+    ErrorPrepareStackTrace,
     fatalExceptionStackEnhancers: {
       beforeInspector,
       afterInspector,
@@ -446,9 +455,17 @@ function setupPrepareStackTrace() {
   } = requireBuiltin('internal/errors');
   // Tell our PrepareStackTraceCallback passed to the V8 API
   // to call prepareStackTrace().
-  setPrepareStackTraceCallback(prepareStackTrace);
+  setPrepareStackTraceCallback(prepareStackTraceCallback);
   // Set the function used to enhance the error stack for printing
   setEnhanceStackForFatalException(beforeInspector, afterInspector);
+  // Setup the default Error.prepareStackTrace.
+  ObjectDefineProperty(Error, 'prepareStackTrace', {
+    __proto__: null,
+    writable: true,
+    enumerable: false,
+    configurable: true,
+    value: ErrorPrepareStackTrace,
+  });
 }
 
 // Store the internal loaders in C++.

@@ -7,6 +7,7 @@ const { getOptionValue } = require('internal/options');
 const { isUsingInspector } = require('internal/util/inspector');
 const { run } = require('internal/test_runner/runner');
 const { setupTestReporters } = require('internal/test_runner/utils');
+const { exitCodes: { kGenericUserError } } = internalBinding('errors');
 const {
   codes: {
     ERR_INVALID_ARG_VALUE,
@@ -38,7 +39,7 @@ let shard;
 const shardOption = getOptionValue('--test-shard');
 if (shardOption) {
   if (!RegExpPrototypeExec(/^\d+\/\d+$/, shardOption)) {
-    process.exitCode = 1;
+    process.exitCode = kGenericUserError;
 
     throw new ERR_INVALID_ARG_VALUE(
       '--test-shard',
@@ -59,16 +60,19 @@ if (shardOption) {
   };
 }
 
+const timeout = getOptionValue('--test-timeout') || Infinity;
+
 const options = {
   concurrency,
   inspectPort,
   watch: getOptionValue('--watch'),
   setup: setupTestReporters,
+  timeout,
   shard,
 };
 debug('test runner configuration:', options);
 run(options).on('test:fail', (data) => {
   if (data.todo === undefined || data.todo === false) {
-    process.exitCode = 1;
+    process.exitCode = kGenericUserError;
   }
 });

@@ -7,7 +7,6 @@
 #include <algorithm>
 
 #include "testing/gmock-support.h"
-#include "testing/gtest-support.h"
 
 namespace v8 {
 namespace base {
@@ -61,7 +60,7 @@ TEST(VectorTest, Equals) {
   EXPECT_TRUE(vec3_char != vec1_const_char);
 }
 
-TEST(OwnedVectorConstruction, Equals) {
+TEST(OwnedVectorTest, Equals) {
   auto int_vec = base::OwnedVector<int>::New(4);
   EXPECT_EQ(4u, int_vec.size());
   auto find_non_zero = [](int i) { return i != 0; };
@@ -77,20 +76,45 @@ TEST(OwnedVectorConstruction, Equals) {
   EXPECT_EQ(init_vec1.as_vector(), init_vec2.as_vector());
 }
 
+TEST(OwnedVectorTest, MoveConstructionAndAssignment) {
+  constexpr int kValues[] = {4, 11, 3};
+  auto int_vec = base::OwnedVector<int>::Of(kValues);
+  EXPECT_EQ(3u, int_vec.size());
+
+  auto move_constructed_vec = std::move(int_vec);
+  EXPECT_EQ(move_constructed_vec.as_vector(), base::ArrayVector(kValues));
+
+  auto move_assigned_to_empty = base::OwnedVector<int>{};
+  move_assigned_to_empty = std::move(move_constructed_vec);
+  EXPECT_EQ(move_assigned_to_empty.as_vector(), base::ArrayVector(kValues));
+
+  auto move_assigned_to_non_empty = base::OwnedVector<int>::New(2);
+  move_assigned_to_non_empty = std::move(move_assigned_to_empty);
+  EXPECT_EQ(move_assigned_to_non_empty.as_vector(), base::ArrayVector(kValues));
+
+  // All but the last vector must be empty (length 0, nullptr data).
+  EXPECT_TRUE(int_vec.empty());
+  EXPECT_TRUE(int_vec.begin() == nullptr);
+  EXPECT_TRUE(move_constructed_vec.empty());
+  EXPECT_TRUE(move_constructed_vec.begin() == nullptr);
+  EXPECT_TRUE(move_assigned_to_empty.empty());
+  EXPECT_TRUE(move_assigned_to_empty.begin() == nullptr);
+}
+
 // Test that the constexpr factory methods work.
 TEST(VectorTest, ConstexprFactories) {
   static constexpr int kInit1[] = {4, 11, 3};
   static constexpr auto kVec1 = base::ArrayVector(kInit1);
-  STATIC_ASSERT(kVec1.size() == 3);
+  static_assert(kVec1.size() == 3);
   EXPECT_THAT(kVec1, testing::ElementsAreArray(kInit1));
 
   static constexpr auto kVec2 = base::VectorOf(kInit1, 2);
-  STATIC_ASSERT(kVec2.size() == 2);
+  static_assert(kVec2.size() == 2);
   EXPECT_THAT(kVec2, testing::ElementsAre(4, 11));
 
   static constexpr const char kInit3[] = "foobar";
   static constexpr auto kVec3 = base::StaticCharVector(kInit3);
-  STATIC_ASSERT(kVec3.size() == 6);
+  static_assert(kVec3.size() == 6);
   EXPECT_THAT(kVec3, testing::ElementsAreArray(kInit3, kInit3 + 6));
 }
 

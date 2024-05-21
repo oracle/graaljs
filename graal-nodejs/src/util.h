@@ -24,9 +24,11 @@
 
 #if defined(NODE_WANT_INTERNALS) && NODE_WANT_INTERNALS
 
+#include "uv.h"
 #include "v8.h"
 
 #include "node.h"
+#include "node_exit_code.h"
 
 #include <climits>
 #include <cstddef>
@@ -112,27 +114,45 @@ struct AssertionInfo {
   const char* message;
   const char* function;
 };
-[[noreturn]] void NODE_EXTERN_PRIVATE Assert(const AssertionInfo& info);
-[[noreturn]] void NODE_EXTERN_PRIVATE Abort();
-void DumpBacktrace(FILE* fp);
+
+// This indirectly calls backtrace so it can not be marked as [[noreturn]].
+void NODE_EXTERN_PRIVATE Assert(const AssertionInfo& info);
+void DumpNativeBacktrace(FILE* fp);
+void DumpJavaScriptBacktrace(FILE* fp);
 
 // Windows 8+ does not like abort() in Release mode
 #ifdef _WIN32
-#define ABORT_NO_BACKTRACE() _exit(134)
+#define ABORT_NO_BACKTRACE() _exit(static_cast<int>(node::ExitCode::kAbort))
 #else
 #define ABORT_NO_BACKTRACE() abort()
 #endif
 
-#define ABORT() node::Abort()
+// Caller of this macro must not be marked as [[noreturn]]. Printing of
+// backtraces may not work correctly in [[noreturn]] functions because
+// when generating code for them the compiler can choose not to
+// maintain the frame pointers or link registers that are necessary for
+// correct backtracing.
+// `ABORT` must be a macro and not a [[noreturn]] function to make sure the
+// backtrace is correct.
+#define ABORT()                                                                \
+  do {                                                                         \
+    node::DumpNativeBacktrace(stderr);                                         \
+    node::DumpJavaScriptBacktrace(stderr);                                     \
+    fflush(stderr);                                                            \
+    ABORT_NO_BACKTRACE();                                                      \
+  } while (0)
 
-#define ERROR_AND_ABORT(expr)                                                 \
-  do {                                                                        \
-    /* Make sure that this struct does not end up in inline code, but      */ \
-    /* rather in a read-only data section when modifying this code.        */ \
-    static const node::AssertionInfo args = {                                 \
-      __FILE__ ":" STRINGIFY(__LINE__), #expr, PRETTY_FUNCTION_NAME           \
-    };                                                                        \
-    node::Assert(args);                                                       \
+#define ERROR_AND_ABORT(expr)                                                  \
+  do {                                                                         \
+    /* Make sure that this struct does not end up in inline code, but      */  \
+    /* rather in a read-only data section when modifying this code.        */  \
+    static const node::AssertionInfo args = {                                  \
+        __FILE__ ":" STRINGIFY(__LINE__), #expr, PRETTY_FUNCTION_NAME};        \
+    node::Assert(args);                                                        \
+    /* `node::Assert` doesn't return. Add an [[noreturn]] abort() here to  */  \
+    /* make the compiler happy about no return value in the caller         */  \
+    /* function when calling ERROR_AND_ABORT.                              */  \
+    ABORT_NO_BACKTRACE();                                                      \
   } while (0)
 
 #ifdef __GNUC__
@@ -661,6 +681,11 @@ class Utf8Value : public MaybeStackBuffer<char> {
  public:
   explicit Utf8Value(v8::Isolate* isolate, v8::Local<v8::Value> value);
 
+  inline std::string ToString() const { return std::string(out(), length()); }
+  inline std::string_view ToStringView() const {
+    return std::string_view(out(), length());
+  }
+
   inline bool operator==(const char* a) const { return strcmp(out(), a) == 0; }
   inline bool operator!=(const char* a) const { return !(*this == a); }
 };
@@ -675,6 +700,9 @@ class BufferValue : public MaybeStackBuffer<char> {
   explicit BufferValue(v8::Isolate* isolate, v8::Local<v8::Value> value);
 
   inline std::string ToString() const { return std::string(out(), length()); }
+  inline std::string_view ToStringView() const {
+    return std::string_view(out(), length());
+  }
 };
 
 #define SPREAD_BUFFER_ARG(val, name)                                           \
@@ -980,6 +1008,8 @@ std::unique_ptr<T> static_unique_pointer_cast(std::unique_ptr<U>&& ptr) {
 // Returns a non-zero code if it fails to open or read the file,
 // aborts if it fails to close the file.
 int ReadFileSync(std::string* result, const char* path);
+// Reads all contents of a FILE*, aborts if it fails.
+std::vector<char> ReadFileSync(FILE* fp);
 
 v8::Local<v8::FunctionTemplate> NewFunctionTemplate(
     v8::Isolate* isolate,
@@ -992,44 +1022,68 @@ v8::Local<v8::FunctionTemplate> NewFunctionTemplate(
 // Convenience methods for NewFunctionTemplate().
 void SetMethod(v8::Local<v8::Context> context,
                v8::Local<v8::Object> that,
-               const char* name,
+               const std::string_view name,
                v8::FunctionCallback callback);
 // Similar to SetProtoMethod but without receiver signature checks.
 void SetMethod(v8::Isolate* isolate,
                v8::Local<v8::Template> that,
-               const char* name,
+               const std::string_view name,
                v8::FunctionCallback callback);
 
-void SetFastMethod(v8::Local<v8::Context> context,
-                   v8::Local<v8::Object> that,
-                   const char* name,
+void SetFastMethod(v8::Isolate* isolate,
+                   v8::Local<v8::Template> that,
+                   const std::string_view name,
                    v8::FunctionCallback slow_callback,
                    const v8::CFunction* c_function);
-void SetFastMethodNoSideEffect(v8::Local<v8::Context> context,
-                               v8::Local<v8::Object> that,
-                               const char* name,
+void SetFastMethod(v8::Local<v8::Context> context,
+                   v8::Local<v8::Object> that,
+                   const std::string_view name,
+                   v8::FunctionCallback slow_callback,
+                   const v8::CFunction* c_function);
+void SetFastMethod(v8::Isolate* isolate,
+                   v8::Local<v8::Template> that,
+                   const std::string_view name,
+                   v8::FunctionCallback slow_callback,
+                   const v8::MemorySpan<const v8::CFunction>& methods);
+void SetFastMethodNoSideEffect(v8::Isolate* isolate,
+                               v8::Local<v8::Template> that,
+                               const std::string_view name,
                                v8::FunctionCallback slow_callback,
                                const v8::CFunction* c_function);
-
+void SetFastMethodNoSideEffect(v8::Local<v8::Context> context,
+                               v8::Local<v8::Object> that,
+                               const std::string_view name,
+                               v8::FunctionCallback slow_callback,
+                               const v8::CFunction* c_function);
+void SetFastMethodNoSideEffect(
+    v8::Isolate* isolate,
+    v8::Local<v8::Template> that,
+    const std::string_view name,
+    v8::FunctionCallback slow_callback,
+    const v8::MemorySpan<const v8::CFunction>& methods);
 void SetProtoMethod(v8::Isolate* isolate,
                     v8::Local<v8::FunctionTemplate> that,
-                    const char* name,
+                    const std::string_view name,
                     v8::FunctionCallback callback);
 
 void SetInstanceMethod(v8::Isolate* isolate,
                        v8::Local<v8::FunctionTemplate> that,
-                       const char* name,
+                       const std::string_view name,
                        v8::FunctionCallback callback);
 
 // Safe variants denote the function has no side effects.
 void SetMethodNoSideEffect(v8::Local<v8::Context> context,
                            v8::Local<v8::Object> that,
-                           const char* name,
+                           const std::string_view name,
                            v8::FunctionCallback callback);
 void SetProtoMethodNoSideEffect(v8::Isolate* isolate,
                                 v8::Local<v8::FunctionTemplate> that,
-                                const char* name,
+                                const std::string_view name,
                                 v8::FunctionCallback callback);
+void SetMethodNoSideEffect(v8::Isolate* isolate,
+                           v8::Local<v8::Template> that,
+                           const std::string_view name,
+                           v8::FunctionCallback callback);
 
 enum class SetConstructorFunctionFlag {
   NONE,
@@ -1049,6 +1103,55 @@ void SetConstructorFunction(v8::Local<v8::Context> context,
                             v8::Local<v8::FunctionTemplate> tmpl,
                             SetConstructorFunctionFlag flag =
                                 SetConstructorFunctionFlag::SET_CLASS_NAME);
+
+void SetConstructorFunction(v8::Isolate* isolate,
+                            v8::Local<v8::Template> that,
+                            const char* name,
+                            v8::Local<v8::FunctionTemplate> tmpl,
+                            SetConstructorFunctionFlag flag =
+                                SetConstructorFunctionFlag::SET_CLASS_NAME);
+
+void SetConstructorFunction(v8::Isolate* isolate,
+                            v8::Local<v8::Template> that,
+                            v8::Local<v8::String> name,
+                            v8::Local<v8::FunctionTemplate> tmpl,
+                            SetConstructorFunctionFlag flag =
+                                SetConstructorFunctionFlag::SET_CLASS_NAME);
+
+// Like RAIIIsolate, except doesn't enter the isolate while it's in scope.
+class RAIIIsolateWithoutEntering {
+ public:
+  explicit RAIIIsolateWithoutEntering(const SnapshotData* data = nullptr);
+  ~RAIIIsolateWithoutEntering();
+
+  v8::Isolate* get() const { return isolate_; }
+
+ private:
+  std::unique_ptr<v8::ArrayBuffer::Allocator> allocator_;
+  v8::Isolate* isolate_;
+};
+
+// Simple RAII class to spin up a v8::Isolate instance and enter it
+// immediately.
+class RAIIIsolate {
+ public:
+  explicit RAIIIsolate(const SnapshotData* data = nullptr);
+  ~RAIIIsolate();
+
+  v8::Isolate* get() const { return isolate_.get(); }
+
+ private:
+  RAIIIsolateWithoutEntering isolate_;
+  v8::Isolate::Scope isolate_scope_;
+};
+
+std::string DetermineSpecificErrorType(Environment* env,
+                                       v8::Local<v8::Value> input);
+
+v8::Maybe<int32_t> GetValidatedFd(Environment* env, v8::Local<v8::Value> input);
+v8::Maybe<int> GetValidFileMode(Environment* env,
+                                v8::Local<v8::Value> input,
+                                uv_fs_type type);
 
 // Returns true if OS==Windows and filename ends in .bat or .cmd,
 // case insensitive.

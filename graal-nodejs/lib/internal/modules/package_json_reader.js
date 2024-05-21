@@ -14,6 +14,7 @@ const {
 } = require('internal/errors').codes;
 const { internalModuleReadJSON } = internalBinding('fs');
 const { resolve, sep, toNamespacedPath } = require('path');
+const permission = require('internal/process/permission');
 const { kEmptyObject } = require('internal/util');
 
 const { fileURLToPath, pathToFileURL } = require('internal/url');
@@ -148,9 +149,15 @@ function readPackage(requestPath) {
 function readPackageScope(checkPath) {
   const rootSeparatorIndex = StringPrototypeIndexOf(checkPath, sep);
   let separatorIndex;
+  const enabledPermission = permission.isEnabled();
   do {
     separatorIndex = StringPrototypeLastIndexOf(checkPath, sep);
     checkPath = StringPrototypeSlice(checkPath, 0, separatorIndex);
+    // Stop the search when the process doesn't have permissions
+    // to walk upwards
+    if (enabledPermission && !permission.has('fs.read', checkPath + sep)) {
+      return false;
+    }
     if (StringPrototypeEndsWith(checkPath, sep + 'node_modules')) {
       return false;
     }

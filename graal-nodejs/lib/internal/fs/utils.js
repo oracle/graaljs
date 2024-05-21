@@ -13,7 +13,6 @@ const {
   MathMin,
   MathRound,
   ObjectIs,
-  ObjectPrototypeHasOwnProperty,
   ObjectSetPrototypeOf,
   ReflectApply,
   ReflectOwnKeys,
@@ -23,7 +22,10 @@ const {
   Symbol,
   TypedArrayPrototypeAt,
   TypedArrayPrototypeIncludes,
+  uncurryThis,
 } = primordials;
+
+const permission = require('internal/process/permission');
 
 const { Buffer } = require('buffer');
 const {
@@ -36,7 +38,7 @@ const {
     ERR_OUT_OF_RANGE,
   },
   hideStackFrames,
-  uvException,
+  UVException,
 } = require('internal/errors');
 const {
   isArrayBufferView,
@@ -62,6 +64,8 @@ const pathModule = require('path');
 const kType = Symbol('type');
 const kStats = Symbol('stats');
 const assert = require('internal/assert');
+
+const { encodeUtf8String } = internalBinding('encoding_binding');
 
 const {
   fs: {
@@ -161,10 +165,10 @@ function assertEncoding(encoding) {
 }
 
 class Dirent {
-  constructor(name, type, path, filepath = path && join(path, name)) {
+  constructor(name, type, path) {
     this.name = name;
     this.parentPath = path;
-    this.path = filepath;
+    this.path = path;
     this[kType] = type;
   }
 
@@ -198,8 +202,8 @@ class Dirent {
 }
 
 class DirentFromStats extends Dirent {
-  constructor(name, stats, path, filepath) {
-    super(name, null, path, filepath);
+  constructor(name, stats, path) {
+    super(name, null, path);
     this[kStats] = stats;
   }
 }
@@ -269,7 +273,7 @@ function getDirents(path, { 0: names, 1: types }, callback) {
             callback(err);
             return;
           }
-          names[idx] = new DirentFromStats(name, stats, path, filepath);
+          names[idx] = new DirentFromStats(name, stats, path);
           if (--toFinish === 0) {
             callback(null, names);
           }
@@ -305,7 +309,7 @@ function getDirent(path, name, type, callback) {
           callback(err);
           return;
         }
-        callback(null, new DirentFromStats(name, stats, path, filepath));
+        callback(null, new DirentFromStats(name, stats, filepath));
       });
     } else {
       callback(null, new Dirent(name, type, path));
@@ -313,13 +317,9 @@ function getDirent(path, name, type, callback) {
   } else if (type === UV_DIRENT_UNKNOWN) {
     const filepath = join(path, name);
     const stats = lazyLoadFs().lstatSync(filepath);
-    // callback === true: Quirk to not introduce a breaking change.
-    return new DirentFromStats(name, stats, path, callback === true ? filepath : path);
-  } else if (callback === true) {
-    // callback === true: Quirk to not introduce a breaking change.
-    return new Dirent(name, type, path);
+    return new DirentFromStats(name, stats, path);
   } else {
-    return new Dirent(name, type, path, path);
+    return new Dirent(name, type, path);
   }
 }
 
@@ -351,7 +351,7 @@ function getOptions(options, defaultOptions = kEmptyObject) {
  */
 function handleErrorFromBinding(ctx) {
   if (ctx.errno !== undefined) {  // libuv error numbers
-    const err = uvException(ctx);
+    const err = new UVException(ctx);
     ErrorCaptureStackTrace(err, handleErrorFromBinding);
     throw err;
   }
@@ -363,30 +363,6 @@ function handleErrorFromBinding(ctx) {
     throw ctx.error;
   }
 }
-
-// Check if the path contains null types if it is a string nor Uint8Array,
-// otherwise return silently.
-const nullCheck = hideStackFrames((path, propName, throwError = true) => {
-  const pathIsString = typeof path === 'string';
-  const pathIsUint8Array = isUint8Array(path);
-
-  // We can only perform meaningful checks on strings and Uint8Arrays.
-  if ((!pathIsString && !pathIsUint8Array) ||
-      (pathIsString && !StringPrototypeIncludes(path, '\u0000')) ||
-      (pathIsUint8Array && !TypedArrayPrototypeIncludes(path, 0))) {
-    return;
-  }
-
-  const err = new ERR_INVALID_ARG_VALUE(
-    propName,
-    path,
-    'must be a string or Uint8Array without null bytes',
-  );
-  if (throwError) {
-    throw err;
-  }
-  return err;
-});
 
 function preprocessSymlinkDestination(path, type, linkPath) {
   if (!isWindows) {
@@ -667,14 +643,14 @@ function toUnixTimestamp(time, name = 'time') {
 const validateOffsetLengthRead = hideStackFrames(
   (offset, length, bufferLength) => {
     if (offset < 0) {
-      throw new ERR_OUT_OF_RANGE('offset', '>= 0', offset);
+      throw new ERR_OUT_OF_RANGE.HideStackFramesError('offset', '>= 0', offset);
     }
     if (length < 0) {
-      throw new ERR_OUT_OF_RANGE('length', '>= 0', length);
+      throw new ERR_OUT_OF_RANGE.HideStackFramesError('length', '>= 0', length);
     }
     if (offset + length > bufferLength) {
-      throw new ERR_OUT_OF_RANGE('length',
-                                 `<= ${bufferLength - offset}`, length);
+      throw new ERR_OUT_OF_RANGE.HideStackFramesError('length',
+                                                      `<= ${bufferLength - offset}`, length);
     }
   },
 );
@@ -682,37 +658,68 @@ const validateOffsetLengthRead = hideStackFrames(
 const validateOffsetLengthWrite = hideStackFrames(
   (offset, length, byteLength) => {
     if (offset > byteLength) {
-      throw new ERR_OUT_OF_RANGE('offset', `<= ${byteLength}`, offset);
+      throw new ERR_OUT_OF_RANGE.HideStackFramesError('offset', `<= ${byteLength}`, offset);
     }
 
     if (length > byteLength - offset) {
-      throw new ERR_OUT_OF_RANGE('length', `<= ${byteLength - offset}`, length);
+      throw new ERR_OUT_OF_RANGE.HideStackFramesError('length', `<= ${byteLength - offset}`, length);
     }
 
     if (length < 0) {
-      throw new ERR_OUT_OF_RANGE('length', '>= 0', length);
+      throw new ERR_OUT_OF_RANGE.HideStackFramesError('length', '>= 0', length);
     }
 
-    validateInt32(length, 'length', 0);
+    validateInt32.withoutStackTrace(length, 'length', 0);
   },
 );
 
 const validatePath = hideStackFrames((path, propName = 'path') => {
   if (typeof path !== 'string' && !isUint8Array(path)) {
-    throw new ERR_INVALID_ARG_TYPE(propName, ['string', 'Buffer', 'URL'], path);
+    throw new ERR_INVALID_ARG_TYPE.HideStackFramesError(propName, ['string', 'Buffer', 'URL'], path);
   }
 
-  const err = nullCheck(path, propName, false);
+  const pathIsString = typeof path === 'string';
+  const pathIsUint8Array = isUint8Array(path);
 
-  if (err !== undefined) {
-    throw err;
+  // We can only perform meaningful checks on strings and Uint8Arrays.
+  if ((!pathIsString && !pathIsUint8Array) ||
+      (pathIsString && !StringPrototypeIncludes(path, '\u0000')) ||
+      (pathIsUint8Array && !TypedArrayPrototypeIncludes(path, 0))) {
+    return;
   }
+
+  throw new ERR_INVALID_ARG_VALUE.HideStackFramesError(
+    propName,
+    path,
+    'must be a string, Uint8Array, or URL without null bytes',
+  );
 });
+
+// TODO(rafaelgss): implement the path.resolve on C++ side
+// See: https://github.com/nodejs/node/pull/44004#discussion_r930958420
+// The permission model needs the absolute path for the fs_permission
+const resolvePath = pathModule.resolve;
+const { isBuffer: BufferIsBuffer, from: BufferFrom } = Buffer;
+const BufferToString = uncurryThis(Buffer.prototype.toString);
+function possiblyTransformPath(path) {
+  if (permission.isEnabled()) {
+    if (typeof path === 'string') {
+      return resolvePath(path);
+    }
+    assert(isUint8Array(path));
+    if (!BufferIsBuffer(path)) path = BufferFrom(path);
+    // Avoid Buffer.from() and use a C++ binding instead to encode the result
+    // of path.resolve() in order to prevent path traversal attacks that
+    // monkey-patch Buffer internals.
+    return encodeUtf8String(resolvePath(BufferToString(path)));
+  }
+  return path;
+}
 
 const getValidatedPath = hideStackFrames((fileURLOrPath, propName = 'path') => {
   const path = toPathIfFileURL(fileURLOrPath);
   validatePath(path, propName);
-  return path;
+  return possiblyTransformPath(path);
 });
 
 const getValidatedFd = hideStackFrames((fd, propName = 'fd') => {
@@ -727,11 +734,11 @@ const getValidatedFd = hideStackFrames((fd, propName = 'fd') => {
 
 const validateBufferArray = hideStackFrames((buffers, propName = 'buffers') => {
   if (!ArrayIsArray(buffers))
-    throw new ERR_INVALID_ARG_TYPE(propName, 'ArrayBufferView[]', buffers);
+    throw new ERR_INVALID_ARG_TYPE.HideStackFramesError(propName, 'ArrayBufferView[]', buffers);
 
   for (let i = 0; i < buffers.length; i++) {
     if (!isArrayBufferView(buffers[i]))
-      throw new ERR_INVALID_ARG_TYPE(propName, 'ArrayBufferView[]', buffers);
+      throw new ERR_INVALID_ARG_TYPE.HideStackFramesError(propName, 'ArrayBufferView[]', buffers);
   }
 
   return buffers;
@@ -787,7 +794,7 @@ const validateCpOptions = hideStackFrames((options) => {
   validateBoolean(options.verbatimSymlinks, 'options.verbatimSymlinks');
   options.mode = getValidMode(options.mode, 'copyFile');
   if (options.dereference === true && options.verbatimSymlinks === true) {
-    throw new ERR_INCOMPATIBLE_OPTION_PAIR('dereference', 'verbatimSymlinks');
+    throw new ERR_INCOMPATIBLE_OPTION_PAIR.HideStackFramesError('dereference', 'verbatimSymlinks');
   }
   if (options.filter !== undefined) {
     validateFunction(options.filter, 'options.filter');
@@ -812,21 +819,23 @@ const validateRmOptions = hideStackFrames((path, options, expectDir, cb) => {
     }
 
     if (stats.isDirectory() && !options.recursive) {
-      return cb(new ERR_FS_EISDIR({
+      const err = new ERR_FS_EISDIR.HideStackFramesError({
         code: 'EISDIR',
         message: 'is a directory',
         path,
         syscall: 'rm',
         errno: EISDIR,
-      }));
+      });
+
+      return cb(err);
     }
     return cb(null, options);
   });
 });
 
 const validateRmOptionsSync = hideStackFrames((path, options, expectDir) => {
-  options = validateRmdirOptions(options, defaultRmOptions);
-  validateBoolean(options.force, 'options.force');
+  options = validateRmdirOptions.withoutStackTrace(options, defaultRmOptions);
+  validateBoolean.withoutStackTrace(options.force, 'options.force');
 
   if (!options.force || expectDir || !options.recursive) {
     const isDirectory = lazyLoadFs()
@@ -837,7 +846,7 @@ const validateRmOptionsSync = hideStackFrames((path, options, expectDir) => {
     }
 
     if (isDirectory && !options.recursive) {
-      throw new ERR_FS_EISDIR({
+      throw new ERR_FS_EISDIR.HideStackFramesError({
         code: 'EISDIR',
         message: 'is a directory',
         path,
@@ -850,8 +859,12 @@ const validateRmOptionsSync = hideStackFrames((path, options, expectDir) => {
   return options;
 });
 
-let recursiveRmdirWarned = process.noDeprecation;
+let recursiveRmdirWarned;
 function emitRecursiveRmdirWarning() {
+  if (recursiveRmdirWarned === undefined) {
+    // TODO(joyeecheung): use getOptionValue('--no-deprecation') instead.
+    recursiveRmdirWarned = process.noDeprecation;
+  }
   if (!recursiveRmdirWarned) {
     process.emitWarning(
       'In future versions of Node.js, fs.rmdir(path, { recursive: true }) ' +
@@ -867,13 +880,13 @@ const validateRmdirOptions = hideStackFrames(
   (options, defaults = defaultRmdirOptions) => {
     if (options === undefined)
       return defaults;
-    validateObject(options, 'options');
+    validateObject.withoutStackTrace(options, 'options');
 
     options = { ...defaults, ...options };
 
-    validateBoolean(options.recursive, 'options.recursive');
-    validateInt32(options.retryDelay, 'options.retryDelay', 0);
-    validateUint32(options.maxRetries, 'options.maxRetries');
+    validateBoolean.withoutStackTrace(options.recursive, 'options.recursive');
+    validateInt32.withoutStackTrace(options.retryDelay, 'options.retryDelay', 0);
+    validateUint32.withoutStackTrace(options.maxRetries, 'options.maxRetries');
 
     return options;
   });
@@ -892,34 +905,13 @@ const getValidMode = hideStackFrames((mode, type) => {
   if (mode == null) {
     return def;
   }
-  validateInteger(mode, 'mode', min, max);
+  validateInteger.withoutStackTrace(mode, 'mode', min, max);
   return mode;
 });
 
 const validateStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
-  if (typeof buffer === 'string') {
-    return;
-  }
-
-  if (
-    typeof buffer === 'object' &&
-    buffer !== null &&
-    typeof buffer.toString === 'function' &&
-    ObjectPrototypeHasOwnProperty(buffer, 'toString')
-  ) {
-    return;
-  }
-
-  throw new ERR_INVALID_ARG_TYPE(
-    name,
-    ['string', 'Buffer', 'TypedArray', 'DataView'],
-    buffer,
-  );
-});
-
-const validatePrimitiveStringAfterArrayBufferView = hideStackFrames((buffer, name) => {
   if (typeof buffer !== 'string') {
-    throw new ERR_INVALID_ARG_TYPE(
+    throw new ERR_INVALID_ARG_TYPE.HideStackFramesError(
       name,
       ['string', 'Buffer', 'TypedArray', 'DataView'],
       buffer,
@@ -929,15 +921,15 @@ const validatePrimitiveStringAfterArrayBufferView = hideStackFrames((buffer, nam
 
 const validatePosition = hideStackFrames((position, name) => {
   if (typeof position === 'number') {
-    validateInteger(position, name);
+    validateInteger.withoutStackTrace(position, name, -1);
   } else if (typeof position === 'bigint') {
     if (!(position >= -(2n ** 63n) && position <= 2n ** 63n - 1n)) {
-      throw new ERR_OUT_OF_RANGE(name,
-                                 `>= ${-(2n ** 63n)} && <= ${2n ** 63n - 1n}`,
-                                 position);
+      throw new ERR_OUT_OF_RANGE.HideStackFramesError(name,
+                                                      `>= ${-(2n ** 63n)} && <= ${2n ** 63n - 1n}`,
+                                                      position);
     }
   } else {
-    throw new ERR_INVALID_ARG_TYPE(name, ['integer', 'bigint'], position);
+    throw new ERR_INVALID_ARG_TYPE.HideStackFramesError(name, ['integer', 'bigint'], position);
   }
 });
 
@@ -959,9 +951,8 @@ module.exports = {
   getOptions,
   getValidatedFd,
   getValidatedPath,
-  getValidMode,
   handleErrorFromBinding,
-  nullCheck,
+  possiblyTransformPath,
   preprocessSymlinkDestination,
   realpathCacheKey: Symbol('realpathCacheKey'),
   getStatFsFromBinding,
@@ -980,6 +971,5 @@ module.exports = {
   validateRmOptionsSync,
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
-  validatePrimitiveStringAfterArrayBufferView,
   warnOnNonPortableTemplate,
 };

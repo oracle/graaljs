@@ -6,7 +6,7 @@ if (!common.hasCrypto)
   common.skip('missing crypto');
 
 const assert = require('assert');
-const { subtle } = require('crypto').webcrypto;
+const { subtle } = globalThis.crypto;
 
 const vectors = require('../fixtures/crypto/hmac')();
 
@@ -172,10 +172,10 @@ async function testSign({ hash,
 (async function() {
   const variations = [];
 
-  vectors.forEach((vector) => {
+  for (const vector of vectors) {
     variations.push(testVerify(vector));
     variations.push(testSign(vector));
-  });
+  }
 
   await Promise.all(variations);
 })().then(common.mustCall());

@@ -16,6 +16,8 @@ const console = require('internal/console/global');
 
 const { getOptionValue } = require('internal/options');
 
+const { exitCodes: { kInvalidCommandLineArgument } } = internalBinding('errors');
+
 prepareMainThreadExecution();
 
 markBootstrapComplete();
@@ -30,11 +32,10 @@ if (process.env.NODE_REPL_EXTERNAL_MODULE) {
     // If we can't write to stderr, we'd like to make this a noop,
     // so use console.error.
     console.error('Cannot specify --input-type for REPL');
-    process.exit(1);
+    process.exit(kInvalidCommandLineArgument);
   }
 
-  const esmLoader = require('internal/process/esm_loader');
-  esmLoader.loadESM(() => {
+  require('internal/modules/run_main').runEntryPointWithESMLoader(() => {
     console.log(`Welcome to Node.js ${process.version}.\n` +
       'Type ".help" for more information.');
 
@@ -62,5 +63,7 @@ if (process.env.NODE_REPL_EXTERNAL_MODULE) {
                  getOptionValue('--inspect-brk'),
                  getOptionValue('--print'));
     }
+    // The TLAs in the REPL are still run as scripts, just transformed as async
+    // IIFEs for the REPL code itself to await on.
   });
 }

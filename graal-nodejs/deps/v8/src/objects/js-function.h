@@ -32,7 +32,7 @@ class JSFunctionOrBoundFunctionOrWrappedFunction
       Handle<JSFunctionOrBoundFunctionOrWrappedFunction> function,
       Handle<JSReceiver> target, Handle<String> prefix, int arg_count);
 
-  STATIC_ASSERT(kHeaderSize == JSObject::kHeaderSize);
+  static_assert(kHeaderSize == JSObject::kHeaderSize);
   TQ_OBJECT_CONSTRUCTORS(JSFunctionOrBoundFunctionOrWrappedFunction)
 };
 
@@ -101,6 +101,9 @@ class JSFunction : public TorqueGeneratedJSFunction<
   inline Context context();
   DECL_RELAXED_GETTER(context, Context)
   inline bool has_context() const;
+  using TorqueGeneratedClass::context;
+  using TorqueGeneratedClass::set_context;
+  DECL_RELEASE_ACQUIRE_ACCESSORS(context, Context)
   inline JSGlobalProxy global_proxy();
   inline NativeContext native_context();
   inline int length();
@@ -115,20 +118,14 @@ class JSFunction : public TorqueGeneratedJSFunction<
   // optimized code object, or when reading from the background thread.
   // Storing a builtin doesn't require release semantics because these objects
   // are fully initialized.
-  DECL_ACCESSORS(code, CodeT)
-  DECL_RELEASE_ACQUIRE_ACCESSORS(code, CodeT)
-#ifdef V8_EXTERNAL_CODE_SPACE
-  // Convenient overloads to avoid unnecessary Code <-> CodeT conversions.
-  // TODO(v8:11880): remove once |code| accessors are migrated to CodeT.
-  inline void set_code(Code code, ReleaseStoreTag,
-                       WriteBarrierMode mode = UPDATE_WRITE_BARRIER);
-#endif
+  DECL_ACCESSORS(code, Code)
+  DECL_RELEASE_ACQUIRE_ACCESSORS(code, Code)
 
   // Returns the address of the function code's instruction start.
   inline Address code_entry_point() const;
 
   // Get the abstract code associated with the function, which will either be
-  // a Code object or a BytecodeArray.
+  // a InstructionStream object or a BytecodeArray.
   template <typename IsolateT>
   inline AbstractCode abstract_code(IsolateT* isolate);
 
@@ -148,6 +145,11 @@ class JSFunction : public TorqueGeneratedJSFunction<
   // attached/available/active sets. This is because the JSFunction might have
   // been already deoptimized but its code() still needs to be unlinked, which
   // will happen on its next activation.
+
+  bool HasAvailableHigherTierCodeThan(CodeKind kind) const;
+  // As above but only considers available code kinds passing the filter mask.
+  bool HasAvailableHigherTierCodeThanWithFilter(CodeKind kind,
+                                                CodeKinds filter_mask) const;
 
   // True, iff any generated code kind is attached/available to this function.
   V8_EXPORT_PRIVATE bool HasAttachedOptimizedCode() const;
@@ -209,8 +211,8 @@ class JSFunction : public TorqueGeneratedJSFunction<
   // Functions related to feedback vector. feedback_vector() can be used once
   // the function has feedback vectors allocated. feedback vectors may not be
   // available after compile when lazily allocating feedback vectors.
-  inline FeedbackVector feedback_vector() const;
-  inline bool has_feedback_vector() const;
+  DECL_GETTER(feedback_vector, FeedbackVector)
+  DECL_GETTER(has_feedback_vector, bool)
   V8_EXPORT_PRIVATE static void EnsureFeedbackVector(
       Isolate* isolate, Handle<JSFunction> function,
       IsCompiledScope* compiled_scope);
@@ -235,8 +237,9 @@ class JSFunction : public TorqueGeneratedJSFunction<
                                      IsCompiledScope* compiled_scope,
                                      bool reset_budget_for_feedback_allocation);
 
-  // Unconditionally clear the type feedback vector.
-  void ClearTypeFeedbackInfo();
+  // Unconditionally clear the type feedback vector, even those that we usually
+  // keep (e.g.: BinaryOp feedback).
+  void ClearAllTypeFeedbackInfoForTesting();
 
   // Resets function to clear compiled data after bytecode has been flushed.
   inline bool NeedsResetDueToFlushedBytecode();
@@ -263,7 +266,7 @@ class JSFunction : public TorqueGeneratedJSFunction<
                             Handle<Map> map, Handle<HeapObject> prototype);
   static void SetInitialMap(Isolate* isolate, Handle<JSFunction> function,
                             Handle<Map> map, Handle<HeapObject> prototype,
-                            Handle<JSFunction> constructor);
+                            Handle<HeapObject> constructor);
   DECL_GETTER(has_initial_map, bool)
   V8_EXPORT_PRIVATE static void EnsureHasInitialMap(
       Handle<JSFunction> function);
@@ -276,9 +279,14 @@ class JSFunction : public TorqueGeneratedJSFunction<
       Handle<JSReceiver> new_target);
 
   // Like GetDerivedMap, but returns a map with a RAB / GSAB ElementsKind.
-  static V8_WARN_UNUSED_RESULT Handle<Map> GetDerivedRabGsabMap(
+  static V8_WARN_UNUSED_RESULT MaybeHandle<Map> GetDerivedRabGsabTypedArrayMap(
       Isolate* isolate, Handle<JSFunction> constructor,
       Handle<JSReceiver> new_target);
+
+  // Like GetDerivedMap, but can be used for DataViews for retrieving / creating
+  // a map with a JS_RAB_GSAB_DATA_VIEW instance type.
+  static V8_WARN_UNUSED_RESULT MaybeHandle<Map> GetDerivedRabGsabDataViewMap(
+      Isolate* isolate, Handle<JSReceiver> new_target);
 
   // Get and set the prototype property on a JSFunction. If the
   // function has an initial map the prototype is set on the initial

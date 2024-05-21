@@ -53,8 +53,7 @@ EVPKeyCtxPointer NidKeyPairGenTraits::Setup(NidKeyPairGenConfig* params) {
 }
 
 void SecretKeyGenConfig::MemoryInfo(MemoryTracker* tracker) const {
-  if (out != nullptr)
-    tracker->TrackFieldWithSize("out", length);
+  if (out) tracker->TrackFieldWithSize("out", length);
 }
 
 Maybe<bool> SecretKeyGenTraits::AdditionalConfig(
@@ -64,35 +63,25 @@ Maybe<bool> SecretKeyGenTraits::AdditionalConfig(
     SecretKeyGenConfig* params) {
   CHECK(args[*offset]->IsUint32());
   uint32_t bits = args[*offset].As<Uint32>()->Value();
-  static_assert(std::numeric_limits<decltype(bits)>::max() / CHAR_BIT <=
-                INT_MAX);
   params->length = bits / CHAR_BIT;
   *offset += 1;
   return Just(true);
 }
 
-KeyGenJobStatus SecretKeyGenTraits::DoKeyGen(
-    Environment* env,
-    SecretKeyGenConfig* params) {
-  CHECK_LE(params->length, INT_MAX);
-  params->out = MallocOpenSSL<char>(params->length);
-  if (CSPRNG(reinterpret_cast<unsigned char*>(params->out),
-             params->length).is_err()) {
-    OPENSSL_clear_free(params->out, params->length);
-    params->out = nullptr;
-    params->length = 0;
+KeyGenJobStatus SecretKeyGenTraits::DoKeyGen(Environment* env,
+                                             SecretKeyGenConfig* params) {
+  ByteSource::Builder bytes(params->length);
+  if (CSPRNG(bytes.data<unsigned char>(), params->length).is_err())
     return KeyGenJobStatus::FAILED;
-  }
+  params->out = std::move(bytes).release();
   return KeyGenJobStatus::OK;
 }
 
-Maybe<bool> SecretKeyGenTraits::EncodeKey(
-    Environment* env,
-    SecretKeyGenConfig* params,
-    Local<Value>* result) {
-  ByteSource out = ByteSource::Allocated(params->out, params->length);
+Maybe<bool> SecretKeyGenTraits::EncodeKey(Environment* env,
+                                          SecretKeyGenConfig* params,
+                                          Local<Value>* result) {
   std::shared_ptr<KeyObjectData> data =
-      KeyObjectData::CreateSecret(std::move(out));
+      KeyObjectData::CreateSecret(std::move(params->out));
   return Just(KeyObjectHandle::Create(env, data).ToLocal(result));
 }
 

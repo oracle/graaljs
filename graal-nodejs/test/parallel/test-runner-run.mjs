@@ -104,6 +104,16 @@ describe('require(\'node:test\').run', { concurrency: true }, () => {
       assert.match(stringResults[1], /tests 1/);
       assert.match(stringResults[1], /pass 1/);
     });
+
+    it('spec', async () => {
+      const result = await run({
+        files: [join(testFixtures, 'default-behavior/test/random.cjs')]
+      }).compose(spec).toArray();
+      const stringResults = result.map((bfr) => bfr.toString());
+      assert.match(stringResults[0], /this should pass/);
+      assert.match(stringResults[1], /tests 1/);
+      assert.match(stringResults[1], /pass 1/);
+    });
   });
 
   it('should be piped with tap', async () => {
@@ -174,6 +184,17 @@ describe('require(\'node:test\').run', { concurrency: true }, () => {
   });
 
   describe('AbortSignal', () => {
+    it('should accept a signal', async () => {
+      const stream = run({ signal: AbortSignal.timeout(50), files: [
+        fixtures.path('test-runner', 'never_ending_sync.js'),
+        fixtures.path('test-runner', 'never_ending_async.js'),
+      ] });
+      stream.on('test:fail', common.mustCall(2));
+      stream.on('test:pass', common.mustNotCall());
+      // eslint-disable-next-line no-unused-vars
+      for await (const _ of stream);
+    });
+
     it('should stop watch mode when abortSignal aborts', async () => {
       const controller = new AbortController();
       const result = await run({
@@ -182,9 +203,16 @@ describe('require(\'node:test\').run', { concurrency: true }, () => {
         signal: controller.signal,
       })
         .compose(async function* (source) {
+          let waitForCancel = 2;
           for await (const chunk of source) {
-            if (chunk.type === 'test:pass') {
+            if (chunk.type === 'test:watch:drained' ||
+                (chunk.type === 'test:diagnostic' && chunk.data.message.startsWith('duration_ms'))) {
+              waitForCancel--;
+            }
+            if (waitForCancel === 0) {
               controller.abort();
+            }
+            if (chunk.type === 'test:pass') {
               yield chunk.data.name;
             }
           }
@@ -322,7 +350,7 @@ describe('require(\'node:test\').run', { concurrency: true }, () => {
         }), {
           name: 'RangeError',
           code: 'ERR_OUT_OF_RANGE',
-          // eslint-disable-next-line max-len
+          // eslint-disable-next-line @stylistic/js/max-len
           message: 'The value of "options.shard.index" is out of range. It must be >= 1 && <= 6 ("options.shard.total"). Received 0'
         });
       });
@@ -337,7 +365,7 @@ describe('require(\'node:test\').run', { concurrency: true }, () => {
         }), {
           name: 'RangeError',
           code: 'ERR_OUT_OF_RANGE',
-          // eslint-disable-next-line max-len
+          // eslint-disable-next-line @stylistic/js/max-len
           message: 'The value of "options.shard.index" is out of range. It must be >= 1 && <= 6 ("options.shard.total"). Received 7'
         });
       });
@@ -436,5 +464,65 @@ describe('require(\'node:test\').run', { concurrency: true }, () => {
 
       assert.deepStrictEqual(executedTestFiles.sort(), [...shardsTestsFiles].sort());
     });
+  });
+
+  describe('validation', () => {
+    it('should pass instance of stream to setup', async () => {
+      const stream = run({
+        files: [join(testFixtures, 'default-behavior/test/random.cjs')],
+        setup: common.mustCall((root) => {
+          assert.strictEqual(root.constructor.name, 'TestsStream');
+        }),
+      });
+      stream.on('test:fail', common.mustNotCall());
+      stream.on('test:pass', common.mustCall());
+      // eslint-disable-next-line no-unused-vars
+      for await (const _ of stream);
+    });
+  });
+
+  it('should run with no files', async () => {
+    const stream = run({
+      files: undefined
+    }).compose(tap);
+    stream.on('test:fail', common.mustNotCall());
+    stream.on('test:pass', common.mustNotCall());
+
+    // eslint-disable-next-line no-unused-vars
+    for await (const _ of stream);
+  });
+
+  it('should run with no files and use spec reporter', async () => {
+    const stream = run({
+      files: undefined
+    }).compose(spec);
+    stream.on('test:fail', common.mustNotCall());
+    stream.on('test:pass', common.mustNotCall());
+
+    // eslint-disable-next-line no-unused-vars
+    for await (const _ of stream);
+  });
+
+  it('should run with no files and use dot reporter', async () => {
+    const stream = run({
+      files: undefined
+    }).compose(dot);
+    stream.on('test:fail', common.mustNotCall());
+    stream.on('test:pass', common.mustNotCall());
+
+    // eslint-disable-next-line no-unused-vars
+    for await (const _ of stream);
+  });
+
+  it('should avoid running recursively', async () => {
+    const stream = run({ files: [join(testFixtures, 'recursive_run.js')] });
+    let stderr = '';
+    stream.on('test:fail', common.mustNotCall());
+    stream.on('test:pass', common.mustCall(1));
+    stream.on('test:stderr', (c) => { stderr += c.message; });
+
+    // eslint-disable-next-line no-unused-vars
+    for await (const _ of stream);
+    assert.match(stderr, /Warning: node:test run\(\) is being called recursively/);
   });
 });

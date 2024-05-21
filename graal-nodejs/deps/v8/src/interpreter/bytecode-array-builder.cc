@@ -58,7 +58,7 @@ BytecodeArrayBuilder::BytecodeArrayBuilder(
   DCHECK_GE(parameter_count_, 0);
   DCHECK_GE(local_register_count_, 0);
 
-  if (FLAG_ignition_reo) {
+  if (v8_flags.ignition_reo) {
     register_optimizer_ = zone->New<BytecodeRegisterOptimizer>(
         zone, &register_allocator_, fixed_register_count(), parameter_count,
         zone->New<RegisterTransferWriter>(this));
@@ -138,7 +138,7 @@ BytecodeSourceInfo BytecodeArrayBuilder::CurrentSourcePosition(
     // throw (if expression position filtering is turned on). We only
     // invalidate the existing source position information if it is used.
     if (latest_source_info_.is_statement() ||
-        !FLAG_ignition_filter_expression_positions ||
+        !v8_flags.ignition_filter_expression_positions ||
         !Bytecodes::IsWithoutExternalSideEffects(bytecode)) {
       source_position = latest_source_info_;
       latest_source_info_.set_invalid();
@@ -378,8 +378,8 @@ BYTECODE_LIST(DEFINE_BYTECODE_OUTPUT)
 #undef DEFINE_BYTECODE_OUTPUT
 
 void BytecodeArrayBuilder::OutputJumpLoop(BytecodeLoopHeader* loop_header,
-                                          int loop_depth) {
-  BytecodeNode node(CreateJumpLoopNode(0, loop_depth));
+                                          int loop_depth, int feedback_slot) {
+  BytecodeNode node(CreateJumpLoopNode(0, loop_depth, feedback_slot));
   WriteJumpLoop(&node, loop_header);
 }
 
@@ -523,6 +523,13 @@ BytecodeArrayBuilder& BytecodeArrayBuilder::TypeOf() {
 
 BytecodeArrayBuilder& BytecodeArrayBuilder::GetSuperConstructor(Register out) {
   OutputGetSuperConstructor(out);
+  return *this;
+}
+
+BytecodeArrayBuilder&
+BytecodeArrayBuilder::FindNonDefaultConstructorOrConstruct(
+    Register this_function, Register new_target, RegisterList output) {
+  OutputFindNonDefaultConstructorOrConstruct(this_function, new_target, output);
   return *this;
 }
 
@@ -874,11 +881,6 @@ BytecodeArrayBuilder& BytecodeArrayBuilder::DefineKeyedOwnPropertyInLiteral(
   return *this;
 }
 
-BytecodeArrayBuilder& BytecodeArrayBuilder::CollectTypeProfile(int position) {
-  OutputCollectTypeProfile(position);
-  return *this;
-}
-
 BytecodeArrayBuilder& BytecodeArrayBuilder::SetNamedProperty(
     Register object, size_t name_index, int feedback_slot,
     LanguageMode language_mode) {
@@ -920,13 +922,14 @@ BytecodeArrayBuilder& BytecodeArrayBuilder::SetKeyedProperty(
 }
 
 BytecodeArrayBuilder& BytecodeArrayBuilder::DefineKeyedOwnProperty(
-    Register object, Register key, int feedback_slot) {
+    Register object, Register key, DefineKeyedOwnPropertyFlags flags,
+    int feedback_slot) {
   // Ensure that the IC uses a strict language mode, as this is the only
   // supported mode for this use case.
   DCHECK_EQ(GetLanguageModeFromSlotKind(feedback_vector_spec()->GetKind(
                 FeedbackVector::ToSlot(feedback_slot))),
             LanguageMode::kStrict);
-  OutputDefineKeyedOwnProperty(object, key, feedback_slot);
+  OutputDefineKeyedOwnProperty(object, key, flags, feedback_slot);
   return *this;
 }
 
@@ -1257,7 +1260,8 @@ BytecodeArrayBuilder& BytecodeArrayBuilder::JumpIfJSReceiver(
 }
 
 BytecodeArrayBuilder& BytecodeArrayBuilder::JumpLoop(
-    BytecodeLoopHeader* loop_header, int loop_depth, int position) {
+    BytecodeLoopHeader* loop_header, int loop_depth, int position,
+    int feedback_slot) {
   if (position != kNoSourcePosition) {
     // We need to attach a non-breakable source position to JumpLoop for its
     // implicit stack check, so we simply add it as expression position. There
@@ -1270,7 +1274,7 @@ BytecodeArrayBuilder& BytecodeArrayBuilder::JumpLoop(
     // expression position which eliminates the empty statement's position.
     latest_source_info_.ForceExpressionPosition(position);
   }
-  OutputJumpLoop(loop_header, loop_depth);
+  OutputJumpLoop(loop_header, loop_depth, feedback_slot);
   return *this;
 }
 
@@ -1601,8 +1605,9 @@ bool BytecodeArrayBuilder::RegisterListIsValid(RegisterList reg_list) const {
 
 template <Bytecode bytecode, ImplicitRegisterUse implicit_register_use>
 void BytecodeArrayBuilder::PrepareToOutputBytecode() {
-  if (register_optimizer_)
+  if (register_optimizer_) {
     register_optimizer_->PrepareForBytecode<bytecode, implicit_register_use>();
+  }
 }
 
 uint32_t BytecodeArrayBuilder::GetInputRegisterOperand(Register reg) {

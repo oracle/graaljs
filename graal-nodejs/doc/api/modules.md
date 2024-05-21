@@ -42,7 +42,8 @@ In this example, the variable `PI` is private to `circle.js`.
 The `module.exports` property can be assigned a new value (such as a function
 or object).
 
-Below, `bar.js` makes use of the `square` module, which exports a Square class:
+In the following code, `bar.js` makes use of the `square` module, which exports
+a Square class:
 
 ```js
 const Square = require('./square.js');
@@ -80,8 +81,10 @@ By default, Node.js will treat the following as CommonJS modules:
 * Files with a `.js` extension when the nearest parent `package.json` file
   contains a top-level field [`"type"`][] with a value of `"commonjs"`.
 
-* Files with a `.js` extension when the nearest parent `package.json` file
-  doesn't contain a top-level field [`"type"`][]. Package authors should include
+* Files with a `.js` extension or without an extension, when the nearest parent
+  `package.json` file doesn't contain a top-level field [`"type"`][] or there is
+  no `package.json` in any parent folder; unless the file contains syntax that
+  errors unless it is evaluated as an ES module. Package authors should include
   the [`"type"`][] field, even in packages where all sources are CommonJS. Being
   explicit about the `type` of the package will make things easier for build
   tools and loaders to determine how the files in the package should be
@@ -121,7 +124,7 @@ enough to support reasonable directory structures. Package manager programs
 such as `dpkg`, `rpm`, and `npm` will hopefully find it possible to build
 native packages from Node.js modules without modification.
 
-Below we give a suggested directory structure that could work:
+In the following, we give a suggested directory structure that could work:
 
 Let's say that we wanted to have the folder at
 `/usr/lib/node/<some-package>/<some-version>` hold the contents of a

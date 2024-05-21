@@ -14,7 +14,6 @@
 
 const {
   FunctionPrototypeBind,
-  ObjectCreate,
   ReflectDefineProperty,
   ReflectGetOwnPropertyDescriptor,
   ReflectOwnKeys,
@@ -22,9 +21,10 @@ const {
 
 const {
   Console,
+  kBindProperties,
 } = require('internal/console/constructor');
 
-const globalConsole = ObjectCreate({});
+const globalConsole = { __proto__: {} };
 
 // Since Console is not on the prototype chain of the global console,
 // the symbol properties on Console.prototype have to be looked up from
@@ -41,6 +41,8 @@ for (const prop of ReflectOwnKeys(Console.prototype)) {
   }
   ReflectDefineProperty(globalConsole, prop, desc);
 }
+
+globalConsole[kBindProperties](true, 'auto');
 
 // This is a legacy feature - the Console constructor is exposed on
 // the global console instance.

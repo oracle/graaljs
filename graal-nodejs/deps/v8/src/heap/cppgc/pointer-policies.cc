@@ -4,7 +4,6 @@
 
 #include "include/cppgc/internal/pointer-policies.h"
 
-#include "include/cppgc/internal/caged-heap-local-data.h"
 #include "include/cppgc/internal/persistent-node.h"
 #include "src/base/logging.h"
 #include "src/base/macros.h"
@@ -69,7 +68,7 @@ void SameThreadEnabledCheckingPolicyBase::CheckPointerImpl(
     // in progress.
     header = &base_page->ObjectHeaderFromInnerAddress<AccessMode::kAtomic>(ptr);
     DCHECK_LE(header->ObjectStart(), ptr);
-    DCHECK_GT(header->ObjectEnd(), ptr);
+    DCHECK_GT(header->ObjectEnd<AccessMode::kAtomic>(), ptr);
   }
   if (header) {
     DCHECK(!header->IsFree());

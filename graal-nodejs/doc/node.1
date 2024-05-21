@@ -76,6 +76,21 @@ the next argument will be used as a script filename.
 .It Fl -abort-on-uncaught-exception
 Aborting instead of exiting causes a core file to be generated for analysis.
 .
+.It Fl -allow-fs-read
+Allow file system read access when using the permission model.
+.
+.It Fl -allow-fs-write
+Allow file system write access when using the permission model.
+.
+.It Fl -allow-addons
+Allow using native addons when using the permission model.
+.
+.It Fl -allow-child-process
+Allow spawning process when using the permission model.
+.
+.It Fl -allow-worker
+Allow creating worker threads when using the permission model.
+.
 .It Fl -completion-bash
 Print source-able bash completion script for Node.js.
 .
@@ -145,9 +160,6 @@ Interpret as either ES modules or CommonJS modules input via --eval or STDIN, wh
 .js or extensionless files with no sibling or parent package.json;
 .js or extensionless files whose nearest parent package.json lacks a "type" field, unless under node_modules.
 .
-.It Fl -experimental-global-customevent
-Expose the CustomEvent on the global scope.
-.
 .It Fl -experimental-global-webcrypto
 Expose the Web Crypto API on the global scope.
 .
@@ -162,6 +174,9 @@ to use as a custom module loader.
 .It Fl -experimental-network-imports
 Enable experimental support for loading modules using `import` over `https:`.
 .
+.It Fl -experimental-permission
+Enable the experimental permission model.
+.
 .It Fl -experimental-policy
 Use the specified file as a security policy.
 .
@@ -171,14 +186,20 @@ Use this flag to enable ShadowRealm support.
 .It Fl -experimental-test-coverage
 Enable code coverage in the test runner.
 .
+.It Fl -experimental-websocket
+Enable experimental support for the WebSocket API.
+.
 .It Fl -no-experimental-fetch
 Disable experimental support for the Fetch API.
 .
+.It Fl -no-experimental-global-customevent
+Disable exposition of the CustomEvent on the global scope.
+.
+.It Fl -no-experimental-global-webcrypto
+Disable exposition of the Web Crypto API on the global scope.
+.
 .It Fl -no-experimental-repl-await
 Disable top-level await keyword support in REPL.
-.
-.It Fl -experimental-specifier-resolution
-Select extension resolution algorithm for ES Modules; either 'explicit' (default) or 'node'.
 .
 .It Fl -experimental-vm-modules
 Enable experimental ES module support in VM module.
@@ -420,6 +441,9 @@ option set.
 .
 .It Fl -test-shard
 Test suite shard to execute in a format of <index>/<total>.
+
+.It Fl -test-timeout
+A number of milliseconds the test execution will fail after.
 .
 .It Fl -throw-deprecation
 Throw errors for deprecations.

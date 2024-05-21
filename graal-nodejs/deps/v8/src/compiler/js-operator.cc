@@ -29,7 +29,7 @@ constexpr Operator::Properties BinopProperties(Operator::Opcode opcode) {
 }
 
 template <class T>
-Address AddressOrNull(base::Optional<T> ref) {
+Address AddressOrNull(OptionalRef<T> ref) {
   if (!ref.has_value()) return kNullAddress;
   return ref->object().address();
 }
@@ -726,10 +726,14 @@ Type JSWasmCallNode::TypeForWasmReturnType(const wasm::ValueType& type) {
     case wasm::kI32:
       return Type::Signed32();
     case wasm::kI64:
-      return Type::BigInt();
+      return Type::SignedBigInt64();
     case wasm::kF32:
     case wasm::kF64:
       return Type::Number();
+    case wasm::kRef:
+    case wasm::kRefNull:
+      CHECK_EQ(type.heap_type(), wasm::HeapType::kExtern);
+      return Type::Any();
     default:
       UNREACHABLE();
   }
@@ -741,6 +745,8 @@ Type JSWasmCallNode::TypeForWasmReturnType(const wasm::ValueType& type) {
   V(ToName, Operator::kNoProperties, 1, 1)                               \
   V(ToNumber, Operator::kNoProperties, 1, 1)                             \
   V(ToNumberConvertBigInt, Operator::kNoProperties, 1, 1)                \
+  V(ToBigInt, Operator::kNoProperties, 1, 1)                             \
+  V(ToBigIntConvertNumber, Operator::kNoProperties, 1, 1)                \
   V(ToNumeric, Operator::kNoProperties, 1, 1)                            \
   V(ToObject, Operator::kFoldable, 1, 1)                                 \
   V(ToString, Operator::kNoProperties, 1, 1)                             \
@@ -770,6 +776,7 @@ Type JSWasmCallNode::TypeForWasmReturnType(const wasm::ValueType& type) {
   V(RejectPromise, Operator::kNoDeopt | Operator::kNoThrow, 3, 1)        \
   V(ResolvePromise, Operator::kNoDeopt | Operator::kNoThrow, 2, 1)       \
   V(GetSuperConstructor, Operator::kNoWrite | Operator::kNoThrow, 1, 1)  \
+  V(FindNonDefaultConstructorOrConstruct, Operator::kNoProperties, 2, 2) \
   V(ParseInt, Operator::kNoProperties, 2, 1)                             \
   V(RegExpTest, Operator::kNoProperties, 2, 1)
 
@@ -915,30 +922,30 @@ const Operator* JSOperatorBuilder::CallRuntime(Runtime::FunctionId id) {
   return CallRuntime(f, f->nargs);
 }
 
-
-const Operator* JSOperatorBuilder::CallRuntime(Runtime::FunctionId id,
-                                               size_t arity) {
+const Operator* JSOperatorBuilder::CallRuntime(
+    Runtime::FunctionId id, size_t arity, Operator::Properties properties) {
   const Runtime::Function* f = Runtime::FunctionForId(id);
-  return CallRuntime(f, arity);
+  return CallRuntime(f, arity, properties);
 }
 
-
-const Operator* JSOperatorBuilder::CallRuntime(const Runtime::Function* f,
-                                               size_t arity) {
+const Operator* JSOperatorBuilder::CallRuntime(
+    const Runtime::Function* f, size_t arity, Operator::Properties properties) {
   CallRuntimeParameters parameters(f->function_id, arity);
   DCHECK(f->nargs == -1 || f->nargs == static_cast<int>(parameters.arity()));
-  return zone()->New<Operator1<CallRuntimeParameters>>(   // --
-      IrOpcode::kJSCallRuntime, Operator::kNoProperties,  // opcode
-      "JSCallRuntime",                                    // name
-      parameters.arity(), 1, 1, f->result_size, 1, 2,     // inputs/outputs
-      parameters);                                        // parameter
+  return zone()->New<Operator1<CallRuntimeParameters>>(  // --
+      IrOpcode::kJSCallRuntime, properties,              // opcode
+      "JSCallRuntime",                                   // name
+      parameters.arity(), 1, 1, f->result_size, 1, 2,    // inputs/outputs
+      parameters);                                       // parameter
 }
 
 #if V8_ENABLE_WEBASSEMBLY
 const Operator* JSOperatorBuilder::CallWasm(
     const wasm::WasmModule* wasm_module,
-    const wasm::FunctionSig* wasm_signature, FeedbackSource const& feedback) {
-  JSWasmCallParameters parameters(wasm_module, wasm_signature, feedback);
+    const wasm::FunctionSig* wasm_signature, int function_index,
+    wasm::NativeModule* native_module, FeedbackSource const& feedback) {
+  JSWasmCallParameters parameters(wasm_module, wasm_signature, function_index,
+                                  native_module, feedback);
   return zone()->New<Operator1<JSWasmCallParameters>>(
       IrOpcode::kJSWasmCall, Operator::kNoProperties,  // opcode
       "JSWasmCall",                                    // name
@@ -1132,7 +1139,7 @@ const Operator* JSOperatorBuilder::DefineKeyedOwnProperty(
   return zone()->New<Operator1<PropertyAccess>>(                     // --
       IrOpcode::kJSDefineKeyedOwnProperty, Operator::kNoProperties,  // opcode
       "JSDefineKeyedOwnProperty",                                    // name
-      4, 1, 1, 0, 1, 2,                                              // counts
+      5, 1, 1, 0, 1, 2,                                              // counts
       access);  // parameter
 }
 
@@ -1256,8 +1263,8 @@ const Operator* JSOperatorBuilder::CreateArguments(CreateArgumentsType type) {
       type);                                                  // parameter
 }
 
-const Operator* JSOperatorBuilder::CreateArray(
-    size_t arity, base::Optional<AllocationSiteRef> site) {
+const Operator* JSOperatorBuilder::CreateArray(size_t arity,
+                                               OptionalAllocationSiteRef site) {
   // constructor, new_target, arg1, ..., argN
   int const value_input_count = static_cast<int>(arity) + 2;
   CreateArrayParameters parameters(arity, site);
@@ -1309,7 +1316,7 @@ const Operator* JSOperatorBuilder::CreateBoundFunction(size_t arity,
 }
 
 const Operator* JSOperatorBuilder::CreateClosure(
-    const SharedFunctionInfoRef& shared_info, const CodeTRef& code,
+    const SharedFunctionInfoRef& shared_info, const CodeRef& code,
     AllocationType allocation) {
   static constexpr int kFeedbackCell = 1;
   static constexpr int kArity = kFeedbackCell;
@@ -1395,7 +1402,7 @@ const Operator* JSOperatorBuilder::CloneObject(FeedbackSource const& feedback,
 const Operator* JSOperatorBuilder::StackCheck(StackCheckKind kind) {
   return zone()->New<Operator1<StackCheckKind>>(  // --
       IrOpcode::kJSStackCheck,                    // opcode
-      Operator::kNoWrite,                         // properties
+      Operator::kNoProperties,                    // properties
       "JSStackCheck",                             // name
       0, 1, 1, 0, 1, 2,                           // counts
       kind);                                      // parameter
@@ -1435,51 +1442,51 @@ const Operator* JSOperatorBuilder::CreateFunctionContext(
 
 const Operator* JSOperatorBuilder::CreateCatchContext(
     const ScopeInfoRef& scope_info) {
-  return zone()->New<Operator1<ScopeInfoTinyRef>>(
+  return zone()->New<Operator1<ScopeInfoRef>>(
       IrOpcode::kJSCreateCatchContext, Operator::kNoProperties,  // opcode
       "JSCreateCatchContext",                                    // name
       1, 1, 1, 1, 1, 2,                                          // counts
-      ScopeInfoTinyRef{scope_info});                             // parameter
+      ScopeInfoRef{scope_info});                                 // parameter
 }
 
 const Operator* JSOperatorBuilder::CreateWithContext(
     const ScopeInfoRef& scope_info) {
-  return zone()->New<Operator1<ScopeInfoTinyRef>>(
+  return zone()->New<Operator1<ScopeInfoRef>>(
       IrOpcode::kJSCreateWithContext, Operator::kNoProperties,  // opcode
       "JSCreateWithContext",                                    // name
       1, 1, 1, 1, 1, 2,                                         // counts
-      ScopeInfoTinyRef{scope_info});                            // parameter
+      ScopeInfoRef{scope_info});                                // parameter
 }
 
 const Operator* JSOperatorBuilder::CreateBlockContext(
     const ScopeInfoRef& scope_info) {
-  return zone()->New<Operator1<ScopeInfoTinyRef>>(               // --
+  return zone()->New<Operator1<ScopeInfoRef>>(                   // --
       IrOpcode::kJSCreateBlockContext, Operator::kNoProperties,  // opcode
       "JSCreateBlockContext",                                    // name
       0, 1, 1, 1, 1, 2,                                          // counts
-      ScopeInfoTinyRef{scope_info});                             // parameter
+      ScopeInfoRef{scope_info});                                 // parameter
 }
 
-ScopeInfoRef ScopeInfoOf(JSHeapBroker* broker, const Operator* op) {
+ScopeInfoRef ScopeInfoOf(const Operator* op) {
   DCHECK(IrOpcode::kJSCreateBlockContext == op->opcode() ||
          IrOpcode::kJSCreateWithContext == op->opcode() ||
          IrOpcode::kJSCreateCatchContext == op->opcode());
-  return OpParameter<ScopeInfoTinyRef>(op).AsRef(broker);
+  return OpParameter<ScopeInfoRef>(op);
 }
 
-bool operator==(ScopeInfoTinyRef const& lhs, ScopeInfoTinyRef const& rhs) {
+bool operator==(ScopeInfoRef const& lhs, ScopeInfoRef const& rhs) {
   return lhs.object().location() == rhs.object().location();
 }
 
-bool operator!=(ScopeInfoTinyRef const& lhs, ScopeInfoTinyRef const& rhs) {
+bool operator!=(ScopeInfoRef const& lhs, ScopeInfoRef const& rhs) {
   return !(lhs == rhs);
 }
 
-size_t hash_value(ScopeInfoTinyRef const& ref) {
+size_t hash_value(ScopeInfoRef const& ref) {
   return reinterpret_cast<size_t>(ref.object().location());
 }
 
-std::ostream& operator<<(std::ostream& os, ScopeInfoTinyRef const& ref) {
+std::ostream& operator<<(std::ostream& os, ScopeInfoRef const& ref) {
   return os << Brief(*ref.object());
 }
 

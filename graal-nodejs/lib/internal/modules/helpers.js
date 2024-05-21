@@ -3,7 +3,6 @@
 const {
   ArrayPrototypeForEach,
   ArrayPrototypeJoin,
-  ArrayPrototypeSome,
   ObjectDefineProperty,
   ObjectPrototypeHasOwnProperty,
   SafeMap,
@@ -24,16 +23,19 @@ const { validateString } = require('internal/validators');
 const fs = require('fs'); // Import all of `fs` so that it can be monkey-patched.
 const internalFS = require('internal/fs/utils');
 const path = require('path');
-const { pathToFileURL, fileURLToPath, URL } = require('internal/url');
+const { pathToFileURL, fileURLToPath } = require('internal/url');
+const assert = require('internal/assert');
 
 const { getOptionValue } = require('internal/options');
 const { setOwnProperty } = require('internal/util');
+const { inspect } = require('internal/util/inspect');
 
 const {
   privateSymbols: {
     require_private_symbol,
   },
 } = internalBinding('util');
+const { canParse: URLCanParse } = internalBinding('url');
 
 let debug = require('internal/util/debuglog').debuglog('module', (fn) => {
   debug = fn;
@@ -289,45 +291,66 @@ function addBuiltinLibsToObject(object, dummyModuleName) {
 }
 
 /**
- * If a referrer is an URL instance or absolute path, convert it into an URL string.
- * @param {string | URL} referrer
+ * Normalize the referrer name as a URL.
+ * If it's a string containing an absolute path or a URL it's normalized as
+ * a URL string.
+ * Otherwise it's returned as undefined.
+ * @param {string | null | undefined} referrerName
+ * @returns {string | undefined}
  */
-function normalizeReferrerURL(referrer) {
-  if (typeof referrer === 'string' && path.isAbsolute(referrer)) {
-    return pathToFileURL(referrer).href;
-  }
-  return new URL(referrer).href;
-}
-
-/**
- * For error messages only, check if ESM syntax is in use.
- * @param {string} code
- */
-function hasEsmSyntax(code) {
-  debug('Checking for ESM syntax');
-  const parser = require('internal/deps/acorn/acorn/dist/acorn').Parser;
-  let root;
-  try {
-    root = parser.parse(code, { sourceType: 'module', ecmaVersion: 'latest' });
-  } catch {
-    return false;
+function normalizeReferrerURL(referrerName) {
+  if (referrerName === null || referrerName === undefined) {
+    return undefined;
   }
 
-  return ArrayPrototypeSome(root.body, (stmt) =>
-    stmt.type === 'ExportDefaultDeclaration' ||
-    stmt.type === 'ExportNamedDeclaration' ||
-    stmt.type === 'ImportDeclaration' ||
-    stmt.type === 'ExportAllDeclaration');
+  if (typeof referrerName === 'string') {
+    if (path.isAbsolute(referrerName)) {
+      return pathToFileURL(referrerName).href;
+    }
+
+    if (StringPrototypeStartsWith(referrerName, 'file://') ||
+        URLCanParse(referrerName)) {
+      return referrerName;
+    }
+
+    return undefined;
+  }
+
+  assert.fail('Unreachable code reached by ' + inspect(referrerName));
 }
+
+
+// Whether we have started executing any user-provided CJS code.
+// This is set right before we call the wrapped CJS code (not after,
+// in case we are half-way in the execution when internals check this).
+// Used for internal assertions.
+let _hasStartedUserCJSExecution = false;
+// Similar to _hasStartedUserCJSExecution but for ESM. This is set
+// right before ESM evaluation in the default ESM loader. We do not
+// update this during vm SourceTextModule execution because at that point
+// some user code must already have been run to execute code via vm
+// there is little value checking whether any user JS code is run anyway.
+let _hasStartedUserESMExecution = false;
 
 module.exports = {
   addBuiltinLibsToObject,
   getCjsConditions,
   initializeCjsConditions,
-  hasEsmSyntax,
   loadBuiltinModule,
   makeRequireFunction,
   normalizeReferrerURL,
   stripBOM,
   toRealPath,
+  hasStartedUserCJSExecution() {
+    return _hasStartedUserCJSExecution;
+  },
+  setHasStartedUserCJSExecution() {
+    _hasStartedUserCJSExecution = true;
+  },
+  hasStartedUserESMExecution() {
+    return _hasStartedUserESMExecution;
+  },
+  setHasStartedUserESMExecution() {
+    _hasStartedUserESMExecution = true;
+  },
 };

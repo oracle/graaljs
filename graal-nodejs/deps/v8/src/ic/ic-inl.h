@@ -29,9 +29,10 @@ bool IC::IsHandler(MaybeObject object) {
   HeapObject heap_object;
   return (object->IsSmi() && (object.ptr() != kNullAddress)) ||
          (object->GetHeapObjectIfWeak(&heap_object) &&
-          (heap_object.IsMap() || heap_object.IsPropertyCell())) ||
+          (heap_object.IsMap() || heap_object.IsPropertyCell() ||
+           heap_object.IsAccessorPair())) ||
          (object->GetHeapObjectIfStrong(&heap_object) &&
-          (heap_object.IsDataHandler() || heap_object.IsCodeT()));
+          (heap_object.IsDataHandler() || heap_object.IsCode()));
 }
 
 bool IC::vector_needs_update() {

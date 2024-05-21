@@ -33,13 +33,14 @@ const {
   ObjectDefineProperties,
   ObjectDefineProperty,
   Promise,
+  PromiseResolve,
   ReflectApply,
   SafeMap,
   SafeSet,
-  String,
   StringPrototypeCharCodeAt,
   StringPrototypeIndexOf,
   StringPrototypeSlice,
+  uncurryThis,
 } = primordials;
 
 const { fs: constants } = internalBinding('constants');
@@ -58,30 +59,34 @@ const {
 } = constants;
 
 const pathModule = require('path');
+const { isAbsolute } = pathModule;
 const { isArrayBufferView } = require('internal/util/types');
 
-// We need to get the statValues from the binding at the callsite since
-// it's re-initialized after deserialization.
-
 const binding = internalBinding('fs');
+
+const { createBlobFromFilePath } = require('internal/blob');
+
 const { Buffer } = require('buffer');
+const { isBuffer: BufferIsBuffer } = Buffer;
+const BufferToString = uncurryThis(Buffer.prototype.toString);
 const {
   aggregateTwoErrors,
   codes: {
+    ERR_ACCESS_DENIED,
     ERR_FS_FILE_TOO_LARGE,
     ERR_INVALID_ARG_VALUE,
-    ERR_FEATURE_UNAVAILABLE_ON_PLATFORM,
   },
   AbortError,
-  uvErrmapGet,
-  uvException,
+  UVException,
 } = require('internal/errors');
 
-const { FSReqCallback } = binding;
+const {
+  FSReqCallback,
+  statValues,
+} = binding;
 const { toPathIfFileURL } = require('internal/url');
 const {
   customPromisifyArgs: kCustomPromisifyArgsSymbol,
-  deprecate,
   kEmptyObject,
   promisify: {
     custom: kCustomPromisifiedSymbol,
@@ -102,7 +107,6 @@ const {
   getOptions,
   getValidatedFd,
   getValidatedPath,
-  getValidMode,
   handleErrorFromBinding,
   preprocessSymlinkDestination,
   Stats,
@@ -122,7 +126,6 @@ const {
   validateRmOptionsSync,
   validateRmdirOptions,
   validateStringAfterArrayBufferView,
-  validatePrimitiveStringAfterArrayBufferView,
   warnOnNonPortableTemplate,
 } = require('internal/fs/utils');
 const {
@@ -130,7 +133,7 @@ const {
   CHAR_BACKWARD_SLASH,
 } = require('internal/constants');
 const {
-  isUint32,
+  isInt32,
   parseFileMode,
   validateBoolean,
   validateBuffer,
@@ -138,7 +141,11 @@ const {
   validateFunction,
   validateInteger,
   validateObject,
+  validateString,
+  kValidateObjectAllowNullable,
 } = require('internal/validators');
+
+const permission = require('internal/process/permission');
 
 let truncateWarn = true;
 let fs;
@@ -161,12 +168,6 @@ let FileWriteStream;
 const isWindows = process.platform === 'win32';
 const isOSX = process.platform === 'darwin';
 
-
-const showStringCoercionDeprecation = deprecate(
-  () => {},
-  'Implicit coercion of objects with own toString property is deprecated.',
-  'DEP0162',
-);
 function showTruncateDeprecation() {
   if (truncateWarn) {
     process.emitWarning(
@@ -175,12 +176,6 @@ function showTruncateDeprecation() {
       'DeprecationWarning', 'DEP0081');
     truncateWarn = false;
   }
-}
-
-function maybeCallback(cb) {
-  validateFunction(cb, 'cb');
-
-  return cb;
 }
 
 // Ensure that callbacks run in the global context. Only use this function
@@ -204,7 +199,7 @@ function makeStatsCallback(cb) {
   };
 }
 
-const isFd = isUint32;
+const isFd = isInt32;
 
 function isFileType(stats, fileType) {
   // Use stats array directly to avoid creating an fs.Stats instance just for
@@ -230,7 +225,6 @@ function access(path, mode, callback) {
   }
 
   path = getValidatedPath(path);
-  mode = getValidMode(mode, 'access');
   callback = makeCallback(callback);
 
   const req = new FSReqCallback();
@@ -247,11 +241,7 @@ function access(path, mode, callback) {
  */
 function accessSync(path, mode) {
   path = getValidatedPath(path);
-  mode = getValidMode(mode, 'access');
-
-  const ctx = { path };
-  binding.access(pathModule.toNamespacedPath(path), mode, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.access(pathModule.toNamespacedPath(path), mode);
 }
 
 /**
@@ -261,7 +251,7 @@ function accessSync(path, mode) {
  * @returns {void}
  */
 function exists(path, callback) {
-  maybeCallback(callback);
+  validateFunction(callback, 'cb');
 
   function suppressedCallback(err) {
     callback(err ? false : true);
@@ -298,18 +288,8 @@ function existsSync(path) {
   } catch {
     return false;
   }
-  const ctx = { path };
-  const nPath = pathModule.toNamespacedPath(path);
-  binding.access(nPath, F_OK, undefined, ctx);
 
-  // In case of an invalid symlink, `binding.access()` on win32
-  // will **not** return an error and is therefore not enough.
-  // Double check with `binding.stat()`.
-  if (isWindows && ctx.errno === undefined) {
-    binding.stat(nPath, false, undefined, ctx);
-  }
-
-  return ctx.errno === undefined;
+  return binding.existsSync(pathModule.toNamespacedPath(path));
 }
 
 function readFileAfterOpen(err, fd) {
@@ -381,9 +361,10 @@ function checkAborted(signal, callback) {
  * @returns {void}
  */
 function readFile(path, options, callback) {
-  callback = maybeCallback(callback || options);
+  callback ||= options;
+  validateFunction(callback, 'cb');
   options = getOptions(options, { flag: 'r' });
-  const ReadFileContext = require('internal/fs/read_file_context');
+  const ReadFileContext = require('internal/fs/read/context');
   const context = new ReadFileContext(callback, options.encoding);
   context.isUserFd = isFd(path); // File descriptor ownership
 
@@ -413,11 +394,10 @@ function readFile(path, options, callback) {
 }
 
 function tryStatSync(fd, isUserFd) {
-  const ctx = {};
-  const stats = binding.fstat(fd, false, undefined, ctx);
-  if (ctx.errno !== undefined && !isUserFd) {
+  const stats = binding.fstat(fd, false, undefined, true /* shouldNotThrow */);
+  if (stats === undefined && !isUserFd) {
     fs.closeSync(fd);
-    throw uvException(ctx);
+    throw new UVException();
   }
   return stats;
 }
@@ -460,6 +440,14 @@ function tryReadSync(fd, isUserFd, buffer, pos, len) {
  */
 function readFileSync(path, options) {
   options = getOptions(options, { flag: 'r' });
+
+  if (options.encoding === 'utf8' || options.encoding === 'utf-8') {
+    if (!isInt32(path)) {
+      path = pathModule.toNamespacedPath(getValidatedPath(path));
+    }
+    return binding.readFileUtf8(path, stringToFlags(options.flag));
+  }
+
   const isUserFd = isFd(path); // File descriptor ownership
   const fd = isUserFd ? path : fs.openSync(path, options.flag, 0o666);
 
@@ -520,7 +508,6 @@ function defaultCloseCallback(err) {
  * @returns {void}
  */
 function close(fd, callback = defaultCloseCallback) {
-  fd = getValidatedFd(fd);
   if (callback !== defaultCloseCallback)
     callback = makeCallback(callback);
 
@@ -535,11 +522,7 @@ function close(fd, callback = defaultCloseCallback) {
  * @returns {void}
  */
 function closeSync(fd) {
-  fd = getValidatedFd(fd);
-
-  const ctx = {};
-  binding.close(fd, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.close(fd);
 }
 
 /**
@@ -586,22 +569,41 @@ function open(path, flags, mode, callback) {
  */
 function openSync(path, flags, mode) {
   path = getValidatedPath(path);
-  const flagsNumber = stringToFlags(flags);
-  mode = parseFileMode(mode, 'mode', 0o666);
 
-  const ctx = { path };
-  const result = binding.open(pathModule.toNamespacedPath(path),
-                              flagsNumber, mode,
-                              undefined, ctx);
-  handleErrorFromBinding(ctx);
-  return result;
+  return binding.open(
+    pathModule.toNamespacedPath(path),
+    stringToFlags(flags),
+    parseFileMode(mode, 'mode', 0o666),
+  );
+}
+
+/**
+ * @param {string | Buffer | URL } path
+ * @param {{
+ *   type?: string;
+ *   }} [options]
+ * @returns {Promise<Blob>}
+ */
+function openAsBlob(path, options = kEmptyObject) {
+  validateObject(options, 'options');
+  const type = options.type || '';
+  validateString(type, 'options.type');
+  // The underlying implementation here returns the Blob synchronously for now.
+  // To give ourselves flexibility to maybe return the Blob asynchronously,
+  // this API returns a Promise.
+  path = getValidatedPath(path);
+  return PromiseResolve(createBlobFromFilePath(pathModule.toNamespacedPath(path), { type }));
 }
 
 /**
  * Reads file from the specified `fd` (file descriptor).
  * @param {number} fd
  * @param {Buffer | TypedArray | DataView} buffer
- * @param {number} offsetOrOptions
+ * @param {number | {
+ *   offset?: number;
+ *   length?: number;
+ *   position?: number | bigint | null;
+ *   }} [offsetOrOptions]
  * @param {number} length
  * @param {number | bigint | null} position
  * @param {(
@@ -619,7 +621,7 @@ function read(fd, buffer, offsetOrOptions, length, position, callback) {
   if (arguments.length <= 4) {
     if (arguments.length === 4) {
       // This is fs.read(fd, buffer, options, callback)
-      validateObject(offsetOrOptions, 'options', { nullable: true });
+      validateObject(offsetOrOptions, 'options', kValidateObjectAllowNullable);
       callback = length;
       params = offsetOrOptions;
     } else if (arguments.length === 3) {
@@ -636,15 +638,18 @@ function read(fd, buffer, offsetOrOptions, length, position, callback) {
       buffer = Buffer.alloc(16384);
     }
 
+    if (params !== undefined) {
+      validateObject(params, 'options', kValidateObjectAllowNullable);
+    }
     ({
       offset = 0,
-      length = buffer.byteLength - offset,
+      length = buffer?.byteLength - offset,
       position = null,
     } = params ?? kEmptyObject);
   }
 
   validateBuffer(buffer);
-  callback = maybeCallback(callback);
+  validateFunction(callback, 'cb');
 
   if (offset == null) {
     offset = 0;
@@ -691,30 +696,34 @@ ObjectDefineProperty(read, kCustomPromisifyArgsSymbol,
  * specified `fd` (file descriptor).
  * @param {number} fd
  * @param {Buffer | TypedArray | DataView} buffer
- * @param {{
+ * @param {number | {
  *   offset?: number;
  *   length?: number;
  *   position?: number | bigint | null;
- *   }} [offset]
+ *   }} [offsetOrOptions]
+ * @param {number} [length]
+ * @param {number} [position]
  * @returns {number}
  */
-function readSync(fd, buffer, offset, length, position) {
+function readSync(fd, buffer, offsetOrOptions, length, position) {
   fd = getValidatedFd(fd);
 
   validateBuffer(buffer);
 
-  if (arguments.length <= 3) {
-    // Assume fs.readSync(fd, buffer, options)
-    const options = offset || kEmptyObject;
+  let offset = offsetOrOptions;
+  if (arguments.length <= 3 || typeof offsetOrOptions === 'object') {
+    if (offsetOrOptions !== undefined) {
+      validateObject(offsetOrOptions, 'options', kValidateObjectAllowNullable);
+    }
 
     ({
       offset = 0,
       length = buffer.byteLength - offset,
       position = null,
-    } = options);
+    } = offsetOrOptions ?? kEmptyObject);
   }
 
-  if (offset == null) {
+  if (offset === undefined) {
     offset = 0;
   } else {
     validateInteger(offset, 'offset', 0);
@@ -738,11 +747,7 @@ function readSync(fd, buffer, offset, length, position) {
 
   validatePosition(position, 'position');
 
-  const ctx = {};
-  const result = binding.read(fd, buffer, offset, length, position,
-                              undefined, ctx);
-  handleErrorFromBinding(ctx);
-  return result;
+  return binding.read(fd, buffer, offset, length, position);
 }
 
 /**
@@ -765,7 +770,8 @@ function readv(fd, buffers, position, callback) {
 
   fd = getValidatedFd(fd);
   validateBufferArray(buffers);
-  callback = maybeCallback(callback || position);
+  callback ||= position;
+  validateFunction(callback, 'cb');
 
   const req = new FSReqCallback();
   req.oncomplete = wrapper;
@@ -773,7 +779,7 @@ function readv(fd, buffers, position, callback) {
   if (typeof position !== 'number')
     position = null;
 
-  return binding.readBuffers(fd, buffers, position, req);
+  binding.readBuffers(fd, buffers, position, req);
 }
 
 ObjectDefineProperty(readv, kCustomPromisifyArgsSymbol,
@@ -792,20 +798,16 @@ function readvSync(fd, buffers, position) {
   fd = getValidatedFd(fd);
   validateBufferArray(buffers);
 
-  const ctx = {};
-
   if (typeof position !== 'number')
     position = null;
 
-  const result = binding.readBuffers(fd, buffers, position, undefined, ctx);
-  handleErrorFromBinding(ctx);
-  return result;
+  return binding.readBuffers(fd, buffers, position);
 }
 
 /**
  * Writes `buffer` to the specified `fd` (file descriptor).
  * @param {number} fd
- * @param {Buffer | TypedArray | DataView | string | object} buffer
+ * @param {Buffer | TypedArray | DataView | string} buffer
  * @param {number | object} [offsetOrOptions]
  * @param {number} [length]
  * @param {number | null} [position]
@@ -826,7 +828,8 @@ function write(fd, buffer, offsetOrOptions, length, position, callback) {
 
   let offset = offsetOrOptions;
   if (isArrayBufferView(buffer)) {
-    callback = maybeCallback(callback || position || length || offset);
+    callback ||= position || length || offset;
+    validateFunction(callback, 'cb');
 
     if (typeof offset === 'object') {
       ({
@@ -849,13 +852,11 @@ function write(fd, buffer, offsetOrOptions, length, position, callback) {
 
     const req = new FSReqCallback();
     req.oncomplete = wrapper;
-    return binding.writeBuffer(fd, buffer, offset, length, position, req);
+    binding.writeBuffer(fd, buffer, offset, length, position, req);
+    return;
   }
 
   validateStringAfterArrayBufferView(buffer, 'buffer');
-  if (typeof buffer !== 'string') {
-    showStringCoercionDeprecation();
-  }
 
   if (typeof position !== 'function') {
     if (typeof offset === 'function') {
@@ -867,13 +868,14 @@ function write(fd, buffer, offsetOrOptions, length, position, callback) {
     length = 'utf8';
   }
 
-  const str = String(buffer);
+  const str = buffer;
   validateEncoding(str, length);
-  callback = maybeCallback(position);
+  callback = position;
+  validateFunction(callback, 'cb');
 
   const req = new FSReqCallback();
   req.oncomplete = wrapper;
-  return binding.writeString(fd, str, offset, length, req);
+  binding.writeString(fd, str, offset, length, req);
 }
 
 ObjectDefineProperty(write, kCustomPromisifyArgsSymbol,
@@ -918,7 +920,7 @@ function writeSync(fd, buffer, offsetOrOptions, length, position) {
     result = binding.writeBuffer(fd, buffer, offset, length, position,
                                  undefined, ctx);
   } else {
-    validatePrimitiveStringAfterArrayBufferView(buffer, 'buffer');
+    validateStringAfterArrayBufferView(buffer, 'buffer');
     validateEncoding(buffer, length);
 
     if (offset === undefined)
@@ -950,7 +952,8 @@ function writev(fd, buffers, position, callback) {
 
   fd = getValidatedFd(fd);
   validateBufferArray(buffers);
-  callback = maybeCallback(callback || position);
+  callback ||= position;
+  validateFunction(callback, 'cb');
 
   if (buffers.length === 0) {
     process.nextTick(callback, null, 0, buffers);
@@ -963,7 +966,7 @@ function writev(fd, buffers, position, callback) {
   if (typeof position !== 'number')
     position = null;
 
-  return binding.writeBuffers(fd, buffers, position, req);
+  binding.writeBuffers(fd, buffers, position, req);
 }
 
 ObjectDefineProperty(writev, kCustomPromisifyArgsSymbol, {
@@ -988,15 +991,10 @@ function writevSync(fd, buffers, position) {
     return 0;
   }
 
-  const ctx = {};
-
   if (typeof position !== 'number')
     position = null;
 
-  const result = binding.writeBuffers(fd, buffers, position, undefined, ctx);
-
-  handleErrorFromBinding(ctx);
-  return result;
+  return binding.writeBuffers(fd, buffers, position);
 }
 
 /**
@@ -1029,10 +1027,10 @@ function rename(oldPath, newPath, callback) {
 function renameSync(oldPath, newPath) {
   oldPath = getValidatedPath(oldPath, 'oldPath');
   newPath = getValidatedPath(newPath, 'newPath');
-  const ctx = { path: oldPath, dest: newPath };
-  binding.rename(pathModule.toNamespacedPath(oldPath),
-                 pathModule.toNamespacedPath(newPath), undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.rename(
+    pathModule.toNamespacedPath(oldPath),
+    pathModule.toNamespacedPath(newPath),
+  );
 }
 
 /**
@@ -1056,7 +1054,7 @@ function truncate(path, len, callback) {
 
   validateInteger(len, 'len');
   len = MathMax(0, len);
-  callback = maybeCallback(callback);
+  validateFunction(callback, 'cb');
   fs.open(path, 'r+', (er, fd) => {
     if (er) return callback(er);
     const req = new FSReqCallback();
@@ -1108,7 +1106,6 @@ function ftruncate(fd, len = 0, callback) {
     callback = len;
     len = 0;
   }
-  fd = getValidatedFd(fd);
   validateInteger(len, 'len');
   len = MathMax(0, len);
   callback = makeCallback(callback);
@@ -1125,12 +1122,9 @@ function ftruncate(fd, len = 0, callback) {
  * @returns {void}
  */
 function ftruncateSync(fd, len = 0) {
-  fd = getValidatedFd(fd);
   validateInteger(len, 'len');
   len = MathMax(0, len);
-  const ctx = {};
-  binding.ftruncate(fd, len, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.ftruncate(fd, len);
 }
 
 function lazyLoadCp() {
@@ -1176,7 +1170,8 @@ function rmdir(path, options, callback) {
         if (err === false) {
           const req = new FSReqCallback();
           req.oncomplete = callback;
-          return binding.rmdir(path, req);
+          binding.rmdir(path, req);
+          return;
         }
         if (err) {
           return callback(err);
@@ -1189,7 +1184,7 @@ function rmdir(path, options, callback) {
     validateRmdirOptions(options);
     const req = new FSReqCallback();
     req.oncomplete = callback;
-    return binding.rmdir(path, req);
+    binding.rmdir(path, req);
   }
 }
 
@@ -1217,9 +1212,7 @@ function rmdirSync(path, options) {
     validateRmdirOptions(options);
   }
 
-  const ctx = { path };
-  binding.rmdir(pathModule.toNamespacedPath(path), undefined, ctx);
-  return handleErrorFromBinding(ctx);
+  binding.rmdir(pathModule.toNamespacedPath(path));
 }
 
 /**
@@ -1280,7 +1273,6 @@ function rmSync(path, options) {
  * @returns {void}
  */
 function fdatasync(fd, callback) {
-  fd = getValidatedFd(fd);
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
   binding.fdatasync(fd, req);
@@ -1294,10 +1286,7 @@ function fdatasync(fd, callback) {
  * @returns {void}
  */
 function fdatasyncSync(fd) {
-  fd = getValidatedFd(fd);
-  const ctx = {};
-  binding.fdatasync(fd, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.fdatasync(fd);
 }
 
 /**
@@ -1308,7 +1297,6 @@ function fdatasyncSync(fd) {
  * @returns {void}
  */
 function fsync(fd, callback) {
-  fd = getValidatedFd(fd);
   const req = new FSReqCallback();
   req.oncomplete = makeCallback(callback);
   binding.fsync(fd, req);
@@ -1321,10 +1309,7 @@ function fsync(fd, callback) {
  * @returns {void}
  */
 function fsyncSync(fd) {
-  fd = getValidatedFd(fd);
-  const ctx = {};
-  binding.fsync(fd, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.fsync(fd);
 }
 
 /**
@@ -1384,11 +1369,12 @@ function mkdirSync(path, options) {
   path = getValidatedPath(path);
   validateBoolean(recursive, 'options.recursive');
 
-  const ctx = { path };
-  const result = binding.mkdir(pathModule.toNamespacedPath(path),
-                               parseFileMode(mode, 'mode'), recursive,
-                               undefined, ctx);
-  handleErrorFromBinding(ctx);
+  const result = binding.mkdir(
+    pathModule.toNamespacedPath(path),
+    parseFileMode(mode, 'mode'),
+    recursive,
+  );
+
   if (recursive) {
     return result;
   }
@@ -1409,17 +1395,16 @@ function readdirSyncRecursive(basePath, options) {
   const readdirResults = [];
   const pathsQueue = [basePath];
 
-  const ctx = { path: basePath };
   function read(path) {
-    ctx.path = path;
     const readdirResult = binding.readdir(
       pathModule.toNamespacedPath(path),
       encoding,
       withFileTypes,
-      undefined,
-      ctx,
     );
-    handleErrorFromBinding(ctx);
+
+    if (readdirResult === undefined) {
+      return;
+    }
 
     if (withFileTypes) {
       // Calling `readdir` with `withFileTypes=true`, the result is an array of arrays.
@@ -1431,7 +1416,7 @@ function readdirSyncRecursive(basePath, options) {
         const dirent = getDirent(path, readdirResult[0][i], readdirResult[1][i]);
         ArrayPrototypePush(readdirResults, dirent);
         if (dirent.isDirectory()) {
-          ArrayPrototypePush(pathsQueue, pathModule.join(dirent.path, dirent.name));
+          ArrayPrototypePush(pathsQueue, pathModule.join(dirent.parentPath, dirent.name));
         }
       }
     } else {
@@ -1461,10 +1446,11 @@ function readdirSyncRecursive(basePath, options) {
  * @param {string | {
  *   encoding?: string;
  *   withFileTypes?: boolean;
+ *   recursive?: boolean;
  *   }} [options]
  * @param {(
  *   err?: Error,
- *   files?: string[] | Buffer[] | Direct[];
+ *   files?: string[] | Buffer[] | Dirent[];
  *   ) => any} callback
  * @returns {void}
  */
@@ -1518,12 +1504,13 @@ function readdirSync(path, options) {
     return readdirSyncRecursive(path, options);
   }
 
-  const ctx = { path };
-  const result = binding.readdir(pathModule.toNamespacedPath(path),
-                                 options.encoding, !!options.withFileTypes,
-                                 undefined, ctx);
-  handleErrorFromBinding(ctx);
-  return options.withFileTypes ? getDirents(path, result) : result;
+  const result = binding.readdir(
+    pathModule.toNamespacedPath(path),
+    options.encoding,
+    !!options.withFileTypes,
+  );
+
+  return result !== undefined && options.withFileTypes ? getDirents(path, result) : result;
 }
 
 /**
@@ -1542,7 +1529,6 @@ function fstat(fd, options = { bigint: false }, callback) {
     callback = options;
     options = kEmptyObject;
   }
-  fd = getValidatedFd(fd);
   callback = makeStatsCallback(callback);
 
   const req = new FSReqCallback(options.bigint);
@@ -1602,7 +1588,7 @@ function statfs(path, options = { bigint: false }, callback) {
     callback = options;
     options = kEmptyObject;
   }
-  callback = maybeCallback(callback);
+  validateFunction(callback, 'cb');
   path = getValidatedPath(path);
   const req = new FSReqCallback(options.bigint);
   req.oncomplete = (err, stats) => {
@@ -1615,19 +1601,6 @@ function statfs(path, options = { bigint: false }, callback) {
   binding.statfs(pathModule.toNamespacedPath(path), options.bigint, req);
 }
 
-function hasNoEntryError(ctx) {
-  if (ctx.errno) {
-    const uvErr = uvErrmapGet(ctx.errno);
-    return uvErr?.[0] === 'ENOENT';
-  }
-
-  if (ctx.error) {
-    return ctx.error.code === 'ENOENT';
-  }
-
-  return false;
-}
-
 /**
  * Synchronously retrieves the `fs.Stats` for
  * the file descriptor.
@@ -1635,13 +1608,13 @@ function hasNoEntryError(ctx) {
  * @param {{
  *   bigint?: boolean;
  *   }} [options]
- * @returns {Stats}
+ * @returns {Stats | undefined}
  */
 function fstatSync(fd, options = { bigint: false }) {
-  fd = getValidatedFd(fd);
-  const ctx = { fd };
-  const stats = binding.fstat(fd, options.bigint, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  const stats = binding.fstat(fd, options.bigint, undefined, false);
+  if (stats === undefined) {
+    return;
+  }
   return getStatsFromBinding(stats);
 }
 
@@ -1653,17 +1626,20 @@ function fstatSync(fd, options = { bigint: false }) {
  *   bigint?: boolean;
  *   throwIfNoEntry?: boolean;
  *   }} [options]
- * @returns {Stats}
+ * @returns {Stats | undefined}
  */
 function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
   path = getValidatedPath(path);
-  const ctx = { path };
-  const stats = binding.lstat(pathModule.toNamespacedPath(path),
-                              options.bigint, undefined, ctx);
-  if (options.throwIfNoEntry === false && hasNoEntryError(ctx)) {
-    return undefined;
+  const stats = binding.lstat(
+    pathModule.toNamespacedPath(path),
+    options.bigint,
+    undefined,
+    options.throwIfNoEntry,
+  );
+
+  if (stats === undefined) {
+    return;
   }
-  handleErrorFromBinding(ctx);
   return getStatsFromBinding(stats);
 }
 
@@ -1679,22 +1655,21 @@ function lstatSync(path, options = { bigint: false, throwIfNoEntry: true }) {
  */
 function statSync(path, options = { bigint: false, throwIfNoEntry: true }) {
   path = getValidatedPath(path);
-  const ctx = { path };
-  const stats = binding.stat(pathModule.toNamespacedPath(path),
-                             options.bigint, undefined, ctx);
-  if (options.throwIfNoEntry === false && hasNoEntryError(ctx)) {
+  const stats = binding.stat(
+    pathModule.toNamespacedPath(path),
+    options.bigint,
+    undefined,
+    options.throwIfNoEntry,
+  );
+  if (stats === undefined) {
     return undefined;
   }
-  handleErrorFromBinding(ctx);
   return getStatsFromBinding(stats);
 }
 
 function statfsSync(path, options = { bigint: false }) {
   path = getValidatedPath(path);
-  const ctx = { path };
-  const stats = binding.statfs(pathModule.toNamespacedPath(path),
-                               options.bigint, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  const stats = binding.statfs(pathModule.toNamespacedPath(path), options.bigint);
   return getStatFsFromBinding(stats);
 }
 
@@ -1728,11 +1703,10 @@ function readlink(path, options, callback) {
 function readlinkSync(path, options) {
   options = getOptions(options);
   path = getValidatedPath(path, 'oldPath');
-  const ctx = { path };
-  const result = binding.readlink(pathModule.toNamespacedPath(path),
-                                  options.encoding, undefined, ctx);
-  handleErrorFromBinding(ctx);
-  return result;
+  return binding.readlink(
+    pathModule.toNamespacedPath(path),
+    options.encoding,
+  );
 }
 
 /**
@@ -1746,6 +1720,20 @@ function readlinkSync(path, options) {
 function symlink(target, path, type_, callback_) {
   const type = (typeof type_ === 'string' ? type_ : null);
   const callback = makeCallback(arguments[arguments.length - 1]);
+
+  if (permission.isEnabled()) {
+    // The permission model's security guarantees fall apart in the presence of
+    // relative symbolic links. Thus, we have to prevent their creation.
+    if (BufferIsBuffer(target)) {
+      if (!isAbsolute(BufferToString(target))) {
+        callback(new ERR_ACCESS_DENIED('relative symbolic link target'));
+        return;
+      }
+    } else if (typeof target !== 'string' || !isAbsolute(toPathIfFileURL(target))) {
+      callback(new ERR_ACCESS_DENIED('relative symbolic link target'));
+      return;
+    }
+  }
 
   target = getValidatedPath(target, 'target');
   path = getValidatedPath(path);
@@ -1803,15 +1791,27 @@ function symlinkSync(target, path, type) {
       type = 'dir';
     }
   }
+
+  if (permission.isEnabled()) {
+    // The permission model's security guarantees fall apart in the presence of
+    // relative symbolic links. Thus, we have to prevent their creation.
+    if (BufferIsBuffer(target)) {
+      if (!isAbsolute(BufferToString(target))) {
+        throw new ERR_ACCESS_DENIED('relative symbolic link target');
+      }
+    } else if (typeof target !== 'string' || !isAbsolute(toPathIfFileURL(target))) {
+      throw new ERR_ACCESS_DENIED('relative symbolic link target');
+    }
+  }
+
   target = getValidatedPath(target, 'target');
   path = getValidatedPath(path);
-  const flags = stringToSymlinkType(type);
 
-  const ctx = { path: target, dest: path };
-  binding.symlink(preprocessSymlinkDestination(target, type, path),
-                  pathModule.toNamespacedPath(path), flags, undefined, ctx);
-
-  handleErrorFromBinding(ctx);
+  binding.symlink(
+    preprocessSymlinkDestination(target, type, path),
+    pathModule.toNamespacedPath(path),
+    stringToSymlinkType(type),
+  );
 }
 
 /**
@@ -1847,12 +1847,10 @@ function linkSync(existingPath, newPath) {
   existingPath = getValidatedPath(existingPath, 'existingPath');
   newPath = getValidatedPath(newPath, 'newPath');
 
-  const ctx = { path: existingPath, dest: newPath };
-  const result = binding.link(pathModule.toNamespacedPath(existingPath),
-                              pathModule.toNamespacedPath(newPath),
-                              undefined, ctx);
-  handleErrorFromBinding(ctx);
-  return result;
+  binding.link(
+    pathModule.toNamespacedPath(existingPath),
+    pathModule.toNamespacedPath(newPath),
+  );
 }
 
 /**
@@ -1875,10 +1873,8 @@ function unlink(path, callback) {
  * @returns {void}
  */
 function unlinkSync(path) {
-  path = getValidatedPath(path);
-  const ctx = { path };
-  binding.unlink(pathModule.toNamespacedPath(path), undefined, ctx);
-  handleErrorFromBinding(ctx);
+  path = pathModule.toNamespacedPath(getValidatedPath(path));
+  binding.unlink(path);
 }
 
 /**
@@ -1889,7 +1885,6 @@ function unlinkSync(path) {
  * @returns {void}
  */
 function fchmod(fd, mode, callback) {
-  fd = getValidatedFd(fd);
   mode = parseFileMode(mode, 'mode');
   callback = makeCallback(callback);
 
@@ -1905,11 +1900,10 @@ function fchmod(fd, mode, callback) {
  * @returns {void}
  */
 function fchmodSync(fd, mode) {
-  fd = getValidatedFd(fd);
-  mode = parseFileMode(mode, 'mode');
-  const ctx = {};
-  binding.fchmod(fd, mode, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.fchmod(
+    fd,
+    parseFileMode(mode, 'mode'),
+  );
 }
 
 /**
@@ -1920,7 +1914,7 @@ function fchmodSync(fd, mode) {
  * @returns {void}
  */
 function lchmod(path, mode, callback) {
-  callback = maybeCallback(callback);
+  validateFunction(callback, 'cb');
   mode = parseFileMode(mode, 'mode');
   fs.open(path, O_WRONLY | O_SYMLINK, (err, fd) => {
     if (err) {
@@ -1984,9 +1978,10 @@ function chmodSync(path, mode) {
   path = getValidatedPath(path);
   mode = parseFileMode(mode, 'mode');
 
-  const ctx = { path };
-  binding.chmod(pathModule.toNamespacedPath(path), mode, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.chmod(
+    pathModule.toNamespacedPath(path),
+    mode,
+  );
 }
 
 /**
@@ -2018,9 +2013,11 @@ function lchownSync(path, uid, gid) {
   path = getValidatedPath(path);
   validateInteger(uid, 'uid', -1, kMaxUserId);
   validateInteger(gid, 'gid', -1, kMaxUserId);
-  const ctx = { path };
-  binding.lchown(pathModule.toNamespacedPath(path), uid, gid, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.lchown(
+    pathModule.toNamespacedPath(path),
+    uid,
+    gid,
+  );
 }
 
 /**
@@ -2032,7 +2029,6 @@ function lchownSync(path, uid, gid) {
  * @returns {void}
  */
 function fchown(fd, uid, gid, callback) {
-  fd = getValidatedFd(fd);
   validateInteger(uid, 'uid', -1, kMaxUserId);
   validateInteger(gid, 'gid', -1, kMaxUserId);
   callback = makeCallback(callback);
@@ -2050,13 +2046,10 @@ function fchown(fd, uid, gid, callback) {
  * @returns {void}
  */
 function fchownSync(fd, uid, gid) {
-  fd = getValidatedFd(fd);
   validateInteger(uid, 'uid', -1, kMaxUserId);
   validateInteger(gid, 'gid', -1, kMaxUserId);
 
-  const ctx = {};
-  binding.fchown(fd, uid, gid, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.fchown(fd, uid, gid);
 }
 
 /**
@@ -2091,9 +2084,11 @@ function chownSync(path, uid, gid) {
   path = getValidatedPath(path);
   validateInteger(uid, 'uid', -1, kMaxUserId);
   validateInteger(gid, 'gid', -1, kMaxUserId);
-  const ctx = { path };
-  binding.chown(pathModule.toNamespacedPath(path), uid, gid, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.chown(
+    pathModule.toNamespacedPath(path),
+    uid,
+    gid,
+  );
 }
 
 /**
@@ -2127,11 +2122,11 @@ function utimes(path, atime, mtime, callback) {
  */
 function utimesSync(path, atime, mtime) {
   path = getValidatedPath(path);
-  const ctx = { path };
-  binding.utimes(pathModule.toNamespacedPath(path),
-                 toUnixTimestamp(atime), toUnixTimestamp(mtime),
-                 undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.utimes(
+    pathModule.toNamespacedPath(path),
+    toUnixTimestamp(atime),
+    toUnixTimestamp(mtime),
+  );
 }
 
 /**
@@ -2144,7 +2139,6 @@ function utimesSync(path, atime, mtime) {
  * @returns {void}
  */
 function futimes(fd, atime, mtime, callback) {
-  fd = getValidatedFd(fd);
   atime = toUnixTimestamp(atime, 'atime');
   mtime = toUnixTimestamp(mtime, 'mtime');
   callback = makeCallback(callback);
@@ -2164,12 +2158,11 @@ function futimes(fd, atime, mtime, callback) {
  * @returns {void}
  */
 function futimesSync(fd, atime, mtime) {
-  fd = getValidatedFd(fd);
-  atime = toUnixTimestamp(atime, 'atime');
-  mtime = toUnixTimestamp(mtime, 'mtime');
-  const ctx = {};
-  binding.futimes(fd, atime, mtime, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.futimes(
+    fd,
+    toUnixTimestamp(atime, 'atime'),
+    toUnixTimestamp(mtime, 'mtime'),
+  );
 }
 
 /**
@@ -2203,15 +2196,14 @@ function lutimes(path, atime, mtime, callback) {
  */
 function lutimesSync(path, atime, mtime) {
   path = getValidatedPath(path);
-  const ctx = { path };
-  binding.lutimes(pathModule.toNamespacedPath(path),
-                  toUnixTimestamp(atime),
-                  toUnixTimestamp(mtime),
-                  undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.lutimes(
+    pathModule.toNamespacedPath(path),
+    toUnixTimestamp(atime),
+    toUnixTimestamp(mtime),
+  );
 }
 
-function writeAll(fd, isUserFd, buffer, offset, length, signal, callback) {
+function writeAll(fd, isUserFd, buffer, offset, length, signal, flush, callback) {
   if (signal?.aborted) {
     const abortError = new AbortError(undefined, { cause: signal?.reason });
     if (isUserFd) {
@@ -2234,15 +2226,33 @@ function writeAll(fd, isUserFd, buffer, offset, length, signal, callback) {
         });
       }
     } else if (written === length) {
-      if (isUserFd) {
-        callback(null);
+      if (!flush) {
+        if (isUserFd) {
+          callback(null);
+        } else {
+          fs.close(fd, callback);
+        }
       } else {
-        fs.close(fd, callback);
+        fs.fsync(fd, (syncErr) => {
+          if (syncErr) {
+            if (isUserFd) {
+              callback(syncErr);
+            } else {
+              fs.close(fd, (err) => {
+                callback(aggregateTwoErrors(err, syncErr));
+              });
+            }
+          } else if (isUserFd) {
+            callback(null);
+          } else {
+            fs.close(fd, callback);
+          }
+        });
       }
     } else {
       offset += written;
       length -= written;
-      writeAll(fd, isUserFd, buffer, offset, length, signal, callback);
+      writeAll(fd, isUserFd, buffer, offset, length, signal, flush, callback);
     }
   });
 }
@@ -2250,33 +2260,40 @@ function writeAll(fd, isUserFd, buffer, offset, length, signal, callback) {
 /**
  * Asynchronously writes data to the file.
  * @param {string | Buffer | URL | number} path
- * @param {string | Buffer | TypedArray | DataView | object} data
+ * @param {string | Buffer | TypedArray | DataView} data
  * @param {{
  *   encoding?: string | null;
  *   mode?: number;
  *   flag?: string;
  *   signal?: AbortSignal;
+ *   flush?: boolean;
  *   } | string} [options]
  * @param {(err?: Error) => any} callback
  * @returns {void}
  */
 function writeFile(path, data, options, callback) {
-  callback = maybeCallback(callback || options);
-  options = getOptions(options, { encoding: 'utf8', mode: 0o666, flag: 'w' });
+  callback ||= options;
+  validateFunction(callback, 'cb');
+  options = getOptions(options, {
+    encoding: 'utf8',
+    mode: 0o666,
+    flag: 'w',
+    flush: false,
+  });
   const flag = options.flag || 'w';
+  const flush = options.flush ?? false;
+
+  validateBoolean(flush, 'options.flush');
 
   if (!isArrayBufferView(data)) {
     validateStringAfterArrayBufferView(data, 'data');
-    if (typeof data !== 'string') {
-      showStringCoercionDeprecation();
-    }
-    data = Buffer.from(String(data), options.encoding || 'utf8');
+    data = Buffer.from(data, options.encoding || 'utf8');
   }
 
   if (isFd(path)) {
     const isUserFd = true;
     const signal = options.signal;
-    writeAll(path, isUserFd, data, 0, data.byteLength, signal, callback);
+    writeAll(path, isUserFd, data, 0, data.byteLength, signal, flush, callback);
     return;
   }
 
@@ -2289,7 +2306,7 @@ function writeFile(path, data, options, callback) {
     } else {
       const isUserFd = false;
       const signal = options.signal;
-      writeAll(fd, isUserFd, data, 0, data.byteLength, signal, callback);
+      writeAll(fd, isUserFd, data, 0, data.byteLength, signal, flush, callback);
     }
   });
 }
@@ -2297,26 +2314,46 @@ function writeFile(path, data, options, callback) {
 /**
  * Synchronously writes data to the file.
  * @param {string | Buffer | URL | number} path
- * @param {string | Buffer | TypedArray | DataView | object} data
+ * @param {string | Buffer | TypedArray | DataView} data
  * @param {{
  *   encoding?: string | null;
  *   mode?: number;
  *   flag?: string;
+ *   flush?: boolean;
  *   } | string} [options]
  * @returns {void}
  */
 function writeFileSync(path, data, options) {
-  options = getOptions(options, { encoding: 'utf8', mode: 0o666, flag: 'w' });
+  options = getOptions(options, {
+    encoding: 'utf8',
+    mode: 0o666,
+    flag: 'w',
+    flush: false,
+  });
+
+  const flush = options.flush ?? false;
+
+  validateBoolean(flush, 'options.flush');
+
+  const flag = options.flag || 'w';
+
+  // C++ fast path for string data and UTF8 encoding
+  if (typeof data === 'string' && (options.encoding === 'utf8' || options.encoding === 'utf-8')) {
+    if (!isInt32(path)) {
+      path = pathModule.toNamespacedPath(getValidatedPath(path));
+    }
+
+    return binding.writeFileUtf8(
+      path, data,
+      stringToFlags(flag),
+      parseFileMode(options.mode, 'mode', 0o666),
+    );
+  }
 
   if (!isArrayBufferView(data)) {
     validateStringAfterArrayBufferView(data, 'data');
-    if (typeof data !== 'string') {
-      showStringCoercionDeprecation();
-    }
-    data = Buffer.from(String(data), options.encoding || 'utf8');
+    data = Buffer.from(data, options.encoding || 'utf8');
   }
-
-  const flag = options.flag || 'w';
 
   const isUserFd = isFd(path); // File descriptor ownership
   const fd = isUserFd ? path : fs.openSync(path, flag, options.mode);
@@ -2328,6 +2365,10 @@ function writeFileSync(path, data, options) {
       const written = fs.writeSync(fd, data, offset, length);
       offset += written;
       length -= written;
+    }
+
+    if (flush) {
+      fs.fsyncSync(fd);
     }
   } finally {
     if (!isUserFd) fs.closeSync(fd);
@@ -2342,12 +2383,14 @@ function writeFileSync(path, data, options) {
  *   encoding?: string | null;
  *   mode?: number;
  *   flag?: string;
+ *   flush?: boolean;
  *   } | string} [options]
  * @param {(err?: Error) => any} callback
  * @returns {void}
  */
 function appendFile(path, data, options, callback) {
-  callback = maybeCallback(callback || options);
+  callback ||= options;
+  validateFunction(callback, 'cb');
   options = getOptions(options, { encoding: 'utf8', mode: 0o666, flag: 'a' });
 
   // Don't make changes directly on options object
@@ -2410,15 +2453,25 @@ function watch(filename, options, listener) {
 
   if (options.persistent === undefined) options.persistent = true;
   if (options.recursive === undefined) options.recursive = false;
-  if (options.recursive && !(isOSX || isWindows))
-    throw new ERR_FEATURE_UNAVAILABLE_ON_PLATFORM('watch recursively');
 
+  let watcher;
   const watchers = require('internal/fs/watchers');
-  const watcher = new watchers.FSWatcher();
-  watcher[watchers.kFSWatchStart](filename,
-                                  options.persistent,
-                                  options.recursive,
-                                  options.encoding);
+  const path = getValidatedPath(filename);
+  // TODO(anonrig): Remove non-native watcher when/if libuv supports recursive.
+  // As of November 2022, libuv does not support recursive file watch on all platforms,
+  // e.g. Linux due to the limitations of inotify.
+  if (options.recursive && !isOSX && !isWindows) {
+    const nonNativeWatcher = require('internal/fs/recursive_watch');
+    watcher = new nonNativeWatcher.FSWatcher(options);
+    watcher[watchers.kFSWatchStart](path);
+  } else {
+    watcher = new watchers.FSWatcher();
+    watcher[watchers.kFSWatchStart](path,
+                                    options.persistent,
+                                    options.recursive,
+                                    options.encoding);
+  }
+
   if (listener) {
     watcher.addListener('change', listener);
   }
@@ -2608,9 +2661,10 @@ function realpathSync(p, options) {
 
   // On windows, check that the root exists. On unix there is no need.
   if (isWindows) {
-    const ctx = { path: base };
-    binding.lstat(pathModule.toNamespacedPath(base), false, undefined, ctx);
-    handleErrorFromBinding(ctx);
+    const out = binding.lstat(pathModule.toNamespacedPath(base), false, undefined, true /* throwIfNoEntry */);
+    if (out === undefined) {
+      return;
+    }
     knownHard.add(base);
   }
 
@@ -2634,8 +2688,8 @@ function realpathSync(p, options) {
 
     // Continue if not a symlink, break if a pipe/socket
     if (knownHard.has(base) || cache?.get(base) === base) {
-      if (isFileType(binding.statValues, S_IFIFO) ||
-          isFileType(binding.statValues, S_IFSOCK)) {
+      if (isFileType(statValues, S_IFIFO) ||
+          isFileType(statValues, S_IFSOCK)) {
         break;
       }
       continue;
@@ -2650,9 +2704,10 @@ function realpathSync(p, options) {
       // for our internal use.
 
       const baseLong = pathModule.toNamespacedPath(base);
-      const ctx = { path: base };
-      const stats = binding.lstat(baseLong, true, undefined, ctx);
-      handleErrorFromBinding(ctx);
+      const stats = binding.lstat(baseLong, true, undefined, true /* throwIfNoEntry */);
+      if (stats === undefined) {
+        return;
+      }
 
       if (!isFileType(stats, S_IFLNK)) {
         knownHard.add(base);
@@ -2673,11 +2728,8 @@ function realpathSync(p, options) {
         }
       }
       if (linkTarget === null) {
-        const ctx = { path: base };
-        binding.stat(baseLong, false, undefined, ctx);
-        handleErrorFromBinding(ctx);
-        linkTarget = binding.readlink(baseLong, undefined, undefined, ctx);
-        handleErrorFromBinding(ctx);
+        binding.stat(baseLong, false, undefined, true);
+        linkTarget = binding.readlink(baseLong, undefined);
       }
       resolvedLink = pathModule.resolve(previous, linkTarget);
 
@@ -2694,9 +2746,10 @@ function realpathSync(p, options) {
 
     // On windows, check that the root exists. On unix there is no need.
     if (isWindows && !knownHard.has(base)) {
-      const ctx = { path: base };
-      binding.lstat(pathModule.toNamespacedPath(base), false, undefined, ctx);
-      handleErrorFromBinding(ctx);
+      const out = binding.lstat(pathModule.toNamespacedPath(base), false, undefined, true /* throwIfNoEntry */);
+      if (out === undefined) {
+        return;
+      }
       knownHard.add(base);
     }
   }
@@ -2714,10 +2767,10 @@ function realpathSync(p, options) {
 realpathSync.native = (path, options) => {
   options = getOptions(options);
   path = getValidatedPath(path);
-  const ctx = { path };
-  const result = binding.realpath(pathModule.toNamespacedPath(path), options.encoding, undefined, ctx);
-  handleErrorFromBinding(ctx);
-  return result;
+  return binding.realpath(
+    pathModule.toNamespacedPath(path),
+    options.encoding,
+  );
 };
 
 /**
@@ -2732,7 +2785,11 @@ realpathSync.native = (path, options) => {
  * @returns {void}
  */
 function realpath(p, options, callback) {
-  callback = typeof options === 'function' ? options : maybeCallback(callback);
+  if (typeof options === 'function') {
+    callback = options;
+  } else {
+    validateFunction(callback, 'cb');
+  }
   options = getOptions(options);
   p = toPathIfFileURL(p);
 
@@ -2792,8 +2849,8 @@ function realpath(p, options, callback) {
 
     // Continue if not a symlink, break if a pipe/socket
     if (knownHard.has(base)) {
-      if (isFileType(binding.statValues, S_IFIFO) ||
-          isFileType(binding.statValues, S_IFSOCK)) {
+      if (isFileType(statValues, S_IFIFO) ||
+          isFileType(statValues, S_IFSOCK)) {
         return callback(null, encodeRealpathResult(p, options));
       }
       return process.nextTick(LOOP);
@@ -2875,7 +2932,7 @@ realpath.native = (path, options, callback) => {
   path = getValidatedPath(path);
   const req = new FSReqCallback();
   req.oncomplete = callback;
-  return binding.realpath(pathModule.toNamespacedPath(path), options.encoding, req);
+  binding.realpath(pathModule.toNamespacedPath(path), options.encoding, req);
 };
 
 /**
@@ -2895,16 +2952,9 @@ function mkdtemp(prefix, options, callback) {
   prefix = getValidatedPath(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
 
-  let path;
-  if (typeof prefix === 'string') {
-    path = `${prefix}XXXXXX`;
-  } else {
-    path = Buffer.concat([prefix, Buffer.from('XXXXXX')]);
-  }
-
   const req = new FSReqCallback();
   req.oncomplete = callback;
-  binding.mkdtemp(path, options.encoding, req);
+  binding.mkdtemp(prefix, options.encoding, req);
 }
 
 /**
@@ -2918,19 +2968,7 @@ function mkdtempSync(prefix, options) {
 
   prefix = getValidatedPath(prefix, 'prefix');
   warnOnNonPortableTemplate(prefix);
-
-  let path;
-  if (typeof prefix === 'string') {
-    path = `${prefix}XXXXXX`;
-  } else {
-    path = Buffer.concat([prefix, Buffer.from('XXXXXX')]);
-  }
-
-  const ctx = { path };
-  const result = binding.mkdtemp(path, options.encoding,
-                                 undefined, ctx);
-  handleErrorFromBinding(ctx);
-  return result;
+  return binding.mkdtemp(prefix, options.encoding);
 }
 
 /**
@@ -2951,9 +2989,8 @@ function copyFile(src, dest, mode, callback) {
   src = getValidatedPath(src, 'src');
   dest = getValidatedPath(dest, 'dest');
 
-  src = pathModule._makeLong(src);
-  dest = pathModule._makeLong(dest);
-  mode = getValidMode(mode, 'copyFile');
+  src = pathModule.toNamespacedPath(src);
+  dest = pathModule.toNamespacedPath(dest);
   callback = makeCallback(callback);
 
   const req = new FSReqCallback();
@@ -2973,13 +3010,11 @@ function copyFileSync(src, dest, mode) {
   src = getValidatedPath(src, 'src');
   dest = getValidatedPath(dest, 'dest');
 
-  const ctx = { path: src, dest };  // non-prefixed
-
-  src = pathModule._makeLong(src);
-  dest = pathModule._makeLong(dest);
-  mode = getValidMode(mode, 'copyFile');
-  binding.copyFile(src, dest, mode, undefined, ctx);
-  handleErrorFromBinding(ctx);
+  binding.copyFile(
+    pathModule.toNamespacedPath(src),
+    pathModule.toNamespacedPath(dest),
+    mode,
+  );
 }
 
 /**
@@ -3043,6 +3078,7 @@ function lazyLoadStreams() {
  *   end?: number;
  *   highWaterMark?: number;
  *   fs?: object | null;
+ *   signal?: AbortSignal | null;
  *   }} [options]
  * @returns {ReadStream}
  */
@@ -3063,6 +3099,9 @@ function createReadStream(path, options) {
  *   emitClose?: boolean;
  *   start: number;
  *   fs?: object | null;
+ *   signal?: AbortSignal | null;
+ *   highWaterMark?: number;
+ *   flush?: boolean;
  *   }} [options]
  * @returns {WriteStream}
  */
@@ -3120,6 +3159,7 @@ module.exports = fs = {
   mkdtempSync,
   open,
   openSync,
+  openAsBlob,
   readdir,
   readdirSync,
   read,

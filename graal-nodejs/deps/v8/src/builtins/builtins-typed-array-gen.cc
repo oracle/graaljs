@@ -11,6 +11,7 @@
 #include "src/execution/protectors.h"
 #include "src/handles/handles-inl.h"
 #include "src/heap/factory-inl.h"
+#include "src/objects/elements-kind.h"
 #include "src/objects/js-array-buffer-inl.h"
 
 namespace v8 {
@@ -63,12 +64,21 @@ TNode<JSArrayBuffer> TypedArrayBuiltinsAssembler::AllocateEmptyOnHeapBuffer(
   StoreObjectFieldNoWriteBarrier(buffer, JSArrayBuffer::kBitFieldOffset,
                                  Int32Constant(bitfield_value));
 
-  StoreObjectFieldNoWriteBarrier(buffer, JSArrayBuffer::kByteLengthOffset,
-                                 UintPtrConstant(0));
+  StoreObjectFieldNoWriteBarrier(buffer, JSArrayBuffer::kDetachKeyOffset,
+                                 UndefinedConstant());
+  StoreBoundedSizeToObject(buffer, JSArrayBuffer::kRawByteLengthOffset,
+                           UintPtrConstant(0));
   StoreSandboxedPointerToObject(buffer, JSArrayBuffer::kBackingStoreOffset,
                                 EmptyBackingStoreBufferConstant());
+#ifdef V8_COMPRESS_POINTERS
+  // When pointer compression is enabled, the extension slot contains a
+  // (lazily-initialized) external pointer handle.
+  StoreObjectFieldNoWriteBarrier(buffer, JSArrayBuffer::kExtensionOffset,
+                                 ExternalPointerHandleNullConstant());
+#else
   StoreObjectFieldNoWriteBarrier(buffer, JSArrayBuffer::kExtensionOffset,
                                  IntPtrConstant(0));
+#endif
   for (int offset = JSArrayBuffer::kHeaderSize;
        offset < JSArrayBuffer::kSizeWithEmbedderFields; offset += kTaggedSize) {
     // TODO(v8:10391, saelo): Handle external pointers in EmbedderDataSlot
@@ -196,7 +206,7 @@ TNode<BoolT> TypedArrayBuiltinsAssembler::IsUint8ElementsKind(
 
 TNode<BoolT> TypedArrayBuiltinsAssembler::IsBigInt64ElementsKind(
     TNode<Int32T> kind) {
-  STATIC_ASSERT(BIGUINT64_ELEMENTS + 1 == BIGINT64_ELEMENTS);
+  static_assert(BIGUINT64_ELEMENTS + 1 == BIGINT64_ELEMENTS);
   return Word32Or(
       IsElementsKindInRange(kind, BIGUINT64_ELEMENTS, BIGINT64_ELEMENTS),
       IsElementsKindInRange(kind, RAB_GSAB_BIGUINT64_ELEMENTS,
@@ -399,7 +409,7 @@ void TypedArrayBuiltinsAssembler::DispatchTypedArrayByElementsKind(
       TYPED_ARRAYS(TYPED_ARRAY_CASE) RAB_GSAB_TYPED_ARRAYS(TYPED_ARRAY_CASE)
 #undef TYPED_ARRAY_CASE
   };
-  STATIC_ASSERT(arraysize(elements_kinds) == arraysize(elements_kind_labels));
+  static_assert(arraysize(elements_kinds) == arraysize(elements_kind_labels));
 
   Switch(elements_kind, &if_unknown_type, elements_kinds, elements_kind_labels,
          arraysize(elements_kinds));
@@ -500,17 +510,20 @@ template <typename TValue>
 void TypedArrayBuiltinsAssembler::StoreJSTypedArrayElementFromPreparedValue(
     TNode<Context> context, TNode<JSTypedArray> typed_array,
     TNode<UintPtrT> index, TNode<TValue> prepared_value,
-    ElementsKind elements_kind, Label* if_detached) {
+    ElementsKind elements_kind, Label* if_detached_or_out_of_bounds) {
   static_assert(
       std::is_same<TValue, Word32T>::value ||
           std::is_same<TValue, Float32T>::value ||
           std::is_same<TValue, Float64T>::value ||
           std::is_same<TValue, BigInt>::value,
       "Only Word32T, Float32T, Float64T or BigInt values are allowed");
-  // ToNumber/ToBigInt may execute JavaScript code, which could detach
-  // the array's buffer.
-  TNode<JSArrayBuffer> buffer = LoadJSArrayBufferViewBuffer(typed_array);
-  GotoIf(IsDetachedBuffer(buffer), if_detached);
+  // ToNumber/ToBigInt (or other functions called by the upper level) may
+  // execute JavaScript code, which could detach the TypedArray's buffer or make
+  // the TypedArray out of bounds.
+  TNode<UintPtrT> length = LoadJSTypedArrayLengthAndCheckDetached(
+      typed_array, if_detached_or_out_of_bounds);
+  GotoIf(UintPtrGreaterThanOrEqual(index, length),
+         if_detached_or_out_of_bounds);
 
   TNode<RawPtrT> data_ptr = LoadJSTypedArrayDataPtr(typed_array);
   StoreElement(data_ptr, elements_kind, index, prepared_value);
@@ -519,7 +532,7 @@ void TypedArrayBuiltinsAssembler::StoreJSTypedArrayElementFromPreparedValue(
 void TypedArrayBuiltinsAssembler::StoreJSTypedArrayElementFromTagged(
     TNode<Context> context, TNode<JSTypedArray> typed_array,
     TNode<UintPtrT> index, TNode<Object> value, ElementsKind elements_kind,
-    Label* if_detached) {
+    Label* if_detached_or_out_of_bounds) {
   switch (elements_kind) {
     case UINT8_ELEMENTS:
     case INT8_ELEMENTS:
@@ -532,7 +545,7 @@ void TypedArrayBuiltinsAssembler::StoreJSTypedArrayElementFromTagged(
           value, elements_kind, context);
       StoreJSTypedArrayElementFromPreparedValue(context, typed_array, index,
                                                 prepared_value, elements_kind,
-                                                if_detached);
+                                                if_detached_or_out_of_bounds);
       break;
     }
     case FLOAT32_ELEMENTS: {
@@ -540,7 +553,7 @@ void TypedArrayBuiltinsAssembler::StoreJSTypedArrayElementFromTagged(
           value, elements_kind, context);
       StoreJSTypedArrayElementFromPreparedValue(context, typed_array, index,
                                                 prepared_value, elements_kind,
-                                                if_detached);
+                                                if_detached_or_out_of_bounds);
       break;
     }
     case FLOAT64_ELEMENTS: {
@@ -548,7 +561,7 @@ void TypedArrayBuiltinsAssembler::StoreJSTypedArrayElementFromTagged(
           value, elements_kind, context);
       StoreJSTypedArrayElementFromPreparedValue(context, typed_array, index,
                                                 prepared_value, elements_kind,
-                                                if_detached);
+                                                if_detached_or_out_of_bounds);
       break;
     }
     case BIGINT64_ELEMENTS:
@@ -557,7 +570,7 @@ void TypedArrayBuiltinsAssembler::StoreJSTypedArrayElementFromTagged(
           value, elements_kind, context);
       StoreJSTypedArrayElementFromPreparedValue(context, typed_array, index,
                                                 prepared_value, elements_kind,
-                                                if_detached);
+                                                if_detached_or_out_of_bounds);
       break;
     }
     default:
@@ -573,26 +586,43 @@ TF_BUILTIN(TypedArrayPrototypeToStringTag, TypedArrayBuiltinsAssembler) {
 
   // Dispatch on the elements kind, offset by
   // FIRST_FIXED_TYPED_ARRAY_ELEMENTS_KIND.
-  size_t const kTypedElementsKindCount = LAST_FIXED_TYPED_ARRAY_ELEMENTS_KIND -
-                                         FIRST_FIXED_TYPED_ARRAY_ELEMENTS_KIND +
-                                         1;
+  static_assert(LAST_FIXED_TYPED_ARRAY_ELEMENTS_KIND + 1 ==
+                FIRST_RAB_GSAB_FIXED_TYPED_ARRAY_ELEMENTS_KIND);
+  size_t const kTypedElementsKindCount =
+      LAST_RAB_GSAB_FIXED_TYPED_ARRAY_ELEMENTS_KIND -
+      FIRST_FIXED_TYPED_ARRAY_ELEMENTS_KIND + 1;
 #define TYPED_ARRAY_CASE(Type, type, TYPE, ctype) \
   Label return_##type##array(this);               \
   BIND(&return_##type##array);                    \
   Return(StringConstant(#Type "Array"));
   TYPED_ARRAYS(TYPED_ARRAY_CASE)
 #undef TYPED_ARRAY_CASE
+
+  // clang-format off
   Label* elements_kind_labels[kTypedElementsKindCount] = {
+  // The TYPED_ARRAYS macro is invoked twice because while the RAB/GSAB-backed
+  // TAs have distinct ElementsKinds internally, they have the same "class"
+  // name for toString output.
 #define TYPED_ARRAY_CASE(Type, type, TYPE, ctype) &return_##type##array,
-      TYPED_ARRAYS(TYPED_ARRAY_CASE)
+  TYPED_ARRAYS(TYPED_ARRAY_CASE)
+  TYPED_ARRAYS(TYPED_ARRAY_CASE)
 #undef TYPED_ARRAY_CASE
   };
+
   int32_t elements_kinds[kTypedElementsKindCount] = {
 #define TYPED_ARRAY_CASE(Type, type, TYPE, ctype) \
   TYPE##_ELEMENTS - FIRST_FIXED_TYPED_ARRAY_ELEMENTS_KIND,
-      TYPED_ARRAYS(TYPED_ARRAY_CASE)
+  // The use of FIRST_FIXED_TYPED_ARRAY_ELEMENTS_KIND below is not a typo! This
+  // computes an index into elements_kind_labels, and all TypedArray
+  // ElementsKind values are contiguous.
+#define RAB_GSAB_TYPED_ARRAY_CASE(Type, type, TYPE, ctype) \
+  TYPE##_ELEMENTS - FIRST_FIXED_TYPED_ARRAY_ELEMENTS_KIND,
+  TYPED_ARRAYS(TYPED_ARRAY_CASE)
+  RAB_GSAB_TYPED_ARRAYS(RAB_GSAB_TYPED_ARRAY_CASE)
 #undef TYPED_ARRAY_CASE
+#undef RAB_GSAB_TYPED_ARRAY_CASE
   };
+  // clang-format on
 
   // We offset the dispatch by FIRST_FIXED_TYPED_ARRAY_ELEMENTS_KIND, so that
   // this can be turned into a non-sparse table switch for ideal performance.

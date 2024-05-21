@@ -63,7 +63,7 @@ struct FormalParametersBase {
   int num_parameters() const {
     // Don't include the rest parameter into the function's formal parameter
     // count (esp. the SharedFunctionInfo::internal_formal_parameter_count,
-    // which says whether we need to create an arguments adaptor frame).
+    // which says whether we need to create an inlined arguments frame).
     return arity - has_rest;
   }
 
@@ -246,7 +246,7 @@ class ParserBase {
   ParserBase(Zone* zone, Scanner* scanner, uintptr_t stack_limit,
              AstValueFactory* ast_value_factory,
              PendingCompilationErrorHandler* pending_error_handler,
-             RuntimeCallStats* runtime_call_stats, Logger* logger,
+             RuntimeCallStats* runtime_call_stats, V8FileLogger* v8_file_logger,
              UnoptimizedCompileFlags flags, bool parsing_on_main_thread)
       : scope_(nullptr),
         original_scope_(nullptr),
@@ -255,7 +255,7 @@ class ParserBase {
         ast_value_factory_(ast_value_factory),
         ast_node_factory_(ast_value_factory, zone),
         runtime_call_stats_(runtime_call_stats),
-        logger_(logger),
+        v8_file_logger_(v8_file_logger),
         parsing_on_main_thread_(parsing_on_main_thread),
         stack_limit_(stack_limit),
         pending_error_handler_(pending_error_handler),
@@ -304,6 +304,8 @@ class ParserBase {
 
   // The current Zone, which might be the main zone or a temporary Zone.
   Zone* zone() const { return zone_; }
+
+  V8_INLINE bool IsExtraordinaryPrivateNameAccessAllowed() const;
 
  protected:
   friend class v8::internal::ExpressionScope<ParserTypes<Impl>>;
@@ -459,7 +461,7 @@ class ParserBase {
     }
 
     void set_next_function_is_likely_called() {
-      next_function_is_likely_called_ = !FLAG_max_lazy;
+      next_function_is_likely_called_ = !v8_flags.max_lazy;
     }
 
     void RecordFunctionOrEvalCall() { contains_function_or_eval_ = true; }
@@ -1156,6 +1158,7 @@ class ParserBase {
   const AstRawString* GetNextSymbolForRegExpLiteral() const {
     return scanner()->NextSymbol(ast_value_factory());
   }
+  bool ValidateRegExpFlags(RegExpFlags flags);
   bool ValidateRegExpLiteral(const AstRawString* pattern, RegExpFlags flags,
                              RegExpError* regexp_error);
   ExpressionT ParseRegExpLiteral();
@@ -1285,7 +1288,6 @@ class ParserBase {
   // a scope where the name has also been let bound or the var declaration is
   // hoisted over such a scope.
   void CheckConflictingVarDeclarations(DeclarationScope* scope) {
-    if (has_error()) return;
     bool allowed_catch_binding_var_redeclaration = false;
     Declaration* decl = scope->CheckConflictingVarDeclarations(
         &allowed_catch_binding_var_redeclaration);
@@ -1562,7 +1564,7 @@ class ParserBase {
   AstValueFactory* ast_value_factory_;  // Not owned.
   typename Types::Factory ast_node_factory_;
   RuntimeCallStats* runtime_call_stats_;
-  internal::Logger* logger_;
+  internal::V8FileLogger* v8_file_logger_;
   bool parsing_on_main_thread_;
   uintptr_t stack_limit_;
   PendingCompilationErrorHandler* pending_error_handler_;
@@ -1760,6 +1762,39 @@ typename ParserBase<Impl>::IdentifierT ParserBase<Impl>::ParsePropertyName() {
 }
 
 template <typename Impl>
+bool ParserBase<Impl>::IsExtraordinaryPrivateNameAccessAllowed() const {
+  if (flags().parsing_while_debugging() != ParsingWhileDebugging::kYes &&
+      !flags().is_repl_mode()) {
+    return false;
+  }
+  Scope* current_scope = scope();
+  while (current_scope != nullptr) {
+    switch (current_scope->scope_type()) {
+      case CLASS_SCOPE:
+      case CATCH_SCOPE:
+      case BLOCK_SCOPE:
+      case WITH_SCOPE:
+      case SHADOW_REALM_SCOPE:
+        return false;
+      // Top-level scopes.
+      case SCRIPT_SCOPE:
+      case MODULE_SCOPE:
+        return true;
+      // Top-level wrapper function scopes.
+      case FUNCTION_SCOPE:
+        return function_literal_id_ == kFunctionLiteralIdTopLevel;
+      // Used by debug-evaluate. If the outer scope is top-level,
+      // extraordinary private name access is allowed.
+      case EVAL_SCOPE:
+        current_scope = current_scope->outer_scope();
+        DCHECK_NOT_NULL(current_scope);
+        break;
+    }
+  }
+  UNREACHABLE();
+}
+
+template <typename Impl>
 typename ParserBase<Impl>::ExpressionT
 ParserBase<Impl>::ParsePropertyOrPrivatePropertyName() {
   int pos = position();
@@ -1780,7 +1815,10 @@ ParserBase<Impl>::ParsePropertyOrPrivatePropertyName() {
     PrivateNameScopeIterator private_name_scope_iter(scope());
     // Parse the identifier so that we can display it in the error message
     name = impl()->GetIdentifier();
-    if (private_name_scope_iter.Done()) {
+    // In debug-evaluate, we relax the private name resolution to enable
+    // evaluation of obj.#member outside the class bodies in top-level scopes.
+    if (private_name_scope_iter.Done() &&
+        !IsExtraordinaryPrivateNameAccessAllowed()) {
       impl()->ReportMessageAt(Scanner::Location(pos, pos + 1),
                               MessageTemplate::kInvalidPrivateFieldResolution,
                               impl()->GetRawNameFromIdentifier(name));
@@ -1794,6 +1832,11 @@ ParserBase<Impl>::ParsePropertyOrPrivatePropertyName() {
   }
   impl()->PushLiteralName(name);
   return key;
+}
+
+template <typename Impl>
+bool ParserBase<Impl>::ValidateRegExpFlags(RegExpFlags flags) {
+  return RegExp::VerifyFlags(flags);
 }
 
 template <typename Impl>
@@ -1825,22 +1868,23 @@ typename ParserBase<Impl>::ExpressionT ParserBase<Impl>::ParseRegExpLiteral() {
     return impl()->FailureExpression();
   }
 
-  const AstRawString* js_pattern = GetNextSymbolForRegExpLiteral();
+  const AstRawString* pattern = GetNextSymbolForRegExpLiteral();
   base::Optional<RegExpFlags> flags = scanner()->ScanRegExpFlags();
-  if (!flags.has_value()) {
+  const AstRawString* flags_as_ast_raw_string = GetNextSymbolForRegExpLiteral();
+  if (!flags.has_value() || !ValidateRegExpFlags(flags.value())) {
     Next();
     ReportMessage(MessageTemplate::kMalformedRegExpFlags);
     return impl()->FailureExpression();
   }
   Next();
   RegExpError regexp_error;
-  if (!ValidateRegExpLiteral(js_pattern, flags.value(), &regexp_error)) {
+  if (!ValidateRegExpLiteral(pattern, flags.value(), &regexp_error)) {
     if (RegExpErrorIsStackOverflow(regexp_error)) set_stack_overflow();
-    ReportMessage(MessageTemplate::kMalformedRegExp, js_pattern,
-                  RegExpErrorString(regexp_error));
+    ReportMessage(MessageTemplate::kMalformedRegExp, pattern,
+                  flags_as_ast_raw_string, RegExpErrorString(regexp_error));
     return impl()->FailureExpression();
   }
-  return factory()->NewRegExpLiteral(js_pattern, flags.value(), pos);
+  return factory()->NewRegExpLiteral(pattern, flags.value(), pos);
 }
 
 template <typename Impl>
@@ -1948,6 +1992,11 @@ ParserBase<Impl>::ParsePrimaryExpression() {
 
     case Token::THIS: {
       Consume(Token::THIS);
+      // Not necessary for this.x, this.x(), this?.x and this?.x() to
+      // store the source position for ThisExpression.
+      if (peek() == Token::PERIOD || peek() == Token::QUESTION_PERIOD) {
+        return impl()->ThisExpression();
+      }
       return impl()->NewThisExpression(beg_pos);
     }
 
@@ -2815,7 +2864,8 @@ typename ParserBase<Impl>::ExpressionT ParserBase<Impl>::ParseObjectLiteral() {
   // this runtime function. Here, we make sure that the number of
   // properties is less than number of arguments allowed for a runtime
   // call.
-  if (has_rest_property && properties.length() > Code::kMaxArguments) {
+  if (has_rest_property &&
+      properties.length() > InstructionStream::kMaxArguments) {
     expression_scope()->RecordPatternError(Scanner::Location(pos, position()),
                                            MessageTemplate::kTooManyArguments);
   }
@@ -2871,7 +2921,7 @@ void ParserBase<Impl>::ParseArguments(
     if (!Check(Token::COMMA)) break;
   }
 
-  if (args->length() > Code::kMaxArguments) {
+  if (args->length() > InstructionStream::kMaxArguments) {
     ReportMessage(MessageTemplate::kTooManyArguments);
     return;
   }
@@ -3236,8 +3286,7 @@ typename ParserBase<Impl>::ExpressionT ParserBase<Impl>::ParseBinaryExpression(
 
   // "#foo in ShiftExpression" needs to be parsed separately, since private
   // identifiers are not valid PrimaryExpressions.
-  if (V8_UNLIKELY(FLAG_harmony_private_brand_checks &&
-                  peek() == Token::PRIVATE_NAME)) {
+  if (V8_UNLIKELY(peek() == Token::PRIVATE_NAME)) {
     ExpressionT x = ParsePropertyOrPrivatePropertyName();
     int prec1 = Token::Precedence(peek(), accept_IN_);
     if (peek() != Token::IN || prec1 < prec) {
@@ -3725,8 +3774,8 @@ ParserBase<Impl>::ParseImportExpressions() {
   AcceptINScope scope(this, true);
   ExpressionT specifier = ParseAssignmentExpressionCoverGrammar();
 
-  if ((FLAG_harmony_import_assertions ||
-       FLAG_harmony_import_attributes) &&
+  if ((v8_flags.harmony_import_assertions ||
+       v8_flags.harmony_import_attributes) &&
       Check(Token::COMMA)) {
     if (Check(Token::RPAREN)) {
       // A trailing comma allowed after the specifier.
@@ -3921,7 +3970,7 @@ void ParserBase<Impl>::ParseFormalParameterList(FormalParametersT* parameters) {
   if (peek() != Token::RPAREN) {
     while (true) {
       // Add one since we're going to be adding a parameter.
-      if (parameters->arity + 1 > Code::kMaxArguments) {
+      if (parameters->arity + 1 > InstructionStream::kMaxArguments) {
         ReportMessage(MessageTemplate::kTooManyParameters);
         return;
       }
@@ -4309,6 +4358,8 @@ void ParserBase<Impl>::ParseFunctionBody(
     StatementListT* body, IdentifierT function_name, int pos,
     const FormalParametersT& parameters, FunctionKind kind,
     FunctionSyntaxKind function_syntax_kind, FunctionBodyType body_type) {
+  CheckStackOverflow();
+
   if (IsResumableFunction(kind)) impl()->PrepareGeneratorVariables();
 
   DeclarationScope* function_scope = parameters.scope;
@@ -4508,7 +4559,7 @@ ParserBase<Impl>::ParseArrowFunctionLiteral(
                 : RuntimeCallCounterId::kParseArrowFunctionLiteral,
             RuntimeCallStats::kThreadSpecific);
   base::ElapsedTimer timer;
-  if (V8_UNLIKELY(FLAG_log_function_events)) timer.Start();
+  if (V8_UNLIKELY(v8_flags.log_function_events)) timer.Start();
 
   DCHECK_IMPLIES(!has_error(), peek() == Token::ARROW);
   if (!impl()->HasCheckedSyntax() && scanner_->HasLineTerminatorBeforeNext()) {
@@ -4652,15 +4703,15 @@ ParserBase<Impl>::ParseArrowFunctionLiteral(
   impl()->RecordFunctionLiteralSourceRange(function_literal);
   impl()->AddFunctionForNameInference(function_literal);
 
-  if (V8_UNLIKELY((FLAG_log_function_events))) {
+  if (V8_UNLIKELY(v8_flags.log_function_events)) {
     Scope* scope = formal_parameters.scope;
     double ms = timer.Elapsed().InMillisecondsF();
     const char* event_name =
         is_lazy_top_level_function ? "preparse-no-resolution" : "parse";
     const char* name = "arrow function";
-    logger_->FunctionEvent(event_name, flags().script_id(), ms,
-                           scope->start_position(), scope->end_position(), name,
-                           strlen(name));
+    v8_file_logger_->FunctionEvent(event_name, flags().script_id(), ms,
+                                   scope->start_position(),
+                                   scope->end_position(), name, strlen(name));
   }
 
   return function_literal;
@@ -4729,8 +4780,7 @@ typename ParserBase<Impl>::ExpressionT ParserBase<Impl>::ParseClassLiteral(
     if (Check(Token::SEMICOLON)) continue;
 
     // Either we're parsing a `static { }` initialization block or a property.
-    if (FLAG_harmony_class_static_blocks && peek() == Token::STATIC &&
-        PeekAhead() == Token::LBRACE) {
+    if (peek() == Token::STATIC && PeekAhead() == Token::LBRACE) {
       BlockT static_block = ParseClassStaticBlock(&class_info);
       impl()->AddClassStaticBlock(static_block, &class_info);
       continue;

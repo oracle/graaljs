@@ -4,11 +4,16 @@
 
 > Stability: 1 - Experimental
 
+<strong class="critical">The `node:wasi` module does not currently provide the
+comprehensive file system security properties provided by some WASI runtimes.
+Full support for secure file system sandboxing may or may not be implemented in
+future. In the mean time, do not rely on it to run untrusted code. </strong>
+
 <!-- source_link=lib/wasi.js -->
 
 The WASI API provides an implementation of the [WebAssembly System Interface][]
-specification. WASI gives sandboxed WebAssembly applications access to the
-underlying operating system via a collection of POSIX-like functions.
+specification. WASI gives WebAssembly applications access to the underlying
+operating system via a collection of POSIX-like functions.
 
 ```mjs
 import { readFile } from 'node:fs/promises';
@@ -16,21 +21,18 @@ import { WASI } from 'wasi';
 import { argv, env } from 'node:process';
 
 const wasi = new WASI({
+  version: 'preview1',
   args: argv,
   env,
   preopens: {
-    '/sandbox': '/some/real/path/that/wasm/can/access',
+    '/local': '/some/real/path/that/wasm/can/access',
   },
 });
-
-// Some WASI binaries require:
-//   const importObject = { wasi_unstable: wasi.wasiImport };
-const importObject = { wasi_snapshot_preview1: wasi.wasiImport };
 
 const wasm = await WebAssembly.compile(
   await readFile(new URL('./demo.wasm', import.meta.url)),
 );
-const instance = await WebAssembly.instantiate(wasm, importObject);
+const instance = await WebAssembly.instantiate(wasm, wasi.getImportObject());
 
 wasi.start(instance);
 ```
@@ -43,22 +45,19 @@ const { argv, env } = require('node:process');
 const { join } = require('node:path');
 
 const wasi = new WASI({
+  version: 'preview1',
   args: argv,
   env,
   preopens: {
-    '/sandbox': '/some/real/path/that/wasm/can/access',
+    '/local': '/some/real/path/that/wasm/can/access',
   },
 });
-
-// Some WASI binaries require:
-//   const importObject = { wasi_unstable: wasi.wasiImport };
-const importObject = { wasi_snapshot_preview1: wasi.wasiImport };
 
 (async () => {
   const wasm = await WebAssembly.compile(
     await readFile(join(__dirname, 'demo.wasm')),
   );
-  const instance = await WebAssembly.instantiate(wasm, importObject);
+  const instance = await WebAssembly.instantiate(wasm, wasi.getImportObject());
 
   wasi.start(instance);
 })();
@@ -99,9 +98,31 @@ To run the above example, create a new WebAssembly text format file named
 
 Use [wabt](https://github.com/WebAssembly/wabt) to compile `.wat` to `.wasm`
 
-```console
-$ wat2wasm demo.wat
+```bash
+wat2wasm demo.wat
 ```
+
+## Security
+
+<!-- YAML
+added: v20.11.0
+changes:
+  - version: v20.11.0
+    pr-url: https://github.com/nodejs/node/pull/50396
+    description: Clarify WASI security properties.
+-->
+
+WASI provides a capabilities-based model through which applications are provided
+their own custom `env`, `preopens`, `stdin`, `stdout`, `stderr`, and `exit`
+capabilities.
+
+**The current Node.js threat model does not provide secure sandboxing as is
+present in some WASI runtimes.**
+
+While the capability features are supported, they do not form a security model
+in Node.js. For example, the file system sandboxing can be escaped with various
+techniques. The project is exploring whether these security guarantees could be
+added in future.
 
 ## Class: `WASI`
 
@@ -113,9 +134,7 @@ added:
 
 The `WASI` class provides the WASI system call API and additional convenience
 methods for working with WASI-based applications. Each `WASI` instance
-represents a distinct sandbox environment. For security purposes, each `WASI`
-instance must have its command-line arguments, environment variables, and
-sandbox directory structure configured explicitly.
+represents a distinct environment.
 
 ### `new WASI([options])`
 
@@ -123,6 +142,16 @@ sandbox directory structure configured explicitly.
 added:
  - v13.3.0
  - v12.16.0
+changes:
+ - version: v20.1.0
+   pr-url: https://github.com/nodejs/node/pull/47390
+   description: default value of returnOnExit changed to true.
+ - version: v20.0.0
+   pr-url: https://github.com/nodejs/node/pull/47391
+   description: The version option is now required and has no default value.
+ - version: v19.8.0
+   pr-url: https://github.com/nodejs/node/pull/46469
+   description: version field added to options.
 -->
 
 * `options` {Object}
@@ -132,19 +161,45 @@ added:
   * `env` {Object} An object similar to `process.env` that the WebAssembly
     application will see as its environment. **Default:** `{}`.
   * `preopens` {Object} This object represents the WebAssembly application's
-    sandbox directory structure. The string keys of `preopens` are treated as
-    directories within the sandbox. The corresponding values in `preopens` are
-    the real paths to those directories on the host machine.
-  * `returnOnExit` {boolean} By default, WASI applications terminate the Node.js
-    process via the `__wasi_proc_exit()` function. Setting this option to `true`
-    causes `wasi.start()` to return the exit code rather than terminate the
-    process. **Default:** `false`.
+    local directory structure. The string keys of `preopens` are treated as
+    directories within the file system. The corresponding values in `preopens`
+    are the real paths to those directories on the host machine.
+  * `returnOnExit` {boolean} By default, when WASI applications call
+    `__wasi_proc_exit()`  `wasi.start()` will return with the exit code
+    specified rather than terminating the process. Setting this option to
+    `false` will cause the Node.js process to exit with the specified
+    exit code instead.  **Default:** `true`.
   * `stdin` {integer} The file descriptor used as standard input in the
     WebAssembly application. **Default:** `0`.
   * `stdout` {integer} The file descriptor used as standard output in the
     WebAssembly application. **Default:** `1`.
   * `stderr` {integer} The file descriptor used as standard error in the
     WebAssembly application. **Default:** `2`.
+  * `version` {string} The version of WASI requested. Currently the only
+    supported versions are `unstable` and `preview1`. This option is
+    mandatory.
+
+### `wasi.getImportObject()`
+
+<!-- YAML
+added: v19.8.0
+-->
+
+Return an import object that can be passed to `WebAssembly.instantiate()` if
+no other WASM imports are needed beyond those provided by WASI.
+
+If version `unstable` was passed into the constructor it will return:
+
+```json
+{ wasi_unstable: wasi.wasiImport }
+```
+
+If version `preview1` was passed into the constructor or no version was
+specified it will return:
+
+```json
+{ wasi_snapshot_preview1: wasi.wasiImport }
+```
 
 ### `wasi.start(instance)`
 

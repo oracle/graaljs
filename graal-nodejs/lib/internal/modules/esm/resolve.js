@@ -3,11 +3,10 @@
 const {
   ArrayIsArray,
   ArrayPrototypeJoin,
-  ArrayPrototypeShift,
+  ArrayPrototypeMap,
   JSONStringify,
   ObjectGetOwnPropertyNames,
   ObjectPrototypeHasOwnProperty,
-  RegExp,
   RegExpPrototypeExec,
   RegExpPrototypeSymbolReplace,
   SafeMap,
@@ -21,25 +20,26 @@ const {
   StringPrototypeSlice,
   StringPrototypeSplit,
   StringPrototypeStartsWith,
+  encodeURIComponent,
 } = primordials;
 const internalFS = require('internal/fs/utils');
 const { BuiltinModule } = require('internal/bootstrap/realm');
 const { realpathSync } = require('fs');
 const { getOptionValue } = require('internal/options');
-const pendingDeprecation = getOptionValue('--pending-deprecation');
 // Do not eagerly grab .manifest, it may be in TDZ
 const policy = getOptionValue('--experimental-policy') ?
   require('internal/process/policy') :
   null;
-const { sep, relative, resolve, toNamespacedPath } = require('path');
+const { sep, posix: { relative: relativePosixPath }, toNamespacedPath, resolve } = require('path');
 const preserveSymlinks = getOptionValue('--preserve-symlinks');
 const preserveSymlinksMain = getOptionValue('--preserve-symlinks-main');
 const experimentalNetworkImports =
   getOptionValue('--experimental-network-imports');
 const inputTypeFlag = getOptionValue('--input-type');
-const { URL, pathToFileURL, fileURLToPath, isURL, toPathIfFileURL } = require('internal/url');
-const { getCWDURL } = require('internal/util');
+const { URL, pathToFileURL, fileURLToPath, isURL } = require('internal/url');
+const { getCWDURL, setOwnProperty } = require('internal/util');
 const { canParse: URLCanParse } = internalBinding('url');
+const { legacyMainResolve: FSLegacyMainResolve } = internalBinding('fs');
 const {
   ERR_INPUT_TYPE_NOT_ALLOWED,
   ERR_INVALID_ARG_TYPE,
@@ -51,6 +51,7 @@ const {
   ERR_PACKAGE_IMPORT_NOT_DEFINED,
   ERR_PACKAGE_PATH_NOT_EXPORTED,
   ERR_UNSUPPORTED_DIR_IMPORT,
+  ERR_UNSUPPORTED_RESOLVE_REQUEST,
   ERR_NETWORK_IMPORT_DISALLOWED,
 } = require('internal/errors').codes;
 
@@ -75,6 +76,9 @@ const emittedPackageWarnings = new SafeSet();
  * @param {string} base - The URL of the module that imported the package.
  */
 function emitTrailingSlashPatternDeprecation(match, pjsonUrl, base) {
+  if (process.noDeprecation) {
+    return;
+  }
   const pjsonPath = fileURLToPath(pjsonUrl);
   if (emittedPackageWarnings.has(pjsonPath + '|' + match)) { return; }
   emittedPackageWarnings.add(pjsonPath + '|' + match);
@@ -101,7 +105,9 @@ const doubleSlashRegEx = /[/\\][/\\]/;
  * @param {boolean} isTarget - Whether the target is a module.
  */
 function emitInvalidSegmentDeprecation(target, request, match, pjsonUrl, internal, base, isTarget) {
-  if (!pendingDeprecation) { return; }
+  if (process.noDeprecation) {
+    return;
+  }
   const pjsonPath = fileURLToPath(pjsonUrl);
   const double = RegExpPrototypeExec(doubleSlashRegEx, isTarget ? target : request) !== null;
   process.emitWarning(
@@ -124,6 +130,9 @@ function emitInvalidSegmentDeprecation(target, request, match, pjsonUrl, interna
  * @param {string} [main] - The "main" field from the package.json file.
  */
 function emitLegacyIndexDeprecation(url, packageJSONUrl, base, main) {
+  if (process.noDeprecation) {
+    return;
+  }
   const format = defaultGetFormatWithoutErrors(url);
   if (format !== 'module') { return; }
   const path = fileURLToPath(url);
@@ -153,13 +162,34 @@ function emitLegacyIndexDeprecation(url, packageJSONUrl, base, main) {
 
 const realpathCache = new SafeMap();
 
-/**
- * @param {string | URL} url
- * @returns {boolean}
- */
-function fileExists(url) {
-  return internalModuleStat(toNamespacedPath(toPathIfFileURL(url))) === 0;
-}
+const legacyMainResolveExtensions = [
+  '',
+  '.js',
+  '.json',
+  '.node',
+  '/index.js',
+  '/index.json',
+  '/index.node',
+  './index.js',
+  './index.json',
+  './index.node',
+];
+
+const legacyMainResolveExtensionsIndexes = {
+  // 0-6: when packageConfig.main is defined
+  kResolvedByMain: 0,
+  kResolvedByMainJs: 1,
+  kResolvedByMainJson: 2,
+  kResolvedByMainNode: 3,
+  kResolvedByMainIndexJs: 4,
+  kResolvedByMainIndexJson: 5,
+  kResolvedByMainIndexNode: 6,
+  // 7-9: when packageConfig.main is NOT defined,
+  //      or when the previous case didn't found the file
+  kResolvedByPackageAndJs: 7,
+  kResolvedByPackageAndJson: 8,
+  kResolvedByPackageAndNode: 9,
+};
 
 /**
  * Legacy CommonJS main resolution:
@@ -174,93 +204,22 @@ function fileExists(url) {
  * @returns {URL}
  */
 function legacyMainResolve(packageJSONUrl, packageConfig, base) {
-  let guess;
-  if (packageConfig.main !== undefined) {
-    // Note: fs check redundances will be handled by Descriptor cache here.
-    if (fileExists(guess = new URL(`./${packageConfig.main}`, packageJSONUrl))) {
-      return guess;
-    } else if (fileExists(guess = new URL(`./${packageConfig.main}.js`, packageJSONUrl))) {
-      // Handled below.
-    } else if (fileExists(guess = new URL(`./${packageConfig.main}.json`, packageJSONUrl))) {
-      // Handled below.
-    } else if (fileExists(guess = new URL(`./${packageConfig.main}.node`, packageJSONUrl))) {
-      // Handled below.
-    } else if (fileExists(guess = new URL(`./${packageConfig.main}/index.js`, packageJSONUrl))) {
-      // Handled below.
-    } else if (fileExists(guess = new URL(`./${packageConfig.main}/index.json`, packageJSONUrl))) {
-      // Handled below.
-    } else if (fileExists(guess = new URL(`./${packageConfig.main}/index.node`, packageJSONUrl))) {
-      // Handled below.
-    } else {
-      guess = undefined;
-    }
-    if (guess) {
-      emitLegacyIndexDeprecation(guess, packageJSONUrl, base,
-                                 packageConfig.main);
-      return guess;
-    }
-    // Fallthrough.
-  }
-  if (fileExists(guess = new URL('./index.js', packageJSONUrl))) {
-    // Handled below.
-  } else if (fileExists(guess = new URL('./index.json', packageJSONUrl))) {
-    // Handled below.
-  } else if (fileExists(guess = new URL('./index.node', packageJSONUrl))) {
-    // Handled below.
-  } else {
-    guess = undefined;
-  }
-  if (guess) {
-    emitLegacyIndexDeprecation(guess, packageJSONUrl, base, packageConfig.main);
-    return guess;
-  }
-  // Not found.
-  throw new ERR_MODULE_NOT_FOUND(
-    fileURLToPath(new URL('.', packageJSONUrl)), fileURLToPath(base));
-}
+  const packageJsonUrlString = packageJSONUrl.href;
 
-/**
- * @param {URL} search
- * @returns {URL | undefined}
- */
-function resolveExtensionsWithTryExactName(search) {
-  if (fileExists(search)) { return search; }
-  return resolveExtensions(search);
-}
-
-const extensions = ['.js', '.json', '.node', '.mjs'];
-
-/**
- * @param {URL} search
- * @returns {URL | undefined}
- */
-function resolveExtensions(search) {
-  for (let i = 0; i < extensions.length; i++) {
-    const extension = extensions[i];
-    const guess = new URL(`${search.pathname}${extension}`, search);
-    if (fileExists(guess)) { return guess; }
+  if (typeof packageJsonUrlString !== 'string') {
+    throw new ERR_INVALID_ARG_TYPE('packageJSONUrl', ['URL'], packageJSONUrl);
   }
-  return undefined;
-}
 
-/**
- * @param {URL} search
- * @returns {URL | undefined}
- */
-function resolveDirectoryEntry(search) {
-  const dirPath = fileURLToPath(search);
-  const pkgJsonPath = resolve(dirPath, 'package.json');
-  if (fileExists(pkgJsonPath)) {
-    const pkgJson = packageJsonReader.read(pkgJsonPath);
-    if (pkgJson.exists) {
-      const { main } = pkgJson;
-      if (main != null) {
-        const mainUrl = pathToFileURL(resolve(dirPath, main));
-        return resolveExtensionsWithTryExactName(mainUrl);
-      }
-    }
-  }
-  return resolveExtensions(new URL('index', search));
+  const baseStringified = isURL(base) ? base.href : base;
+
+  const resolvedOption = FSLegacyMainResolve(packageJsonUrlString, packageConfig.main, baseStringified);
+
+  const baseUrl = resolvedOption <= legacyMainResolveExtensionsIndexes.kResolvedByMainIndexNode ? `./${packageConfig.main}` : '';
+  const resolvedUrl = new URL(baseUrl + legacyMainResolveExtensions[resolvedOption], packageJSONUrl);
+
+  emitLegacyIndexDeprecation(resolvedUrl, packageJSONUrl, base, packageConfig.main);
+
+  return resolvedUrl;
 }
 
 const encodedSepRegEx = /%2F|%5C/i;
@@ -290,27 +249,6 @@ function finalizeResolution(resolved, base, preserveSymlinks) {
     setOwnProperty(err, 'input', `${resolved}`);
     setOwnProperty(err, 'module', `${base}`);
     throw err;
-  }
-
-  if (getOptionValue('--experimental-specifier-resolution') === 'node') {
-    let file = resolveExtensionsWithTryExactName(resolved);
-
-    // Directory
-    if (file === undefined) {
-      file = StringPrototypeEndsWith(path, '/') ?
-        (resolveDirectoryEntry(resolved) || resolved) : resolveDirectoryEntry(new URL(`${resolved}/`));
-
-      if (file === resolved) { return file; }
-
-      if (file === undefined) {
-        throw new ERR_MODULE_NOT_FOUND(
-          resolved.pathname, fileURLToPath(base), 'module');
-      }
-    }
-    // If `preserveSymlinks` is false, `resolved` is returned and `path`
-    // is used only to check that the resolved path exists.
-    resolved = file;
-    path = fileURLToPath(resolved);
   }
 
   const stats = internalModuleStat(toNamespacedPath(StringPrototypeEndsWith(path, '/') ?
@@ -956,22 +894,37 @@ function shouldBeTreatedAsRelativeOrAbsolutePath(specifier) {
  * @param {boolean} preserveSymlinks - Whether to preserve symlinks in the resolved URL.
  */
 function moduleResolve(specifier, base, conditions, preserveSymlinks) {
-  const isRemote = base.protocol === 'http:' ||
-    base.protocol === 'https:';
+  const protocol = typeof base === 'string' ?
+    StringPrototypeSlice(base, 0, StringPrototypeIndexOf(base, ':') + 1) :
+    base.protocol;
+  const isData = protocol === 'data:';
+  const isRemote =
+    isData ||
+    protocol === 'http:' ||
+    protocol === 'https:';
   // Order swapped from spec for minor perf gain.
   // Ok since relative URLs cannot parse as URLs.
   let resolved;
   if (shouldBeTreatedAsRelativeOrAbsolutePath(specifier)) {
-    resolved = new URL(specifier, base);
-  } else if (!isRemote && specifier[0] === '#') {
+    try {
+      resolved = new URL(specifier, base);
+    } catch (cause) {
+      const error = new ERR_UNSUPPORTED_RESOLVE_REQUEST(specifier, base);
+      setOwnProperty(error, 'cause', cause);
+      throw error;
+    }
+  } else if (protocol === 'file:' && specifier[0] === '#') {
     resolved = packageImportsResolve(specifier, base, conditions);
   } else {
     try {
       resolved = new URL(specifier);
-    } catch {
-      if (!isRemote) {
-        resolved = packageResolve(specifier, base, conditions);
+    } catch (cause) {
+      if (isRemote && !BuiltinModule.canBeRequiredWithoutScheme(specifier)) {
+        const error = new ERR_UNSUPPORTED_RESOLVE_REQUEST(specifier, base);
+        setOwnProperty(error, 'cause', cause);
+        throw error;
       }
+      resolved = packageResolve(specifier, base, conditions);
     }
   }
   if (resolved.protocol !== 'file:') {
@@ -984,6 +937,7 @@ function moduleResolve(specifier, base, conditions, preserveSymlinks) {
  * Try to resolve an import as a CommonJS module.
  * @param {string} specifier - The specifier to resolve.
  * @param {string} parentURL - The base URL.
+ * @returns {string | Buffer | false}
  */
 function resolveAsCommonJS(specifier, parentURL) {
   try {
@@ -996,28 +950,37 @@ function resolveAsCommonJS(specifier, parentURL) {
     // If it is a relative specifier return the relative path
     // to the parent
     if (isRelativeSpecifier(specifier)) {
-      found = relative(parent, found);
-      // Add '.separator if the path does not start with '..separator'
+      const foundURL = pathToFileURL(found).pathname;
+      found = relativePosixPath(
+        StringPrototypeSlice(parentURL, 'file://'.length, StringPrototypeLastIndexOf(parentURL, '/')),
+        foundURL);
+
+      // Add './' if the path does not start with '../'
       // This should be a safe assumption because when loading
       // esm modules there should be always a file specified so
       // there should not be a specifier like '..' or '.'
-      if (!StringPrototypeStartsWith(found, `..${sep}`)) {
-        found = `.${sep}${found}`;
+      if (!StringPrototypeStartsWith(found, '../')) {
+        found = `./${found}`;
       }
     } else if (isBareSpecifier(specifier)) {
       // If it is a bare specifier return the relative path within the
       // module
-      const pkg = StringPrototypeSplit(specifier, '/')[0];
-      const index = StringPrototypeIndexOf(found, pkg);
+      const i = StringPrototypeIndexOf(specifier, '/');
+      const pkg = i === -1 ? specifier : StringPrototypeSlice(specifier, 0, i);
+      const needle = `${sep}node_modules${sep}${pkg}${sep}`;
+      const index = StringPrototypeLastIndexOf(found, needle);
       if (index !== -1) {
-        found = StringPrototypeSlice(found, index);
+        found = pkg + '/' + ArrayPrototypeJoin(
+          ArrayPrototypeMap(
+            StringPrototypeSplit(StringPrototypeSlice(found, index + needle.length), sep),
+            // Escape URL-special characters to avoid generating a incorrect suggestion
+            encodeURIComponent,
+          ),
+          '/',
+        );
+      } else {
+        found = `${pathToFileURL(found)}`;
       }
-    }
-    // Normalize the path separator to give a valid suggestion
-    // on Windows
-    if (process.platform === 'win32') {
-      found = RegExpPrototypeSymbolReplace(new RegExp(`\\${sep}`, 'g'),
-                                           found, '/');
     }
     return found;
   } catch {
@@ -1111,7 +1074,7 @@ function defaultResolve(specifier, context = {}) {
         missing = false;
       } else if (destination) {
         const href = destination.href;
-        return { url: href };
+        return { __proto__: null, url: href };
       }
       if (missing) {
         // Prevent network requests from firing if resolution would be banned.
@@ -1135,7 +1098,7 @@ function defaultResolve(specifier, context = {}) {
     }
   }
 
-  let parsed;
+  let parsed, protocol;
   try {
     if (shouldBeTreatedAsRelativeOrAbsolutePath(specifier)) {
       parsed = new URL(specifier, parsedParentURL);
@@ -1144,7 +1107,7 @@ function defaultResolve(specifier, context = {}) {
     }
 
     // Avoid accessing the `protocol` property due to the lazy getters.
-    const protocol = parsed.protocol;
+    protocol = parsed.protocol;
     if (protocol === 'data:' ||
       (experimentalNetworkImports &&
         (
@@ -1171,7 +1134,8 @@ function defaultResolve(specifier, context = {}) {
   if (maybeReturn) { return maybeReturn; }
 
   // This must come after checkIfDisallowedImport
-  if (parsed && parsed.protocol === 'node:') { return { __proto__: null, url: specifier }; }
+  protocol ??= parsed?.protocol;
+  if (protocol === 'node:') { return { __proto__: null, url: specifier }; }
 
 
   const isMain = parentURL === undefined;
@@ -1210,6 +1174,7 @@ function defaultResolve(specifier, context = {}) {
   }
 
   return {
+    __proto__: null,
     // Do NOT cast `url` to a string: that will work even when there are real
     // problems, silencing them
     url: url.href,
@@ -1225,14 +1190,14 @@ function defaultResolve(specifier, context = {}) {
  */
 function decorateErrorWithCommonJSHints(error, specifier, parentURL) {
   const found = resolveAsCommonJS(specifier, parentURL);
-  if (found) {
+  if (found && found !== specifier) { // Don't suggest the same input the user provided.
     // Modify the stack and message string to include the hint
-    const lines = StringPrototypeSplit(error.stack, '\n');
-    const hint = `Did you mean to import ${found}?`;
+    const endOfFirstLine = StringPrototypeIndexOf(error.stack, '\n');
+    const hint = `Did you mean to import ${JSONStringify(found)}?`;
     error.stack =
-      ArrayPrototypeShift(lines) + '\n' +
-      hint + '\n' +
-      ArrayPrototypeJoin(lines, '\n');
+      StringPrototypeSlice(error.stack, 0, endOfFirstLine) + '\n' +
+      hint +
+      StringPrototypeSlice(error.stack, endOfFirstLine);
     error.message += `\n${hint}`;
   }
 }
@@ -1246,6 +1211,7 @@ module.exports = {
   packageExportsResolve,
   packageImportsResolve,
   throwIfInvalidParentURL,
+  legacyMainResolve,
 };
 
 // cycle

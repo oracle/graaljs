@@ -43,8 +43,9 @@
 'use strict';
 
 const {
+  ArrayPrototypeAt,
   ArrayPrototypeFilter,
-  ArrayPrototypeFindIndex,
+  ArrayPrototypeFindLastIndex,
   ArrayPrototypeForEach,
   ArrayPrototypeIncludes,
   ArrayPrototypeJoin,
@@ -52,22 +53,19 @@ const {
   ArrayPrototypePop,
   ArrayPrototypePush,
   ArrayPrototypePushApply,
-  ArrayPrototypeReverse,
   ArrayPrototypeShift,
   ArrayPrototypeSlice,
   ArrayPrototypeSome,
   ArrayPrototypeSort,
-  ArrayPrototypeSplice,
   ArrayPrototypeUnshift,
   Boolean,
-  Error,
+  Error: MainContextError,
   FunctionPrototypeBind,
   JSONStringify,
   MathMaxApply,
   NumberIsNaN,
   NumberParseFloat,
   ObjectAssign,
-  ObjectCreate,
   ObjectDefineProperty,
   ObjectGetOwnPropertyDescriptor,
   ObjectGetOwnPropertyNames,
@@ -90,7 +88,7 @@ const {
   StringPrototypeSplit,
   StringPrototypeStartsWith,
   StringPrototypeTrim,
-  StringPrototypeTrimLeft,
+  StringPrototypeTrimStart,
   StringPrototypeToLocaleLowerCase,
   Symbol,
   SyntaxError,
@@ -149,10 +147,12 @@ const {
     ERR_CANNOT_WATCH_SIGINT,
     ERR_INVALID_REPL_EVAL_CONFIG,
     ERR_INVALID_REPL_INPUT,
+    ERR_MISSING_ARGS,
     ERR_SCRIPT_EXECUTION_INTERRUPTED,
   },
   isErrorStackTraceLimitWritable,
   overrideStackTrace,
+  ErrorPrepareStackTrace,
 } = require('internal/errors');
 const { sendInspectorCommand } = require('internal/util/inspector');
 const { getOptionValue } = require('internal/options');
@@ -187,7 +187,6 @@ const {
 const history = require('internal/repl/history');
 const {
   extensionFormatMap,
-  legacyExtensionFormatMap,
 } = require('internal/modules/esm/formats');
 const {
   makeContextifyScript,
@@ -210,6 +209,7 @@ const domainSet = new SafeWeakSet();
 
 const kBufferedCommandSymbol = Symbol('bufferedCommand');
 const kContextId = Symbol('contextId');
+const kLoadingSymbol = Symbol('loading');
 
 let addedNewListener = false;
 
@@ -303,7 +303,7 @@ function REPLServer(prompt,
 
   if (options.terminal && options.useColors === undefined) {
     // If possible, check if stdout supports colors or not.
-    options.useColors = shouldColorize(options.output) || process.env.NODE_DISABLE_COLORS === undefined;
+    options.useColors = shouldColorize(options.output);
   }
 
   // TODO(devsnek): Add a test case for custom eval functions.
@@ -463,9 +463,8 @@ function REPLServer(prompt,
       // Continue regardless of error.
     }
     async function importModuleDynamically(specifier, _, importAttributes) {
-      const asyncESM = require('internal/process/esm_loader');
-      return asyncESM.esmLoader.import(specifier, parentURL,
-                                       importAttributes);
+      const cascadedLoader = require('internal/modules/esm/loader').getOrInitializeCascadedLoader();
+      return cascadedLoader.import(specifier, parentURL, importAttributes);
     }
     // `experimentalREPLAwait` is set to true by default.
     // Shall be false in case `--no-experimental-repl-await` flag is used.
@@ -630,10 +629,10 @@ function REPLServer(prompt,
         if (self.breakEvalOnSigint) {
           const interrupt = new Promise((resolve, reject) => {
             sigintListener = () => {
-              const tmp = Error.stackTraceLimit;
-              if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = 0;
+              const tmp = MainContextError.stackTraceLimit;
+              if (isErrorStackTraceLimitWritable()) MainContextError.stackTraceLimit = 0;
               const err = new ERR_SCRIPT_EXECUTION_INTERRUPTED();
-              if (isErrorStackTraceLimitWritable()) Error.stackTraceLimit = tmp;
+              if (isErrorStackTraceLimitWritable()) MainContextError.stackTraceLimit = tmp;
               reject(err);
             };
             prioritizedSigintQueue.add(sigintListener);
@@ -680,23 +679,22 @@ function REPLServer(prompt,
         if (typeof stackFrames === 'object') {
           // Search from the bottom of the call stack to
           // find the first frame with a null function name
-          const idx = ArrayPrototypeFindIndex(
-            ArrayPrototypeReverse(stackFrames),
+          const idx = ArrayPrototypeFindLastIndex(
+            stackFrames,
             (frame) => frame.getFunctionName() === null,
           );
           // If found, get rid of it and everything below it
-          frames = ArrayPrototypeSplice(stackFrames, idx + 1);
+          frames = ArrayPrototypeSlice(stackFrames, 0, idx);
         } else {
           frames = stackFrames;
         }
         // FIXME(devsnek): this is inconsistent with the checks
         // that the real prepareStackTrace dispatch uses in
         // lib/internal/errors.js.
-        if (typeof Error.prepareStackTrace === 'function') {
-          return Error.prepareStackTrace(error, frames);
+        if (typeof MainContextError.prepareStackTrace === 'function') {
+          return MainContextError.prepareStackTrace(error, frames);
         }
-        ArrayPrototypePush(frames, error);
-        return ArrayPrototypeJoin(ArrayPrototypeReverse(frames), '\n    at ');
+        return ErrorPrepareStackTrace(error, frames);
       });
       } catch (weakMapSetError) {
         // ignore - foreign objects are not supported by WeakMap
@@ -720,7 +718,7 @@ function REPLServer(prompt,
               'module';
             if (StringPrototypeIncludes(e.message, importErrorStr)) {
               e.message = 'Cannot use import statement inside the Node.js ' +
-                'REPL, alternatively use dynamic import: ' + toDynamicImport(self.lines.at(-1));
+                'REPL, alternatively use dynamic import: ' + toDynamicImport(ArrayPrototypeAt(self.lines, -1));
               e.stack = SideEffectFreeRegExpPrototypeSymbolReplace(
                 /SyntaxError:.*\n/,
                 e.stack,
@@ -805,7 +803,7 @@ function REPLServer(prompt,
 
   self.resetContext();
 
-  this.commands = ObjectCreate(null);
+  this.commands = { __proto__: null };
   defineDefaultCommands(this);
 
   // Figure out which "writer" function to use
@@ -892,7 +890,7 @@ function REPLServer(prompt,
       self[kBufferedCommandSymbol] += cmd + '\n';
 
       // code alignment
-      const matches = self._sawKeyPress ?
+      const matches = self._sawKeyPress && !self[kLoadingSymbol] ?
         RegExpPrototypeExec(/^\s+/, cmd) : null;
       if (matches) {
         const prefix = matches[0];
@@ -1330,7 +1328,7 @@ function complete(line, callback) {
   let completeOn, group;
 
   // Ignore right whitespace. It could change the outcome.
-  line = StringPrototypeTrimLeft(line);
+  line = StringPrototypeTrimStart(line);
 
   let filter = '';
 
@@ -1409,10 +1407,7 @@ function complete(line, callback) {
     if (this.allowBlockingCompletions) {
       const subdir = match[2] || '';
       // File extensions that can be imported:
-      const extensions = ObjectKeys(
-        getOptionValue('--experimental-specifier-resolution') === 'node' ?
-          legacyExtensionFormatMap :
-          extensionFormatMap);
+      const extensions = ObjectKeys(extensionFormatMap);
 
       // Only used when loading bare module specifiers from `node_modules`:
       const indexes = ArrayPrototypeMap(extensions, (ext) => `index${ext}`);
@@ -1798,10 +1793,17 @@ function defineDefaultCommands(repl) {
     help: 'Save all evaluated commands in this REPL session to a file',
     action: function(file) {
       try {
+        if (file === '') {
+          throw new ERR_MISSING_ARGS('file');
+        }
         fs.writeFileSync(file, ArrayPrototypeJoin(this.lines, '\n'));
         this.output.write(`Session saved to: ${file}\n`);
-      } catch {
-        this.output.write(`Failed to save: ${file}\n`);
+      } catch (error) {
+        if (error instanceof ERR_MISSING_ARGS) {
+          this.output.write(`${error.message}\n`);
+        } else {
+          this.output.write(`Failed to save: ${file}\n`);
+        }
       }
       this.displayPrompt();
     },
@@ -1811,11 +1813,16 @@ function defineDefaultCommands(repl) {
     help: 'Load JS from a file into the REPL session',
     action: function(file) {
       try {
+        if (file === '') {
+          throw new ERR_MISSING_ARGS('file');
+        }
         const stats = fs.statSync(file);
         if (stats && stats.isFile()) {
           _turnOnEditorMode(this);
+          this[kLoadingSymbol] = true;
           const data = fs.readFileSync(file, 'utf8');
           this.write(data);
+          this[kLoadingSymbol] = false;
           _turnOffEditorMode(this);
           this.write('\n');
         } else {
@@ -1823,8 +1830,12 @@ function defineDefaultCommands(repl) {
             `Failed to load: ${file} is not a valid file\n`,
           );
         }
-      } catch {
-        this.output.write(`Failed to load: ${file}\n`);
+      } catch (error) {
+        if (error instanceof ERR_MISSING_ARGS) {
+          this.output.write(`${error.message}\n`);
+        } else {
+          this.output.write(`Failed to load: ${file}\n`);
+        }
       }
       this.displayPrompt();
     },

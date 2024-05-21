@@ -28,7 +28,7 @@ namespace wasm {
   failed_ = true;                                                        \
   failure_message_ = msg;                                                \
   failure_location_ = static_cast<int>(scanner_.Position());             \
-  if (FLAG_trace_asm_parser) {                                           \
+  if (v8_flags.trace_asm_parser) {                                       \
     PrintF("[asm.js failure: %s, token: '%s', see: %s:%d]\n", msg,       \
            scanner_.Name(scanner_.Token()).c_str(), __FILE__, __LINE__); \
   }                                                                      \
@@ -2240,7 +2240,7 @@ AsmType* AsmJsParser::ValidateCall() {
     function_type->AsFunctionType()->AddArgument(t);
   }
   FunctionSig* sig = ConvertSignature(return_type, param_types);
-  uint32_t signature_index = module_builder_->AddSignature(sig);
+  uint32_t signature_index = module_builder_->AddSignature(sig, true);
 
   // Emit actual function invocation depending on the kind. At this point we
   // also determined the complete function type and can perform checking against

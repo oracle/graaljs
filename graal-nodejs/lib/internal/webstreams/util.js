@@ -8,12 +8,13 @@ const {
   FunctionPrototypeCall,
   MathMax,
   NumberIsNaN,
-  ObjectCreate,
   PromisePrototypeThen,
   PromiseResolve,
   PromiseReject,
   ReflectGet,
   Symbol,
+  SymbolAsyncIterator,
+  SymbolIterator,
   Uint8Array,
 } = primordials;
 
@@ -21,6 +22,7 @@ const {
   codes: {
     ERR_INVALID_ARG_VALUE,
     ERR_OPERATION_FAILED,
+    ERR_INVALID_STATE,
   },
 } = require('internal/errors');
 
@@ -54,20 +56,11 @@ const {
 const kState = Symbol('kState');
 const kType = Symbol('kType');
 
-const AsyncIterator = ObjectCreate(AsyncIteratorPrototype, {
-  next: {
-    __proto__: null,
-    configurable: true,
-    enumerable: true,
-    writable: true,
-  },
-  return: {
-    __proto__: null,
-    configurable: true,
-    enumerable: true,
-    writable: true,
-  },
-});
+const AsyncIterator = {
+  __proto__: AsyncIteratorPrototype,
+  next: undefined,
+  return: undefined,
+};
 
 function extractHighWaterMark(value, defaultHWM) {
   if (value === undefined) return defaultHWM;
@@ -227,6 +220,54 @@ function lazyTransfer() {
   return transfer;
 }
 
+function createAsyncFromSyncIterator(syncIteratorRecord) {
+  const syncIterable = {
+    [SymbolIterator]: () => syncIteratorRecord.iterator,
+  };
+
+  const asyncIterator = (async function* () {
+    return yield* syncIterable;
+  }());
+
+  const nextMethod = asyncIterator.next;
+  return { iterator: asyncIterator, nextMethod, done: false };
+}
+
+function getIterator(obj, kind = 'sync', method) {
+  if (method === undefined) {
+    if (kind === 'async') {
+      method = obj[SymbolAsyncIterator];
+      if (method === undefined) {
+        const syncMethod = obj[SymbolIterator];
+        const syncIteratorRecord = getIterator(obj, 'sync', syncMethod);
+        return createAsyncFromSyncIterator(syncIteratorRecord);
+      }
+    } else {
+      method = obj[SymbolIterator];
+    }
+  }
+
+  const iterator = FunctionPrototypeCall(method, obj);
+  if (typeof iterator !== 'object' || iterator === null) {
+    throw new ERR_INVALID_STATE.TypeError('The iterator method must return an object');
+  }
+  const nextMethod = iterator.next;
+  return { iterator, nextMethod, done: false };
+}
+
+function iteratorNext(iteratorRecord, value) {
+  let result;
+  if (value === undefined) {
+    result = FunctionPrototypeCall(iteratorRecord.nextMethod, iteratorRecord.iterator);
+  } else {
+    result = FunctionPrototypeCall(iteratorRecord.nextMethod, iteratorRecord.iterator, [value]);
+  }
+  if (typeof result !== 'object' || result === null) {
+    throw new ERR_INVALID_STATE.TypeError('The iterator.next() method must return an object');
+  }
+  return result;
+}
+
 module.exports = {
   ArrayBufferViewGetBuffer,
   ArrayBufferViewGetByteLength,
@@ -253,6 +294,8 @@ module.exports = {
   nonOpPull,
   nonOpStart,
   nonOpWrite,
+  getIterator,
+  iteratorNext,
   kType,
   kState,
 };

@@ -5,9 +5,11 @@
 #ifndef V8_V8_PLATFORM_H_
 #define V8_V8_PLATFORM_H_
 
+#include <math.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>  // For abort.
+
 #include <memory>
 #include <string>
 
@@ -158,9 +160,10 @@ class TaskRunner {
 class JobDelegate {
  public:
   /**
-   * Returns true if this thread should return from the worker task on the
+   * Returns true if this thread *must* return from the worker task on the
    * current thread ASAP. Workers should periodically invoke ShouldYield (or
    * YieldIfNeeded()) as often as is reasonable.
+   * After this method returned true, ShouldYield must not be called again.
    */
   virtual bool ShouldYield() = 0;
 
@@ -265,6 +268,38 @@ class JobTask {
 };
 
 /**
+ * A "blocking call" refers to any call that causes the calling thread to wait
+ * off-CPU. It includes but is not limited to calls that wait on synchronous
+ * file I/O operations: read or write a file from disk, interact with a pipe or
+ * a socket, rename or delete a file, enumerate files in a directory, etc.
+ * Acquiring a low contention lock is not considered a blocking call.
+ */
+
+/**
+ * BlockingType indicates the likelihood that a blocking call will actually
+ * block.
+ */
+enum class BlockingType {
+  // The call might block (e.g. file I/O that might hit in memory cache).
+  kMayBlock,
+  // The call will definitely block (e.g. cache already checked and now pinging
+  // server synchronously).
+  kWillBlock
+};
+
+/**
+ * This class is instantiated with CreateBlockingScope() in every scope where a
+ * blocking call is made and serves as a precise annotation of the scope that
+ * may/will block. May be implemented by an embedder to adjust the thread count.
+ * CPU usage should be minimal within that scope. ScopedBlockingCalls can be
+ * nested.
+ */
+class ScopedBlockingCall {
+ public:
+  virtual ~ScopedBlockingCall() = default;
+};
+
+/**
  * The interface represents complex arguments to trace events.
  */
 class ConvertableToTraceFormat {
@@ -284,6 +319,8 @@ class ConvertableToTraceFormat {
  * V8 Tracing controller.
  *
  * Can be implemented by an embedder to record trace events from V8.
+ *
+ * Will become obsolete in Perfetto SDK build (v8_use_perfetto = true).
  */
 class TracingController {
  public:
@@ -347,10 +384,16 @@ class TracingController {
     virtual void OnTraceDisabled() = 0;
   };
 
-  /** Adds tracing state change observer. */
+  /**
+   * Adds tracing state change observer.
+   * Does nothing in Perfetto SDK build (v8_use_perfetto = true).
+   */
   virtual void AddTraceStateObserver(TraceStateObserver*) {}
 
-  /** Removes tracing state change observer. */
+  /**
+   * Removes tracing state change observer.
+   * Does nothing in Perfetto SDK build (v8_use_perfetto = true).
+   */
   virtual void RemoveTraceStateObserver(TraceStateObserver*) {}
 };
 
@@ -428,6 +471,17 @@ class PageAllocator {
    */
   virtual bool SetPermissions(void* address, size_t length,
                               Permission permissions) = 0;
+
+  /**
+   * Recommits discarded pages in the given range with given permissions.
+   * Discarded pages must be recommitted with their original permissions
+   * before they are used again.
+   */
+  virtual bool RecommitPages(void* address, size_t length,
+                             Permission permissions) {
+    // TODO(v8:12797): make it pure once it's implemented on Chromium side.
+    return false;
+  }
 
   /**
    * Frees memory in the given [address, address + size) range. address and size
@@ -522,7 +576,7 @@ static constexpr PlatformSharedMemoryHandle kInvalidSharedMemoryHandle = -1;
 // to avoid pulling in large OS header files into this header file. Instead,
 // the users of these routines are expected to include the respecitve OS
 // headers in addition to this one.
-#if V8_OS_MACOS
+#if V8_OS_DARWIN
 // Convert between a shared memory handle and a mach_port_t referencing a memory
 // entry object.
 inline PlatformSharedMemoryHandle SharedMemoryHandleFromMachMemoryEntry(
@@ -698,6 +752,10 @@ class VirtualAddressSpace {
   /**
    * Sets permissions of all allocated pages in the given range.
    *
+   * This operation can fail due to OOM, in which case false is returned. If
+   * the operation fails for a reason other than OOM, this function will
+   * terminate the process as this implies a bug in the client.
+   *
    * \param address The start address of the range. Must be aligned to
    * page_size().
    *
@@ -706,7 +764,7 @@ class VirtualAddressSpace {
    *
    * \param permissions The new permissions for the range.
    *
-   * \returns true on success, false otherwise.
+   * \returns true on success, false on OOM.
    */
   virtual V8_WARN_UNUSED_RESULT bool SetPagePermissions(
       Address address, size_t size, PagePermissions permissions) = 0;
@@ -821,6 +879,24 @@ class VirtualAddressSpace {
   //
 
   /**
+   * Recommits discarded pages in the given range with given permissions.
+   * Discarded pages must be recommitted with their original permissions
+   * before they are used again.
+   *
+   * \param address The start address of the range. Must be aligned to
+   * page_size().
+   *
+   * \param size The size in bytes of the range. Must be a multiple
+   * of page_size().
+   *
+   * \param permissions The permissions for the range that the pages must have.
+   *
+   * \returns true on success, false otherwise.
+   */
+  virtual V8_WARN_UNUSED_RESULT bool RecommitPages(
+      Address address, size_t size, PagePermissions permissions) = 0;
+
+  /**
    * Frees memory in the given [address, address + size) range. address and
    * size should be aligned to the page_size(). The next write to this memory
    * area brings the memory transparently back. This should be treated as a
@@ -889,11 +965,9 @@ class Platform {
 
   /**
    * Allows the embedder to manage memory page allocations.
+   * Returning nullptr will cause V8 to use the default page allocator.
    */
-  virtual PageAllocator* GetPageAllocator() {
-    // TODO(bbudge) Make this abstract after all embedders implement this.
-    return nullptr;
-  }
+  virtual PageAllocator* GetPageAllocator() = 0;
 
   /**
    * Allows the embedder to specify a custom allocator used for zones.
@@ -910,28 +984,15 @@ class Platform {
    * error.
    * Embedder overrides of this function must NOT call back into V8.
    */
-  virtual void OnCriticalMemoryPressure() {
-    // TODO(bbudge) Remove this when embedders override the following method.
-    // See crbug.com/634547.
-  }
+  virtual void OnCriticalMemoryPressure() {}
 
   /**
-   * Enables the embedder to respond in cases where V8 can't allocate large
-   * memory regions. The |length| parameter is the amount of memory needed.
-   * Returns true if memory is now available. Returns false if no memory could
-   * be made available. V8 will retry allocations until this method returns
-   * false.
-   *
-   * Embedder overrides of this function must NOT call back into V8.
-   */
-  virtual bool OnCriticalMemoryPressure(size_t length) { return false; }
-
-  /**
-   * Gets the number of worker threads used by
-   * Call(BlockingTask)OnWorkerThread(). This can be used to estimate the number
-   * of tasks a work package should be split into. A return value of 0 means
-   * that there are no worker threads available. Note that a value of 0 won't
-   * prohibit V8 from posting tasks using |CallOnWorkerThread|.
+   * Gets the max number of worker threads that may be used to execute
+   * concurrent work scheduled for any single TaskPriority by
+   * Call(BlockingTask)OnWorkerThread() or PostJob(). This can be used to
+   * estimate the number of tasks a work package should be split into. A return
+   * value of 0 means that there are no worker threads available. Note that a
+   * value of 0 won't prohibit V8 from posting tasks using |CallOnWorkerThread|.
    */
   virtual int NumberOfWorkerThreads() = 0;
 
@@ -1022,17 +1083,37 @@ class Platform {
    * thread (A=>B/B=>A deadlock) and [2] JobTask::Run or
    * JobTask::GetMaxConcurrency may be invoked synchronously from JobHandle
    * (B=>JobHandle::foo=>B deadlock).
+   */
+  virtual std::unique_ptr<JobHandle> PostJob(
+      TaskPriority priority, std::unique_ptr<JobTask> job_task) {
+    auto handle = CreateJob(priority, std::move(job_task));
+    handle->NotifyConcurrencyIncrease();
+    return handle;
+  }
+
+  /**
+   * Creates and returns a JobHandle associated with a Job. Unlike PostJob(),
+   * this doesn't immediately schedules |worker_task| to run; the Job is then
+   * scheduled by calling either NotifyConcurrencyIncrease() or Join().
    *
-   * A sufficient PostJob() implementation that uses the default Job provided in
-   * libplatform looks like:
-   *  std::unique_ptr<JobHandle> PostJob(
+   * A sufficient CreateJob() implementation that uses the default Job provided
+   * in libplatform looks like:
+   *  std::unique_ptr<JobHandle> CreateJob(
    *      TaskPriority priority, std::unique_ptr<JobTask> job_task) override {
    *    return v8::platform::NewDefaultJobHandle(
    *        this, priority, std::move(job_task), NumberOfWorkerThreads());
    * }
    */
-  virtual std::unique_ptr<JobHandle> PostJob(
+  virtual std::unique_ptr<JobHandle> CreateJob(
       TaskPriority priority, std::unique_ptr<JobTask> job_task) = 0;
+
+  /**
+   * Instantiates a ScopedBlockingCall to annotate a scope that may/will block.
+   */
+  virtual std::unique_ptr<ScopedBlockingCall> CreateBlockingScope(
+      BlockingType blocking_type) {
+    return nullptr;
+  }
 
   /**
    * Monotonically increasing time in seconds from an arbitrary fixed point in
@@ -1044,10 +1125,27 @@ class Platform {
   virtual double MonotonicallyIncreasingTime() = 0;
 
   /**
-   * Current wall-clock time in milliseconds since epoch.
-   * This function is expected to return at least millisecond-precision values.
+   * Current wall-clock time in milliseconds since epoch. Use
+   * CurrentClockTimeMillisHighResolution() when higher precision is
+   * required.
+   */
+  virtual int64_t CurrentClockTimeMilliseconds() {
+    return floor(CurrentClockTimeMillis());
+  }
+
+  /**
+   * This function is deprecated and will be deleted. Use either
+   * CurrentClockTimeMilliseconds() or
+   * CurrentClockTimeMillisecondsHighResolution().
    */
   virtual double CurrentClockTimeMillis() = 0;
+
+  /**
+   * Same as CurrentClockTimeMilliseconds(), but with more precision.
+   */
+  virtual double CurrentClockTimeMillisecondsHighResolution() {
+    return CurrentClockTimeMillis();
+  }
 
   typedef void (*StackTracePrinter)();
 

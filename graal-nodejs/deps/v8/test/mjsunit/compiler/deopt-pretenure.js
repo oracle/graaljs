@@ -2,16 +2,17 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-// Flags: --allow-natives-syntax --opt --no-always-opt
+// Flags: --allow-natives-syntax --turbofan --no-always-turbofan
 // Flags: --allocation-site-pretenuring --stress-gc-during-compilation
 // Flags: --stress-scavenge=0 --gc-interval=-1
 // Flags: --max-optimized-bytecode-size=132000
 
 function CheckOptimizationStatus(func, expectedOptimizationStatus) {
   let opt_status = %GetOptimizationStatus(func);
-  assertTrue ((opt_status & expectedOptimizationStatus) !== 0,
-      "Expected flag " + expectedOptimizationStatus +
-      " to be set in optimization status");
+  assertTrue(
+      (opt_status & expectedOptimizationStatus) !== 0,
+      'Expected flag 0x' + expectedOptimizationStatus.toString(16) +
+          ' to be set in optimization status');
 }
 
 // Trigger pretenuring decision change at entry, deopting at bytecode offset -1.
@@ -30,14 +31,19 @@ DeoptEntry(V8OptimizationStatus.kTopmostFrameIsInterpreted
 %OptimizeFunctionOnNextCall(DeoptEntry);
 // Force the allocation site to be pretenured.
 assertTrue(%PretenureAllocationSite(empty));
-// This call should deopt at entry because of the pretenuring decision change.
-DeoptEntry(V8OptimizationStatus.kTopmostFrameIsInterpreted
-            | V8OptimizationStatus.kTopmostFrameIsBaseline);
+// This call should deopt Turbofan at entry because of the pretenuring decision
+// change. Maglev doesn't currently implement this optimization/deopt.
+DeoptEntry(
+    V8OptimizationStatus.kTopmostFrameIsInterpreted |
+    V8OptimizationStatus.kTopmostFrameIsBaseline |
+    V8OptimizationStatus.kTopmostFrameIsMaglev);
 
 %PrepareFunctionForOptimization(DeoptEntry);
 %OptimizeFunctionOnNextCall(DeoptEntry);
 // Function should be compiled now.
-DeoptEntry(V8OptimizationStatus.kTopmostFrameIsTurboFanned);
+DeoptEntry(
+    V8OptimizationStatus.kTopmostFrameIsTurboFanned |
+    V8OptimizationStatus.kTopmostFrameIsMaglev);
 
 // Trigger pretenuring decision change during OSR.
 function createSource(name, fillCnt) {

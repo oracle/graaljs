@@ -135,9 +135,14 @@ extern "C" int uv__cloexec(int fd, int set) WEAK_ATTRIBUTE;
 
 // Key for the current (per-thread) isolate
 static uv_key_t current_isolate_key;
+static bool current_isolate_initialized = false;
 
 GraalIsolate* CurrentIsolate() {
     return reinterpret_cast<GraalIsolate*> (uv_key_get(&current_isolate_key));
+}
+
+v8::Isolate* GraalIsolate::TryGetCurrent() {
+    return current_isolate_initialized ? GetCurrent() : nullptr;
 }
 
 #define ACCESS_METHOD(id, name, signature) \
@@ -622,7 +627,6 @@ v8::Isolate* GraalIsolate::New(v8::Isolate::CreateParams const& params, v8::Isol
         if (!RegisterCallbacks(env, callback_class)) {
             exit(1);
         }
-        InitThreadLocals();
     } else {
         if (jvm->GetEnv(reinterpret_cast<void**> (&env), REQUESTED_JNI_VERSION) == JNI_EDETACHED) {
             jvm->AttachCurrentThread(reinterpret_cast<void**> (&env), nullptr);
@@ -843,7 +847,7 @@ GraalIsolate::GraalIsolate(JavaVM* jvm, JNIEnv* env, v8::Isolate::CreateParams c
     ACCESS_METHOD(GraalAccessMethod::template_set_accessor_property, "templateSetAccessorProperty", "(Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;Ljava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_new, "objectTemplateNew", "(Ljava/lang/Object;)Ljava/lang/Object;")
     ACCESS_METHOD(GraalAccessMethod::object_template_new_instance, "objectTemplateNewInstance", "(Ljava/lang/Object;Ljava/lang/Object;)Ljava/lang/Object;")
-    ACCESS_METHOD(GraalAccessMethod::object_template_set_accessor, "objectTemplateSetAccessor", "(Ljava/lang/Object;Ljava/lang/Object;JJLjava/lang/Object;Ljava/lang/Object;I)V")
+    ACCESS_METHOD(GraalAccessMethod::object_template_set_accessor, "objectTemplateSetAccessor", "(Ljava/lang/Object;Ljava/lang/Object;JJLjava/lang/Object;I)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_handler, "objectTemplateSetHandler", "(Ljava/lang/Object;JJJJJJJLjava/lang/Object;ZZ)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_call_as_function_handler, "objectTemplateSetCallAsFunctionHandler", "(Ljava/lang/Object;IJLjava/lang/Object;)V")
     ACCESS_METHOD(GraalAccessMethod::object_template_set_internal_field_count, "objectTemplateSetInternalFieldCount", "(Ljava/lang/Object;I)V")
@@ -1155,6 +1159,7 @@ void GraalIsolate::EnsureValidWorkingDir() {
 
 void GraalIsolate::InitThreadLocals() {
     uv_key_create(&current_isolate_key);
+    current_isolate_initialized = true;
 }
 
 void GraalIsolate::SetAbortOnUncaughtExceptionCallback(v8::Isolate::AbortOnUncaughtExceptionCallback callback) {
@@ -1170,7 +1175,7 @@ bool GraalIsolate::AbortOnUncaughtExceptionCallbackValue() {
 bool GraalIsolate::abort_on_uncaught_exception_ = false;
 
 void GraalIsolate::Dispose() {
-    Dispose(main_, 0);
+    Dispose(false, 0);
 }
 
 void GraalIsolate::Dispose(bool exit, int status) {

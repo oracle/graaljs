@@ -11,6 +11,7 @@ const {
 
 const {
   Interface: _Interface,
+  kQuestion,
   kQuestionCancel,
 } = require('internal/readline/interface');
 
@@ -44,7 +45,7 @@ class Interface extends _Interface {
           this[kQuestionCancel]();
           reject(new AbortError(undefined, { cause: options.signal.reason }));
         };
-        addAbortListener ??= require('events').addAbortListener;
+        addAbortListener ??= require('internal/events/abort_listener').addAbortListener;
         const disposable = addAbortListener(options.signal, onAbort);
 
         cb = (answer) => {
@@ -53,7 +54,7 @@ class Interface extends _Interface {
         };
       }
 
-      super.question(query, cb);
+      this[kQuestion](query, cb);
     });
   }
 }

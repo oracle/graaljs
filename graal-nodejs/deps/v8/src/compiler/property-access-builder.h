@@ -10,7 +10,6 @@
 #include "src/compiler/js-heap-broker.h"
 #include "src/compiler/node.h"
 #include "src/handles/handles.h"
-#include "src/objects/map.h"
 #include "src/zone/zone-containers.h"
 
 namespace v8 {
@@ -28,9 +27,8 @@ struct FieldAccess;
 
 class PropertyAccessBuilder {
  public:
-  PropertyAccessBuilder(JSGraph* jsgraph, JSHeapBroker* broker,
-                        CompilationDependencies* dependencies)
-      : jsgraph_(jsgraph), broker_(broker), dependencies_(dependencies) {}
+  PropertyAccessBuilder(JSGraph* jsgraph, JSHeapBroker* broker)
+      : jsgraph_(jsgraph), broker_(broker) {}
 
   // Builds the appropriate string check if the maps are only string
   // maps.
@@ -65,7 +63,9 @@ class PropertyAccessBuilder {
  private:
   JSGraph* jsgraph() const { return jsgraph_; }
   JSHeapBroker* broker() const { return broker_; }
-  CompilationDependencies* dependencies() const { return dependencies_; }
+  CompilationDependencies* dependencies() const {
+    return broker_->dependencies();
+  }
   Graph* graph() const;
   Isolate* isolate() const;
   CommonOperatorBuilder* common() const;
@@ -85,7 +85,6 @@ class PropertyAccessBuilder {
 
   JSGraph* jsgraph_;
   JSHeapBroker* broker_;
-  CompilationDependencies* dependencies_;
 };
 
 bool HasOnlyStringMaps(JSHeapBroker* broker, ZoneVector<MapRef> const& maps);
