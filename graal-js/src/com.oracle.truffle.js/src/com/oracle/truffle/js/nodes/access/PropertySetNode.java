@@ -782,9 +782,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     public static final class JSProxyDispatcherPropertySetNode extends LinkedPropertySetNode {
         @Child private JSProxyPropertySetNode proxySet;
 
-        public JSProxyDispatcherPropertySetNode(JSContext context, ReceiverCheckNode receiverCheckNode, boolean isStrict) {
+        public JSProxyDispatcherPropertySetNode(JSContext context, ReceiverCheckNode receiverCheckNode, boolean isStrict, boolean defineProperty, int attributes) {
             super(receiverCheckNode);
-            this.proxySet = JSProxyPropertySetNode.create(context, isStrict);
+            this.proxySet = JSProxyPropertySetNode.create(context, isStrict, defineProperty, attributes);
         }
 
         @Override
@@ -1158,7 +1158,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterPropertySetNode(createJSClassCheck(thisObj, proto, depth));
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
-                return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, proto, depth), isStrict());
+                return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, proto, depth), isStrict(), isOwnProperty(), getAttributeFlags());
             } else if (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString indexStr) && JSRuntime.canonicalNumericIndexString(indexStr) != Undefined.instance) {
                 assert !JSArrayBufferView.isValidIntegerIndex((JSDynamicObject) store, (Number) JSRuntime.canonicalNumericIndexString(indexStr));
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false), false);
@@ -1174,7 +1174,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
         } else if (JSProxy.isJSProxy(store)) {
             ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, proto, depth);
-            return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
+            return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict(), isOwnProperty(), getAttributeFlags());
         } else {
             boolean doThrow = isStrict();
             if (!JSRuntime.isJSNative(thisObj)) {

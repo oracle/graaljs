@@ -49,6 +49,7 @@ import com.oracle.truffle.api.nodes.NodeInfo;
 import com.oracle.truffle.api.object.HiddenKey;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.cast.JSToBooleanNode;
 import com.oracle.truffle.js.nodes.cast.JSToPropertyKeyNode;
@@ -63,6 +64,7 @@ import com.oracle.truffle.js.runtime.interop.JSInteropUtil;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.Null;
+import com.oracle.truffle.js.runtime.objects.PropertyDescriptor;
 import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.JSClassProfile;
 
@@ -70,17 +72,21 @@ import com.oracle.truffle.js.runtime.util.JSClassProfile;
 public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
     private final JSContext context;
     private final boolean isStrict;
+    private final boolean defineProperty;
+    private final byte attributes;
 
     @Child private JSFunctionCallNode call;
     @Child private JSToBooleanNode toBoolean;
     @Child protected GetMethodNode trapGet;
-    @Child private JSToPropertyKeyNode toPropertyKeyNode;
+    @Child private FromPropertyDescriptorNode fromPropertyDescriptorNode;
 
-    protected JSProxyPropertySetNode(JSContext context, boolean isStrict) {
+    protected JSProxyPropertySetNode(JSContext context, boolean isStrict, boolean defineProperty, int attributes) {
         this.context = context;
         this.isStrict = isStrict;
+        this.defineProperty = defineProperty;
+        this.attributes = (byte) attributes;
         this.call = JSFunctionCallNode.createCall();
-        this.trapGet = GetMethodNode.create(context, JSProxy.SET);
+        this.trapGet = GetMethodNode.create(context, trapName(defineProperty));
         this.toBoolean = JSToBooleanNode.create();
     }
 
@@ -89,18 +95,19 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
     public abstract boolean executeWithReceiverAndValueInt(Object proxy, Object receiver, int value, Object key);
 
     @NeverDefault
-    public static JSProxyPropertySetNode create(JSContext context, boolean isStrict) {
-        return JSProxyPropertySetNodeGen.create(context, isStrict);
+    public static JSProxyPropertySetNode create(JSContext context, boolean isStrict, boolean defineProperty, int attributes) {
+        return JSProxyPropertySetNodeGen.create(context, isStrict, defineProperty, attributes);
     }
 
     @Specialization
     protected boolean doGeneric(JSDynamicObject proxy, Object receiver, Object value, Object key,
+                    @Cached JSToPropertyKeyNode toPropertyKey,
                     @Cached InlinedBranchProfile errorBranch,
                     @Cached InlinedConditionProfile hasTrap,
                     @Cached JSClassProfile targetClassProfile) {
         assert JSProxy.isJSProxy(proxy);
         assert !(key instanceof HiddenKey);
-        Object propertyKey = toPropertyKey(key);
+        Object propertyKey = toPropertyKey.execute(key);
         if (JSRuntime.isPrivateSymbol(propertyKey)) {
             errorBranch.enter(this);
             if (isStrict) {
@@ -112,23 +119,36 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         JSDynamicObject handler = JSProxy.getHandler(proxy);
         if (handler == Null.instance) {
             errorBranch.enter(this);
-            throw Errors.createTypeErrorProxyRevoked(JSProxy.SET, this);
+            throw Errors.createTypeErrorProxyRevoked(trapName(defineProperty), this);
         }
         Object target = JSProxy.getTarget(proxy);
         Object trapFun = trapGet.executeWithTarget(handler);
         if (hasTrap.profile(this, trapFun == Undefined.instance)) {
-            if (JSDynamicObject.isJSDynamicObject(target)) {
-                return JSObject.setWithReceiver((JSDynamicObject) target, propertyKey, value, receiver, isStrict, targetClassProfile, this);
+            if (target instanceof JSDynamicObject targetObj) {
+                if (defineProperty) {
+                    PropertyDescriptor desc = PropertyDescriptor.createData(value, attributes);
+                    return JSObject.defineOwnProperty(targetObj, propertyKey, desc, isStrict);
+                } else {
+                    return JSObject.setWithReceiver(targetObj, propertyKey, value, receiver, isStrict, targetClassProfile, this);
+                }
             } else {
                 return JSInteropUtil.set(context, target, propertyKey, value, isStrict);
             }
         }
-        Object trapResult = call.executeCall(JSArguments.create(handler, trapFun, target, propertyKey, value, receiver));
+        Object[] trapArgs;
+        PropertyDescriptor desc = null;
+        if (defineProperty) {
+            desc = PropertyDescriptor.createData(value, attributes);
+            trapArgs = JSArguments.create(handler, trapFun, target, propertyKey, fromPropertyDescriptor(desc));
+        } else {
+            trapArgs = JSArguments.create(handler, trapFun, target, propertyKey, value, receiver);
+        }
+        Object trapResult = call.executeCall(trapArgs);
         boolean booleanTrapResult = toBoolean.executeBoolean(trapResult);
         if (!booleanTrapResult) {
             errorBranch.enter(this);
             if (isStrict) {
-                throw Errors.createTypeErrorTrapReturnedFalsish(JSProxy.SET, propertyKey);
+                throw Errors.createTypeErrorTrapReturnedFalsish(trapName(booleanTrapResult), propertyKey);
             } else {
                 return false;
             }
@@ -136,14 +156,22 @@ public abstract class JSProxyPropertySetNode extends JavaScriptBaseNode {
         if (handler instanceof JSUncheckedProxyHandlerObject) {
             return true;
         }
-        return JSProxy.checkProxySetTrapInvariants(proxy, propertyKey, value);
+        if (defineProperty) {
+            return JSProxy.checkProxyDefinePropertyTrapInvariants(proxy, propertyKey, desc);
+        } else {
+            return JSProxy.checkProxySetTrapInvariants(proxy, propertyKey, value);
+        }
     }
 
-    Object toPropertyKey(Object key) {
-        if (toPropertyKeyNode == null) {
+    private static TruffleString trapName(boolean defineProperty) {
+        return defineProperty ? JSProxy.DEFINE_PROPERTY : JSProxy.SET;
+    }
+
+    private Object fromPropertyDescriptor(PropertyDescriptor desc) {
+        if (fromPropertyDescriptorNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
-            toPropertyKeyNode = insert(JSToPropertyKeyNode.create());
+            fromPropertyDescriptorNode = insert(FromPropertyDescriptorNodeGen.create());
         }
-        return toPropertyKeyNode.execute(key);
+        return fromPropertyDescriptorNode.execute(desc, context);
     }
 }

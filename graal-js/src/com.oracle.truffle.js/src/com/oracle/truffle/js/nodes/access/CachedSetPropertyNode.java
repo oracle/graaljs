@@ -120,12 +120,8 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
 
     @Specialization(guards = {"isJSProxy(target)"})
     void doProxy(JSDynamicObject target, Object index, Object value, Object receiver,
-                    @Cached("create(context, strict)") JSProxyPropertySetNode proxySet) {
-        if (setOwn) {
-            createDataPropertyOrThrow(target, proxySet.toPropertyKey(index), value);
-        } else {
-            proxySet.executeWithReceiverAndValue(target, receiver, value, index);
-        }
+                    @Cached("create(context, strict, setOwn, getAttributes())") JSProxyPropertySetNode proxySet) {
+        proxySet.executeWithReceiverAndValue(target, receiver, value, index);
     }
 
     @SuppressWarnings("truffle-static-method")
@@ -165,5 +161,9 @@ abstract class CachedSetPropertyNode extends JavaScriptBaseNode {
 
     static Object propertyKeyOrNull(Object key) {
         return JSRuntime.isPropertyKey(key) ? key : null;
+    }
+
+    static int getAttributes() {
+        return JSAttributes.getDefault();
     }
 }
