@@ -1464,11 +1464,16 @@ public class WriteElementNode extends JSTargetableNode {
         @Specialization
         protected final boolean doTypedIntArrayIntValue(JSDynamicObject target, TypedIntArray typedArray, long index, int iValue, WriteElementNode root,
                         @Cached @Shared InlinedConditionProfile inBoundsIf) {
-            if (!JSArrayBufferView.hasDetachedBuffer(target, root.context) && inBoundsIf.profile(this, typedArray.hasElement(target, index))) {
+            if (inBoundsIf.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, root.context) && typedArray.hasElement(target, index))) {
                 typedArray.setInt(target, (int) index, iValue, interop);
-            } else {
-                // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
+            } else if (root.writeOwn && root.isStrict) {
+                /*
+                 * CreateDataPropertyOrThrow semantics; throw if [[DefineOwnProperty]] returns
+                 * false, i.e. if IsValidIntegerIndex(O, index) is false.
+                 */
+                throw Errors.createTypeErrorCannotRedefineProperty(index);
             }
+            /* Else: do nothing, see TypedArraySetElement(O, index, value). */
             return true;
         }
 
@@ -1507,9 +1512,16 @@ public class WriteElementNode extends JSTargetableNode {
         protected final boolean doBigIntArray(JSDynamicObject target, TypedBigIntArray typedArray, long index, Object value, WriteElementNode root,
                         @Cached InlinedConditionProfile inBoundsIf) {
             BigInt biValue = toBigIntNode.executeBigInteger(value); // could throw
-            if (!JSArrayBufferView.hasDetachedBuffer(target, root.context) && inBoundsIf.profile(this, typedArray.hasElement(target, index))) {
+            if (inBoundsIf.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, root.context) && typedArray.hasElement(target, index))) {
                 typedArray.setBigInt(target, (int) index, biValue, interop);
+            } else if (root.writeOwn && root.isStrict) {
+                /*
+                 * CreateDataPropertyOrThrow semantics; throw if [[DefineOwnProperty]] returns
+                 * false, i.e. if IsValidIntegerIndex(O, index) is false.
+                 */
+                throw Errors.createTypeErrorCannotRedefineProperty(index);
             }
+            /* Else: do nothing, see TypedArraySetElement(O, index, value). */
             return true;
         }
     }
@@ -1525,11 +1537,16 @@ public class WriteElementNode extends JSTargetableNode {
                         @Cached InlinedConditionProfile inBoundsIf,
                         @Cached JSToDoubleNode toDouble) {
             double dValue = toDouble.executeDouble(value); // could throw
-            if (!JSArrayBufferView.hasDetachedBuffer(target, root.context) && inBoundsIf.profile(this, typedArray.hasElement(target, index))) {
+            if (inBoundsIf.profile(this, !JSArrayBufferView.hasDetachedBuffer(target, root.context) && typedArray.hasElement(target, index))) {
                 typedArray.setDouble(target, (int) index, dValue, interop);
-            } else {
-                // do nothing; cf. ES6 9.4.5.9 IntegerIndexedElementSet(O, index, value)
+            } else if (root.writeOwn && root.isStrict) {
+                /*
+                 * CreateDataPropertyOrThrow semantics; throw if [[DefineOwnProperty]] returns
+                 * false, i.e. if IsValidIntegerIndex(O, index) is false.
+                 */
+                throw Errors.createTypeErrorCannotRedefineProperty(index);
             }
+            /* Else: do nothing, see TypedArraySetElement(O, index, value). */
             return true;
         }
     }

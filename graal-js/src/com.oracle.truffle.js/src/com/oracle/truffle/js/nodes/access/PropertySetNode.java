@@ -715,16 +715,37 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
 
     public static final class ReadOnlyPropertySetNode extends LinkedPropertySetNode {
         private final boolean isStrict;
+        private final Property property;
 
-        public ReadOnlyPropertySetNode(ReceiverCheckNode receiverCheck, boolean isStrict) {
+        public ReadOnlyPropertySetNode(ReceiverCheckNode receiverCheck, boolean isStrict, Property property) {
             super(receiverCheck);
             this.isStrict = isStrict;
+            this.property = property;
+        }
+
+        public ReadOnlyPropertySetNode(ReceiverCheckNode receiverCheck, boolean isStrict) {
+            this(receiverCheck, isStrict, null);
         }
 
         @Override
         protected boolean setValue(Object thisObj, Object value, Object receiver, PropertySetNode root, boolean guard) {
             if (isStrict) {
-                throw Errors.createTypeErrorNotWritableProperty(root.getKey(), thisObj, this);
+                Object key = root.getKey();
+                if (property == null) {
+                    if (receiver instanceof JSObject receiverObj) {
+                        // Cannot create property because receiver is not extensible.
+                        throw Errors.createTypeErrorNotExtensible(receiverObj, key);
+                    } else {
+                        // Cannot create property because receiver is not an object.
+                        throw Errors.createTypeErrorSetNonObjectReceiver(receiver, key);
+                    }
+                } else if (root.setOwnProperty) {
+                    // Property is not configurable.
+                    throw Errors.createTypeErrorCannotRedefineProperty(key);
+                } else {
+                    // Property is not writable or a module namespace export.
+                    throw Errors.createTypeErrorNotWritableProperty(key, thisObj, this);
+                }
             }
             return true;
         }
@@ -761,9 +782,9 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     public static final class JSProxyDispatcherPropertySetNode extends LinkedPropertySetNode {
         @Child private JSProxyPropertySetNode proxySet;
 
-        public JSProxyDispatcherPropertySetNode(JSContext context, ReceiverCheckNode receiverCheckNode, boolean isStrict) {
+        public JSProxyDispatcherPropertySetNode(JSContext context, ReceiverCheckNode receiverCheckNode, boolean isStrict, boolean defineProperty, int attributes) {
             super(receiverCheckNode);
-            this.proxySet = JSProxyPropertySetNode.create(context, isStrict);
+            this.proxySet = JSProxyPropertySetNode.create(context, isStrict, defineProperty, attributes);
         }
 
         @Override
@@ -1038,8 +1059,12 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         // isOwnProperty() means CreateDataProperty, i.e., we must redefine
         // the property when the current flags do not match data property and
         // when it is possible to do so (i.e. when it is configurable)
-        if (isOwnProperty() && JSAttributes.isConfigurable(property.getFlags()) && JSAttributes.configurableEnumerableWritable() != property.getFlags()) {
-            return new DataPropertyPutWithFlagsNode(key, shapeCheck);
+        if (isOwnProperty()) {
+            if (JSAttributes.isConfigurable(property.getFlags()) && property.getFlags() != JSAttributes.configurableEnumerableWritable()) {
+                return new DataPropertyPutWithFlagsNode(key, shapeCheck);
+            } else if (!JSAttributes.isConfigurable(property.getFlags()) && JSAttributes.isConfigurable(getAttributeFlags())) {
+                return new ReadOnlyPropertySetNode(shapeCheck, isStrict(), property);
+            }
         }
 
         if (JSProperty.isData(property)) {
@@ -1053,7 +1078,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
     private SetCacheNode createCachedDataPropertyNodeJSObject(JSDynamicObject thisObj, JSDynamicObject proto, int depth, Object value, AbstractShapeCheckNode shapeCheck, Property property) {
         assert !JSProperty.isConst(property) || (depth == 0 && isGlobal() && property.getLocation().isConstant() && property.getLocation().getConstantValue() == Dead.instance()) : "const assignment";
         if (!JSProperty.isWritable(property) || JSProperty.isModuleNamespaceExport(property)) {
-            return new ReadOnlyPropertySetNode(shapeCheck, isStrict());
+            return new ReadOnlyPropertySetNode(shapeCheck, isStrict(), property);
         } else if (superProperty) {
             // define the property on the receiver; currently not handled, rewrite to generic
             return createGenericPropertyNode();
@@ -1114,7 +1139,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
         ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, proto, depth);
 
         if (JSProperty.isData(property)) {
-            return new ReadOnlyPropertySetNode(receiverCheck, isStrict());
+            return new ReadOnlyPropertySetNode(receiverCheck, isStrict(), property);
         } else {
             assert JSProperty.isAccessor(property);
             return new AccessorPropertySetNode(property, receiverCheck, isStrict());
@@ -1133,7 +1158,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             if (JSAdapter.isJSAdapter(store)) {
                 return new JSAdapterPropertySetNode(createJSClassCheck(thisObj, proto, depth));
             } else if (JSProxy.isJSProxy(store) && JSRuntime.isPropertyKey(key)) {
-                return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, proto, depth), isStrict());
+                return new JSProxyDispatcherPropertySetNode(context, createJSClassCheck(thisObj, proto, depth), isStrict(), isOwnProperty(), getAttributeFlags());
             } else if (JSArrayBufferView.isJSArrayBufferView(store) && (key instanceof TruffleString indexStr) && JSRuntime.canonicalNumericIndexString(indexStr) != Undefined.instance) {
                 assert !JSArrayBufferView.isValidIntegerIndex((JSDynamicObject) store, (Number) JSRuntime.canonicalNumericIndexString(indexStr));
                 return new ReadOnlyPropertySetNode(createShapeCheckNode(cacheShape, thisJSObj, proto, depth, false, false), false);
@@ -1149,7 +1174,7 @@ public class PropertySetNode extends PropertyCacheNode<PropertySetNode.SetCacheN
             }
         } else if (JSProxy.isJSProxy(store)) {
             ReceiverCheckNode receiverCheck = createPrimitiveReceiverCheck(thisObj, proto, depth);
-            return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict());
+            return new JSProxyDispatcherPropertySetNode(context, receiverCheck, isStrict(), isOwnProperty(), getAttributeFlags());
         } else {
             boolean doThrow = isStrict();
             if (!JSRuntime.isJSNative(thisObj)) {

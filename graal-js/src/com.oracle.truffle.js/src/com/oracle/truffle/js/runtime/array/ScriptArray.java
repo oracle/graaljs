@@ -102,7 +102,7 @@ public abstract class ScriptArray {
         if (context.isOptionNashornCompatibilityMode()) {
             throw Errors.createTypeErrorFormat("Cannot set property \"%d\" of frozen array", index);
         } else {
-            throw Errors.createTypeErrorCannotRedefineProperty(Strings.fromLong(index));
+            throw Errors.createTypeErrorCannotRedefineProperty(index);
         }
     }
 

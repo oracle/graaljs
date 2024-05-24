@@ -162,7 +162,7 @@ public final class TypedArrayFunctionBuiltins extends JSBuiltinsContainer.Switch
                 if (mapping) {
                     mapped = callMapFn(thisArg, mapFn, mapped, k);
                 }
-                writeOwn(obj, k, mapped);
+                write(obj, k, mapped);
             }
             return obj;
         }

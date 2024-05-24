@@ -450,7 +450,16 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
                 return false;
             }
         }
-        if (!JSDynamicObject.isJSDynamicObject(target) || handler instanceof JSUncheckedProxyHandlerObject) {
+        if (handler instanceof JSUncheckedProxyHandlerObject) {
+            return true;
+        }
+        return checkProxyDefinePropertyTrapInvariants(thisObj, key, desc);
+    }
+
+    @TruffleBoundary
+    public static boolean checkProxyDefinePropertyTrapInvariants(JSDynamicObject proxy, Object key, PropertyDescriptor desc) {
+        Object target = getTarget(proxy);
+        if (!JSDynamicObject.isJSDynamicObject(target)) {
             return true;
         }
         PropertyDescriptor targetDesc = JSObject.getOwnProperty((JSDynamicObject) target, key);
@@ -470,6 +479,7 @@ public final class JSProxy extends AbstractJSClass implements PrototypeSupplier 
             if (settingConfigFalse && targetDesc.getConfigurable()) {
                 throw Errors.createTypeError("'defineProperty' on proxy: trap returned truish for defining non-configurable property which is configurable in the proxy target");
             }
+            JSContext context = JSObject.getJSContext(proxy);
             if (context.getEcmaScriptVersion() >= JSConfig.ECMAScript2020 && targetDesc.isDataDescriptor() && !targetDesc.getConfigurable() && targetDesc.getWritable() && desc.hasWritable() &&
                             !desc.getWritable()) {
                 throw Errors.createTypeError("'defineProperty' on proxy: trap returned truish for defining non-configurable property " +

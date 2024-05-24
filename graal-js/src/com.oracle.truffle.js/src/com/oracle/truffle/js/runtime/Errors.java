@@ -459,6 +459,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorCannotRedefineProperty(long index) {
+        return Errors.createTypeErrorCannotRedefineProperty((Object) index);
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorCannotRedefineTypedArrayElement() {
         throw Errors.createTypeError("Cannot redefine a property of an object with external array elements");
     }
