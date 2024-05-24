@@ -404,7 +404,7 @@
   }, {
     "filePath" : "mjsunit/compiler/regress-crbug-1399626.js",
     "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "comment" : "needs larger stack, at least 6m is needed"
   }, {
     "filePath" : "mjsunit/compiler/regress-crbug-1474379.js",
     "status" : "FAIL",
@@ -1003,10 +1003,6 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
-    "filePath" : "mjsunit/proxy-super-return-define-property-trap.js",
-    "status" : "FAIL",
-    "comment" : "V8 test update 2022-08-10"
-  }, {
     "filePath" : "mjsunit/random-bit-correlations.js",
     "status" : "SKIP",
     "comment" : "spurious failures\njava.lang.IllegalStateException: This node cannot be replaced, because it does not yet have a parent. at com.oracle.truffle.api.nodes.Node.replaceHelper(Node.java:293), com.oracle.truffle.api.nodes.NodeUtil.nonAtomicReplace(NodeUtil.java:207), com.oracle.truffle.api.dsl.internal.SpecializationNode.insertAt(SpecializationNode.java:537), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:663), com.oracle.truffle.api.dsl.internal.SpecializationNode$InsertionEvent1.call(SpecializationNode.java:647)"
@@ -1489,6 +1485,10 @@
     },
     "comment" : "test with (expected) stack overflows that may influence other tests, disabled on SVM (GR-21828)"
   }, {
+    "filePath" : "mjsunit/regress/regress-852258.js",
+    "runInIsolation" : true,
+    "comment" : "test with (expected) high memory usage that might influence other tests"
+  }, {
     "filePath" : "mjsunit/regress/regress-852765.js",
     "status" : "FAIL",
     "comment" : "TODO: evaluate (V8 tests update 2018-10-29)"
@@ -1698,10 +1698,6 @@
     "comment" : "Uses d8.serializer.deserialize"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1406774.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
-  }, {
-    "filePath" : "mjsunit/regress/regress-crbug-1408310.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
