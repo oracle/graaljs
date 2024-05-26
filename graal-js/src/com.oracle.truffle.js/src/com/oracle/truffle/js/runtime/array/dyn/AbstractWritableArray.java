@@ -673,7 +673,7 @@ public abstract class AbstractWritableArray extends DynamicArray {
             Object array = getArrayObject(object);
             int usedLength = getUsedLength(object);
             int arrayLength = getArrayLength(array);
-            if (arrayOffset + usedLength + size < arrayLength) {
+            if (arrayOffset + usedLength + size <= arrayLength) {
                 int lastIndex = (arrayOffset + usedLength);
                 int effectiveOffset = (int) (offset - indexOffset);
                 int copySize = (lastIndex - effectiveOffset);
