@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2020, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -49,27 +49,44 @@ public abstract class HypotNode extends MathOperation {
         super(context, builtin);
     }
 
-    @Specialization
-    protected double hypot(Object... args) {
+    @Specialization(guards = "args.length == 0")
+    protected static double hypot0(@SuppressWarnings("unused") Object[] args) {
+        return 0;
+    }
+
+    @Specialization(guards = "args.length == 1")
+    protected final double hypot1(Object[] args) {
+        double x = toDouble(args[0]);
+        return Math.abs(x);
+    }
+
+    @Specialization(guards = {"args.length == 2"})
+    protected final double hypot2(Object[] args) {
+        double x = toDouble(args[0]);
+        double y = toDouble(args[1]);
+        return hypot2(x, y);
+    }
+
+    @Specialization(guards = {"args.length >= 3"})
+    protected final double hypot(Object[] args) {
         int length = args.length;
         double[] values = new double[length];
         boolean isInfinite = false;
         double max = 0;
         for (int i = 0; i < length; i++) {
             double value = toDouble(args[i]);
-            isInfinite = isInfinite || Double.isInfinite(value);
-            if (value > max) {
-                max = value;
-            }
-            values[i] = value;
+            double absValue = Math.abs(value);
+            isInfinite |= Double.isInfinite(absValue);
+            max = Math.max(max, absValue);
+            values[i] = absValue;
         }
         if (isInfinite) {
             return Double.POSITIVE_INFINITY;
         }
 
         // Avoid division by zero
-        if (max == 0) {
-            max = 1;
+        if (max == 0 || Double.isNaN(max)) {
+            return max;
         }
 
         double sum = 0;
@@ -87,5 +104,30 @@ public abstract class HypotNode extends MathOperation {
         }
 
         return Math.sqrt(sum) * max;
+    }
+
+    /**
+     * Note: We don't use {@link Math#hypot} because some of its results deviate from those of V8.
+     */
+    private static double hypot2(double x, double y) {
+        double absx = Math.abs(x);
+        double absy = Math.abs(y);
+        double max = Math.max(absx, absy);
+        double min = Math.min(absx, absy);
+        if (Double.isInfinite(x) || Double.isInfinite(y)) {
+            return Double.POSITIVE_INFINITY;
+        }
+
+        // Avoid division by zero
+        if (max == 0 || Double.isNaN(max)) {
+            return max;
+        }
+
+        // Unrolled and optimized version of generic hypot.
+        // Normalize to avoid overflow/underflow during squaring.
+        double normalizedMin = min / max;
+        double normalizedMinSquared = normalizedMin * normalizedMin;
+        double normalizedMaxSquared = 1.0; // (max / max) ** 2
+        return Math.sqrt(normalizedMinSquared + normalizedMaxSquared) * max;
     }
 }
