@@ -907,6 +907,11 @@
     "status" : "SKIP",
     "comment" : "Unstable on native-image / when compiled (GR-23663)"
   }, {
+    "filePath" : "mjsunit/huge-typedarrays.js",
+    "status" : "FAIL",
+    "runInIsolation" : true,
+    "comment" : "Runs out of memory when allocating several 2GB TypedArrays."
+  }, {
     "filePath" : "mjsunit/ic-megadom-2.js",
     "status" : "FAIL",
     "comment" : "d8.dom"
@@ -5349,6 +5354,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
+    "runInIsolation" : true,
     "comment" : "Memory instance size exceeded 2GB. GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
   }, {
     "filePath" : "mjsunit/wasm/grow-memory-detaching.js",
@@ -5393,6 +5399,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
+    "runInIsolation" : true,
     "comment" : "Memory instance size exceeded 2GB. GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
   }, {
     "filePath" : "mjsunit/wasm/huge-typedarray.js",
@@ -5400,6 +5407,7 @@
     "statusOverrides" : {
       "POLYGLOT" : "FAIL"
     },
+    "runInIsolation" : true,
     "comment" : "Memory instance size exceeded 2GB. GraalJS is limited to 2GB because of using signed 32-bit integers for indices."
   }, {
     "filePath" : "mjsunit/wasm/i31ref.js",
