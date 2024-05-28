@@ -5588,8 +5588,9 @@
     "filePath" : "mjsunit/wasm/import-function.js",
     "status" : "SKIP",
     "statusOverrides" : {
-      "POLYGLOT" : "PASS"
-    }
+      "POLYGLOT" : "FAIL"
+    },
+    "comment" : "GR-53938: The print function is imported twice in the same module, using different type signatures."
   }, {
     "filePath" : "mjsunit/wasm/import-memory.js",
     "status" : "SKIP",
