@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2020, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2020, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,6 +40,7 @@
  */
 package com.oracle.truffle.js.nodes.wasm;
 
+import com.oracle.truffle.api.ExactMath;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.BranchProfile;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
@@ -66,30 +67,38 @@ public abstract class ToWebAssemblyIndexOrSizeNode extends JavaScriptBaseNode {
         return ToWebAssemblyIndexOrSizeNodeGen.create(errorMessagePrefix);
     }
 
-    public abstract double executeDouble(Object value);
+    public abstract int executeInt(Object value);
 
-    public int executeInt(Object value) {
-        double valueDouble = executeDouble(value);
+    @Specialization
+    protected int convertInt(int intValue) {
+        if (intValue < 0) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorFormat("%s must be non-negative", this, errorMessagePrefix);
+        }
+        return intValue;
+    }
+
+    @Specialization(replaces = "convertInt")
+    protected int convert(Object value) {
+        Number valueNumber = toNumberNode.executeNumber(value);
+        double valueDouble = JSRuntime.doubleValue(valueNumber);
+        if (!Double.isFinite(valueDouble)) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorFormat("%s must be convertible to a valid number", this, errorMessagePrefix);
+        }
+        valueDouble = ExactMath.truncate(valueDouble);
+        if (valueDouble < 0) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorFormat("%s must be non-negative", this, errorMessagePrefix);
+        }
+        if (valueDouble > 0xFFFF_FFFFL) {
+            errorBranch.enter();
+            throw Errors.createTypeErrorFormat("%s must be in the unsigned long range", this, errorMessagePrefix);
+        }
         if (valueDouble > Integer.MAX_VALUE) {
             errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be in the int range", errorMessagePrefix);
+            throw Errors.createRangeErrorFormat("%s must be in the int range", this, errorMessagePrefix);
         }
         return (int) valueDouble;
     }
-
-    @Specialization
-    protected double convert(Object value) {
-        Number valueNumber = toNumberNode.executeNumber(value);
-        double valueDouble = JSRuntime.doubleValue(valueNumber);
-        if (Double.isNaN(valueDouble)) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be convertible to a valid number", errorMessagePrefix);
-        }
-        if (valueDouble < 0) {
-            errorBranch.enter();
-            throw Errors.createTypeErrorFormat("%s must be non-negative", errorMessagePrefix);
-        }
-        return valueDouble;
-    }
-
 }

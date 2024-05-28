@@ -73,7 +73,6 @@ public class TestV8Runnable extends TestRunnable {
     private static final String HARMONY_IMPORT_ASSERTIONS = "--harmony-import-assertions";
     private static final String HARMONY_IMPORT_ATTRIBUTES = "--harmony-import-attributes";
     private static final String HARMONY_ITERATOR_HELPERS = "--harmony-iterator-helpers";
-    private static final String HARMONY_SHAREDARRAYBUFFER = "--harmony-sharedarraybuffer";
     private static final String HARMONY_PUBLIC_FIELDS = "--harmony-public-fields";
     private static final String HARMONY_PRIVATE_FIELDS = "--harmony-private-fields";
     private static final String HARMONY_PRIVATE_METHODS = "--harmony-private-methods";
@@ -85,27 +84,23 @@ public class TestV8Runnable extends TestRunnable {
     private static final String NO_EXPOSE_WASM = "--noexpose-wasm";
     private static final String NO_EXPERIMENTAL_SIMD = "--no-experimental-wasm-simd";
     private static final String NO_HARMONY_REGEXP_MATCH_INDICES = "--no-harmony-regexp-match-indices";
+    private static final String EXPERIMENTAL_WASM_MEMORY64 = "--experimental-wasm-memory64";
+    private static final String EXPERIMENTAL_WASM_MULTIMEMORY = "--experimental-wasm-multi-memory";
 
     private static final Set<String> UNSUPPORTED_FLAGS = featureSet(new String[]{
-                    "--experimental-d8-web-snapshot-api",
                     "--experimental-wasm-compilation-hints",
-                    "--experimental-wasm-eh",
-                    "--experimental-wasm-gc",
-                    "--experimental-wasm-memory64",
-                    "--experimental-wasm-return-call",
+                    "--experimental-wasm-exnref",
+                    "--experimental-wasm-stringref",
                     "--experimental-wasm-type-reflection",
-                    "--experimental-wasm-typed-funcref",
-                    "--experimental-web-snapshots",
                     "--expose-fast-api",
                     "--harmony-rab-gsab",
                     "--harmony-struct",
-                    "--wasm-staging"
+                    "--wasm-test-streaming"
     });
     private static final Set<String> STAGING_FLAGS = featureSet(new String[]{
                     "--harmony",
                     "--harmony-array-from-async",
                     "--harmony-array-grouping",
-                    "--harmony-atomics-waitasync",
                     "--harmony-intl-locale-info-func",
                     "--harmony-json-parse-with-source",
                     "--harmony-shadow-realm",
@@ -138,20 +133,23 @@ public class TestV8Runnable extends TestRunnable {
         List<String> setupFiles = getFiles(code, getConfig().getSuiteLoc());
 
         Map<String, String> extraOptions = new HashMap<>(2);
-        if (flags.contains(HARMONY_SHAREDARRAYBUFFER)) {
-            extraOptions.put(JSContextOptions.SHARED_ARRAY_BUFFER_NAME, "true");
-        }
         if (suite.getConfig().isPolyglot()) {
             extraOptions.put(JSContextOptions.WEBASSEMBLY_NAME, Boolean.toString(!flags.contains(NO_EXPOSE_WASM)));
-            // TODO: remove after reference types are enabled by default in wasm
-            extraOptions.put("wasm.BulkMemoryAndRefTypes", "true");
             // TODO: remove after threads are enabled by default in wasm
             extraOptions.put("wasm.Threads", "true");
+            // TODO: remove after extended-const-expressions are enabled by default in wasm
+            extraOptions.put("wasm.ExtendedConstExpressions", "true");
             // Required for using shared memories, for now
             extraOptions.put("wasm.UseUnsafeMemory", "true");
 
             if (flags.contains(NO_EXPERIMENTAL_SIMD)) {
                 extraOptions.put("wasm.SIMD", "false");
+            }
+            if (flags.contains(EXPERIMENTAL_WASM_MEMORY64)) {
+                extraOptions.put("wasm.Memory64", "true");
+            }
+            if (flags.contains(EXPERIMENTAL_WASM_MULTIMEMORY)) {
+                extraOptions.put("wasm.MultiMemory", "true");
             }
         }
 

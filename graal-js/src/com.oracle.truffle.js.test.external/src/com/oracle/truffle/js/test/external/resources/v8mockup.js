@@ -81,10 +81,19 @@ load = (function() {
     return path => originalLoad(path.startsWith('test/') ? ('lib/testv8/' + path) : path);
 })();
 
+readbuffer = (function() {
+    let originalReadbuffer = readbuffer;
+    return path => originalReadbuffer(path.startsWith('test/') ? ('lib/testv8/' + path) : path);
+})();
+
+// Save `load` function in another binding so that tests that re-write ``load` binding can still
+// use d8.file.execute.
+let d8_file_execute_load = load;
+
 var d8 = {
     file: {
         execute: function(path) {
-            load(path);
+            d8_file_execute_load(path);
             // Ensures that assertTraps() checks just the error type
             // (WebAssembly.RuntimeError) and not the exact error message
             if (path.endsWith('wasm-module-builder.js')) {
@@ -755,8 +764,14 @@ globalThis['%StringMaxLength'] = function() {
   return TestV8.stringMaxLength;
 };
 
-globalThis['%GetCallable'] = function() {
-    throw new Error("v8 internal method not implemented");
+globalThis['%GetCallable'] = function(target_function_name) {
+    if (target_function_name) {
+        // This is the upcoming behavior of the native.
+        return globalThis[target_function_name];
+    } else {
+        // This is the current behavior of the native.
+        return (a, b) => a - b;
+    }
 };
 
 globalThis['%GetDefaultICULocale'] = function() {
@@ -1229,5 +1244,22 @@ globalThis['%IsEfficiencyModeEnabled'] = function() {
 };
 
 globalThis['%GetFunctionForCurrentFrame'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%FlushWasmCode'] = function() {
+};
+
+globalThis['%IsUncompiledWasmFunction'] = function() {
+    return v8IgnoreResult;
+};
+
+globalThis['%WasmEnterDebugging'] = function() {
+};
+
+globalThis['%WasmLeaveDebugging'] = function() {
+};
+
+globalThis['%IsWasmDebugFunction'] = function() {
     return v8IgnoreResult;
 };

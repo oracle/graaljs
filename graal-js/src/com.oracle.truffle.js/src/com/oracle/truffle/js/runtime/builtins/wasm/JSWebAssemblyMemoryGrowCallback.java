@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021, 2021, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2021, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -56,20 +54,9 @@ import com.oracle.truffle.js.runtime.objects.Undefined;
 @ExportLibrary(InteropLibrary.class)
 public final class JSWebAssemblyMemoryGrowCallback implements TruffleObject {
     private final JSRealm realm;
-    private final Object memSetGrowCallbackFunction;
 
-    public JSWebAssemblyMemoryGrowCallback(JSRealm realm, Object memSetGrowCallbackFunction) {
+    public JSWebAssemblyMemoryGrowCallback(JSRealm realm) {
         this.realm = realm;
-        this.memSetGrowCallbackFunction = memSetGrowCallbackFunction;
-    }
-
-    public void attachToMemory(Object wasmMemory) {
-        InteropLibrary lib = InteropLibrary.getUncached();
-        try {
-            lib.execute(memSetGrowCallbackFunction, wasmMemory, this);
-        } catch (InteropException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
-        }
     }
 
     @SuppressWarnings("static-method")

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -61,21 +59,10 @@ public final class JSWebAssemblyMemoryNotifyCallback implements TruffleObject {
     private static final int INT32_BYTES_PER_ELEMENT = 4;
     private final JSRealm realm;
     private final JSContext context;
-    private final Object memSetNotifyCallbackFunction;
 
-    public JSWebAssemblyMemoryNotifyCallback(JSRealm realm, JSContext context, Object memSetNotifyCallbackFunction) {
+    public JSWebAssemblyMemoryNotifyCallback(JSRealm realm, JSContext context) {
         this.realm = realm;
         this.context = context;
-        this.memSetNotifyCallbackFunction = memSetNotifyCallbackFunction;
-    }
-
-    public void attachToMemory(Object wasmMemory) {
-        InteropLibrary lib = InteropLibrary.getUncached();
-        try {
-            lib.execute(memSetNotifyCallbackFunction, wasmMemory, this);
-        } catch (InteropException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
-        }
     }
 
     @SuppressWarnings("static-method")
@@ -87,9 +74,7 @@ public final class JSWebAssemblyMemoryNotifyCallback implements TruffleObject {
     @ExportMessage
     Object execute(Object[] arguments) {
         assert arguments.length == 3;
-        final Object embedderData = JSWebAssembly.getEmbedderData(realm, arguments[0]);
-        assert embedderData instanceof JSWebAssemblyMemoryObject;
-        final JSWebAssemblyMemoryObject memoryObject = (JSWebAssemblyMemoryObject) embedderData;
+        final JSWebAssemblyMemoryObject memoryObject = JSWebAssemblyMemory.create(context, realm, arguments[0], true);
         final long address = (long) arguments[1];
         final int count = (int) arguments[2];
 

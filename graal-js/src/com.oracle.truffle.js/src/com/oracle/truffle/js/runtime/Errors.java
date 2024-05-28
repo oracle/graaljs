@@ -969,6 +969,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createRuntimeError(String message, JSRealm realm) {
+        return JSException.create(JSErrorType.RuntimeError, message, null, null, realm);
+    }
+
+    @TruffleBoundary
     public static JSException createRuntimeError(Throwable cause, Node originatingNode) {
         return JSException.create(JSErrorType.RuntimeError, cause.getMessage(), cause, originatingNode);
     }

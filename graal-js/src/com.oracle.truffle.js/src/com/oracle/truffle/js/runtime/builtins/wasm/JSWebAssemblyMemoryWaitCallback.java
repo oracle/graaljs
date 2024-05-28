@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2023, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -40,8 +40,6 @@
  */
 package com.oracle.truffle.js.runtime.builtins.wasm;
 
-import com.oracle.truffle.api.CompilerDirectives;
-import com.oracle.truffle.api.interop.InteropException;
 import com.oracle.truffle.api.interop.InteropLibrary;
 import com.oracle.truffle.api.interop.TruffleObject;
 import com.oracle.truffle.api.library.ExportLibrary;
@@ -49,6 +47,7 @@ import com.oracle.truffle.api.library.ExportMessage;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.helper.SharedMemorySync;
 import com.oracle.truffle.js.runtime.BigInt;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSAgent;
 import com.oracle.truffle.js.runtime.JSAgentWaiterList;
 import com.oracle.truffle.js.runtime.JSContext;
@@ -71,21 +70,10 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
     private static final int BIGINT64_BYTES_PER_ELEMENT = 8;
     private final JSRealm realm;
     private final JSContext context;
-    private final Object memSetWaitCallbackFunction;
 
-    public JSWebAssemblyMemoryWaitCallback(JSRealm realm, JSContext context, Object memSetWaitCallbackFunction) {
+    public JSWebAssemblyMemoryWaitCallback(JSRealm realm, JSContext context) {
         this.realm = realm;
         this.context = context;
-        this.memSetWaitCallbackFunction = memSetWaitCallbackFunction;
-    }
-
-    public void attachToMemory(Object wasmMemory) {
-        InteropLibrary lib = InteropLibrary.getUncached();
-        try {
-            lib.execute(memSetWaitCallbackFunction, wasmMemory, this);
-        } catch (InteropException e) {
-            throw CompilerDirectives.shouldNotReachHere(e);
-        }
     }
 
     @SuppressWarnings("static-method")
@@ -97,9 +85,7 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
     @ExportMessage
     Object execute(Object[] arguments) {
         assert arguments.length == 5;
-        final Object embedderData = JSWebAssembly.getEmbedderData(realm, arguments[0]);
-        assert embedderData instanceof JSWebAssemblyMemoryObject;
-        final JSWebAssemblyMemoryObject memoryObject = (JSWebAssemblyMemoryObject) embedderData;
+        final JSWebAssemblyMemoryObject memoryObject = JSWebAssemblyMemory.create(context, realm, arguments[0], true);
         final long address = (long) arguments[1];
         final long expected = (long) arguments[2];
         final long timeout = (long) arguments[3];
@@ -121,7 +107,9 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
 
     private TruffleString atomicsWait(JSArrayBufferObject buffer, int address, long expected, double timeout, boolean is64) {
         final JSAgent agent = realm.getAgent();
-        assert agent.canBlock();
+        if (!agent.canBlock()) {
+            throw Errors.createRuntimeError("wait instruction used by agent which cannot block", realm);
+        }
         final JSAgentWaiterList waiterList = JSSharedArrayBuffer.getWaiterList(buffer);
         final JSAgentWaiterList.JSAgentWaiterListEntry wl;
         if (!is64) {
@@ -160,14 +148,14 @@ public final class JSWebAssemblyMemoryWaitCallback implements TruffleObject {
 
     private static int doVolatileGetFromBuffer(JSArrayBufferObject buffer, int intArrayOffset) {
         TypedArray.TypedIntArray typedArray = (TypedArray.TypedIntArray) TypedArrayFactory.Int32Array.createArrayType(true, false);
-        int result = typedArray.getIntImpl(buffer, 0, intArrayOffset, InteropLibrary.getUncached());
+        int result = typedArray.getBufferElementIntImpl(buffer, intArrayOffset, true, InteropLibrary.getUncached());
         VarHandle.acquireFence();
         return result;
     }
 
     private static BigInt doVolatileGetBigIntFromBuffer(JSArrayBufferObject buffer, int bigIntArrayOffset) {
         TypedArray.TypedBigIntArray typedArray = (TypedArray.TypedBigIntArray) TypedArrayFactory.BigInt64Array.createArrayType(true, false);
-        BigInt result = typedArray.getBigIntImpl(buffer, 0, bigIntArrayOffset, InteropLibrary.getUncached());
+        BigInt result = BigInt.valueOf(typedArray.getBufferElementLongImpl(buffer, bigIntArrayOffset, true, InteropLibrary.getUncached()));
         VarHandle.acquireFence();
         return result;
     }
