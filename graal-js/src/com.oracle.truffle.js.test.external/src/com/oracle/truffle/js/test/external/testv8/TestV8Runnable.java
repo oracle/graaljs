@@ -93,7 +93,6 @@ public class TestV8Runnable extends TestRunnable {
                     "--experimental-wasm-stringref",
                     "--experimental-wasm-type-reflection",
                     "--expose-fast-api",
-                    "--harmony-rab-gsab",
                     "--harmony-struct",
                     "--wasm-test-streaming"
     });
@@ -103,6 +102,7 @@ public class TestV8Runnable extends TestRunnable {
                     "--harmony-array-grouping",
                     "--harmony-intl-locale-info-func",
                     "--harmony-json-parse-with-source",
+                    "--harmony-rab-gsab",
                     "--harmony-shadow-realm",
                     "--harmony-weak-refs-with-cleanup-some",
                     "--js-promise-withresolvers",
