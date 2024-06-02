@@ -99,7 +99,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     public static int getByteLength(JSDynamicObject store, JSContext ctx) {
-        if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
+        if (JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) store, ctx)) {
             return 0;
         }
         TypedArray typedArray = typedArrayGetArrayType(store);
@@ -107,7 +107,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     public static int getByteOffset(JSDynamicObject store, JSContext ctx) {
-        if (JSArrayBufferView.hasDetachedBuffer(store, ctx)) {
+        if (JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) store, ctx)) {
             return 0;
         }
         return typedArrayGetOffset(store);
@@ -122,7 +122,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     @TruffleBoundary
     @Override
     public Object getOwnHelper(JSDynamicObject store, Object receiver, long index, Node encapsulatingNode) {
-        if (JSArrayBufferView.hasDetachedBuffer(store)) {
+        if (JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) store, store.getJSContext())) {
             return Undefined.instance;
         }
         return typedArrayGetArrayType(store).getElement(store, index);
@@ -160,7 +160,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     @TruffleBoundary
     private static Object integerIndexedElementGet(JSDynamicObject thisObj, Object numericIndex) {
         assert JSRuntime.isNumber(numericIndex);
-        if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+        if (JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) thisObj, thisObj.getJSContext())) {
             return Undefined.instance;
         }
         if (!JSRuntime.isInteger(numericIndex)) {
@@ -182,7 +182,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     public boolean set(JSDynamicObject thisObj, long index, Object value, Object receiver, boolean isStrict, Node encapsulatingNode) {
         if (thisObj == receiver) {
             Object numValue = convertValue(thisObj, value);
-            if (!JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+            if (!JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) thisObj, thisObj.getJSContext())) {
                 typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, isStrict);
             }
             return true;
@@ -224,7 +224,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     // IsValidIntegerIndex() ? theIndex : -1
     @TruffleBoundary
     private static long validIntegerIndex(JSDynamicObject thisObj, Number numericIndex) {
-        if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+        if (JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) thisObj, thisObj.getJSContext())) {
             return -1;
         }
         if (!JSRuntime.isInteger(numericIndex)) {
@@ -264,7 +264,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     @TruffleBoundary
     @Override
     public boolean hasOwnProperty(JSDynamicObject thisObj, long index) {
-        if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+        if (isOutOfBounds((JSTypedArrayObject) thisObj, thisObj.getJSContext())) {
             return false;
         }
         return typedArrayGetArrayType(thisObj).hasElement(thisObj, index);
@@ -284,7 +284,7 @@ public final class JSArrayBufferView extends JSNonProxy {
     }
 
     private static boolean hasNumericIndex(JSDynamicObject thisObj, Object numericIndex) {
-        if (JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+        if (isOutOfBounds((JSTypedArrayObject) thisObj, thisObj.getJSContext())) {
             return false;
         }
         if (!JSRuntime.isInteger(numericIndex)) {
@@ -396,16 +396,27 @@ public final class JSArrayBufferView extends JSNonProxy {
         return typedArrayGetArrayType(obj) instanceof TypedArray.TypedBigIntArray;
     }
 
-    public static boolean hasDetachedBuffer(JSDynamicObject obj, JSContext ctx) {
-        assert isJSArrayBufferView(obj);
-        if (ctx.getTypedArrayNotDetachedAssumption().isValid()) {
+    // IsTypedArrayOutOfBounds()
+    public static boolean isOutOfBounds(JSTypedArrayObject typedArray, JSContext ctx) {
+        if (!ctx.getTypedArrayNotDetachedAssumption().isValid() && hasDetachedBuffer(typedArray)) {
+            return true;
+        }
+        if (ctx.getArrayBufferNotShrunkAssumption().isValid()) {
             return false;
         } else {
-            return hasDetachedBuffer(obj);
+            long bufferByteLength = typedArray.getArrayBuffer().getByteLength();
+            int byteOffsetStart = typedArray.getOffset();
+            long byteOffsetEnd;
+            if (typedArray.hasAutoLength()) {
+                byteOffsetEnd = bufferByteLength;
+            } else {
+                byteOffsetEnd = byteOffsetStart + typedArray.getLength() * typedArray.getArrayType().bytesPerElement();
+            }
+            return (byteOffsetStart > bufferByteLength || byteOffsetEnd > bufferByteLength);
         }
     }
 
-    public static boolean hasDetachedBuffer(JSDynamicObject obj) {
+    private static boolean hasDetachedBuffer(JSDynamicObject obj) {
         assert isJSArrayBufferView(obj);
         return JSArrayBuffer.isDetachedBuffer(getArrayBuffer(obj));
     }
@@ -417,7 +428,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             return super.getOwnPropertyKeys(thisObj, strings, symbols);
         }
         List<Object> keys = ordinaryOwnPropertyKeys(thisObj, strings, symbols);
-        if (hasDetachedBuffer(thisObj)) {
+        if (isOutOfBounds((JSTypedArrayObject) thisObj, thisObj.getJSContext())) {
             return keys;
         }
         List<Object> indices = typedArrayGetArrayType(thisObj).ownPropertyKeys(thisObj);
@@ -462,7 +473,7 @@ public final class JSArrayBufferView extends JSNonProxy {
             // TypedArraySetElement
             Object value = desc.getValue();
             Object numValue = convertValue(thisObj, value);
-            if (!JSArrayBufferView.hasDetachedBuffer(thisObj)) {
+            if (!JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) thisObj, thisObj.getJSContext())) {
                 assert index >= 0 && index < JSArrayBufferView.typedArrayGetLength(thisObj);
                 JSArrayBufferView.typedArrayGetArrayType(thisObj).setElement(thisObj, index, numValue, true);
             }

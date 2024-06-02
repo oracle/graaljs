@@ -126,7 +126,7 @@ public final class ArrayIteratorPrototypeBuiltins extends JSBuiltinsContainer.Sw
             long length;
             if (isTypedArrayProfile.profile(this, JSArrayBufferView.isJSArrayBufferView(array))) {
                 JSTypedArrayObject typedArray = (JSTypedArrayObject) array;
-                if (JSArrayBufferView.hasDetachedBuffer(typedArray, getContext())) {
+                if (JSArrayBufferView.isOutOfBounds(typedArray, getContext())) {
                     errorBranch.enter(this);
                     throw Errors.createTypeError("Cannot perform Array Iterator.prototype.next on a detached ArrayBuffer");
                 }

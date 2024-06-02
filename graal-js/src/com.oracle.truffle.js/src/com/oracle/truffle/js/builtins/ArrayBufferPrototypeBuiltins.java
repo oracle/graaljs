@@ -41,6 +41,7 @@
 package com.oracle.truffle.js.builtins;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import com.oracle.truffle.api.CompilerDirectives;
 import com.oracle.truffle.api.dsl.Cached;
@@ -56,6 +57,9 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.ByteLengthGetterNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.DetachedGetterNodeGen;
+import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.MaxByteLengthGetterNodeGen;
+import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.ResizableGetterNodeGen;
+import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.JSArrayBufferResizeNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.JSArrayBufferSliceNodeGen;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltinsFactory.JSArrayBufferTransferNodeGen;
 import com.oracle.truffle.js.builtins.ArrayPrototypeBuiltins.ArraySpeciesConstructorNode;
@@ -90,11 +94,12 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
     public enum ArrayBufferPrototype implements BuiltinEnum<ArrayBufferPrototype> {
         byteLength(0),
         slice(2),
-
-        // arraybuffer-transfer proposal
         detached(0),
         transfer(0),
-        transferToFixedLength(0);
+        transferToFixedLength(0),
+        maxByteLength(0),
+        resizable(0),
+        resize(1);
 
         private final int length;
 
@@ -109,13 +114,16 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
 
         @Override
         public boolean isGetter() {
-            return this == byteLength || this == detached;
+            return switch (this) {
+                case byteLength, detached, maxByteLength, resizable -> true;
+                default -> false;
+            };
         }
 
         @Override
         public int getECMAScriptVersion() {
             return switch (this) {
-                case detached, transfer, transferToFixedLength -> JSConfig.ECMAScript2024;
+                case detached, transfer, transferToFixedLength, maxByteLength, resizable, resize -> JSConfig.ECMAScript2024;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
         }
@@ -135,6 +143,12 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 return JSArrayBufferTransferNodeGen.create(context, builtin, true, args().withThis().fixedArgs(1).createArgumentNodes(context));
             case transferToFixedLength:
                 return JSArrayBufferTransferNodeGen.create(context, builtin, false, args().withThis().fixedArgs(1).createArgumentNodes(context));
+            case maxByteLength:
+                return MaxByteLengthGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case resizable:
+                return ResizableGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case resize:
+                return JSArrayBufferResizeNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -146,28 +160,26 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             super(context, builtin);
         }
 
-        @Specialization(guards = "isJSHeapArrayBuffer(thisObj)")
-        protected int heapArrayBuffer(Object thisObj) {
-            byte[] byteArray = JSArrayBuffer.getByteArray(thisObj);
-            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && byteArray == null) {
+        @Specialization
+        protected int heapArrayBuffer(JSArrayBufferObject.Heap thisObj) {
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && thisObj.getByteArray() == null) {
                 return 0;
             }
-            return byteArray.length;
+            return thisObj.getByteLength();
         }
 
-        @Specialization(guards = "isJSDirectArrayBuffer(thisObj)")
-        protected int directArrayBuffer(Object thisObj) {
-            ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(thisObj);
-            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && byteBuffer == null) {
+        @Specialization
+        protected int directArrayBuffer(JSArrayBufferObject.Direct thisObj) {
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && thisObj.getByteBuffer() == null) {
                 return 0;
             }
-            return byteBuffer.capacity();
+            return thisObj.getByteLength();
         }
 
-        @Specialization(guards = "isJSInteropArrayBuffer(thisObj)")
-        protected int interopArrayBuffer(Object thisObj,
+        @Specialization
+        protected int interopArrayBuffer(JSArrayBufferObject.Interop thisObj,
                         @CachedLibrary(limit = "InteropLibraryLimit") InteropLibrary interop) {
-            Object buffer = JSArrayBuffer.getInteropBuffer(thisObj);
+            Object buffer = thisObj.getInteropBuffer();
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && buffer == null) {
                 return 0;
             }
@@ -285,9 +297,10 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected JSDynamicObject sliceIntInt(JSArrayBufferObject.Heap thisObj, int begin, int end,
                         @Cached @Shared InlinedBranchProfile errorBranch) {
             checkDetachedBuffer(thisObj, errorBranch);
+            int byteLength = thisObj.getByteLength();
             byte[] byteArray = JSArrayBuffer.getByteArray(thisObj);
-            int clampedBegin = clampIndex(begin, 0, byteArray.length);
-            int clampedEnd = clampIndex(end, clampedBegin, byteArray.length);
+            int clampedBegin = clampIndex(begin, 0, byteLength);
+            int clampedEnd = clampIndex(end, clampedBegin, byteLength);
             int newLen = Math.max(clampedEnd - clampedBegin, 0);
 
             JSArrayBufferObject resObj = constructNewArrayBuffer(thisObj, newLen, false, errorBranch);
@@ -305,13 +318,13 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorArrayBufferExpected();
             }
-            var newBuffer = (JSArrayBufferObject) resObj;
+            JSArrayBufferObject newBuffer = (JSArrayBufferObject) resObj;
             checkDetachedBuffer(newBuffer, errorBranch);
             if (resObj == thisObj) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("SameValue(new, O) is forbidden");
             }
-            if ((direct && JSArrayBuffer.getDirectByteLength(resObj) < newLen) || (!direct && JSArrayBuffer.getHeapByteLength(resObj) < newLen)) {
+            if (newBuffer.getByteLength() < newLen) {
                 errorBranch.enter(this);
                 throw Errors.createTypeError("insufficient length constructed");
             }
@@ -332,7 +345,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected JSDynamicObject slice(JSArrayBufferObject.Heap thisObj, Object begin0, Object end0,
                         @Cached @Shared InlinedBranchProfile errorBranch) {
             checkDetachedBuffer(thisObj, errorBranch);
-            int len = JSArrayBuffer.getByteArray(thisObj).length;
+            int len = thisObj.getByteLength();
             int begin = getStart(begin0, len);
             int finalEnd = getEnd(end0, len);
             return sliceIntInt(thisObj, begin, finalEnd, errorBranch);
@@ -343,7 +356,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                         @Cached @Shared InlinedBranchProfile errorBranch) {
             checkDetachedBuffer(thisObj, errorBranch);
             ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(thisObj);
-            int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
+            int byteLength = thisObj.getByteLength();
             int clampedBegin = clampIndex(begin, 0, byteLength);
             int clampedEnd = clampIndex(end, clampedBegin, byteLength);
             int newLen = clampedEnd - clampedBegin;
@@ -359,7 +372,7 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected JSDynamicObject sliceDirect(JSArrayBufferObject.Direct thisObj, Object begin0, Object end0,
                         @Cached @Shared InlinedBranchProfile errorBranch) {
             checkDetachedBuffer(thisObj, errorBranch);
-            int len = JSArrayBuffer.getDirectByteLength(thisObj);
+            int len = thisObj.getByteLength();
             int begin = getStart(begin0, len);
             int end = getEnd(end0, len);
             return sliceDirectIntInt(thisObj, begin, end, errorBranch);
@@ -450,35 +463,31 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
         protected Object transfer(JSArrayBufferObject arrayBuffer, Object newLength,
                         @Cached JSToIndexNode toIndexNode,
                         @Cached InlinedBranchProfile errorBranch,
-                        @Cached InlinedBranchProfile differentByteLengthBranch,
                         @Cached InlinedConditionProfile heapBufferProfile,
                         @Cached InlinedConditionProfile directBufferProfile) {
-            int newByteLength = 0;
-            if (newLength != Undefined.instance) {
+            int newByteLength;
+            int oldByteLength = arrayBuffer.getByteLength();
+            if (newLength == Undefined.instance) {
+                newByteLength = oldByteLength;
+            } else {
                 long byteLength = toIndexNode.executeLong(newLength);
                 if (byteLength > getContext().getLanguageOptions().maxTypedArrayLength()) {
                     errorBranch.enter(this);
                     throw Errors.createRangeErrorInvalidBufferSize();
                 }
                 newByteLength = (int) byteLength;
-            } // else postpone the reading of byteLength after the detach check below
+            }
 
             if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
                 errorBranch.enter(this);
                 throw Errors.createTypeErrorDetachedBuffer();
             }
 
-            int oldByteLength = getByteLength(arrayBuffer, heapBufferProfile, directBufferProfile);
-            if (newLength == Undefined.instance) {
-                newByteLength = oldByteLength;
-            }
-
-            @SuppressWarnings("unused")
             int newMaxByteLength;
-            if (preserveResizability && arrayBuffer.isResizable()) {
+            if (preserveResizability) {
                 newMaxByteLength = arrayBuffer.getMaxByteLength();
             } else {
-                newMaxByteLength = -1; // empty
+                newMaxByteLength = JSArrayBuffer.FIXED_LENGTH;
             }
 
             if (arrayBuffer.getDetachKey() != Undefined.instance) {
@@ -486,8 +495,12 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
                 throw Errors.createTypeErrorInvalidDetachKey();
             }
 
-            boolean sameByteLength = (newByteLength == oldByteLength);
-            int copyLength = Math.min(newByteLength, oldByteLength);
+            boolean allocatingResizableBuffer = (newMaxByteLength != JSArrayBuffer.FIXED_LENGTH);
+            if (allocatingResizableBuffer && (newByteLength > newMaxByteLength)) {
+                errorBranch.enter(this);
+                throw Errors.createRangeError("byteLength exceeds maxByteLength");
+            }
+
             JSContext context = getContext();
             JSRealm realm = getRealm();
             JSArrayBufferObject newBuffer;
@@ -495,23 +508,31 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             if (heapBufferProfile.profile(this, JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer))) {
                 JSArrayBufferObject.Heap heapArrayBuffer = (JSArrayBufferObject.Heap) arrayBuffer;
                 byte[] array = heapArrayBuffer.getByteArray();
-                if (!sameByteLength) {
-                    differentByteLengthBranch.enter(this);
-                    byte[] newArray = new byte[newByteLength];
-                    System.arraycopy(array, 0, newArray, 0, copyLength);
-                    array = newArray;
+                if (oldByteLength < newByteLength) {
+                    if (newByteLength <= array.length) {
+                        Arrays.fill(array, oldByteLength, newByteLength, (byte) 0);
+                    } else {
+                        byte[] newArray = new byte[newByteLength];
+                        System.arraycopy(array, 0, newArray, 0, oldByteLength);
+                        array = newArray;
+                    }
                 }
-                newBuffer = JSArrayBuffer.createArrayBuffer(context, realm, array);
+                newBuffer = JSArrayBuffer.createArrayBuffer(context, realm, array, newByteLength, newMaxByteLength);
             } else if (directBufferProfile.profile(this, JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer))) {
                 JSArrayBufferObject.Direct directArrayBuffer = (JSArrayBufferObject.Direct) arrayBuffer;
                 ByteBuffer byteBuffer = directArrayBuffer.getByteBuffer();
-                if (!sameByteLength) {
-                    differentByteLengthBranch.enter(this);
-                    ByteBuffer newByteBuffer = DirectByteBufferHelper.allocateDirect(newByteLength);
-                    Boundaries.byteBufferPutSlice(newByteBuffer, 0, byteBuffer, 0, copyLength);
-                    byteBuffer = newByteBuffer;
+                if (oldByteLength < newByteLength) {
+                    if (newByteLength <= byteBuffer.capacity()) {
+                        for (int i = oldByteLength; i < newByteLength; i++) {
+                            byteBuffer.put(i, (byte) 0);
+                        }
+                    } else {
+                        ByteBuffer newByteBuffer = DirectByteBufferHelper.allocateDirect(newByteLength);
+                        Boundaries.byteBufferPutSlice(newByteBuffer, 0, byteBuffer, 0, oldByteLength);
+                        byteBuffer = newByteBuffer;
+                    }
                 }
-                newBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, byteBuffer);
+                newBuffer = JSArrayBuffer.createDirectArrayBuffer(context, realm, byteBuffer, newByteLength, newMaxByteLength);
             } else {
                 assert JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer);
                 throw Errors.createTypeError("Cannot transfer an interop ArrayBuffer");
@@ -522,14 +543,99 @@ public final class ArrayBufferPrototypeBuiltins extends JSBuiltinsContainer.Swit
             return newBuffer;
         }
 
-        private int getByteLength(JSArrayBufferObject arrayBuffer, InlinedConditionProfile heapBufferProfile, InlinedConditionProfile directBufferProfile) {
-            if (heapBufferProfile.profile(this, JSArrayBuffer.isJSHeapArrayBuffer(arrayBuffer))) {
-                return JSArrayBuffer.getHeapByteLength(arrayBuffer);
-            } else if (directBufferProfile.profile(this, JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer))) {
-                return JSArrayBuffer.getDirectByteLength(arrayBuffer);
-            } else {
-                return ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
+        @Fallback
+        protected static Object error(@SuppressWarnings("unused") Object thisObj, @SuppressWarnings("unused") Object newLength) {
+            throw Errors.createTypeErrorArrayBufferExpected();
+        }
+
+    }
+
+    public abstract static class MaxByteLengthGetterNode extends JSBuiltinNode {
+
+        public MaxByteLengthGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = {"!isJSSharedArrayBuffer(thisObj)"})
+        protected int arrayBuffer(JSArrayBufferObject thisObj) {
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && thisObj.isDetached()) {
+                return 0;
             }
+            return thisObj.isFixedLength() ? thisObj.getByteLength() : thisObj.getMaxByteLength();
+        }
+
+        @Fallback
+        protected static int error(@SuppressWarnings("unused") Object thisObj) {
+            throw Errors.createTypeErrorArrayBufferExpected();
+        }
+
+    }
+
+    public abstract static class ResizableGetterNode extends JSBuiltinNode {
+
+        public ResizableGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = {"!isJSSharedArrayBuffer(thisObj)"})
+        protected boolean arrayBuffer(JSArrayBufferObject thisObj) {
+            return !thisObj.isFixedLength();
+        }
+
+        @Fallback
+        protected static boolean error(@SuppressWarnings("unused") Object thisObj) {
+            throw Errors.createTypeErrorArrayBufferExpected();
+        }
+
+    }
+
+    public abstract static class JSArrayBufferResizeNode extends JSBuiltinNode {
+
+        public JSArrayBufferResizeNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization(guards = {"!isJSSharedArrayBuffer(thisObj)"})
+        protected Object arrayBuffer(JSArrayBufferObject thisObj, Object newLength,
+                        @Cached JSToIndexNode toIndexNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (thisObj.isFixedLength()) {
+                errorBranch.enter(this);
+                throw Errors.createTypeError("Resizable ArrayBuffer expected!");
+            }
+            long newByteLengthLong = toIndexNode.executeLong(newLength);
+            if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(thisObj)) {
+                errorBranch.enter(this);
+                throw Errors.createTypeErrorDetachedBuffer();
+            }
+            if (newByteLengthLong > thisObj.getMaxByteLength()) {
+                errorBranch.enter(this);
+                throw Errors.createRangeError("newByteLength exceeds maxByteLength");
+            }
+            int newByteLength = (int) newByteLengthLong;
+            if (thisObj instanceof JSArrayBufferObject.Interop) {
+                errorBranch.enter(this);
+                throw Errors.createTypeError("Cannot resize an interop ArrayBuffer");
+            }
+            int oldByteLength = thisObj.getByteLength();
+            if (newByteLength < oldByteLength) {
+                getJSContext().getArrayBufferNotShrunkAssumption().invalidate("ArrayBuffer shrunk");
+                // Clear unused elements on shrink (so that we don't have to
+                // do that on the subsequent grow). We don't do that on grow
+                // because it is not needed unless a shrink happens before
+                // (which is less likely - it is more common to grow only).
+                if (thisObj instanceof JSArrayBufferObject.Heap heapArrayBuffer) {
+                    byte[] array = heapArrayBuffer.getByteArray();
+                    Arrays.fill(array, newByteLength, oldByteLength, (byte) 0);
+                } else {
+                    ByteBuffer buffer = ((JSArrayBufferObject.Direct) thisObj).getByteBuffer();
+                    for (int i = newByteLength; i < oldByteLength; i++) {
+                        buffer.put(i, (byte) 0);
+                    }
+                }
+            }
+            thisObj.setByteLength(newByteLength);
+            return Undefined.instance;
         }
 
         @Fallback

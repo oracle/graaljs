@@ -1323,11 +1323,7 @@ public final class GraalJSAccess {
     }
 
     public long arrayBufferByteLength(Object arrayBuffer) {
-        if (JSArrayBuffer.isJSInteropArrayBuffer(arrayBuffer)) {
-            return ((JSArrayBufferObject.Interop) arrayBuffer).getByteLength();
-        } else {
-            return JSArrayBuffer.getDirectByteLength(arrayBuffer);
-        }
+        return ((JSArrayBufferObject) arrayBuffer).getByteLength();
     }
 
     public Object arrayBufferGetContents(Object arrayBuffer) {
@@ -1482,7 +1478,7 @@ public final class GraalJSAccess {
 
     public int typedArrayLength(Object typedArray) {
         JSTypedArrayObject typedArrayObj = (JSTypedArrayObject) typedArray;
-        if (JSArrayBufferView.hasDetachedBuffer(typedArrayObj)) {
+        if (JSArrayBufferView.isOutOfBounds(typedArrayObj, typedArrayObj.getJSContext())) {
             return 0;
         }
         return typedArrayObj.getLength();

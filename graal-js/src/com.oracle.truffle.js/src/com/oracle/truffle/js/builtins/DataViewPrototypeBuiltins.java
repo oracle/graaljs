@@ -176,6 +176,28 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         return null;
     }
 
+    static void checkViewOutOfBounds(JSContext context, JSDataViewObject dataView, InlinedBranchProfile errorBranch, Node node) {
+        JSArrayBufferObject arrayBuffer = dataView.getArrayBuffer();
+        if (!context.getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
+            errorBranch.enter(node);
+            throw Errors.createTypeErrorDetachedBuffer();
+        }
+        if (!context.getArrayBufferNotShrunkAssumption().isValid()) {
+            long bufferByteLength = arrayBuffer.getByteLength();
+            int byteOffsetStart = dataView.getOffset();
+            long byteOffsetEnd;
+            if (dataView.hasAutoLength()) {
+                byteOffsetEnd = bufferByteLength;
+            } else {
+                byteOffsetEnd = byteOffsetStart + dataView.getLength();
+            }
+            if (byteOffsetStart > bufferByteLength || byteOffsetEnd > bufferByteLength) {
+                errorBranch.enter(node);
+                throw Errors.createTypeErrorOutOfBoundsTypedArray();
+            }
+        }
+    }
+
     @ImportStatic({JSDataView.class})
     public abstract static class DataViewAccessNode extends JSBuiltinNode {
         protected final TypedArrayFactory factory;
@@ -193,15 +215,6 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
                 }
             }
             throw new IllegalArgumentException(Strings.toJavaString(type));
-        }
-
-        protected final void ensureNotDetached(JSArrayBufferObject buffer, InlinedBranchProfile errorBranch) {
-            if (!getContext().getTypedArrayNotDetachedAssumption().isValid()) {
-                if (JSArrayBuffer.isDetachedBuffer(buffer)) {
-                    errorBranch.enter(this);
-                    throw Errors.createTypeErrorDetachedBuffer();
-                }
-            }
         }
 
         protected final int getBufferIndex(JSDataViewObject dataView, long getIndex, InlinedBranchProfile errorBranch) {
@@ -236,7 +249,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
             JSArrayBufferObject buffer = bufferTypeProfile.profile(this, dataView.getArrayBuffer());
-            ensureNotDetached(buffer, errorBranch);
+            checkViewOutOfBounds(getContext(), dataView, errorBranch, this);
             int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch);
 
             return getBufferElement.execute(this, buffer, bufferIndex, isLittleEndian, factory);
@@ -316,7 +329,7 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
             boolean isLittleEndian = factory.getBytesPerElement() == 1 || toBooleanNode.executeBoolean(this, littleEndian);
 
             JSArrayBufferObject buffer = bufferTypeProfile.profile(this, dataView.getArrayBuffer());
-            ensureNotDetached(buffer, errorBranch);
+            checkViewOutOfBounds(getContext(), dataView, errorBranch, this);
             int bufferIndex = getBufferIndex(dataView, getIndex, errorBranch);
 
             setBufferElement.execute(this, buffer, bufferIndex, isLittleEndian, numberValue, factory);
@@ -378,21 +391,14 @@ public final class DataViewPrototypeBuiltins extends JSBuiltinsContainer.SwitchE
         @Specialization
         protected final Object doDataView(JSDataViewObject dataView,
                         @Cached InlinedBranchProfile errorBranch) {
-            JSArrayBufferObject arrayBuffer = dataView.getArrayBuffer();
             switch (getter) {
                 case buffer:
-                    return arrayBuffer;
+                    return dataView.getArrayBuffer();
                 case byteLength:
-                    if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-                        errorBranch.enter(this);
-                        throw Errors.createTypeErrorDetachedBuffer();
-                    }
+                    checkViewOutOfBounds(getContext(), dataView, errorBranch, this);
                     return dataView.getLength();
                 case byteOffset:
-                    if (!getContext().getTypedArrayNotDetachedAssumption().isValid() && JSArrayBuffer.isDetachedBuffer(arrayBuffer)) {
-                        errorBranch.enter(this);
-                        throw Errors.createTypeErrorDetachedBuffer();
-                    }
+                    checkViewOutOfBounds(getContext(), dataView, errorBranch, this);
                     return dataView.getOffset();
                 default:
                     throw Errors.shouldNotReachHere();

@@ -390,7 +390,7 @@ public class Serializer {
         assert JSArrayBuffer.isJSDirectArrayBuffer(arrayBuffer);
         Integer id = transferMap.get(arrayBuffer);
         if (id == null) {
-            int byteLength = JSArrayBuffer.getDirectByteLength(arrayBuffer);
+            int byteLength = arrayBuffer.getByteLength();
             ByteBuffer byteBuffer = JSArrayBuffer.getDirectByteBuffer(arrayBuffer);
             writeTag(SerializationTag.ARRAY_BUFFER);
             writeVarInt(byteLength);

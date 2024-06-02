@@ -206,11 +206,14 @@ public class JSContext {
     private final Assumption fastArgumentsObjectAssumption;
 
     /**
-     * Assumption: TypedArrays never have their elements detached (i.e., buffer set to null). Can
-     * typically not happen by the ES6 spec, but be used by tests (and by future versions of the
-     * spec).
+     * Assumption: TypedArrays never have their elements detached (i.e., buffer set to null).
      */
     private final Assumption typedArrayNotDetachedAssumption;
+
+    /**
+     * Assumption: ArrayBuffer never shrunk.
+     */
+    private final Assumption arrayBufferNotShrunkAssumption;
 
     /**
      * Assumption: Static RegExp results (RegExp.$1 etc) are never used. As long as this assumption
@@ -597,6 +600,7 @@ public class JSContext {
         this.noSuchMethodUnusedAssumption = Truffle.getRuntime().createAssumption("noSuchMethodUnusedAssumption");
         this.arrayPrototypeNoElementsAssumption = Truffle.getRuntime().createAssumption("arrayPrototypeNoElementsAssumption");
         this.typedArrayNotDetachedAssumption = Truffle.getRuntime().createAssumption("typedArrayNotDetachedAssumption");
+        this.arrayBufferNotShrunkAssumption = Truffle.getRuntime().createAssumption("arrayBufferNotShrunkAssumption");
         this.fastArrayAssumption = Truffle.getRuntime().createAssumption("fastArrayAssumption");
         this.fastArgumentsObjectAssumption = Truffle.getRuntime().createAssumption("fastArgumentsObjectAssumption");
         this.regExpStaticResultUnusedAssumption = Truffle.getRuntime().createAssumption("regExpStaticResultUnusedAssumption");
@@ -805,6 +809,10 @@ public class JSContext {
 
     public final Assumption getTypedArrayNotDetachedAssumption() {
         return typedArrayNotDetachedAssumption;
+    }
+
+    public final Assumption getArrayBufferNotShrunkAssumption() {
+        return arrayBufferNotShrunkAssumption;
     }
 
     public final Assumption getRegExpStaticResultUnusedAssumption() {
