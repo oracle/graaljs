@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,17 +47,23 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.js.builtins.ArrayBufferPrototypeBuiltins.JSArrayBufferAbstractSliceNode;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.ByteLengthGetterNodeGen;
+import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.GrowableGetterNodeGen;
+import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.JSSharedArrayBufferGrowNodeGen;
 import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.JSSharedArrayBufferSliceNodeGen;
+import com.oracle.truffle.js.builtins.SharedArrayBufferPrototypeBuiltinsFactory.MaxByteLengthGetterNodeGen;
+import com.oracle.truffle.js.nodes.cast.JSToIndexNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.runtime.Boundaries;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.builtins.BuiltinEnum;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
 import com.oracle.truffle.js.runtime.builtins.JSSharedArrayBuffer;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
+import com.oracle.truffle.js.runtime.objects.Undefined;
 
 /**
  * Contains builtins for {@linkplain JSSharedArrayBuffer}.prototype.
@@ -72,7 +78,10 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
 
     public enum SharedArrayBufferPrototype implements BuiltinEnum<SharedArrayBufferPrototype> {
         byteLength(0),
-        slice(2);
+        slice(2),
+        growable(0),
+        maxByteLength(0),
+        grow(1);
 
         private final int length;
 
@@ -87,7 +96,18 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
 
         @Override
         public boolean isGetter() {
-            return this == byteLength;
+            return switch (this) {
+                case byteLength, growable, maxByteLength -> true;
+                default -> false;
+            };
+        }
+
+        @Override
+        public int getECMAScriptVersion() {
+            return switch (this) {
+                case growable, maxByteLength, grow -> JSConfig.ECMAScript2024;
+                default -> BuiltinEnum.super.getECMAScriptVersion();
+            };
         }
 
     }
@@ -99,6 +119,12 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
                 return ByteLengthGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
             case slice:
                 return JSSharedArrayBufferSliceNodeGen.create(context, builtin, args().withThis().fixedArgs(2).createArgumentNodes(context));
+            case growable:
+                return GrowableGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case maxByteLength:
+                return MaxByteLengthGetterNodeGen.create(context, builtin, args().withThis().createArgumentNodes(context));
+            case grow:
+                return JSSharedArrayBufferGrowNodeGen.create(context, builtin, args().withThis().fixedArgs(1).createArgumentNodes(context));
         }
         return null;
     }
@@ -133,7 +159,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
         protected JSDynamicObject sliceSharedIntInt(JSArrayBufferObject.Shared thisObj, int begin, int end,
                         @Cached @Cached.Shared("errorBranch") InlinedBranchProfile errorBranch) {
             ByteBuffer byteBuffer = JSSharedArrayBuffer.getDirectByteBuffer(thisObj);
-            int byteLength = JSArrayBuffer.getDirectByteLength(thisObj);
+            int byteLength = thisObj.getByteLength();
             int clampedBegin = clampIndex(begin, 0, byteLength);
             int clampedEnd = clampIndex(end, clampedBegin, byteLength);
             int newLen = clampedEnd - clampedBegin;
@@ -169,7 +195,7 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
 
         @Specialization
         protected static int sharedArrayBuffer(JSArrayBufferObject.Shared thisObj) {
-            return JSArrayBuffer.getDirectByteLength(thisObj);
+            return thisObj.getByteLength();
         }
 
         @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
@@ -177,4 +203,74 @@ public final class SharedArrayBufferPrototypeBuiltins extends JSBuiltinsContaine
             throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
         }
     }
+
+    public abstract static class MaxByteLengthGetterNode extends JSBuiltinNode {
+
+        public MaxByteLengthGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static int sharedArrayBuffer(JSArrayBufferObject.Shared thisObj) {
+            return thisObj.isFixedLength() ? thisObj.getByteLength() : thisObj.getMaxByteLength();
+        }
+
+        @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
+        protected static int error(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        }
+    }
+
+    public abstract static class GrowableGetterNode extends JSBuiltinNode {
+
+        public GrowableGetterNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected static boolean sharedArrayBuffer(JSArrayBufferObject.Shared thisObj) {
+            return !thisObj.isFixedLength();
+        }
+
+        @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
+        protected static boolean error(Object thisObj) {
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        }
+    }
+
+    public abstract static class JSSharedArrayBufferGrowNode extends JSBuiltinNode {
+
+        public JSSharedArrayBufferGrowNode(JSContext context, JSBuiltin builtin) {
+            super(context, builtin);
+        }
+
+        @Specialization
+        protected Object sharedArrayBuffer(JSArrayBufferObject.Shared thisObj, Object newLength,
+                        @Cached JSToIndexNode toIndexNode,
+                        @Cached InlinedBranchProfile errorBranch) {
+            if (thisObj.isFixedLength()) {
+                errorBranch.enter(this);
+                throw Errors.createTypeError("Growable SharedArrayBuffer expected!");
+            }
+            long newByteLength = toIndexNode.executeLong(newLength);
+            int currentByteLength;
+            do {
+                currentByteLength = thisObj.getByteLength();
+                if (newByteLength == currentByteLength) {
+                    return Undefined.instance;
+                }
+                if (newByteLength < currentByteLength || newByteLength > thisObj.getMaxByteLength()) {
+                    errorBranch.enter(this);
+                    throw Errors.createRangeError("invalid newByteLength");
+                }
+            } while (thisObj.updateByteLength(currentByteLength, (int) newByteLength));
+            return Undefined.instance;
+        }
+
+        @Specialization(guards = "!isJSSharedArrayBuffer(thisObj)")
+        protected static Object error(Object thisObj, @SuppressWarnings("unused") Object newLength) {
+            throw Errors.createTypeErrorIncompatibleReceiver(thisObj);
+        }
+    }
+
 }

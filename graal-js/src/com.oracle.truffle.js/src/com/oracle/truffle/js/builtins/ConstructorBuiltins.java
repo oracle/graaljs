@@ -212,6 +212,7 @@ import com.oracle.truffle.js.runtime.builtins.JSAdapter;
 import com.oracle.truffle.js.runtime.builtins.JSArray;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBuffer;
 import com.oracle.truffle.js.runtime.builtins.JSArrayBufferObject;
+import com.oracle.truffle.js.runtime.builtins.JSArrayBufferViewBase;
 import com.oracle.truffle.js.runtime.builtins.JSArrayObject;
 import com.oracle.truffle.js.runtime.builtins.JSAsyncIterator;
 import com.oracle.truffle.js.runtime.builtins.JSBoolean;
@@ -539,8 +540,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return ConstructFunctionNodeGen.create(context, builtin, false, false, false, args().function().varArgs().createArgumentNodes(context));
             case ArrayBuffer:
                 if (construct) {
-                    return newTarget ? ConstructArrayBufferNodeGen.create(context, builtin, false, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructArrayBufferNodeGen.create(context, builtin, false, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return newTarget ? ConstructArrayBufferNodeGen.create(context, builtin, false, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                    : ConstructArrayBufferNodeGen.create(context, builtin, false, false, args().function().fixedArgs(2).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -645,8 +646,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                 return ConstructFunctionNodeGen.create(context, builtin, true, false, false, args().function().varArgs().createArgumentNodes(context));
             case SharedArrayBuffer:
                 if (construct) {
-                    return newTarget ? ConstructArrayBufferNodeGen.create(context, builtin, true, true, args().newTarget().fixedArgs(1).createArgumentNodes(context))
-                                    : ConstructArrayBufferNodeGen.create(context, builtin, true, false, args().function().fixedArgs(1).createArgumentNodes(context));
+                    return newTarget ? ConstructArrayBufferNodeGen.create(context, builtin, true, true, args().newTarget().fixedArgs(2).createArgumentNodes(context))
+                                    : ConstructArrayBufferNodeGen.create(context, builtin, true, false, args().function().fixedArgs(2).createArgumentNodes(context));
                 } else {
                     return createCallRequiresNew(context, builtin);
                 }
@@ -2261,6 +2262,33 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
     }
 
+    abstract static class GetArrayBufferMaxByteLengthOption extends JavaScriptBaseNode {
+        protected static final TruffleString MAX_BYTE_LENGTH = Strings.constant("maxByteLength");
+
+        protected abstract long execute(Object options);
+
+        @Specialization(guards = {"isUndefined(options)"})
+        protected long doUndefined(@SuppressWarnings("unused") Object options) {
+            return JSArrayBuffer.FIXED_LENGTH;
+        }
+
+        @Specialization(replaces = "doUndefined")
+        protected long doGeneric(Object options,
+                        @Cached IsObjectNode isObjectNode,
+                        @Cached("create(MAX_BYTE_LENGTH, getJSContext())") PropertyGetNode getMaxByteLengthNode,
+                        @Cached JSToIndexNode toIndexNode) {
+            if (!isObjectNode.executeBoolean(options)) {
+                return JSArrayBuffer.FIXED_LENGTH;
+            }
+            Object maxByteLength = getMaxByteLengthNode.getValue(options);
+            if (maxByteLength == Undefined.instance) {
+                return JSArrayBuffer.FIXED_LENGTH;
+            }
+            return toIndexNode.executeLong(maxByteLength);
+        }
+
+    }
+
     @ImportStatic({JSConfig.class})
     public abstract static class ConstructArrayBufferNode extends ConstructWithNewTargetNode {
         private final boolean useShared;
@@ -2271,36 +2299,46 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         @Specialization(guards = {"!bufferInterop.hasBufferElements(length)"})
-        protected JSDynamicObject constructFromLength(JSDynamicObject newTarget, Object length,
+        protected JSDynamicObject constructFromLength(JSDynamicObject newTarget, Object length, Object options,
                         @Cached JSToIndexNode toIndexNode,
+                        @Cached GetArrayBufferMaxByteLengthOption getMaxByteLengthOption,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared @SuppressWarnings("unused") InteropLibrary bufferInterop) {
             long byteLength = toIndexNode.executeLong(length);
+            long maxByteLength = getMaxByteLengthOption.execute(options);
+
+            boolean allocatingResizableBuffer = (maxByteLength != JSArrayBuffer.FIXED_LENGTH);
+            if (allocatingResizableBuffer && (byteLength > maxByteLength)) {
+                errorBranch.enter(this);
+                throw Errors.createRangeError("byteLength exceeds maxByteLength");
+            }
 
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
 
-            if (byteLength > getContext().getLanguageOptions().maxTypedArrayLength()) {
+            if (Math.max(maxByteLength, byteLength) > getContext().getLanguageOptions().maxTypedArrayLength()) {
                 errorBranch.enter(this);
                 throw Errors.createRangeError("Array buffer allocation failed");
             }
+            int byteLengthInt = (int) byteLength;
+            int maxByteLengthInt = (int) maxByteLength;
 
             JSDynamicObject arrayBuffer;
             JSContext contextFromNewTarget = getContext();
             if (useShared) {
-                arrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(contextFromNewTarget, realm, proto, (int) byteLength);
+                arrayBuffer = JSSharedArrayBuffer.createSharedArrayBuffer(contextFromNewTarget, realm, proto, byteLengthInt, maxByteLengthInt);
             } else {
                 if (getContext().isOptionDirectByteBuffer()) {
-                    arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(contextFromNewTarget, realm, proto, (int) byteLength);
+                    arrayBuffer = JSArrayBuffer.createDirectArrayBuffer(contextFromNewTarget, realm, proto, byteLengthInt, maxByteLengthInt);
                 } else {
-                    arrayBuffer = JSArrayBuffer.createArrayBuffer(contextFromNewTarget, realm, proto, (int) byteLength);
+                    arrayBuffer = JSArrayBuffer.createArrayBuffer(contextFromNewTarget, realm, proto, byteLengthInt, maxByteLengthInt);
                 }
             }
             return arrayBuffer;
         }
 
         @Specialization(guards = {"bufferInterop.hasBufferElements(buffer)"})
-        protected JSDynamicObject constructFromInteropBuffer(JSDynamicObject newTarget, Object buffer,
+        protected JSDynamicObject constructFromInteropBuffer(JSDynamicObject newTarget, Object buffer, @SuppressWarnings("unused") Object options,
                         @Cached @Shared InlinedBranchProfile errorBranch,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared @SuppressWarnings("unused") InteropLibrary bufferInterop) {
             getBufferSizeSafe(buffer, bufferInterop, this, errorBranch);
@@ -2464,7 +2502,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached @Shared InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared JSToIndexNode offsetToIndexNode,
                         @Cached @Shared JSToIndexNode lengthToIndexNode) {
-            return constructDataView(newTarget, buffer, byteOffset, byteLength, false, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
+            return constructDataView(newTarget, buffer, byteOffset, byteLength, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
         }
 
         @Specialization(guards = {"isJSDirectOrSharedArrayBuffer(buffer)"})
@@ -2473,7 +2511,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached @Shared InlinedConditionProfile byteLengthCondition,
                         @Cached @Shared JSToIndexNode offsetToIndexNode,
                         @Cached @Shared JSToIndexNode lengthToIndexNode) {
-            return constructDataView(newTarget, buffer, byteOffset, byteLength, true, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
+            return constructDataView(newTarget, buffer, byteOffset, byteLength, false, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, null);
         }
 
         @Specialization(guards = {"isJSInteropArrayBuffer(buffer)"})
@@ -2483,7 +2521,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                         @Cached @Shared JSToIndexNode offsetToIndexNode,
                         @Cached @Shared JSToIndexNode lengthToIndexNode,
                         @CachedLibrary(limit = "InteropLibraryLimit") @Shared InteropLibrary bufferInterop) {
-            return constructDataView(newTarget, buffer, byteOffset, byteLength, false, true, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, bufferInterop);
+            return constructDataView(newTarget, buffer, byteOffset, byteLength, true, errorBranch, byteLengthCondition, offsetToIndexNode, lengthToIndexNode, bufferInterop);
         }
 
         @Specialization(guards = {"!isJSAbstractBuffer(buffer)", "bufferInterop.hasBufferElements(buffer)"})
@@ -2505,7 +2543,7 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
         }
 
         protected final JSDynamicObject constructDataView(JSDynamicObject newTarget, JSArrayBufferObject arrayBuffer, Object byteOffset, Object byteLength,
-                        boolean direct, boolean isInteropBuffer,
+                        boolean isInteropBuffer,
                         InlinedBranchProfile errorBranch,
                         InlinedConditionProfile byteLengthCondition,
                         JSToIndexNode offsetToIndexNode,
@@ -2518,10 +2556,8 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             int bufferByteLength;
             if (isInteropBuffer) {
                 bufferByteLength = ConstructArrayBufferNode.getBufferSizeSafe(JSArrayBuffer.getInteropBuffer(arrayBuffer), bufferInterop, this, errorBranch);
-            } else if (direct) {
-                bufferByteLength = JSArrayBuffer.getDirectByteLength(arrayBuffer);
             } else {
-                bufferByteLength = JSArrayBuffer.getHeapByteLength(arrayBuffer);
+                bufferByteLength = arrayBuffer.getByteLength();
             }
             if (offset > bufferByteLength) {
                 errorBranch.enter(this);
@@ -2540,13 +2576,30 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
                     throw Errors.createRangeError("offset + viewByteLength > bufferByteLength");
                 }
             } else {
-                viewByteLength = bufferByteLength - offset;
+                if (arrayBuffer.isFixedLength()) {
+                    viewByteLength = bufferByteLength - offset;
+                } else {
+                    viewByteLength = JSArrayBufferViewBase.AUTO_LENGTH;
+                }
             }
-            assert offset >= 0 && offset <= Integer.MAX_VALUE && viewByteLength >= 0 && viewByteLength <= Integer.MAX_VALUE;
+            assert offset >= 0 && offset <= Integer.MAX_VALUE && viewByteLength >= -1 && viewByteLength <= Integer.MAX_VALUE;
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);
+
             // GetPrototypeFromConstructor might have detached the ArrayBuffer as a side effect.
             checkDetachedBuffer(arrayBuffer, errorBranch);
+            bufferByteLength = arrayBuffer.getByteLength();
+            if (offset > bufferByteLength) {
+                errorBranch.enter(this);
+                throw Errors.createRangeError("offset > bufferByteLength");
+            }
+            if (byteLengthCondition.profile(this, byteLength != Undefined.instance)) {
+                if (offset + viewByteLength > bufferByteLength) {
+                    errorBranch.enter(this);
+                    throw Errors.createRangeError("offset + viewByteLength > bufferByteLength");
+                }
+            }
+
             return JSDataView.createDataView(getContext(), realm, proto, arrayBuffer, (int) offset, (int) viewByteLength);
         }
 

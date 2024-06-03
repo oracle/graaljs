@@ -415,8 +415,10 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/compiler/regress-crbug-1486342.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/compiler/string-add-try-catch.js",
     "status" : "PASS",
@@ -1008,6 +1010,10 @@
     "status" : "SKIP",
     "comment" : "passing this test, except V8HasFast..., V8HaveSameMap, V8GetOptimizationCount, V8GetOptimizationStatus, etc."
   }, {
+    "filePath" : "mjsunit/rab-gsab-transfer-to-worker.js",
+    "status" : "FAIL",
+    "comment" : "Uses Worker"
+  }, {
     "filePath" : "mjsunit/realm-property-access.js",
     "status" : "FAIL"
   }, {
@@ -1048,8 +1054,10 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/regress/asm/regress-13967.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/regress/asm/regress-1402270.js",
     "status" : "FAIL",
@@ -1247,8 +1255,10 @@
     "comment" : "new failures 2023-10-09"
   }, {
     "filePath" : "mjsunit/regress/regress-1464437.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2023-10-09"
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "PASS"
   }, {
     "filePath" : "mjsunit/regress/regress-148378.js",
     "status" : "SKIP",
@@ -1259,10 +1269,6 @@
     "comment" : "Uses performance.measureMemor()y"
   }, {
     "filePath" : "mjsunit/regress/regress-1494681.js",
-    "status" : "FAIL",
-    "comment" : "new failures 2024-01-19"
-  }, {
-    "filePath" : "mjsunit/regress/regress-1501679.js",
     "status" : "FAIL",
     "comment" : "new failures 2024-01-19"
   }, {
@@ -1698,6 +1704,10 @@
     "status" : "FAIL",
     "comment" : "Uses d8.serializer.deserialize"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1402139.js",
+    "status" : "FAIL",
+    "comment" : "Uses d8.serializer.serialize"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1406774.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -1728,6 +1738,13 @@
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
   }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1421451.js",
+    "ecmaVersion" : {
+      "minVersion" : 15
+    },
+    "status" : "FAIL",
+    "comment" : "Obsolete test, fixed by https://github.com/v8/v8/commit/1f45cacc0ab05b0941c4605ef33769dc6006fa1f#diff-8b33fefec9ea50caa40be31b0829475f2e28fa86d17ba8041fe0bdbcb36649a2"
+  }, {
     "filePath" : "mjsunit/regress/regress-crbug-1423650.js",
     "status" : "FAIL",
     "comment" : "new failures 2023-10-09"
@@ -1757,6 +1774,10 @@
     },
     "status" : "PASS",
     "comment" : "Uses regexp unicode sets"
+  }, {
+    "filePath" : "mjsunit/regress/regress-crbug-1459172.js",
+    "status" : "FAIL",
+    "comment" : "Expects an error for an unclear reason. Incorrect/off-spec test?"
   }, {
     "filePath" : "mjsunit/regress/regress-crbug-1467028.js",
     "status" : "FAIL",
@@ -4397,6 +4418,10 @@
     },
     "comment" : "GC proposal."
   }, {
+    "filePath" : "mjsunit/resizablearraybuffer-growablesharedarraybuffer.js",
+    "status" : "FAIL",
+    "comment" : "Uses Worker"
+  }, {
     "filePath" : "mjsunit/serialize-deserialize-now.js",
     "status" : "FAIL",
     "comment" : "new test failures (update 2020-07-22)"
@@ -4780,6 +4805,22 @@
     "filePath" : "mjsunit/tools/timeline.mjs",
     "status" : "FAIL",
     "comment" : "new failures 2021-02-16"
+  }, {
+    "filePath" : "mjsunit/typedarray-growablesharedarraybuffer-array-methods.js",
+    "status" : "SKIP",
+    "comment" : "Long running test"
+  }, {
+    "filePath" : "mjsunit/typedarray-growablesharedarraybuffer-atomics.js",
+    "status" : "FAIL",
+    "comment" : "Uses Worker"
+  }, {
+    "filePath" : "mjsunit/typedarray-resizablearraybuffer-array-methods.js",
+    "status" : "SKIP",
+    "comment" : "Long running test"
+  }, {
+    "filePath" : "mjsunit/typedarray-resizablearraybuffer-atomics.js",
+    "status" : "FAIL",
+    "comment" : "Uses Worker"
   }, {
     "filePath" : "mjsunit/tzoffset-seoul-noi18n.js",
     "status" : "FAIL",
@@ -5993,6 +6034,12 @@
       "POLYGLOT" : "FAIL"
     },
     "comment" : "new failures 2024-01-19"
+  }, {
+    "filePath" : "mjsunit/wasm/resizablearraybuffer-growablesharedarraybuffer-wasm.js",
+    "status" : "SKIP",
+    "statusOverrides" : {
+      "POLYGLOT" : "PASS"
+    }
   }, {
     "filePath" : "mjsunit/wasm/return-calls-eh.js",
     "status" : "SKIP",

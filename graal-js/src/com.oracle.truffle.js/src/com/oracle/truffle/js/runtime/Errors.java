@@ -576,6 +576,11 @@ public final class Errors {
     }
 
     @TruffleBoundary
+    public static JSException createTypeErrorOutOfBoundsTypedArray() {
+        return Errors.createTypeError("Out of bounds typed array");
+    }
+
+    @TruffleBoundary
     public static JSException createTypeErrorDetachedBuffer() {
         return Errors.createTypeError("Detached buffer");
     }

@@ -55,6 +55,7 @@ describe('Polyglot', function () {
     }
     if (module.hasJavaInterop()) {
         it('auto-completion in REPL should work for foreign objects', function () {
+            this.timeout(10000);
             var theREPL = repl.start('');
             try {
                 theREPL.complete('java.lang.System.out.pr', function (error, data) {

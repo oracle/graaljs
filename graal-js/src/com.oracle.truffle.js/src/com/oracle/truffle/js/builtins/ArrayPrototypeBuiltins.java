@@ -432,10 +432,10 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             return arraySpeciesCreateNode;
         }
 
-        protected final void checkHasDetachedBuffer(JSDynamicObject view) {
-            if (JSArrayBufferView.hasDetachedBuffer(view, getContext())) {
+        protected final void checkOutOfBounds(JSTypedArrayObject view) {
+            if (JSArrayBufferView.isOutOfBounds(view, getContext())) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorDetachedBuffer();
+                throw Errors.createTypeErrorOutOfBoundsTypedArray();
             }
         }
 
@@ -448,9 +448,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createTypeErrorArrayBufferViewExpected();
             }
             JSTypedArrayObject typedArrayObject = (JSTypedArrayObject) obj;
-            if (JSArrayBufferView.hasDetachedBuffer(typedArrayObject, getContext())) {
+            if (JSArrayBufferView.isOutOfBounds(typedArrayObject, getContext())) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorDetachedBuffer();
+                throw Errors.createTypeErrorOutOfBoundsTypedArray();
             }
             return typedArrayObject;
         }
@@ -523,9 +523,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
                 throw Errors.createTypeErrorArrayBufferViewExpected();
             }
             JSTypedArrayObject newTypedArray = (JSTypedArrayObject) newObject;
-            if (JSArrayBufferView.hasDetachedBuffer(newTypedArray, context)) {
+            if (JSArrayBufferView.isOutOfBounds(newTypedArray, context)) {
                 errorBranch.enter();
-                throw Errors.createTypeErrorDetachedBuffer();
+                throw Errors.createTypeErrorOutOfBoundsTypedArray();
             }
             if (args.length == 1 && JSRuntime.isNumber(args[0])) {
                 if (newTypedArray.getLength() < JSRuntime.doubleValue((Number) args[0])) {
@@ -1002,7 +1002,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             Object resultArray = getArraySpeciesConstructorNode().createEmptyContainer(thisArrayObj, size);
             if (sizeIsZero.profile(this, size > 0)) {
                 if (isTypedArrayImplementation) {
-                    checkHasDetachedBuffer((JSDynamicObject) thisObj);
+                    checkOutOfBounds((JSTypedArrayObject) thisObj);
+                    endPos = Math.min(endPos, getLength(thisArrayObj));
                 }
                 forEachIndexCall(thisArrayObj, null, startPos, startPos, endPos, resultArray);
             }
@@ -3065,7 +3066,8 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             long expectedCount = count;
             if (count > 0) {
                 if (isTypedArrayImplementation) {
-                    checkHasDetachedBuffer((JSDynamicObject) thisObj);
+                    checkOutOfBounds((JSTypedArrayObject) thisObj);
+                    len = getLength(obj);
                 }
 
                 long direction;
@@ -3079,6 +3081,9 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
 
                 while (count > 0) {
                     if (isTypedArrayImplementation || hasProperty(obj, from)) {
+                        if (isTypedArrayImplementation && (from >= len || to >= len)) {
+                            break;
+                        }
                         Object fromVal = read(obj, from);
                         write(obj, to, fromVal);
                     } else {
@@ -3425,14 +3430,15 @@ public final class ArrayPrototypeBuiltins extends JSBuiltinsContainer.SwitchEnum
             }
 
             if (isTypedArrayImplementation) {
-                if (JSArrayBufferView.isJSArrayBufferView(array) && JSArrayBufferView.isBigIntArrayBufferView((JSDynamicObject) array)) {
+                if (JSArrayBufferView.isBigIntArrayBufferView((JSDynamicObject) array)) {
                     value = toBigInt(value);
                 } else {
                     value = toNumber(value);
                 }
             }
 
-            if (actualIndex >= len || actualIndex < 0) {
+            long lengthForCheck = isTypedArrayImplementation ? (JSArrayBufferView.isOutOfBounds((JSTypedArrayObject) array, getContext()) ? 0 : getLength(thisObj)) : len;
+            if (actualIndex >= lengthForCheck || actualIndex < 0) {
                 errorBranch.enter();
                 throw Errors.createRangeError("invalid index");
             }
