@@ -605,55 +605,7 @@ public final class TemporalUtil {
     }
 
     public static void validateTemporalUnitRange(Unit largestUnit, Unit smallestUnit) {
-        boolean error = false;
-        switch (smallestUnit) {
-            case YEAR:
-                if (!(largestUnit == Unit.YEAR)) {
-                    error = true;
-                }
-                break;
-            case MONTH:
-                if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH)) {
-                    error = true;
-                }
-                break;
-            case WEEK:
-                if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK)) {
-                    error = true;
-                }
-                break;
-            case DAY:
-                if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY)) {
-                    error = true;
-                }
-                break;
-            case HOUR:
-                if (!(largestUnit == Unit.YEAR || largestUnit == Unit.MONTH || largestUnit == Unit.WEEK || largestUnit == Unit.DAY || largestUnit == Unit.HOUR)) {
-                    error = true;
-                }
-                break;
-            case MINUTE:
-                if (largestUnit == Unit.SECOND || largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
-                    error = true;
-                }
-                break;
-            case SECOND:
-                if (largestUnit == Unit.MILLISECOND || largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
-                    error = true;
-                }
-                break;
-            case MILLISECOND:
-                if (largestUnit == Unit.MICROSECOND || largestUnit == Unit.NANOSECOND) {
-                    error = true;
-                }
-                break;
-            case MICROSECOND:
-                if (largestUnit == Unit.NANOSECOND) {
-                    error = true;
-                }
-                break;
-        }
-        if (error) {
+        if (largerOfTwoTemporalUnits(largestUnit, smallestUnit) != largestUnit) {
             throw TemporalErrors.createRangeErrorSmallestUnitOutOfRange();
         }
     }
@@ -1777,34 +1729,9 @@ public final class TemporalUtil {
     }
 
     public static Unit largerOfTwoTemporalUnits(Unit a, Unit b) {
-        if (Unit.YEAR == a || Unit.YEAR == b) {
-            return Unit.YEAR;
-        }
-        if (Unit.MONTH == a || Unit.MONTH == b) {
-            return Unit.MONTH;
-        }
-        if (Unit.WEEK == a || Unit.WEEK == b) {
-            return Unit.WEEK;
-        }
-        if (Unit.DAY == a || Unit.DAY == b) {
-            return Unit.DAY;
-        }
-        if (Unit.HOUR == a || Unit.HOUR == b) {
-            return Unit.HOUR;
-        }
-        if (Unit.MINUTE == a || Unit.MINUTE == b) {
-            return Unit.MINUTE;
-        }
-        if (Unit.SECOND == a || Unit.SECOND == b) {
-            return Unit.SECOND;
-        }
-        if (Unit.MILLISECOND == a || Unit.MILLISECOND == b) {
-            return Unit.MILLISECOND;
-        }
-        if (Unit.MICROSECOND == a || Unit.MICROSECOND == b) {
-            return Unit.MICROSECOND;
-        }
-        return Unit.NANOSECOND;
+        assert Unit.YEAR.compareTo(a) <= 0 && a.compareTo(Unit.NANOSECOND) <= 0 : a;
+        assert Unit.YEAR.compareTo(b) <= 0 && b.compareTo(Unit.NANOSECOND) <= 0 : b;
+        return a.compareTo(b) <= 0 ? a : b;
     }
 
     @TruffleBoundary
