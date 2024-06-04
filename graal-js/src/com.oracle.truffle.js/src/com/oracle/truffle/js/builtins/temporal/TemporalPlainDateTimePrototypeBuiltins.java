@@ -760,6 +760,12 @@ public class TemporalPlainDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 inclusive = false;
             }
             TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, inclusive, this, errorBranch);
+            if (smallestUnit == Unit.NANOSECOND && roundingIncrement == 1) {
+                return JSTemporalPlainDateTime.create(getContext(), getRealm(),
+                                dt.getYear(), dt.getMonth(), dt.getDay(),
+                                dt.getHour(), dt.getMinute(), dt.getSecond(),
+                                dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), dt.getCalendar(), this, errorBranch);
+            }
             JSTemporalDurationRecord result = TemporalUtil.roundISODateTime(dt.getYear(), dt.getMonth(), dt.getDay(), dt.getHour(), dt.getMinute(), dt.getSecond(),
                             dt.getMillisecond(), dt.getMicrosecond(), dt.getNanosecond(), roundingIncrement, smallestUnit, roundingMode, null);
             return JSTemporalPlainDateTime.create(getContext(), getRealm(),
