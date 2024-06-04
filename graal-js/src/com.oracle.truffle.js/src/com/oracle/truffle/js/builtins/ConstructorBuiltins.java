@@ -1442,10 +1442,10 @@ public final class ConstructorBuiltins extends JSBuiltinsContainer.SwitchEnum<Co
             TruffleString id = idParam;
             boolean canParse = TemporalUtil.canParseAsTimeZoneNumericUTCOffset(id);
             if (!canParse) {
-                if (!TemporalUtil.isValidTimeZoneName(id)) {
+                id = TemporalUtil.canonicalizeTimeZoneName(id);
+                if (id == null) {
                     throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
                 }
-                id = TemporalUtil.canonicalizeTimeZoneName(id);
             }
             JSRealm realm = getRealm();
             JSDynamicObject proto = getPrototype(realm, newTarget);

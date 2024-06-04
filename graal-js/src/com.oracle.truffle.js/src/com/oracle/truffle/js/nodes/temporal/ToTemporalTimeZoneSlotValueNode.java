@@ -91,11 +91,12 @@ public abstract class ToTemporalTimeZoneSlotValueNode extends JavaScriptBaseNode
             if (offsetMinutes != null && name == null) {
                 return TemporalUtil.formatTimeZoneOffsetString(TemporalUtil.parseTimeZoneOffsetString(offsetMinutes));
             }
-            if (!TemporalUtil.isValidTimeZoneName(name)) {
+            TruffleString timeZoneName = TemporalUtil.canonicalizeTimeZoneName(name);
+            if (timeZoneName == null) {
                 errorBranch.enter(this);
                 throw TemporalErrors.createRangeErrorInvalidTimeZoneString();
             }
-            return TemporalUtil.canonicalizeTimeZoneName(name);
+            return timeZoneName;
         } else {
             errorBranch.enter(this);
             throw Errors.createTypeErrorNotAString(temporalTimeZoneLike);
