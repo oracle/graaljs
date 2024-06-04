@@ -670,6 +670,7 @@ public final class JSDateTimeFormat extends JSNonProxy implements JSConstructorF
         }
     }
 
+    @TruffleBoundary
     public static String canonicalizeTimeZoneName(TruffleString tzId) {
         return canonicalizeTimeZoneName(Strings.toJavaString(tzId));
     }

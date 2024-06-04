@@ -1280,13 +1280,10 @@ public final class TemporalUtil {
         return JSTemporalTimeZone.create(ctx, realm, proto, offsetNs, newIdentifier);
     }
 
+    @TruffleBoundary
     public static TruffleString canonicalizeTimeZoneName(TruffleString timeZone) {
-        assert isValidTimeZoneName(timeZone);
-        return Strings.fromJavaString(JSDateTimeFormat.canonicalizeTimeZoneName(timeZone));
-    }
-
-    public static boolean isValidTimeZoneName(TruffleString timeZone) {
-        return JSDateTimeFormat.canonicalizeTimeZoneName(timeZone) != null;
+        String tzId = JSDateTimeFormat.canonicalizeTimeZoneName(timeZone);
+        return tzId == null ? null : Strings.fromJavaString(tzId);
     }
 
     @TruffleBoundary
@@ -1299,6 +1296,7 @@ public final class TemporalUtil {
         return n.longValue();
     }
 
+    @TruffleBoundary
     public static boolean isoDateTimeWithinLimits(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond, int nanosecond) {
         if (-isoTimeBoundYears <= year && year <= isoTimeBoundYears) {
             // fastpath check
@@ -1422,6 +1420,7 @@ public final class TemporalUtil {
                         constrainToRange(nanoseconds, 0, 999));
     }
 
+    @TruffleBoundary
     public static JSTemporalDateTimeRecord toTemporalTimeRecord(JSDynamicObject temporalTimeLike) {
         boolean any = false;
 
@@ -1462,6 +1461,7 @@ public final class TemporalUtil {
         return JSTemporalDateTimeRecord.create(0, 0, 0, hour, minute, second, millisecond, microsecond, nanosecond);
     }
 
+    @TruffleBoundary
     public static Number toIntegerThrowOnInfinity(Object value) {
         Number integer = toIntegerOrInfinity(value);
         if (Double.isInfinite(JSRuntime.doubleValue(integer))) {
@@ -1470,6 +1470,7 @@ public final class TemporalUtil {
         return integer;
     }
 
+    @TruffleBoundary
     public static double toIntegerWithoutRounding(Object argument) {
         Number number = JSRuntime.toNumber(argument);
         double dNumber = JSRuntime.doubleValue(number);
@@ -1495,10 +1496,12 @@ public final class TemporalUtil {
         return JSRuntime.truncateDouble(d);
     }
 
+    @TruffleBoundary
     public static JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSDynamicObject date, JSDynamicObject duration) {
         return calendarDateAdd(calendarRec, date, duration, Undefined.instance);
     }
 
+    @TruffleBoundary
     public static JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSDynamicObject date, JSDynamicObject duration, JSDynamicObject options) {
         Object dateAddPrepared = calendarRec.dateAdd();
         Object calendar = toCalendarObject(calendarRec.receiver());
@@ -1506,6 +1509,7 @@ public final class TemporalUtil {
         return requireTemporalDate(addedDate);
     }
 
+    @TruffleBoundary
     public static JSTemporalDurationObject calendarDateUntil(CalendarMethodsRecord calendarRec, JSDynamicObject one, JSDynamicObject two, JSDynamicObject options) {
         Object dateUntilPrepared = calendarRec.dateUntil();
         Object calendar = toCalendarObject(calendarRec.receiver());
@@ -2374,6 +2378,7 @@ public final class TemporalUtil {
         return Unit.NANOSECOND;
     }
 
+    @TruffleBoundary
     public static JSDynamicObject toPartialDuration(Object temporalDurationLike,
                     JSContext ctx, IsObjectNode isObjectNode, JSToIntegerWithoutRoundingNode toInt, Node node, InlinedBranchProfile errorBranch) {
         if (!isObjectNode.executeBoolean(temporalDurationLike)) {
@@ -2579,7 +2584,7 @@ public final class TemporalUtil {
                         bt.millisecond() * sign, bt.microsecond() * sign, bt.nanosecond() * sign);
     }
 
-    // 4.5.15
+    @TruffleBoundary
     public static TimeRecord roundTime(int hours, int minutes, int seconds, int milliseconds, int microseconds,
                     int nanoseconds, double increment, Unit unit, RoundingMode roundingMode, Long dayLengthNsParam) {
         double fractionalSecond = ((double) nanoseconds / 1_000_000_000) + ((double) microseconds / 1_000_000) +
@@ -2731,6 +2736,7 @@ public final class TemporalUtil {
                         microsecond + microseconds, nanosecond + nanoseconds, node, errorBranch);
     }
 
+    @TruffleBoundary
     public static JSTemporalDurationRecord roundISODateTime(int year, int month, int day, int hour, int minute, int second, int millisecond, int microsecond,
                     int nanosecond, double increment, Unit unit, RoundingMode roundingMode, Long dayLength) {
         TimeRecord rt = roundTime(hour, minute, second, millisecond, microsecond, nanosecond, increment, unit, roundingMode, dayLength);
@@ -2995,6 +3001,7 @@ public final class TemporalUtil {
         return new TimeZoneMethodsRecord(timeZone, getOffsetNanosecondsForMethod, null);
     }
 
+    @TruffleBoundary
     public static TruffleString builtinTimeZoneGetOffsetStringFor(JSContext context, JSRealm realm, TimeZoneMethodsRecord timeZoneRec, JSDynamicObject instant) {
         long offsetNanoseconds = getOffsetNanosecondsFor(context, realm, timeZoneRec, instant);
         return formatTimeZoneOffsetString(offsetNanoseconds);
@@ -3568,11 +3575,7 @@ public final class TemporalUtil {
     @TruffleBoundary
     public static boolean canParseAsTimeZoneNumericUTCOffset(TruffleString string) {
         try {
-            JSTemporalParserRecord rec = (new TemporalParser(string)).parseTimeZoneNumericUTCOffset();
-            if (rec == null) {
-                return false; // it cannot be parsed
-            }
-            return true;
+            return new TemporalParser(string).parseTimeZoneNumericUTCOffset() != null;
         } catch (Exception ex) {
             return false;
         }
@@ -3644,6 +3647,7 @@ public final class TemporalUtil {
     }
 
     // 12.1.38
+    @TruffleBoundary
     public static void isoResolveMonth(JSContext ctx, JSDynamicObject fields, JSToIntegerOrInfinityNode toIntegerOrInfinity) {
         Object month = JSObject.get(fields, MONTH);
         Object monthCode = JSObject.get(fields, MONTH_CODE);
@@ -3683,6 +3687,7 @@ public final class TemporalUtil {
                         dtoi(JSRuntime.doubleValue(day)), overflow);
     }
 
+    @TruffleBoundary
     public static ISODateRecord isoYearMonthFromFields(JSDynamicObject fields, Overflow overflow) {
         Number year = (Number) JSObject.get(fields, YEAR);
         Number month = (Number) JSObject.get(fields, MONTH);
@@ -3691,6 +3696,7 @@ public final class TemporalUtil {
         return new ISODateRecord(result.year(), result.month(), 1);
     }
 
+    @TruffleBoundary
     public static ISODateRecord isoMonthDayFromFields(JSDynamicObject fields, Overflow overflow) {
         Number month = (Number) JSObject.get(fields, MONTH);
         Number day = (Number) JSObject.get(fields, DAY);

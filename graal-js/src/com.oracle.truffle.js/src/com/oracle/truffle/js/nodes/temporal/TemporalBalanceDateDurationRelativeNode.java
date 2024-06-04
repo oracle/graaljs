@@ -47,6 +47,7 @@ import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.nodes.Node;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
 import com.oracle.truffle.js.nodes.access.CreateDataPropertyNode;
 import com.oracle.truffle.js.nodes.function.JSFunctionCallNode;
@@ -57,6 +58,7 @@ import com.oracle.truffle.js.runtime.JSRealm;
 import com.oracle.truffle.js.runtime.builtins.JSOrdinary;
 import com.oracle.truffle.js.runtime.builtins.temporal.CalendarMethodsRecord;
 import com.oracle.truffle.js.runtime.builtins.temporal.DateDurationRecord;
+import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalCalendar;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalPlainDateObject;
@@ -132,14 +134,14 @@ public abstract class TemporalBalanceDateDurationRelativeNode extends JavaScript
             assert days == 0 : days;
             var yearsMonthsDuration = JSTemporalDuration.createTemporalDuration(ctx, realm,
                             years, months, 0, 0, 0, 0, 0, 0, 0, 0, this, errorBranch);
-            var later = calendarDateAdd(calendarRec, plainRelativeTo, yearsMonthsDuration, node, errorBranch);
-            var untilResult = calendarDateUntil(calendarRec, plainRelativeTo, later, untilOptions);
+            var later = calendarDateAdd(calendarRec, plainRelativeTo, yearsMonthsDuration, node, errorBranch, ctx, realm);
+            var untilResult = calendarDateUntil(calendarRec, plainRelativeTo, later, untilOptions, ctx, realm);
             return new DateDurationRecord(untilResult.getYears(), untilResult.getMonths(), weeks, days);
         } else {
             var yearsMonthsWeeksDaysDuration = JSTemporalDuration.createTemporalDuration(ctx, realm,
                             years, months, weeks, days, 0, 0, 0, 0, 0, 0, this, errorBranch);
-            var later = calendarDateAdd(calendarRec, plainRelativeTo, yearsMonthsWeeksDaysDuration, node, errorBranch);
-            var untilResult = calendarDateUntil(calendarRec, plainRelativeTo, later, untilOptions);
+            var later = calendarDateAdd(calendarRec, plainRelativeTo, yearsMonthsWeeksDaysDuration, node, errorBranch, ctx, realm);
+            var untilResult = calendarDateUntil(calendarRec, plainRelativeTo, later, untilOptions, ctx, realm);
             return new DateDurationRecord(untilResult.getYears(), untilResult.getMonths(), untilResult.getWeeks(), untilResult.getDays());
         }
     }
@@ -154,8 +156,8 @@ public abstract class TemporalBalanceDateDurationRelativeNode extends JavaScript
         } else {
             var monthsWeeksDaysDuration = JSTemporalDuration.createTemporalDuration(ctx, realm,
                             years, months, weeks, days, 0, 0, 0, 0, 0, 0, this, errorBranch);
-            var later = calendarDateAdd(calendarRec, plainRelativeTo, monthsWeeksDaysDuration, node, errorBranch);
-            var untilResult = calendarDateUntil(calendarRec, plainRelativeTo, later, untilOptions);
+            var later = calendarDateAdd(calendarRec, plainRelativeTo, monthsWeeksDaysDuration, node, errorBranch, ctx, realm);
+            var untilResult = calendarDateUntil(calendarRec, plainRelativeTo, later, untilOptions, ctx, realm);
             return new DateDurationRecord(years, untilResult.getMonths(), untilResult.getWeeks(), untilResult.getDays());
         }
     }
@@ -167,30 +169,40 @@ public abstract class TemporalBalanceDateDurationRelativeNode extends JavaScript
         assert months == 0 : months;
         var weeksDaysDuration = JSTemporalDuration.createTemporalDuration(ctx, realm,
                         years, months, weeks, days, 0, 0, 0, 0, 0, 0, this, errorBranch);
-        var later = calendarDateAdd(calendarRec, plainRelativeTo, weeksDaysDuration, node, errorBranch);
-        var untilResult = calendarDateUntil(calendarRec, plainRelativeTo, later, untilOptions);
+        var later = calendarDateAdd(calendarRec, plainRelativeTo, weeksDaysDuration, node, errorBranch, ctx, realm);
+        var untilResult = calendarDateUntil(calendarRec, plainRelativeTo, later, untilOptions, ctx, realm);
         return new DateDurationRecord(years, months, untilResult.getWeeks(), untilResult.getDays());
     }
 
     protected JSTemporalPlainDateObject calendarDateAdd(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject plainDate, JSTemporalDurationObject duration,
-                    Node node, InlinedBranchProfile errorBranch) {
+                    Node node, InlinedBranchProfile errorBranch, JSContext ctx, JSRealm realm) {
         if (callDateAddNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callDateAddNode = insert(JSFunctionCallNode.createCall());
         }
-        Object calendar = TemporalUtil.toCalendarObject(calendarRec.receiver());
+        Object calendar = toCalendarObject(calendarRec.receiver(), ctx, realm);
         Object addedDate = callDateAddNode.executeCall(JSArguments.create(calendar, calendarRec.dateAdd(), plainDate, duration));
         return TemporalUtil.requireTemporalDate(addedDate, node, errorBranch);
     }
 
-    protected JSTemporalDurationObject calendarDateUntil(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two, JSDynamicObject options) {
+    protected JSTemporalDurationObject calendarDateUntil(CalendarMethodsRecord calendarRec, JSTemporalPlainDateObject one, JSTemporalPlainDateObject two, JSDynamicObject options,
+                    JSContext ctx, JSRealm realm) {
         if (callDateUntilNode == null) {
             CompilerDirectives.transferToInterpreterAndInvalidate();
             callDateUntilNode = insert(JSFunctionCallNode.createCall());
         }
-        Object calendar = TemporalUtil.toCalendarObject(calendarRec.receiver());
+        Object calendar = toCalendarObject(calendarRec.receiver(), ctx, realm);
         Object addedDate = callDateUntilNode.executeCall(JSArguments.create(calendar, calendarRec.dateUntil(), one, two, options));
         return TemporalUtil.requireTemporalDuration(addedDate);
     }
 
+    private static Object toCalendarObject(Object calendarSlotValue, JSContext ctx, JSRealm realm) {
+        Object calendar;
+        if (calendarSlotValue instanceof TruffleString calendarID) {
+            calendar = JSTemporalCalendar.create(ctx, realm, calendarID);
+        } else {
+            calendar = calendarSlotValue;
+        }
+        return calendar;
+    }
 }
