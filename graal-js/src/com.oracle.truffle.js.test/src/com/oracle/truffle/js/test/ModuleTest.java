@@ -43,6 +43,8 @@ package com.oracle.truffle.js.test;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertTrue;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.util.Map;
 
 import org.graalvm.polyglot.Context;
@@ -108,4 +110,23 @@ public class ModuleTest {
         }
     }
 
+    @Test
+    public void testDynamicImportFromVirtualFileSystem() throws IOException {
+        Map<String, String> modules = Map.of("other.mjs", "export const answer = 42;");
+        try (ByteArrayOutputStream out = new ByteArrayOutputStream();
+                        Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(new MockFileSystem(modules)).build()).out(out).build()) {
+            context.eval(Source.newBuilder("js", "import('other.mjs').then(({answer}) => console.log(answer));", "test1.mjs").buildLiteral());
+            assertEquals("42", out.toString().trim());
+        }
+    }
+
+    @Test
+    public void testLoadFromVirtualFileSystem() {
+        Map<String, String> modules = Map.of("other.js", "var answer = 42;");
+        try (Context context = JSTest.newContextBuilder().allowIO(IOAccess.newBuilder().fileSystem(new MockFileSystem(modules)).build()).build()) {
+            Value result = context.eval(Source.newBuilder("js", "load('other.js'); answer;", "test1.mjs").buildLiteral());
+            assertTrue(result.isNumber());
+            assertEquals(42, result.asInt());
+        }
+    }
 }

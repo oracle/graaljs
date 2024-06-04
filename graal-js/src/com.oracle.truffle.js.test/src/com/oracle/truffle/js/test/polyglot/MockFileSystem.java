@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2022, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -102,18 +102,30 @@ public final class MockFileSystem implements FileSystem {
 
     @Override
     public Map<String, Object> readAttributes(Path path, String attributes, LinkOption... options) throws IOException {
-        throw new UnsupportedOperationException();
+        if (!modules.containsKey(getFileNameFromPath(path))) {
+            throw new NoSuchFileException(path.toString());
+        }
+        int index = attributes.indexOf(':');
+        String viewName = index < 0 ? "basic" : attributes.substring(0, index);
+        if (viewName.equals("basic")) {
+            return Map.of("isRegularFile", true, "isDirectory", false);
+        }
+        throw new UnsupportedOperationException(attributes);
     }
 
     @Override
     public SeekableByteChannel newByteChannel(Path path, Set<? extends OpenOption> options, FileAttribute<?>... attrs) throws IOException {
-        Path fileNamePath = path.getFileName();
-        String fileName = (fileNamePath == null) ? null : fileNamePath.toString();
+        String fileName = getFileNameFromPath(path);
         if (modules.containsKey(fileName)) {
             return new ReadOnlySeekableByteArrayChannel(modules.get(fileName).getBytes(StandardCharsets.UTF_8));
         } else {
             throw new NoSuchFileException(path.toString());
         }
+    }
+
+    private static String getFileNameFromPath(Path path) {
+        Path fileNamePath = path.getFileName();
+        return (fileNamePath == null) ? null : fileNamePath.toString();
     }
 
     @Override
