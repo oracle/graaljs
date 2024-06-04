@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2018, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2018, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -61,6 +61,7 @@ import com.oracle.truffle.api.source.SourceSection;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.parser.internal.ir.debug.JSONWriter;
 import com.oracle.truffle.js.runtime.Errors;
+import com.oracle.truffle.js.runtime.JSConfig;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSException;
 import com.oracle.truffle.js.runtime.JSParserOptions;
@@ -182,7 +183,11 @@ public final class GraalJSParserHelper {
     private static ScriptEnvironment makeScriptEnvironment(JSParserOptions parserOptions) {
         ScriptEnvironment.Builder builder = ScriptEnvironment.builder();
         builder.strict(parserOptions.strict());
-        builder.ecmaScriptVersion(parserOptions.ecmaScriptVersion());
+        int ecmaScriptVersion = parserOptions.ecmaScriptVersion();
+        if (ecmaScriptVersion == JSConfig.StagingECMAScriptVersion) {
+            ecmaScriptVersion = ScriptEnvironment.ES_STAGING;
+        }
+        builder.ecmaScriptVersion(ecmaScriptVersion);
         builder.emptyStatements(parserOptions.emptyStatements());
         builder.syntaxExtensions(parserOptions.syntaxExtensions());
         builder.scripting(parserOptions.scripting());

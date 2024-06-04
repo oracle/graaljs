@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2010, 2023, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2010, 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -47,6 +47,19 @@ import java.io.PrintWriter;
  * Parser environment consists of command line options, and output and error writers, etc.
  */
 public final class ScriptEnvironment {
+
+    public static final int ES_2015 = 6;
+    public static final int ES_2016 = 7;
+    public static final int ES_2017 = 8;
+    public static final int ES_2018 = 9;
+    public static final int ES_2019 = 10;
+    public static final int ES_2020 = 11;
+    public static final int ES_2021 = 12;
+    public static final int ES_2022 = 13;
+    public static final int ES_2023 = 14;
+    public static final int ES_2024 = 15;
+    public static final int ES_STAGING = Integer.MAX_VALUE;
+
     /** Error writer for this environment */
     private final PrintWriter err;
 
