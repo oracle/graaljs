@@ -488,6 +488,7 @@ public final class TemporalUtil {
         return increment;
     }
 
+    @TruffleBoundary
     public static JSTemporalPrecisionRecord toSecondsStringPrecisionRecord(Unit smallestUnit, int fractionalDigitCount) {
         return switch (smallestUnit) {
             case MINUTE -> JSTemporalPrecisionRecord.create(MINUTE, Unit.MINUTE, 1);
@@ -1033,6 +1034,7 @@ public final class TemporalUtil {
     }
 
     // ToISOWeekOfYear(year, month, day).[[Week]]
+    @TruffleBoundary
     public static long weekOfToISOWeekOfYear(int year, int month, int day) {
         long wednesday = 3;
         long thursday = 4;
@@ -1065,6 +1067,7 @@ public final class TemporalUtil {
     }
 
     // ToISOWeekOfYear(year, month, day).[[Year]]
+    @TruffleBoundary
     public static long yearOfToISOWeekOfYear(int year, int month, int day) {
         long wednesday = 3;
         long thursday = 4;
