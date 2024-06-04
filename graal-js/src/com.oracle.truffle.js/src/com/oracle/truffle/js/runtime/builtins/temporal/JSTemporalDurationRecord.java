@@ -137,4 +137,7 @@ public final class JSTemporalDurationRecord {
                         duration.getMilliseconds(), duration.getMicroseconds(), duration.getNanoseconds());
     }
 
+    public static JSTemporalDurationRecord createZero() {
+        return new JSTemporalDurationRecord(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    }
 }

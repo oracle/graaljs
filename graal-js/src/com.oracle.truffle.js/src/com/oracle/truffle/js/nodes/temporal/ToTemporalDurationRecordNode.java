@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022, 2024, Oracle and/or its affiliates. All rights reserved.
+ * Copyright (c) 2024, Oracle and/or its affiliates. All rights reserved.
  * DO NOT ALTER OR REMOVE COPYRIGHT NOTICES OR THIS FILE HEADER.
  *
  * The Universal Permissive License (UPL), Version 1.0
@@ -43,31 +43,51 @@ package com.oracle.truffle.js.nodes.temporal;
 import com.oracle.truffle.api.dsl.Cached;
 import com.oracle.truffle.api.dsl.Specialization;
 import com.oracle.truffle.api.profiles.InlinedBranchProfile;
+import com.oracle.truffle.api.profiles.InlinedConditionProfile;
+import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
+import com.oracle.truffle.js.nodes.access.IsObjectNode;
+import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDuration;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationObject;
 import com.oracle.truffle.js.runtime.builtins.temporal.JSTemporalDurationRecord;
+import com.oracle.truffle.js.runtime.util.TemporalErrors;
+import com.oracle.truffle.js.runtime.util.TemporalUtil;
 
 /**
- * Implementation of ToTemporalDuration() operation.
+ * Implementation of ToTemporalDurationRecord (temporalDurationLike) operation.
  */
-public abstract class ToTemporalDurationNode extends JavaScriptBaseNode {
+public abstract class ToTemporalDurationRecordNode extends JavaScriptBaseNode {
 
-    protected ToTemporalDurationNode() {
+    protected ToTemporalDurationRecordNode() {
     }
 
-    public abstract JSTemporalDurationObject execute(Object item);
+    public abstract JSTemporalDurationRecord execute(Object item);
 
     @Specialization
-    protected JSTemporalDurationObject toTemporalDuration(Object item,
-                    @Cached ToTemporalDurationRecordNode toTemporalDurationRecord,
-                    @Cached InlinedBranchProfile errorBranch) {
-        if (item instanceof JSTemporalDurationObject duration) {
-            return duration;
+    protected final JSTemporalDurationRecord toTemporalDurationRecord(Object temporalDurationLike,
+                    @Cached InlinedConditionProfile isObjectProfile,
+                    @Cached ToTemporalPartialDurationRecordNode toTemporalPartialDurationRecord,
+                    @Cached InlinedBranchProfile errorBranch,
+                    @Cached IsObjectNode isObjectNode) {
+        JSTemporalDurationRecord result;
+        if (isObjectProfile.profile(this, isObjectNode.executeBoolean(temporalDurationLike))) {
+            if (temporalDurationLike instanceof JSTemporalDurationObject duration) {
+                result = JSTemporalDurationRecord.create(duration);
+            } else {
+                result = toTemporalPartialDurationRecord.execute(temporalDurationLike, JSTemporalDurationRecord.createZero());
+                if (!TemporalUtil.isValidDuration(result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
+                                result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds())) {
+                    errorBranch.enter(this);
+                    throw TemporalErrors.createTypeErrorDurationOutsideRange();
+                }
+            }
+        } else if (temporalDurationLike instanceof TruffleString string) {
+            result = JSTemporalDuration.parseTemporalDurationString(string);
+        } else {
+            errorBranch.enter(this);
+            throw Errors.createTypeErrorNotAString(temporalDurationLike);
         }
-        JSTemporalDurationRecord result = toTemporalDurationRecord.execute(item);
-        return JSTemporalDuration.createTemporalDuration(getLanguage().getJSContext(), getRealm(),
-                        result.getYears(), result.getMonths(), result.getWeeks(), result.getDays(),
-                        result.getHours(), result.getMinutes(), result.getSeconds(), result.getMilliseconds(), result.getMicroseconds(), result.getNanoseconds(), this, errorBranch);
+        return result;
     }
 }

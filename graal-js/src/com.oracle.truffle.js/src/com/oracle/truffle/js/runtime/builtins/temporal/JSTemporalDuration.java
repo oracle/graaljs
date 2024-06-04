@@ -71,11 +71,9 @@ import com.oracle.truffle.js.runtime.builtins.PrototypeSupplier;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.objects.JSObject;
 import com.oracle.truffle.js.runtime.objects.JSObjectUtil;
-import com.oracle.truffle.js.runtime.objects.Undefined;
 import com.oracle.truffle.js.runtime.util.Pair;
 import com.oracle.truffle.js.runtime.util.TemporalErrors;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.UnitPlural;
 
 public final class JSTemporalDuration extends JSNonProxy implements JSConstructorFactory.Default.WithFunctions, PrototypeSupplier {
 
@@ -334,79 +332,6 @@ public final class JSTemporalDuration extends JSNonProxy implements JSConstructo
             throw TemporalErrors.createRangeErrorTemporalMalformedDuration();
         }
         return idxComma;
-    }
-
-    // 7.5.2
-    @TruffleBoundary
-    public static JSTemporalDurationRecord toTemporalDurationRecord(JSDynamicObject temporalDurationLike) {
-        if (isJSTemporalDuration(temporalDurationLike)) {
-            JSTemporalDurationObject d = (JSTemporalDurationObject) temporalDurationLike;
-            return JSTemporalDurationRecord.createWeeks(d.getYears(), d.getMonths(), d.getWeeks(), d.getDays(), d.getHours(), d.getMinutes(), d.getSeconds(), d.getMilliseconds(),
-                            d.getMicroseconds(), d.getNanoseconds());
-        }
-        boolean any = false;
-        double year = 0;
-        double month = 0;
-        double week = 0;
-        double day = 0;
-        double hour = 0;
-        double minute = 0;
-        double second = 0;
-        double millis = 0;
-        double micros = 0;
-        double nanos = 0;
-        for (UnitPlural unit : TemporalUtil.DURATION_PROPERTIES) {
-            Object val = JSObject.get(temporalDurationLike, unit.toTruffleString());
-
-            double lVal = 0;
-            if (val == Undefined.instance) {
-                lVal = 0;
-            } else {
-                any = true;
-                lVal = TemporalUtil.toIntegerWithoutRounding(val);
-            }
-            switch (unit) {
-                case YEARS:
-                    year = lVal;
-                    break;
-                case MONTHS:
-                    month = lVal;
-                    break;
-                case WEEKS:
-                    week = lVal;
-                    break;
-                case DAYS:
-                    day = lVal;
-                    break;
-                case HOURS:
-                    hour = lVal;
-                    break;
-                case MINUTES:
-                    minute = lVal;
-                    break;
-                case SECONDS:
-                    second = lVal;
-                    break;
-                case MILLISECONDS:
-                    millis = lVal;
-                    break;
-                case MICROSECONDS:
-                    micros = lVal;
-                    break;
-                case NANOSECONDS:
-                    nanos = lVal;
-                    break;
-                default:
-                    throw Errors.unsupported("wrong type");
-            }
-        }
-        if (!any) {
-            throw Errors.createTypeError("Given duration like object has no duration properties.");
-        }
-        if (!TemporalUtil.isValidDuration(year, month, week, day, hour, minute, second, millis, micros, nanos)) {
-            throw TemporalErrors.createTypeErrorDurationOutsideRange();
-        }
-        return TemporalUtil.createDurationRecord(year, month, week, day, hour, minute, second, millis, micros, nanos);
     }
 
     @TruffleBoundary

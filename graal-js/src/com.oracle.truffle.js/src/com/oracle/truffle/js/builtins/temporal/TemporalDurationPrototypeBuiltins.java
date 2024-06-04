@@ -41,21 +41,10 @@
 package com.oracle.truffle.js.builtins.temporal;
 
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.AUTO;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.DAYS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.HALF_EXPAND;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.HOURS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MICROSECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MILLISECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MINUTES;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.MONTHS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.NANOSECONDS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TRUNC;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.UNIT;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.WEEKS;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.YEARS;
 import static com.oracle.truffle.js.runtime.util.TemporalUtil.dtol;
-import static com.oracle.truffle.js.runtime.util.TemporalUtil.getDouble;
 
 import java.util.EnumSet;
 
@@ -77,7 +66,6 @@ import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltins
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationTotalNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalDurationPrototypeBuiltinsFactory.JSTemporalDurationWithNodeGen;
 import com.oracle.truffle.js.nodes.cast.JSNumberToBigIntNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
@@ -91,6 +79,7 @@ import com.oracle.truffle.js.nodes.temporal.TemporalUnbalanceDateDurationRelativ
 import com.oracle.truffle.js.nodes.temporal.ToFractionalSecondDigitsNode;
 import com.oracle.truffle.js.nodes.temporal.ToRelativeTemporalObjectNode;
 import com.oracle.truffle.js.nodes.temporal.ToTemporalDurationNode;
+import com.oracle.truffle.js.nodes.temporal.ToTemporalPartialDurationRecordNode;
 import com.oracle.truffle.js.runtime.Errors;
 import com.oracle.truffle.js.runtime.JSContext;
 import com.oracle.truffle.js.runtime.JSRealm;
@@ -280,24 +269,12 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
 
         @Specialization
         protected JSTemporalDurationObject with(JSTemporalDurationObject duration, Object temporalDurationLike,
-                        @Cached JSToIntegerWithoutRoundingNode toInt,
+                        @Cached ToTemporalPartialDurationRecordNode toTemporalPartialDurationRecord,
                         @Cached InlinedBranchProfile errorBranch) {
-            JSDynamicObject durationLike = TemporalUtil.toPartialDuration(temporalDurationLike,
-                            getContext(), isObjectNode, toInt, this, errorBranch);
-
-            double years = getDouble(durationLike, YEARS, duration.getYears());
-            double months = getDouble(durationLike, MONTHS, duration.getMonths());
-            double weeks = getDouble(durationLike, WEEKS, duration.getWeeks());
-            double days = getDouble(durationLike, DAYS, duration.getDays());
-            double hours = getDouble(durationLike, HOURS, duration.getHours());
-            double minutes = getDouble(durationLike, MINUTES, duration.getMinutes());
-            double seconds = getDouble(durationLike, SECONDS, duration.getSeconds());
-            double milliseconds = getDouble(durationLike, MILLISECONDS, duration.getMilliseconds());
-            double microseconds = getDouble(durationLike, MICROSECONDS, duration.getMicroseconds());
-            double nanoseconds = getDouble(durationLike, NANOSECONDS, duration.getNanoseconds());
+            JSTemporalDurationRecord r = toTemporalPartialDurationRecord.execute(temporalDurationLike, JSTemporalDurationRecord.create(duration));
             return JSTemporalDuration.createTemporalDuration(getContext(), getRealm(),
-                            years, months, weeks, days,
-                            hours, minutes, seconds, milliseconds, microseconds, nanoseconds,
+                            r.getYears(), r.getMonths(), r.getWeeks(), r.getDays(),
+                            r.getHours(), r.getMinutes(), r.getSeconds(), r.getMilliseconds(), r.getMicroseconds(), r.getNanoseconds(),
                             this, errorBranch);
         }
 
