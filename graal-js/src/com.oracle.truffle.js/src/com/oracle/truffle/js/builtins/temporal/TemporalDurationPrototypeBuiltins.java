@@ -434,6 +434,13 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
             }
             boolean smallestUnitPresent = true;
             boolean largestUnitPresent = true;
+            Unit largestUnit = getLargestUnit.execute(roundTo, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateTimeOrAuto, Unit.EMPTY);
+            var relativeToRec = toRelativeTemporalObjectNode.execute(roundTo);
+            JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
+            JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();
+            TimeZoneMethodsRecord timeZoneRec = relativeToRec.timeZoneRec();
+            double roundingIncrement = getRoundingIncrementOption.execute(roundTo);
+            RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingDateTime, Unit.EMPTY);
             if (smallestUnit == Unit.EMPTY) {
                 smallestUnitPresent = false;
@@ -444,7 +451,6 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                             duration.getMinutes(), duration.getSeconds(), duration.getMilliseconds(),
                             duration.getMicroseconds());
             Unit defaultLargestUnit = TemporalUtil.largerOfTwoTemporalUnits(existingLargestUnit, smallestUnit);
-            Unit largestUnit = getLargestUnit.execute(roundTo, TemporalConstants.LARGEST_UNIT, TemporalUtil.unitMappingDateTimeOrAuto, Unit.EMPTY);
             if (largestUnit == Unit.EMPTY) {
                 largestUnitPresent = false;
                 largestUnit = defaultLargestUnit;
@@ -456,17 +462,11 @@ public class TemporalDurationPrototypeBuiltins extends JSBuiltinsContainer.Switc
                 throw Errors.createRangeError("at least one of smallestUnit or largestUnit is required");
             }
             JSRealm realm = getRealm();
-            double roundingIncrement = getRoundingIncrementOption.execute(roundTo);
             TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
-            RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
             Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
             if (maximum != null) {
                 TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, false, node, errorBranch);
             }
-            var relativeToRec = toRelativeTemporalObjectNode.execute(roundTo);
-            JSTemporalZonedDateTimeObject zonedRelativeTo = relativeToRec.zonedRelativeTo();
-            JSTemporalPlainDateObject plainRelativeTo = relativeToRec.plainRelativeTo();
-            TimeZoneMethodsRecord timeZoneRec = relativeToRec.timeZoneRec();
 
             boolean roundingGranularityIsNoop = smallestUnit == Unit.NANOSECOND && roundingIncrement == 1;
             boolean calendarUnitsPresent = duration.getYears() != 0 || duration.getMonths() != 0 || duration.getWeeks() != 0;
