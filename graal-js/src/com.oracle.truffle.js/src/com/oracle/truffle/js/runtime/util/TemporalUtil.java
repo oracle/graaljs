@@ -81,7 +81,6 @@ import static com.oracle.truffle.js.runtime.util.TemporalConstants.OFFSET;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.OVERFLOW;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.PREFER;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.REJECT;
-import static com.oracle.truffle.js.runtime.util.TemporalConstants.ROUNDING_INCREMENT;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECOND;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.SECONDS;
 import static com.oracle.truffle.js.runtime.util.TemporalConstants.TIME_ZONE;
@@ -128,8 +127,6 @@ import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
-import com.oracle.truffle.js.nodes.cast.JSToStringNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
@@ -479,65 +476,17 @@ public final class TemporalUtil {
         return Map.copyOf(map);
     }
 
-    // 13.3
-    public static double defaultNumberOptions(Object value, double minimum, double maximum, double fallback,
-                    JSToNumberNode toNumber) {
-        if (value == Undefined.instance) {
-            return fallback;
-        }
-        double numberValue = JSRuntime.doubleValue(toNumber.executeNumber(value));
-        if (Double.isNaN(numberValue) || numberValue < minimum || numberValue > maximum || (Double.isInfinite(numberValue) && Double.isInfinite(maximum))) {
-            throw Errors.createRangeError("Numeric value out of range.");
-        }
-        return Math.floor(numberValue);
-    }
-
-    // 13.4
-    public static double getNumberOption(Object options, TruffleString property, double minimum, double maximum, double fallback,
-                    JSToNumberNode numberNode) {
-        Object value = JSRuntime.get(options, property);
-        return defaultNumberOptions(value, minimum, maximum, fallback, numberNode);
-    }
-
-    // 13.5
-    public static Object getStringOrNumberOption(JSDynamicObject options, TruffleString property, List<TruffleString> stringValues,
-                    double minimum, double maximum, Object fallback, JSToStringNode toStringNode, TemporalGetOptionNode getOptionNode) {
-        assert JSRuntime.isObject(options);
-        Object value = getOptionNode.execute(options, property, OptionType.NUMBER_AND_STRING, null, fallback);
-        if (value instanceof Number) {
-            double numberValue = JSRuntime.doubleValue((Number) value);
-            if (Double.isNaN(numberValue) || numberValue < minimum || numberValue > maximum) {
-                throw Errors.createRangeError("Numeric value out of range.");
-            }
-            return Math.floor(numberValue);
-        }
-        value = toStringNode.executeString(value);
-        if (stringValues != null && !Boundaries.listContainsUnchecked(stringValues, value)) {
-            throw Errors.createRangeError("Given string value is not in string values");
-        }
-        return value;
-    }
-
-    // 13.17
-    public static double toTemporalRoundingIncrement(Object options, Double dividend, boolean inclusive,
-                    JSToNumberNode toNumber) {
+    public static double validateTemporalRoundingIncrement(double increment, double dividend, boolean inclusive,
+                    Node node, InlinedBranchProfile errorBranch) {
         double maximum;
-        double dDividend = Double.NaN;
-        if (dividend == null) {
-            maximum = Double.POSITIVE_INFINITY;
+        if (inclusive) {
+            maximum = dividend;
         } else {
-            dDividend = JSRuntime.doubleValue(dividend);
-            if (inclusive) {
-                maximum = dDividend;
-            } else if (dDividend > 1) {
-                maximum = dDividend - 1;
-            } else {
-                maximum = 1;
-            }
+            assert dividend > 1 : dividend;
+            maximum = dividend - 1;
         }
-
-        double increment = getNumberOption(options, ROUNDING_INCREMENT, 1, maximum, 1, toNumber);
-        if (dividend != null && dDividend % increment != 0) {
+        if (increment > maximum || dividend % increment != 0) {
+            errorBranch.enter(node);
             throw Errors.createRangeError("Increment out of range.");
         }
         return increment;
@@ -2743,21 +2692,6 @@ public final class TemporalUtil {
         ISODateRecord br = balanceISODate(year, month, day + dtoi(rt.days()));
         return JSTemporalDurationRecord.create(br.year(), br.month(), br.day(),
                         rt.hour(), rt.minute(), rt.second(), rt.millisecond(), rt.microsecond(), rt.nanosecond());
-    }
-
-    public static double toTemporalDateTimeRoundingIncrement(JSDynamicObject options, Unit smallestUnit, JSToNumberNode toNumber) {
-        int maximum = 0;
-        if (Unit.DAY == smallestUnit) {
-            maximum = 1;
-        } else if (Unit.HOUR == smallestUnit) {
-            maximum = 24;
-        } else if (Unit.MINUTE == smallestUnit || Unit.SECOND == smallestUnit) {
-            maximum = 60;
-        } else {
-            assert Unit.MILLISECOND == smallestUnit || Unit.MICROSECOND == smallestUnit || Unit.NANOSECOND == smallestUnit;
-            maximum = 1000;
-        }
-        return toTemporalRoundingIncrement(options, (double) maximum, false, toNumber);
     }
 
     public static boolean isValidTime(int hours, int minutes, int seconds, int milliseconds, int microseconds, int nanoseconds) {

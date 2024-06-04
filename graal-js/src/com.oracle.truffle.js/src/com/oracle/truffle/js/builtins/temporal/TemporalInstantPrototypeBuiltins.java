@@ -66,10 +66,10 @@ import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsF
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantToZonedDateTimeNodeGen;
 import com.oracle.truffle.js.builtins.temporal.TemporalInstantPrototypeBuiltinsFactory.JSTemporalInstantUntilSinceNodeGen;
 import com.oracle.truffle.js.nodes.access.PropertyGetNode;
-import com.oracle.truffle.js.nodes.cast.JSToNumberNode;
 import com.oracle.truffle.js.nodes.function.JSBuiltin;
 import com.oracle.truffle.js.nodes.function.JSBuiltinNode;
 import com.oracle.truffle.js.nodes.temporal.GetDifferenceSettingsNode;
+import com.oracle.truffle.js.nodes.temporal.GetRoundingIncrementOptionNode;
 import com.oracle.truffle.js.nodes.temporal.GetTemporalUnitNode;
 import com.oracle.truffle.js.nodes.temporal.SnapshotOwnPropertiesNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalGetOptionNode;
@@ -297,10 +297,10 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
 
         @Specialization
         protected JSTemporalInstantObject round(JSTemporalInstantObject instant, Object roundToParam,
-                        @Cached JSToNumberNode toNumber,
                         @Cached TruffleString.EqualNode equalNode,
                         @Cached TemporalGetOptionNode getOptionNode,
                         @Cached GetTemporalUnitNode getSmallestUnit,
+                        @Cached GetRoundingIncrementOptionNode getRoundingIncrementOption,
                         @Cached InlinedBranchProfile errorBranch,
                         @Cached InlinedConditionProfile optionUndefined) {
             if (roundToParam == Undefined.instance) {
@@ -314,8 +314,9 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
             } else {
                 roundTo = getOptionsObject(roundToParam, this, errorBranch, optionUndefined);
             }
-            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.REQUIRED);
+            double roundingIncrement = getRoundingIncrementOption.execute(roundTo);
             RoundingMode roundingMode = toTemporalRoundingMode(roundTo, HALF_EXPAND, equalNode, getOptionNode);
+            Unit smallestUnit = getSmallestUnit.execute(roundTo, TemporalConstants.SMALLEST_UNIT, TemporalUtil.unitMappingTime, Unit.REQUIRED);
             double maximum;
             if (Unit.HOUR == smallestUnit) {
                 maximum = TemporalUtil.HOURS_PER_DAY;
@@ -331,7 +332,7 @@ public class TemporalInstantPrototypeBuiltins extends JSBuiltinsContainer.Switch
                 assert Unit.NANOSECOND == smallestUnit;
                 maximum = TemporalUtil.NS_PER_DAY;
             }
-            double roundingIncrement = TemporalUtil.toTemporalRoundingIncrement(roundTo, maximum, true, toNumber);
+            TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, true, this, errorBranch);
             BigInt roundedNs = TemporalUtil.roundTemporalInstant(instant.getNanoseconds(), (long) roundingIncrement, smallestUnit, roundingMode);
             return JSTemporalInstant.create(getContext(), getRealm(), roundedNs);
         }
