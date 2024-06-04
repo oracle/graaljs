@@ -3717,7 +3717,7 @@ public final class TemporalUtil {
         } else if (equalNode.execute(mode, HALF_EVEN, TruffleString.Encoding.UTF_16)) {
             return RoundingMode.HALF_EVEN;
         }
-        throw Errors.createTypeError("unexpected roundingMode");
+        throw Errors.shouldNotReachHereUnexpectedValue(mode);
     }
 
     @TruffleBoundary
@@ -3731,7 +3731,7 @@ public final class TemporalUtil {
         } else if (equalNode.execute(disambiguation, REJECT, TruffleString.Encoding.UTF_16)) {
             return Disambiguation.REJECT;
         }
-        throw Errors.createTypeError("unexpected disambiguation");
+        throw Errors.shouldNotReachHereUnexpectedValue(disambiguation);
     }
 
     @TruffleBoundary
@@ -3745,7 +3745,7 @@ public final class TemporalUtil {
         } else if (equalNode.execute(offsetOption, REJECT, TruffleString.Encoding.UTF_16)) {
             return OffsetOption.REJECT;
         }
-        throw Errors.createTypeError("unexpected offsetOption");
+        throw Errors.shouldNotReachHereUnexpectedValue(offsetOption);
     }
 
     public static ShowCalendar toShowCalendar(TruffleString showCalendar, TruffleString.EqualNode equalNode) {
@@ -3758,7 +3758,7 @@ public final class TemporalUtil {
         } else if (Strings.equals(equalNode, showCalendar, CRITICAL)) {
             return ShowCalendar.CRITICAL;
         }
-        throw Errors.createTypeError("unexpected showCalendar");
+        throw Errors.shouldNotReachHereUnexpectedValue(showCalendar);
     }
 
     public static double roundTowardsZero(double d) {
