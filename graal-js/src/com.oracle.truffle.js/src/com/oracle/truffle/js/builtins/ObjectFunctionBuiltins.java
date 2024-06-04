@@ -214,7 +214,7 @@ public final class ObjectFunctionBuiltins extends JSBuiltinsContainer.SwitchEnum
                 case getOwnPropertyDescriptors, values, entries -> JSConfig.ECMAScript2017;
                 case fromEntries -> JSConfig.ECMAScript2019;
                 case hasOwn -> JSConfig.ECMAScript2022;
-                case groupBy -> JSConfig.StagingECMAScriptVersion;
+                case groupBy -> JSConfig.ECMAScript2024;
                 default -> BuiltinEnum.super.getECMAScriptVersion();
             };
         }
