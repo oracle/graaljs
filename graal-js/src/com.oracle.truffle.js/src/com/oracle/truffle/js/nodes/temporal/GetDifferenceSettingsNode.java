@@ -48,12 +48,9 @@ import com.oracle.truffle.api.profiles.InlinedBranchProfile;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.builtins.temporal.JSTemporalBuiltinOperation;
 import com.oracle.truffle.js.nodes.JavaScriptBaseNode;
-import com.oracle.truffle.js.runtime.Errors;
-import com.oracle.truffle.js.runtime.JSRuntime;
 import com.oracle.truffle.js.runtime.objects.JSDynamicObject;
 import com.oracle.truffle.js.runtime.util.TemporalConstants;
 import com.oracle.truffle.js.runtime.util.TemporalUtil;
-import com.oracle.truffle.js.runtime.util.TemporalUtil.OptionType;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.RoundingMode;
 import com.oracle.truffle.js.runtime.util.TemporalUtil.Unit;
 
@@ -85,11 +82,11 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
                     @Cached TemporalGetOptionNode getOptionNode,
                     @Cached TruffleString.EqualNode equalNode,
                     @Cached GetTemporalUnitNode getLargestUnit,
-                    @Cached TemporalGetOptionNode getRoundingIncrement,
+                    @Cached GetRoundingIncrementOptionNode getRoundingIncrementOption,
                     @Cached GetTemporalUnitNode getSmallestUnit) {
         assert unitMappingOrAuto.containsKey(TemporalConstants.AUTO) && !unitMapping.containsKey(TemporalConstants.AUTO);
         Unit largestUnit = getLargestUnit.execute(resolvedOptions, TemporalConstants.LARGEST_UNIT, unitMappingOrAuto, Unit.AUTO);
-        double roundingIncrement = toTemporalRoundingIncrement(resolvedOptions, getRoundingIncrement, errorBranch);
+        double roundingIncrement = getRoundingIncrementOption.execute(resolvedOptions);
         RoundingMode roundingMode = JSTemporalBuiltinOperation.toTemporalRoundingMode(resolvedOptions, TemporalConstants.TRUNC, equalNode, getOptionNode);
         if (operation == TemporalUtil.SINCE) {
             roundingMode = TemporalUtil.negateTemporalRoundingMode(roundingMode);
@@ -102,32 +99,8 @@ public abstract class GetDifferenceSettingsNode extends JavaScriptBaseNode {
         TemporalUtil.validateTemporalUnitRange(largestUnit, smallestUnit);
         Double maximum = TemporalUtil.maximumTemporalDurationRoundingIncrement(smallestUnit);
         if (maximum != null) {
-            validateTemporalRoundingIncrement(roundingIncrement, maximum, false, errorBranch);
+            TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, false, this, errorBranch);
         }
         return new GetDifferenceSettingsResult(smallestUnit, largestUnit, roundingMode, (long) roundingIncrement);
-    }
-
-    private double toTemporalRoundingIncrement(JSDynamicObject resolvedOptions, TemporalGetOptionNode getRoundingIncrement, InlinedBranchProfile errorBranch) {
-        double increment = JSRuntime.doubleValue((Number) getRoundingIncrement.execute(resolvedOptions, TemporalConstants.ROUNDING_INCREMENT, OptionType.NUMBER, null, 1.0));
-        double integerIncrement = JSRuntime.truncateDouble(increment);
-        if (!Double.isFinite(increment) || integerIncrement < 1 || integerIncrement > 1e9) {
-            errorBranch.enter(this);
-            throw Errors.createRangeError("Numeric value out of range.");
-        }
-        return integerIncrement;
-    }
-
-    private void validateTemporalRoundingIncrement(double increment, double dividend, boolean inclusive, InlinedBranchProfile errorBranch) {
-        double maximum;
-        if (inclusive) {
-            maximum = dividend;
-        } else {
-            assert dividend > 1 : dividend;
-            maximum = dividend - 1;
-        }
-        if (increment > maximum || dividend % increment != 0) {
-            errorBranch.enter(this);
-            throw Errors.createRangeError("Increment out of range.");
-        }
     }
 }
