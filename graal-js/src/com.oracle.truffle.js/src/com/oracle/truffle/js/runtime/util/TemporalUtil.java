@@ -123,10 +123,8 @@ import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.api.strings.TruffleStringBuilderUTF16;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
 import com.oracle.truffle.js.nodes.access.EnumerableOwnPropertyNamesNode;
-import com.oracle.truffle.js.nodes.access.IsObjectNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerOrInfinityNode;
 import com.oracle.truffle.js.nodes.cast.JSToIntegerThrowOnInfinityNode;
-import com.oracle.truffle.js.nodes.cast.JSToIntegerWithoutRoundingNode;
 import com.oracle.truffle.js.nodes.temporal.CalendarMethodsRecordLookupNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarDateFromFieldsNode;
 import com.oracle.truffle.js.nodes.temporal.TemporalCalendarGetterNode;
@@ -277,8 +275,6 @@ public final class TemporalUtil {
     public static final List<TruffleString> listDisambiguation = List.of(COMPATIBLE, EARLIER, LATER, REJECT);
 
     public static final TruffleString[] TIME_LIKE_PROPERTIES = new TruffleString[]{HOUR, MICROSECOND, MILLISECOND, MINUTE, NANOSECOND, SECOND};
-    public static final UnitPlural[] DURATION_PROPERTIES = new UnitPlural[]{UnitPlural.DAYS, UnitPlural.HOURS, UnitPlural.MICROSECONDS, UnitPlural.MILLISECONDS,
-                    UnitPlural.MINUTES, UnitPlural.MONTHS, UnitPlural.NANOSECONDS, UnitPlural.SECONDS, UnitPlural.WEEKS, UnitPlural.YEARS};
 
     private static final BigInt upperEpochNSLimit = new BigInt(BigInteger.valueOf(86400).multiply(BigInteger.valueOf(10).pow(17)));
     private static final BigInt lowerEpochNSLimit = upperEpochNSLimit.negate();
@@ -2325,31 +2321,6 @@ public final class TemporalUtil {
             return Unit.MICROSECOND;
         }
         return Unit.NANOSECOND;
-    }
-
-    @TruffleBoundary
-    public static JSDynamicObject toPartialDuration(Object temporalDurationLike,
-                    JSContext ctx, IsObjectNode isObjectNode, JSToIntegerWithoutRoundingNode toInt, Node node, InlinedBranchProfile errorBranch) {
-        if (!isObjectNode.executeBoolean(temporalDurationLike)) {
-            errorBranch.enter(node);
-            throw Errors.createTypeError("Given duration like is not a object.");
-        }
-        JSDynamicObject temporalDurationLikeObj = toJSDynamicObject(temporalDurationLike, node, errorBranch);
-        JSRealm realm = JSRealm.get(null);
-        JSDynamicObject result = JSOrdinary.create(ctx, realm);
-        boolean any = false;
-        for (UnitPlural unit : DURATION_PROPERTIES) {
-            Object value = JSObject.get(temporalDurationLikeObj, unit.toTruffleString());
-            if (value != Undefined.instance) {
-                any = true;
-                JSObjectUtil.putDataProperty(result, unit.toTruffleString(), toInt.executeDouble(value));
-            }
-        }
-        if (!any) {
-            errorBranch.enter(node);
-            throw Errors.createTypeError("Given duration like object has no duration properties.");
-        }
-        return result;
     }
 
     @TruffleBoundary
