@@ -44,12 +44,14 @@ import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.nio.file.FileSystemException;
+import java.nio.file.NoSuchFileException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Objects;
 
 import com.oracle.js.parser.ir.Module.ModuleRequest;
 import com.oracle.truffle.api.TruffleFile;
+import com.oracle.truffle.api.TruffleLanguage;
 import com.oracle.truffle.api.source.Source;
 import com.oracle.truffle.api.strings.TruffleString;
 import com.oracle.truffle.js.lang.JavaScriptLanguage;
@@ -103,25 +105,26 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             String canonicalPath;
             URI maybeUri = asURI(specifier);
 
-            TruffleString maybeCustomPath = realm.getCustomEsmPathMapping(Strings.fromJavaString(refPath), specifierTS);
+            TruffleString maybeCustomPath = realm.getCustomEsmPathMapping(refPath == null ? null : Strings.fromJavaString(refPath), specifierTS);
+            TruffleLanguage.Env env = realm.getEnv();
             if (maybeCustomPath != null) {
                 canonicalPath = maybeCustomPath.toJavaStringUncached();
-                moduleFile = realm.getEnv().getPublicTruffleFile(canonicalPath).getCanonicalFile();
+                moduleFile = getCanonicalFileIfExists(env.getPublicTruffleFile(canonicalPath), env);
             } else {
                 if (refPath == null) {
                     if (maybeUri != null) {
-                        moduleFile = realm.getEnv().getPublicTruffleFile(maybeUri);
+                        moduleFile = env.getPublicTruffleFile(maybeUri);
                     } else {
-                        moduleFile = realm.getEnv().getPublicTruffleFile(specifier);
+                        moduleFile = env.getPublicTruffleFile(specifier);
                     }
                 } else {
-                    TruffleFile refFile = realm.getEnv().getPublicTruffleFile(refPath);
+                    TruffleFile refFile = env.getPublicTruffleFile(refPath);
                     if (maybeUri != null) {
-                        String uriFile = realm.getEnv().getPublicTruffleFile(maybeUri).getCanonicalFile().getPath();
+                        String uriFile = env.getPublicTruffleFile(maybeUri).getCanonicalFile().getPath();
                         moduleFile = refFile.resolveSibling(uriFile);
                     } else {
-                        if (bareSpecifierDirectLookup(specifier)) {
-                            moduleFile = realm.getEnv().getPublicTruffleFile(specifier);
+                        if (!env.isFileIOAllowed() || bareSpecifierDirectLookup(specifier)) {
+                            moduleFile = env.getPublicTruffleFile(specifier);
                         } else {
                             moduleFile = refFile.resolveSibling(specifier);
                         }
@@ -159,27 +162,20 @@ public class DefaultESModuleLoader implements JSModuleLoader {
     }
 
     protected JSModuleRecord loadModuleFromUrl(ScriptOrModule referrer, ModuleRequest moduleRequest, TruffleFile maybeModuleFile, String maybeCanonicalPath) throws IOException {
-        JSModuleRecord existingModule;
-        TruffleFile moduleFile;
+        TruffleFile moduleFile = maybeModuleFile;
         String canonicalPath;
+        TruffleLanguage.Env env = realm.getEnv();
         if (maybeCanonicalPath == null) {
-            if (!maybeModuleFile.exists()) {
-                // check whether the moduleFile was loaded already (as literal source)
-                // before trying to invoke getCanonicalFile() (which would fail)
-                canonicalPath = maybeModuleFile.getPath();
-                existingModule = moduleMap.get(canonicalPath);
-                if (existingModule != null) {
-                    return existingModule;
-                }
-            }
-            moduleFile = maybeModuleFile.getCanonicalFile();
-            canonicalPath = moduleFile.getPath();
+            /*
+             * We can only canonicalize the path if I/O is allowed and the file exists; otherwise,
+             * the lookup may still succeed if the module was loaded already (as literal source).
+             */
+            canonicalPath = getCanonicalFileIfExists(moduleFile, env).getPath();
         } else {
-            moduleFile = maybeModuleFile;
             canonicalPath = maybeCanonicalPath;
         }
 
-        existingModule = moduleMap.get(canonicalPath);
+        JSModuleRecord existingModule = moduleMap.get(canonicalPath);
         if (existingModule != null) {
             return existingModule;
         }
@@ -241,13 +237,20 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             canonicalPath = source.getName();
         } else {
             try {
-                if (realm.getEnv().getFileNameSeparator().equals("\\") && path.startsWith("/")) {
+                TruffleLanguage.Env env = realm.getEnv();
+                if (env.getFileNameSeparator().equals("\\") && path.startsWith("/")) {
                     // on Windows, remove first "/" from /c:/test/dir/ style paths
                     path = path.substring(1);
                 }
-                TruffleFile moduleFile = realm.getEnv().getPublicTruffleFile(path);
-                if (moduleFile.exists()) {
-                    canonicalPath = moduleFile.getCanonicalFile().getPath();
+                TruffleFile moduleFile = env.getPublicTruffleFile(path);
+                if (env.isFileIOAllowed() && moduleFile.exists()) {
+                    try {
+                        canonicalPath = moduleFile.getCanonicalFile().getPath();
+                    } catch (NoSuchFileException ex) {
+                        // The file may have been deleted between exists() and getCanonicalFile().
+                        // We handle this race condition as if the file did not exist.
+                        canonicalPath = path;
+                    }
                 } else {
                     // Source with a non-existing path but with a content.
                     canonicalPath = path;
@@ -257,5 +260,17 @@ public class DefaultESModuleLoader implements JSModuleLoader {
             }
         }
         return canonicalPath;
+    }
+
+    private static TruffleFile getCanonicalFileIfExists(TruffleFile file, TruffleLanguage.Env env) throws IOException {
+        if (env.isFileIOAllowed() && file.exists()) {
+            try {
+                return file.getCanonicalFile();
+            } catch (NoSuchFileException ex) {
+                // The file may have been deleted between exists() and getCanonicalFile().
+                // We handle this race condition as if the file did not exist.
+            }
+        }
+        return file;
     }
 }
