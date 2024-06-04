@@ -957,11 +957,15 @@ public class TemporalZonedDateTimePrototypeBuiltins extends JSBuiltinsContainer.
                 inclusive = false;
             }
             TemporalUtil.validateTemporalRoundingIncrement(roundingIncrement, maximum, inclusive, this, errorBranch);
-            Object timeZone = zonedDateTime.getTimeZone();
-            var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
             JSRealm realm = getRealm();
-            JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, zonedDateTime.getNanoseconds());
+            BigInt thisNs = zonedDateTime.getNanoseconds();
+            Object timeZone = zonedDateTime.getTimeZone();
             Object calendar = zonedDateTime.getCalendar();
+            if (smallestUnit == Unit.NANOSECOND && roundingIncrement == 1) {
+                return JSTemporalZonedDateTime.create(getContext(), realm, thisNs, timeZone, calendar);
+            }
+            var timeZoneRec = createTimeZoneMethodsRecord.executeFull(timeZone);
+            JSTemporalInstantObject instant = JSTemporalInstant.create(getContext(), realm, thisNs);
             long offsetNanoseconds = TemporalUtil.getOffsetNanosecondsFor(getContext(), realm, timeZoneRec, instant);
             JSTemporalPlainDateTimeObject tdt = TemporalUtil.builtinTimeZoneGetPlainDateTimeFor(getContext(), realm, instant, calendar, offsetNanoseconds);
             Object isoCalendar = TemporalUtil.getISO8601Calendar(getContext(), realm);
