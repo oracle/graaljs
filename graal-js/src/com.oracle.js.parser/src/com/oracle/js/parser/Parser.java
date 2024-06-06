@@ -81,9 +81,11 @@ import static com.oracle.js.parser.TokenType.LBRACE;
 import static com.oracle.js.parser.TokenType.LBRACKET;
 import static com.oracle.js.parser.TokenType.LET;
 import static com.oracle.js.parser.TokenType.LPAREN;
+import static com.oracle.js.parser.TokenType.MOD;
 import static com.oracle.js.parser.TokenType.MUL;
 import static com.oracle.js.parser.TokenType.OF;
 import static com.oracle.js.parser.TokenType.PERIOD;
+import static com.oracle.js.parser.TokenType.PIPELINE;
 import static com.oracle.js.parser.TokenType.PRIVATE_IDENT;
 import static com.oracle.js.parser.TokenType.RBRACE;
 import static com.oracle.js.parser.TokenType.RBRACKET;
@@ -363,6 +365,8 @@ public class Parser extends AbstractParser {
     private RecompilableScriptFunctionData reparsedFunction;
 
     private boolean isModule;
+
+    private boolean topicReferenceUsed = false;
 
     /**
      * Used to pass (async) arrow function flags from head to body.
@@ -3928,6 +3932,7 @@ public class Parser extends AbstractParser {
      * <pre>
      * PrimaryExpression :
      *      this
+     *      %
      *      IdentifierReference
      *      Literal
      *      ArrayLiteral
@@ -4011,6 +4016,15 @@ public class Parser extends AbstractParser {
                         TruffleString v8IntrinsicNameTS = lexer.stringIntern(v8IntrinsicName);
                         return createIdentNode(v8IntrinsicToken, ident.getFinish(), v8IntrinsicNameTS);
                     }
+                }else if(isES2023()){
+                    int pipeDepth = lc.getCurrentFunction().getPipeDepth();
+                    if(pipeDepth <= 0){
+                        throw error(JSErrorType.SyntaxError, "The topic reference can not be used here!");
+                    }
+                    next();
+                    addIdentifierReference("%" + pipeDepth);
+                    topicReferenceUsed = true;
+                    return new IdentNode(Token.recast(token, IDENT), finish + 1, lexer.stringIntern("%" + pipeDepth));
                 }
 
             default:
@@ -6298,7 +6312,7 @@ public class Parser extends AbstractParser {
                 int nextPrecedence = type.getPrecedence();
 
                 // Subtask greater precedence.
-                while (type.isOperator(in) && (nextPrecedence > precedence || (nextPrecedence == precedence && !type.isLeftAssociative()))) {
+                while (type.isOperator(in) && (nextPrecedence > precedence || (nextPrecedence == precedence && !type.isLeftAssociative()))){
                     rhs = expression(rhs, nextPrecedence, in, yield, await);
                     nextPrecedence = type.getPrecedence();
                 }
@@ -6389,6 +6403,34 @@ public class Parser extends AbstractParser {
                     popDefaultName();
                 }
             }
+        } else if(type == PIPELINE && isES2023()) {
+            boolean prevRef = topicReferenceUsed;
+            topicReferenceUsed = false;
+            lc.getCurrentFunction().increasePipeDepth();
+            int pipeDepth = lc.getCurrentFunction().getPipeDepth();
+
+            next();
+
+            IdentNode placeHolder = new IdentNode(Token.recast(token, IDENT),
+                    finish + 1, lexer.stringIntern("%" + pipeDepth));
+            BinaryNode lhs = new BinaryNode(Token.recast(token, ASSIGN), placeHolder, exprLhs);
+            Expression rhs = assignmentExpression(in, yield, await);
+
+            if(isStrictMode){
+                final VarNode var = new VarNode(line, Token.recast(token, LET), placeHolder.getFinish(), placeHolder.setIsDeclaredHere(), null);
+                declareVar(lc.getCurrentScope(), var);
+            }
+
+            if(!topicReferenceUsed){
+                throw error("Pipe body must contain the topic reference token(%) at least once");
+            }
+
+            lc.getCurrentFunction().decreasePipeDepth();
+
+            BinaryNode result = new BinaryNode(Token.recast(token, COMMARIGHT), lhs, rhs);
+            topicReferenceUsed = prevRef;
+
+            return result;
         } else {
             if (canBeAssignmentPattern) {
                 if (coverExpression != CoverExpressionError.DENY) {

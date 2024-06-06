@@ -109,6 +109,8 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
     private List<Map.Entry<VarNode, Scope>> hoistedVarDeclarations;
     private List<Map.Entry<VarNode, Scope>> hoistableBlockFunctionDeclarations;
 
+    private int pipeDepth = 0;
+
     /**
      * @param token The token for the function
      * @param ident External function name
@@ -740,5 +742,18 @@ class ParserContextFunctionNode extends ParserContextBaseNode {
             }
         }
         return length;
+    }
+    public int getPipeDepth(){
+        return pipeDepth;
+    }
+
+    public void increasePipeDepth(){
+        pipeDepth++;
+    }
+
+    public void decreasePipeDepth(){
+        if(pipeDepth > 0){
+            pipeDepth--;
+        }
     }
 }
