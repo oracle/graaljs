@@ -270,19 +270,12 @@ public class Test262Runnable extends TestRunnable {
     });
     private static final Set<String> STAGING_FEATURES = featureSet(new String[]{
                     "Array.fromAsync",
-                    "Atomics.waitAsync",
                     "FinalizationRegistry.prototype.cleanupSome",
                     "Float16Array",
                     "Intl.Locale-info",
                     "ShadowRealm",
-                    "String.prototype.isWellFormed",
-                    "String.prototype.toWellFormed",
-                    "array-grouping",
-                    "arraybuffer-transfer",
                     "decorators",
                     "json-parse-with-source",
-                    "promise-with-resolvers",
-                    "resizable-arraybuffer",
     });
 
     public Test262Runnable(TestSuite suite, TestFile testFile) {
